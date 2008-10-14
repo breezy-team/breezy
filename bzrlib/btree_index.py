@@ -607,7 +607,7 @@ class BTreeGraphIndex(object):
         self._name = name
         self._size = size
         self._file = None
-        self._page_size = transport.recommended_page_size()
+        self._recommended_pages = self._compute_recommended_pages()
         self._root_node = None
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
@@ -666,6 +666,35 @@ class BTreeGraphIndex(object):
             found[node_pos] = node
         return found
 
+    def _compute_recommended_pages(self):
+        """Given the transport's recommended_page_size, determine num pages."""
+        recommended_read = self._transport.recommended_page_size()
+        recommended_pages = int(math.ceil(recommended_read /
+                                          float(_PAGE_SIZE)))
+        return recommended_pages
+
+    def _compute_num_pages(self):
+        """Determine the offset to the last page in this index."""
+        if self._size is None:
+            raise AssertionError('_compute_num_pages should not be called'
+                                 ' when self._size is None')
+        if self._root_node is not None:
+            # This is the number of pages as defined by the header
+            return self._row_offsets[-1]
+        # This is the number of pages as defined by the size of the index. They
+        # should be indentical.
+        num_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
+        return num_pages
+
+    def _get_cached_nodes(self):
+        """Determine what nodes we already have cached."""
+        # XXX: Update the LRUCache interface to have a .keys() attribute
+        cached_nodes = set(self._internal_node_cache._cache.keys())
+        cached_nodes.update(self._leaf_node_cache._cache.keys())
+        if self._root_node is not None:
+            cached_nodes.add(0)
+        return cached_nodes
+
     def _expand_nodes(self, node_indexes):
         """Find extra nodes to download.
 
@@ -675,94 +704,85 @@ class BTreeGraphIndex(object):
         out what other pages we might want to read.
 
         :param node_indexes: The nodes that have been requested to read.
-        # :param recommended_size: The size of download we want, this assumes
-        #     that readv() is accomplished in a single round trip (which is true
-        #     for http and bzr+ssh, and sftp uses async to get close
-        #     performance.)
-        # :param max_page: The last possible page to read, possibly max_size is
-        # better?
         :return: A new list of nodes to download
         """
-        trace.note('request: %s\tnodes: %s', self._name[-14:], node_indexes)
-        # return node_indexes
+        if 'index' in debug.debug_flags:
+            trace.mutter('expanding: %s\tnodes: %s', self._name, node_indexes)
 
-        # TODO: This could be cached
-        recommended_read = self._transport.recommended_page_size()
-        recommended_pages = int(math.ceil(recommended_read /
-                                          float(_PAGE_SIZE)))
-        # Disable the algorithm
-        # recommended_pages = 1
-        if len(node_indexes) >= recommended_pages:
+        if len(node_indexes) >= self._recommended_pages:
             # Don't add more, we are already requesting more than enough
+            if 'index' in debug.debug_flags:
+                trace.mutter('  not expanding large request (%s >= %s)',
+                             len(node_indexes), self._recommended_pages)
             return node_indexes
         if self._size is None:
             # Don't try anything, because we don't know where the file ends
+            if 'index' in debug.debug_flags:
+                trace.mutter('  not expanding without knowing index size')
             return node_indexes
+        # TODO: Should this be cached instead?
+        num_pages = self._compute_num_pages()
         # The idea here is to get nodes "next to" the ones we are already
         # getting.
-        max_page = int(math.ceil(self._size / float(_PAGE_SIZE)))
-        # XXX: Update the LRUCache interface to have a .keys() attribute
-        cached_nodes = set(self._internal_node_cache._cache.keys())
-        cached_nodes.update(self._leaf_node_cache._cache.keys())
-        if self._root_node is not None:
-            cached_nodes.add(0)
+        cached_nodes = self._get_cached_nodes()
 
-        # if len(cached_nodes) < 2: # We haven't read enough to justify expansion
+        # if len(cached_nodes) < 2:
+        #     # We haven't read enough to justify expansion
         #     return node_indexes
 
         # If reading recommended_pages would read the rest of the index, just
         # do so.
-        if max_page - len(cached_nodes) <= recommended_pages:
-            # Just read the whole thing
-            # NOTE: this breaks a little bit with the distinction between index
-            # nodes and leaf nodes (as they are cached separately). It is
-            # still worthwhile to read it all, but we need to figure out what
-            # cache we should really put things in when we are done.
-            # However, we may not have read the index header yet to know where
-            # the internal nodes break from where the leaf nodes. We are sure
-            # to know *after* we've done the read.
-            # This also does the wrong thing if there are bloom pages.
-
-            # Further, this gives the wrong results because we have 2 caches to
-            # worry about...
+        if num_pages - len(cached_nodes) <= self._recommended_pages:
+            # Read whatever is left
             if cached_nodes:
-                return [x for x in xrange(max_page) if x not in cached_nodes]
-            return range(max_page)
+                expanded = [x for x in xrange(num_pages)
+                               if x not in cached_nodes]
+            else:
+                expanded = range(num_pages)
+            if 'index' in debug.debug_flags:
+                trace.mutter('  reading all unread pages: %s', expanded)
+            return expanded
 
-        needed_nodes = recommended_pages - len(node_indexes)
+        needed_nodes = self._recommended_pages - len(node_indexes)
         final_nodes = set(node_indexes)
-        if node_indexes == [0]:
-            # Special case when we are reading the root node, just read the
-            # first N pages along with the root node
+        if self._root_node is None:
+            # ATM on the first read of the root node of a large index, we don't
+            # bother pre-reading any other pages. This is because the
+            # likelyhood of actually reading interesting pages is very low.
+            # See doc/developers/btree_index_prefetch.txt for a discussion, and
+            # a possible implementation when we are guessing that the second
+            # layer index is small
             final_nodes = node_indexes
-            # for index in xrange(1, max_page):
-            #     if index not in final_nodes and index not in cached_nodes:
-            #         final_nodes.add(index)
-            #         if len(final_nodes) >= recommended_pages:
-            #             break
         else:
+            # Expand requests to neighbors until we have at least
+            # recommended_pages to request. We only want to expand requests
+            # within a given layer.
             new_tips = set(final_nodes)
-            while len(final_nodes) < recommended_pages and new_tips:
+            while len(final_nodes) < self._recommended_pages and new_tips:
                 next_tips = set()
-                for pos in sorted(new_tips):
+                for pos in new_tips:
                     if pos > 0:
                         previous = pos - 1
                         if (previous not in cached_nodes
                             and previous not in final_nodes):
-                            final_nodes.add(previous)
                             next_tips.add(previous)
                     after = pos + 1
-                    if after < max_page:
+                    if after < num_pages:
                         if (after not in cached_nodes
                             and after not in final_nodes):
-                            final_nodes.add(after)
-                            next_tips.add(previous)
+                            next_tips.add(after)
+                    # This would keep us from going bigger than
+                    # recommended_pages by only expanding the first nodes.
+                    # However, if we are making a 'wide' request, it is
+                    # reasonable to expand all points equally.
                     # if len(final_nodes) > recommended_pages:
                     #     break
+                final_nodes.update(next_tips)
                 new_tips = next_tips
 
         final_nodes = sorted(final_nodes)
-        trace.note('\t\t%s', final_nodes)
+        if 'index' in debug.debug_flags:
+            trace.mutter('expanded:  %s', final_nodes)
         return final_nodes
 
     def _get_nodes(self, cache, node_indexes):
@@ -1116,6 +1136,16 @@ class BTreeGraphIndex(object):
             self._get_root_node()
         return self._key_count
 
+    def _compute_row_offsets(self):
+        """Fill out the _row_offsets attribute based on _row_lengths."""
+        offsets = []
+        row_offset = 0
+        for row in self._row_lengths:
+            offsets.append(row_offset)
+            row_offset += row
+        offsets.append(row_offset)
+        self._row_offsets = offsets
+
     def _parse_header_from_bytes(self, bytes):
         """Parse the header from a region of bytes.
 
@@ -1157,13 +1187,7 @@ class BTreeGraphIndex(object):
                 if len(length)])
         except ValueError:
             raise errors.BadIndexOptions(self)
-        offsets = []
-        row_offset = 0
-        for row in self._row_lengths:
-            offsets.append(row_offset)
-            row_offset += row
-        offsets.append(row_offset)
-        self._row_offsets = offsets
+        self._compute_row_offsets()
 
         # calculate the bytes we have processed
         header_end = (len(signature) + sum(map(len, lines[0:4])) + 4)

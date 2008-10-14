@@ -1,6 +1,6 @@
-=============================
-BTree Index Request Expansion
-=============================
+====================
+BTree Index Prefetch
+====================
 
 This document outlines how we decide to pre-read extra nodes in the btree
 index.
@@ -11,7 +11,7 @@ Rationale
 
 Because of the latency involved in making a request, it is often better to make
 fewer large requests, rather than more small requests, even if some of the
-extra data will be wasted. 
+extra data will be wasted.
 
 Example
 -------
@@ -123,7 +123,7 @@ This is just a bullet list of things to consider when expanding a request.
 
 * We generally assume locality of reference. So if we are currently reading
   page 10, we are more likely to read page 9 or 11 than we are page 20.
-  
+
 * However, locality of reference only really holds within a layer. If we are
   reading the last node in a layer, we are unlikely to read the first node of
   the next layer. In fact, we are most likely to read the *last* node of the
@@ -176,7 +176,7 @@ This is just a bullet list of things to consider when expanding a request.
   This is because a command like ``bzr pack`` will combine everything into a
   single large file. Commands like ``bzr commit`` will create an index with a
   single new record, though these will be packaged together by autopack.
-  Commands like ``bzr push`` and ``bzr pull`` will create indexes with more 
+  Commands like ``bzr push`` and ``bzr pull`` will create indexes with more
   records, but these are unlikely to be a significant portion of the history.
   Consider bzr has 20,000 revisions, a single push/pull is likely to only be
   100-200 revisions, or 1% of the history.
@@ -234,6 +234,11 @@ This is just a bullet list of things to consider when expanding a request.
   the root. We could bias this a bit smaller, say at powers of 80, instead of
   powers of 100, etc. The basic idea is that if we are *close* to a layer
   split, go ahead and read a small number of extra pages.
+
+* The previous discussion applies whenever we have an upper layer that is not
+  completely full. So the pages referenced by the last node from the upper
+  layer will often not have a full 100-way fan out. Probably not worthwhile
+  very often, though.
 
 
 Suggested Algorithm

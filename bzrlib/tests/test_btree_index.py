@@ -996,3 +996,125 @@ class TestMultiBisectRight(tests.TestCase):
                                      (4, ['g', 'h'])],
                                     ['a', 'b', 'd', 'e', 'g', 'h'],
                                     ['c', 'd', 'f', 'g'])
+
+
+class TestExpandNodes(tests.TestCase):
+
+    def make_index(self, size, recommended_pages=None):
+        """Make an index with a generic size.
+
+        This doesn't actually create anything on disk, it just primes a
+        BTreeGraphIndex with the recommended information.
+        """
+        index = btree_index.BTreeGraphIndex(get_transport('memory:///'),
+                                            'test-index', size=size)
+        if recommended_pages is not None:
+            index._recommended_pages = recommended_pages
+        return index
+
+    def set_cached_nodes(self, index, cached_nodes):
+        """Modify the index to give a canned answer for _get_cached_nodes()."""
+        def _get_cached_nodes():
+            cached = set(cached_nodes)
+            return cached
+        index._get_cached_nodes = _get_cached_nodes
+
+    def prepare_index(self, index, node_ref_lists, key_length, key_count,
+                      row_lengths, cached_nodes):
+        """Setup the BTreeGraphIndex with some pre-canned information."""
+        index.node_ref_lists = node_ref_lists
+        index._key_length = key_length
+        index._key_count = key_count
+        index._row_lengths = row_lengths
+        index._compute_row_offsets()
+        index._root_node = btree_index._InternalNode('internal\noffset=0\n')
+        self.set_cached_nodes(index, cached_nodes)
+
+    def make_100_node_index(self):
+        index = self.make_index(4096*100, 6)
+        self.prepare_index(index, node_ref_lists=0, key_length=1,
+                           key_count=1000, row_lengths=[1, 99],
+                           cached_nodes=[0])
+        return index
+
+    def assertNumPages(self, expected_pages, index, size):
+        index._size = size
+        self.assertEqual(expected_pages, index._compute_num_pages())
+
+    def assertExpandNodes(self, expected, index, node_indexes):
+        self.assertEqual(expected, index._expand_nodes(node_indexes))
+
+    def test_default_recommended_pages(self):
+        index = self.make_index(None)
+        # local transport recommends 4096 byte reads, which is 1 page
+        self.assertEqual(1, index._recommended_pages)
+
+    def test__compute_num_pages(self):
+        index = self.make_index(None)
+        self.assertNumPages(1, index, 1024)
+        self.assertNumPages(1, index, 4095)
+        self.assertNumPages(1, index, 4096)
+        self.assertNumPages(2, index, 4097)
+        self.assertNumPages(2, index, 8192)
+        self.assertNumPages(76, index, 4096*75 + 10)
+
+    def test_unknown_size(self):
+        # We should not expand if we don't know the file size
+        index = self.make_index(None, 10)
+        self.assertExpandNodes([0], index, [0])
+        self.assertExpandNodes([1, 4, 9], index, [1, 4, 9])
+
+    def test_more_than_recommended(self):
+        index = self.make_index(4096*100, 2)
+        self.assertExpandNodes([1, 10], index, [1, 10])
+        self.assertExpandNodes([1, 10, 20], index, [1, 10, 20])
+
+    def test_read_all_from_root(self):
+        index = self.make_index(4096*10, 20)
+        self.assertExpandNodes(range(10), index, [0])
+
+    def test_read_all_when_cached(self):
+        # We've read enough that we can grab all the rest in a single request
+        index = self.make_index(4096*10, 5)
+        self.prepare_index(index, node_ref_lists=0, key_length=1,
+                           key_count=1000, row_lengths=[1, 9],
+                           cached_nodes=[0, 1, 2, 5, 6])
+        # It should fill the remaining nodes, regardless of the one requested
+        self.assertExpandNodes([3, 4, 7, 8, 9], index, [3])
+        self.assertExpandNodes([3, 4, 7, 8, 9], index, [8])
+        self.assertExpandNodes([3, 4, 7, 8, 9], index, [9])
+
+    def test_no_root_node(self):
+        index = self.make_index(4096*10, 5)
+        self.assertExpandNodes([0], index, [0])
+
+    def test_include_neighbors(self):
+        index = self.make_100_node_index()
+        # We expand in both directions, until we have at least 'recommended'
+        # pages
+        self.assertExpandNodes([9, 10, 11, 12, 13, 14, 15], index, [12])
+        self.assertExpandNodes([88, 89, 90, 91, 92, 93, 94], index, [91])
+        # If we hit an 'edge' we continue in the other direction
+        self.assertExpandNodes([1, 2, 3, 4, 5, 6], index, [2])
+        self.assertExpandNodes([94, 95, 96, 97, 98, 99], index, [98])
+
+        # Requesting many nodes will expand all locations equally
+        self.assertExpandNodes([1, 2, 3, 80, 81, 82], index, [2, 81])
+        self.assertExpandNodes([1, 2, 3, 9, 10, 11, 80, 81, 82], index,
+                               [2, 10, 81])
+
+    def test_expand_to_cached(self):
+        index = self.make_100_node_index()
+        self.set_cached_nodes(index, [0, 10, 19])
+        self.assertExpandNodes([11, 12, 13, 14, 15, 16], index, [11])
+        self.assertExpandNodes([11, 12, 13, 14, 15, 16], index, [12])
+        self.assertExpandNodes([12, 13, 14, 15, 16, 17, 18], index, [15])
+        self.assertExpandNodes([13, 14, 15, 16, 17, 18], index, [16])
+        self.assertExpandNodes([13, 14, 15, 16, 17, 18], index, [17])
+        self.assertExpandNodes([13, 14, 15, 16, 17, 18], index, [18])
+
+    def test_expand_limited(self):
+        index = self.make_100_node_index()
+        self.set_cached_nodes(index, [0, 10, 12])
+        # We don't go into an endless loop if we are bound by cached nodes
+        self.assertExpandNodes([11], index, [11])
