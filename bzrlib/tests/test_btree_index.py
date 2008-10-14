@@ -1012,15 +1012,15 @@ class TestExpandNodes(tests.TestCase):
             index._recommended_pages = recommended_pages
         return index
 
-    def set_cached_nodes(self, index, cached_nodes):
-        """Modify the index to give a canned answer for _get_cached_nodes()."""
-        def _get_cached_nodes():
-            cached = set(cached_nodes)
+    def set_cached_keys(self, index, cached_keys):
+        """Modify the index to give a canned answer for _get_cached_keys()."""
+        def _get_cached_keys():
+            cached = set(cached_keys)
             return cached
-        index._get_cached_nodes = _get_cached_nodes
+        index._get_cached_keys = _get_cached_keys
 
     def prepare_index(self, index, node_ref_lists, key_length, key_count,
-                      row_lengths, cached_nodes):
+                      row_lengths, cached_keys):
         """Setup the BTreeGraphIndex with some pre-canned information."""
         index.node_ref_lists = node_ref_lists
         index._key_length = key_length
@@ -1028,20 +1028,20 @@ class TestExpandNodes(tests.TestCase):
         index._row_lengths = row_lengths
         index._compute_row_offsets()
         index._root_node = btree_index._InternalNode('internal\noffset=0\n')
-        self.set_cached_nodes(index, cached_nodes)
+        self.set_cached_keys(index, cached_keys)
 
     def make_100_node_index(self):
         index = self.make_index(4096*100, 6)
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=1000, row_lengths=[1, 99],
-                           cached_nodes=[0])
+                           cached_keys=[0])
         return index
 
     def make_1000_node_index(self):
         index = self.make_index(4096*1000, 6)
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=90000, row_lengths=[1, 9, 990],
-                           cached_nodes=[0])
+                           cached_keys=[0])
         return index
 
     def assertNumPages(self, expected_pages, index, size):
@@ -1094,7 +1094,7 @@ class TestExpandNodes(tests.TestCase):
         index = self.make_index(4096*10, 5)
         self.prepare_index(index, node_ref_lists=0, key_length=1,
                            key_count=1000, row_lengths=[1, 9],
-                           cached_nodes=[0, 1, 2, 5, 6])
+                           cached_keys=[0, 1, 2, 5, 6])
         # It should fill the remaining nodes, regardless of the one requested
         self.assertExpandNodes([3, 4, 7, 8, 9], index, [3])
         self.assertExpandNodes([3, 4, 7, 8, 9], index, [8])
@@ -1121,7 +1121,7 @@ class TestExpandNodes(tests.TestCase):
 
     def test_stop_at_cached(self):
         index = self.make_100_node_index()
-        self.set_cached_nodes(index, [0, 10, 19])
+        self.set_cached_keys(index, [0, 10, 19])
         self.assertExpandNodes([11, 12, 13, 14, 15, 16], index, [11])
         self.assertExpandNodes([11, 12, 13, 14, 15, 16], index, [12])
         self.assertExpandNodes([12, 13, 14, 15, 16, 17, 18], index, [15])
@@ -1131,7 +1131,7 @@ class TestExpandNodes(tests.TestCase):
 
     def test_cannot_fully_expand(self):
         index = self.make_100_node_index()
-        self.set_cached_nodes(index, [0, 10, 12])
+        self.set_cached_keys(index, [0, 10, 12])
         # We don't go into an endless loop if we are bound by cached nodes
         self.assertExpandNodes([11], index, [11])
 
@@ -1149,6 +1149,6 @@ class TestExpandNodes(tests.TestCase):
         self.assertExpandNodes([10, 11, 12, 13, 14, 15], index, [10])
         self.assertExpandNodes([10, 11, 12, 13, 14, 15, 16], index, [13])
 
-        self.set_cached_nodes(index, [0, 4, 12])
+        self.set_cached_keys(index, [0, 4, 12])
         self.assertExpandNodes([5, 6, 7, 8, 9], index, [7])
         self.assertExpandNodes([10, 11], index, [11])

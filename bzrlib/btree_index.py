@@ -347,12 +347,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 # First key triggers the first row
                 rows.append(_LeafBuilderRow())
             key_count += 1
-            # TODO: Flattening the node into a string key and a line should
-            #       probably be put into a pyrex function. We can do a quick
-            #       iter over all the entries to determine the final length,
-            #       and then do a single malloc() rather than lots of
-            #       intermediate mallocs as we build everything up.
-            #       ATM 3 / 13s are spent flattening nodes (10s is compressing)
             string_key, line = _btree_serializer._flatten_node(node,
                                     self.reference_lists)
             self._add_key(string_key, line, rows)
@@ -628,13 +622,7 @@ class BTreeGraphIndex(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def _get_root_node(self):
-        if self._root_node is None:
-            # We may not have a root node yet
-            self._get_internal_nodes([0])
-        return self._root_node
-
-    def _cache_nodes(self, nodes, cache):
+    def _get_and_cache_nodes(self, nodes):
         """Read nodes and cache them in the lru.
 
         The nodes list supplied is sorted and then read from disk, each node
@@ -647,9 +635,6 @@ class BTreeGraphIndex(object):
 
         :return: A dict of {node_pos: node}
         """
-        if len(nodes) > cache._max_cache:
-            trace.mutter('Requesting %s > %s nodes, not all will be cached',
-                         len(nodes), cache._max_cache)
         found = {}
         start_of_leaves = None
         for node_pos, node in self._read_nodes(sorted(nodes)):
@@ -662,7 +647,6 @@ class BTreeGraphIndex(object):
                     self._internal_node_cache.add(node_pos, node)
                 else:
                     self._leaf_node_cache.add(node_pos, node)
-                cache.add(node_pos, node)
             found[node_pos] = node
         return found
 
@@ -685,29 +669,6 @@ class BTreeGraphIndex(object):
         # should be indentical.
         num_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
         return num_pages
-
-    def _get_cached_nodes(self):
-        """Determine what nodes we already have cached."""
-        cached_nodes = set(self._internal_node_cache.keys())
-        cached_nodes.update(self._leaf_node_cache.keys())
-        if self._root_node is not None:
-            cached_nodes.add(0)
-        return cached_nodes
-
-    def _find_layer_first_and_end(self, offset):
-        """Find the start/stop nodes for the layer corresponding to offset.
-
-        :return: (first, end)
-            first is the first node in this layer
-            end is the first node of the next layer
-        """
-        first = end = 0
-        for roffset in self._row_offsets:
-            first = end
-            end = roffset
-            if offset < roffset:
-                break
-        return first, end
 
     def _expand_nodes(self, node_indexes):
         """Find extra nodes to download.
@@ -734,23 +695,22 @@ class BTreeGraphIndex(object):
             if 'index' in debug.debug_flags:
                 trace.mutter('  not expanding without knowing index size')
             return node_indexes
-        # TODO: Should this be cached instead?
         num_pages = self._compute_num_pages()
         # The idea here is to get nodes "next to" the ones we are already
         # getting.
-        cached_nodes = self._get_cached_nodes()
+        cached_keys = self._get_cached_keys()
 
-        # if len(cached_nodes) < 2:
+        # if len(cached_keys) < 2:
         #     # We haven't read enough to justify expansion
         #     return node_indexes
 
         # If reading recommended_pages would read the rest of the index, just
         # do so.
-        if num_pages - len(cached_nodes) <= self._recommended_pages:
+        if num_pages - len(cached_keys) <= self._recommended_pages:
             # Read whatever is left
-            if cached_nodes:
+            if cached_keys:
                 expanded = [x for x in xrange(num_pages)
-                               if x not in cached_nodes]
+                               if x not in cached_keys]
             else:
                 expanded = range(num_pages)
             if 'index' in debug.debug_flags:
@@ -783,13 +743,13 @@ class BTreeGraphIndex(object):
                         first, end = self._find_layer_first_and_end(pos)
                     previous = pos - 1
                     if (previous > 0
-                        and previous not in cached_nodes
+                        and previous not in cached_keys
                         and previous not in final_nodes
                         and previous >= first):
                         next_tips.add(previous)
                     after = pos + 1
                     if (after < num_pages
-                        and after not in cached_nodes
+                        and after not in cached_keys
                         and after not in final_nodes
                         and after < end):
                         next_tips.add(after)
@@ -807,6 +767,35 @@ class BTreeGraphIndex(object):
             trace.mutter('expanded:  %s', final_nodes)
         return final_nodes
 
+    def _find_layer_first_and_end(self, offset):
+        """Find the start/stop nodes for the layer corresponding to offset.
+
+        :return: (first, end)
+            first is the first node in this layer
+            end is the first node of the next layer
+        """
+        first = end = 0
+        for roffset in self._row_offsets:
+            first = end
+            end = roffset
+            if offset < roffset:
+                break
+        return first, end
+
+    def _get_cached_keys(self):
+        """Determine what nodes we already have cached."""
+        cached_keys = set(self._internal_node_cache.keys())
+        cached_keys.update(self._leaf_node_cache.keys())
+        if self._root_node is not None:
+            cached_keys.add(0)
+        return cached_keys
+
+    def _get_root_node(self):
+        if self._root_node is None:
+            # We may not have a root node yet
+            self._get_internal_nodes([0])
+        return self._root_node
+
     def _get_nodes(self, cache, node_indexes):
         found = {}
         needed = []
@@ -819,10 +808,9 @@ class BTreeGraphIndex(object):
             except KeyError:
                 needed.append(idx)
         if not needed:
-            # trace.note('cached: %s\tnodes: %s', self._name[-14:], node_indexes)
             return found
         needed = self._expand_nodes(needed)
-        found.update(self._cache_nodes(needed, cache))
+        found.update(self._get_and_cache_nodes(needed))
         return found
 
     def _get_internal_nodes(self, node_indexes):
