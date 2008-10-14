@@ -7,11 +7,14 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
-  CHANGES:
+  USER-VISIBLE CHANGES:
 
-  FEATURES
+  NEW FEATURES:
 
   IMPROVEMENTS:
+
+    * ``bzr dump-btree`` is a hidden command introduced to allow dumping
+      the contents of a compressed btree file.  (John Arbash Meinel)
 
   BUG FIXES:
 
@@ -19,12 +22,10 @@ IN DEVELOPMENT
 
   API CHANGES:
 
-    * Tree API implementations must now provide get_inventory_entry, but a
-      default implementation is provided by the Tree class.  (Aaron Bentley)
-
   TESTING:
 
   INTERNALS:
+
 
 bzr 1.8rc1 2008-10-07
 ---------------------
@@ -57,7 +58,7 @@ server.
       pyrex >= 0.9.6 so it doesn't effect releases, only users running
       from the source tree. (John Arbash Meinel, #276868)
 
-  FEATURES
+  FEATURES:
 
     * bzr is now compatible with python-2.6. python-2.6 is not yet officially
       supported (nor released, tests were conducted with the dev version of
@@ -121,6 +122,10 @@ server.
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
+
+    * ``bzr co`` uses less memory. It used to unpack the entire WT into
+      memory before writing it to disk. This was a little bit faster, but
+      consumed lots of memory. (John Arbash Meinel, #269456)
 
     * ``bzr log`` now accepts a ``--change`` option.
       (Vincent Ladeuil, #248427)
