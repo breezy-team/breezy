@@ -488,6 +488,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
+    auth = config.AuthenticationConfig()
     password = auth.get_password('ssh', host, username, port=port)
     try:
         paramiko_transport.auth_password(username, password)
