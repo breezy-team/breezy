@@ -354,12 +354,17 @@ def load_tests(standard_tests, module, loader):
         self.assertEqual("unknown", plugin.__version__)
 
     def test___version__with_version_info(self):
-        self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
+        self.setup_plugin("version_info = (1, 2, 3, 'candidate', 1)")
         plugin = bzrlib.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev4", plugin.__version__)
+        self.assertEqual("1.2.3rc1", plugin.__version__)
+
+    def test_dev__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'dev', 0)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3dev", plugin.__version__)
 
     def test_final__version__with_version_info(self):
-        self.setup_plugin("version_info = (1, 2, 3, 'final', 4)")
+        self.setup_plugin("version_info = (1, 2, 3, 'final', 0)")
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual("1.2.3", plugin.__version__)
 
