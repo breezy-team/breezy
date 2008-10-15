@@ -39,6 +39,7 @@ import urlparse
 import warnings
 
 from bzrlib import (
+    config,
     errors,
     urlutils,
     )
@@ -375,9 +376,13 @@ class SFTPTransport(ConnectedTransport):
             password = credentials
 
         vendor = ssh._get_ssh_vendor()
+        user = self._user
+        if user is None:
+            auth = config.AuthenticationConfig()
+            user = auth.get_user('sftp', self._host, self._port)
         connection = vendor.connect_sftp(self._user, password,
                                          self._host, self._port)
-        return connection, password
+        return connection, (user, password)
 
     def _get_sftp(self):
         """Ensures that a connection is established"""

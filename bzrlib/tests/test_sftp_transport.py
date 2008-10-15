@@ -29,6 +29,7 @@ except ImportError:
 
 from bzrlib import (
     bzrdir,
+    config,
     errors,
     tests,
     transport as _mod_transport,
@@ -483,3 +484,17 @@ class Test_SFTPReadvHelper(tests.TestCase):
         self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
                               [(0, 40000), (40000, 100), (40100, 1900),
                                (42000, 24000)])
+
+
+class TestUsesAuthConfig(TestCaseWithSFTPServer):
+    """Test some stuff when accessing a bzr Branch over sftp"""
+
+    def test_lock_file(self):
+        conf = config.AuthenticationConfig()
+        port = self.get_server()._listener.port
+        conf._get_config().update(
+            {'sftptest': {'scheme': 'sftp', 'port': port, 'user': 'bar'}})
+        conf._save()
+        t = get_transport('sftp://localhost:%d' % port)
+        t.has('foo')
+        self.assertEqual('bar', t._get_credentials()[0])
