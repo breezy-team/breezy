@@ -379,7 +379,7 @@ class SFTPTransport(ConnectedTransport):
         user = self._user
         if user is None:
             auth = config.AuthenticationConfig()
-            user = auth.get_user('sftp', self._host, self._port)
+            user = auth.get_user('ssh', self._host, self._port)
         connection = vendor.connect_sftp(self._user, password,
                                          self._host, self._port)
         return connection, (user, password)
