@@ -1442,9 +1442,10 @@ class CHKInventory(CommonInventory):
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
         result.id_to_entry = chk_map.CHKMap(chk_store, None)
+        delta = []
         for path, entry in inventory.iter_entries():
-            result.id_to_entry._map(entry.file_id,
-                result._entry_to_bytes(entry))
+            delta.append((None, entry.file_id, result._entry_to_bytes(entry)))
+        result.id_to_entry.apply_delta(delta)
         result.id_to_entry._save()
         return result
 
