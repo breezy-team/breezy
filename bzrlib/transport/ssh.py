@@ -458,18 +458,10 @@ register_ssh_vendor('plink', PLinkSubprocessVendor())
 
 
 def _paramiko_auth(username, password, host, port, paramiko_transport):
-    # paramiko requires a username, but it might be none if nothing was supplied
-    # use the local username, just in case.
-    # We don't override username, because if we aren't using paramiko,
-    # the username might be specified in ~/.ssh/config and we don't want to
-    # force it to something else
-    # Also, it would mess up the self.relpath() functionality
-    auth = config.AuthenticationConfig()
+    # paramiko requires a username, but it might be none if nothing was
+    # supplied.  If so, use the local username.
     if username is None:
-        username = auth.get_user('ssh', host, port=port)
-        if username is None:
-            # Default to local user
-            username = getpass.getuser()
+        username = getpass.getuser()
 
     if _use_ssh_agent:
         agent = paramiko.Agent()
