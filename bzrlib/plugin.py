@@ -457,12 +457,17 @@ class PlugIn(object):
 
     def _get__version__(self):
         version_info = self.version_info()
-        if version_info is None:
+        if version_info is None or len(version_info) == 0:
             return "unknown"
-        if version_info[3] == 'final':
-            version_string = '%d.%d.%d' % version_info[:3]
-        else:
-            version_string = '%d.%d.%d%s%d' % version_info
+        try:
+            if version_info[3] == 'final':
+                version_string = '%d.%d.%d' % version_info[:3]
+            else:
+                version_string = '%d.%d.%d%s%d' % version_info
+        except:
+            # try to return something usefull for bad plugins, in stead of
+            # stack tracing.
+            version_string = '.'.join([str(x) for x in version_info])
         return version_string
 
     __version__ = property(_get__version__)
