@@ -489,12 +489,22 @@ class Test_SFTPReadvHelper(tests.TestCase):
 class TestUsesAuthConfig(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
 
-    def test_lock_file(self):
-        conf = config.AuthenticationConfig()
+    def get_transport_for_connection(self, set_config):
         port = self.get_server()._listener.port
-        conf._get_config().update(
-            {'sftptest': {'scheme': 'sftp', 'port': port, 'user': 'bar'}})
-        conf._save()
+        if set_config:
+            conf = config.AuthenticationConfig()
+            conf._get_config().update(
+                {'sftptest': {'scheme': 'sftp', 'port': port, 'user': 'bar'}})
+            conf._save()
         t = get_transport('sftp://localhost:%d' % port)
+        # force a connection to be performed.
         t.has('foo')
+        return t
+
+    def test_sftp_uses_config(self):
+        t = self.get_transport_for_connection(set_config=True)
         self.assertEqual('bar', t._get_credentials()[0])
+
+    def test_sftp_is_none_if_no_config(self):
+        t = self.get_transport_for_connection(set_config=False)
+        self.assertIs(None, t._get_credentials()[0])
