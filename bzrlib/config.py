@@ -1064,6 +1064,19 @@ class AuthenticationConfig(object):
 
         return credentials
 
+    def set_credentials(self, name, host, user, password=None, scheme=None,
+                        port=None, path=None):
+        values = {'host': host, 'user': user}
+        if password is not None:
+            values['password'] = password
+        if scheme is not None:
+            values['scheme'] = scheme
+        if port is not None:
+            values['port'] = '%d' % port
+        if path is not None:
+            values['path'] = path
+        self._get_config().update({name: values})
+
     def get_user(self, scheme, host, port=None,
                  realm=None, path=None, prompt=None):
         """Get a user from authentication file.

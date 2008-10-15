@@ -1411,6 +1411,17 @@ password=bendover
         credentials = conf.get_credentials('https', 'foo.net')
         self.assertEquals(True, credentials.get('verify_certificates'))
 
+    def test_set_credentials(self):
+        conf = config.AuthenticationConfig(_file=StringIO())
+        conf.set_credentials('name', 'host', 'user', 'password', 'scheme',
+        99, path='/foo', 'verify_certificates': False)
+        credentials = conf.get_credentials(host='host', scheme='scheme',
+                                           port=99, path='/foo')
+        self.assertEqual(credentials, {'name': 'name', 'user': 'user',
+                                       'password': 'password',
+                                       'verify_certificates': False,
+                                       })
+
 
 class TestAuthenticationConfig(tests.TestCase):
     """Test AuthenticationConfig behaviour"""
