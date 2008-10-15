@@ -16,6 +16,9 @@ IN DEVELOPMENT
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
       the contents of a compressed btree file.  (John Arbash Meinel)
 
+    * default username for bzr+ssh and sftp can be configured in
+      authentication.conf. (Aaron Bentley)
+
   BUG FIXES:
 
   DOCUMENTATION:
