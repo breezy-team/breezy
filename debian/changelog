@@ -1,4 +1,4 @@
-bzr-builddeb (2.0.2) UNRELEASED; urgency=low
+bzr-builddeb (2.0.2~0ubuntu1) intrepid; urgency=low
 
   * Pass --only-source to "apt-get source" call, as this will prevent apt
     from assuming the package name we pass is a binary package name which
