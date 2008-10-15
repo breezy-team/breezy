@@ -93,7 +93,7 @@ class ChunkWriter(object):
     _repack_opts_for_speed = (0, 8)
     _repack_opts_for_size = (20, 0)
 
-    def __init__(self, chunk_size, reserved=0):
+    def __init__(self, chunk_size, reserved=0, optimize_for_size=False):
         """Create a ChunkWriter to write chunk_size chunks.
 
         :param chunk_size: The total byte count to emit at the end of the
@@ -113,20 +113,7 @@ class ChunkWriter(object):
         self.unused_bytes = None
         self.reserved_size = reserved
         # Default is to make building fast rather than compact
-        self._max_repack, self._max_zsync = ChunkWriter._repack_opts_for_speed
-
-    def optimize(self, for_size=True):
-        """Change how we optimize our writes.
-
-        :param for_size: If True, optimize for minimum space usage, otherwise
-            optimize for fastest writing speed.
-        :return: None
-        """
-        if for_size:
-            opts = ChunkWriter._repack_opts_for_size
-        else:
-            opts = ChunkWriter._repack_opts_for_speed
-        self._max_repack, self._max_zsync = opts
+        self.set_optimize(for_size=optimize_for_size)
 
     def finish(self):
         """Finish the chunk.
@@ -157,6 +144,19 @@ class ChunkWriter(object):
         if nulls_needed:
             self.bytes_list.append("\x00" * nulls_needed)
         return self.bytes_list, self.unused_bytes, nulls_needed
+
+    def set_optimize(self, for_size=True):
+        """Change how we optimize our writes.
+
+        :param for_size: If True, optimize for minimum space usage, otherwise
+            optimize for fastest writing speed.
+        :return: None
+        """
+        if for_size:
+            opts = ChunkWriter._repack_opts_for_size
+        else:
+            opts = ChunkWriter._repack_opts_for_speed
+        self._max_repack, self._max_zsync = opts
 
     def _recompress_all_bytes_in(self, extra_bytes=None):
         """Recompress the current bytes_in, and optionally more.
