@@ -67,7 +67,8 @@ class cmd_unshelve2(commands.Command):
     takes_args = ['shelf_id?']
     takes_options = [
         option.RegistryOption.from_kwargs(
-            'action', enum_switch=False, value_switches=True,
+            'action', help="The action to perform.",
+            enum_switch=False, value_switches=True,
             apply="Apply changes and remove from the shelf.",
             dry_run="Show changes, but do not apply or remove them.",
             delete_only="Delete changes without applying them."
