@@ -7,6 +7,8 @@ bzr-builddeb (2.0.2) UNRELEASED; urgency=low
     the binary package isn't built from the source package, e.g. firefox,
     linux. (bug #275446)
   * Add "squeeze" and "jaunty" to the list of known releases. (bug #275448)
+  * Make source and result dirs being the same work better.
+  * Simplify use of uscan and make it more robust.
 
  -- James Westby <james.westby@canonical.com>  Sun, 28 Sep 2008 14:53:16 +0100
 
