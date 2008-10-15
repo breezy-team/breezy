@@ -41,6 +41,7 @@ import types
 import zipfile
 
 from bzrlib import (
+    _format_version_tuple,
     config,
     debug,
     errors,
@@ -460,14 +461,11 @@ class PlugIn(object):
         if version_info is None or len(version_info) == 0:
             return "unknown"
         try:
-            if version_info[3] == 'final':
-                version_string = '%d.%d.%d' % version_info[:3]
-            else:
-                version_string = '%d.%d.%d%s%d' % version_info
+            version_string = _format_version_tuple(version_info)
         except:
             # try to return something usefull for bad plugins, in stead of
             # stack tracing.
-            version_string = '.'.join([str(x) for x in version_info])
+            version_string = '.'.join(map(str, version_info))
         return version_string
 
     __version__ = property(_get__version__)
