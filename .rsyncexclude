@@ -1,0 +1,23 @@
+*.pyc
+*.pyo
+*~
+# arch can bite me
+{arch}
+.arch-ids
+,,*
+++*
+/doc/*.html
+*.tmp
+bzr-test.log
+[#]*#
+.#*
+testrev.*
+/tmp
+# do want this after all
++ CHANGELOG
+/build
+test*.tmp
+.*.swp
+*.orig
+.*.orig
+.bzr-shelf*

@@ -1,0 +1,100 @@
+Organizing branches
+===================
+
+Mirror branches
+---------------
+
+A primary difference when using distributed workflows to
+develop is that your main local branch is not the place
+to make changes. Instead, it is kept as a pristine copy
+of the central branch, i.e. it's a *mirror branch*.
+
+To create a mirror branch, set-up a shared repository
+(if you haven't already) and then use the ``branch``
+(or ``checkout``) command to create the mirror.
+For example::
+
+  bzr init-repo X-repo
+  cd X-repo
+  bzr branch sftp://centralhost/srv/bzr/X-repo/X-trunk
+
+Task branches
+-------------
+
+Each new feature or fix is developed in its own branch.
+These branches are referred to as *feature branches* or
+*task branches* - the terms are used interchangably.
+
+To create a task branch, use the ``branch`` command
+against your mirror branch. For example::
+
+  bzr branch X-trunk X-fix-123
+  cd X-fix-123
+  (hack, hack, hack)
+
+There are numerous advantages to this approach:
+
+ 1. You can work on multiple changes in parallel
+ 2. There is reduced coupling between changes
+ 3. Multiple people can work in a peer-to-peer mode
+    on a branch until it is ready to go.
+
+In particular, some changes take longer to cook than others
+so you can ask for reviews, apply feedback, ask for another
+review, etc. By completing work to sufficient quality in
+separate branches before merging into a central branch, the
+quality and stability of the central branch are maintained
+at higher level than they otherwise would be.
+
+Refreshing a mirror branch
+--------------------------
+
+Use the ``pull`` command to do this::
+
+  cd X-trunk
+  bzr pull
+
+Merging the latest trunk into a feature branch
+----------------------------------------------
+
+Use the ``merge`` command to do this::
+
+  cd X-fix-123
+  bzr merge
+  (resolve any conflicts)
+  bzr commit -m "merged X-trunk"
+
+Merging a feature into the trunk
+--------------------------------
+
+The policies for different distributed workflows vary here.
+The simple case where all developers have commit rights to
+the main trunk are shown below.
+
+If your mirror is a checkout::
+
+  cd X-trunk
+  bzr update
+  bzr merge ../X-fix-123
+  (resolve any conflicts)
+  bzr commit -m "Fixed bug #123"
+
+If your mirror is a branch::
+
+  cd X-trunk
+  bzr pull
+  bzr merge ../X-fix-123
+  (resolve any conflicts)
+  bzr commit -m "Fixed bug #123"
+  bzr push
+
+Backing up task branches
+------------------------
+
+One of the side effects of centralized workflows is that changes
+get frequently committed to a central location which is backed up as
+part of normal IT operations. When developing on task branches,
+it is a good idea to publish your work to a central location
+(but not necessarily a shared location) that will be backed up.
+You may even wish to bind local task branches to remote ones
+established on a backup server just for this purpose.

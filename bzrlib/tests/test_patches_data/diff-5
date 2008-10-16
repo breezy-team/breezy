@@ -1,0 +1,164 @@
+--- orig-5	2005-09-23 16:25:00.000000000 -0500
++++ mod-5	2005-09-23 16:25:21.000000000 -0500
+@@ -60,161 +60,6 @@
+         raise MalformedPatchHeader("No mod line", "")
+     return (orig_name, mod_name)
+ 
+-def parse_range(textrange):
+-    """Parse a patch range, handling the "1" special-case
+-
+-    :param textrange: The text to parse
+-    :type textrange: str
+-    :return: the position and range, as a tuple
+-    :rtype: (int, int)
+-    """
+-    tmp = textrange.split(',')
+-    if len(tmp) == 1:
+-        pos = tmp[0]
+-        range = "1"
+-    else:
+-        (pos, range) = tmp
+-    pos = int(pos)
+-    range = int(range)
+-    return (pos, range)
+-
+- 
+-def hunk_from_header(line):
+-    if not line.startswith("@@") or not line.endswith("@@\n") \
+-        or not len(line) > 4:
+-        raise MalformedHunkHeader("Does not start and end with @@.", line)
+-    try:
+-        (orig, mod) = line[3:-4].split(" ")
+-    except Exception, e:
+-        raise MalformedHunkHeader(str(e), line)
+-    if not orig.startswith('-') or not mod.startswith('+'):
+-        raise MalformedHunkHeader("Positions don't start with + or -.", line)
+-    try:
+-        (orig_pos, orig_range) = parse_range(orig[1:])
+-        (mod_pos, mod_range) = parse_range(mod[1:])
+-    except Exception, e:
+-        raise MalformedHunkHeader(str(e), line)
+-    if mod_range < 0 or orig_range < 0:
+-        raise MalformedHunkHeader("Hunk range is negative", line)
+-    return Hunk(orig_pos, orig_range, mod_pos, mod_range)
+-
+-
+-class HunkLine:
+-    def __init__(self, contents):
+-        self.contents = contents
+-
+-    def get_str(self, leadchar):
+-        if self.contents == "\n" and leadchar == " " and False:
+-            return "\n"
+-        if not self.contents.endswith('\n'):
+-            terminator = '\n' + NO_NL
+-        else:
+-            terminator = ''
+-        return leadchar + self.contents + terminator
+-
+-
+-class ContextLine(HunkLine):
+-    def __init__(self, contents):
+-        HunkLine.__init__(self, contents)
+-
+-    def __str__(self):
+-        return self.get_str(" ")
+-
+-
+-class InsertLine(HunkLine):
+-    def __init__(self, contents):
+-        HunkLine.__init__(self, contents)
+-
+-    def __str__(self):
+-        return self.get_str("+")
+-
+-
+-class RemoveLine(HunkLine):
+-    def __init__(self, contents):
+-        HunkLine.__init__(self, contents)
+-
+-    def __str__(self):
+-        return self.get_str("-")
+-
+-NO_NL = '\\ No newline at end of file\n'
+-__pychecker__="no-returnvalues"
+-
+-def parse_line(line):
+-    if line.startswith("\n"):
+-        return ContextLine(line)
+-    elif line.startswith(" "):
+-        return ContextLine(line[1:])
+-    elif line.startswith("+"):
+-        return InsertLine(line[1:])
+-    elif line.startswith("-"):
+-        return RemoveLine(line[1:])
+-    elif line == NO_NL:
+-        return NO_NL
+-    else:
+-        raise MalformedLine("Unknown line type", line)
+-__pychecker__=""
+-
+-
+-class Hunk:
+-    def __init__(self, orig_pos, orig_range, mod_pos, mod_range):
+-        self.orig_pos = orig_pos
+-        self.orig_range = orig_range
+-        self.mod_pos = mod_pos
+-        self.mod_range = mod_range
+-        self.lines = []
+-
+-    def get_header(self):
+-        return "@@ -%s +%s @@\n" % (self.range_str(self.orig_pos, 
+-                                                   self.orig_range),
+-                                    self.range_str(self.mod_pos, 
+-                                                   self.mod_range))
+-
+-    def range_str(self, pos, range):
+-        """Return a file range, special-casing for 1-line files.
+-
+-        :param pos: The position in the file
+-        :type pos: int
+-        :range: The range in the file
+-        :type range: int
+-        :return: a string in the format 1,4 except when range == pos == 1
+-        """
+-        if range == 1:
+-            return "%i" % pos
+-        else:
+-            return "%i,%i" % (pos, range)
+-
+-    def __str__(self):
+-        lines = [self.get_header()]
+-        for line in self.lines:
+-            lines.append(str(line))
+-        return "".join(lines)
+-
+-    def shift_to_mod(self, pos):
+-        if pos < self.orig_pos-1:
+-            return 0
+-        elif pos > self.orig_pos+self.orig_range:
+-            return self.mod_range - self.orig_range
+-        else:
+-            return self.shift_to_mod_lines(pos)
+-
+-    def shift_to_mod_lines(self, pos):
+-        assert (pos >= self.orig_pos-1 and pos <= self.orig_pos+self.orig_range)
+-        position = self.orig_pos-1
+-        shift = 0
+-        for line in self.lines:
+-            if isinstance(line, InsertLine):
+-                shift += 1
+-            elif isinstance(line, RemoveLine):
+-                if position == pos:
+-                    return None
+-                shift -= 1
+-                position += 1
+-            elif isinstance(line, ContextLine):
+-                position += 1
+-            if position > pos:
+-                break
+-        return shift
+-
+ def iter_hunks(iter_lines):
+     hunk = None
+     for line in iter_lines:

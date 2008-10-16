@@ -1,0 +1,20 @@
+#! /bin/sh
+
+# Put this on your $BZRPATH to use it to demonstrate bzr external plugins
+
+
+if [ x$1 == x--bzr-usage ]
+then
+    # options
+    echo ""
+    # arguments
+    echo ""
+    exit 0
+elif [ x$1 == x--bzr-help ]
+then
+    echo "display a fortune cookie"
+    echo 
+    exit 0
+else
+    /usr/games/fortune
+fi

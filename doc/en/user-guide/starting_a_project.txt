@@ -1,0 +1,55 @@
+Starting a project
+==================
+
+Putting an existing project under version control
+-------------------------------------------------
+
+If you already have a tree of source code (or directory of documents) you
+wish to put under version control, here are the commands to use::
+
+  cd my-stuff
+  bzr init
+  bzr add
+  bzr commit -m "Initial import"
+
+``bzr init`` creates a ``.bzr`` directory in the top level directory
+(``my-stuff`` in the example above). Note that:
+
+ * Bazaar has everything it needs in that directory - you do
+   **not** need to setup a database, web server or special service
+   to use it
+
+ * Bazaar is polite enough to only create one ``.bzr`` in the
+   directory given, not one in every subdirectory thereof.
+
+``bzr add`` then finds all the files and directories it thinks
+ought to be version controlled and registers them internally.
+``bzr commit`` then records a snapshot of the content of these
+and records that information, together with a commit message.
+
+More information on ``init``, ``add`` and ``commit`` will be provided
+later. For now, the important thing to remember is the recipe above.
+
+Starting a new project
+----------------------
+
+If you are starting a project from scratch, you can also use the recipe
+above, after creating an empty directory first of course. For efficiency
+reasons that will be explored more in later chapters though, it is a good
+idea to create a repository for the project at the top level and to nest
+a *main* branch within it like this::
+
+  bzr init-repo my.repo
+  cd my.repo
+  bzr init my.main
+  cd my.main
+  hack, hack, hack
+  bzr add
+  bzr commit -m "Initial import"
+
+Some users prefer a name like *trunk* or *dev* to *main*. Choose
+whichever name makes the most sense to you.
+
+Note that the ``init-repo`` and ``init`` commands both take a path as an
+argument and will create that path if it doesn't already exist.
+

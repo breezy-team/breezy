@@ -1,0 +1,92 @@
+Installing Bazaar
+=================
+
+Linux
+-----
+
+Bazaar packages are available for most popular Linux distributions
+including Ubuntu/Debian, Red Hat and Gentoo.
+See http://bazaar-vcs.org/Download for the latest instructions.
+
+Windows
+-------
+
+For Windows users, an installer is available that includes
+the core Bazaar package together with necessary pre-requisites
+and some useful plug-ins.
+See http://bazaar-vcs.org/Download for the latest instructions.
+
+Note: If you are running Cygwin on Windows, a Bazaar for Cygwin package
+is available and ought to be used instead of the Windows version.
+
+Other operating systems
+-----------------------
+
+Beyond Linux and Windows, Bazaar packages are available for a large
+range of other operating systems include Mac OS X, FreeBSD and Solaris.
+See http://bazaar-vcs.org/Download for the latest instructions.
+
+
+Installing from scratch
+-----------------------
+
+If you wish to install Bazaar from scratch rather than using a
+pre-built package, the steps are:
+
+  1. If it is not installed already, install Python 2.4 or later.
+
+  2. Download the ``bazaar-xxx.tar.gz`` file (where xxx is the version
+     number) from http://bazaar-vcs.org/Download or from Launchpad
+     (https://launchpad.net/~bzr/).
+
+  3. Unpack the archive using tar, WinZip or equivalent.
+
+  4. Put the created directory on your PATH.
+
+To test the installation, try running the **bzr** command like this::
+
+  bzr version
+
+This will display the version of Bazaar you have installed. If this
+doesn't work, please contact us via email or IRC so we can help you
+get things working.
+
+
+Running the development version
+-------------------------------
+
+You may wish to always be using the very latest development version of
+Bazaar. Note that this is not recommended for
+the majority of users as there is an increased risk of bugs. On the other
+hand, the development version is remarkably solid (thanks to the processes
+we follow) and running it makes it easier for you to send us changes for
+bugs and improvements. It also helps us by having more people testing
+the latest software.
+
+Here are the steps to follow:
+
+  1. Install Bazaar using one of the methods given above.
+
+  2. Get a copy of the development version like this::
+
+       bzr branch http://bazaar-vcs.org/bzr/bzr.dev
+
+  3. Put the created directory (bzr.dev) on your PATH.
+
+Advanced users may also wish to build the optional C extensions for greater
+speed. This can be done using ``make`` and requires ``pyrex`` and a C compiler.
+Please contact us on email or IRC if you need assistance with this.
+
+
+Running multiple versions
+-------------------------
+
+It's easy to have multiple versions of Bazaar installed and to switch
+between them. To do this,
+simply provide the full pathname to the **bzr** command you wish to run.
+The relevant libraries will be automatically detected and used. Of course,
+if you do not provide a pathname, then the **bzr** used will be the one
+found on your system path as normal.
+
+Note that this capability is particularly useful if you wish to run
+(or test) both the latest released version and the development version say.

@@ -1,0 +1,37 @@
+Bundle Creation
+===============
+1. Find common ancestor [O(a)] **O(b)**
+2. Emit bundle [O(a)] **O(b) O(h)**
+
+  Per revision
+
+  1. emit metadata O(1)
+  2. emit changes for files
+
+    1. find changed files [O(c)] **O(f)**
+    2. emit file metadata O(d)
+    3. emit diff [O(e * e) * O(f) + O(h)] **O(i)**
+    4. base64 encode O(g)
+
+3. **emit overal diff (or maybe do interdiff) O(e * e) * O(f)**
+
+:a: nodes in revision graph
+:b: number of descendants of common ancestor
+:c: number of files in the tree
+:d: length of metadata
+:e: number of lines
+:f: number of modified files
+:g: length of diff
+:h: nodes in knit graph of modified files
+:i: length of stored diff
+
+Needs
+-----
+- Improved common ancestor algorithm
+- Access to partial revision graph proportional to relevant revisions
+- Access to changed files proportional to number of change files and
+  intervening revisions
+- Use knit deltas without recomputing
+- Access to knit deltas in O(1) time
+- Access to snapshots in O(1) amortized time
+- All snapshots must have knit deltas

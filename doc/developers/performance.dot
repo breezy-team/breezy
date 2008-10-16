@@ -1,0 +1,137 @@
+/* ESTIMATES ARE VERY ROUGH APPROXIMATIONS */
+strict digraph performance {
+  rankdir=LR
+  /* completed node list */
+  node[color="green"];
+  add_analysis[label="Work required analysis for add"];
+  annotate_analysis[label="Work required analysis for annotate"];
+  branch_analysis[label="Work required analysis for branch"];
+  bundle_analysis[label="Work required analysis for creating a bundle"];
+  commit_analysis[label="Work required analysis for commit"];
+  fetch_analysis[label="Work required analysis for push/pull"];
+  gc_analysis[label="Work required analysis for gc"];
+  missing_analysis[label="Work required analysis for missing"];
+  revert_analysis[label="Work required analysis for revert"];
+  revert_path_analysis[label="Work required analysis for revert of selected paths"];
+  status_analysis[label="Work required analysis for status"];
+  uncommit_analysis[label="Work required analysis for uncommit"];
+  wt_disk_order[label="Working Tree disk ordering\n6-8 weeks"];
+  iter_merge[label="iter_changes based merge\n2 days"];
+  diff_analysis[label="Work required analysis for diff"];
+
+  /* uncompleted node list - add new tasks here */
+  node[color="blue"];
+  log_analysis[label="Work required analysis for log"];
+  log_path_analysis[label="Work required analysis for log of selected paths."];
+  diff_path_analysis[label="Work required analysis for diff of selected paths"];
+  merge_analysis[label="Work required analysis for merge"];
+  update_analysis[label="Work required analysis for update"];
+  cbranch_analysis[label="Work required analysis for cbranch"];
+
+  add_api_stack[label="Targeted API stack for add"];
+  branch_api_stack[label="Targeted API stack for branch"];
+  bundle_api_stack[label="Targeted API stack for creating a bundle"];
+  annotate_api_stack[label="Targeted API stack for annotate"];
+  status_api_stack[label="Targeted API stack for status"];
+  commit_api_stack[label="Targeted API stack for commit"];
+  fetch_api_stack[label="Targeted API stack for push/pull"];
+  log_api_stack[label="Targeted API stack for log"];
+  log_path_api_stack[label="Targeted API stack for log of selected paths."];
+  diff_api_stack[label="Targeted API stack for diff"];
+  gc_api_stack[label="Targeted API stack for gc"];
+  revert_api_stack[label="Targeted API stack for revert"];
+  revert_path_api_stack[label="Targeted API stack for revert of selected paths"];
+  merge_api_stack[label="Targeted API stack for merge"];
+  uncommit_api_stack[label="Targeted API stack for uncommit"];
+  missing_api_stack[label="Targeted API stack for missing"];
+  update_api_stack[label="Targeted API stack for update"];
+  cbranch_api_stack[label="Targeted API stack for cbranch"];
+
+  data_collation[label="Stream API for inserting/obtaining revision data.\n1 month"];
+  repository_stacking[label="Repository stacking API\n2 months"];
+  new_container[label="New container format\n2 weeks"]
+  xdelta[label="Xdelta sanity/learning\n2 weeks"];
+  xdelta_imp[label="Xdelta implementation\n1 week"];
+  q_splitting[label="Question radix directory splitting\n2 weeks"];
+  i_splitting[label="Inventory storage changed to answer what-changed quickly\n6-8 weeks"]
+  per_file_graph[label="Provide an API for per-file\n graph data rather than\n physical storage coupled knits api.\n1 days"];
+  deprecate_versionedfile_api[label="Deprecate the public API for access to physical knit storage."];
+  anno_cache[label="Annotations become a cache:\n logically separate data\n2 weeks"]
+  anno_regen[label="Annotation regeneration\n"];
+  anno_kinds[label="Different styles of annotation"];
+  memory_copies[label="Stop requiring full memory copies of files"];
+  repo_disk_order[label="Repository disk ordering\n1 month"];
+  pack_repository[label="Pack based repository format"];
+  graph_api[label="Network-efficient revision-graph API\n3 week"];
+  validators[label="Build new validators for revisions and trees."];
+
+  /* under discussion/optional */
+  node[color="yellow"];
+  hash_names[label="Use hashes as names for some objects\n(to reduce tracking metadata and ease interoperability."];
+  gdfo_api[label="GDFO API\n1 day"];
+  gdfo_cache[label="GDFO Cache\n1 week"];
+  gdfo_usage[label="GDFO Usage\n3 days"];
+
+  /* dependencies */
+  gc_analysis -> gc_api_stack;
+  gdfo_api -> gdfo_cache;
+  gdfo_api -> gdfo_usage;
+  xdelta -> xdelta_imp;
+  q_splitting -> i_splitting;
+  per_file_graph -> deprecate_versionedfile_api;
+  anno_regen -> anno_kinds;
+  anno_cache -> anno_regen;
+  add_analysis -> add_api_stack;
+  annotate_analysis -> annotate_api_stack -> anno_cache;
+  annotate_api_stack -> per_file_graph -> graph_api;
+  annotate_api_stack -> memory_copies;
+  annotate_api_stack -> hash_names;
+  branch_analysis -> branch_api_stack -> repository_stacking;
+  branch_api_stack -> memory_copies;
+  bundle_analysis -> bundle_api_stack -> data_collation;
+  bundle_api_stack -> repository_stacking;
+  bundle_api_stack -> validators;
+  bundle_api_stack -> graph_api;
+  bundle_api_stack -> memory_copies;
+  bundle_api_stack -> new_container;
+  bundle_analysis -> hash_names;
+  cbranch_analysis -> cbranch_api_stack;
+  commit_analysis -> commit_api_stack -> data_collation;
+  commit_api_stack -> per_file_graph;
+  commit_api_stack -> validators;
+  commit_api_stack -> memory_copies;
+  commit_api_stack -> hash_names;
+  diff_analysis -> diff_api_stack;
+  diff_api_stack -> memory_copies;
+  diff_path_analysis -> diff_api_stack -> i_splitting;
+  diff_api_stack -> hash_names;
+  fetch_analysis -> fetch_api_stack -> data_collation;
+  fetch_api_stack -> repository_stacking;
+  fetch_api_stack -> graph_api;
+  fetch_api_stack -> memory_copies;
+  fetch_api_stack -> hash_names;
+  repository_stacking -> graph_api;
+  hash_names -> i_splitting;
+  log_analysis -> log_api_stack -> i_splitting;
+  log_path_analysis -> log_path_api_stack;
+  log_path_api_stack -> per_file_graph;
+  merge_analysis -> merge_api_stack -> iter_merge -> i_splitting;
+  merge_api_stack -> memory_copies;
+  missing_analysis -> missing_api_stack -> repository_stacking;
+ missing_api_stack -> graph_api;
+  new_container -> pack_repository;
+  pack_repository -> xdelta_imp;
+  pack_repository -> repo_disk_order;
+  per_file_graph -> hash_names;
+  repository_stacking -> pack_repository;
+  repository_stacking -> new_container;
+  revert_analysis -> revert_api_stack -> data_collation;
+  revert_path_analysis -> revert_path_api_stack;
+  revert_api_stack -> memory_copies;
+  status_analysis -> status_api_stack;
+  status_api_stack -> memory_copies;
+  uncommit_analysis -> uncommit_api_stack -> data_collation;
+  uncommit_api_stack -> graph_api;
+  update_analysis -> update_api_stack;
+  update_api_stack -> memory_copies;
+}

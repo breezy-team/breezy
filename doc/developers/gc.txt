@@ -1,0 +1,26 @@
+Garbage Collection
+==================
+
+Garbage collection is used to remove data from a repository that is no longer referenced.
+
+Generally this involves locking the repository and scanning all its branches
+then generating a new repository with less data.
+
+Least work we can hope to perform
+---------------------------------
+
+* Read all branches to get initial references - tips + tags.
+* Read through the revision graph to find unreferenced revisions. A cheap HEADS
+  list might help here by allowing comparison of the initial references to the
+  HEADS - any unreferenced head is garbage.
+* Walk out via inventory deltas to get the full set of texts and signatures to preserve.
+* Copy to a new repository
+* Bait and switch back to the original
+* Remove the old repository.
+
+A possibility to reduce this would be to have a set of grouped 'known garbage
+free' data - 'ancient history' which can be preserved in total should its HEADS
+be fully referenced - and where the HEADS list is deliberate cheap (e.g. at the
+top of some index).
+
+possibly - null data in place without saving size.
