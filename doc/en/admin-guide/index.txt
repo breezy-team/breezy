@@ -1,0 +1,114 @@
+==========================
+Bazaar Administrator Guide
+==========================
+
+Note: this is a work in progress!
+
+.. contents:: Table of contents
+   :depth: 2
+
+Introduction
+============
+
+Introduction to administering a Bazaar server installation.
+
+Scope of this guide
+-------------------
+
+What you need to run a Bazaar server
+------------------------------------
+
+Platform requirements etc
+
+
+Simple setup
+============
+
+Smart server
+------------
+
+Recommended tools
+-----------------
+
+
+Migration
+=========
+
+Migrating from another VCS.
+
+Legacy VCS to bzr sync.
+
+
+Hooks
+=====
+
+
+Web-based code browsing
+=======================
+
+Loggerhead etc.
+
+
+Integration with other tools
+============================
+
+PQM
+---
+
+Bug trackers
+------------
+
+Continuous integration tools
+----------------------------
+
+e.g. Cruise Control
+
+Bundle Buggy
+------------
+
+
+Security
+========
+
+Authentication
+--------------
+
+ACLs
+----
+
+
+Back-up and restore
+===================
+
+
+Upgrades
+========
+
+Software upgrades
+-----------------
+
+Disk format upgrades
+--------------------
+
+Plugin upgrades
+---------------
+
+
+System monitoring
+=================
+
+
+Capacity planning tips
+======================
+
+Disk management etc.
+
+
+Advanced topics
+===============
+
+Clustering
+----------
+
+Multi-site setups
+-----------------
