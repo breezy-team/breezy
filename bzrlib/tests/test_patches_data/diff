@@ -1,0 +1,1154 @@
+--- orig/commands.py
++++ mod/commands.py
+@@ -19,25 +19,31 @@
+ import arch
+ import arch.util
+ import arch.arch
++
++import pylon.errors
++from pylon.errors import *
++from pylon import errors
++from pylon import util
++from pylon import arch_core
++from pylon import arch_compound
++from pylon import ancillary
++from pylon import misc
++from pylon import paths 
++
+ import abacmds
+ import cmdutil
+ import shutil
+ import os
+ import options
+-import paths 
+ import time
+ import cmd
+ import readline
+ import re
+ import string
+-import arch_core
+-from errors import *
+-import errors
+ import terminal
+-import ancillary
+-import misc
+ import email
+ import smtplib
++import textwrap
+ 
+ __docformat__ = "restructuredtext"
+ __doc__ = "Implementation of user (sub) commands"
+@@ -257,7 +263,7 @@
+ 
+         tree=arch.tree_root()
+         if len(args) == 0:
+-            a_spec = cmdutil.comp_revision(tree)
++            a_spec = ancillary.comp_revision(tree)
+         else:
+             a_spec = cmdutil.determine_revision_tree(tree, args[0])
+         cmdutil.ensure_archive_registered(a_spec.archive)
+@@ -284,7 +290,7 @@
+             changeset=options.changeset
+             tmpdir = None
+         else:
+-            tmpdir=cmdutil.tmpdir()
++            tmpdir=util.tmpdir()
+             changeset=tmpdir+"/changeset"
+         try:
+             delta=arch.iter_delta(a_spec, b_spec, changeset)
+@@ -304,14 +310,14 @@
+             if status > 1:
+                 return
+             if (options.perform_diff):
+-                chan = cmdutil.ChangesetMunger(changeset)
++                chan = arch_compound.ChangesetMunger(changeset)
+                 chan.read_indices()
+-                if isinstance(b_spec, arch.Revision):
+-                    b_dir = b_spec.library_find()
+-                else:
+-                    b_dir = b_spec
+-                a_dir = a_spec.library_find()
+                 if options.diffopts is not None:
++                    if isinstance(b_spec, arch.Revision):
++                        b_dir = b_spec.library_find()
++                    else:
++                        b_dir = b_spec
++                    a_dir = a_spec.library_find()
+                     diffopts = options.diffopts.split()
+                     cmdutil.show_custom_diffs(chan, diffopts, a_dir, b_dir)
+                 else:
+@@ -517,7 +523,7 @@
+         except arch.errors.TreeRootError, e:
+             print e
+             return
+-        from_revision=cmdutil.tree_latest(tree)
++        from_revision = arch_compound.tree_latest(tree)
+         if from_revision==to_revision:
+             print "Tree is already up to date with:\n"+str(to_revision)+"."
+             return
+@@ -592,6 +598,9 @@
+ 
+         if len(args) == 0:
+             args = None
++        if options.version is None:
++            return options, tree.tree_version, args
++
+         revision=cmdutil.determine_revision_arch(tree, options.version)
+         return options, revision.get_version(), args
+ 
+@@ -601,11 +610,16 @@
+         """
+         tree=arch.tree_root()
+         options, version, files = self.parse_commandline(cmdargs, tree)
++        ancestor = None
+         if options.__dict__.has_key("base") and options.base:
+             base = cmdutil.determine_revision_tree(tree, options.base)
++            ancestor = base
+         else:
+-            base = cmdutil.submit_revision(tree)
+-        
++            base = ancillary.submit_revision(tree)
++            ancestor = base
++        if ancestor is None:
++            ancestor = arch_compound.tree_latest(tree, version)
++
+         writeversion=version
+         archive=version.archive
+         source=cmdutil.get_mirror_source(archive)
+@@ -625,18 +639,26 @@
+         try:
+             last_revision=tree.iter_logs(version, True).next().revision
+         except StopIteration, e:
+-            if cmdutil.prompt("Import from commit"):
+-                return do_import(version)
+-            else:
+-                raise NoVersionLogs(version)
+-        if last_revision!=version.iter_revisions(True).next():
++            last_revision = None
++            if ancestor is None:
++                if cmdutil.prompt("Import from commit"):
++                    return do_import(version)
++                else:
++                    raise NoVersionLogs(version)
++        try:
++            arch_last_revision = version.iter_revisions(True).next()
++        except StopIteration, e:
++            arch_last_revision = None
++ 
++        if last_revision != arch_last_revision:
++            print "Tree is not up to date with %s" % str(version)
+             if not cmdutil.prompt("Out of date"):
+                 raise OutOfDate
+             else:
+                 allow_old=True
+ 
+         try:
+-            if not cmdutil.has_changed(version):
++            if not cmdutil.has_changed(ancestor):
+                 if not cmdutil.prompt("Empty commit"):
+                     raise EmptyCommit
+         except arch.util.ExecProblem, e:
+@@ -645,15 +667,15 @@
+                 raise MissingID(e)
+             else:
+                 raise
+-        log = tree.log_message(create=False)
++        log = tree.log_message(create=False, version=version)
+         if log is None:
+             try:
+                 if cmdutil.prompt("Create log"):
+-                    edit_log(tree)
++                    edit_log(tree, version)
+ 
+             except cmdutil.NoEditorSpecified, e:
+                 raise CommandFailed(e)
+-            log = tree.log_message(create=False)
++            log = tree.log_message(create=False, version=version)
+         if log is None: 
+             raise NoLogMessage
+         if log["Summary"] is None or len(log["Summary"].strip()) == 0:
+@@ -837,23 +859,24 @@
+             if spec is not None:
+                 revision = cmdutil.determine_revision_tree(tree, spec)
+             else:
+-                revision = cmdutil.comp_revision(tree)
++                revision = ancillary.comp_revision(tree)
+         except cmdutil.CantDetermineRevision, e:
+             raise CommandFailedWrapper(e)
+         munger = None
+ 
+         if options.file_contents or options.file_perms or options.deletions\
+             or options.additions or options.renames or options.hunk_prompt:
+-            munger = cmdutil.MungeOpts()
+-            munger.hunk_prompt = options.hunk_prompt
++            munger = arch_compound.MungeOpts()
++            munger.set_hunk_prompt(cmdutil.colorize, cmdutil.user_hunk_confirm,
++                                   options.hunk_prompt)
+ 
+         if len(args) > 0 or options.logs or options.pattern_files or \
+             options.control:
+             if munger is None:
+-                munger = cmdutil.MungeOpts(True)
++                munger = cmdutil.arch_compound.MungeOpts(True)
+                 munger.all_types(True)
+         if len(args) > 0:
+-            t_cwd = cmdutil.tree_cwd(tree)
++            t_cwd = arch_compound.tree_cwd(tree)
+             for name in args:
+                 if len(t_cwd) > 0:
+                     t_cwd += "/"
+@@ -878,7 +901,7 @@
+         if options.pattern_files:
+             munger.add_keep_pattern(options.pattern_files)
+                 
+-        for line in cmdutil.revert(tree, revision, munger, 
++        for line in arch_compound.revert(tree, revision, munger, 
+                                    not options.no_output):
+             cmdutil.colorize(line)
+ 
+@@ -1042,18 +1065,13 @@
+         help_tree_spec()
+         return
+ 
+-def require_version_exists(version, spec):
+-    if not version.exists():
+-        raise cmdutil.CantDetermineVersion(spec, 
+-                                           "The version %s does not exist." \
+-                                           % version)
+-
+ class Revisions(BaseCommand):
+     """
+     Print a revision name based on a revision specifier
+     """
+     def __init__(self):
+         self.description="Lists revisions"
++        self.cl_revisions = []
+     
+     def do_command(self, cmdargs):
+         """
+@@ -1066,224 +1084,68 @@
+             self.tree = arch.tree_root()
+         except arch.errors.TreeRootError:
+             self.tree = None
++        if options.type == "default":
++            options.type = "archive"
+         try:
+-            iter = self.get_iterator(options.type, args, options.reverse, 
+-                                     options.modified)
++            iter = cmdutil.revision_iterator(self.tree, options.type, args, 
++                                             options.reverse, options.modified,
++                                             options.shallow)
+         except cmdutil.CantDetermineRevision, e:
+             raise CommandFailedWrapper(e)
+-
++        except cmdutil.CantDetermineVersion, e:
++            raise CommandFailedWrapper(e)
+         if options.skip is not None:
+             iter = cmdutil.iter_skip(iter, int(options.skip))
+ 
+-        for revision in iter:
+-            log = None
+-            if isinstance(revision, arch.Patchlog):
+-                log = revision
+-                revision=revision.revision
+-            print options.display(revision)
+-            if log is None and (options.summary or options.creator or 
+-                                options.date or options.merges):
+-                log = revision.patchlog
+-            if options.creator:
+-                print "    %s" % log.creator
+-            if options.date:
+-                print "    %s" % time.strftime('%Y-%m-%d %H:%M:%S %Z', log.date)
+-            if options.summary:
+-                print "    %s" % log.summary
+-            if options.merges:
+-                showed_title = False
+-                for revision in log.merged_patches:
+-                    if not showed_title:
+-                        print "    Merged:"
+-                        showed_title = True
+-                    print "    %s" % revision
+-
+-    def get_iterator(self, type, args, reverse, modified):
+-        if len(args) > 0:
+-            spec = args[0]
+-        else:
+-            spec = None
+-        if modified is not None:
+-            iter = cmdutil.modified_iter(modified, self.tree)
+-            if reverse:
+-                return iter
+-            else:
+-                return cmdutil.iter_reverse(iter)
+-        elif type == "archive":
+-            if spec is None:
+-                if self.tree is None:
+-                    raise cmdutil.CantDetermineRevision("", 
+-                                                        "Not in a project tree")
+-                version = cmdutil.determine_version_tree(spec, self.tree)
+-            else:
+-                version = cmdutil.determine_version_arch(spec, self.tree)
+-                cmdutil.ensure_archive_registered(version.archive)
+-                require_version_exists(version, spec)
+-            return version.iter_revisions(reverse)
+-        elif type == "cacherevs":
+-            if spec is None:
+-                if self.tree is None:
+-                    raise cmdutil.CantDetermineRevision("", 
+-                                                        "Not in a project tree")
+-                version = cmdutil.determine_version_tree(spec, self.tree)
+-            else:
+-                version = cmdutil.determine_version_arch(spec, self.tree)
+-                cmdutil.ensure_archive_registered(version.archive)
+-                require_version_exists(version, spec)
+-            return cmdutil.iter_cacherevs(version, reverse)
+-        elif type == "library":
+-            if spec is None:
+-                if self.tree is None:
+-                    raise cmdutil.CantDetermineRevision("", 
+-                                                        "Not in a project tree")
+-                version = cmdutil.determine_version_tree(spec, self.tree)
+-            else:
+-                version = cmdutil.determine_version_arch(spec, self.tree)
+-            return version.iter_library_revisions(reverse)
+-        elif type == "logs":
+-            if self.tree is None:
+-                raise cmdutil.CantDetermineRevision("", "Not in a project tree")
+-            return self.tree.iter_logs(cmdutil.determine_version_tree(spec, \
+-                                  self.tree), reverse)
+-        elif type == "missing" or type == "skip-present":
+-            if self.tree is None:
+-                raise cmdutil.CantDetermineRevision("", "Not in a project tree")
+-            skip = (type == "skip-present")
+-            version = cmdutil.determine_version_tree(spec, self.tree)
+-            cmdutil.ensure_archive_registered(version.archive)
+-            require_version_exists(version, spec)
+-            return cmdutil.iter_missing(self.tree, version, reverse,
+-                                        skip_present=skip)
+-
+-        elif type == "present":
+-            if self.tree is None:
+-                raise cmdutil.CantDetermineRevision("", "Not in a project tree")
+-            version = cmdutil.determine_version_tree(spec, self.tree)
+-            cmdutil.ensure_archive_registered(version.archive)
+-            require_version_exists(version, spec)
+-            return cmdutil.iter_present(self.tree, version, reverse)
+-
+-        elif type == "new-merges" or type == "direct-merges":
+-            if self.tree is None:
+-                raise cmdutil.CantDetermineRevision("", "Not in a project tree")
+-            version = cmdutil.determine_version_tree(spec, self.tree)
+-            cmdutil.ensure_archive_registered(version.archive)
+-            require_version_exists(version, spec)
+-            iter = cmdutil.iter_new_merges(self.tree, version, reverse)
+-            if type == "new-merges":
+-                return iter
+-            elif type == "direct-merges":
+-                return cmdutil.direct_merges(iter)
+-
+-        elif type == "missing-from":
+-            if self.tree is None:
+-                raise cmdutil.CantDetermineRevision("", "Not in a project tree")
+-            revision = cmdutil.determine_revision_tree(self.tree, spec)
+-            libtree = cmdutil.find_or_make_local_revision(revision)
+-            return cmdutil.iter_missing(libtree, self.tree.tree_version,
+-                                        reverse)
+-
+-        elif type == "partner-missing":
+-            return cmdutil.iter_partner_missing(self.tree, reverse)
+-
+-        elif type == "ancestry":
+-            revision = cmdutil.determine_revision_tree(self.tree, spec)
+-            iter = cmdutil._iter_ancestry(self.tree, revision)
+-            if reverse:
+-                return iter
+-            else:
+-                return cmdutil.iter_reverse(iter)
+-
+-        elif type == "dependencies" or type == "non-dependencies":
+-            nondeps = (type == "non-dependencies")
+-            revision = cmdutil.determine_revision_tree(self.tree, spec)
+-            anc_iter = cmdutil._iter_ancestry(self.tree, revision)
+-            iter_depends = cmdutil.iter_depends(anc_iter, nondeps)
+-            if reverse:
+-                return iter_depends
+-            else:
+-                return cmdutil.iter_reverse(iter_depends)
+-        elif type == "micro":
+-            return cmdutil.iter_micro(self.tree)
+-
+-    
++        try:
++            for revision in iter:
++                log = None
++                if isinstance(revision, arch.Patchlog):
++                    log = revision
++                    revision=revision.revision
++                out = options.display(revision)
++                if out is not None:
++                    print out
++                if log is None and (options.summary or options.creator or 
++                                    options.date or options.merges):
++                    log = revision.patchlog
++                if options.creator:
++                    print "    %s" % log.creator
++                if options.date:
++                    print "    %s" % time.strftime('%Y-%m-%d %H:%M:%S %Z', log.date)
++                if options.summary:
++                    print "    %s" % log.summary
++                if options.merges:
++                    showed_title = False
++                    for revision in log.merged_patches:
++                        if not showed_title:
++                            print "    Merged:"
++                            showed_title = True
++                        print "    %s" % revision
++            if len(self.cl_revisions) > 0:
++                print pylon.changelog_for_merge(self.cl_revisions)
++        except pylon.errors.TreeRootNone:
++            raise CommandFailedWrapper(
++                Exception("This option can only be used in a project tree."))
++
++    def changelog_append(self, revision):
++        if isinstance(revision, arch.Revision):
++            revision=arch.Patchlog(revision)
++        self.cl_revisions.append(revision)
++   
+     def get_parser(self):
+         """
+         Returns the options parser to use for the "revision" command.
+ 
+         :rtype: cmdutil.CmdOptionParser
+         """
+-        parser=cmdutil.CmdOptionParser("fai revisions [revision]")
++        parser=cmdutil.CmdOptionParser("fai revisions [version/revision]")
+         select = cmdutil.OptionGroup(parser, "Selection options",
+                           "Control which revisions are listed.  These options"
+                           " are mutually exclusive.  If more than one is"
+                           " specified, the last is used.")
+-        select.add_option("", "--archive", action="store_const", 
+-                          const="archive", dest="type", default="archive",
+-                          help="List all revisions in the archive")
+-        select.add_option("", "--cacherevs", action="store_const", 
+-                          const="cacherevs", dest="type",
+-                          help="List all revisions stored in the archive as "
+-                          "complete copies")
+-        select.add_option("", "--logs", action="store_const", 
+-                          const="logs", dest="type",
+-                          help="List revisions that have a patchlog in the "
+-                          "tree")
+-        select.add_option("", "--missing", action="store_const", 
+-                          const="missing", dest="type",
+-                          help="List revisions from the specified version that"
+-                          " have no patchlog in the tree")
+-        select.add_option("", "--skip-present", action="store_const", 
+-                          const="skip-present", dest="type",
+-                          help="List revisions from the specified version that"
+-                          " have no patchlogs at all in the tree")
+-        select.add_option("", "--present", action="store_const", 
+-                          const="present", dest="type",
+-                          help="List revisions from the specified version that"
+-                          " have no patchlog in the tree, but can't be merged")
+-        select.add_option("", "--missing-from", action="store_const", 
+-                          const="missing-from", dest="type",
+-                          help="List revisions from the specified revision "
+-                          "that have no patchlog for the tree version")
+-        select.add_option("", "--partner-missing", action="store_const", 
+-                          const="partner-missing", dest="type",
+-                          help="List revisions in partner versions that are"
+-                          " missing")
+-        select.add_option("", "--new-merges", action="store_const", 
+-                          const="new-merges", dest="type",
+-                          help="List revisions that have had patchlogs added"
+-                          " to the tree since the last commit")
+-        select.add_option("", "--direct-merges", action="store_const", 
+-                          const="direct-merges", dest="type",
+-                          help="List revisions that have been directly added"
+-                          " to tree since the last commit ")
+-        select.add_option("", "--library", action="store_const", 
+-                          const="library", dest="type",
+-                          help="List revisions in the revision library")
+-        select.add_option("", "--ancestry", action="store_const", 
+-                          const="ancestry", dest="type",
+-                          help="List revisions that are ancestors of the "
+-                          "current tree version")
+-
+-        select.add_option("", "--dependencies", action="store_const", 
+-                          const="dependencies", dest="type",
+-                          help="List revisions that the given revision "
+-                          "depends on")
+-
+-        select.add_option("", "--non-dependencies", action="store_const", 
+-                          const="non-dependencies", dest="type",
+-                          help="List revisions that the given revision "
+-                          "does not depend on")
+-
+-        select.add_option("--micro", action="store_const", 
+-                          const="micro", dest="type",
+-                          help="List partner revisions aimed for this "
+-                          "micro-branch")
+-
+-        select.add_option("", "--modified", dest="modified", 
+-                          help="List tree ancestor revisions that modified a "
+-                          "given file", metavar="FILE[:LINE]")
+ 
++        cmdutil.add_revision_iter_options(select)
+         parser.add_option("", "--skip", dest="skip", 
+                           help="Skip revisions.  Positive numbers skip from "
+                           "beginning, negative skip from end.",
+@@ -1312,6 +1174,9 @@
+         format.add_option("--cacherev", action="store_const", 
+                          const=paths.determine_cacherev_path, dest="display",
+                          help="Show location of cacherev file")
++        format.add_option("--changelog", action="store_const", 
++                         const=self.changelog_append, dest="display",
++                         help="Show location of cacherev file")
+         parser.add_option_group(format)
+         display = cmdutil.OptionGroup(parser, "Display format options",
+                           "These control the display of data")
+@@ -1448,6 +1313,7 @@
+         if os.access(self.history_file, os.R_OK) and \
+             os.path.isfile(self.history_file):
+             readline.read_history_file(self.history_file)
++        self.cwd = os.getcwd()
+ 
+     def write_history(self):
+         readline.write_history_file(self.history_file)
+@@ -1470,16 +1336,21 @@
+     def set_prompt(self):
+         if self.tree is not None:
+             try:
+-                version = " "+self.tree.tree_version.nonarch
++                prompt = pylon.alias_or_version(self.tree.tree_version, 
++                                                self.tree, 
++                                                full=False)
++                if prompt is not None:
++                    prompt = " " + prompt
+             except:
+-                version = ""
++                prompt = ""
+         else:
+-            version = ""
+-        self.prompt = "Fai%s> " % version
++            prompt = ""
++        self.prompt = "Fai%s> " % prompt
+ 
+     def set_title(self, command=None):
+         try:
+-            version = self.tree.tree_version.nonarch
++            version = pylon.alias_or_version(self.tree.tree_version, self.tree, 
++                                             full=False)
+         except:
+             version = "[no version]"
+         if command is None:
+@@ -1489,8 +1360,15 @@
+     def do_cd(self, line):
+         if line == "":
+             line = "~"
++        line = os.path.expanduser(line)
++        if os.path.isabs(line):
++            newcwd = line
++        else:
++            newcwd = self.cwd+'/'+line
++        newcwd = os.path.normpath(newcwd)
+         try:
+-            os.chdir(os.path.expanduser(line))
++            os.chdir(newcwd)
++            self.cwd = newcwd
+         except Exception, e:
+             print e
+         try:
+@@ -1523,7 +1401,7 @@
+             except cmdutil.CantDetermineRevision, e:
+                 print e
+             except Exception, e:
+-                print "Unhandled error:\n%s" % cmdutil.exception_str(e)
++                print "Unhandled error:\n%s" % errors.exception_str(e)
+ 
+         elif suggestions.has_key(args[0]):
+             print suggestions[args[0]]
+@@ -1574,7 +1452,7 @@
+                 arg = line.split()[-1]
+             else:
+                 arg = ""
+-            iter = iter_munged_completions(iter, arg, text)
++            iter = cmdutil.iter_munged_completions(iter, arg, text)
+         except Exception, e:
+             print e
+         return list(iter)
+@@ -1604,10 +1482,11 @@
+                 else:
+                     arg = ""
+                 if arg.startswith("-"):
+-                    return list(iter_munged_completions(iter, arg, text))
++                    return list(cmdutil.iter_munged_completions(iter, arg, 
++                                                                text))
+                 else:
+-                    return list(iter_munged_completions(
+-                        iter_file_completions(arg), arg, text))
++                    return list(cmdutil.iter_munged_completions(
++                        cmdutil.iter_file_completions(arg), arg, text))
+ 
+ 
+             elif cmd == "cd":
+@@ -1615,13 +1494,13 @@
+                     arg = args.split()[-1]
+                 else:
+                     arg = ""
+-                iter = iter_dir_completions(arg)
+-                iter = iter_munged_completions(iter, arg, text)
++                iter = cmdutil.iter_dir_completions(arg)
++                iter = cmdutil.iter_munged_completions(iter, arg, text)
+                 return list(iter)
+             elif len(args)>0:
+                 arg = args.split()[-1]
+-                return list(iter_munged_completions(iter_file_completions(arg),
+-                                                    arg, text))
++                iter = cmdutil.iter_file_completions(arg)
++                return list(cmdutil.iter_munged_completions(iter, arg, text))
+             else:
+                 return self.completenames(text, line, begidx, endidx)
+         except Exception, e:
+@@ -1636,44 +1515,8 @@
+             yield entry
+ 
+ 
+-def iter_file_completions(arg, only_dirs = False):
+-    """Generate an iterator that iterates through filename completions.
+-
+-    :param arg: The filename fragment to match
+-    :type arg: str
+-    :param only_dirs: If true, match only directories
+-    :type only_dirs: bool
+-    """
+-    cwd = os.getcwd()
+-    if cwd != "/":
+-        extras = [".", ".."]
+-    else:
+-        extras = []
+-    (dir, file) = os.path.split(arg)
+-    if dir != "":
+-        listingdir = os.path.expanduser(dir)
+-    else:
+-        listingdir = cwd
+-    for file in cmdutil.iter_combine([os.listdir(listingdir), extras]):
+-        if dir != "":
+-            userfile = dir+'/'+file
+-        else:
+-            userfile = file
+-        if userfile.startswith(arg):
+-            if os.path.isdir(listingdir+'/'+file):
+-                userfile+='/'
+-                yield userfile
+-            elif not only_dirs:
+-                yield userfile
+-
+-def iter_munged_completions(iter, arg, text):
+-    for completion in iter:
+-        completion = str(completion)
+-        if completion.startswith(arg):
+-            yield completion[len(arg)-len(text):]
+-
+ def iter_source_file_completions(tree, arg):
+-    treepath = cmdutil.tree_cwd(tree)
++    treepath = arch_compound.tree_cwd(tree)
+     if len(treepath) > 0:
+         dirs = [treepath]
+     else:
+@@ -1701,7 +1544,7 @@
+     :return: An iterator of all matching untagged files
+     :rtype: iterator of str
+     """
+-    treepath = cmdutil.tree_cwd(tree)
++    treepath = arch_compound.tree_cwd(tree)
+     if len(treepath) > 0:
+         dirs = [treepath]
+     else:
+@@ -1743,8 +1586,8 @@
+     :param arg: The prefix to match
+     :type arg: str
+     """
+-    treepath = cmdutil.tree_cwd(tree)
+-    tmpdir = cmdutil.tmpdir()
++    treepath = arch_compound.tree_cwd(tree)
++    tmpdir = util.tmpdir()
+     changeset = tmpdir+"/changeset"
+     completions = []
+     revision = cmdutil.determine_revision_tree(tree)
+@@ -1756,14 +1599,6 @@
+     shutil.rmtree(tmpdir)
+     return completions
+ 
+-def iter_dir_completions(arg):
+-    """Generate an iterator that iterates through directory name completions.
+-
+-    :param arg: The directory name fragment to match
+-    :type arg: str
+-    """
+-    return iter_file_completions(arg, True)
+-
+ class Shell(BaseCommand):
+     def __init__(self):
+         self.description = "Runs Fai as a shell"
+@@ -1795,7 +1630,11 @@
+         parser=self.get_parser()
+         (options, args) = parser.parse_args(cmdargs)
+ 
+-        tree = arch.tree_root()
++        try:
++            tree = arch.tree_root()
++        except arch.errors.TreeRootError, e:
++            raise pylon.errors.CommandFailedWrapper(e)
++            
+ 
+         if (len(args) == 0) == (options.untagged == False):
+             raise cmdutil.GetHelp
+@@ -1809,13 +1648,22 @@
+         if options.id_type == "tagline":
+             if method != "tagline":
+                 if not cmdutil.prompt("Tagline in other tree"):
+-                    if method == "explicit":
+-                        options.id_type == explicit
++                    if method == "explicit" or method == "implicit":
++                        options.id_type == method
+                     else:
+                         print "add-id not supported for \"%s\" tagging method"\
+                             % method 
+                         return
+         
++        elif options.id_type == "implicit":
++            if method != "implicit":
++                if not cmdutil.prompt("Implicit in other tree"):
++                    if method == "explicit" or method == "tagline":
++                        options.id_type == method
++                    else:
++                        print "add-id not supported for \"%s\" tagging method"\
++                            % method 
++                        return
+         elif options.id_type == "explicit":
+             if method != "tagline" and method != explicit:
+                 if not prompt("Explicit in other tree"):
+@@ -1824,7 +1672,8 @@
+                     return
+         
+         if options.id_type == "auto":
+-            if method != "tagline" and method != "explicit":
++            if method != "tagline" and method != "explicit" \
++                and method !="implicit":
+                 print "add-id not supported for \"%s\" tagging method" % method
+                 return
+             else:
+@@ -1852,10 +1701,12 @@
+             previous_files.extend(files)
+             if id_type == "explicit":
+                 cmdutil.add_id(files)
+-            elif id_type == "tagline":
++            elif id_type == "tagline" or id_type == "implicit":
+                 for file in files:
+                     try:
+-                        cmdutil.add_tagline_or_explicit_id(file)
++                        implicit = (id_type == "implicit")
++                        cmdutil.add_tagline_or_explicit_id(file, False,
++                                                           implicit)
+                     except cmdutil.AlreadyTagged:
+                         print "\"%s\" already has a tagline." % file
+                     except cmdutil.NoCommentSyntax:
+@@ -1888,6 +1739,9 @@
+         parser.add_option("--tagline", action="store_const", 
+                          const="tagline", dest="id_type", 
+                          help="Use a tagline id")
++        parser.add_option("--implicit", action="store_const", 
++                         const="implicit", dest="id_type", 
++                         help="Use an implicit id (deprecated)")
+         parser.add_option("--untagged", action="store_true", 
+                          dest="untagged", default=False, 
+                          help="tag all untagged files")
+@@ -1926,27 +1780,7 @@
+     def get_completer(self, arg, index):
+         if self.tree is None:
+             raise arch.errors.TreeRootError
+-        completions = list(ancillary.iter_partners(self.tree, 
+-                                                   self.tree.tree_version))
+-        if len(completions) == 0:
+-            completions = list(self.tree.iter_log_versions())
+-
+-        aliases = []
+-        try:
+-            for completion in completions:
+-                alias = ancillary.compact_alias(str(completion), self.tree)
+-                if alias:
+-                    aliases.extend(alias)
+-
+-            for completion in completions:
+-                if completion.archive == self.tree.tree_version.archive:
+-                    aliases.append(completion.nonarch)
+-
+-        except Exception, e:
+-            print e
+-            
+-        completions.extend(aliases)
+-        return completions
++        return cmdutil.merge_completions(self.tree, arg, index)
+ 
+     def do_command(self, cmdargs):
+         """
+@@ -1961,7 +1795,7 @@
+         
+         if self.tree is None:
+             raise arch.errors.TreeRootError(os.getcwd())
+-        if cmdutil.has_changed(self.tree.tree_version):
++        if cmdutil.has_changed(ancillary.comp_revision(self.tree)):
+             raise UncommittedChanges(self.tree)
+ 
+         if len(args) > 0:
+@@ -2027,14 +1861,14 @@
+         :type other_revision: `arch.Revision`
+         :return: 0 if the merge was skipped, 1 if it was applied
+         """
+-        other_tree = cmdutil.find_or_make_local_revision(other_revision)
++        other_tree = arch_compound.find_or_make_local_revision(other_revision)
+         try:
+             if action == "native-merge":
+-                ancestor = cmdutil.merge_ancestor2(self.tree, other_tree, 
+-                                                   other_revision)
++                ancestor = arch_compound.merge_ancestor2(self.tree, other_tree, 
++                                                         other_revision)
+             elif action == "update":
+-                ancestor = cmdutil.tree_latest(self.tree, 
+-                                               other_revision.version)
++                ancestor = arch_compound.tree_latest(self.tree, 
++                                                     other_revision.version)
+         except CantDetermineRevision, e:
+             raise CommandFailedWrapper(e)
+         cmdutil.colorize(arch.Chatter("* Found common ancestor %s" % ancestor))
+@@ -2104,7 +1938,10 @@
+         if self.tree is None:
+             raise arch.errors.TreeRootError
+ 
+-        edit_log(self.tree)
++        try:
++            edit_log(self.tree, self.tree.tree_version)
++        except pylon.errors.NoEditorSpecified, e:
++            raise pylon.errors.CommandFailedWrapper(e)
+ 
+     def get_parser(self):
+         """
+@@ -2132,7 +1969,7 @@
+         """
+         return
+ 
+-def edit_log(tree):
++def edit_log(tree, version):
+     """Makes and edits the log for a tree.  Does all kinds of fancy things
+     like log templates and merge summaries and log-for-merge
+     
+@@ -2141,28 +1978,29 @@
+     """
+     #ensure we have an editor before preparing the log
+     cmdutil.find_editor()
+-    log = tree.log_message(create=False)
++    log = tree.log_message(create=False, version=version)
+     log_is_new = False
+     if log is None or cmdutil.prompt("Overwrite log"):
+         if log is not None:
+            os.remove(log.name)
+-        log = tree.log_message(create=True)
++        log = tree.log_message(create=True, version=version)
+         log_is_new = True
+         tmplog = log.name
+-        template = tree+"/{arch}/=log-template"
+-        if not os.path.exists(template):
+-            template = os.path.expanduser("~/.arch-params/=log-template")
+-            if not os.path.exists(template):
+-                template = None
++        template = pylon.log_template_path(tree)
+         if template:
+             shutil.copyfile(template, tmplog)
+-        
+-        new_merges = list(cmdutil.iter_new_merges(tree, 
+-                                                  tree.tree_version))
+-        log["Summary"] = merge_summary(new_merges, tree.tree_version)
++        comp_version = ancillary.comp_revision(tree).version
++        new_merges = cmdutil.iter_new_merges(tree, comp_version)
++        new_merges = cmdutil.direct_merges(new_merges)
++        log["Summary"] = pylon.merge_summary(new_merges, 
++                                         version)
+         if len(new_merges) > 0:   
+             if cmdutil.prompt("Log for merge"):
+-                mergestuff = cmdutil.log_for_merge(tree)
++                if cmdutil.prompt("changelog for merge"):
++                    mergestuff = "Patches applied:\n"
++                    mergestuff += pylon.changelog_for_merge(new_merges)
++                else:
++                    mergestuff = cmdutil.log_for_merge(tree, comp_version)
+                 log.description += mergestuff
+         log.save()
+     try:
+@@ -2172,29 +2010,6 @@
+             os.remove(log.name)
+         raise
+ 
+-def merge_summary(new_merges, tree_version):
+-    if len(new_merges) == 0:
+-        return ""
+-    if len(new_merges) == 1:
+-        summary = new_merges[0].summary
+-    else:
+-        summary = "Merge"
+-
+-    credits = []
+-    for merge in new_merges:
+-        if arch.my_id() != merge.creator:
+-            name = re.sub("<.*>", "", merge.creator).rstrip(" ");
+-            if not name in credits:
+-                credits.append(name)
+-        else:
+-            version = merge.revision.version
+-            if version.archive == tree_version.archive:
+-                if not version.nonarch in credits:
+-                    credits.append(version.nonarch)
+-            elif not str(version) in credits:
+-                credits.append(str(version))
+-
+-    return ("%s (%s)") % (summary, ", ".join(credits))
+ 
+ class MirrorArchive(BaseCommand):
+     """
+@@ -2268,31 +2083,73 @@
+ 
+ Use "alias" to list available (user and automatic) aliases."""
+ 
++auto_alias = [
++"acur", 
++"The latest revision in the archive of the tree-version.  You can specify \
++a different version like so: acur:foo--bar--0 (aliases can be used)",
++"tcur",
++"""(tree current) The latest revision in the tree of the tree-version. \
++You can specify a different version like so: tcur:foo--bar--0 (aliases can be \
++used).""",
++"tprev" , 
++"""(tree previous) The previous revision in the tree of the tree-version.  To \
++specify an older revision, use a number, e.g. "tprev:4" """,
++"tanc" , 
++"""(tree ancestor) The ancestor revision of the tree To specify an older \
++revision, use a number, e.g. "tanc:4".""",
++"tdate" , 
++"""(tree date) The latest revision from a given date, e.g. "tdate:July 6".""",
++"tmod" , 
++""" (tree modified) The latest revision to modify a given file, e.g. \
++"tmod:engine.cpp" or "tmod:engine.cpp:16".""",
++"ttag" , 
++"""(tree tag) The revision that was tagged into the current tree revision, \
++according to the tree""",
++"tagcur", 
++"""(tag current) The latest revision of the version that the current tree \
++was tagged from.""",
++"mergeanc" , 
++"""The common ancestor of the current tree and the specified revision. \
++Defaults to the first partner-version's latest revision or to tagcur.""",
++]
++
++
++def is_auto_alias(name):
++    """Determine whether a name is an auto alias name
++
++    :param name: the name to check
++    :type name: str
++    :return: True if the name is an auto alias, false if not
++    :rtype: bool
++    """
++    return name in [f for (f, v) in pylon.util.iter_pairs(auto_alias)]
++
++
++def display_def(iter, wrap = 80):
++    """Display a list of definitions
++
++    :param iter: iter of name, definition pairs
++    :type iter: iter of (str, str)
++    :param wrap: The width for text wrapping
++    :type wrap: int
++    """
++    vals = list(iter)
++    maxlen = 0
++    for (key, value) in vals:
++        if len(key) > maxlen:
++            maxlen = len(key)
++    for (key, value) in vals:
++        tw=textwrap.TextWrapper(width=wrap, 
++                                initial_indent=key.rjust(maxlen)+" : ",
++                                subsequent_indent="".rjust(maxlen+3))
++        print tw.fill(value)
++
++
+ def help_aliases(tree):
+-    print """Auto-generated aliases
+- acur : The latest revision in the archive of the tree-version.  You can specfy
+-        a different version like so: acur:foo--bar--0 (aliases can be used)
+- tcur : (tree current) The latest revision in the tree of the tree-version.
+-        You can specify a different version like so: tcur:foo--bar--0 (aliases
+-        can be used).
+-tprev : (tree previous) The previous revision in the tree of the tree-version.
+-        To specify an older revision, use a number, e.g. "tprev:4"
+- tanc : (tree ancestor) The ancestor revision of the tree
+-        To specify an older revision, use a number, e.g. "tanc:4"
+-tdate : (tree date) The latest revision from a given date (e.g. "tdate:July 6")
+- tmod : (tree modified) The latest revision to modify a given file 
+-        (e.g. "tmod:engine.cpp" or "tmod:engine.cpp:16")
+- ttag : (tree tag) The revision that was tagged into the current tree revision,
+-        according to the tree.
+-tagcur: (tag current) The latest revision of the version that the current tree
+-        was tagged from.
+-mergeanc : The common ancestor of the current tree and the specified revision.
+-        Defaults to the first partner-version's latest revision or to tagcur.
+-   """
++    print """Auto-generated aliases"""
++    display_def(pylon.util.iter_pairs(auto_alias))
+     print "User aliases"
+-    for parts in ancillary.iter_all_alias(tree):
+-        print parts[0].rjust(10)+" : "+parts[1]
+-
++    display_def(ancillary.iter_all_alias(tree))
+ 
+ class Inventory(BaseCommand):
+     """List the status of files in the tree"""
+@@ -2428,6 +2285,11 @@
+         except cmdutil.ForbiddenAliasSyntax, e:
+             raise CommandFailedWrapper(e)
+ 
++    def no_prefix(self, alias):
++        if alias.startswith("^"):
++            alias = alias[1:]
++        return alias
++        
+     def arg_dispatch(self, args, options):
+         """Add, modify, or list aliases, depending on number of arguments
+ 
+@@ -2438,15 +2300,20 @@
+         if len(args) == 0:
+             help_aliases(self.tree)
+             return
+-        elif len(args) == 1:
+-            self.print_alias(args[0])
+-        elif (len(args)) == 2:
+-            self.add(args[0], args[1], options)
+         else:
+-            raise cmdutil.GetHelp
++            alias = self.no_prefix(args[0])
++            if len(args) == 1:
++                self.print_alias(alias)
++            elif (len(args)) == 2:
++                self.add(alias, args[1], options)
++            else:
++                raise cmdutil.GetHelp
+ 
+     def print_alias(self, alias):
+         answer = None
++        if is_auto_alias(alias):
++            raise pylon.errors.IsAutoAlias(alias, "\"%s\" is an auto alias."
++                "  Use \"revision\" to expand auto aliases." % alias)
+         for pair in ancillary.iter_all_alias(self.tree):
+             if pair[0] == alias:
+                 answer = pair[1]
+@@ -2464,6 +2331,8 @@
+         :type expansion: str
+         :param options: The commandline options
+         """
++        if is_auto_alias(alias):
++            raise IsAutoAlias(alias)
+         newlist = ""
+         written = False
+         new_line = "%s=%s\n" % (alias, cmdutil.expand_alias(expansion, 
+@@ -2490,14 +2359,17 @@
+         deleted = False
+         if len(args) != 1:
+             raise cmdutil.GetHelp
++        alias = self.no_prefix(args[0])
++        if is_auto_alias(alias):
++            raise IsAutoAlias(alias)
+         newlist = ""
+         for pair in self.get_iterator(options):
+-            if pair[0] != args[0]:
++            if pair[0] != alias:
+                 newlist+="%s=%s\n" % (pair[0], pair[1])
+             else:
+                 deleted = True
+         if not deleted:
+-            raise errors.NoSuchAlias(args[0])
++            raise errors.NoSuchAlias(alias)
+         self.write_aliases(newlist, options)
+ 
+     def get_alias_file(self, options):
+@@ -2526,7 +2398,7 @@
+         :param options: The commandline options
+         """
+         filename = os.path.expanduser(self.get_alias_file(options))
+-        file = cmdutil.NewFileVersion(filename)
++        file = util.NewFileVersion(filename)
+         file.write(newlist)
+         file.commit()
+ 
+@@ -2588,10 +2460,13 @@
+         :param cmdargs: The commandline arguments
+         :type cmdargs: list of str
+         """
+-        cmdutil.find_editor()
+         parser = self.get_parser()
+         (options, args) = parser.parse_args(cmdargs)
+         try:
++            cmdutil.find_editor()
++        except pylon.errors.NoEditorSpecified, e:
++            raise pylon.errors.CommandFailedWrapper(e)
++        try:
+             self.tree=arch.tree_root()
+         except:
+             self.tree=None
+@@ -2655,7 +2530,7 @@
+             target_revision = cmdutil.determine_revision_arch(self.tree, 
+                                                               args[0])
+         else:
+-            target_revision = cmdutil.tree_latest(self.tree)
++            target_revision = arch_compound.tree_latest(self.tree)
+         if len(args) > 1:
+             merges = [ arch.Patchlog(cmdutil.determine_revision_arch(
+                        self.tree, f)) for f in args[1:] ]
+@@ -2711,7 +2586,7 @@
+ 
+         :param message: The message to send
+         :type message: `email.Message`"""
+-        server = smtplib.SMTP()
++        server = smtplib.SMTP("localhost")
+         server.sendmail(message['From'], message['To'], message.as_string())
+         server.quit()
+ 
+@@ -2763,6 +2638,22 @@
+ 'alias' : Alias,
+ 'request-merge': RequestMerge,
+ }
++
++def my_import(mod_name):
++    module = __import__(mod_name)
++    components = mod_name.split('.')
++    for comp in components[1:]:
++        module = getattr(module, comp)
++    return module
++
++def plugin(mod_name):
++    module = my_import(mod_name)
++    module.add_command(commands)
++
++for file in os.listdir(sys.path[0]+"/command"):
++    if len(file) > 3 and file[-3:] == ".py" and file != "__init__.py":
++        plugin("command."+file[:-3])
++
+ suggestions = {
+ 'apply-delta' : "Try \"apply-changes\".",
+ 'delta' : "To compare two revisions, use \"changes\".",
+@@ -2784,6 +2675,7 @@
+ 'tagline' : "Use add-id.  It uses taglines in tagline trees",
+ 'emlog' : "Use elog.  It automatically adds log-for-merge text, if any",
+ 'library-revisions' : "Use revisions --library",
+-'file-revert' : "Use revert FILE"
++'file-revert' : "Use revert FILE",
++'join-branch' : "Use replay --logs-only"
+ }
+ # arch-tag: 19d5739d-3708-486c-93ba-deecc3027fc7

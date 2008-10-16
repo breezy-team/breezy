@@ -1,0 +1,123 @@
+bzr-svn
+=======
+
+Overview
+--------
+
+bzr-svn lets developers use Bazaar as their VCS client on projects
+still using a central Subversion repository. Access to Subversion
+repositories is largely transparent, i.e. you can use most ``bzr``
+commands directly on Subversion repositories exactly the same
+as if you were using ``bzr`` on native Bazaar branches.
+
+Many bzr-svn users create a local mirror of the central Subversion
+trunk, work in local feature branches, and submit their
+overall change back to Subversion when it is ready
+to go. This lets them gain many of the advantages of distributed
+VCS tools without interrupting existing team-wide processes and
+tool integration hooks currently built on top of Subversion. Indeed,
+this is a common interim step for teams looking to adopt Bazaar but
+who are unable to do so yet for timing or non-technical reasons.
+
+For installation instructions, see the bzr-svn home page:
+http://bazaar-vcs.org/BzrForeignBranches/Subversion.
+
+
+A simple example
+----------------
+
+Here's a simple example of how you can use bzr-svn to hack on a
+GNOME project like **beagle**. Firstly, setup a local shared repository
+for storing your branches in and checkout the trunk::
+
+  bzr init-repo --rich-root-pack beagle-repo
+  cd beagle-repo
+  bzr checkout svn+ssh://svn.gnome.org/svn/beagle/trunk beagle-trunk
+
+Note that using the ``rich-root-pack`` option to ``init-repo`` is
+important as bzr-svn requires some extra metadata not yet supported in Bazaar's
+default repository format. Next, create a feature branch and hack away::
+
+  bzr branch beagle-trunk beagle-feature1
+  cd beagle-feature1
+  *changes*
+  bzr commit -m "blah blah blah"
+  *changes*
+  bzr commit -m "blah blah blah"
+
+When the feature is cooked, refresh your trunk mirror and merge
+your change::
+
+  cd ../beagle-trunk
+  bzr update
+  bzr merge ../beagle-feature1
+  bzr commit -m "Complete comment for SVN commit"
+
+As your trunk mirror is a checkout, committing to it implicitly
+commits to the real Subversion trunk. That's it!
+
+
+Using a central repository mirror
+---------------------------------
+
+For large projects, it often makes sense to tweak the recipe given above.
+In particular, the initial checkout can get quite slow so you may wish
+to import the Subversion repository into a Bazaar one once and for all
+for your project, and then branch from that native Bazaar repository
+instead. bzr-svn provides the ``svn-import`` command for doing this
+repository-to-repository conversion. Here's an example of how to use it::
+
+  bzr init-repo --rich-root-pack beagle.bzr
+  cd beagle.bzr
+  bzr svn-import svn+ssh://svn.gnome.org/svn/beagle
+
+Here's the recipe from above updated to use a central Bazaar mirror::
+
+  bzr init-repo --rich-root-pack beagle-repo
+  cd beagle-repo
+  bzr branch bzr+ssh://bzr.gnome.org/beagle.bzr/trunk beagle-trunk
+  bzr branch beagle-trunk beagle-feature1
+  cd beagle-feature1
+  *changes*
+  bzr commit -m "blah blah blah"
+  *changes*
+  bzr commit -m "blah blah blah"
+  cd ../beagle-trunk
+  bzr pull
+  bzr merge ../beagle-feature1
+  bzr commit -m "Complete comment for SVN commit"
+  bzr push
+
+In this case, committing to the trunk only commits the merge locally.
+To commit back to the master Subversion trunk, an additional command
+(``bzr push``) is required.
+
+Note: You'll need to give ``pull`` and ``push`` the relevant URLs
+the first time you use those commands in the trunk branch. After that,
+bzr remembers them.
+
+The final piece of the puzzle in this setup is to put scripts in
+place to keep the central Bazaar mirror synchronized with the Subversion
+one. This can be done by adding a cron job, using a Subversion hook,
+or whatever makes sense in your environment.
+
+
+Limitations of bzr-svn
+----------------------
+
+Bazaar and Subversion are different tools with different capabilities
+so there will always be some limited interoperability issues.
+Here are some examples current as of bzr-svn 0.4.10:
+
+ * Bazaar doesn't support versioned properties
+
+ * Bazaar doesn't support tracking of file copies.
+
+ * ``bzr push`` to an existing Subversion branch works but 
+   ``bzr push`` to a new Subversion branch doesn't. Until
+   the relevant bug is fixed (#121875), you need to use
+   ``bzr svn-push`` in the latter case.
+
+See the bzr-svn web page,
+http://bazaar-vcs.org/BzrForeignBranches/Subversion,
+for the current list of constraints.

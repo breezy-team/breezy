@@ -1,0 +1,272 @@
+Releasing Bazaar
+================
+
+This document describes the processes for making and announcing a Bazaar
+release, and managing the release process.
+
+We normally have one person acting as the release manager, who 
+organizes development for the release and also actually makes the release
+tarball and posts announcements.  It can be a different person from one
+release to the next.
+
+See also: `Bazaar Developer Document Catalog <index.html>`_.
+
+
+.. contents::
+
+General process
+---------------
+
+Our usual process is that one week before release we will make a release
+branch from the trunk.  We do one commit to that branch to change the
+version number to 'rc1', and advance the trunk version to 'dev' for the
+next release.
+
+We then publish and announce this release candidate according to the
+process below.  We then have a week of general testing of the rc,
+including some time for plugin authors to update their code for any
+changes.
+
+Normally no changes will be made on the release branch unless serious bugs
+or regressions are found, and the release manager decides they should be
+merged in.  After one week, the release branch's version number is updated
+and it's published as the final release.  If regressions or serious
+problems are discovered after the final release we may make an additional
+point release from that branch.
+
+The process or timing can vary if that seems appropriate in a particular
+case but we try to release on a regular four week cycle.
+
+The net effect is that the code gets some extra testing before release,
+and the trunk is always open for general development.
+
+
+
+
+Starting a Release
+------------------
+
+To start a new release cycle:
+
+#. Send mail to the list with the key dates, who will be the release
+   manager, and the main themes or targetted bugs.  Ask people to nominate
+   objectives, or point out any high-risk things that are best done early,
+   or that interact with other changes.
+
+#. Add a new "series" in Launchpad at <https://launchpad.net/bzr/+addseries>.  There is one 
+   series for every *x.y* release.
+
+
+Weekly Metronome Mail
+---------------------
+
+Every week the release manager should send a mail to the Bazaar list
+covering these points (as appropriate):
+
+* Early communication about changing dependencies or defaults
+
+* Reminder re lifecycle and where we're up to right now, in particular the 
+  dates for the next release and/or candidate.
+
+* Summary of recent successes and pending work.
+
+* Reminder re release objectives
+
+* Reminder re things needing attention, e.g. bug triage, reviews, testing of certain things, etc.
+
+
+Preparing the tree for release
+------------------------------
+
+.. Was previously at http://bazaar-vcs.org/ReleaseChecklist
+
+.. TODO: Still needs more clarity on what's in a RC versus a final
+.. release?
+
+This is the procedure for making a new bzr release:
+
+#. If the release is the first candidate, make a new branch in PQM. 
+   (Contact Robert Collins for this step).
+
+   Register the branch at https://launchpad.net/products/bzr/+addbranch
+
+#. Make a local branch for preparing this release.  (Only for the first 
+   release in a series, otherwise you should already have a branch.) ::
+
+     bzr branch trunk prepare-1.6
+
+#. Configure pqm-submit for this branch, with a section like this in
+   ``~/.bazaar/locations.conf``::
+
+	[/home/mbp/bzr/prepare-1.4]
+	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
+	submit_branch = http://bazaar-vcs.org/bzr/bzr.1.4
+	submit_to = bazaar@lists.canonical.com
+
+#. In the release branch, update  ``version_info`` in
+   ``./bzrlib/__init__.py``.  
+   (This must match ``_script_version`` in the ``bzr`` script, but 
+   that is updated at the start of the release cycle, and
+   doesn't need to say if it's an rc or final release.)
+
+   Run this command and check the output::
+
+     ./bzr --version
+
+#. Add the date and release number to ``./NEWS``, and a one-paragraph
+   summary of changes in this release.
+
+#. Commit these changes to the release branch, using a command like::
+    
+     bzr commit -m "Release 0.12rc1." 
+   
+   The diff before you commit will be something like::
+
+       === modified file 'NEWS'
+       --- NEWS        2006-10-23 13:11:17 +0000
+       +++ NEWS        2006-10-23 22:50:50 +0000
+       @@ -1,4 +1,4 @@
+       -IN DEVELOPMENT
+       +bzr 0.12rc1  2006-10-23
+
+          IMPROVEMENTS:
+
+
+       === modified file 'bzrlib/__init__.py'
+       --- bzrlib/__init__.py  2006-10-16 01:47:43 +0000
+       +++ bzrlib/__init__.py  2006-10-23 22:49:46 +0000
+       @@ -35,7 +35,7 @@
+        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+        # releaselevel of 'dev' for unreleased under-development code.
+
+       -version_info = (0, 12, 0, 'dev', 0)
+       +version_info = (0, 12, 0, 'candidate', 1)
+
+        if version_info[3] == 'final':
+            version_string = '%d.%d.%d' % version_info[:3]
+
+#. Submit those changes to PQM for merge into the appropriate release
+   branch::
+ 
+     bzr push
+     bzr pqm-submit -m "(mbp) prepare 1.6"
+
+#. When PQM succeeds, pull down the master release branch.
+
+
+Making the source tarball
+-------------------------
+
+#. Change into the source directory and run ::
+  
+     make dist
+
+#. Now we'll try expanding this tarball and running the test suite
+   to check for packaging problems::
+ 
+     make check-dist-tarball
+
+
+Publishing the release
+----------------------
+
+Now you have the releasable product.  The next step is making it
+available to the world.
+
+#. In <https://launchpad.net/bzr/> click the "Release series" for this
+   series, to take you to e.g. <https://launchpad.net/bzr/1.1>.  Then
+   click "Register a release", and add information about this release.
+
+#. Within that release, upload the source tarball and the GPG signature.
+
+#. Link from http://bazaar-vcs.org/Download to the tarball and signature.
+
+#. Update http://doc.bazaar-vcs.org/ to have a directory of documentation
+   for this release.  (Controlled by the ``update-bzr-docs`` script on
+   escudero, and also update the ``latest`` symlink in
+   ``/srv/bazaar.canonical.com/doc/``.)
+
+#. Announce on the `Bazaar home page`__.
+   
+ __ http://bazaar-vcs.org/
+
+
+Announcing the release
+----------------------
+
+Now that the release is publicly available, tell people about it.
+
+#. Announce to ``bazaar-announce`` and ``bazaar`` mailing lists. 
+   The announce mail will look something like this:
+   
+    | Subject: bzr 0.11 release candidate 1
+    | 
+    | INTRO HERE. Mention the release number and date, and why the release. (i.e. release candidate for testing, final release of a version, backport/bugfix etc).
+    | 
+    | Tarballs:
+    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz
+    | and GPG signature:
+    | http://bazaar-vcs.org/releases/src/bzr-VERSION.tar.gz.sig
+    | 
+    | DESCRIBE-CHANGES-IN-OVERVIEW-HERE
+    | 
+    | DESCRIBE-when the next release will be (if there is another - i.e. this is a release candidate)
+    | 
+    | Many thanks to all the contributors to this release! I've included the
+    | contents of NEWS for VERSION below:
+
+   To generate the data from NEWS, just copy and paste the relevant news section and clean it up as appropriate. The main clean-up task is to confirm that all major changes are indeed covered. This can be done by running ``bzr log`` back to the point when the branch was opened and cross checking the changes against the NEWS entries.
+
+   (RC announcements should remind plugin maintainers to update their plugins.)
+
+     * For point releases (i.e. a release candidate, or an incremental fix
+       to a released version) take everything in the relevant NEWS section.  For
+       example, for 0.11rc2 take everything in NEWS from the bzr 0.11rc2 line to the bzr 0.11rc1 line further down.
+
+     * For major releases (i.e. 0.11, 0.12 etc), take all the combined NEWS sections from within that version: for 0.11 take all of the 0.11 specific section, plus 0.11rc2, plus 0.11rc1 etc.
+
+#. Update the IRC channel topic. Use the ``/topic`` command to do this, ensuring the new topic text keeps the project name, web site link, etc.
+
+#. Announce on http://freshmeat.net/projects/bzr/
+   
+   This should be done for both release candidates and final releases. If you do not have a Freshmeat account yet, ask one of the existing admins.
+
+#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for final releases but not for Release Candidates.
+
+#. Package maintainers should update packages when they see the
+   announcement.
+
+#. For final releases, also send the announcement mail to
+   info-gnu@gnu.org and python-announce-list@python.org.
+
+#. Also send a GNU directory update to bug-directory@gnu.org.
+
+#. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
+   done by running ::
+
+       python setup.py register
+
+   Remember to check the results afterwards.
+
+   To be able to register the release you must create an account on
+   <http://pypi.python.org/pypi> and have one of the existing owners of
+   the project add you to the group.
+
+
+Merging the released code back to trunk
+---------------------------------------
+
+Merge the release branch back into the trunk.  Check that changes in NEWS
+were merged into the right sections.  If it's not already done, advance
+the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
+back into pqm for bzr.dev.
+
+
+See also
+--------
+
+ * `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
+   packages.
+
+..
+   vim: filetype=rst textwidth=74 ai shiftwidth=4
