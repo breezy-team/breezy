@@ -2153,6 +2153,7 @@ def _make_inv_delta(old, new):
                 file_id, new[file_id]))
     return delta
 
+
 class MetaDirRepository(Repository):
     """Repositories in the new meta-dir layout.
     
@@ -3162,24 +3163,75 @@ class InterDifferingSerializer(InterKnitRepo):
             revision_id, find_ghosts=find_ghosts).get_keys()
         revision_ids = tsort.topo_sort(
             self.source.get_graph().get_parent_map(revision_ids))
-        def revisions_iterator():
-            for current_revision_id in revision_ids:
-                revision = self.source.get_revision(current_revision_id)
-                tree = self.source.revision_tree(current_revision_id)
-                try:
-                    signature = self.source.get_signature_text(
-                        current_revision_id)
-                except errors.NoSuchRevision:
-                    signature = None
-                yield revision, tree, signature
+        if not revision_ids:
+            return 0, 0
+        # Walk though all revisions; get inventory deltas, copy referenced
+        # texts that delta references, insert the delta, revision and
+        # signature.
+        first_rev = self.source.get_revision(revision_ids[0])
+        try:
+            basis_id = first_rev.parent_ids[0]
+            # only valid as a basis if the target has it
+            self.target.get_revision(basis_id)
+            # Try to get a basis tree - if its a ghost it will hit the
+            # NoSuchRevision case.
+            basis_tree = self.source.revision_tree(first_rev.parent_ids[0])
+        except (IndexError, errors.NoSuchRevision):
+            basis_id = _mod_revision.NULL_REVISION
+            basis_tree = self.source.revision_tree(basis_id)
         if pb is None:
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
         else:
             my_pb = None
         try:
-            install_revisions(self.target, revisions_iterator(),
-                              len(revision_ids), pb)
+            batch_size = 100
+            for offset in range(len(revision_ids) / 100 + 1):
+                self.target.start_write_group()
+                try:
+                    pb.update('Transferring revisions', offset*batch_size,
+                        len(revision_ids))
+                    batch = revision_ids[offset*batch_size:(offset+1)*batch_size]
+                    text_keys = set()
+                    pending_deltas = []
+                    pending_revisions = []
+                    for tree in self.source.revision_trees(batch):
+                        current_revision_id = tree.get_revision_id()
+                        delta = _make_inv_delta(basis_tree.inventory,
+                            tree.inventory)
+                        for old_path, new_path, file_id, entry in delta:
+                            if new_path:
+                                text_keys.add((file_id, entry.revision))
+                        revision = self.source.get_revision(current_revision_id)
+                        pending_deltas.append((basis_id, delta,
+                            current_revision_id, revision.parent_ids))
+                        pending_revisions.append(revision)
+                        basis_id = current_revision_id
+                        basis_tree = tree
+                    # Copy file texts
+                    from_texts = self.source.texts
+                    to_texts = self.target.texts
+                    to_texts.insert_record_stream(from_texts.get_record_stream(
+                        text_keys, self.target._fetch_order,
+                        not self.target._fetch_uses_deltas))
+                    # insert deltas
+                    for delta in pending_deltas:
+                        self.target.add_inventory_delta(*delta)
+                    # insert signatures and revisions
+                    for revision in pending_revisions:
+                        try:
+                            signature = self.source.get_signature_text(
+                                revision.revision_id)
+                            self.target.add_signature_text(revision.revision_id,
+                                signature)
+                        except errors.NoSuchRevision:
+                            pass
+                        self.target.add_revision(revision.revision_id, revision)
+                except:
+                    self.target.abort_write_group()
+                    raise
+                else:
+                    self.target.commit_write_group()
         finally:
             if my_pb is not None:
                 my_pb.finished()

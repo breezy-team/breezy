@@ -106,9 +106,14 @@ class CHKMap(object):
         self._ensure_root()
         # Store the value
         bytes = ValueNode(value).serialise()
+        # Experimental code to probe for keys rather than just adding; its not
+        # clear if it is an improvement.
+        #chk = ("sha1:%s" % osutils.sha_string(bytes),)
+        #if not self._store.get_parent_map([key]):
         sha1, _, _ = self._store.add_lines((None,), (), osutils.split_lines(bytes))
+        chk = ("sha1:" + sha1,)
         # And link into the root
-        self._root_node.add_child(key, ("sha1:" + sha1,))
+        self._root_node.add_child(key, chk)
 
     def _unmap(self, key):
         """remove key from the map."""
