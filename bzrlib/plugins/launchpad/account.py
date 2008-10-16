@@ -80,7 +80,7 @@ def _set_auth_user(username, auth=None):
     if auth is None:
         auth = AuthenticationConfig()
     auth.set_credentials(
-        'Launchpad', 'bazaar.launchpad.net', username, scheme='ssh')
+        'Launchpad', 'bazaar.launchpad.net', username, 'ssh')
 
 
 def check_lp_login(username, _transport=None):
