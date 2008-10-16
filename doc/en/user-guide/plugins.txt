@@ -1,0 +1,109 @@
+Using plugins
+=============
+
+.. Information on how to use plugins in Bazaar.
+
+What is a plugin?
+-----------------
+
+A plugin is an external component for Bazaar that is typically made by
+third parties. A plugin is capable of augmenting Bazaar by adding new
+functionality.  A plugin can also change current Bazaar behavior by
+replacing current functionality. Sample applications of plugins are:
+
+* overriding commands
+* adding new commands
+* providing additional network transports
+* customizing log output.
+  
+The sky is the limit for the customization that can be done through plugins.
+In fact, plugins often work as a way for developers to test new features for
+Bazaar prior to inclusion in the official codebase. Plugins are helpful
+at feature retirement time as well, e.g. deprecated file formats may one
+day be removed from the Bazaar core and be made available as a plugin instead.
+
+Plugins are good for users, good for external developers and good for
+Bazaar itself.
+
+Where to find plugins 
+---------------------
+
+We keep our list of plugins on the http://bazaar-vcs.org/BzrPlugins page.
+
+How to install a plugin 
+-----------------------
+
+Installing a plugin is very easy! If not already created, create a
+``plugins`` directory under your Bazaar configuration directory,
+``~/.bazaar/`` on Linux and
+``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\``
+on Windows. Within this directory (referred to as $BZR_HOME below),
+each plugin is placed in its own subdirectory.
+
+Plugins work particularly well with Bazaar branches. For example, to
+install the bzrtools plugins for your main user account on Linux,
+one can perform the following:: 
+
+    bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools
+    ~/.bazaar/plugins/bzrtools
+
+When installing plugins, the directories that you install them in must
+be valid python identifiers. This means that they can only contain
+certain characters, notably they cannot contain hyphens (``-``). Rather
+than installing ``bzr-gtk`` to ``$BZR_HOME/plugins/bzr-gtk``, install it
+to ``$BZR_HOME/plugins/gtk``.
+
+Alternative plugin locations
+----------------------------
+
+If you have the necessary permissions, plugins can also be installed on
+a system-wide basis. Two locations are currently checked for plugins:
+
+ 1. the system location - bzrlib/plugins
+ 2. the personal location - $BZR_HOME/plugins.
+
+On a Linux installation, these locations are typically
+``/usr/lib/python2.4/site-packages/bzrlib/plugins/`` and
+``$HOME/.bazaar/plugins/``.
+On a Windows installation, the system location might be
+``C:\\Program Files\\Bazaar\\plugins``
+while the personal location might be
+``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\plugins``.
+
+One can additionally override the personal plugins location
+by setting the environment variable ``BZR_PLUGIN_PATH``
+to a directory that contains plugins.
+
+Listing the installed plugins
+-----------------------------
+
+To do this, use the plugins command like this::
+
+    bzr plugins
+
+The name, location and version of each plugin installed will be displayed.
+
+New commands added by plugins can be seen by running ``bzr help commands``.
+The commands provided by a plugin are shown followed by the name of the
+plugin in brackets.
+
+Popular plugins
+---------------
+
+Here is a sample of some of the more popular plugins.
+
+  ================ ================= ==================================
+  Category         Name              Description
+  ================ ================= ==================================
+  GUI              QBzr              Qt-based GUI tools
+  GUI              bzr-gtk           GTK-based GUI tools
+  GUI              bzr-eclipse       Eclipse integration
+  General          bzrtools          misc. enhancements including shelf
+  General          difftools         external diff tool helper
+  General          extmerge          external merge tool helper
+  Integration      bzr-svn           use Subversion as a repository
+  Migration        cvsps             migrate CVS patch-sets
+  ================ ================= ==================================
+
+If you wish to write your own plugins, it is not difficult to do.
+See `Writing a plugin`_ in the appendices to get started.
