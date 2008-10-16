@@ -2014,6 +2014,13 @@ class TestTransformRollback(tests.TestCaseWithTransport):
         resolve_conflicts(tt)
 
 
+A_ENTRY = ('a-id', ('a', 'a'), True, (True, True),
+                  ('TREE_ROOT', 'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
+                  (False, False))
+ROOT_ENTRY = ('TREE_ROOT', ('', ''), False, (True, True), (None, None),
+              ('', ''), ('directory', 'directory'), (False, None))
+
+
 class TestTransformPreview(tests.TestCaseWithTransport):
 
     def create_tree(self):
@@ -2091,23 +2098,25 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                           (False, False))],
                           list(preview_tree.iter_changes(revision_tree)))
 
-    def test_include_unchanged_value_error(self):
+    def test_include_unchanged_succeeds(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              revision_tree, include_unchanged=True)
-        self.assertEqual('include_unchanged is not supported', str(e))
+        changes = preview_tree.iter_changes(revision_tree,
+                                            include_unchanged=True)
+        root = revision_tree.inventory.root.file_id
+
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
 
     def test_specific_files(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              revision_tree, specific_files=['pete'])
-        self.assertEqual('specific_files is not supported', str(e))
+        changes = preview_tree.iter_changes(revision_tree,
+                                            specific_files=[''])
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
 
-    def test_want_unversioned_value_error(self):
+    def test_want_unversioned(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              revision_tree, want_unversioned=True)
-        self.assertEqual('want_unversioned is not supported', str(e))
+        changes = preview_tree.iter_changes(revision_tree,
+                                            want_unversioned=True)
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
 
     def test_ignore_extra_trees_no_specific_files(self):
         # extra_trees is harmless without specific_files, so we'll silently
