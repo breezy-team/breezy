@@ -1427,6 +1427,16 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
             host='host', scheme='scheme', port=99, path='/foo')
         self.assertEqual(CREDENTIALS, credentials_from_disk)
 
+    def test_reset_credentials_different_name(self):
+        conf = config.AuthenticationConfig()
+        conf.set_credentials('name', 'host', 'user', 'password', 'scheme'),
+        conf.set_credentials('name2', 'host', 'user2', 'password', 'scheme'),
+        self.assertIs(None, conf._get_config().get('name'))
+        credentials = conf.get_credentials(host='host', scheme='scheme')
+        CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':
+                       'password', 'verify_certificates': True}
+        self.assertEqual(CREDENTIALS, credentials)
+
 
 class TestAuthenticationConfig(tests.TestCase):
     """Test AuthenticationConfig behaviour"""

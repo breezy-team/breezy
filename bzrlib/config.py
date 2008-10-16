@@ -1077,7 +1077,15 @@ class AuthenticationConfig(object):
             values['path'] = path
         if verify_certificates is not None:
             values['verify_certificates'] = str(verify_certificates)
-        self._get_config().update({name: values})
+        config = self._get_config()
+        for_deletion = []
+        for section, existing_values in config.items():
+            for key in ('scheme', 'host', 'port', 'path'):
+                if existing_values.get(key) != values.get(key):
+                    break
+            else:
+                del config[section]
+        config.update({name: values})
         self._save()
 
     def get_user(self, scheme, host, port=None,
