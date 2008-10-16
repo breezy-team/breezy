@@ -7,6 +7,64 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  USER-VISIBLE CHANGES:
+
+  NEW FEATURES:
+
+  IMPROVEMENTS:
+
+    * ``bzr dump-btree`` is a hidden command introduced to allow dumping
+      the contents of a compressed btree file.  (John Arbash Meinel)
+
+    * default username for bzr+ssh and sftp can be configured in
+      authentication.conf. (Aaron Bentley)
+
+  BUG FIXES:
+
+    * A failure to load a plugin due to an IncompatibleAPI exception is
+      now correctly reported. (Robert Collins, #279451)
+
+    * API versioning support now has a multiple-version checking api
+      ``require_any_api``. (Robert Collins, #279447)
+
+    * ``bzr co`` uses less memory. It used to unpack the entire WT into
+      memory before writing it to disk. This was a little bit faster, but
+      consumed lots of memory. (John Arbash Meinel, #269456)
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+  INTERNALS:
+
+  PORTABILITY:
+
+
+bzr 1.8 2008-10-16
+------------------
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  The bzr testsuite now passes on OS
+X and Python 2.6, and almost completely passes on Windows.  The
+smartserver code has gained several bug fixes and performance
+improvements, and can now run server-side hooks within an http server.
+
+  BUG FIXES:
+
+   * Fix "Must end write group" error when another error occurs during
+     ``bzr push``.  (Andrew Bennetts, #230902)
+
+  PORTABILITY:
+
+   * Some Pyrex versions require the WIN32 macro defined to compile on
+     that platform.  (Alexander Belchenko, Martin Pool, #277481)
+
+
+bzr 1.8rc1 2008-10-07
+---------------------
+
   CHANGES:
 
     * ``bzr log file`` has been changed. It now uses a different method
@@ -15,14 +73,24 @@ IN DEVELOPMENT
       towards your mainline. This simplifies the output, makes it faster,
       and reduces memory consumption.  (John Arbash Meinel)
 
+    * ``bzr merge`` now defaults to having ``--reprocess`` set, whenever
+      ``--show-base`` is not supplied.  (John Arbash Meinel)
+
     * ``bzr+http//`` will now optionally load plugins and write logs on the
       server. (Marius Kruger)
 
-  FEATURES
+    * ``bzrlib._dirstate_helpers_c.pyx`` does not compile correctly with
+      Pyrex 0.9.4.1 (it generates C code which causes segfaults). We
+      explicitly blacklist that version of the compiler for that
+      extension. Packaged versions will include .c files created with
+      pyrex >= 0.9.6 so it doesn't effect releases, only users running
+      from the source tree. (John Arbash Meinel, #276868)
+
+  FEATURES:
 
     * bzr is now compatible with python-2.6. python-2.6 is not yet officially
       supported (nor released, tests were conducted with the dev version of
-      python-2.6rc2), but all known problems have been fixed . Feedback
+      python-2.6rc2), but all known problems have been fixed.  Feedback
       welcome.
       (Vincent Ladeuil, #269535)
 
@@ -69,6 +137,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Avoid random failures arising from misinterpreted ``errno`` values
+      in ``_readdir_pyx.read_dir``.
+      (Martin Pool, #279381)
+
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
@@ -96,6 +168,9 @@ IN DEVELOPMENT
 
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
+
+    * Remove use of optional parameter in GSSAPI FTP support, since 
+      it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)
 
     * The autopacking logic will now always create a single new pack from
       all of the content which it deems is worth moving. This avoids the
@@ -171,6 +246,13 @@ IN DEVELOPMENT
       osutils.[md5|sha]), object__init__ and object.__new__ don't accept
       parameters anymore.
       (Vincent Ladeuil)
+
+
+bzr 1.7.1 2008-10-01
+--------------------
+
+  No changes from 1.7.1rc1.
+
 
 bzr 1.7.1rc1 2008-09-24
 -----------------------

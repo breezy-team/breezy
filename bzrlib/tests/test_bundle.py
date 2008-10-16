@@ -29,10 +29,10 @@ from bzrlib import (
     revision as _mod_revision,
     treebuilder,
     )
-from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle import read_mergeable_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
+from bzrlib.bzrdir import BzrDir
 from bzrlib.directory_service import directories
 from bzrlib.bundle.serializer import write_bundle, read_bundle, v09, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
@@ -1598,6 +1598,8 @@ class TestReadMergeableFromUrl(TestCaseWithTransport):
         sock_server = _DisconnectingTCPServer()
         sock_server.setUp()
         self.addCleanup(sock_server.tearDown)
+        # We don't really care what the url is since the server will close the
+        # connection without interpreting it
         url = sock_server.get_url()
         self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
 

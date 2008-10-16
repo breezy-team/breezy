@@ -24,6 +24,7 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+import errno
 import os
 import socket
 import sys
@@ -845,7 +846,14 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
             raise errors.MediumNotConnected(self)
         # We ignore the desired_count because on sockets it's more efficient to
         # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        return self._socket.recv(_MAX_READ_SIZE)
+        try:
+            return self._socket.recv(_MAX_READ_SIZE)
+        except socket.error, e:
+            if len(e.args) and e.args[0] == errno.ECONNRESET:
+                # Callers expect an empty string in that case
+                return ''
+            else:
+                raise
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
