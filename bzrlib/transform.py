@@ -1127,6 +1127,7 @@ class TreeTransformBase(object):
         return _PreviewTree(self)
 
     def _get_parents_texts(self, trans_id):
+        """Get texts for compression parents of this file."""
         file_id = self.tree_file_id(trans_id)
         try:
             if file_id is None or self._tree.kind(file_id) != 'file':
@@ -1136,10 +1137,15 @@ class TreeTransformBase(object):
         return (self._tree.get_file_text(file_id),)
 
     def _get_parents_lines(self, trans_id):
+        """Get lines for compression parents of this file."""
         return tuple(osutils.split_lines(p) for p
                      in self._get_parents_texts(trans_id))
 
     def serialize(self, serializer):
+        """Serialize this TreeTransform.
+
+        :param serializer: A Serialiser like pack.ContainerSerializer.
+        """
         new_name = dict((k, v.encode('utf-8')) for k, v in
                         self._new_name.items())
         new_executability = dict((k, int(v)) for k, v in
@@ -1177,6 +1183,11 @@ class TreeTransformBase(object):
 
 
     def deserialize(self, records):
+        """Deserialize a stored TreeTransform.
+
+        :param records: An iterable of (names, content) tuples, as per
+            pack.ContainerPushParser.
+        """
         names, content = records.next()
         attribs = bencode.bdecode(content)
         self._id_number = attribs['_id_number']
