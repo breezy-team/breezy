@@ -1065,7 +1065,7 @@ class AuthenticationConfig(object):
         return credentials
 
     def set_credentials(self, name, host, user, password=None, scheme=None,
-                        port=None, path=None):
+                        port=None, path=None, verify_certificates=None):
         values = {'host': host, 'user': user}
         if password is not None:
             values['password'] = password
@@ -1075,7 +1075,10 @@ class AuthenticationConfig(object):
             values['port'] = '%d' % port
         if path is not None:
             values['path'] = path
+        if verify_certificates is not None:
+            values['verify_certificates'] = str(verify_certificates)
         self._get_config().update({name: values})
+        self._save()
 
     def get_user(self, scheme, host, port=None,
                  realm=None, path=None, prompt=None):
