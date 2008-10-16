@@ -26,9 +26,11 @@ from bzrlib import (
     delta,
     errors,
     inventory,
+    multiparent,
     osutils,
     revision as _mod_revision,
     )
+from bzrlib.util import bencode
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
@@ -1123,6 +1125,86 @@ class TreeTransformBase(object):
         by show_diff_trees.  It must only be compared to tt._tree.
         """
         return _PreviewTree(self)
+
+    def _get_parents_texts(self, trans_id):
+        file_id = self.tree_file_id(trans_id)
+        try:
+            if file_id is None or self._tree.kind(file_id) != 'file':
+                return ()
+        except errors.NoSuchFile:
+            return ()
+        return (self._tree.get_file_text(file_id),)
+
+    def _get_parents_lines(self, trans_id):
+        return tuple(osutils.split_lines(p) for p
+                     in self._get_parents_texts(trans_id))
+
+    def serialize(self, serializer):
+        new_name = dict((k, v.encode('utf-8')) for k, v in
+                        self._new_name.items())
+        new_executability = dict((k, int(v)) for k, v in
+                                 self._new_executability.items())
+        tree_path_ids = dict((k.encode('utf-8'), v)
+                             for k, v in self._tree_path_ids.items())
+        attribs = {
+            '_id_number': self._id_number,
+            '_new_name': new_name,
+            '_new_parent': self._new_parent,
+            '_new_executability': new_executability,
+            '_new_id': self._new_id,
+            '_tree_path_ids': tree_path_ids,
+            '_removed_id': list(self._removed_id),
+            '_removed_contents': list(self._removed_contents),
+            '_non_present_ids': self._non_present_ids,
+            }
+        yield serializer.bytes_record(bencode.bencode(attribs),
+                                      (('attribs',),))
+        for trans_id, kind in self._new_contents.items():
+            if kind == 'file':
+                cur_file = open(self._limbo_name(trans_id), 'rb')
+                try:
+                    lines = osutils.split_lines(cur_file.read())
+                finally:
+                    cur_file.close()
+                parents = self._get_parents_lines(trans_id)
+                mpdiff = multiparent.MultiParent.from_lines(lines, parents)
+                content = ''.join(mpdiff.to_patch())
+            if kind == 'directory':
+                content = ''
+            if kind == 'symlink':
+                content = os.readlink(self._limbo_name(trans_id))
+            yield serializer.bytes_record(content, ((trans_id, kind),))
+
+
+    def deserialize(self, records):
+        names, content = records.next()
+        attribs = bencode.bdecode(content)
+        self._id_number = attribs['_id_number']
+        self._new_name = dict((k, v.decode('utf-8'))
+                            for k, v in attribs['_new_name'].items())
+        self._new_parent = attribs['_new_parent']
+        self._new_executability = dict((k, bool(v)) for k, v in
+            attribs['_new_executability'].items())
+        self._new_id = attribs['_new_id']
+        self._r_new_id = dict((v, k) for k, v in self._new_id.items())
+        self._tree_path_ids = {}
+        self._tree_id_paths = {}
+        for bytepath, trans_id in attribs['_tree_path_ids'].items():
+            path = bytepath.decode('utf-8')
+            self._tree_path_ids[path] = trans_id
+            self._tree_id_paths[trans_id] = path
+        self._removed_id = set(attribs['_removed_id'])
+        self._removed_contents = set(attribs['_removed_contents'])
+        self._non_present_ids = attribs['_non_present_ids']
+        for ((trans_id, kind),), content in records:
+            if kind == 'file':
+                mpdiff = multiparent.MultiParent.from_patch(content)
+                lines = mpdiff.to_lines(self._get_parents_texts(trans_id))
+                self.create_file(lines, trans_id)
+            if kind == 'directory':
+                self.create_directory(trans_id)
+            if kind == 'symlink':
+                self.create_symlink(content, trans_id)
 
 
 class TreeTransform(TreeTransformBase):
