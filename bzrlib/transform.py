@@ -1127,6 +1127,7 @@ class TreeTransformBase(object):
         return _PreviewTree(self)
 
     def _get_parents_texts(self, trans_id):
+        """Get texts for compression parents of this file."""
         file_id = self.tree_file_id(trans_id)
         try:
             if file_id is None or self._tree.kind(file_id) != 'file':
@@ -1136,10 +1137,15 @@ class TreeTransformBase(object):
         return (self._tree.get_file_text(file_id),)
 
     def _get_parents_lines(self, trans_id):
+        """Get lines for compression parents of this file."""
         return tuple(osutils.split_lines(p) for p
                      in self._get_parents_texts(trans_id))
 
     def serialize(self, serializer):
+        """Serialize this TreeTransform.
+
+        :param serializer: A Serialiser like pack.ContainerSerializer.
+        """
         new_name = dict((k, v.encode('utf-8')) for k, v in
                         self._new_name.items())
         new_executability = dict((k, int(v)) for k, v in
@@ -1177,6 +1183,11 @@ class TreeTransformBase(object):
 
 
     def deserialize(self, records):
+        """Deserialize a stored TreeTransform.
+
+        :param records: An iterable of (names, content) tuples, as per
+            pack.ContainerPushParser.
+        """
         names, content = records.next()
         attribs = bencode.bdecode(content)
         self._id_number = attribs['_id_number']
@@ -1835,11 +1846,11 @@ class _PreviewTree(tree.Tree):
                       require_versioned=True, want_unversioned=False):
         """See InterTree.iter_changes.
 
-        This implementation does not support include_unchanged, specific_files,
-        or want_unversioned.  extra_trees, require_versioned, and pb are
-        ignored.
+        This has a fast path that is only used when the from_tree matches
+        the transform tree, and no fancy options are supplied.
         """
-        if from_tree is not self._transform._tree:
+        if (from_tree is not self._transform._tree or include_unchanged or
+            specific_files or want_unversioned):
             return tree.InterTree(from_tree, self).iter_changes(
                 include_unchanged=include_unchanged,
                 specific_files=specific_files,
@@ -1847,10 +1858,6 @@ class _PreviewTree(tree.Tree):
                 extra_trees=extra_trees,
                 require_versioned=require_versioned,
                 want_unversioned=want_unversioned)
-        if include_unchanged:
-            raise ValueError('include_unchanged is not supported')
-        if specific_files is not None:
-            raise ValueError('specific_files is not supported')
         if want_unversioned:
             raise ValueError('want_unversioned is not supported')
         return self._transform.iter_changes()
