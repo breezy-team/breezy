@@ -7,6 +7,11 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  BUG FIXES:
+
+   * Fix "Must end write group" error when another error occurs during
+     ``bzr push``.  (Andrew Bennetts, #230902)
+
   PORTABILITY:
 
    * Some Pyrex versions require the WIN32 macro defined to compile on
