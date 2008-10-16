@@ -452,8 +452,16 @@ class PlugIn(object):
     def version_info(self):
         """Return the plugin's version_tuple or None if unknown."""
         version_info = getattr(self.module, 'version_info', None)
-        if version_info is not None and len(version_info) == 3:
-            version_info = tuple(version_info) + ('final', 0)
+        if version_info is not None:
+            try:
+                if isinstance(version_info, types.StringType):
+                    version_info = version_info.split('.')
+                elif len(version_info) == 3:
+                    version_info = tuple(version_info) + ('final', 0)
+            except TypeError, e:
+                # The given version_info isn't even iteratible
+                trace.log_exception_quietly()
+                version_info = (version_info,)
         return version_info
 
     def _get__version__(self):
