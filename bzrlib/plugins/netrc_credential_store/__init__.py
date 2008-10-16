@@ -50,9 +50,9 @@ class NetrcCredentialStore(config.CredentialStore):
             user, account, password = auth
             cred_user = credentials.get('user', None)
             if cred_user is None or user != cred_user:
-                # We don't use the netrc ability to provide a user since this
-                # is not handled by authentication.conf. So if the user doesn't
-                # match, we don't return a password.
+                # We don't use the netrc ability to provide a user since there
+                # is no way to give it back to AuthConfig. So if the user
+                # doesn't match, we don't return a password.
                 password = None
         return password
 
