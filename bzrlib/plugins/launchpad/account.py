@@ -43,7 +43,11 @@ class MismatchedUsernames(errors.BzrError):
 
 
 def get_lp_login(_config=None):
-    """Return the user's Launchpad username"""
+    """Return the user's Launchpad username.
+
+    :raises: MismatchedUsername if authentication.conf and bazaar.conf
+        disagree about username.
+    """
     if _config is None:
         _config = GlobalConfig()
 
