@@ -1,0 +1,44 @@
+Writing a plugin
+================
+
+Introduction
+------------
+
+Plugins are very similar to bzr core functionality.  They can import
+anything in bzrlib.  A plugin may simply override standard functionality,
+but most plugins supply new commands.
+
+Creating a new command
+----------------------
+
+To create a command, make a new object that derives from
+``bzrlib.commands.Command``, and name it ``cmd_foo``, where foo is the name of
+your command.  If you create a command whose name contains an underscore,
+it will appear in the UI with the underscore turned into a hyphen.  For
+example, `cmd_baz_import` will appear as `baz-import`.  For examples of how
+to write commands, please see ``builtins.py``.
+
+Once you've created a command you must register the command with
+``bzrlib.commands.register_command(cmd_foo)``.  You must register the
+command when your file is imported, otherwise bzr will not see it.
+
+Plugin searching rules
+----------------------
+
+Bzr will scan ``bzrlib/plugins`` and ``~/.bazaar/plugins`` for plugins
+by default.  You can override this with ``BZR_PLUGIN_PATH``.  Plugins
+may be either modules or packages.  If your plugin is a single file,
+you can structure it as a module.  If it has multiple files, or if you
+want to distribute it as a bzr branch, you should structure it as a
+package, i.e. a directory with an ``__init__.py`` file.
+
+More information
+----------------
+
+Please feel free to contribute your plugin to BzrTools, if you think it
+would be useful to other people.
+
+See the `Bazaar Developer Guide`_ for details on Bazaar's development
+guidelines and policies.
+
+.. _Bazaar Developer Guide: ../developer-guide/HACKING.html

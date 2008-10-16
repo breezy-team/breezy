@@ -1,0 +1,7 @@
+
+Bazaar is free software; you can redistribute and/or modify it under
+the terms of the GNU General Public License version 2. 
+
+See: http://www.gnu.org/copyleft/gpl.html
+
+Managing source code in Bazaar does not make it subject to the GPL.

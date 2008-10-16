@@ -1,0 +1,107 @@
+Branching a project
+===================
+
+Branch URLs
+-----------
+
+Before someone else can get a copy of your work, you need to
+agree on a transfer technology.
+You may decide to make the top level directory of your branch
+a network share, an approach familiar to Windows users.
+Linux and OS X users might prefer access to be
+via SFTP, a secure protocol built-in to most SSH servers.
+Bazaar is *very* flexible in this regard with support for
+lots of protocols some of which are given below.
+
+  ===========         ======================================================
+  Prefix              Description
+  ===========         ======================================================
+  file://             Access using the standard filesystem (default)
+  sftp://             Access using SFTP (most SSH servers provide SFTP).
+  bzr://              Fast access using the Bazaar smart server.
+  ftp://              Access using passive FTP.
+  http://             Read-only access to branches exported by a web server.
+  ===========         ======================================================
+
+As indicated above, branches are identified using URLs with the
+prefix indicating the transfer technology. If no prefix is given,
+normal filenames are assumed. For a complete list of supported
+protocols, see the ``urlspec`` online help topic or the
+`URL Identifiers <../user-reference/bzr_man.html#url-identifiers>`_
+section of the Bazaar User Reference.
+
+A reminder about shared repositories
+------------------------------------
+
+Before getting a copy of a branch, have a quick think about
+where to put it on your filesystem. For maximum storage
+efficiency down the track, it is recommended that branches
+be created somewhere under a directory that has been set up
+as a shared repository. For example::
+
+  bzr init-repo my-repo
+  cd my-repo
+
+You are now ready to grab a branch from someone else and
+hack away.
+
+The branch command
+------------------
+
+To get a branch based on an existing branch, use the ``branch`` command.
+The syntax is::
+
+  bzr branch URL [directory]
+
+If a directory is not given, one is created based on the last part of
+the URL. Here are some examples showing a drive qualified path (M:/) and an
+sftp URL respectively::
+
+  bzr branch M:/cool-trunk
+  bzr branch sftp://bill@mary-laptop/cool-repo/cool-trunk
+
+This example shows explicitly giving the directory name to use for the
+new branch::
+
+  bzr branch /home/mary/cool-repo/cool-trunk cool
+
+Time and space considerations
+-----------------------------
+
+Depending on the size of the branch being transferred and the
+speed and latency of the network between your computer and the
+source branch, this initial transfer might take some time.
+Subsequent updates should be much faster as only the
+changes are transferred then.
+
+Keep in mind that Bazaar is transferring the
+complete history of the branch, not just the latest snapshot.
+As a consequence, you can be off the network (or disconnected
+from the network share) after ``branch`` completes but you'll
+still be able to ``log`` and ``diff`` the history of the
+branch as much as you want. Furthermore, these operations
+are quick as the history is stored locally.
+
+Note that Bazaar uses smart compression technology to
+minimize the amount of disk space required to store version
+history. In many cases, the complete history of a project
+will take up less disk space than the working copy of
+the latest version.
+
+As explained in later chapters, Bazaar also has support for
+lightweight checkouts of a branch, i.e. working trees with
+no local storage of history. Of course, disconnected usage
+is not available then but that's a tradeoff you can decide
+to make if local disk space is really tight for you. Support for
+limited lookback into history - *history horizons* - is
+currently under development as well.
+
+Viewing branch information
+--------------------------
+
+If you wish to see information about a branch including where it came from,
+use the ``info`` command. For example::
+
+  bzr info cool
+
+If no branch is given, information on the current branch is displayed.
