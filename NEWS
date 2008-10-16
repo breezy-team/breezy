@@ -4,8 +4,14 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+bzr 1.8 2008-10-16
+------------------
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  The bzr testsuite now passes on OS
+X and Python 2.6, and almost completely passes on Windows.  The
+smartserver code has gained several bug fixes and performance
+improvements, and can now run server-side hooks within an http server.
 
   BUG FIXES:
 
@@ -17,15 +23,9 @@ IN DEVELOPMENT
    * Some Pyrex versions require the WIN32 macro defined to compile on
      that platform.  (Alexander Belchenko, Martin Pool, #277481)
 
+
 bzr 1.8rc1 2008-10-07
 ---------------------
-
-Bazaar 1.8 includes several fixes that improve working tree performance,
-display of revision logs, and merges.  We've also fixed, and the bzr
-testsuite now passes on OS X and Python 2.6, and almost completely passes
-on Windows.  The smartserver code has gained several bug fixes and
-performance improvements, and can now run server-side hooks within an http
-server.
 
   CHANGES:
 
