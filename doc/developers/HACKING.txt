@@ -224,9 +224,9 @@ against mainline if you're giving a link to a branch.
 
 You can generate a merge request like this::
 
-  bzr send -o bug-1234.diff
+  bzr send -o bug-1234.patch
   
-A ``.diff`` extension is recommended instead of .bundle as many mail clients
+A ``.patch`` extension is recommended instead of .bundle as many mail clients
 will send the latter as a binary file.
 
 ``bzr send`` can also send mail directly if you prefer; see the help.
