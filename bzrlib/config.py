@@ -1066,6 +1066,23 @@ class AuthenticationConfig(object):
 
     def set_credentials(self, name, host, user, password=None, scheme=None,
                         port=None, path=None, verify_certificates=None):
+        """Set authentication credentials for a host.
+
+        Any existing credentials with matching scheme, host, port and path
+        will be deleted, regardless of name.
+
+        :param name: An arbitrary name to describe this set of credentials.
+        :param host: Name of the host that accepts these credentials.
+        :param user: The username portion of these credentials.
+        :param password: Password portion of these credentials.
+        :param scheme: The URL scheme (e.g. ssh, http) the credentials apply
+            to.
+        :param port: The IP port on the host that these credentials apply to.
+        :param path: A filesystem path on the host that these credentials
+            apply to.
+        :param verify_certificates: On https, verify server certificates if
+            True.
+        """
         values = {'host': host, 'user': user}
         if password is not None:
             values['password'] = password
