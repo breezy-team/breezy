@@ -20,8 +20,8 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
-from bzrlib import errors
-from bzrlib.config import GlobalConfig
+from bzrlib import errors, trace
+from bzrlib.config import AuthenticationConfig, GlobalConfig
 from bzrlib.transport import get_transport
 
 
@@ -36,20 +36,51 @@ class NoRegisteredSSHKeys(errors.BzrError):
     _fmt = "The user %(user)s has not registered any SSH keys with Launchpad."
 
 
+class MismatchedUsernames(errors.BzrError):
+
+    _fmt = ('bazaar.conf and authentication.conf disagree about launchpad'
+            ' account name.  Please re-run launchpad-login.')
+
+
 def get_lp_login(_config=None):
     """Return the user's Launchpad username"""
     if _config is None:
         _config = GlobalConfig()
 
-    return _config.get_user_option('launchpad_username')
+    username = _config.get_user_option('launchpad_username')
+    auth = AuthenticationConfig()
+    auth_username = _get_auth_user(auth)
+    # Auto-upgrading
+    if auth_username is None:
+        trace.note('Setting ssh/sftp username for bazaar.launchpad.net.')
+        _set_auth_user(username, auth)
+    elif auth_username != username:
+        raise MismatchedUsernames()
+    return username
+
+
+def _set_global_option(username, _config=None):
+    if _config is None:
+        _config = GlobalConfig()
+    _config.set_user_option('launchpad_username', username)
 
 
 def set_lp_login(username, _config=None):
     """Set the user's Launchpad username"""
-    if _config is None:
-        _config = GlobalConfig()
+    _set_global_option(username, _config)
+    _set_auth_user(username)
 
-    _config.set_user_option('launchpad_username', username)
+
+def _get_auth_user(auth=None):
+    if auth is None:
+        auth = AuthenticationConfig()
+    return auth.get_user('ssh', 'bazaar.launchpad.net')
+
+def _set_auth_user(username, auth=None):
+    if auth is None:
+        auth = AuthenticationConfig()
+    auth.set_credentials(
+        'Launchpad', 'bazaar.launchpad.net', username, scheme='ssh')
 
 
 def check_lp_login(username, _transport=None):
