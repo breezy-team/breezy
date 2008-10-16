@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -1416,7 +1416,7 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
 
     def test_set_credentials(self):
         conf = config.AuthenticationConfig()
-        conf.set_credentials('name', 'host', 'user', 'password', 'scheme',
+        conf.set_credentials('name', 'host', 'user', 'scheme', 'password',
         99, path='/foo', verify_certificates=False)
         credentials = conf.get_credentials(host='host', scheme='scheme',
                                            port=99, path='/foo')
@@ -1429,8 +1429,8 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
 
     def test_reset_credentials_different_name(self):
         conf = config.AuthenticationConfig()
-        conf.set_credentials('name', 'host', 'user', 'password', 'scheme'),
-        conf.set_credentials('name2', 'host', 'user2', 'password', 'scheme'),
+        conf.set_credentials('name', 'host', 'user', 'scheme', 'password'),
+        conf.set_credentials('name2', 'host', 'user2', 'scheme', 'password'),
         self.assertIs(None, conf._get_config().get('name'))
         credentials = conf.get_credentials(host='host', scheme='scheme')
         CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':

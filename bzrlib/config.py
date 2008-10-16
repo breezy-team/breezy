@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -1064,7 +1064,7 @@ class AuthenticationConfig(object):
 
         return credentials
 
-    def set_credentials(self, name, host, user, password=None, scheme=None,
+    def set_credentials(self, name, host, user, scheme=None, password=None,
                         port=None, path=None, verify_certificates=None):
         """Set authentication credentials for a host.
 
@@ -1074,9 +1074,9 @@ class AuthenticationConfig(object):
         :param name: An arbitrary name to describe this set of credentials.
         :param host: Name of the host that accepts these credentials.
         :param user: The username portion of these credentials.
-        :param password: Password portion of these credentials.
         :param scheme: The URL scheme (e.g. ssh, http) the credentials apply
             to.
+        :param password: Password portion of these credentials.
         :param port: The IP port on the host that these credentials apply to.
         :param path: A filesystem path on the host that these credentials
             apply to.
