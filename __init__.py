@@ -353,6 +353,10 @@ class cmd_upload(commands.Command):
         if directory is None:
             directory = u'.'
 
+        if auto and not auto_hook_available:
+            raise BzrCommandError("Your version of bzr does not have the "
+                    "hooks necessary for --auto to work")
+
         wt = workingtree.WorkingTree.open_containing(directory)[0]
         changes = wt.changes_from(wt.basis_tree())
 
@@ -404,9 +408,14 @@ commands.register_command(cmd_upload)
 
 from bzrlib.plugins.upload.auto_upload_hook import auto_upload_hook
 
-branch.Branch.hooks.install_named_hook('post_change_branch_tip',
-        auto_upload_hook,
-        'Auto upload code from a branch when it is changed.')
+
+if hasattr(branch.Branch.hooks, "install_named_hook"):
+    branch.Branch.hooks.install_named_hook('post_change_branch_tip',
+            auto_upload_hook,
+            'Auto upload code from a branch when it is changed.')
+    auto_hook_available = True
+else:
+    auto_hook_available = False
 
 
 def load_tests(basic_tests, module, loader):
