@@ -39,6 +39,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+     * New AuthenticationConfig.set_credentials method allows easy programmatic
+       configuration of authetication credentials.
+
   PORTABILITY:
 
 
