@@ -462,7 +462,8 @@ class PlugIn(object):
             return "unknown"
         try:
             version_string = _format_version_tuple(version_info)
-        except:
+        except (ValueError, TypeError, IndexError), e:
+            trace.log_exception_quietly()
             # try to return something usefull for bad plugins, in stead of
             # stack tracing.
             version_string = '.'.join(map(str, version_info))
