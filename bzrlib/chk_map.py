@@ -222,3 +222,19 @@ class ValueNode(object):
         :return: A bytestring.
         """
         return "chkvalue:\n" + self.value
+
+    def refs(self):
+        """ValueNodes have no refs within the dict."""
+        return []
+
+
+def _deserialise(bytes, key):
+    """Helper for repositorydetails - convert bytes to a node."""
+    if bytes.startswith("chkvalue:\n"):
+        return ValueNode.deserialise(bytes)
+    elif bytes.startswith("chkroot:\n"):
+        result = RootNode()
+        result.deserialise(bytes, key)
+        return result
+    else:
+        raise AssertionError("Unknown node type.")
