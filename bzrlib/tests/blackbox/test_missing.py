@@ -29,6 +29,9 @@ class TestMissing(TestCaseWithTransport):
     def test_missing_quiet(self):
         # <https://bugs.launchpad.net/bzr/+bug/284748>
         # create a source branch
+        #
+        # XXX: This still needs a test that missing is quiet when there are
+        # missing revisions.
         a_tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'initial\n')])
         a_tree.add('a')

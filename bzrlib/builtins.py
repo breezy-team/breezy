@@ -3492,7 +3492,7 @@ class cmd_missing(Command):
                 status_code = 0
                 if local_extra and not theirs_only:
                     message("You have %d extra revision(s):\n" %
-                                    len(local_extra))
+                        len(local_extra))
                     for revision in iter_log_revisions(local_extra,
                                         local_branch.repository,
                                         verbose):
@@ -3506,7 +3506,7 @@ class cmd_missing(Command):
                     if printed_local is True:
                         message("\n\n\n")
                     message("You are missing %d revision(s):\n" %
-                                    len(remote_extra))
+                        len(remote_extra))
                     for revision in iter_log_revisions(remote_extra,
                                         remote_branch.repository,
                                         verbose):
