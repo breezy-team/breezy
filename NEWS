@@ -23,7 +23,7 @@ IN DEVELOPMENT
       URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
 
     * lp: lookups no longer include usernames, making them shareable and
-      shorter.
+      shorter. (Aaron Bentley)
 
   BUG FIXES:
 
