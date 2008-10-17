@@ -150,7 +150,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEquals(
-            'bzr+ssh://username@bazaar.launchpad.net/~apt/apt/devel',
+            'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
             directory._resolve('lp:///apt', factory, _lp_login='username'))
 
     def test_no_rewrite_of_other_bzr_ssh(self):
