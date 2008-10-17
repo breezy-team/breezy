@@ -18,6 +18,13 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Fixes to the ``annotate`` code. The fast-path which re-used the
+      stored deltas was accidentally disabled all the time, instead of
+      only when a branch was stacked. Second, the code would accidentally
+      re-use a delta even if it wasn't against the left-parent, this
+      could only happen if ``bzr reconcile`` decided that the parent
+      ordering was incorrect in the file graph.  (John Arbash Meinel)
+
   DOCUMENTATION:
 
   API CHANGES:
