@@ -244,7 +244,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
 class TestUnshelver(tests.TestCaseWithTransport):
 
-    def test_unshelve(self):
+    def test_make_merger(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('first commit')
         self.build_tree_contents([('tree/foo', 'bar')])
@@ -258,7 +258,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator.transform()
         filename = creator.write_shelf()
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, filename)
-        unshelver.unshelve()
+        unshelver.make_merger().do_merge()
         self.assertFileEqual('bar', 'tree/foo')
 
     def test_unshelve_changed(self):
@@ -277,7 +277,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         creator.transform()
         self.build_tree_contents([('tree/foo', 'z\na\nb\nc\n')])
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, filename)
-        unshelver.unshelve()
+        unshelver.make_merger().do_merge()
         self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
 
     def test_unshelve_base(self):

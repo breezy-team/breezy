@@ -272,16 +272,7 @@ class Unshelver(object):
         tt.deserialize(records)
         return klass(tree, base_tree, tt, message)
 
-    def unshelve(self, change_reporter=None):
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            merger = self.get_merger()
-            merger.change_reporter = change_reporter
-            merger.do_merge()
-        finally:
-            pb.finished()
-
-    def get_merger(self):
+    def make_merger(self):
         """Return a merger that can unshelve the changes."""
         pb = ui.ui_factory.nested_progress_bar()
         try:
