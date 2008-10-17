@@ -19,6 +19,9 @@ IN DEVELOPMENT
     * default username for bzr+ssh and sftp can be configured in
       authentication.conf. (Aaron Bentley)
 
+    * launchpad-login now provides a default username for bzr+ssh and sftp
+      URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
+
   BUG FIXES:
 
     * A failure to load a plugin due to an IncompatibleAPI exception is
@@ -38,6 +41,9 @@ IN DEVELOPMENT
   TESTING:
 
   INTERNALS:
+
+     * New AuthenticationConfig.set_credentials method allows easy programmatic
+       configuration of authetication credentials.
 
   PORTABILITY:
 
