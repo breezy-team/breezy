@@ -22,6 +22,9 @@ IN DEVELOPMENT
     * launchpad-login now provides a default username for bzr+ssh and sftp
       URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
 
+    * lp: lookups no longer include usernames, making them shareable and
+      shorter. (Aaron Bentley)
+
   BUG FIXES:
 
     * A failure to load a plugin due to an IncompatibleAPI exception is
