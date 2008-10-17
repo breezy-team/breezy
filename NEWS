@@ -21,6 +21,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr missing --quiet`` no longer prints messages about whether
+      there are missing revisions.  The exit code indicates whether there
+      were or not.  (Martin Pool, #284748)
+
   DOCUMENTATION:
 
   API CHANGES:
