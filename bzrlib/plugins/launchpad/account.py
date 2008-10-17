@@ -52,14 +52,15 @@ def get_lp_login(_config=None):
         _config = GlobalConfig()
 
     username = _config.get_user_option('launchpad_username')
-    auth = AuthenticationConfig()
-    auth_username = _get_auth_user(auth)
-    # Auto-upgrading
-    if auth_username is None:
-        trace.note('Setting ssh/sftp username for bazaar.launchpad.net.')
-        _set_auth_user(username, auth)
-    elif auth_username != username:
-        raise MismatchedUsernames()
+    if username is not None:
+        auth = AuthenticationConfig()
+        auth_username = _get_auth_user(auth)
+        # Auto-upgrading
+        if auth_username is None:
+            trace.note('Setting ssh/sftp username for bazaar.launchpad.net.')
+            _set_auth_user(username, auth)
+        elif auth_username != username:
+            raise MismatchedUsernames()
     return username
 
 

@@ -23,7 +23,11 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
-from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestCaseWithMemoryTransport
+)
 from bzrlib.transport import get_transport
 from bzrlib.plugins.launchpad import _register_directory
 from bzrlib.plugins.launchpad.lp_directory import (
@@ -46,7 +50,7 @@ class FakeResolveFactory(object):
         return self._result
 
 
-class DirectoryUrlTests(TestCase):
+class DirectoryUrlTests(TestCaseInTempDir):
     """Tests for branch urls through Launchpad.net directory"""
 
     def test_short_form(self):
