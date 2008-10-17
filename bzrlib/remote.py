@@ -1769,6 +1769,9 @@ def _translate_error(err, **context):
             mutter('Missing key %r in context %r', key_err.args[0], context)
             raise err
     def get_path():
+        """Get the path from the context if present, otherwise use first error
+        arg.
+        """
         try:
             return context['path']
         except KeyError, key_err:
