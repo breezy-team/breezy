@@ -16,7 +16,7 @@
 
 import os
 
-from bzrlib import pack, shelf, tests, transform
+from bzrlib import errors, pack, shelf, tests, transform
 
 
 class TestPrepareShelf(tests.TestCaseWithTransport):
@@ -246,7 +246,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
 class TestUnshelver(tests.TestCaseWithTransport):
 
-    def test_unshelve(self):
+    def test_make_merger(self):
         tree = self.make_branch_and_tree('tree')
         tree.commit('first commit')
         self.build_tree_contents([('tree/foo', 'bar')])
@@ -263,7 +263,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
             creator.transform()
             shelf_file.seek(0)
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
-            unshelver.unshelve()
+            unshelver.make_merger().do_merge()
             self.assertFileEqual('bar', 'tree/foo')
         finally:
             shelf_file.close()
@@ -287,7 +287,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/foo', 'z\na\nb\nc\n')])
         shelf_file.seek(0)
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
-        unshelver.unshelve()
+        unshelver.make_merger().do_merge()
         self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
 
     def test_unshelve_base(self):
@@ -382,7 +382,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
 
     def test_read_non_existant(self):
         manager = self.get_manager()
-        e = self.assertRaises(shelf.NoSuchShelfId, manager.read_shelf, 1)
+        e = self.assertRaises(errors.NoSuchShelfId, manager.read_shelf, 1)
         self.assertEqual('No changes are shelved with id "1".', str(e))
 
     def test_shelve_changes(self):
@@ -401,5 +401,5 @@ class TestShelfManager(tests.TestCaseWithTransport):
         shelf_id = shelf_manager.shelve_changes(creator)
         self.failIfExists('tree/foo')
         unshelver = shelf_manager.get_unshelver(shelf_id)
-        unshelver.unshelve()
+        unshelver.make_merger().do_merge()
         self.assertFileEqual('bar', 'tree/foo')
