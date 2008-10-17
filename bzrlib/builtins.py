@@ -4707,7 +4707,7 @@ class cmd_hooks(Command):
                 self.outf.write("  <no hooks installed>\n")
 
 
-class cmd_shelve2(Command):
+class cmd_shelve(Command):
     """Temporarily set aside some changes from the current tree.
 
     Shelve allows you to temporarily put changes you've made "on the shelf",
@@ -4738,13 +4738,14 @@ class cmd_shelve2(Command):
         Option('all', help='Shelve all changes.'),
         'message',
     ]
+    _see_also = ['unshelve']
 
     def run(self, revision=None, all=False, file_list=None, message=None):
         from bzrlib.shelf_ui import Shelver
         Shelver.from_args(revision, all, file_list, message).run()
 
 
-class cmd_unshelve2(Command):
+class cmd_unshelve(Command):
     """Restore shelved changes.
 
     By default, the most recently shelved changes are restored. However if you
@@ -4762,7 +4763,7 @@ class cmd_unshelve2(Command):
             delete_only="Delete changes without applying them."
         )
     ]
-    _see_also = ['shelve2']
+    _see_also = ['shelve']
 
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.shelf_ui import Unshelver
