@@ -40,28 +40,40 @@ Preparing the tree for release
    
    The diff before you commit will be something like::
 
-       === modified file 'NEWS'
-       --- NEWS        2006-10-23 13:11:17 +0000
-       +++ NEWS        2006-10-23 22:50:50 +0000
-       @@ -1,4 +1,4 @@
-       -IN DEVELOPMENT
-       +bzr 0.12rc1  2006-10-23
-
-          IMPROVEMENTS:
-
-
-       === modified file 'bzrlib/__init__.py'
-       --- bzrlib/__init__.py  2006-10-16 01:47:43 +0000
-       +++ bzrlib/__init__.py  2006-10-23 22:49:46 +0000
-       @@ -35,7 +35,7 @@
-        # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
-        # releaselevel of 'dev' for unreleased under-development code.
-
-       -version_info = (0, 12, 0, 'dev', 0)
-       +version_info = (0, 12, 0, 'candidate', 1)
-
-        if version_info[3] == 'final':
-            version_string = '%d.%d.%d' % version_info[:3]
+     === modified file 'NEWS'
+     --- NEWS        2008-09-17 23:09:18 +0000
+     +++ NEWS        2008-09-23 16:14:54 +0000
+     @@ -4,6 +4,23 @@
+     
+      .. contents::
+     
+     +bzr 1.7 2008-09-23
+     +------------------
+     +
+     +This release includes many bug fixes and a few performance and feature
+     +improvements.  ``bzr rm`` will now scan for missing files and remove them,
+     +like how ``bzr add`` scans for unknown files and adds them. A bit more
+     +polish has been applied to the stacking code. The b-tree indexing code has
+     +been brought in, with an eye on using it in a future repository format.
+     +There are only minor installer changes since bzr-1.7rc2.
+     +
+      bzr 1.7rc2 2008-09-17
+      ---------------------
+     
+     
+     === modified file 'bzrlib/__init__.py'
+     --- bzrlib/__init__.py  2008-09-16 21:39:28 +0000
+     +++ bzrlib/__init__.py  2008-09-23 16:14:54 +0000
+     @@ -41,7 +41,7 @@
+      # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+      # releaselevel of 'dev' for unreleased under-development code.
+     
+     -version_info = (1, 7, 0, 'candidate', 2)
+     +version_info = (1, 7, 0, 'final', 0)
+     
+     
+      # API compatibility version: bzrlib is currently API compatible with 1.7.
+      
 
 #. Submit those changes to PQM for merge into the appropriate release
    branch::
@@ -117,7 +129,9 @@ Now that the release is publicly available, tell people about it.
    For release candidates, this is sent to the ``bazaar-announce`` and
    ``bazaar`` lists.  For final releases, it should also be cc'd to 
    ``info-gnu@gnu.org``, ``python-announce-list@python.org``, 
-   ``bug-directory@gnu.org``.
+   ``bug-directory@gnu.org``.  In both cases, it is good to set
+   ``Reply-To: bazaar@lists.canonical.com``, so that people who reply to
+   the announcement don't spam other lists.
 
    The announce mail will look something like this:
    
@@ -134,13 +148,17 @@ Now that the release is publicly available, tell people about it.
     | 
     | <<NEWS section from this release back to the last major release>>
 
-#. Update the IRC channel topic. Use the ``/topic`` command to do this, ensuring the new topic text keeps the project name, web site link, etc.
+#. Update the IRC channel topic. Use the ``/topic`` command to do this,
+   ensuring the new topic text keeps the project name, web site link, etc.
 
 #. Announce on http://freshmeat.net/projects/bzr/
    
-   This should be done for both release candidates and final releases. If you do not have a Freshmeat account yet, ask one of the existing admins.
+   This should be done for both release candidates and final releases. If
+   you do not have a Freshmeat account yet, ask one of the existing
+   admins.
 
-#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for final releases but not for Release Candidates.
+#. Update http://en.wikipedia.org/wiki/Bzr -- this should be done for
+   final releases but not for Release Candidates.
 
 #. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
    done by running ::
