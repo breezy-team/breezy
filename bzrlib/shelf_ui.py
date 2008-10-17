@@ -25,14 +25,17 @@ from bzrlib import (
     delta,
     diff,
     errors,
+    osutils,
     patches,
     shelf,
     textfile,
     trace,
     ui,
     workingtree)
-from bzrlib.plugins.bzrtools import colordiff
-from bzrlib.plugins.bzrtools.userinteractor import getchar
+try:
+    from bzrlib.plugins.bzrtools import colordiff
+except ImportError:
+    colordiff = None
 
 
 class Shelver(object):
@@ -45,7 +48,10 @@ class Shelver(object):
         self.diff_file = StringIO()
         self.text_differ = diff.DiffText(self.target_tree, self.work_tree,
                                          self.diff_file)
-        self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
+        if colordiff is not None:
+            self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
+        else:
+            self.diff_writer = sys.stdout
         self.manager = work_tree.get_shelf_manager()
         self.auto = auto
         self.auto_apply = auto_apply
@@ -129,7 +135,7 @@ class Shelver(object):
             return True
         message = question + ' [yNfq]'
         sys.stdout.write(message)
-        char = getchar()
+        char = osutils.getchar()
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
         sys.stdout.flush()
         if char == 'y':
