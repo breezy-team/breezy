@@ -214,7 +214,7 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note('Message: %s' % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                merger = unshelver.get_merger()
+                merger = unshelver.make_merger()
                 merger.change_reporter = change_reporter
                 if self.apply_changes:
                     pb = ui.ui_factory.nested_progress_bar()
