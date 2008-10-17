@@ -16,7 +16,7 @@
 
 import os
 
-from bzrlib import pack, shelf, tests, transform
+from bzrlib import errors, pack, shelf, tests, transform
 
 
 class TestPrepareShelf(tests.TestCaseWithTransport):
@@ -382,7 +382,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
 
     def test_read_non_existant(self):
         manager = self.get_manager()
-        e = self.assertRaises(shelf.NoSuchShelfId, manager.read_shelf, 1)
+        e = self.assertRaises(errors.NoSuchShelfId, manager.read_shelf, 1)
         self.assertEqual('No changes are shelved with id "1".', str(e))
 
     def test_shelve_changes(self):

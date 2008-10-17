@@ -277,14 +277,8 @@ class Unshelver(object):
         self.transform.finalize()
 
 
-class NoSuchShelfId(errors.BzrError):
-
-    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
-
-    def __init__(self, shelf_id):
-        errors.BzrError.__init__(self, shelf_id=shelf_id)
-
 class ShelfManager(object):
+    """Maintain a list of shelved changes."""
 
     def __init__(self, tree, transport):
         self.tree = tree
@@ -292,6 +286,7 @@ class ShelfManager(object):
         self.transport.ensure_base()
 
     def new_shelf(self):
+        """Return a file object and id for a new set of shelved changes."""
         last_shelf = self.last_shelf()
         if last_shelf is None:
             next_shelf = 1
@@ -301,6 +296,7 @@ class ShelfManager(object):
         return next_shelf, shelf_file
 
     def shelve_changes(self, creator, message=None):
+        """Store the changes in a ShelfCreator on a shelf."""
         next_shelf, shelf_file = self.new_shelf()
         try:
             creator.write_shelf(shelf_file, message)
@@ -310,14 +306,23 @@ class ShelfManager(object):
         return next_shelf
 
     def read_shelf(self, shelf_id):
+        """Return the file associated with a shelf_id for reading.
+
+        :param shelf_id: The id of the shelf to retrive the file for.
+        """
         try:
             return open(self.transport.local_abspath(str(shelf_id)), 'rb')
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
-            raise NoSuchShelfId(shelf_id)
+            from bzrlib import errors
+            raise errors.NoSuchShelfId(shelf_id)
 
     def get_unshelver(self, shelf_id):
+        """Return an unshelver for a given shelf_id.
+
+        :param shelf_id: The shelf id to return the unshelver for.
+        """
         shelf_file = self.read_shelf(shelf_id)
         try:
             return Unshelver.from_tree_and_shelf(self.tree, shelf_file)
@@ -325,21 +330,20 @@ class ShelfManager(object):
             shelf_file.close()
 
     def delete_shelf(self, shelf_id):
+        """Delete the shelved changes for a given id.
+
+        :param shelf_id: id of the shelved changes to delete.
+        """
         self.transport.delete(str(shelf_id))
 
     def active_shelves(self):
+        """Return a list of shelved changes."""
         return [int(f) for f in self.transport.list_dir('.')]
 
     def last_shelf(self):
+        """Return the id of the last-created shelved change."""
         active = self.active_shelves()
         if len(active) > 0:
             return max(active)
         else:
             return None
-
-
-def get_shelf_manager(self):
-    return ShelfManager(self, self._transport)
-
-
-workingtree.WorkingTree.get_shelf_manager = get_shelf_manager
