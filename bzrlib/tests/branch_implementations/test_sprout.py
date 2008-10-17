@@ -101,17 +101,18 @@ class TestSprout(TestCaseWithBranch):
         self.assertEqual('rev1a', wt2.last_revision())
         self.failUnlessExists('target/a')
 
-    def test_sprout_with_utf8_symlink(self):
-        # this tests bug #272444 (also tested by TestSetParents.test_utf8_symlink at test_parents.py)
+    def test_sprout_with_unicode_symlink(self):
+        # this tests bug #272444 (also tested by TestSetParents.test_unicode_symlink at test_parents.py)
         self.requireFeature(SymlinkFeature)
         self.requireFeature(UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
-        # 'adiós' ('goodbye' in Spanish) in utf-8
-        os.symlink('adi\xc3\xb3s','tree1/link_name')
+        # 'adiós' ('goodbye' in Spanish) as unicode
+        # 'ó' is \xf3 in unicode and \xc3\xb3 in a utf-8 string
+        os.symlink(u'adi\xf3s','tree1/link_name')
         tree.add(['link_name'],['link-id'])
-        revision = tree.commit('added a link to an utf-8 target')
+        revision = tree.commit('added a link to a Unicode target')
 
         try:
             tree.bzrdir.sprout('target')
