@@ -228,8 +228,15 @@ class ShelfCreator(object):
 
 
 class Unshelver(object):
+    """Unshelve shelved changes."""
 
     def __init__(self, tree, base_tree, transform, message):
+        """Constructor.
+
+        :param tree: The tree to apply the changes to.
+        :param base_tree: The basis to apply the tranform to.
+        :param message: A message from the shelved transform.
+        """
         self.tree = tree
         self.base_tree = base_tree
         self.transform = transform
@@ -237,6 +244,12 @@ class Unshelver(object):
 
     @classmethod
     def from_tree_and_shelf(klass, tree, shelf_filename):
+        """Create an Unshelver from a tree and a shelf file.
+
+        :param tree: The tree to apply shelved changes to.
+        :param shelf_filename: Path to the file of shelved changes.
+        :return: The Unshelver.
+        """
         parser = pack.ContainerPushParser()
         shelf_file = open(shelf_filename, 'rb')
         try:
@@ -269,6 +282,7 @@ class Unshelver(object):
             pb.finished()
 
     def get_merger(self):
+        """Return a merger that can unshelve the changes."""
         pb = ui.ui_factory.nested_progress_bar()
         try:
             target_tree = self.transform.get_preview_tree()
@@ -280,4 +294,5 @@ class Unshelver(object):
             pb.finished()
 
     def finalize(self):
+        """Release all resources held by this Unshelver."""
         self.transform.finalize()
