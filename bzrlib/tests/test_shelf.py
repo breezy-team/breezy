@@ -401,5 +401,5 @@ class TestShelfManager(tests.TestCaseWithTransport):
         shelf_id = shelf_manager.shelve_changes(creator)
         self.failIfExists('tree/foo')
         unshelver = shelf_manager.get_unshelver(shelf_id)
-        unshelver.unshelve()
+        unshelver.make_merger().do_merge()
         self.assertFileEqual('bar', 'tree/foo')
