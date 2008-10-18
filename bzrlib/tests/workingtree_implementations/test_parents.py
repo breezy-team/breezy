@@ -244,7 +244,8 @@ class TestSetParents(TestParents):
         try:
             tree.set_parent_ids([revision])
         except UnicodeEncodeError, e:
-            raise KnownFailure('there is no support for symlinks to non-ASCII targets (bug 272444)')
+            raise KnownFailure('there is no support for'
+                               ' symlinks to non-ASCII targets (bug #272444)')
 
 
 class TestAddParent(TestParents):

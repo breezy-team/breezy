@@ -102,7 +102,8 @@ class TestSprout(TestCaseWithBranch):
         self.failUnlessExists('target/a')
 
     def test_sprout_with_unicode_symlink(self):
-        # this tests bug #272444 (also tested by TestSetParents.test_unicode_symlink at test_parents.py)
+        # this tests bug #272444
+        # Also tested by TestSetParents.test_unicode_symlink at test_parents.py
         self.requireFeature(SymlinkFeature)
         self.requireFeature(UnicodeFilenameFeature)
 
@@ -117,5 +118,6 @@ class TestSprout(TestCaseWithBranch):
         try:
             tree.bzrdir.sprout('target')
         except UnicodeEncodeError, e:
-            raise KnownFailure('there is no support for symlinks to non-ASCII targets (bug 272444)')
+            raise KnownFailure('there is no support for'
+                               ' symlinks to non-ASCII targets (bug #272444)')
 
