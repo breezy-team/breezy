@@ -1,5 +1,4 @@
 # Copyright (C) 2007 Canonical Ltd
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,9 +108,10 @@ class TestSprout(TestCaseWithBranch):
 
         tree = self.make_branch_and_tree('tree1')
 
-        # 'adiós' ('goodbye' in Spanish) as unicode
-        # 'ó' is \xf3 in unicode and \xc3\xb3 in a utf-8 string
-        os.symlink(u'adi\xf3s','tree1/link_name')
+        # The link points to a file whose name is an omega
+        # U+03A9 GREEK CAPITAL LETTER OMEGA
+        # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
+        os.symlink(u'\u03a9','tree1/link_name')
         tree.add(['link_name'],['link-id'])
         revision = tree.commit('added a link to a Unicode target')
 
