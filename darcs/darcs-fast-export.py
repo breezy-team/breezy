@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
-from xml.dom import minidom
+import xml.dom.minidom
+import xml.parsers.expat
 import os
 import sys
 import gzip
 import time
 import shutil
+
+sys = reload(sys)
+sys.setdefaultencoding("utf-8")
 
 def __get_zone():
 	now = time.localtime()
@@ -39,13 +43,13 @@ def get_patchname(patch):
 	lines = i.getElementsByTagName("comment")
 	if lines:
 		ret.extend(["\n", lines[0].childNodes[0].data])
-	return "".join(ret)
+	return "".join(ret).encode('utf-8')
 
 def get_author(patch):
 	author = patch.attributes['author'].value
 	if not ">" in author:
 		author = "%s <%s>" % (author.split('@')[0], author)
-	return author
+	return author.encode('utf-8')
 
 origin = os.path.abspath(sys.argv[1])
 working = "%s.darcs" % origin
@@ -54,7 +58,12 @@ working = "%s.darcs" % origin
 sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
 buf = sock.read()
 sock.close()
-xmldoc = minidom.parseString(buf)
+try:
+	xmldoc = xml.dom.minidom.parseString(buf)
+except xml.parsers.expat.ExpatError:
+	import chardet
+	encoding = chardet.detect(buf)['encoding']
+	xmldoc = xml.dom.minidom.parseString(unicode(buf, encoding).encode('utf-8'))
 
 # init the tmp darcs repo
 os.mkdir(working)
