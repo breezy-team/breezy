@@ -111,7 +111,7 @@ count = 0
 for i in patches:
 	# apply the patch
 	buf = ["\nNew patches:\n"]
-	sock = gzip.open("%s/_darcs/patches/%s" % (origin, i.attributes['hash'].value))
+	sock = gzip.open(os.path.join(origin, "_darcs", "patches", i.attributes['hash'].value))
 	buf.append(sock.read())
 	sock.close()
 	sock = os.popen("darcs changes --context")
