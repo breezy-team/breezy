@@ -61,6 +61,9 @@ working = "%s.darcs" % origin
 progress("getting list of patches")
 sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
 buf = sock.read()
+# this is hackish. we need to escape some bad chars, otherwise the xml
+# will not be valid
+buf = buf.replace('\x1b', '^]')
 sock.close()
 try:
 	xmldoc = xml.dom.minidom.parseString(buf)
