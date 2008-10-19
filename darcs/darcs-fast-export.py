@@ -29,6 +29,7 @@ import sys
 import gzip
 import time
 import shutil
+import popen2
 
 sys = reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -77,8 +78,13 @@ def progress(s):
 	print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
 	sys.stdout.flush()
 
+def log(s):
+	logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
+
 origin = os.path.abspath(sys.argv[1])
 working = "%s.darcs" % origin
+logfile = "%s.log" % origin
+logsock = open(logfile, "w")
 
 progress("getting list of patches")
 sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
@@ -111,15 +117,18 @@ count = 0
 for i in patches:
 	# apply the patch
 	buf = ["\nNew patches:\n"]
-	sock = gzip.open(os.path.join(origin, "_darcs", "patches", i.attributes['hash'].value))
+	hash = i.attributes['hash'].value
+	sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
 	buf.append(sock.read())
 	sock.close()
 	sock = os.popen("darcs changes --context")
 	buf.append(sock.read())
 	sock.close()
-	sock = os.popen("darcs apply --allow-conflicts >/dev/null", "w")
-	sock.write("".join(buf))
-	sock.close()
+	pout, pin = popen2.popen2("darcs apply --allow-conflicts")
+	pin.write("".join(buf))
+	pin.close()
+	log("Applying %s:\n%s" % (hash, pout.read()))
+	pout.close()
 	message = get_patchname(i)
 	# export the commit
 	print "commit refs/heads/master"
@@ -151,3 +160,4 @@ for i in patches:
 
 os.chdir(cwd)
 shutil.rmtree(working)
+logsock.close()
