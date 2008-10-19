@@ -115,7 +115,7 @@ for i in patches:
 			sock = open(j)
 			buf = sock.read()
 			sock.close()
-			# fixme
+			# darcs does not track the executable bit :/
 			print "M 644 inline %s" % j
 			print "data %s\n%s" % (len(buf), buf)
 	if message[:4] == "TAG ":
