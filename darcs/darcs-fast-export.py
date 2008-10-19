@@ -51,10 +51,14 @@ def get_author(patch):
 		author = "%s <%s>" % (author.split('@')[0], author)
 	return author.encode('utf-8')
 
+def progress(s):
+	print "progress %s" % s
+	sys.stdout.flush()
+
 origin = os.path.abspath(sys.argv[1])
 working = "%s.darcs" % origin
 
-# get list of patches from darcs
+progress("getting list of patches")
 sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
 buf = sock.read()
 sock.close()
@@ -62,8 +66,11 @@ try:
 	xmldoc = xml.dom.minidom.parseString(buf)
 except xml.parsers.expat.ExpatError:
 	import chardet
+	progress("encoding is not utf8, guessing charset")
 	encoding = chardet.detect(buf)['encoding']
+	progress("detected encoding is %s" % encoding)
 	xmldoc = xml.dom.minidom.parseString(unicode(buf, encoding).encode('utf-8'))
+sys.stdout.flush()
 
 # init the tmp darcs repo
 os.mkdir(working)
@@ -113,9 +120,9 @@ for i in patches:
 		print "from :%s" % count
 		print "tagger %s %s %s" % (get_author(i), date, get_zone_str())
 		print "data %d\n%s" % (len(message[4:]), message[4:])
-	count += 1
 	if count % 1000 == 0:
-		print "progress %d/%d patches" % (count, patchnum)
+		progress("%d/%d patches" % (count, patchnum))
+	count += 1
 
 os.chdir(cwd)
 shutil.rmtree(working)
