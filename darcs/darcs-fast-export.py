@@ -71,8 +71,12 @@ cwd = os.getcwd()
 os.chdir(working)
 os.system("darcs init --old-fashioned-inventory")
 
+patches = xmldoc.getElementsByTagName('patch')
+# this may be huge and we need it many times
+patchnum = len(patches)
+
 count = 0
-for i in xmldoc.getElementsByTagName('patch'):
+for i in patches:
 	# apply the patch
 	buf = ["\nNew patches:\n"]
 	sock = gzip.open("%s/_darcs/patches/%s" % (origin, i.attributes['hash'].value))
@@ -110,6 +114,8 @@ for i in xmldoc.getElementsByTagName('patch'):
 		print "tagger %s %s %s" % (get_author(i), date, get_zone_str())
 		print "data %d\n%s" % (len(message[4:]), message[4:])
 	count += 1
+	if count % 1000 == 0:
+		print "progress %d/%d patches" % (count, patchnum)
 
 os.chdir(cwd)
 shutil.rmtree(working)
