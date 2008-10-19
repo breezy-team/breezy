@@ -1,0 +1,51 @@
+= darcs backend for fast data importers
+
+Miklos Vajna <vmiklos-at-frugalware-dot-org>
+
+== Status
+
+The point of this project (compared to darcs2git or tailor) is to
+provide a fast and simple darcs backend for fast-import.
+
+Thus, the code itself is only about 150 lines, and converting a huge
+repo (26094 patches, repo size 210M) took about 10 hours for me.
+
+Compared to darcs2git, it does not try to find conflict resolutions (to
+map them to merge commits), to avoid being slow.
+
+Compared to tailor, it is more correct, because the end result being the
+exact same of the original repo is guaranteed by darcs itself.
+
+Ideally it should work with any fast importer, but actually I just
+tested it with git fast-import.
+
+Git and Darcs versions I tested:
+
+----
+$ darcs --version
+2.1.0 (release)
+$ git --version
+git version 1.6.0.2
+----
+
+The supported darcs repo format is the 'old-fashioned' one.
+
+== Usage
+
+Typical usage (given that `test/` is a darcs repo):
+
+----
+$ mkdir test.git
+$ git --bare init
+$ darcs-fast-export.py test |(cd test.git; git fast-import)
+----
+
+To verify the results:
+
+----
+$ git clone -q test.git test.git.nonbare
+$ diff --exclude .git -Naur test.git.nonbare test/_darcs/pristine
+$ rm -rf test.git.nonbare
+----
+
+If you get no output, then the conversion was successful.
