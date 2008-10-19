@@ -52,7 +52,7 @@ def get_author(patch):
 	return author.encode('utf-8')
 
 def progress(s):
-	print "progress %s" % s
+	print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
 	sys.stdout.flush()
 
 origin = os.path.abspath(sys.argv[1])
