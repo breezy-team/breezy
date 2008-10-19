@@ -54,3 +54,11 @@ $ rm -rf test.git.nonbare
 ----
 
 If you get no output, then the conversion was successful.
+
+== Download
+
+Using git:
+
+----
+$ git clone git://vmiklos.hu/darcs-fast-export
+----
