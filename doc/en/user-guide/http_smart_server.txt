@@ -131,9 +131,6 @@ Here's what it looks like::
     import fcgi
     from bzrlib.transport.http import wsgi
 
-    from bzrlib.plugin import load_plugins
-    load_plugins()
-
     smart_server_app = wsgi.make_app(
         root='/srv/example.com/www/code',
         prefix='/code/',
@@ -159,9 +156,6 @@ Here's what it looks like::
 
     import modpywsgi
     from bzrlib.transport.http import wsgi
-
-    from bzrlib.plugin import load_plugins
-    load_plugins()
 
     smart_server_app = wsgi.make_app(
         root='/srv/example.com/www/code',

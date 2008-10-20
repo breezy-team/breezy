@@ -16,17 +16,18 @@ The class of each hook is given in parentheses immediately after each hook
 type below.
 
 Each description also indicates whether the hook runs on the client (the
-machine with the child branch) or the server (the machine with the parent
+machine with the local branch) or the server (the machine with the remote
 branch).  These may be, but are not necessarily, the same machine.
 
 Plugins (including hooks) are run on the server if any of these is true:
 
-  * the server is the same machine as the client.
+  * The remote branch is on the same machine as the client, and the client
+    has plugins enabled.
 
-  * the connection is via the smart server (accessed with a URL starting
-    with "bzr") and you load the plugins in the wsgi handler script.
-
-  * the connection is via ssh.
+  * The connection is via a smart server (accessed with a URL starting with
+    "bzr://", "bzr+ssh://" or "bzr+http://", or accessed via a "http://"
+    URL when a smart server is available via HTTP), and that server has
+    plugins enabled.
 
 
 open (Branch)
@@ -137,7 +138,7 @@ pre_change_branch_tip (Branch)
 -------------------------------
 
 Run before a branch tip has been changed, while the branch is write-locked.
-Runs on the server.
+Runs on the client and on the server.
 Note that push, pull, commit and uncommit all invoke this hook.
 
 The hook signature is (params), where params is an object containing
@@ -167,7 +168,7 @@ post_change_branch_tip (Branch)
 
 Run after a branch tip has been changed but while the branch is still
 write-locked.
-Runs on the server.
+Runs on the client and on the server.
 Note that push, pull, commit and uncommit all invoke this hook.
 
 The hook signature is (params), where params is an object containing

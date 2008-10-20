@@ -49,7 +49,7 @@ a callable object.)  All push hooks take a single argument, the
 
 Second, the plugin installs the hook.  The first parameter ``'post_push'``
 identifies where to install the hook.  The second parameter is the hook
-itself.  The thirs parameter is a name 'My post_push hook', which can be
+itself.  The third parameter is a name 'My post_push hook', which can be
 used in progress messages and error messages.
 
 Debugging hooks
