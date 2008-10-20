@@ -45,10 +45,12 @@ gpg $sigfile
 
 # parse the product and release number out of a filename like
 # "bzr-foo-1.23rc1.tar.gz"
-filetype="${upfile:e}"
-filetail=${upfile:t}
-basename="${${upfile:t}%%-[0-9].*}"
-version="${${upfile:t:r}##*-}"
+
+# need to strip off the .tar too for .tar.gz files
+headpart=${${upfile:r}%.tar}
+filetype="${upfile#${headpart}}"
+basename="${${headpart:t}%%-[0-9].*}"
+version="${${headpart:t}##*-}"
 echo $basename $version $filetype
 
 # bzr puts just the first part of the version into the series, e.g. 1.8 from 1.8rc1
