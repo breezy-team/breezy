@@ -1757,6 +1757,7 @@ def _translate_error(err, **context):
       - bzrdir
       - token
       - other_branch
+      - path
 
     If the error from the server doesn't match a known pattern, then
     UnknownErrorFromSmartServer is raised.
@@ -1764,9 +1765,23 @@ def _translate_error(err, **context):
     def find(name):
         try:
             return context[name]
-        except KeyError, keyErr:
-            mutter('Missing key %r in context %r', keyErr.args[0], context)
+        except KeyError, key_err:
+            mutter('Missing key %r in context %r', key_err.args[0], context)
             raise err
+    def get_path():
+        """Get the path from the context if present, otherwise use first error
+        arg.
+        """
+        try:
+            return context['path']
+        except KeyError, key_err:
+            try:
+                return err.error_args[0]
+            except IndexError, idx_err:
+                mutter(
+                    'Missing key %r in context %r', key_err.args[0], context)
+                raise err
+
     if err.error_verb == 'NoSuchRevision':
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
@@ -1794,10 +1809,40 @@ def _translate_error(err, **context):
     elif err.error_verb == 'NotStacked':
         raise errors.NotStacked(branch=find('branch'))
     elif err.error_verb == 'PermissionDenied':
-        path = extra = None
-        if len(err.error_args) >= 1:
-            path = err.error_args[0]
+        path = get_path()
         if len(err.error_args) >= 2:
             extra = err.error_args[1]
+        else:
+            extra = None
         raise errors.PermissionDenied(path, extra=extra)
+    elif err.error_verb == 'ReadError':
+        path = get_path()
+        raise errors.ReadError(path)
+    elif err.error_verb == 'NoSuchFile':
+        path = get_path()
+        raise errors.NoSuchFile(path)
+    elif err.error_verb == 'FileExists':
+        raise errors.FileExists(err.error_args[0])
+    elif err.error_verb == 'DirectoryNotEmpty':
+        raise errors.DirectoryNotEmpty(err.error_args[0])
+    elif err.error_verb == 'ShortReadvError':
+        args = err.error_args
+        raise errors.ShortReadvError(
+            args[0], int(args[1]), int(args[2]), int(args[3]))
+    elif err.error_verb in ('UnicodeEncodeError', 'UnicodeDecodeError'):
+        encoding = str(err.error_args[0]) # encoding must always be a string
+        val = err.error_args[1]
+        start = int(err.error_args[2])
+        end = int(err.error_args[3])
+        reason = str(err.error_args[4]) # reason must always be a string
+        if val.startswith('u:'):
+            val = val[2:].decode('utf-8')
+        elif val.startswith('s:'):
+            val = val[2:].decode('base64')
+        if what == 'UnicodeDecodeError':
+            raise UnicodeDecodeError(encoding, val, start, end, reason)
+        elif what == 'UnicodeEncodeError':
+            raise UnicodeEncodeError(encoding, val, start, end, reason)
+    elif err.error_verb == 'ReadOnlyError':
+        raise errors.TransportNotPossible('readonly transport')
     raise errors.UnknownErrorFromSmartServer(err)
