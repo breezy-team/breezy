@@ -1793,4 +1793,11 @@ def _translate_error(err, **context):
         raise errors.UnstackableRepositoryFormat(*err.error_args)
     elif err.error_verb == 'NotStacked':
         raise errors.NotStacked(branch=find('branch'))
+    elif err.error_verb == 'PermissionDenied':
+        path = extra = None
+        if len(err.error_args) >= 1:
+            path = err.error_args[0]
+        if len(err.error_args) >= 2:
+            extra = err.error_args[1]
+        raise errors.PermissionDenied(path, extra=extra)
     raise errors.UnknownErrorFromSmartServer(err)
