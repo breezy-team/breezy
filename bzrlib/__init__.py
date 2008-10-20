@@ -94,7 +94,7 @@ def _format_version_tuple(version_info):
         __sub_string = ''
     elif __release_type == 'dev' and __sub == 0:
         __sub_string = 'dev'
-    elif __release_type in ('alpha', 'beta') and __sub != 0:
+    elif __release_type in ('alpha', 'beta'): # why: and __sub != 0: ? --vila 081005
         __sub_string = __release_type[0] + str(__sub)
     elif __release_type == 'candidate' and __sub != 0:
         __sub_string = 'rc' + str(__sub)
