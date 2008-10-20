@@ -70,7 +70,9 @@ def get_patchname(patch):
 
 def get_author(patch):
 	author = patch.attributes['author'].value
-	if not ">" in author:
+	if not len(author):
+		author = "darcs-fast-export <darcs-fast-export>"
+	elif not ">" in author:
 		author = "%s <%s>" % (author.split('@')[0], author)
 	return author.encode('utf-8')
 
