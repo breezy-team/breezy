@@ -178,6 +178,8 @@ available to the world.
    click "Register a release", and add information about this release.
 
 #. Within that release, upload the source tarball and the GPG signature.
+   Or, if you prefer, use the ``tools/packaging/lp-upload-release`` script
+   to do this.
 
 #. Link from http://bazaar-vcs.org/Download to the tarball and signature.
 
