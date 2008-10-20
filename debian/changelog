@@ -1,3 +1,10 @@
+bzr-builddeb (2.0.2~0ubuntu2) intrepid; urgency=low
+
+  * Use properties.tarball_dir() instead of .target_dir(), as the latter
+    doesn't exist. Thanks Laurent Bigonville (LP: #286403)
+
+ -- James Westby <james.westby@canonical.com>  Mon, 20 Oct 2008 14:35:19 +0100
+
 bzr-builddeb (2.0.2~0ubuntu1) intrepid; urgency=low
 
   * Pass --only-source to "apt-get source" call, as this will prevent apt

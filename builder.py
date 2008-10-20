@@ -194,12 +194,15 @@ class DebBuild(object):
     tmp.close()
     info("Using uscan to look for the upstream tarball")
     try:
+      tarball_dir = self._properties.tarball_dir()
+      if not os.path.exists(tarball_dir):
+          os.makedirs(tarball_dir)
       r = os.system("uscan --upstream-version %s --force-download --rename "
                     "--package %s --watchfile %s --check-dirname-level 0 " 
                     "--download --repack --destdir %s" %
                     (self._properties.upstream_version(),
                      self._properties.package(), tempfilename,
-                     self._properties.target_dir()))
+                     tarball_dir))
       if r != 0:
         raise DebianError("uscan failed to retrieve the upstream tarball")
     finally:
