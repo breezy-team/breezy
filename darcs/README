@@ -30,6 +30,12 @@ map them to merge commits), to avoid being slow.
 Compared to tailor, it is more correct, because the end result being the
 exact same of the original repo is guaranteed by darcs itself.
 
+There was an other project named `darcs-fast-export`, but it has been
+renamed to http://github.com/freshtonic/undarcs/tree/master[undarcs],
+just in case you would confuse the two projects.  It is faster than
+`darcs-fast-export` but it will not produce correct result in case your
+repo contains conflicts.
+
 === Independent
 
 Ideally it should work with any fast importer, but actually I just
