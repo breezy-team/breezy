@@ -39,7 +39,10 @@ repo contains conflicts.
 === Independent
 
 Ideally it should work with any fast importer, but actually I just
-tested it with git fast-import. (For example `bzr fast-import`.)
+tested it with git fast-import and bzr fast-import.
+
+The later one needs a patch I posted
+https://bugs.launchpad.net/bzr-fastimport/+bug/285941[here].
 
 == Usage
 
