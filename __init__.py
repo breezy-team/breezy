@@ -98,7 +98,7 @@ class cmd_rebase(Command):
         Option('always-rebase-merges',
             help="Don't skip revisions that merge already present revisions."),
         Option('pending-merges',
-            help="Rebase pending merges onto local branch"),
+            help="Rebase pending merges onto local branch."),
         Option('onto', help='Different revision to replay onto.',
             type=str)]
     
