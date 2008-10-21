@@ -1839,9 +1839,9 @@ def _translate_error(err, **context):
             val = val[2:].decode('utf-8')
         elif val.startswith('s:'):
             val = val[2:].decode('base64')
-        if what == 'UnicodeDecodeError':
+        if err.error_verb == 'UnicodeDecodeError':
             raise UnicodeDecodeError(encoding, val, start, end, reason)
-        elif what == 'UnicodeEncodeError':
+        elif err.error_verb == 'UnicodeEncodeError':
             raise UnicodeEncodeError(encoding, val, start, end, reason)
     elif err.error_verb == 'ReadOnlyError':
         raise errors.TransportNotPossible('readonly transport')
