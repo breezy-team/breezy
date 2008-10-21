@@ -44,6 +44,9 @@ IN DEVELOPMENT
       could only happen if ``bzr reconcile`` decided that the parent
       ordering was incorrect in the file graph.  (John Arbash Meinel)
 
+    * "Permission denied" errors that occur when pushing a new branch to a
+      smart server no longer cause tracebacks.  (Andrew Bennetts, #278673)
+
   DOCUMENTATION:
 
   API CHANGES:
