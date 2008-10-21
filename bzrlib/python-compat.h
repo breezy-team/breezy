@@ -59,7 +59,9 @@
     /* sys/stat.h doesn't have S_ISLNK on win32, so we fake it by just always
      * returning False
      */
-    #define S_ISLNK(mode) (0)
+    #if !defined(S_ISLNK)
+        #define S_ISLNK(mode) (0)
+    #endif
 #else /* Not win32 */
     /* For htonl */
     #include "arpa/inet.h"
