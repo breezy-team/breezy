@@ -1,0 +1,106 @@
+The Bazaar Development Cycle
+============================
+
+
+
+General process
+---------------
+
+We normally have one person acting as the release manager, who 
+organizes development for the release and also actually makes the release
+tarball and posts announcements.  It can be a different person from one
+release to the next.
+
+Our usual process is that one week before release we will make a release
+branch from the trunk.  We do one commit to that branch to change the
+version number to 'rc1', and advance the trunk version to 'dev' for the
+next release.
+
+We then publish and announce this release candidate according to the
+process below.  We then have a week of general testing of the rc,
+including some time for plugin authors to update their code for any
+changes.
+
+Normally no changes will be made on the release branch unless serious bugs
+or regressions are found, and the release manager decides they should be
+merged in.  After one week, the release branch's version number is updated
+and it's published as the final release.  If regressions or serious
+problems are discovered after the final release we may make an additional
+point release from that branch.
+
+The process or timing can vary if that seems appropriate in a particular
+case but we try to release on a regular four week cycle.
+
+The net effect is that the code gets some extra testing before release,
+and the trunk is always open for general development.
+
+
+Starting a Release
+------------------
+
+To start a new release cycle:
+
+#. Send mail to the list with the key dates, who will be the release
+   manager, and the main themes or targetted bugs.  Ask people to nominate
+   objectives, or point out any high-risk things that are best done early,
+   or that interact with other changes.
+
+#. Add a new "series" in Launchpad at <https://launchpad.net/bzr/+addseries>.  
+   There is one series for every *x.y* release.
+
+#. Add milestones to that series for the release candidate and the final
+   release, and their expected dates.
+
+#. Deactivate old releases and their milestones.
+
+#. Update the version number in the ``bzr`` script, and the
+   ``bzrlib/__init__.py`` file.
+
+
+Weekly Metronome Mail
+---------------------
+
+Every week the release manager should send a mail to the Bazaar list
+covering these points (as appropriate):
+
+* Early communication about changing dependencies or defaults
+
+* Reminder re lifecycle and where we're up to right now, in particular the 
+  dates for the next release and/or candidate.
+
+* Summary of recent successes and pending work.
+
+* Reminder re release objectives
+
+* Reminder re things needing attention, e.g. bug triage, reviews, testing
+  of certain things, etc.
+
+
+Starting the release phase
+--------------------------
+
+When it's time to make the release candidate:
+
+#. We create a new pqm-controlled branch for this release series.  The
+   branch must be created by Robert Collins on the pqm server.  
+   This branch means that from the first release candidate onwards,
+   general development continues on the trunk, and only
+   specifically-targetted fixes go into the release.
+
+#. Register the branch at <https://launchpad.net/products/bzr/+addbranch>
+
+#. The revision at the start of that branch is `released
+   <releasing.html>`_ as the first RC.
+
+
+See also
+--------
+
+* `Bazaar Developer Document Catalog <index.html>`_
+
+* `Releasing Bazaar <releasing.html>`_ -- the process for actually making 
+  a release or release candidate.
+
+
+..
+   vim: filetype=rst textwidth=74 ai shiftwidth=4
