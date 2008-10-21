@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -68,6 +68,13 @@ class CommandInfo(object):
 
 class CommandRegistry(registry.Registry):
 
+    @staticmethod
+    def _get_name(command_name):
+        if command_name.startswith("cmd_"):
+            return _unsquish_command_name(command_name)
+        else:
+            return command_name
+
     def register(self, cmd, decorate=False):
         """Utility function to help register a command
 
@@ -77,10 +84,7 @@ class CommandRegistry(registry.Registry):
             Otherwise it is an error to try to override an existing command.
         """
         k = cmd.__name__
-        if k.startswith("cmd_"):
-            k_unsquished = _unsquish_command_name(k)
-        else:
-            k_unsquished = k
+        k_unsquished = self._get_name(k)
         try:
             previous = self.get(k_unsquished)
         except KeyError:
@@ -96,6 +100,17 @@ class CommandRegistry(registry.Registry):
             trace.log_error('Previously this command was registered from %r' %
                             sys.modules[previous.__module__])
         return previous
+
+    def register_lazy(self, command_name, aliases, module_name):
+        """Register a command without loading its module.
+
+        :param command_name: The primary name of the command.
+        :param aliases: A list of aliases for the command.
+        :module_name: The module that the command lives in.
+        """
+        key = self._get_name(command_name)
+        registry.Registry.register_lazy(self, key, module_name, command_name,
+                                        info=CommandInfo(aliases))
 
 
 plugin_cmds = CommandRegistry()
