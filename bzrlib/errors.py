@@ -1426,9 +1426,9 @@ class KnitCorrupt(KnitError):
 
 class SHA1KnitCorrupt(KnitCorrupt):
 
-    _fmy = ("Knit %(filename)s corrupt: sha-1 of reconstructed text does not "
+    _fmt = ("Knit %(filename)s corrupt: sha-1 of reconstructed text does not "
         "match expected sha-1. key %(key)s expected sha %(expected)s actual "
-        "sha %(actual)")
+        "sha %(actual)s")
 
     def __init__(self, filename, actual, expected, key, content):
         KnitError.__init__(self)

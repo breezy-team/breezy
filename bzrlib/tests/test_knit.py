@@ -943,6 +943,8 @@ class TestBadShaError(KnitTests):
         err = self.assertRaises(errors.KnitCorrupt,
             target.get_record_stream([broken], 'unordered', True).next)
         self.assertEqual(['gam\n', 'bar\n'], err.content)
+        # Test for formatting with live data
+        self.assertStartsWith(str(err), "Knit ")
 
 
 class TestKnitIndex(KnitTests):
