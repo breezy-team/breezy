@@ -19,6 +19,12 @@ IN DEVELOPMENT
     * default username for bzr+ssh and sftp can be configured in
       authentication.conf. (Aaron Bentley)
 
+    * launchpad-login now provides a default username for bzr+ssh and sftp
+      URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
+
+    * lp: lookups no longer include usernames, making them shareable and
+      shorter. (Aaron Bentley)
+
   BUG FIXES:
 
     * A failure to load a plugin due to an IncompatibleAPI exception is
@@ -31,6 +37,13 @@ IN DEVELOPMENT
       memory before writing it to disk. This was a little bit faster, but
       consumed lots of memory. (John Arbash Meinel, #269456)
 
+    * Fixes to the ``annotate`` code. The fast-path which re-used the
+      stored deltas was accidentally disabled all the time, instead of
+      only when a branch was stacked. Second, the code would accidentally
+      re-use a delta even if it wasn't against the left-parent, this
+      could only happen if ``bzr reconcile`` decided that the parent
+      ordering was incorrect in the file graph.  (John Arbash Meinel)
+
   DOCUMENTATION:
 
   API CHANGES:
@@ -38,6 +51,9 @@ IN DEVELOPMENT
   TESTING:
 
   INTERNALS:
+
+     * New AuthenticationConfig.set_credentials method allows easy programmatic
+       configuration of authetication credentials.
 
   PORTABILITY:
 
