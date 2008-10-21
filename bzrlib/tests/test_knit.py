@@ -54,6 +54,7 @@ from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
+    TestNotApplicable,
     )
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
@@ -918,6 +919,32 @@ class KnitTests(TestCaseWithTransport):
     def make_test_knit(self, annotate=False, name='test'):
         mapper = ConstantMapper(name)
         return make_file_factory(annotate, mapper)(self.get_transport())
+
+
+class TestBadShaError(KnitTests):
+    """Tests for handling of sha errors."""
+
+    def test_exception_has_text(self):
+        # having the failed text included in the error allows for recovery.
+        source = self.make_test_knit()
+        target = self.make_test_knit(name="target")
+        if not source._max_delta_chain:
+            raise TestNotApplicable(
+                "cannot get delta-caused sha failures without deltas.")
+        # create a basis
+        basis = ('basis',)
+        broken = ('broken',)
+        source.add_lines(basis, (), ['foo\n'])
+        source.add_lines(broken, (basis,), ['foo\n', 'bar\n'])
+        # Seed target with a bad basis text
+        target.add_lines(basis, (), ['gam\n'])
+        target.insert_record_stream(
+            source.get_record_stream([broken], 'unordered', False))
+        err = self.assertRaises(errors.KnitCorrupt,
+            target.get_record_stream([broken], 'unordered', True).next)
+        self.assertEqual(['gam\n', 'bar\n'], err.content)
+        # Test for formatting with live data
+        self.assertStartsWith(str(err), "Knit ")
 
 
 class TestKnitIndex(KnitTests):
