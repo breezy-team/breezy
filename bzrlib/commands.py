@@ -53,6 +53,19 @@ from bzrlib import registry
 from bzrlib.option import Option
 
 
+class CommandInfo(object):
+    """Information about a command."""
+
+    def __init__(self, aliases):
+        """The list of aliases for the command."""
+        self.aliases = aliases
+
+    @classmethod
+    def from_command(klass, command):
+        """Factory to construct a CommandInfo from a command."""
+        return klass(command.aliases)
+
+
 class CommandRegistry(registry.Registry):
 
     def register(self, cmd, decorate=False):
@@ -72,9 +85,10 @@ class CommandRegistry(registry.Registry):
             previous = self.get(k_unsquished)
         except KeyError:
             previous = _builtin_commands().get(k_unsquished)
+        info = CommandInfo.from_command(cmd)
         try:
             registry.Registry.register(self, k_unsquished, cmd,
-                                       override_existing=decorate)
+                                       override_existing=decorate, info=info)
         except KeyError:
             trace.log_error('Two plugins defined the same command: %r' % k)
             trace.log_error('Not loading the one in %r' %
@@ -156,12 +170,21 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     # In the future, we may actually support Unicode command names.
 
     # first look up this command under the specified name
-    cmds = _get_cmd_dict(plugins_override=plugins_override)
+    if plugins_override:
+        try:
+            return plugin_cmds.get(cmd_name)()
+        except KeyError:
+            pass
+    cmds = _get_cmd_dict(plugins_override=False)
     try:
         return cmds[cmd_name]()
     except KeyError:
         pass
-
+    if plugins_override:
+        for key in plugin_cmds.keys():
+            info = plugin_cmds.get_info(key)
+            if cmd_name in info.aliases:
+                return plugin_cmds.get(key)()
     # look for any command which claims this as an alias
     for real_cmd_name, cmd_class in cmds.iteritems():
         if cmd_name in cmd_class.aliases:
