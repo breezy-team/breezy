@@ -53,37 +53,43 @@ from bzrlib import registry
 from bzrlib.option import Option
 
 
-plugin_cmds = {}
+class CommandRegistry(registry.Registry):
+
+    def register(self, cmd, decorate=False):
+        """Utility function to help register a command
+
+        :param cmd: Command subclass to register
+        :param decorate: If true, allow overriding an existing command
+            of the same name; the old command is returned by this function.
+            Otherwise it is an error to try to override an existing command.
+        """
+        k = cmd.__name__
+        if k.startswith("cmd_"):
+            k_unsquished = _unsquish_command_name(k)
+        else:
+            k_unsquished = k
+        try:
+            previous = self.get(k_unsquished)
+        except KeyError:
+            previous = _builtin_commands().get(k_unsquished)
+        try:
+            registry.Registry.register(self, k_unsquished, cmd,
+                                       override_existing=decorate)
+        except KeyError:
+            trace.log_error('Two plugins defined the same command: %r' % k)
+            trace.log_error('Not loading the one in %r' %
+                            sys.modules[cmd.__module__])
+            trace.log_error('Previously this command was registered from %r' %
+                            sys.modules[previous.__module__])
+        return previous
+
+
+plugin_cmds = CommandRegistry()
 
 
 def register_command(cmd, decorate=False):
-    """Utility function to help register a command
-
-    :param cmd: Command subclass to register
-    :param decorate: If true, allow overriding an existing command
-        of the same name; the old command is returned by this function.
-        Otherwise it is an error to try to override an existing command.
-    """
     global plugin_cmds
-    k = cmd.__name__
-    if k.startswith("cmd_"):
-        k_unsquished = _unsquish_command_name(k)
-    else:
-        k_unsquished = k
-    if k_unsquished not in plugin_cmds:
-        plugin_cmds[k_unsquished] = cmd
-        ## trace.mutter('registered plugin command %s', k_unsquished)
-        if decorate and k_unsquished in builtin_command_names():
-            return _builtin_commands()[k_unsquished]
-    elif decorate:
-        result = plugin_cmds[k_unsquished]
-        plugin_cmds[k_unsquished] = cmd
-        return result
-    else:
-        trace.log_error('Two plugins defined the same command: %r' % k)
-        trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
-        trace.log_error('Previously this command was registered from %r' %
-                        sys.modules[plugin_cmds[k_unsquished].__module__])
+    return plugin_cmds.register(cmd, decorate)
 
 
 def _squish_command_name(cmd):
@@ -118,7 +124,7 @@ def _get_cmd_dict(plugins_override=True):
     """Return name->class mapping for all commands."""
     d = _builtin_commands()
     if plugins_override:
-        d.update(plugin_cmds)
+        d.update(plugin_cmds.iteritems())
     return d
 
     
