@@ -48,6 +48,8 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * commands.plugins_cmds is now a CommandRegistry, not a dict.
+
   TESTING:
 
   INTERNALS:
