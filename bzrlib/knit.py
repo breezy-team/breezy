@@ -2668,6 +2668,7 @@ class _KnitAnnotator(object):
                 (rev_id, parent_ids, record) = nodes_to_annotate.pop()
                 (index_memo, compression_parent, parents,
                  record_details) = self._all_build_details[rev_id]
+                blocks = None
                 if compression_parent is not None:
                     comp_children = self._compression_children[compression_parent]
                     if rev_id not in comp_children:
@@ -2694,14 +2695,16 @@ class _KnitAnnotator(object):
                         copy_base_content=(not reuse_content))
                     fulltext = self._add_fulltext_content(rev_id,
                                                           fulltext_content)
-                    blocks = KnitContent.get_line_delta_blocks(delta,
-                            parent_fulltext, fulltext)
+                    if compression_parent == parent_ids[0]:
+                        # the compression_parent is the left parent, so we can
+                        # re-use the delta
+                        blocks = KnitContent.get_line_delta_blocks(delta,
+                                parent_fulltext, fulltext)
                 else:
                     fulltext_content = self._knit._factory.parse_fulltext(
                         record, rev_id)
                     fulltext = self._add_fulltext_content(rev_id,
                         fulltext_content)
-                    blocks = None
                 nodes_to_annotate.extend(
                     self._add_annotation(rev_id, fulltext, parent_ids,
                                      left_matching_blocks=blocks))
@@ -2722,7 +2725,7 @@ class _KnitAnnotator(object):
 
         :param key: The key to annotate.
         """
-        if True or len(self._knit._fallback_vfs) > 0:
+        if len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
         records = self._get_build_graph(key)
