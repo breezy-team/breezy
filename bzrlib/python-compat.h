@@ -35,15 +35,27 @@
 #endif
 
 #if defined(_WIN32) || defined(WIN32)
-    /* Needed for htonl */
-    #include "Winsock.h"
-
     /* Defining WIN32_LEAN_AND_MEAN makes including windows quite a bit
      * lighter weight.
      */
     #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
 
+    /* Needed for htonl */
+    #include "Winsock.h"
+
+    /* sys/stat.h doesn't have any of these macro definitions for MSVC, so
+     * we'll define whatever is missing that we actually use.
+     */
+    #if !defined(S_ISDIR)
+        #define S_ISDIR(m) (((m) & 0170000) == 0040000)
+    #endif
+    #if !defined(S_ISREG)
+        #define S_ISREG(m) (((m) & 0170000) == 0100000)
+    #endif
+    #if !defined(S_IXUSR)
+        #define S_IXUSR 0000100/* execute/search permission, owner */
+    #endif
     /* sys/stat.h doesn't have S_ISLNK on win32, so we fake it by just always
      * returning False
      */
