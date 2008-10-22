@@ -70,7 +70,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         try:
             repo.start_write_group()
             try:
-                repo.chk_bytes.add_lines((None,), None, ["chkroot:\n"],
+                repo.chk_bytes.add_lines((None,), None, ["chkroot:\n", "0\n"],
                     random_id=True)
             except:
                 repo.abort_write_group()
@@ -89,7 +89,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.pack()
             self.assertEqual(
                 set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
-                    ('sha1:572d8da882e1ebf0f50f1e2da2d7a9cadadf4db5',)]),
+                     ('sha1:8e13ef930ff710425830ffd5077146b259b49534',)]),
                 repo.chk_bytes.keys())
         finally:
             repo.unlock()
@@ -99,7 +99,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
         try:
             self.assertEqual(
                 set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
-                    ('sha1:572d8da882e1ebf0f50f1e2da2d7a9cadadf4db5',)]),
+                     ('sha1:8e13ef930ff710425830ffd5077146b259b49534',)]),
                 repo.chk_bytes.keys())
         finally:
             repo.unlock()

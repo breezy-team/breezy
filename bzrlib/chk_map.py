@@ -101,6 +101,10 @@ class CHKMap(object):
         else:
             return self._root_node._key
 
+    def __len__(self):
+        self._ensure_root()
+        return len(self._root_node)
+
     def _map(self, key, value):
         """Map key to value."""
         self._ensure_root()
@@ -143,6 +147,7 @@ class RootNode(object):
     def __init__(self):
         self._nodes = {}
         self._key = None
+        self._len = 0
 
     def add_child(self, name, child):
         """Add a child to the node.
@@ -153,6 +158,7 @@ class RootNode(object):
         :param child: The child, a key tuple for the childs value.
         """
         self._nodes[name] = child
+        self._len += 1
         self._key = None
 
     def deserialise(self, bytes, key):
@@ -165,11 +171,16 @@ class RootNode(object):
         nodes = {}
         if lines[0] != 'chkroot:':
             raise ValueError("not a serialised root node: %r" % bytes)
-        for line in lines[1:]:
+        length = int(lines[1])
+        for line in lines[2:]:
             name, value = line.split('\x00')
             nodes[name] = (value,)
         self._nodes = nodes
+        self._len = length
         self._key = key
+
+    def __len__(self):
+        return self._len
 
     def refs(self):
         """Get the CHK key references this node holds."""
@@ -183,6 +194,7 @@ class RootNode(object):
         :param name: The name to remove from the node.
         """
         del self._nodes[name]
+        self._len -= 1
         self._key = None
 
     def serialise(self):
@@ -191,6 +203,7 @@ class RootNode(object):
         :return: A bytestring.
         """
         lines = ["chkroot:\n"]
+        lines.append("%d\n" % self._len)
         for name, child in sorted(self._nodes.items()):
             lines.append("%s\x00%s\n" % (name, child[0]))
         return "".join(lines)

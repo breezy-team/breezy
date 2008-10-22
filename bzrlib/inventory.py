@@ -1478,8 +1478,7 @@ class CHKInventory(CommonInventory):
 
     def __len__(self):
         """Return the number of entries in the inventory."""
-        # Might want to cache the length in the meta node.
-        return len([item for item in self])
+        return len(self.id_to_entry)
 
     def path2id(self, name):
         """Walk down through directories to return entry of last component.
