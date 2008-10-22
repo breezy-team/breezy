@@ -20,8 +20,8 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
-from bzrlib import errors
-from bzrlib.config import GlobalConfig
+from bzrlib import errors, trace
+from bzrlib.config import AuthenticationConfig, GlobalConfig
 from bzrlib.transport import get_transport
 
 
@@ -36,20 +36,60 @@ class NoRegisteredSSHKeys(errors.BzrError):
     _fmt = "The user %(user)s has not registered any SSH keys with Launchpad."
 
 
+class MismatchedUsernames(errors.BzrError):
+
+    _fmt = ('bazaar.conf and authentication.conf disagree about launchpad'
+            ' account name.  Please re-run launchpad-login.')
+
+
 def get_lp_login(_config=None):
-    """Return the user's Launchpad username"""
+    """Return the user's Launchpad username.
+
+    :raises: MismatchedUsername if authentication.conf and bazaar.conf
+        disagree about username.
+    """
     if _config is None:
         _config = GlobalConfig()
 
-    return _config.get_user_option('launchpad_username')
+    username = _config.get_user_option('launchpad_username')
+    if username is not None:
+        auth = AuthenticationConfig()
+        auth_usernames = _get_auth_user(auth)
+        for auth_username in auth_usernames.values():
+            if auth_username is not None and auth_username != username:
+                raise MismatchedUsernames()
+        # Auto-upgrading
+        if None in auth_usernames.values():
+            trace.note('Setting ssh/sftp usernames for launchpad.net.')
+            _set_auth_user(username, auth)
+    return username
+
+
+def _set_global_option(username, _config=None):
+    if _config is None:
+        _config = GlobalConfig()
+    _config.set_user_option('launchpad_username', username)
 
 
 def set_lp_login(username, _config=None):
     """Set the user's Launchpad username"""
-    if _config is None:
-        _config = GlobalConfig()
+    _set_global_option(username, _config)
+    _set_auth_user(username)
 
-    _config.set_user_option('launchpad_username', username)
+
+def _get_auth_user(auth=None):
+    if auth is None:
+        auth = AuthenticationConfig()
+    return {'production': auth.get_user('ssh', 'bazaar.launchpad.net'),
+            'staging': auth.get_user('ssh', 'bazaar.staging.launchpad.net'),}
+
+def _set_auth_user(username, auth=None):
+    if auth is None:
+        auth = AuthenticationConfig()
+    auth.set_credentials(
+        'Launchpad', 'bazaar.launchpad.net', username, 'ssh')
+    auth.set_credentials(
+        'Launchpad Staging', 'bazaar.staging.launchpad.net', username, 'ssh')
 
 
 def check_lp_login(username, _transport=None):

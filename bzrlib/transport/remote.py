@@ -512,15 +512,16 @@ class RemoteSSHTransport(RemoteTransport):
     """
 
     def _build_medium(self):
-        # ssh will prompt the user for a password if needed and if none is
-        # provided but it will not give it back, so no credentials can be
-        # stored.
         location_config = config.LocationConfig(self.base)
         bzr_remote_path = location_config.get_bzr_remote_path()
+        user = self._user
+        if user is None:
+            auth = config.AuthenticationConfig()
+            user = auth.get_user('ssh', self._host, self._port)
         client_medium = medium.SmartSSHClientMedium(self._host, self._port,
-            self._user, self._password, self.base,
+            user, self._password, self.base,
             bzr_remote_path=bzr_remote_path)
-        return client_medium, None
+        return client_medium, (user, self._password)
 
 
 class RemoteHTTPTransport(RemoteTransport):
