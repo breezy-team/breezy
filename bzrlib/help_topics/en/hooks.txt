@@ -190,7 +190,8 @@ The hook signature is (branch, url) where:
     The URL that the branch specified for its fallback location.
 
 The hook must return a URL for the branch containing the fallback
-location.
+location. If multiple hooks are registered, the order in which they 
+will be called is undefined and subject to change.
 
 (New in 1.9)
 
