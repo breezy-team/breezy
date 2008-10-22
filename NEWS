@@ -11,6 +11,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * New Branch hook ``transform_fallback_location`` allows a function to
+      be called when looking up the stacked source. (Michael Hudson)
+
   IMPROVEMENTS:
 
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
