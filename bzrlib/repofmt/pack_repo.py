@@ -973,13 +973,8 @@ class OptimisingPacker(Packer):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        new_pack = NewPack(self._pack_collection._upload_transport,
-            self._pack_collection._index_transport,
-            self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.bzrdir._get_file_mode(),
-            index_builder_class=self._pack_collection._index_builder_class,
-            index_class=self._pack_collection._index_class)
-
+        new_pack = super(OptimisingPacker, self).open_pack()
+        # Turn on the optimization flags for all the index builders.
         new_pack.revision_index.set_optimize(for_size=True)
         new_pack.inventory_index.set_optimize(for_size=True)
         new_pack.text_index.set_optimize(for_size=True)
