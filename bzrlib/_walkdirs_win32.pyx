@@ -187,7 +187,7 @@ cdef class Win32ReadDir:
         statvalue.st_ctime = _ftime_to_timestamp(&data.ftCreationTime)
         statvalue.st_mtime = _ftime_to_timestamp(&data.ftLastWriteTime)
         statvalue.st_atime = _ftime_to_timestamp(&data.ftLastAccessTime)
-        statvalue.st_size = _get_size(data)
+        statvalue._st_size = _get_size(data)
         statvalue.st_ino = 0
         statvalue.st_dev = 0
         return statvalue
