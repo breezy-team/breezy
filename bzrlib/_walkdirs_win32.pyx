@@ -81,7 +81,14 @@ cdef class _Win32Stat:
     cdef readonly double st_ctime
     cdef readonly double st_mtime
     cdef readonly double st_atime
-    cdef readonly __int64 st_size
+    # We can't just declare this as 'readonly' because python2.4 doesn't define
+    # T_LONGLONG as a structure member. So instead we just use a property that
+    # will convert it correctly anyway.
+    cdef __int64 _st_size
+
+    property st_size:
+        def __get__(self):
+            return self._st_size
 
     # os.stat always returns 0, so we hard code it here
     cdef readonly int st_dev

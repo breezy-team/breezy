@@ -51,6 +51,9 @@ IN DEVELOPMENT
       could only happen if ``bzr reconcile`` decided that the parent
       ordering was incorrect in the file graph.  (John Arbash Meinel)
 
+    * Some compatibility fixes for building the extensions with MSVC and
+      for python2.4. (John Arbash Meinel, #277484)
+
   DOCUMENTATION:
 
   API CHANGES:
