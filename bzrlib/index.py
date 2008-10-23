@@ -1174,11 +1174,16 @@ class CombinedGraphIndex(object):
             the most efficient order for the index.
         """
         seen_keys = set()
-        for index in self._indices:
-            for node in index.iter_all_entries():
-                if node[1] not in seen_keys:
-                    yield node
-                    seen_keys.add(node[1])
+        while True:
+            try:
+                for index in self._indices:
+                    for node in index.iter_all_entries():
+                        if node[1] not in seen_keys:
+                            yield node
+                            seen_keys.add(node[1])
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.

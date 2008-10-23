@@ -1138,7 +1138,8 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index1, index2 = index._indices
         result = list(index.iter_entries([('1',), ('2',), ('3',)]))
         index3 = index._indices[0]
-        # We had already yielded '1', so we just go on to the next
+        # We had already yielded '1', so we just go on to the next, we should
+        # not yield '1' two times.
         self.assertEqual([(index1, ('1',), ''), (index3, ('2',), '')],
                          result)
         self.assertEqual([1, 1, 0], reload_counter)
@@ -1155,6 +1156,34 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
         self.assertEqual([2, 1, 1], reload_counter)
 
+    def test_iter_all_entries_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        result = list(index.iter_all_entries())
+        index3 = index._indices[0]
+        self.assertEqual([(index3, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_all_entries_reloads_midway(self):
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
+        index1, index2 = index._indices
+        result = list(index.iter_all_entries())
+        index3 = index._indices[0]
+        # We had already yielded '1', so we just go on to the next, we should
+        # not yield '1' two times.
+        self.assertEqual([(index1, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_all_entries_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
+
+    def test_iter_all_entries_reloads_and_fails(self):
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
 
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
