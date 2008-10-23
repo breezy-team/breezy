@@ -1233,12 +1233,17 @@ class CombinedGraphIndex(object):
         if not keys:
             return
         seen_keys = set()
-        for index in self._indices:
-            for node in index.iter_entries_prefix(keys):
-                if node[1] in seen_keys:
-                    continue
-                seen_keys.add(node[1])
-                yield node
+        while True:
+            try:
+                for index in self._indices:
+                    for node in index.iter_entries_prefix(keys):
+                        if node[1] in seen_keys:
+                            continue
+                        seen_keys.add(node[1])
+                        yield node
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
