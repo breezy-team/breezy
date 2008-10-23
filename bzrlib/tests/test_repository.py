@@ -937,11 +937,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         new_name = new_name.pop()
         # The old collection hasn't noticed yet
         self.assertEqual(names, packs.names())
-        # [removed], [added], [modified]
-        self.assertEqual(([], [new_name], []), packs.reload_pack_names())
+        self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
         # And the repository can access the new revision
         self.assertEqual({rev3:(rev2,)}, r.get_parent_map([rev3]))
+        self.assertFalse(packs.reload_pack_names())
 
     def test_reload_pack_names_added_and_removed(self):
         tree = self.make_branch_and_tree('.')
@@ -960,11 +960,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         new_names = tree.branch.repository._pack_collection.names()
         # The other collection hasn't noticed yet
         self.assertEqual(names, packs.names())
-        removed, added, modified = packs.reload_pack_names()
+        self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
-        self.assertEqual((names, new_names, []),
-                         (sorted(removed), sorted(added), sorted(modified)))
         self.assertEqual({rev2:(rev1,)}, r.get_parent_map([rev2]))
+        self.assertFalse(packs.reload_pack_names())
 
 
 class TestPack(TestCaseWithTransport):

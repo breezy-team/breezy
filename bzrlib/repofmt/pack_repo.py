@@ -1155,10 +1155,10 @@ class RepositoryPackCollection(object):
         # when a pack is being created by this object, the state of that pack.
         self._new_pack = None
         # aggregated revision index data
-        self.revision_index = AggregateIndex()
-        self.inventory_index = AggregateIndex()
-        self.text_index = AggregateIndex()
-        self.signature_index = AggregateIndex()
+        self.revision_index = AggregateIndex(self.reload_pack_names)
+        self.inventory_index = AggregateIndex(self.reload_pack_names)
+        self.text_index = AggregateIndex(self.reload_pack_names)
+        self.signature_index = AggregateIndex(self.reload_pack_names)
 
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
@@ -1677,7 +1677,11 @@ class RepositoryPackCollection(object):
         # out the new value.
         disk_nodes, _, _ = self._diff_pack_names()
         self._packs_at_load = disk_nodes
-        return self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        (removed, added,
+         modified) = self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        if removed or added or modified:
+            return True
+        return False
 
     def _clear_obsolete_packs(self):
         """Delete everything from the obsolete-packs directory.
