@@ -194,7 +194,7 @@ class BzrFastExporter:
         my_modified = [ x[0:3] for x in changes.modified ]
 
         # We have to keep track of previous renames in this commit
-        renamed = {}
+        renamed = []
         for (oldpath, newpath, id_, kind,
                 text_modified, meta_modified) in changes.renamed:
             
@@ -202,14 +202,14 @@ class BzrFastExporter:
                 sys.stderr.write("Skipping empty dir %s in rev %s\n" % (oldpath, revobj.revision_id))
                 continue
 
-            for old, new in renamed.iteritems():
+            for old, new in renamed:
                 # If a previous rename is found in this rename, we should
                 # adjust the path
                 if old in oldpath:
                     oldpath = oldpath.replace(old + "/", new + "/") 
                     self.debug("Fixing recursive rename for %s" % oldpath)
 
-            renamed[oldpath] = newpath
+            renamed.append([oldpath, newpath])
 
             sys.stdout.write('R %s %s\n' % (self.my_quote(oldpath, True),
                                                     self.my_quote(newpath)))
