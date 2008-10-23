@@ -452,10 +452,16 @@ class AggregateIndex(object):
     # XXX: Probably 'can be written to' could/should be separated from 'acts
     # like a knit index' -- mbp 20071024
 
-    def __init__(self):
-        """Create an AggregateIndex."""
+    def __init__(self, reload_func=None):
+        """Create an AggregateIndex.
+
+        :param reload_func: A function to call if we find we are missing an
+            index. Should have the form reload_func() => True/False to indicate
+            if reloading actually changed anything.
+        """
+        self._reload_func = reload_func
         self.index_to_pack = {}
-        self.combined_index = CombinedGraphIndex([])
+        self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
         self.data_access = _DirectPackAccess(self.index_to_pack)
         self.add_callback = None
 

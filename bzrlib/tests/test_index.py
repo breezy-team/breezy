@@ -927,6 +927,38 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         size = trans.put_file(name, stream)
         return GraphIndex(trans, name, size)
 
+    def make_index_with_missing_children(self):
+        """Create a CombinedGraphIndex which will have missing indexes.
+
+        This creates a CGI which thinks it has 2 indexes, however they have
+        been deleted. If CGI._reload_func() is called, then it will repopulate
+        with a new index.
+
+        :return: (CombinedGraphIndex, reload_counter)
+        """
+        index1 = self.make_index('1', nodes=[(('1',), '', ())])
+        index2 = self.make_index('2', nodes=[(('2',), '', ())])
+        index3 = self.make_index('3', nodes=[
+            (('1',), '', ()),
+            (('2',), '', ())])
+
+        # total_reloads, num_changed, num_unchanged
+        reload_counter = [0, 0, 0]
+        def reload():
+            reload_counter[0] += 1
+            new_indices = [index3]
+            if index._indices == new_indices:
+                reload_counter[2] += 1
+                return False
+            reload_counter[1] += 1
+            index._indices[:] = new_indices
+            return True
+        index = CombinedGraphIndex([index1, index2], reload_func=reload)
+        trans = self.get_transport()
+        trans.delete('1')
+        trans.delete('2')
+        return index, reload_counter
+
     def test_open_missing_index_no_error(self):
         trans = self.get_transport()
         index1 = GraphIndex(trans, 'missing', 100)
@@ -1069,6 +1101,20 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
     def test_validate_empty(self):
         index = CombinedGraphIndex([])
         index.validate()
+
+    def test_key_count_reloads(self):
+        index, reload_counter = self.make_index_with_missing_children()
+        self.assertEqual(2, index.key_count())
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_key_count_reloads_and_fails(self):
+        index, reload_counter = self.make_index_with_missing_children()
+        # We have deleted the underlying index, so we will try to reload, but
+        # still fail. This is mostly to test we don't get stuck in an infinite
+        # loop trying to reload
+        self.get_transport().delete('3')
+        self.assertRaises(errors.NoSuchFile, index.key_count)
+        self.assertEqual([2, 1, 1], reload_counter)
 
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):

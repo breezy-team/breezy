@@ -27,6 +27,7 @@ __all__ = [
 from bisect import bisect_right
 from cStringIO import StringIO
 import re
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1106,12 +1107,16 @@ class CombinedGraphIndex(object):
     in the index list.
     """
 
-    def __init__(self, indices):
+    def __init__(self, indices, reload_func=None):
         """Create a CombinedGraphIndex backed by indices.
 
         :param indices: An ordered list of indices to query for data.
+        :param reload_func: A function to call if we find we are missing an
+            index. Should have the form reload_func() => True/False to indicate
+            if reloading actually changed anything.
         """
         self._indices = indices
+        self._reload_func = reload_func
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -1227,13 +1232,22 @@ class CombinedGraphIndex(object):
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
-        
+
         For CombinedGraphIndex this is approximated by the sum of the keys of
         the child indices. As child indices may have duplicate keys this can
         have a maximum error of the number of child indices * largest number of
         keys in any index.
         """
-        return sum((index.key_count() for index in self._indices), 0)
+        do_retry = True
+        while do_retry:
+            try:
+                return sum((index.key_count() for index in self._indices), 0)
+            except errors.NoSuchFile:
+                if self._reload_func is None:
+                    raise
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                if not self._reload_func():
+                    raise exc_type, exc_value, exc_traceback
 
     def validate(self):
         """Validate that everything in the index can be accessed."""
