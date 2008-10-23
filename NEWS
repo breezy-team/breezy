@@ -44,6 +44,11 @@ IN DEVELOPMENT
       could only happen if ``bzr reconcile`` decided that the parent
       ordering was incorrect in the file graph.  (John Arbash Meinel)
 
+    * The index logic is now able to reload the list of pack files if and
+      index ends up disappearing. We still don't reload if the pack data
+      itself goes missing after checking the index.
+      (John Arbash Meinel, #153786)
+
   DOCUMENTATION:
 
   API CHANGES:
