@@ -398,23 +398,21 @@ class TestPackRepository(TestCaseWithTransport):
     def test_concurrent_pack_triggers_reload(self):
         # create 2 packs, which we will then collapse
         tree = self.make_branch_and_tree('tree')
-        rev1 = tree.commit('one')
-        rev2 = tree.commit('two')
-        r1 = tree.branch.repository
-        r2 = repository.Repository.open('tree')
-        r1.lock_write()
+        tree.lock_write()
         try:
+            rev1 = tree.commit('one')
+            rev2 = tree.commit('two')
+            r2 = repository.Repository.open('tree')
             r2.lock_read()
             try:
                 # Now r2 has read the pack-names file, but will need to reload
                 # it after r1 has repacked
-                r1.pack()
-                self.assertEqual({rev2:(rev1,)},
-                                 r2.get_parent_map([rev2]))
+                tree.branch.repository.pack()
+                self.assertEqual({rev2:(rev1,)}, r2.get_parent_map([rev2]))
             finally:
                 r2.unlock()
         finally:
-            r1.unlock()
+            tree.unlock()
 
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())

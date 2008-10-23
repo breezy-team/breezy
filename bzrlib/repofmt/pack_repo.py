@@ -1553,51 +1553,55 @@ class RepositoryPackCollection(object):
         """Release the mutex around the pack-names index."""
         self.repo.control_files.unlock()
 
-    def _save_pack_names(self, clear_obsolete_packs=False):
-        """Save the list of packs.
+    def _diff_pack_names(self):
+        """Read the pack names from disk, and compare it to the one in memory.
 
-        This will take out the mutex around the pack names list for the
-        duration of the method call. If concurrent updates have been made, a
-        three-way merge between the current list and the current in memory list
-        is performed.
-
-        :param clear_obsolete_packs: If True, clear out the contents of the
-            obsolete_packs directory.
+        :return: (disk_nodes, deleted_nodes, new_nodes)
+            disk_nodes    The final set of nodes that should be referenced
+            deleted_nodes Nodes which have been removed from when we started
+            new_nodes     Nodes that are newly introduced
         """
-        self.lock_names()
-        try:
-            builder = self._index_builder_class()
-            # load the disk nodes across
-            disk_nodes = set()
-            for index, key, value in self._iter_disk_pack_index():
-                disk_nodes.add((key, value))
-            # do a two-way diff against our original content
-            current_nodes = set()
-            for name, sizes in self._names.iteritems():
-                current_nodes.add(
-                    ((name, ), ' '.join(str(size) for size in sizes)))
-            deleted_nodes = self._packs_at_load - current_nodes
-            new_nodes = current_nodes - self._packs_at_load
-            disk_nodes.difference_update(deleted_nodes)
-            disk_nodes.update(new_nodes)
-            # TODO: handle same-name, index-size-changes here - 
-            # e.g. use the value from disk, not ours, *unless* we're the one
-            # changing it.
-            for key, value in disk_nodes:
-                builder.add_node(key, value)
-            self.transport.put_file('pack-names', builder.finish(),
-                mode=self.repo.bzrdir._get_file_mode())
-            # move the baseline forward
-            self._packs_at_load = disk_nodes
-            if clear_obsolete_packs:
-                self._clear_obsolete_packs()
-        finally:
-            self._unlock_names()
-        # synchronise the memory packs list with what we just wrote:
+        # load the disk nodes across
+        disk_nodes = set()
+        for index, key, value in self._iter_disk_pack_index():
+            disk_nodes.add((key, value))
+
+        # do a two-way diff against our original content
+        current_nodes = set()
+        for name, sizes in self._names.iteritems():
+            current_nodes.add(
+                ((name, ), ' '.join(str(size) for size in sizes)))
+
+        # Packs no longer present in the repository, which were present when we
+        # locked the repository
+        deleted_nodes = self._packs_at_load - current_nodes
+        # Packs which this process is adding
+        new_nodes = current_nodes - self._packs_at_load
+
+        # Update the disk_nodes set to include the ones we are adding, and
+        # remove the ones which were removed by someone else
+        disk_nodes.difference_update(deleted_nodes)
+        disk_nodes.update(new_nodes)
+
+        return disk_nodes, deleted_nodes, new_nodes
+
+    def _syncronize_pack_names_from_disk_nodes(self, disk_nodes):
+        """Given the correct set of pack files, update our saved info.
+
+        :return: (removed, added, modified)
+            removed     pack names removed from self._names
+            added       pack names added to self._names
+            modified    pack names that had changed value
+        """
+        removed = []
+        added = []
+        modified = []
+        ## self._packs_at_load = disk_nodes
         new_names = dict(disk_nodes)
         # drop no longer present nodes
         for pack in self.all_packs():
             if (pack.name,) not in new_names:
+                removed.append(pack.name)
                 self._remove_pack_from_memory(pack)
         # add new nodes/refresh existing ones
         for key, value in disk_nodes:
@@ -1617,10 +1621,57 @@ class RepositoryPackCollection(object):
                     self._remove_pack_from_memory(self.get_pack_by_name(name))
                     self._names[name] = sizes
                     self.get_pack_by_name(name)
+                    modified.append(name)
             else:
                 # new
                 self._names[name] = sizes
                 self.get_pack_by_name(name)
+                added.append(name)
+        return removed, added, modified
+
+    def _save_pack_names(self, clear_obsolete_packs=False):
+        """Save the list of packs.
+
+        This will take out the mutex around the pack names list for the
+        duration of the method call. If concurrent updates have been made, a
+        three-way merge between the current list and the current in memory list
+        is performed.
+
+        :param clear_obsolete_packs: If True, clear out the contents of the
+            obsolete_packs directory.
+        """
+        self.lock_names()
+        try:
+            builder = self._index_builder_class()
+            disk_nodes, deleted_nodes, new_nodes = self._diff_pack_names()
+            # TODO: handle same-name, index-size-changes here - 
+            # e.g. use the value from disk, not ours, *unless* we're the one
+            # changing it.
+            for key, value in disk_nodes:
+                builder.add_node(key, value)
+            self.transport.put_file('pack-names', builder.finish(),
+                mode=self.repo.bzrdir._get_file_mode())
+            # move the baseline forward
+            self._packs_at_load = disk_nodes
+            if clear_obsolete_packs:
+                self._clear_obsolete_packs()
+        finally:
+            self._unlock_names()
+        # synchronise the memory packs list with what we just wrote:
+        self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+
+    def reload_pack_names(self):
+        """Sync our pack listing with what is present in the repository.
+
+        This should be called when we find out that something we thought was
+        present is now missing. This happens when another process re-packs the
+        repository, etc.
+        """
+        # This is functionally similar to _save_pack_names, but we don't write
+        # out the new value.
+        disk_nodes, _, _ = self._diff_pack_names()
+        self._packs_at_load = disk_nodes
+        return self._syncronize_pack_names_from_disk_nodes(disk_nodes)
 
     def _clear_obsolete_packs(self):
         """Delete everything from the obsolete-packs directory.

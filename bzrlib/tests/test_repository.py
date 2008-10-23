@@ -917,6 +917,55 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # and the same instance should be returned on successive calls.
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 
+    def test_reload_pack_names_new_entry(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        rev1 = tree.commit('one')
+        rev2 = tree.commit('two')
+        r = repository.Repository.open('.')
+        r.lock_read()
+        self.addCleanup(r.unlock)
+        packs = r._pack_collection
+        packs.ensure_loaded()
+        names = packs.names()
+        # Add a new pack file into the repository
+        rev3 = tree.commit('three')
+        new_names = tree.branch.repository._pack_collection.names()
+        new_name = set(new_names).difference(names)
+        self.assertEqual(1, len(new_name))
+        new_name = new_name.pop()
+        # The old collection hasn't noticed yet
+        self.assertEqual(names, packs.names())
+        # [removed], [added], [modified]
+        self.assertEqual(([], [new_name], []), packs.reload_pack_names())
+        self.assertEqual(new_names, packs.names())
+        # And the repository can access the new revision
+        self.assertEqual({rev3:(rev2,)}, r.get_parent_map([rev3]))
+
+    def test_reload_pack_names_added_and_removed(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        rev1 = tree.commit('one')
+        rev2 = tree.commit('two')
+        r = repository.Repository.open('.')
+        r.lock_read()
+        self.addCleanup(r.unlock)
+        packs = r._pack_collection
+        packs.ensure_loaded()
+        names = packs.names()
+        # Now repack the whole thing
+        tree.branch.repository.pack()
+        new_names = tree.branch.repository._pack_collection.names()
+        # The other collection hasn't noticed yet
+        self.assertEqual(names, packs.names())
+        removed, added, modified = packs.reload_pack_names()
+        self.assertEqual(new_names, packs.names())
+        self.assertEqual((names, new_names, []),
+                         (sorted(removed), sorted(added), sorted(modified)))
+        self.assertEqual({rev2:(rev1,)}, r.get_parent_map([rev2]))
+
 
 class TestPack(TestCaseWithTransport):
     """Tests for the Pack object."""
