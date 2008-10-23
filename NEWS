@@ -37,9 +37,18 @@ IN DEVELOPMENT
       memory before writing it to disk. This was a little bit faster, but
       consumed lots of memory. (John Arbash Meinel, #269456)
 
+    * Fixes to the ``annotate`` code. The fast-path which re-used the
+      stored deltas was accidentally disabled all the time, instead of
+      only when a branch was stacked. Second, the code would accidentally
+      re-use a delta even if it wasn't against the left-parent, this
+      could only happen if ``bzr reconcile`` decided that the parent
+      ordering was incorrect in the file graph.  (John Arbash Meinel)
+
   DOCUMENTATION:
 
   API CHANGES:
+
+    * commands.plugins_cmds is now a CommandRegistry, not a dict.
 
   TESTING:
 
