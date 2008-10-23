@@ -1214,6 +1214,25 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
                                                  [('1',)])
 
+    def test_validate_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index.validate()
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_validate_reloads_midway(self):
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
+        index.validate()
+
+    def test_validate_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        self.assertRaises(errors.NoSuchFile, index.validate)
+
+    def test_validate_reloads_and_fails(self):
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertRaises(errors.NoSuchFile, index.validate)
+
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
 

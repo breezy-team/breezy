@@ -1274,8 +1274,13 @@ class CombinedGraphIndex(object):
 
     def validate(self):
         """Validate that everything in the index can be accessed."""
-        for index in self._indices:
-            index.validate()
+        while True:
+            try:
+                for index in self._indices:
+                    index.validate()
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
 
 class InMemoryGraphIndex(GraphIndexBuilder):
