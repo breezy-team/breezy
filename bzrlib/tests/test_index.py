@@ -927,13 +927,14 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         size = trans.put_file(name, stream)
         return GraphIndex(trans, name, size)
 
-    def make_index_with_missing_children(self):
+    def make_combined_index_with_missing(self, missing=['1', '2']):
         """Create a CombinedGraphIndex which will have missing indexes.
 
         This creates a CGI which thinks it has 2 indexes, however they have
         been deleted. If CGI._reload_func() is called, then it will repopulate
         with a new index.
 
+        :param missing: The underlying indexes to delete
         :return: (CombinedGraphIndex, reload_counter)
         """
         index1 = self.make_index('1', nodes=[(('1',), '', ())])
@@ -955,8 +956,8 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
             return True
         index = CombinedGraphIndex([index1, index2], reload_func=reload)
         trans = self.get_transport()
-        trans.delete('1')
-        trans.delete('2')
+        for fname in missing:
+            trans.delete(fname)
         return index, reload_counter
 
     def test_open_missing_index_no_error(self):
@@ -1103,18 +1104,57 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index.validate()
 
     def test_key_count_reloads(self):
-        index, reload_counter = self.make_index_with_missing_children()
+        index, reload_counter = self.make_combined_index_with_missing()
         self.assertEqual(2, index.key_count())
         self.assertEqual([1, 1, 0], reload_counter)
 
+    def test_key_count_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        # Without a _reload_func we just raise the exception
+        self.assertRaises(errors.NoSuchFile, index.key_count)
+
     def test_key_count_reloads_and_fails(self):
-        index, reload_counter = self.make_index_with_missing_children()
-        # We have deleted the underlying index, so we will try to reload, but
+        # We have deleted all underlying indexes, so we will try to reload, but
         # still fail. This is mostly to test we don't get stuck in an infinite
         # loop trying to reload
-        self.get_transport().delete('3')
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
         self.assertRaises(errors.NoSuchFile, index.key_count)
         self.assertEqual([2, 1, 1], reload_counter)
+
+    def test_iter_entries_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        result = list(index.iter_entries([('1',), ('2',), ('3',)]))
+        index3 = index._indices[0]
+        self.assertEqual([(index3, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_entries_reloads_midway(self):
+        # The first index still looks present, so we get interrupted mid-way
+        # through
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
+        index1, index2 = index._indices
+        result = list(index.iter_entries([('1',), ('2',), ('3',)]))
+        index3 = index._indices[0]
+        # We had already yielded '1', so we just go on to the next
+        self.assertEqual([(index1, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_entries_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        # Without a _reload_func we just raise the exception
+        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+
+    def test_iter_entries_reloads_and_fails(self):
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+        self.assertEqual([2, 1, 1], reload_counter)
+
 
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):

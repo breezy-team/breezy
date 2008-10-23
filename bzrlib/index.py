@@ -1192,12 +1192,17 @@ class CombinedGraphIndex(object):
             efficient order for the index.
         """
         keys = set(keys)
-        for index in self._indices:
-            if not keys:
+        while True:
+            try:
+                for index in self._indices:
+                    if not keys:
+                        return
+                    for node in index.iter_entries(keys):
+                        keys.remove(node[1])
+                        yield node
                 return
-            for node in index.iter_entries(keys):
-                keys.remove(node[1])
-                yield node
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -1238,16 +1243,24 @@ class CombinedGraphIndex(object):
         have a maximum error of the number of child indices * largest number of
         keys in any index.
         """
-        do_retry = True
-        while do_retry:
+        while True:
             try:
                 return sum((index.key_count() for index in self._indices), 0)
             except errors.NoSuchFile:
-                if self._reload_func is None:
-                    raise
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                if not self._reload_func():
-                    raise exc_type, exc_value, exc_traceback
+                self._reload_or_raise()
+
+    def _reload_or_raise(self):
+        """We just got a NoSuchFile exception.
+
+        Try to reload the indices, if it fails, just raise the current
+        exception.
+        """
+        if self._reload_func is None:
+            raise
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        if not self._reload_func():
+            # We tried to reload, but nothing changed, so we fail anyway
+            raise exc_type, exc_value, exc_traceback
 
     def validate(self):
         """Validate that everything in the index can be accessed."""
