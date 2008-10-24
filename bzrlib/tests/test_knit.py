@@ -273,16 +273,18 @@ class MockTransport(object):
 class MockReadvFailingTransport(MockTransport):
     """Fail in the middle of a readv() result.
 
-    This Transport will successfully yield the first requested hunk, but raise
-    NoSuchFile for the rest.
+    This Transport will successfully yield the first two requested hunks, but
+    raise NoSuchFile for the rest.
     """
 
     def readv(self, relpath, offsets):
-        first = True
+        count = 0
         for result in MockTransport.readv(self, relpath, offsets):
-            if not first:
+            count += 1
+            # we use 2 because the first offset is the pack header, the second
+            # is the first actual content requset
+            if count > 2:
                 raise errors.NoSuchFile(relpath)
-            first = False
             yield result
 
 
@@ -422,8 +424,13 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         failing_transport = MockReadvFailingTransport(
                                 [transport.get_bytes('packname')])
-        # The readv() will fail mid-way through
         access = _DirectPackAccess({'foo':(failing_transport, 'packname')})
+        # Asking for a single record will not trigger the Mock failure
+        self.assertEqual(['1234567890'],
+            list(access.get_raw_records(memos[:1])))
+        self.assertEqual(['12345'],
+            list(access.get_raw_records(memos[1:2])))
+        # A multiple offset readv() will fail mid-way through
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
