@@ -527,6 +527,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access.reload_or_raise(retry_exc)
         self.assertEqual([2], reload_called)
 
+    # TODO: Test that KnitVersionedFiles handles RetryWithNewPacks exceptions
+    #       and calls reload_or_raise appropriately
+
 
 class LowLevelKnitDataTests(TestCase):
 
