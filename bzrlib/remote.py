@@ -1616,14 +1616,22 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.set_stacked_on_url(stacked_location)
 
     def sprout(self, to_bzrdir, revision_id=None):
-        # Like Branch.sprout, except that it sprouts a branch in the default
-        # format, because RemoteBranches can't be created at arbitrary URLs.
-        # XXX: if to_bzrdir is a RemoteBranch, this should perhaps do
-        # to_bzrdir.create_branch...
-        self._ensure_real()
-        result = self._real_branch._format.initialize(to_bzrdir)
-        self.copy_content_into(result, revision_id=revision_id)
-        result.set_parent(self.bzrdir.root_transport.base)
+        branch_format = to_bzrdir._format._branch_format
+        if (branch_format is None or
+            isinstance(branch_format, RemoteBranchFormat)):
+            # The to_bzrdir specifies RemoteBranchFormat (or no format, which
+            # implies the same thing), but RemoteBranches can't be created at
+            # arbitrary URLs.  So create a branch in the same format as
+            # _real_branch instead.
+            # XXX: if to_bzrdir is a RemoteBzrDir, this should perhaps do
+            # to_bzrdir.create_branch to create a RemoteBranch after all...
+            self._ensure_real()
+            result = self._real_branch._format.initialize(to_bzrdir)
+            self.copy_content_into(result, revision_id=revision_id)
+            result.set_parent(self.bzrdir.root_transport.base)
+        else:
+            result = branch.Branch.sprout(
+                self, to_bzrdir, revision_id=revision_id)
         return result
 
     @needs_write_lock
