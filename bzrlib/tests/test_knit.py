@@ -450,6 +450,26 @@ class LowLevelKnitDataTests(TestCase):
         gz_file.close()
         return sio.getvalue()
 
+    def make_multiple_records(self):
+        """Create the content for multiple records."""
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        total_txt = []
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        record_1 = (0, len(gz_txt), sha1sum)
+        total_txt.append(gz_txt)
+        sha1sum = osutils.sha('baz\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-2 1 %s\n'
+                                        'baz\n'
+                                        'end rev-id-2\n'
+                                        % (sha1sum,))
+        record_2 = (record_1[1], len(gz_txt), sha1sum)
+        total_txt.append(gz_txt)
+        return total_txt, record_1, record_2
+
     def test_valid_knit_data(self):
         sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
@@ -468,6 +488,24 @@ class LowLevelKnitDataTests(TestCase):
 
         raw_contents = list(knit._read_records_iter_raw(records))
         self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
+
+    def test_multiple_records_valid(self):
+        total_txt, record_1, record_2 = self.make_multiple_records()
+        transport = MockTransport([''.join(total_txt)])
+        access = _KnitKeyAccess(transport, ConstantMapper('filename'))
+        knit = KnitVersionedFiles(None, access)
+        records = [(('rev-id-1',), (('rev-id-1',), record_1[0], record_1[1])),
+                   (('rev-id-2',), (('rev-id-2',), record_2[0], record_2[1]))]
+
+        contents = list(knit._read_records_iter(records))
+        self.assertEqual([(('rev-id-1',), ['foo\n', 'bar\n'], record_1[2]),
+                          (('rev-id-2',), ['baz\n'], record_2[2])],
+                         contents)
+
+        raw_contents = list(knit._read_records_iter_raw(records))
+        self.assertEqual([(('rev-id-1',), total_txt[0], record_1[2]),
+                          (('rev-id-2',), total_txt[1], record_2[2])],
+                         raw_contents)
 
     def test_not_enough_lines(self):
         sha1sum = osutils.sha('foo\n').hexdigest()

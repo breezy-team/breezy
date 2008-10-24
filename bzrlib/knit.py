@@ -1113,6 +1113,9 @@ class KnitVersionedFiles(VersionedFiles):
         :param allow_missing: If some records are missing, rather than 
             error, just return the data that could be generated.
         """
+        # TODO: We want to build in retrying, because we only hold the
+        #       'records' for the duration of this function, outside of this
+        #       function we deal in 'keys'.
         position_map = self._get_components_positions(keys,
             allow_missing=allow_missing)
         # key = component_id, r = record_details, i_m = index_memo, n = next
@@ -1180,6 +1183,7 @@ class KnitVersionedFiles(VersionedFiles):
 
     def _get_remaining_record_stream(self, keys, ordering,
                                      include_delta_closure):
+        """This function is the 'retry' portion for get_record_stream."""
         if include_delta_closure:
             positions = self._get_components_positions(keys, allow_missing=True)
         else:
@@ -1440,6 +1444,9 @@ class KnitVersionedFiles(VersionedFiles):
 
         :return: An iterator over (line, key).
         """
+        # TODO: We want to build in retrying, because we only hold the
+        #       'records' for the duration of this function, outside of this
+        #       function we deal in 'keys'.
         if pb is None:
             pb = progress.DummyProgress()
         keys = set(keys)
@@ -2757,6 +2764,9 @@ class _KnitAnnotator(object):
         if len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
+        # TODO: We want to create retry logic at this level, between
+        #       _get_build_graph and _annotate_records, since that is the level
+        #       that we talk in terms of 'records' and not in terms of keys
         records = self._get_build_graph(key)
         if key in self._ghosts:
             raise errors.RevisionNotPresent(key, self._knit)
