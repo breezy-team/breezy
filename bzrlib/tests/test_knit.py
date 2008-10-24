@@ -270,6 +270,22 @@ class MockTransport(object):
         return queue_call
 
 
+class MockReadvFailingTransport(MockTransport):
+    """Fail in the middle of a readv() result.
+
+    This Transport will successfully yield the first requested hunk, but raise
+    NoSuchFile for the rest.
+    """
+
+    def readv(self, relpath, offsets):
+        first = True
+        for result in MockTransport.readv(self, relpath, offsets):
+            if not first:
+                raise errors.NoSuchFile(relpath)
+            first = False
+            yield result
+
+
 class KnitRecordAccessTestsMixin(object):
     """Tests for getting and putting knit records."""
 
@@ -396,6 +412,26 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertIs(e.exc_info[0], errors.NoSuchFile)
         self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
         self.assertEqual('different-packname', e.exc_info[1].path)
+
+    def test_failing_readv_raises_retry(self):
+        access, writer = self._get_access(packname='packname', index='foo')
+        memos = []
+        memos.extend(access.add_raw_records([('key', 10)], '1234567890'))
+        memos.extend(access.add_raw_records([('key', 5)], '12345'))
+        writer.end()
+        transport = self.get_transport()
+        failing_transport = MockReadvFailingTransport(
+                                [transport.get_bytes('packname')])
+        # The readv() will fail mid-way through
+        access = _DirectPackAccess({'foo':(failing_transport, 'packname')})
+        e = self.assertListRaises(errors.RetryWithNewPacks,
+                                  access.get_raw_records, memos)
+        # The file has gone missing, so we assume we need to reload
+        self.assertFalse(e.reload_occurred)
+        self.assertIsInstance(e.exc_info, tuple)
+        self.assertIs(e.exc_info[0], errors.NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
+        self.assertEqual('packname', e.exc_info[1].path)
 
 
 class LowLevelKnitDataTests(TestCase):
