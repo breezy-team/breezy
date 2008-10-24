@@ -2401,15 +2401,19 @@ class _KnitKeyAccess(object):
 class _DirectPackAccess(object):
     """Access to data in one or more packs with less translation."""
 
-    def __init__(self, index_to_packs):
+    def __init__(self, index_to_packs, reload_func=None):
         """Create a _DirectPackAccess object.
 
         :param index_to_packs: A dict mapping index objects to the transport
             and file names for obtaining data.
+        :param reload_func: A function to call if we determine that the pack
+            files have moved and we need to reload our caches. See
+            bzrlib.repo_fmt.pack_repo.AggregateIndex for more details.
         """
         self._container_writer = None
         self._write_index = None
         self._indices = index_to_packs
+        self._reload_func = reload_func
 
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
@@ -2467,6 +2471,10 @@ class _DirectPackAccess(object):
                 # A KeyError here indicates that someone has triggered an index
                 # reload, and this index has gone missing, we need to start
                 # over.
+                if self._reload_func is None:
+                    # If we don't have a _reload_func there is nothing that can
+                    # be done
+                    raise
                 raise errors.RetryWithNewPacks(reload_occurred=True,
                                                exc_info=sys.exc_info())
             try:
@@ -2476,6 +2484,8 @@ class _DirectPackAccess(object):
             except errors.NoSuchFile:
                 # A NoSuchFile error indicates that a pack file has gone
                 # missing on disk, we need to trigger a reload, and start over.
+                if self._reload_func is None:
+                    raise
                 raise errors.RetryWithNewPacks(reload_occurred=False,
                                                exc_info=sys.exc_info())
 
@@ -2485,6 +2495,22 @@ class _DirectPackAccess(object):
             self._indices[index] = transport_packname
         self._container_writer = writer
         self._write_index = index
+
+    def reload_or_raise(self, retry_exc):
+        """Try calling the reload function, or re-raise the original exception.
+
+        This should be called after _DirectPackAccess raises a
+        RetryWithNewPacks exception. This function will handle the common logic
+        of determining when the error is fatal versus being temporary.
+        It will also make sure that the original exception is raised, rather
+        than the RetryWithNewPacks exception.
+
+        If this function returns, then the calling function should retry
+        whatever operation was being performed. Otherwise an exception will
+        be raised.
+
+        :param retry_exc: A RetryWithNewPacks exception.
+        """
 
 
 # Deprecated, use PatienceSequenceMatcher instead

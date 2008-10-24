@@ -340,6 +340,22 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access.set_writer(writer, index, (transport, packname))
         return access, writer
 
+    def make_pack_file(self):
+        """Create a pack file with 2 records."""
+        access, writer = self._get_access(packname='packname', index='foo')
+        memos = []
+        memos.extend(access.add_raw_records([('key1', 10)], '1234567890'))
+        memos.extend(access.add_raw_records([('key2', 5)], '12345'))
+        writer.end()
+        return memos
+
+    def make_reload_func(self):
+        reload_called = [0]
+        def reload():
+            reload_called[0] += 1
+            return True
+        return reload_called, reload
+
     def test_read_from_several_packs(self):
         access, writer = self._get_access()
         memos = []
@@ -382,13 +398,12 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
 
     def test_missing_index_raises_retry(self):
-        access, writer = self._get_access(packname='packname', index='foo')
-        memos = []
-        memos.extend(access.add_raw_records([('key', 10)], '1234567890'))
-        writer.end()
+        memos = self.make_pack_file()
         transport = self.get_transport()
-        # Note that the 'index' key has changed
-        access = _DirectPackAccess({'bar':(transport, 'packname')})
+        reload_called, reload_func = self.make_reload_func()
+        # Note that the index key has changed from 'foo' to 'bar'
+        access = _DirectPackAccess({'bar':(transport, 'packname')},
+                                   reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # Because a key was passed in which does not match our index list, we
@@ -398,14 +413,20 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertIs(e.exc_info[0], KeyError)
         self.assertIsInstance(e.exc_info[1], KeyError)
 
-    def test_missing_file_raises_retry(self):
-        access, writer = self._get_access(packname='packname', index='foo')
-        memos = []
-        memos.extend(access.add_raw_records([('key', 10)], '1234567890'))
-        writer.end()
+    def test_missing_index_raises_key_error_with_no_reload(self):
+        memos = self.make_pack_file()
         transport = self.get_transport()
-        # Note that the 'filename' has been changed
-        access = _DirectPackAccess({'foo':(transport, 'different-packname')})
+        # Note that the index key has changed from 'foo' to 'bar'
+        access = _DirectPackAccess({'bar':(transport, 'packname')})
+        e = self.assertListRaises(KeyError, access.get_raw_records, memos)
+
+    def test_missing_file_raises_retry(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        reload_called, reload_func = self.make_reload_func()
+        # Note that the 'filename' has been changed to 'different-packname'
+        access = _DirectPackAccess({'foo':(transport, 'different-packname')},
+                                   reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
@@ -415,16 +436,22 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
         self.assertEqual('different-packname', e.exc_info[1].path)
 
+    def test_missing_file_raises_no_such_file_with_no_reload(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        # Note that the 'filename' has been changed to 'different-packname'
+        access = _DirectPackAccess({'foo':(transport, 'different-packname')})
+        e = self.assertListRaises(errors.NoSuchFile,
+                                  access.get_raw_records, memos)
+
     def test_failing_readv_raises_retry(self):
-        access, writer = self._get_access(packname='packname', index='foo')
-        memos = []
-        memos.extend(access.add_raw_records([('key', 10)], '1234567890'))
-        memos.extend(access.add_raw_records([('key', 5)], '12345'))
-        writer.end()
+        memos = self.make_pack_file()
         transport = self.get_transport()
         failing_transport = MockReadvFailingTransport(
                                 [transport.get_bytes('packname')])
-        access = _DirectPackAccess({'foo':(failing_transport, 'packname')})
+        reload_called, reload_func = self.make_reload_func()
+        access = _DirectPackAccess({'foo':(failing_transport, 'packname')},
+                                   reload_func=reload_func)
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual(['1234567890'],
             list(access.get_raw_records(memos[:1])))
@@ -439,6 +466,22 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertIs(e.exc_info[0], errors.NoSuchFile)
         self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
         self.assertEqual('packname', e.exc_info[1].path)
+
+    def test_failing_readv_raises_no_such_file_with_no_reload(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        failing_transport = MockReadvFailingTransport(
+                                [transport.get_bytes('packname')])
+        reload_called, reload_func = self.make_reload_func()
+        access = _DirectPackAccess({'foo':(failing_transport, 'packname')})
+        # Asking for a single record will not trigger the Mock failure
+        self.assertEqual(['1234567890'],
+            list(access.get_raw_records(memos[:1])))
+        self.assertEqual(['12345'],
+            list(access.get_raw_records(memos[1:2])))
+        # A multiple offset readv() will fail mid-way through
+        e = self.assertListRaises(errors.NoSuchFile,
+                                  access.get_raw_records, memos)
 
 
 class LowLevelKnitDataTests(TestCase):
