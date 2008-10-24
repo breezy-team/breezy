@@ -64,6 +64,7 @@ from cStringIO import StringIO
 from itertools import izip, chain
 import operator
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -707,7 +708,7 @@ class KnitVersionedFiles(VersionedFiles):
     """
 
     def __init__(self, index, data_access, max_delta_chain=200,
-        annotated=False):
+                 annotated=False, reload_func=None):
         """Create a KnitVersionedFiles with index and data_access.
 
         :param index: The index for the knit data.
@@ -717,6 +718,9 @@ class KnitVersionedFiles(VersionedFiles):
             insertion. Set to 0 to prohibit the use of deltas.
         :param annotated: Set to True to cause annotations to be calculated and
             stored during insertion.
+        :param reload_func: An function that can be called if we think we need
+            to reload the pack listing and try again. See
+            'bzrlib.repofmt.pack_repo.AggregateIndex' for the signature.
         """
         self._index = index
         self._access = data_access
@@ -726,6 +730,7 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
+        self._reload_func = reload_func
 
     def __repr__(self):
         return "%s(%r, %r)" % (
@@ -1159,6 +1164,22 @@ class KnitVersionedFiles(VersionedFiles):
         if not self._index.has_graph:
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
+
+        remaining_keys = keys
+        while True:
+            try:
+                keys = set(remaining_keys)
+                for content_factory in self._get_remaining_record_stream(keys,
+                                            ordering, include_delta_closure):
+                    remaining_keys.discard(content_factory.key)
+                    yield content_factory
+                return
+            except errors.RetryWithNewPacks, e:
+                # reload_func
+                raise
+
+    def _get_remaining_record_stream(self, keys, ordering,
+                                     include_delta_closure):
         if include_delta_closure:
             positions = self._get_components_positions(keys, allow_missing=True)
         else:
@@ -2433,10 +2454,23 @@ class _DirectPackAccess(object):
         if current_index is not None:
             request_lists.append((current_index, current_list))
         for index, offsets in request_lists:
-            transport, path = self._indices[index]
-            reader = pack.make_readv_reader(transport, path, offsets)
-            for names, read_func in reader.iter_records():
-                yield read_func(None)
+            try:
+                transport, path = self._indices[index]
+            except KeyError:
+                # A KeyError here indicates that someone has triggered an index
+                # reload, and this index has gone missing, we need to start
+                # over.
+                raise errors.RetryWithNewPacks(reload_occurred=True,
+                                               exc_info=sys.exc_info())
+            try:
+                reader = pack.make_readv_reader(transport, path, offsets)
+                for names, read_func in reader.iter_records():
+                    yield read_func(None)
+            except errors.NoSuchFile:
+                # A NoSuchFile error indicates that a pack file has gone
+                # missing on disk, we need to trigger a reload, and start over.
+                raise errors.RetryWithNewPacks(reload_occurred=False,
+                                               exc_info=sys.exc_info())
 
     def set_writer(self, writer, index, transport_packname):
         """Set a writer to use for adding data."""

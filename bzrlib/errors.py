@@ -1483,6 +1483,37 @@ class KnitIndexUnknownMethod(KnitError):
         self.options = options
 
 
+class RetryWithNewPacks(BzrError):
+    """Raised when we realize that the packs on disk have changed.
+
+    This is meant as more of a signaling exception, to trap between where a
+    local error occurred and the code that can actually handle the error and
+    code that can retry appropriately.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and retry.")
+
+    def __init__(self, reload_occurred, exc_info):
+        """create a new RestartWithNewPacks error.
+
+        :param reload_occurred: Set to True if we know that the packs have
+            already been reloaded, and we are failing because of an in-memory
+            cache miss. If set to True then we will ignore if a reload says
+            nothing has changed, because we assume it has already reloaded. If
+            False, then a reload with nothing changed will force an error.
+        :param exc_info: The original exception traceback, so if there is a
+            problem we can raise the original error (value from sys.exc_info())
+        """
+        BzrError.__init__(self)
+        self.reload_occurred = reload_occurred
+        self.exc_info = exc_info
+        # TODO: The global error handler should probably treat this by
+        #       raising/printing the original exception with a bit about
+        #       RetryWithNewPacks also not being caught
+
+
 class NoSuchExportFormat(BzrError):
     
     _fmt = "Export format %(format)r not supported"

@@ -363,6 +363,40 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         writer.end()
         self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
 
+    def test_missing_index_raises_retry(self):
+        access, writer = self._get_access(packname='packname', index='foo')
+        memos = []
+        memos.extend(access.add_raw_records([('key', 10)], '1234567890'))
+        writer.end()
+        transport = self.get_transport()
+        # Note that the 'index' key has changed
+        access = _DirectPackAccess({'bar':(transport, 'packname')})
+        e = self.assertListRaises(errors.RetryWithNewPacks,
+                                  access.get_raw_records, memos)
+        # Because a key was passed in which does not match our index list, we
+        # assume that the listing was already reloaded
+        self.assertTrue(e.reload_occurred)
+        self.assertIsInstance(e.exc_info, tuple)
+        self.assertIs(e.exc_info[0], KeyError)
+        self.assertIsInstance(e.exc_info[1], KeyError)
+
+    def test_missing_file_raises_retry(self):
+        access, writer = self._get_access(packname='packname', index='foo')
+        memos = []
+        memos.extend(access.add_raw_records([('key', 10)], '1234567890'))
+        writer.end()
+        transport = self.get_transport()
+        # Note that the 'filename' has been changed
+        access = _DirectPackAccess({'foo':(transport, 'different-packname')})
+        e = self.assertListRaises(errors.RetryWithNewPacks,
+                                  access.get_raw_records, memos)
+        # The file has gone missing, so we assume we need to reload
+        self.assertFalse(e.reload_occurred)
+        self.assertIsInstance(e.exc_info, tuple)
+        self.assertIs(e.exc_info[0], errors.NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
+        self.assertEqual('different-packname', e.exc_info[1].path)
+
 
 class LowLevelKnitDataTests(TestCase):
 
