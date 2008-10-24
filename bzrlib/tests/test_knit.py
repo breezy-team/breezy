@@ -322,7 +322,11 @@ class TestKnitKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         mapper = ConstantMapper("foo")
         access = _KnitKeyAccess(self.get_transport(), mapper)
         return access
-    
+
+
+class _TestException(Exception):
+    """Just an exception for local tests to use."""
+
 
 class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin):
     """Tests for the pack based access."""
@@ -349,12 +353,22 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         writer.end()
         return memos
 
-    def make_reload_func(self):
+    def make_reload_func(self, return_val=True):
         reload_called = [0]
         def reload():
             reload_called[0] += 1
-            return True
+            return return_val
         return reload_called, reload
+
+    def make_retry_exception(self):
+        # We raise a real exception so that sys.exc_info() is properly
+        # populated
+        try:
+            raise _TestException('foobar')
+        except _TestException, e:
+            retry_exc = errors.RetryWithNewPacks(reload_occurred=False,
+                                                 exc_info=sys.exc_info())
+        return retry_exc
 
     def test_read_from_several_packs(self):
         access, writer = self._get_access()
@@ -482,6 +496,36 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # A multiple offset readv() will fail mid-way through
         e = self.assertListRaises(errors.NoSuchFile,
                                   access.get_raw_records, memos)
+
+    def test_reload_or_raise_no_reload(self):
+        access = _DirectPackAccess({}, reload_func=None)
+        retry_exc = self.make_retry_exception()
+        # Without a reload_func, we will just re-raise the original exception
+        self.assertRaises(_TestException, access.reload_or_raise, retry_exc)
+
+    def test_reload_or_raise_reload_changed(self):
+        reload_called, reload_func = self.make_reload_func(return_val=True)
+        access = _DirectPackAccess({}, reload_func=reload_func)
+        retry_exc = self.make_retry_exception()
+        access.reload_or_raise(retry_exc)
+        self.assertEqual([1], reload_called)
+        retry_exc.reload_occurred=True
+        access.reload_or_raise(retry_exc)
+        self.assertEqual([2], reload_called)
+
+    def test_reload_or_raise_reload_no_change(self):
+        reload_called, reload_func = self.make_reload_func(return_val=False)
+        access = _DirectPackAccess({}, reload_func=reload_func)
+        retry_exc = self.make_retry_exception()
+        # If reload_occurred is False, then we consider it an error to have
+        # reload_func() return False (no changes).
+        self.assertRaises(_TestException, access.reload_or_raise, retry_exc)
+        self.assertEqual([1], reload_called)
+        retry_exc.reload_occurred=True
+        # If reload_occurred is True, then we assume nothing changed because
+        # it had changed earlier, but didn't change again
+        access.reload_or_raise(retry_exc)
+        self.assertEqual([2], reload_called)
 
 
 class LowLevelKnitDataTests(TestCase):

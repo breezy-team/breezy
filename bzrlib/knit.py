@@ -2511,6 +2511,19 @@ class _DirectPackAccess(object):
 
         :param retry_exc: A RetryWithNewPacks exception.
         """
+        is_error = False
+        if self._reload_func is None:
+            is_error = True
+        elif not self._reload_func():
+            # The reload claimed that nothing changed
+            if not retry_exc.reload_occurred:
+                # If there wasn't an earlier reload, then we really were
+                # expecting to find changes. We didn't find them, so this is a
+                # hard error
+                is_error = True
+        if is_error:
+            exc_class, exc_value, exc_traceback = retry_exc.exc_info
+            raise exc_class, exc_value, exc_traceback
 
 
 # Deprecated, use PatienceSequenceMatcher instead
