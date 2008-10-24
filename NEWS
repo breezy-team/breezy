@@ -11,6 +11,30 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+  BUG FIXES:
+
+    * bzr-fast-export now exports rm+mv correctly.
+      (Jonas)
+
+    * hg-fast-export should use binary mode on Windows.
+      (Alexey Stukalov)
+
+  COMPATIBILITY BREAKS:
+
+  API BREAKS:
+
+  TESTING:
+
+  INTERNALS:
+
+
+0.6 23-Jul-2008
+---------------
+
+  FEATURES:
+
+  IMPROVEMENTS:
+
     * Added NEWS containing Release Notes. (Ian Clatworthy)
 
     * ``bzr help fastimport`` now provides help that is useful.
