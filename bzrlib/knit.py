@@ -1113,19 +1113,23 @@ class KnitVersionedFiles(VersionedFiles):
         :param allow_missing: If some records are missing, rather than 
             error, just return the data that could be generated.
         """
-        # TODO: We want to build in retrying, because we only hold the
-        #       'records' for the duration of this function, outside of this
-        #       function we deal in 'keys'.
+        # This retries the whole request if anything fails. Potentially we
+        # could be a bit more selective. We could track the keys whose records
+        # we have successfully found, and then only request the new records
+        # from there. However, _get_components_positions grabs the whole build
+        # chain, which means we'll likely try to grab the same records again
+        # anyway. Also, can the build chains change as part of a pack
+        # operation? We wouldn't want to end up with a broken chain.
         while True:
             try:
                 position_map = self._get_components_positions(keys,
                     allow_missing=allow_missing)
-                # key = component_id, r = record_details, i_m = index_memo, n = next
+                # key = component_id, r = record_details, i_m = index_memo,
+                # n = next
                 records = [(key, i_m) for key, (r, i_m, n)
-                                     in position_map.iteritems()]
+                                       in position_map.iteritems()]
                 record_map = {}
-                for key, record, digest in \
-                        self._read_records_iter(records):
+                for key, record, digest in self._read_records_iter(records):
                     (record_details, index_memo, next) = position_map[key]
                     record_map[key] = record, record_details, digest, next
                 return record_map
@@ -1182,8 +1186,7 @@ class KnitVersionedFiles(VersionedFiles):
                     yield content_factory
                 return
             except errors.RetryWithNewPacks, e:
-                # reload_func
-                raise
+                self._access.reload_or_raise(e)
 
     def _get_remaining_record_stream(self, keys, ordering,
                                      include_delta_closure):

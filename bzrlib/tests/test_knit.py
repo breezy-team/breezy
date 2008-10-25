@@ -354,7 +354,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         writer.end()
         return memos
 
-    def make_packs_for_retrying(self):
+    def make_vf_for_retrying(self):
         """Create 3 packs and a reload function.
 
         Originally, 2 pack files will have the data, but one will be missing.
@@ -400,8 +400,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             vf._access._indices.clear()
             vf._access._indices[new_index] = access_tuple
             return True
-        # Delete the second original pack file, so that we are forced to reload
-        # when we go to access the data
+        # Delete one of the pack files so the data will need to be reloaded. We
+        # will delete the file with 'rev-1' in it
         trans, name = orig_packs[1].access_tuple()
         trans.delete(name)
         # We don't have the index trigger reloading because we want to test
@@ -584,10 +584,34 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertEqual([2], reload_called)
 
     def test__get_record_map_retries(self):
-        vf, reload_counter = self.make_packs_for_retrying()
+        vf, reload_counter = self.make_vf_for_retrying()
         keys = [('rev-1',), ('rev-2',)]
         records = vf._get_record_map(keys)
         self.assertEqual(keys, sorted(records.keys()))
+        self.assertEqual([1, 1, 0], reload_counter)
+        # Now delete the packs-in-use, which should trigger another reload, but
+        # this time we just raise an exception because we can't recover
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertRaises(errors.NoSuchFile, vf._get_record_map, keys)
+        self.assertEqual([2, 1, 1], reload_counter)
+
+    def test_get_record_stream_retries(self):
+        vf, reload_counter = self.make_vf_for_retrying()
+        keys = [('rev-1',), ('rev-2',)]
+        record_stream = vf.get_record_stream(keys, 'topological', False)
+        record = record_stream.next()
+        self.assertEqual(('rev-1',), record.key)
+        self.assertEqual([0, 0, 0], reload_counter)
+        record = record_stream.next()
+        self.assertEqual(('rev-2',), record.key)
+        self.assertEqual([1, 1, 0], reload_counter)
+        # Now delete all pack files, and see that we raise the right error
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertListRaises(errors.NoSuchFile,
+            vf.get_record_stream, keys, 'topological', False)
+
 
 class LowLevelKnitDataTests(TestCase):
 
