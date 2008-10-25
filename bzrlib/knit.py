@@ -1451,9 +1451,6 @@ class KnitVersionedFiles(VersionedFiles):
 
         :return: An iterator over (line, key).
         """
-        # TODO: We want to build in retrying, because we only hold the
-        #       'records' for the duration of this function, outside of this
-        #       function we deal in 'keys'.
         if pb is None:
             pb = progress.DummyProgress()
         keys = set(keys)
@@ -2818,14 +2815,17 @@ class _KnitAnnotator(object):
         if len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
-        # TODO: We want to create retry logic at this level, between
-        #       _get_build_graph and _annotate_records, since that is the level
-        #       that we talk in terms of 'records' and not in terms of keys
-        records = self._get_build_graph(key)
-        if key in self._ghosts:
-            raise errors.RevisionNotPresent(key, self._knit)
-        self._annotate_records(records)
-        return self._annotated_lines[key]
+        while True:
+            try:
+                records = self._get_build_graph(key)
+                if key in self._ghosts:
+                    raise errors.RevisionNotPresent(key, self._knit)
+                self._annotate_records(records)
+                return self._annotated_lines[key]
+            except errors.RetryWithNewPacks, e:
+                self._knit._access.reload_or_raise(e)
+                # The cached build_details are no longer valid
+                self._all_build_details.clear()
 
     def _simple_annotate(self, key):
         """Return annotated fulltext, rediffing from the full texts.

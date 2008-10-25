@@ -584,6 +584,24 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access.reload_or_raise(retry_exc)
         self.assertEqual([2], reload_called)
 
+    def test_annotate_retries(self):
+        vf, reload_counter = self.make_vf_for_retrying()
+        # It is a little bit bogus to annotate the Revision VF, but it works,
+        # as we have ancestry stored there
+        key = ('rev-3',)
+        reload_lines = vf.annotate(key)
+        self.assertEqual([1, 1, 0], reload_counter)
+        plain_lines = vf.annotate(key)
+        self.assertEqual([1, 1, 0], reload_counter) # No extra reloading
+        if reload_lines != plain_lines:
+            self.fail('Annotation was not identical with reloading.')
+        # Now delete the packs-in-use, which should trigger another reload, but
+        # this time we just raise an exception because we can't recover
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertRaises(errors.NoSuchFile, vf.annotate, key)
+        self.assertEqual([2, 1, 1], reload_counter)
+
     def test__get_record_map_retries(self):
         vf, reload_counter = self.make_vf_for_retrying()
         keys = [('rev-1',), ('rev-2',), ('rev-3',)]
