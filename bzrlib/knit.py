@@ -1458,30 +1458,39 @@ class KnitVersionedFiles(VersionedFiles):
             pb = progress.DummyProgress()
         keys = set(keys)
         total = len(keys)
-        # we don't care about inclusions, the caller cares.
-        # but we need to setup a list of records to visit.
-        # we need key, position, length
-        key_records = []
-        build_details = self._index.get_build_details(keys)
-        for key, details in build_details.iteritems():
-            if key in keys:
-                key_records.append((key, details[0]))
-                keys.remove(key)
-        records_iter = enumerate(self._read_records_iter(key_records))
-        for (key_idx, (key, data, sha_value)) in records_iter:
-            pb.update('Walking content.', key_idx, total)
-            compression_parent = build_details[key][1]
-            if compression_parent is None:
-                # fulltext
-                line_iterator = self._factory.get_fulltext_content(data)
-            else:
-                # Delta 
-                line_iterator = self._factory.get_linedelta_content(data)
-            # XXX: It might be more efficient to yield (key,
-            # line_iterator) in the future. However for now, this is a simpler
-            # change to integrate into the rest of the codebase. RBC 20071110
-            for line in line_iterator:
-                yield line, key
+        done = False
+        while not done:
+            try:
+                # we don't care about inclusions, the caller cares.
+                # but we need to setup a list of records to visit.
+                # we need key, position, length
+                key_records = []
+                build_details = self._index.get_build_details(keys)
+                for key, details in build_details.iteritems():
+                    if key in keys:
+                        key_records.append((key, details[0]))
+                records_iter = enumerate(self._read_records_iter(key_records))
+                for (key_idx, (key, data, sha_value)) in records_iter:
+                    pb.update('Walking content.', key_idx, total)
+                    compression_parent = build_details[key][1]
+                    if compression_parent is None:
+                        # fulltext
+                        line_iterator = self._factory.get_fulltext_content(data)
+                    else:
+                        # Delta 
+                        line_iterator = self._factory.get_linedelta_content(data)
+                    # Now that we are yielding the data for this key, remove it
+                    # from the list
+                    keys.remove(key)
+                    # XXX: It might be more efficient to yield (key,
+                    # line_iterator) in the future. However for now, this is a
+                    # simpler change to integrate into the rest of the
+                    # codebase. RBC 20071110
+                    for line in line_iterator:
+                        yield line, key
+                done = True
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
         for source in self._fallback_vfs:
             if not keys:
                 break
@@ -1890,7 +1899,6 @@ class _KndxIndex(object):
                 extra information about the content which needs to be passed to
                 Factory.parse_record
         """
-        prefixes = self._partition_keys(keys)
         parent_map = self.get_parent_map(keys)
         result = {}
         for key in keys:

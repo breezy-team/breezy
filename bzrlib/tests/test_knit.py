@@ -370,6 +370,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             tree.add([''], ['root-id'])
             tree.commit('one', rev_id='rev-1')
             tree.commit('two', rev_id='rev-2')
+            tree.commit('three', rev_id='rev-3')
             # Pack these two revisions into another pack file, but don't remove
             # the originials
             repo = tree.branch.repository
@@ -401,7 +402,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             vf._access._indices[new_index] = access_tuple
             return True
         # Delete one of the pack files so the data will need to be reloaded. We
-        # will delete the file with 'rev-1' in it
+        # will delete the file with 'rev-2' in it
         trans, name = orig_packs[1].access_tuple()
         trans.delete(name)
         # We don't have the index trigger reloading because we want to test
@@ -585,7 +586,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test__get_record_map_retries(self):
         vf, reload_counter = self.make_vf_for_retrying()
-        keys = [('rev-1',), ('rev-2',)]
+        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
         records = vf._get_record_map(keys)
         self.assertEqual(keys, sorted(records.keys()))
         self.assertEqual([1, 1, 0], reload_counter)
@@ -598,7 +599,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test_get_record_stream_retries(self):
         vf, reload_counter = self.make_vf_for_retrying()
-        keys = [('rev-1',), ('rev-2',)]
+        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
         record_stream = vf.get_record_stream(keys, 'topological', False)
         record = record_stream.next()
         self.assertEqual(('rev-1',), record.key)
@@ -606,11 +607,39 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         record = record_stream.next()
         self.assertEqual(('rev-2',), record.key)
         self.assertEqual([1, 1, 0], reload_counter)
+        record = record_stream.next()
+        self.assertEqual(('rev-3',), record.key)
+        self.assertEqual([1, 1, 0], reload_counter)
         # Now delete all pack files, and see that we raise the right error
         for trans, name in vf._access._indices.itervalues():
             trans.delete(name)
         self.assertListRaises(errors.NoSuchFile,
             vf.get_record_stream, keys, 'topological', False)
+
+    def test_iter_lines_added_or_present_in_keys_retries(self):
+        vf, reload_counter = self.make_vf_for_retrying()
+        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
+        # Unfortunately, iter_lines_added_or_present_in_keys iterates the
+        # result in random order (determined by the iteration order from a
+        # set()), so we don't have any solid way to trigger whether data is
+        # read before or after. However we tried to delete the middle node to
+        # exercise the code well.
+        # What we care about is that all lines are always yielded, but not
+        # duplicated
+        count = 0
+        reload_lines = sorted(vf.iter_lines_added_or_present_in_keys(keys))
+        self.assertEqual([1, 1, 0], reload_counter)
+        # Now do it again, to make sure the result is equivalent
+        plain_lines = sorted(vf.iter_lines_added_or_present_in_keys(keys))
+        self.assertEqual([1, 1, 0], reload_counter) # No extra reloading
+        self.assertEqual(plain_lines, reload_lines)
+        self.assertEqual(21, len(plain_lines))
+        # Now delete all pack files, and see that we raise the right error
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertListRaises(errors.NoSuchFile,
+            vf.iter_lines_added_or_present_in_keys, keys)
+        self.assertEqual([2, 1, 1], reload_counter)
 
 
 class LowLevelKnitDataTests(TestCase):
