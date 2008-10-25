@@ -661,6 +661,7 @@ class Transport(object):
         """
         # We are going to iterate multiple times, we need a list
         offsets = list(offsets)
+        remaining = len(offsets)
         sorted_offsets = sorted(offsets)
 
         # turn the list of offsets into a stack
@@ -688,6 +689,12 @@ class Transport(object):
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
+                remaining -= 1
+                if remaining <= 0:
+                    # Close the file handle as we are done yielding data.
+                    close = getattr(fp, 'close', None)
+                    if close is not None:
+                        close()
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
 
