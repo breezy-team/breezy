@@ -1042,8 +1042,86 @@ class TestNewPack(TestCaseWithTransport):
 class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
 
-    # To date, this class has been factored out and nothing new added to it;
-    # thus there are not yet any tests.
+    def make_repo_with_three_packs(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['f'])
+        tree.add('f', 'f-id')
+        revs = []
+        revs.append(tree.commit('one'))
+        revs.append(tree.commit('two'))
+        revs.append(tree.commit('three'))
+        return tree.branch.repository, revs
+
+    def munge_transport_readv(self, pack_obj, call_obj):
+        """Change pack_obj's transport so it triggers a callable."""
+        orig_readv = pack_obj.pack_transport.readv
+        def failing_readv(relpath, *args, **kwargs):
+            # Fail when we try to read. We would *like* to fail after reading a
+            # bit, but that runs into concurrancy issues depending on the
+            # platform
+            print 'activating'
+            call_obj()
+            for count, val in enumerate(orig_readv(relpath, *args, **kwargs)):
+                yield val
+        pack_obj.pack_transport.readv = failing_readv
+
+    def munge_function_to_trigger(self, obj, attr, pack_obj, call_obj):
+        """Update a function so that it munges readv() when called.
+
+        :param obj: The object we want to have modified
+        :param attr: The attribute we want to trigger the change in readv
+        :param pack_obj: The pack object whose readv will be munged
+        :param call_obj: A callable, which will be called during readv
+        """
+        print 'munging %s' % (attr,)
+        orig_func = getattr(obj, attr)
+        def munging_func(*args, **kwargs):
+            self.munge_transport_readv(pack_obj, call_obj)
+            return orig_func(*args, **kwargs)
+        setattr(obj, attr, munging_func)
+
+    def setup_retry_function(self, attr):
+        repo, revs = self.make_repo_with_three_packs()
+        alt_repo = repository.Repository.open('.')
+        alt_repo.lock_write()
+        self.addCleanup(alt_repo.unlock)
+
+        packer = pack_repo.Packer(repo._pack_collection,
+                                  repo._pack_collection.packs,
+                                  '.testpack')
+        self.munge_function_to_trigger(packer, attr,
+                                       packer.packs[1], alt_repo.pack)
+        return packer
+
+    def test__copy_revision_texts_retries(self):
+        packer = self.setup_retry_function('_copy_revision_texts')
+        packer.pack()
+
+    def test__copy_inventory_texts_retries(self):
+        packer = self.setup_retry_function('_copy_inventory_texts')
+        packer.pack()
+
+    def test__copy_text_texts_retries(self):
+        packer = self.setup_retry_function('_copy_text_texts')
+        packer.pack()
+
+    def test__copy_signature_texts_retries(self):
+        return # there isn't a separate _copy_signature_texts function yet
+        repo, revs = self.make_repo_with_three_packs()
+        alt_repo = repository.Repository.open('.')
+        alt_repo.lock_write()
+        self.addCleanup(alt_repo.unlock)
+
+        packer = pack_repo.Packer(repo._pack_collection,
+                                  repo._pack_collection.packs,
+                                  '.testpack')
+        # Munge the middle pack so that while reading, it triggers a
+        # full-repack from the other repository
+        self.munge_function_to_trigger(packer, '_copy_signature_texts',
+                                       packer.packs[1], alt_repo.pack)
+        packer.pack()
 
 
 class TestOptimisingPacker(TestCaseWithTransport):

@@ -814,16 +814,20 @@ class Packer(object):
                 record_index += 1
 
     def _copy_nodes_graph(self, index_map, writer, write_index,
-        readv_group_iter, total_items, output_lines=False):
+        readv_group_iter, total_items, output_lines=False, completed_keys=None):
         """Copy knit nodes between packs.
 
         :param output_lines: Return lines present in the copied data as
             an iterator of line,version_id.
+        :param completed_keys: If set to a list, we will fill it with the keys
+            that have been successfully written to the target repository. This
+            is used in case there is a fault and we need to restart.
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for result in self._do_copy_nodes_graph(index_map, writer,
-                write_index, output_lines, pb, readv_group_iter, total_items):
+                write_index, output_lines, pb, readv_group_iter, total_items,
+                completed_keys=completed_keys):
                 yield result
         except Exception:
             # Python 2.4 does not permit try:finally: in a generator.
@@ -833,7 +837,7 @@ class Packer(object):
             pb.finished()
 
     def _do_copy_nodes_graph(self, index_map, writer, write_index,
-        output_lines, pb, readv_group_iter, total_items):
+        output_lines, pb, readv_group_iter, total_items, completed_keys=None):
         # for record verification
         knit = KnitVersionedFiles(None, None)
         # for line extraction when requested (inventories only)
@@ -841,6 +845,10 @@ class Packer(object):
             factory = KnitPlainFactory()
         record_index = 0
         pb.update("Copied record", record_index, total_items)
+        if completed_keys is None:
+            completed_keys_append = None
+        else:
+            completed_keys_append = completed_keys.append
         for index, readv_vector, node_vector in readv_group_iter:
             # copy the data
             transport, path = index_map[index]
@@ -863,6 +871,8 @@ class Packer(object):
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
+                if completed_keys_append is not None:
+                    completed_keys_append(key)
                 pb.update("Copied record", record_index)
                 record_index += 1
 
