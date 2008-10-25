@@ -462,7 +462,8 @@ class AggregateIndex(object):
         self._reload_func = reload_func
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
-        self.data_access = _DirectPackAccess(self.index_to_pack)
+        self.data_access = _DirectPackAccess(self.index_to_pack,
+                                             reload_func=reload_func)
         self.add_callback = None
 
     def replace_indices(self, index_to_pack, indices):

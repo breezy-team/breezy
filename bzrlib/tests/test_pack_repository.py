@@ -420,6 +420,7 @@ class TestPackRepository(TestCaseWithTransport):
         try:
             rev1 = tree.commit('one')
             rev2 = tree.commit('two')
+            keys = [(rev1,), (rev2,)]
             r2 = repository.Repository.open('tree')
             r2.lock_read()
             try:
@@ -427,7 +428,6 @@ class TestPackRepository(TestCaseWithTransport):
                 # trigger a repack mid-way
                 packed = False
                 result = {}
-                keys = [(rev1,), (rev2,)]
                 record_stream = r2.revisions.get_record_stream(keys,
                                     'unordered', False)
                 for record in record_stream:
@@ -437,7 +437,7 @@ class TestPackRepository(TestCaseWithTransport):
                         packed = True
                 # The first record will be found in the original location, but
                 # after the pack, we have to reload to find the next record
-                self.assertEqual(sorted([rev1, rev2]), sorted(result.keys()))
+                self.assertEqual(sorted(keys), sorted(result.keys()))
             finally:
                 r2.unlock()
         finally:
