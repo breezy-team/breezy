@@ -406,9 +406,38 @@ class TestPackRepository(TestCaseWithTransport):
             r2.lock_read()
             try:
                 # Now r2 has read the pack-names file, but will need to reload
-                # it after r1 has repacked
+                # it after 'tree' has packed.
                 tree.branch.repository.pack()
                 self.assertEqual({rev2:(rev1,)}, r2.get_parent_map([rev2]))
+            finally:
+                r2.unlock()
+        finally:
+            tree.unlock()
+
+    def test_concurrent_pack_during_get_record_reloads(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        try:
+            rev1 = tree.commit('one')
+            rev2 = tree.commit('two')
+            r2 = repository.Repository.open('tree')
+            r2.lock_read()
+            try:
+                # At this point, we will start grabbing a record stream, and
+                # trigger a repack mid-way
+                packed = False
+                result = {}
+                keys = [(rev1,), (rev2,)]
+                record_stream = r2.revisions.get_record_stream(keys,
+                                    'unordered', False)
+                for record in record_stream:
+                    result[record.key] = record
+                    if not packed:
+                        tree.branch.repository.pack()
+                        packed = True
+                # The first record will be found in the original location, but
+                # after the pack, we have to reload to find the next record
+                self.assertEqual(sorted([rev1, rev2]), sorted(result.keys()))
             finally:
                 r2.unlock()
         finally:
