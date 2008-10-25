@@ -48,6 +48,7 @@ from bzrlib.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
+from bzrlib.repofmt import pack_repo
 from bzrlib.tests import (
     Feature,
     KnownFailure,
@@ -353,6 +354,61 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         writer.end()
         return memos
 
+    def make_packs_for_retrying(self):
+        """Create 3 packs and a reload function.
+
+        Originally, 2 pack files will have the data, but one will be missing.
+        And then the third will be used in place of the first two if reload()
+        is called.
+
+        :return: (versioned_file, reload_counter)
+            versioned_file  a KnitVersionedFiles using the packs for access
+        """
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        try:
+            tree.add([''], ['root-id'])
+            tree.commit('one', rev_id='rev-1')
+            tree.commit('two', rev_id='rev-2')
+            # Pack these two revisions into another pack file, but don't remove
+            # the originials
+            repo = tree.branch.repository
+            collection = repo._pack_collection
+            collection.ensure_loaded()
+            orig_packs = collection.packs
+            packer = pack_repo.Packer(collection, orig_packs, '.testpack')
+            new_pack = packer.pack()
+
+            vf = tree.branch.repository.revisions
+        finally:
+            tree.unlock()
+        tree.branch.repository.lock_read()
+        self.addCleanup(tree.branch.repository.unlock)
+        del tree
+        # Set up a reload() function that switches to using the new pack file
+        new_index = new_pack.revision_index
+        access_tuple = new_pack.access_tuple()
+        reload_counter = [0, 0, 0]
+        def reload():
+            reload_counter[0] += 1
+            if reload_counter[1] > 0:
+                # We already reloaded, nothing more to do
+                reload_counter[2] += 1
+                return False
+            reload_counter[1] += 1
+            vf._index._graph_index._indices[:] = [new_index]
+            vf._access._indices.clear()
+            vf._access._indices[new_index] = access_tuple
+            return True
+        # Delete the second original pack file, so that we are forced to reload
+        # when we go to access the data
+        trans, name = orig_packs[1].access_tuple()
+        trans.delete(name)
+        # We don't have the index trigger reloading because we want to test
+        # that we reload when the .pack disappears
+        vf._access._reload_func = reload
+        return vf, reload_counter
+
     def make_reload_func(self, return_val=True):
         reload_called = [0]
         def reload():
@@ -527,9 +583,11 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access.reload_or_raise(retry_exc)
         self.assertEqual([2], reload_called)
 
-    # TODO: Test that KnitVersionedFiles handles RetryWithNewPacks exceptions
-    #       and calls reload_or_raise appropriately
-
+    def test__get_record_map_retries(self):
+        vf, reload_counter = self.make_packs_for_retrying()
+        keys = [('rev-1',), ('rev-2',)]
+        records = vf._get_record_map(keys)
+        self.assertEqual(keys, sorted(records.keys()))
 
 class LowLevelKnitDataTests(TestCase):
 

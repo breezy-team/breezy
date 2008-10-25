@@ -1493,7 +1493,7 @@ class RetryWithNewPacks(BzrError):
 
     internal_error = True
 
-    _fmt = ("Pack files have changed, reload and retry.")
+    _fmt = ("Pack files have changed, reload and retry. %(orig_error)s")
 
     def __init__(self, reload_occurred, exc_info):
         """create a new RestartWithNewPacks error.
@@ -1509,6 +1509,7 @@ class RetryWithNewPacks(BzrError):
         BzrError.__init__(self)
         self.reload_occurred = reload_occurred
         self.exc_info = exc_info
+        self.orig_error = exc_info[1]
         # TODO: The global error handler should probably treat this by
         #       raising/printing the original exception with a bit about
         #       RetryWithNewPacks also not being caught

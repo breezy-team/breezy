@@ -1116,17 +1116,21 @@ class KnitVersionedFiles(VersionedFiles):
         # TODO: We want to build in retrying, because we only hold the
         #       'records' for the duration of this function, outside of this
         #       function we deal in 'keys'.
-        position_map = self._get_components_positions(keys,
-            allow_missing=allow_missing)
-        # key = component_id, r = record_details, i_m = index_memo, n = next
-        records = [(key, i_m) for key, (r, i_m, n)
-                             in position_map.iteritems()]
-        record_map = {}
-        for key, record, digest in \
-                self._read_records_iter(records):
-            (record_details, index_memo, next) = position_map[key]
-            record_map[key] = record, record_details, digest, next
-        return record_map
+        while True:
+            try:
+                position_map = self._get_components_positions(keys,
+                    allow_missing=allow_missing)
+                # key = component_id, r = record_details, i_m = index_memo, n = next
+                records = [(key, i_m) for key, (r, i_m, n)
+                                     in position_map.iteritems()]
+                record_map = {}
+                for key, record, digest in \
+                        self._read_records_iter(records):
+                    (record_details, index_memo, next) = position_map[key]
+                    record_map[key] = record, record_details, digest, next
+                return record_map
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
 
     def _split_by_prefix(self, keys):
         """For the given keys, split them up based on their prefix.
