@@ -2648,8 +2648,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt = self.get_preview()
         tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
         tt.new_directory('qux', tt.root, 'quxx')
-        records = tt.serialize(FakeSerializer())
-        self.assertEqual(self.creation_records(), list(records))
+        self.assertSerializesTo(self.creation_records(), tt)
 
     def test_deserialize_creation(self):
         tt = self.get_preview()
@@ -2682,8 +2681,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.requireFeature(tests.SymlinkFeature)
         tt = self.get_preview()
         tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
-        records = tt.serialize(FakeSerializer())
-        self.assertEqual(self.symlink_creation_records(), list(records))
+        self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
         tt = self.get_preview()
