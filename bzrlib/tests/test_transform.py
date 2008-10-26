@@ -2626,12 +2626,12 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     @staticmethod
     def default_attribs():
         return {
-            '_id_number': 0,
+            '_id_number': 1,
             '_new_name': {},
             '_new_parent': {},
             '_new_executability': {},
             '_new_id': {},
-            '_tree_path_ids': {},
+            '_tree_path_ids': {'': 'new-0'},
             '_removed_id': [],
             '_removed_contents': [],
             '_non_present_ids': {},
@@ -2645,11 +2645,18 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         attribs['_new_id'] = {'new-1': 'baz', 'new-2': 'quxx'}
         attribs['_new_parent'] = {'new-1': 'new-0', 'new-2': 'new-0'}
         attribs['_new_executability'] = {'new-1': 1}
-        attribs['_tree_path_ids'] = {'': 'new-0'}
         contents = [
             ('new-1', 'file', 'i 1\nbar\n'),
             ('new-2', 'directory', ''),
             ]
+        return self.make_records(attribs, contents)
+
+    def symlink_creation_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_new_name'] = {'new-1': u'foo\u1234'.encode('utf-8')}
+        attribs['_new_parent'] = {'new-1': 'new-0'}
+        contents = [('new-1', 'symlink', 'bar')]
         return self.make_records(attribs, contents)
 
     def make_records(self, attribs, contents):
@@ -2688,13 +2695,17 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         from textwrap import fill
         self.assertEqualDiff(fill(repr(a)), fill(repr(list(b))))
 
-    def test_symlink_creation(self):
+    def test_serialize_symlink_creation(self):
         self.requireFeature(tests.SymlinkFeature)
-        tree = self.make_branch_and_tree('.')
-        tt, tt2 = self.get_two_previews(tree)
-        tt.new_symlink('foo', tt.root, 'bar')
-        self.reserialize(tt, tt2)
-        foo_content = os.readlink(tt2._limbo_name('new-1'))
+        tt = self.get_preview()
+        tt.new_symlink(u'foo\u1234', tt.root, 'bar')
+        records = tt.serialize(FakeSerializer())
+        self.assertEqual(self.symlink_creation_records(), list(records))
+
+    def test_deserialize_symlink_creation(self):
+        tt = self.get_preview()
+        tt.deserialize(iter(self.symlink_creation_records()))
+        foo_content = os.readlink(tt._limbo_name('new-1'))
         self.assertEqual('bar', foo_content)
 
     def test_roundtrip_destruction(self):
