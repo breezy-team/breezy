@@ -350,6 +350,13 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder.add_node(('k', 'ey'), 'data', ([('reference', 'tokey')], ))
         builder.add_node(('reference', 'tokey'), 'data', ([],))
 
+    def test_set_optimize(self):
+        builder = GraphIndexBuilder(reference_lists=1, key_elements=2)
+        builder.set_optimize(for_size=True)
+        self.assertTrue(builder._optimize_for_size)
+        builder.set_optimize(for_size=False)
+        self.assertFalse(builder._optimize_for_size)
+
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
 

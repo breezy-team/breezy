@@ -11,10 +11,17 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * New Branch hook ``transform_fallback_location`` allows a function to
+      be called when looking up the stacked source. (Michael Hudson)
+
   IMPROVEMENTS:
 
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
       the contents of a compressed btree file.  (John Arbash Meinel)
+
+    * ``bzr pack`` now tells the index builders to optimize for size. For
+      btree index repositories, this can save 25% of the index size
+      (mostly in the text indexes). (John Arbash Meinel)
 
     * default username for bzr+ssh and sftp can be configured in
       authentication.conf. (Aaron Bentley)
@@ -44,9 +51,14 @@ IN DEVELOPMENT
       could only happen if ``bzr reconcile`` decided that the parent
       ordering was incorrect in the file graph.  (John Arbash Meinel)
 
+    * Some compatibility fixes for building the extensions with MSVC and
+      for python2.4. (John Arbash Meinel, #277484)
+
   DOCUMENTATION:
 
   API CHANGES:
+
+    * commands.plugins_cmds is now a CommandRegistry, not a dict.
 
   TESTING:
 
