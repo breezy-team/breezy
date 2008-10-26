@@ -2600,8 +2600,9 @@ class FakeSerializer(object):
 
 class TestSerializeTransform(tests.TestCaseWithTransport):
 
-    def get_preview(self):
-        tree = self.make_branch_and_tree('tree')
+    def get_preview(self, tree=None):
+        if tree is None:
+            tree = self.make_branch_and_tree('tree')
         tt = TransformPreview(tree)
         self.addCleanup(tt.finalize)
         return tt
@@ -2659,6 +2660,18 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         contents = [('new-1', 'symlink', u'bar\u1234'.encode('utf-8'))]
         return self.make_records(attribs, contents)
 
+    def destruction_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 3
+        attribs['_removed_id'] = ['new-1']
+        attribs['_removed_contents'] = ['new-2']
+        attribs['_tree_path_ids'] = {
+            '': 'new-0',
+            u'foo\u1234'.encode('utf-8'): 'new-1',
+            'bar': 'new-2',
+            }
+        return self.make_records(attribs, [])
+
     def make_records(self, attribs, contents):
         records = [
             (((('attribs'),),), bencode.bencode(attribs))]
@@ -2708,24 +2721,32 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         foo_content = os.readlink(tt._limbo_name('new-1'))
         self.assertEqual(u'bar\u1234'.encode('utf-8'), foo_content)
 
-    def test_roundtrip_destruction(self):
+    def create_tree_for_destruction(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree([u'foo\u1234', 'bar'])
         tree.add([u'foo\u1234', 'bar'], ['foo-id', 'bar-id'])
-        tt, tt2 = self.get_two_previews(tree)
+        return tree
+
+    def test_serialize_destruction(self):
+        tt = self.get_preview(self.create_tree_for_destruction())
         foo_trans_id = tt.trans_id_tree_file_id('foo-id')
         tt.unversion_file(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_file_id('bar-id')
         tt.delete_contents(bar_trans_id)
-        self.reserialize(tt, tt2)
-        self.assertEqual({u'foo\u1234': foo_trans_id,
-                          'bar': bar_trans_id,
-                          '': tt.root}, tt2._tree_path_ids)
-        self.assertEqual({foo_trans_id: u'foo\u1234',
-                          bar_trans_id: 'bar',
-                          tt.root: ''}, tt2._tree_id_paths)
-        self.assertEqual(set([foo_trans_id]), tt2._removed_id)
-        self.assertEqual(set([bar_trans_id]), tt2._removed_contents)
+        records = tt.serialize(FakeSerializer())
+        self.assertEqualRecords(self.destruction_records(), records)
+
+    def test_deserialize_destruction(self):
+        tt = self.get_preview(self.create_tree_for_destruction())
+        tt.deserialize(iter(self.destruction_records()))
+        self.assertEqual({u'foo\u1234': 'new-1',
+                          'bar': 'new-2',
+                          '': tt.root}, tt._tree_path_ids)
+        self.assertEqual({'new-1': u'foo\u1234',
+                          'new-2': 'bar',
+                          tt.root: ''}, tt._tree_id_paths)
+        self.assertEqual(set(['new-1']), tt._removed_id)
+        self.assertEqual(set(['new-2']), tt._removed_contents)
 
     def test_roundtrip_missing(self):
         tree = self.make_branch_and_tree('.')
