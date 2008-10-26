@@ -1215,7 +1215,7 @@ class TreeTransformBase(object):
             if kind == 'directory':
                 self.create_directory(trans_id)
             if kind == 'symlink':
-                self.create_symlink(content, trans_id)
+                self.create_symlink(content.decode('utf-8'), trans_id)
 
 
 class TreeTransform(TreeTransformBase):
