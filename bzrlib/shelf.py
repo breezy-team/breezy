@@ -47,7 +47,7 @@ class ShelfCreator(object):
         self.iter_changes = work_tree.iter_changes(self.target_tree,
                                                    specific_files=file_list)
 
-    def __iter__(self):
+    def iter_shelvable(self):
         """Iterable of tuples describing shelvable changes.
 
         As well as generating the tuples, this updates several members.
