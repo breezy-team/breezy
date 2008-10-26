@@ -17,6 +17,7 @@
 """Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     )
@@ -336,3 +337,23 @@ class TestStacking(TestCaseWithBranch):
         rtree.lock_read()
         self.addCleanup(rtree.unlock)
         self.assertEqual('new content', rtree.get_file_by_path('a').read())
+
+    def test_transform_fallback_location_hook(self):
+        # The 'transform_fallback_location' branch hook allows us to inspect
+        # and transform the URL of the fallback location for the branch.
+        stack_on = self.make_branch('stack-on')
+        stacked = self.make_branch('stacked')
+        try:
+            stacked.set_stacked_on_url('../stack-on')
+        except (errors.UnstackableRepositoryFormat,
+                errors.UnstackableBranchFormat):
+            raise TestNotApplicable('Format does not support stacking.')
+        self.get_transport().rename('stack-on', 'new-stack-on')
+        hook_calls = []
+        def hook(stacked_branch, url):
+            hook_calls.append(url)
+            return '../new-stack-on'
+        branch.Branch.hooks.install_named_hook(
+            'transform_fallback_location', hook, None)
+        branch.Branch.open('stacked')
+        self.assertEqual(['../stack-on'], hook_calls)
