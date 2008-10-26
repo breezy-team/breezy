@@ -624,15 +624,33 @@ class Packer(object):
             revision_keys = [(revision_id,) for revision_id in self.revision_ids]
         else:
             revision_keys = None
-        # select revision keys
-        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'revision_index')[0]
-        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
-        # copy revision keys and adjust values
-        self.pb.update("Copying revision texts", 1)
-        total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
-        list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
-            self.new_pack.revision_index, readv_group_iter, total_items))
+        completed_keys = []
+        while True:
+            try:
+                # select revision keys
+                revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+                    self.packs, 'revision_index')[0]
+                revision_nodes = list(self._pack_collection._index_contents(revision_index_map,
+                                      revision_keys))
+                # copy revision keys and adjust values
+                self.pb.update("Copying revision texts", 1)
+                total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
+                list(self._copy_nodes_graph(revision_index_map, self.new_pack._writer,
+                    self.new_pack.revision_index, readv_group_iter,
+                    total_items, completed_keys=completed_keys))
+                break
+            except errors.NoSuchFile:
+                # A pack file went missing, try reloading in case it was just
+                # someone else repacking the repo.
+                import pdb; pdb.set_trace()
+                if not self._pack_collection.reload_pack_names():
+                    raise
+                # If we got to here, that means we can retry, but we don't want
+                # to copy the same nodes twice
+                if revision_keys is None:
+                    revision_keys = [node[1] for node in revision_nodes]
+                # Filter out the revisions which we have already copied
+
         if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: revisions copied: %s%s %d items t+%6.3fs',
                 time.ctime(), self._pack_collection._upload_transport.base,

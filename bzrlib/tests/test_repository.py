@@ -1062,6 +1062,7 @@ class TestPacker(TestCaseWithTransport):
             # bit, but that runs into concurrancy issues depending on the
             # platform
             print 'activating'
+            import pdb; pdb.set_trace()
             call_obj()
             for count, val in enumerate(orig_readv(relpath, *args, **kwargs)):
                 yield val
