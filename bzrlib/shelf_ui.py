@@ -72,7 +72,7 @@ class Shelver(object):
         self.tempdir = tempfile.mkdtemp()
         changes_shelved = 0
         try:
-            for change in creator:
+            for change in creator.iter_shelvable():
                 if change[0] == 'modify text':
                     try:
                         changes_shelved += self.handle_modify_text(creator,
