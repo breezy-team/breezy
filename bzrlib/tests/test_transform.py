@@ -23,7 +23,6 @@ from bzrlib import (
     errors,
     generate_ids,
     osutils,
-    pack,
     progress,
     revision as _mod_revision,
     symbol_versioning,
