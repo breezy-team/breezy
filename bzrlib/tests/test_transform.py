@@ -55,6 +55,8 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               build_tree, get_backup_name,
                               _FileMover, resolve_checkout,
                               TransformPreview, create_from_tree)
+from bzrlib.util import bencode
+
 
 class TestTreeTransform(tests.TestCaseWithTransport):
 
@@ -2586,6 +2588,16 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(False, preview_tree.is_executable('baz-id'))
 
 
+class FakeSerializer(object):
+    """Serializer implementation that simply returns the input.
+
+    The input is returned in the order used by pack.ContainerPushParser.
+    """
+    @staticmethod
+    def bytes_record(bytes, names):
+        return names, bytes
+
+
 class TestSerializeTransform(tests.TestCaseWithTransport):
 
     def get_two_previews(self, tree):
@@ -2626,6 +2638,53 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         finally:
             foo_limbo.close()
         self.assertEqual('bar', foo_content)
+
+    @staticmethod
+    def default_attribs():
+        return {
+            '_id_number': 0,
+            '_new_name': {},
+            '_new_parent': {},
+            '_new_executability': {},
+            '_new_id': {},
+            '_tree_path_ids': {},
+            '_removed_id': [],
+            '_removed_contents': [],
+            '_non_present_ids': {},
+            }
+
+    def creation_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 3
+        attribs['_new_name'] = {
+            'new-1': u'foo\u1234'.encode('utf-8'), 'new-2': 'qux'}
+        attribs['_new_id'] = {'new-1': 'baz', 'new-2': 'quxx'}
+        attribs['_new_parent'] = {'new-1': 'new-0', 'new-2': 'new-0'}
+        attribs['_new_executability'] = {'new-1': 1}
+        attribs['_tree_path_ids'] = {'': 'new-0'}
+        contents = [
+            ('new-1', 'file', 'i 1\nbar\n'),
+            ('new-2', 'directory', ''),
+            ]
+        return self.make_records(attribs, contents)
+
+    def make_records(self, attribs, contents):
+        records = [
+            (((('attribs'),),), bencode.bencode(attribs))]
+        records.extend([(((n, k),), c) for n, k, c in contents])
+        return records
+
+    def test_serialize_creation(self):
+        tree = self.make_branch_and_tree('.')
+        tt, tt2 = self.get_two_previews(tree)
+        tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
+        tt.new_directory('qux', tt.root, 'quxx')
+        records = tt.serialize(FakeSerializer())
+        self.assertEqual(self.creation_records(), list(records))
+
+    def assertEqualRecords(self, a, b):
+        from textwrap import fill
+        self.assertEqualDiff(fill(repr(a)), fill(repr(list(b))))
 
     def test_symlink_creation(self):
         self.requireFeature(tests.SymlinkFeature)
