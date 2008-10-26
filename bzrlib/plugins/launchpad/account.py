@@ -54,14 +54,13 @@ def get_lp_login(_config=None):
     username = _config.get_user_option('launchpad_username')
     if username is not None:
         auth = AuthenticationConfig()
-        auth_usernames = _get_auth_user(auth)
-        for auth_username in auth_usernames.values():
-            if auth_username is not None and auth_username != username:
-                raise MismatchedUsernames()
+        auth_username = _get_auth_user(auth)
         # Auto-upgrading
-        if None in auth_usernames.values():
+        if auth_username is None:
             trace.note('Setting ssh/sftp usernames for launchpad.net.')
             _set_auth_user(username, auth)
+        elif auth_username != username:
+            raise MismatchedUsernames()
     return username
 
 
@@ -80,16 +79,13 @@ def set_lp_login(username, _config=None):
 def _get_auth_user(auth=None):
     if auth is None:
         auth = AuthenticationConfig()
-    return {'production': auth.get_user('ssh', 'bazaar.launchpad.net'),
-            'staging': auth.get_user('ssh', 'bazaar.staging.launchpad.net'),}
+    return auth.get_user('ssh', '.launchpad.net')
 
 def _set_auth_user(username, auth=None):
     if auth is None:
         auth = AuthenticationConfig()
     auth.set_credentials(
-        'Launchpad', 'bazaar.launchpad.net', username, 'ssh')
-    auth.set_credentials(
-        'Launchpad Staging', 'bazaar.staging.launchpad.net', username, 'ssh')
+        'Launchpad', '.launchpad.net', username, 'ssh')
 
 
 def check_lp_login(username, _transport=None):
