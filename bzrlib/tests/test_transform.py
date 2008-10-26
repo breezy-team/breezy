@@ -2600,6 +2600,12 @@ class FakeSerializer(object):
 
 class TestSerializeTransform(tests.TestCaseWithTransport):
 
+    def get_preview(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        return tt
+
     def get_two_previews(self, tree):
         tt = TransformPreview(tree)
         self.addCleanup(tt.finalize)
@@ -2616,28 +2622,6 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
             parser.accept_bytes(bytes)
         parser.accept_bytes(serializer.end())
         tt2.deserialize(iter(parser.read_pending_records()))
-
-    def test_roundtrip_creation(self):
-        tree = self.make_branch_and_tree('.')
-        tt, tt2 = self.get_two_previews(tree)
-        tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
-        tt.new_directory('qux', tt.root, 'quxx')
-        self.reserialize(tt, tt2)
-        self.assertEqual(3, tt2._id_number)
-        self.assertEqual({'new-1': u'foo\u1234',
-                          'new-2': 'qux'}, tt2._new_name)
-        self.assertEqual({'new-1': 'baz', 'new-2': 'quxx'}, tt2._new_id)
-        self.assertEqual({'new-1': tt.root, 'new-2': tt.root}, tt2._new_parent)
-        self.assertEqual({'baz': 'new-1', 'quxx': 'new-2'}, tt2._r_new_id)
-        self.assertEqual({'new-1': True}, tt2._new_executability)
-        self.assertEqual({'new-1': 'file',
-                          'new-2': 'directory'}, tt2._new_contents)
-        foo_limbo = open(tt2._limbo_name('new-1'), 'rb')
-        try:
-            foo_content = foo_limbo.read()
-        finally:
-            foo_limbo.close()
-        self.assertEqual('bar', foo_content)
 
     @staticmethod
     def default_attribs():
@@ -2675,12 +2659,30 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         return records
 
     def test_serialize_creation(self):
-        tree = self.make_branch_and_tree('.')
-        tt, tt2 = self.get_two_previews(tree)
+        tt = self.get_preview()
         tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
         tt.new_directory('qux', tt.root, 'quxx')
         records = tt.serialize(FakeSerializer())
         self.assertEqual(self.creation_records(), list(records))
+
+    def test_deserialize_creation(self):
+        tt = self.get_preview()
+        tt.deserialize(iter(self.creation_records()))
+        self.assertEqual(3, tt._id_number)
+        self.assertEqual({'new-1': u'foo\u1234',
+                          'new-2': 'qux'}, tt._new_name)
+        self.assertEqual({'new-1': 'baz', 'new-2': 'quxx'}, tt._new_id)
+        self.assertEqual({'new-1': tt.root, 'new-2': tt.root}, tt._new_parent)
+        self.assertEqual({'baz': 'new-1', 'quxx': 'new-2'}, tt._r_new_id)
+        self.assertEqual({'new-1': True}, tt._new_executability)
+        self.assertEqual({'new-1': 'file',
+                          'new-2': 'directory'}, tt._new_contents)
+        foo_limbo = open(tt._limbo_name('new-1'), 'rb')
+        try:
+            foo_content = foo_limbo.read()
+        finally:
+            foo_limbo.close()
+        self.assertEqual('bar', foo_content)
 
     def assertEqualRecords(self, a, b):
         from textwrap import fill
