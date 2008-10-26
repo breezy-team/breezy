@@ -397,7 +397,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        list(creator)
+        list(creator.iter_shelvable())
         creator.shelve_creation('foo-id')
         shelf_manager = tree.get_shelf_manager()
         shelf_id = shelf_manager.shelve_changes(creator)
