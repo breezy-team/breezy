@@ -2679,10 +2679,6 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         contents = [('new-1', 'symlink', u'bar\u1234'.encode('utf-8'))]
         return self.make_records(attribs, contents)
 
-    def assertEqualRecords(self, a, b):
-        from textwrap import fill
-        self.assertEqualDiff(fill(repr(a)), fill(repr(list(b))))
-
     def test_serialize_symlink_creation(self):
         self.requireFeature(tests.SymlinkFeature)
         tt = self.get_preview()
@@ -2696,11 +2692,11 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         foo_content = os.readlink(tt._limbo_name('new-1'))
         self.assertEqual(u'bar\u1234'.encode('utf-8'), foo_content)
 
-    def create_tree_for_destruction(self):
+    def make_destruction_preview(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree([u'foo\u1234', 'bar'])
         tree.add([u'foo\u1234', 'bar'], ['foo-id', 'bar-id'])
-        return tree
+        return self.get_preview(tree)
 
     def destruction_records(self):
         attribs = self.default_attribs()
@@ -2715,7 +2711,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         return self.make_records(attribs, [])
 
     def test_serialize_destruction(self):
-        tt = self.get_preview(self.create_tree_for_destruction())
+        tt = self.make_destruction_preview()
         foo_trans_id = tt.trans_id_tree_file_id('foo-id')
         tt.unversion_file(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_file_id('bar-id')
@@ -2723,7 +2719,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertSerializesTo(self.destruction_records(), tt)
 
     def test_deserialize_destruction(self):
-        tt = self.get_preview(self.create_tree_for_destruction())
+        tt = self.make_destruction_preview()
         tt.deserialize(iter(self.destruction_records()))
         self.assertEqual({u'foo\u1234': 'new-1',
                           'bar': 'new-2',
