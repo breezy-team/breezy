@@ -2656,7 +2656,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         attribs['_id_number'] = 2
         attribs['_new_name'] = {'new-1': u'foo\u1234'.encode('utf-8')}
         attribs['_new_parent'] = {'new-1': 'new-0'}
-        contents = [('new-1', 'symlink', 'bar')]
+        contents = [('new-1', 'symlink', u'bar\u1234'.encode('utf-8'))]
         return self.make_records(attribs, contents)
 
     def make_records(self, attribs, contents):
@@ -2698,7 +2698,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
     def test_serialize_symlink_creation(self):
         self.requireFeature(tests.SymlinkFeature)
         tt = self.get_preview()
-        tt.new_symlink(u'foo\u1234', tt.root, 'bar')
+        tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
         records = tt.serialize(FakeSerializer())
         self.assertEqual(self.symlink_creation_records(), list(records))
 
@@ -2706,7 +2706,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
         foo_content = os.readlink(tt._limbo_name('new-1'))
-        self.assertEqual('bar', foo_content)
+        self.assertEqual(u'bar\u1234'.encode('utf-8'), foo_content)
 
     def test_roundtrip_destruction(self):
         tree = self.make_branch_and_tree('.')
