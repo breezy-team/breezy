@@ -642,7 +642,6 @@ class Packer(object):
             except errors.NoSuchFile:
                 # A pack file went missing, try reloading in case it was just
                 # someone else repacking the repo.
-                import pdb; pdb.set_trace()
                 if not self._pack_collection.reload_pack_names():
                     raise
                 # If we got to here, that means we can retry, but we don't want

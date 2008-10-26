@@ -1062,7 +1062,6 @@ class TestPacker(TestCaseWithTransport):
             # bit, but that runs into concurrancy issues depending on the
             # platform
             print 'activating'
-            import pdb; pdb.set_trace()
             call_obj()
             for count, val in enumerate(orig_readv(relpath, *args, **kwargs)):
                 yield val
@@ -1090,7 +1089,7 @@ class TestPacker(TestCaseWithTransport):
         self.addCleanup(alt_repo.unlock)
 
         packer = pack_repo.Packer(repo._pack_collection,
-                                  repo._pack_collection.packs,
+                                  repo._pack_collection.all_packs(),
                                   '.testpack')
         self.munge_function_to_trigger(packer, attr,
                                        packer.packs[1], alt_repo.pack)
@@ -1110,18 +1109,7 @@ class TestPacker(TestCaseWithTransport):
 
     def test__copy_signature_texts_retries(self):
         return # there isn't a separate _copy_signature_texts function yet
-        repo, revs = self.make_repo_with_three_packs()
-        alt_repo = repository.Repository.open('.')
-        alt_repo.lock_write()
-        self.addCleanup(alt_repo.unlock)
-
-        packer = pack_repo.Packer(repo._pack_collection,
-                                  repo._pack_collection.packs,
-                                  '.testpack')
-        # Munge the middle pack so that while reading, it triggers a
-        # full-repack from the other repository
-        self.munge_function_to_trigger(packer, '_copy_signature_texts',
-                                       packer.packs[1], alt_repo.pack)
+        packer = self.setup_retry_function('_copy_signature_texts')
         packer.pack()
 
 
