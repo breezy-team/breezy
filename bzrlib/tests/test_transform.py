@@ -2607,22 +2607,9 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.addCleanup(tt.finalize)
         return tt
 
-    def get_two_previews(self, tree):
-        tt = TransformPreview(tree)
-        self.addCleanup(tt.finalize)
-        tt2 = TransformPreview(tree)
-        self.addCleanup(tt2.finalize)
-        return tt, tt2
-
-    @staticmethod
-    def reserialize(tt, tt2):
-        serializer = pack.ContainerSerialiser()
-        parser = pack.ContainerPushParser()
-        parser.accept_bytes(serializer.begin())
-        for bytes in tt.serialize(serializer):
-            parser.accept_bytes(bytes)
-        parser.accept_bytes(serializer.end())
-        tt2.deserialize(iter(parser.read_pending_records()))
+    def assertSerializesTo(self, expected, tt):
+        records = list(tt.serialize(FakeSerializer()))
+        self.assertEqual(expected, records)
 
     @staticmethod
     def default_attribs():
@@ -2638,6 +2625,12 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
             '_non_present_ids': {},
             }
 
+    def make_records(self, attribs, contents):
+        records = [
+            (((('attribs'),),), bencode.bencode(attribs))]
+        records.extend([(((n, k),), c) for n, k, c in contents])
+        return records
+
     def creation_records(self):
         attribs = self.default_attribs()
         attribs['_id_number'] = 3
@@ -2651,32 +2644,6 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
             ('new-2', 'directory', ''),
             ]
         return self.make_records(attribs, contents)
-
-    def symlink_creation_records(self):
-        attribs = self.default_attribs()
-        attribs['_id_number'] = 2
-        attribs['_new_name'] = {'new-1': u'foo\u1234'.encode('utf-8')}
-        attribs['_new_parent'] = {'new-1': 'new-0'}
-        contents = [('new-1', 'symlink', u'bar\u1234'.encode('utf-8'))]
-        return self.make_records(attribs, contents)
-
-    def destruction_records(self):
-        attribs = self.default_attribs()
-        attribs['_id_number'] = 3
-        attribs['_removed_id'] = ['new-1']
-        attribs['_removed_contents'] = ['new-2']
-        attribs['_tree_path_ids'] = {
-            '': 'new-0',
-            u'foo\u1234'.encode('utf-8'): 'new-1',
-            'bar': 'new-2',
-            }
-        return self.make_records(attribs, [])
-
-    def make_records(self, attribs, contents):
-        records = [
-            (((('attribs'),),), bencode.bencode(attribs))]
-        records.extend([(((n, k),), c) for n, k, c in contents])
-        return records
 
     def test_serialize_creation(self):
         tt = self.get_preview()
@@ -2704,6 +2671,14 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
             foo_limbo.close()
         self.assertEqual('bar', foo_content)
 
+    def symlink_creation_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_new_name'] = {'new-1': u'foo\u1234'.encode('utf-8')}
+        attribs['_new_parent'] = {'new-1': 'new-0'}
+        contents = [('new-1', 'symlink', u'bar\u1234'.encode('utf-8'))]
+        return self.make_records(attribs, contents)
+
     def assertEqualRecords(self, a, b):
         from textwrap import fill
         self.assertEqualDiff(fill(repr(a)), fill(repr(list(b))))
@@ -2727,14 +2702,25 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tree.add([u'foo\u1234', 'bar'], ['foo-id', 'bar-id'])
         return tree
 
+    def destruction_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 3
+        attribs['_removed_id'] = ['new-1']
+        attribs['_removed_contents'] = ['new-2']
+        attribs['_tree_path_ids'] = {
+            '': 'new-0',
+            u'foo\u1234'.encode('utf-8'): 'new-1',
+            'bar': 'new-2',
+            }
+        return self.make_records(attribs, [])
+
     def test_serialize_destruction(self):
         tt = self.get_preview(self.create_tree_for_destruction())
         foo_trans_id = tt.trans_id_tree_file_id('foo-id')
         tt.unversion_file(foo_trans_id)
         bar_trans_id = tt.trans_id_tree_file_id('bar-id')
         tt.delete_contents(bar_trans_id)
-        records = tt.serialize(FakeSerializer())
-        self.assertEqualRecords(self.destruction_records(), records)
+        self.assertSerializesTo(self.destruction_records(), tt)
 
     def test_deserialize_destruction(self):
         tt = self.get_preview(self.create_tree_for_destruction())
@@ -2748,49 +2734,112 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertEqual(set(['new-1']), tt._removed_id)
         self.assertEqual(set(['new-2']), tt._removed_contents)
 
-    def test_roundtrip_missing(self):
-        tree = self.make_branch_and_tree('.')
-        tt, tt2 = self.get_two_previews(tree)
-        boo_trans_id = tt.trans_id_file_id('boo')
-        self.reserialize(tt, tt2)
-        self.assertEqual({'boo': boo_trans_id}, tt2._non_present_ids)
+    def missing_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_non_present_ids'] = {
+            'boo': 'new-1',}
+        return self.make_records(attribs, [])
 
-    def test_roundtrip_modification(self):
+    def test_serialize_missing(self):
+        tt = self.get_preview()
+        boo_trans_id = tt.trans_id_file_id('boo')
+        self.assertSerializesTo(self.missing_records(), tt)
+
+    def test_deserialize_missing(self):
+        tt = self.get_preview()
+        tt.deserialize(iter(self.missing_records()))
+        self.assertEqual({'boo': 'new-1'}, tt._non_present_ids)
+
+    def make_modification_preview(self):
         LINES_ONE = 'aa\nbb\ncc\ndd\n'
         LINES_TWO = 'z\nbb\nx\ndd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
         tree.add('file', 'file-id')
-        tt, tt2 = self.get_two_previews(tree)
+        return self.get_preview(tree), LINES_TWO
+
+    def modification_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_tree_path_ids'] = {
+            'file': 'new-1',
+            '': 'new-0',}
+        attribs['_removed_contents'] = ['new-1']
+        contents = [('new-1', 'file',
+                     'i 1\nz\n\nc 0 1 1 1\ni 1\nx\n\nc 0 3 3 1\n')]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_modification(self):
+        tt, LINES = self.make_modification_preview()
         trans_id = tt.trans_id_file_id('file-id')
         tt.delete_contents(trans_id)
-        tt.create_file(LINES_TWO, trans_id)
-        self.reserialize(tt, tt2)
-        self.assertFileEqual(LINES_TWO, tt2._limbo_name(trans_id))
+        tt.create_file(LINES, trans_id)
+        self.assertSerializesTo(self.modification_records(), tt)
 
-    def test_roundtrip_kind_change(self):
-        LINES_ONE = 'a\nb\nc\nd\n'
+    def test_deserialize_modification(self):
+        tt, LINES = self.make_modification_preview()
+        tt.deserialize(iter(self.modification_records()))
+        self.assertFileEqual(LINES, tt._limbo_name('new-1'))
+
+    def make_kind_change_preview(self):
+        LINES = 'a\nb\nc\nd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo/'])
         tree.add('foo', 'foo-id')
-        tt, tt2 = self.get_two_previews(tree)
+        return self.get_preview(tree), LINES
+
+    def kind_change_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_tree_path_ids'] = {
+            'foo': 'new-1',
+            '': 'new-0',}
+        attribs['_removed_contents'] = ['new-1']
+        contents = [('new-1', 'file',
+                     'i 4\na\nb\nc\nd\n\n')]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_kind_change(self):
+        tt, LINES = self.make_kind_change_preview()
         trans_id = tt.trans_id_file_id('foo-id')
         tt.delete_contents(trans_id)
-        tt.create_file(LINES_ONE, trans_id)
-        self.reserialize(tt, tt2)
-        self.assertFileEqual(LINES_ONE, tt2._limbo_name(trans_id))
+        tt.create_file(LINES, trans_id)
+        self.assertSerializesTo(self.kind_change_records(), tt)
 
-    def test_roundtrip_add_contents(self):
-        LINES_ONE = 'a\nb\nc\nd\n'
+    def test_deserialize_kind_change(self):
+        tt, LINES = self.make_kind_change_preview()
+        tt.deserialize(iter(self.kind_change_records()))
+        self.assertFileEqual(LINES, tt._limbo_name('new-1'))
+
+    def make_add_contents_preview(self):
+        LINES = 'a\nb\nc\nd\n'
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
         tree.add('foo')
         os.unlink('tree/foo')
-        tt, tt2 = self.get_two_previews(tree)
+        return self.get_preview(tree), LINES
+
+    def add_contents_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_tree_path_ids'] = {
+            'foo': 'new-1',
+            '': 'new-0',}
+        contents = [('new-1', 'file',
+                     'i 4\na\nb\nc\nd\n\n')]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_add_contents(self):
+        tt, LINES = self.make_add_contents_preview()
         trans_id = tt.trans_id_tree_path('foo')
-        tt.create_file(LINES_ONE, trans_id)
-        self.reserialize(tt, tt2)
-        self.assertFileEqual(LINES_ONE, tt2._limbo_name(trans_id))
+        tt.create_file(LINES, trans_id)
+        self.assertSerializesTo(self.add_contents_records(), tt)
+
+    def test_deserialize_add_contents(self):
+        tt, LINES = self.make_add_contents_preview()
+        tt.deserialize(iter(self.add_contents_records()))
+        self.assertFileEqual(LINES, tt._limbo_name('new-1'))
 
     def test_get_parents_lines(self):
         LINES_ONE = 'aa\nbb\ncc\ndd\n'
@@ -2798,7 +2847,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
         tree.add('file', 'file-id')
-        tt, tt2 = self.get_two_previews(tree)
+        tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual((['aa\n', 'bb\n', 'cc\n', 'dd\n'],),
             tt._get_parents_lines(trans_id))
@@ -2809,7 +2858,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file', LINES_ONE)])
         tree.add('file', 'file-id')
-        tt, tt2 = self.get_two_previews(tree)
+        tt = self.get_preview(tree)
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual((LINES_ONE,),
             tt._get_parents_texts(trans_id))
