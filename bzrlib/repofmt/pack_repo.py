@@ -971,6 +971,16 @@ class OptimisingPacker(Packer):
         # TODO: combine requests in the same index that are in ascending order.
         return total, requests
 
+    def open_pack(self):
+        """Open a pack for the pack we are creating."""
+        new_pack = super(OptimisingPacker, self).open_pack()
+        # Turn on the optimization flags for all the index builders.
+        new_pack.revision_index.set_optimize(for_size=True)
+        new_pack.inventory_index.set_optimize(for_size=True)
+        new_pack.text_index.set_optimize(for_size=True)
+        new_pack.signature_index.set_optimize(for_size=True)
+        return new_pack
+
 
 class ReconcilePacker(Packer):
     """A packer which regenerates indices etc as it copies.

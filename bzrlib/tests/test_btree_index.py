@@ -434,6 +434,13 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual(sorted(nodes), nodes)
         self.assertEqual(16, len(nodes))
 
+    def test_set_optimize(self):
+        builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
+        builder.set_optimize(for_size=True)
+        self.assertTrue(builder._optimize_for_size)
+        builder.set_optimize(for_size=False)
+        self.assertFalse(builder._optimize_for_size)
+
     def test_spill_index_stress_2_2(self):
         # test that references and longer keys don't confuse things.
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2,
