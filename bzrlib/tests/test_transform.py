@@ -2599,6 +2599,8 @@ class FakeSerializer(object):
 
 class TestSerializeTransform(tests.TestCaseWithTransport):
 
+    _test_needs_features = [tests.UnicodeFilenameFeature]
+
     def get_preview(self, tree=None):
         if tree is None:
             tree = self.make_branch_and_tree('tree')
@@ -2648,8 +2650,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt = self.get_preview()
         tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
         tt.new_directory('qux', tt.root, 'quxx')
-        records = tt.serialize(FakeSerializer())
-        self.assertEqual(self.creation_records(), list(records))
+        self.assertSerializesTo(self.creation_records(), tt)
 
     def test_deserialize_creation(self):
         tt = self.get_preview()
@@ -2682,14 +2683,14 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.requireFeature(tests.SymlinkFeature)
         tt = self.get_preview()
         tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
-        records = tt.serialize(FakeSerializer())
-        self.assertEqual(self.symlink_creation_records(), list(records))
+        self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
-        foo_content = os.readlink(tt._limbo_name('new-1'))
-        self.assertEqual(u'bar\u1234'.encode('utf-8'), foo_content)
+        # XXX readlink should be returning unicode, not utf-8
+        foo_content = os.readlink(tt._limbo_name('new-1')).decode('utf-8')
+        self.assertEqual(u'bar\u1234', foo_content)
 
     def make_destruction_preview(self):
         tree = self.make_branch_and_tree('.')
