@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -1410,6 +1410,32 @@ password=bendover
         self.assertEquals(False, credentials.get('verify_certificates'))
         credentials = conf.get_credentials('https', 'foo.net')
         self.assertEquals(True, credentials.get('verify_certificates'))
+
+
+class TestAuthenticationStorage(tests.TestCaseInTempDir):
+
+    def test_set_credentials(self):
+        conf = config.AuthenticationConfig()
+        conf.set_credentials('name', 'host', 'user', 'scheme', 'password',
+        99, path='/foo', verify_certificates=False)
+        credentials = conf.get_credentials(host='host', scheme='scheme',
+                                           port=99, path='/foo')
+        CREDENTIALS = {'name': 'name', 'user': 'user', 'password': 'password',
+                       'verify_certificates': False,}
+        self.assertEqual(CREDENTIALS, credentials)
+        credentials_from_disk = config.AuthenticationConfig().get_credentials(
+            host='host', scheme='scheme', port=99, path='/foo')
+        self.assertEqual(CREDENTIALS, credentials_from_disk)
+
+    def test_reset_credentials_different_name(self):
+        conf = config.AuthenticationConfig()
+        conf.set_credentials('name', 'host', 'user', 'scheme', 'password'),
+        conf.set_credentials('name2', 'host', 'user2', 'scheme', 'password'),
+        self.assertIs(None, conf._get_config().get('name'))
+        credentials = conf.get_credentials(host='host', scheme='scheme')
+        CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':
+                       'password', 'verify_certificates': True}
+        self.assertEqual(CREDENTIALS, credentials)
 
 
 class TestAuthenticationConfig(tests.TestCase):
