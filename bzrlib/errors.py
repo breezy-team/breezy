@@ -1522,7 +1522,9 @@ class RetryAutopack(RetryWithNewPacks):
     again.
     """
 
-    _fmt = ("Pack files have changed, reload and try autopack again. %(orig_error)s")
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and try autopack again.")
 
 
 class NoSuchExportFormat(BzrError):

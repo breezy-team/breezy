@@ -595,8 +595,9 @@ class Packer(object):
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
-            raise errors.BzrError('call to create_pack_from_packs while '
-                'another pack is being written.')
+            raise errors.BzrError('call to %s.pack() while another pack is'
+                                  ' being written.'
+                                  % (self.__class__.__name__,))
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
                 # silly fetch request.
@@ -1248,9 +1249,9 @@ class RepositoryPackCollection(object):
             try:
                 return self._do_autopack()
             except errors.RetryAutopack, e:
-                # If we get a RetryAutopack exception, we should just try again
+                # If we get a RetryAutopack exception, we should abort the
+                # current action, and retry.
                 pass
-
 
     def _do_autopack(self):
         # XXX: Should not be needed when the management of indices is sane.
@@ -1299,7 +1300,16 @@ class RepositoryPackCollection(object):
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            _packer_class(self, packs, '.autopack', reload_func=reload_func).pack()
+            packer = _packer_class(self, packs, '.autopack',
+                                   reload_func=reload_func)
+            try:
+                packer.pack()
+            except errors.RetryWithNewPacks:
+                # An exception is propagating out of this context, make sure
+                # this packer has cleaned up.
+                if packer.new_pack is not None:
+                    packer.new_pack.abort()
+                raise
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
