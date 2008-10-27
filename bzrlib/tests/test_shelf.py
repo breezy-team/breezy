@@ -15,6 +15,7 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+from textwrap import dedent
 
 from bzrlib import pack, shelf, tests, transform
 
@@ -218,6 +219,20 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.shelve_deletion('foo-id')
         creator.transform()
         self.failUnlessExists('tree/foo')
+
+    def test_shelve_serialization(self):
+        tree = self.make_branch_and_tree('.')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        filename = creator.write_shelf()
+        self.assertFileEqual(
+            "Bazaar pack format 1 (introduced in 0.18)\n"
+            "B159\n"
+            "attribs\n\n"
+            "d10:_id_numberi0e18:_new_executabilityde7:_new_idde"
+            "9:_new_namede11:_new_parentde16:_non_present_idsde"
+            "17:_removed_contentsle11:_removed_idle14:_tree_path_idsdeeE",
+            filename)
 
     def test_write_shelf(self):
         tree = self.make_branch_and_tree('tree')
