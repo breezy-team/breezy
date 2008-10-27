@@ -478,6 +478,12 @@ class DummyRepository(object):
     def supports_rich_root(self):
         return False
 
+    def get_graph(self):
+        raise NotImplementedError
+
+    def get_parent_map(self, revision_ids):
+        raise NotImplementedError
+
 
 class InterDummy(repository.InterRepository):
     """An inter-repository optimised code path for DummyRepository.

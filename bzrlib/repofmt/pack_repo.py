@@ -1528,6 +1528,7 @@ class RepositoryPackCollection(object):
         self._names.pop(pack.name)
         self._packs_by_name.pop(pack.name)
         self._remove_pack_indices(pack)
+        self.packs.remove(pack)
 
     def _remove_pack_indices(self, pack):
         """Remove the indices for pack from the aggregated indices."""
