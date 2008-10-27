@@ -178,7 +178,7 @@ class TestShelver(tests.TestCaseWithTransport):
 
     def test_shelve_all(self):
         tree = self.create_shelvable_tree()
-        ExpectShelver.from_args(all=True, dir='tree').run()
+        ExpectShelver.from_args(all=True, directory='tree').run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_filename(self):
@@ -189,3 +189,49 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve adding file "bar"? [yNfq]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
         shelver.run()
+
+
+class TestUnshelver(tests.TestCaseWithTransport):
+
+    def create_tree_with_shelf(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/foo', LINES_AJ)])
+        tree.add('foo', 'foo-id')
+        tree.commit('added foo')
+        self.build_tree_contents([('tree/foo', LINES_ZY)])
+        shelf_ui.Shelver(tree, tree.basis_tree(), None, auto_apply=True,
+                         auto=True).run()
+        return tree
+
+    def test_unshelve(self):
+        tree = self.create_tree_with_shelf()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        manager = tree.get_shelf_manager()
+        shelf_ui.Unshelver(tree, manager, 1, True, True, True).run()
+        self.assertFileEqual(LINES_ZY, 'tree/foo')
+
+    def test_unshelve_args(self):
+        tree = self.create_tree_with_shelf()
+        shelf_ui.Unshelver.from_args(directory='tree').run()
+        self.assertFileEqual(LINES_ZY, 'tree/foo')
+        self.assertIs(None, tree.get_shelf_manager().last_shelf())
+
+    def test_unshelve_args_dry_run(self):
+        tree = self.create_tree_with_shelf()
+        shelf_ui.Unshelver.from_args(directory='tree', action='dry-run').run()
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
+        self.assertEqual(1, tree.get_shelf_manager().last_shelf())
+
+    def test_unshelve_args_delete_only(self):
+        tree = self.make_branch_and_tree('tree')
+        manager = tree.get_shelf_manager()
+        shelf_file = manager.new_shelf()[1]
+        try:
+            shelf_file.write('garbage')
+        finally:
+            shelf_file.close()
+        unshelver = shelf_ui.Unshelver.from_args(directory='tree',
+                                                 action='delete-only')
+        unshelver.run()
+        self.assertIs(None, manager.last_shelf())

@@ -60,8 +60,8 @@ class Shelver(object):
 
     @classmethod
     def from_args(klass, revision=None, all=False, file_list=None,
-                  message=None, dir='.'):
-        tree, path = workingtree.WorkingTree.open_containing(dir)
+                  message=None, directory='.'):
+        tree, path = workingtree.WorkingTree.open_containing(directory)
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
         return klass(tree, target_tree, path, all, all, file_list, message)
@@ -182,8 +182,8 @@ class Shelver(object):
 class Unshelver(object):
 
     @classmethod
-    def from_args(klass, shelf_id=None, action='apply'):
-        tree, path = workingtree.WorkingTree.open_containing('.')
+    def from_args(klass, shelf_id=None, action='apply', directory='.'):
+        tree, path = workingtree.WorkingTree.open_containing(directory)
         manager = tree.get_shelf_manager()
         if shelf_id is not None:
             shelf_id = int(shelf_id)
@@ -204,8 +204,8 @@ class Unshelver(object):
         return klass(tree, manager, shelf_id, apply_changes, delete_shelf,
                      read_shelf)
 
-    def __init__(self, tree, manager, shelf_id, apply_changes, delete_shelf,
-                 read_shelf):
+    def __init__(self, tree, manager, shelf_id, apply_changes=True,
+                 delete_shelf=True, read_shelf=True):
         self.tree = tree
         self.manager = manager
         self.shelf_id = shelf_id
