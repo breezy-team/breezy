@@ -60,8 +60,8 @@ class Shelver(object):
 
     @classmethod
     def from_args(klass, revision=None, all=False, file_list=None,
-                  message=None):
-        tree, path = workingtree.WorkingTree.open_containing('.')
+                  message=None, dir='.'):
+        tree, path = workingtree.WorkingTree.open_containing(dir)
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
         return klass(tree, target_tree, path, all, all, file_list, message)
