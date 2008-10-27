@@ -2407,23 +2407,21 @@ class InterRepository(InterObject):
                 except StopIteration:
                     searcher_exhausted = True
                     break
-            # If there are ghosts in the source graph, make sure that they are
-            # present in the target.
-            if revision_ids.intersection(ghosts):
-                absent_ids = set(revision_ids.intersection(ghosts))
-                # If all absent_ids are present in target, no error is
-                # needed.
-                absent_ids.difference_update(
-                    set(target_graph.get_parent_map(absent_ids)))
-                if absent_ids:
-                    raise errors.NoSuchRevision(
-                        self.source, absent_ids.pop())
-            if next_revs:
+            # If there are ghosts in the source graph, and the caller asked for
+            # them, make sure that they are present in the target.
+            ghosts_to_check = revision_ids.intersection(ghosts)
+            if next_revs or ghosts_to_check:
                 # we don't care about other ghosts as we can't fetch them and
                 # haven't been asked to.
-                next_revs = set(next_revs)
+                revs_to_get = set(next_revs) + ghosts_to_check
                 # we always have NULL_REVISION present.
                 have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
+                ghosts_to_check.difference_update(have_revs)
+                if ghosts_to_check:
+                    # One of the caller's revision_ids is a ghost in both the
+                    # source and the target.
+                    raise errors.NoSuchRevision(
+                        self.source, ghosts_to_check.pop())
                 missing_revs.update(next_revs - have_revs)
                 searcher.stop_searching_any(have_revs)
             if searcher_exhausted:
