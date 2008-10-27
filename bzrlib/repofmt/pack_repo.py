@@ -1306,7 +1306,9 @@ class RepositoryPackCollection(object):
                 packer.pack()
             except errors.RetryWithNewPacks:
                 # An exception is propagating out of this context, make sure
-                # this packer has cleaned up.
+                # this packer has cleaned up. Packer() doesn't set its new_pack
+                # state into the RepositoryPackCollection object, so we only
+                # have access to it directly here.
                 if packer.new_pack is not None:
                     packer.new_pack.abort()
                 raise
