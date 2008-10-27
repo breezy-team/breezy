@@ -750,6 +750,21 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         repo = self.make_repository('.', format=format)
         return repo._pack_collection
 
+    def make_packs_and_alt_repo(self):
+        """Create a pack repo with 3 packs, and access it via a second repo."""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        rev1 = tree.commit('one')
+        rev2 = tree.commit('two')
+        rev3 = tree.commit('three')
+        r = repository.Repository.open('.')
+        r.lock_read()
+        self.addCleanup(r.unlock)
+        packs = r._pack_collection
+        packs.ensure_loaded()
+        return tree, r, packs, [rev1, rev2, rev3]
+
     def test__max_pack_count(self):
         """The maximum pack count is a function of the number of revisions."""
         # no revisions - one pack, so that we can have a revision free repo
@@ -918,19 +933,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 
     def test_reload_pack_names_new_entry(self):
-        tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        rev1 = tree.commit('one')
-        rev2 = tree.commit('two')
-        r = repository.Repository.open('.')
-        r.lock_read()
-        self.addCleanup(r.unlock)
-        packs = r._pack_collection
-        packs.ensure_loaded()
+        tree, r, packs, revs = self.make_packs_and_alt_repo()
         names = packs.names()
         # Add a new pack file into the repository
-        rev3 = tree.commit('three')
+        rev4 = tree.commit('four')
         new_names = tree.branch.repository._pack_collection.names()
         new_name = set(new_names).difference(names)
         self.assertEqual(1, len(new_name))
@@ -940,20 +946,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
         # And the repository can access the new revision
-        self.assertEqual({rev3:(rev2,)}, r.get_parent_map([rev3]))
+        self.assertEqual({rev4:(revs[-1],)}, r.get_parent_map([rev4]))
         self.assertFalse(packs.reload_pack_names())
 
     def test_reload_pack_names_added_and_removed(self):
-        tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        rev1 = tree.commit('one')
-        rev2 = tree.commit('two')
-        r = repository.Repository.open('.')
-        r.lock_read()
-        self.addCleanup(r.unlock)
-        packs = r._pack_collection
-        packs.ensure_loaded()
+        tree, r, packs, revs = self.make_packs_and_alt_repo()
         names = packs.names()
         # Now repack the whole thing
         tree.branch.repository.pack()
@@ -962,7 +959,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(names, packs.names())
         self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
-        self.assertEqual({rev2:(rev1,)}, r.get_parent_map([rev2]))
+        self.assertEqual({revs[-1]:(revs[-2],)}, r.get_parent_map([revs[-1]]))
         self.assertFalse(packs.reload_pack_names())
 
 
