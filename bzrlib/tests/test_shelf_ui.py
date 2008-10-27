@@ -16,6 +16,7 @@
 
 
 from cStringIO import StringIO
+import os
 
 from bzrlib import shelf_ui, tests
 
@@ -118,3 +119,27 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
+
+    def test_shelve_deletion(self):
+        tree = self.create_shelvable_tree()
+        os.unlink('tree/foo')
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve removing file "foo"?  [yNfq]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.run()
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
+
+    def test_shelve_finish(self):
+        tree = self.create_shelvable_tree()
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve? [yNfq]', 'f')
+        shelver.expect('Shelve 2 change(s)? [yNfq]', 'y')
+        shelver.run()
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
+
+    def test_shelve_quit(self):
+        tree = self.create_shelvable_tree()
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve? [yNfq]', 'q')
+        self.assertRaises(SystemExit, shelver.run)
+        self.assertFileEqual(LINES_ZY, 'tree/foo')
