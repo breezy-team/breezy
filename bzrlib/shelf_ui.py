@@ -128,16 +128,19 @@ class Shelver(object):
         finally:
             self.diff_file.truncate(0)
 
+    def prompt(self, message):
+        sys.stdout.write(message)
+        char = osutils.getchar()
+        sys.stdout.write("\r" + ' ' * len(message) + '\r')
+        sys.stdout.flush()
+        return char
+
     def prompt_bool(self, question, auto=None):
         if auto is None:
             auto = self.auto
         if auto:
             return True
-        message = question + ' [yNfq]'
-        sys.stdout.write(message)
-        char = osutils.getchar()
-        sys.stdout.write("\r" + ' ' * len(message) + '\r')
-        sys.stdout.flush()
+        char = self.prompt(question + ' [yNfq]')
         if char == 'y':
             return True
         elif char == 'f':

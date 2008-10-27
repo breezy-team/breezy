@@ -2866,6 +2866,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_shelf',
+                   'bzrlib.tests.test_shelf_ui',
                    'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_smart_transport',
