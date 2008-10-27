@@ -661,7 +661,6 @@ class Transport(object):
         """
         # We are going to iterate multiple times, we need a list
         offsets = list(offsets)
-        remaining = len(offsets)
         sorted_offsets = sorted(offsets)
 
         # turn the list of offsets into a stack
@@ -689,14 +688,21 @@ class Transport(object):
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
-                remaining -= 1
-                if remaining <= 0:
-                    # Close the file handle as we are done yielding data.
-                    close = getattr(fp, 'close', None)
-                    if close is not None:
-                        close()
-                yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = offset_stack.next()
+                this_offset = cur_offset_and_size[0]
+                try:
+                    cur_offset_and_size = offset_stack.next()
+                except StopIteration:
+                    # Close the file handle as there will be no more data
+                    # The handle would normally be cleaned up as this code goes
+                    # out of scope, but as we are a generator, not all code
+                    # will re-enter once we have consumed all the expected
+                    # data. For example:
+                    #   zip(range(len(requests)), readv(foo, requests))
+                    # Will stop because the range is done, and not run the
+                    # cleanup code for the readv().
+                    fp.close()
+                    cur_offset_and_size = None
+                yield this_offset, this_data
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.
