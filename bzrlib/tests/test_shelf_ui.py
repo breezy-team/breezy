@@ -180,3 +180,12 @@ class TestShelver(tests.TestCaseWithTransport):
         tree = self.create_shelvable_tree()
         ExpectShelver.from_args(all=True, dir='tree').run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
+
+    def test_shelve_filename(self):
+        tree = self.create_shelvable_tree()
+        self.build_tree(['tree/bar'])
+        tree.add('bar')
+        shelver = ExpectShelver(tree, tree.basis_tree(), file_list=['bar'])
+        shelver.expect('Shelve adding file "bar"? [yNfq]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.run()
