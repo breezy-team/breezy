@@ -84,6 +84,7 @@ class GraphIndexBuilder(object):
         self._nodes = {}
         self._nodes_by_key = None
         self._key_length = key_elements
+        self._optimize_for_size = False
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
@@ -278,6 +279,17 @@ class GraphIndexBuilder(object):
                 (len(result.getvalue()), expected_bytes))
         return result
 
+    def set_optimize(self, for_size=True):
+        """Change how the builder tries to optimize the result.
+
+        :param for_size: Tell the builder to try and make the index as small as
+            possible.
+        :return: None
+        """
+        # GraphIndexBuilder itself doesn't pay attention to the flag yet, but
+        # other builders do.
+        self._optimize_for_size = for_size
+
 
 class GraphIndex(object):
     """An index for data with embedded graphs.
@@ -366,7 +378,7 @@ class GraphIndex(object):
         self._keys_by_offset = {}
         # ready-to-return key:value or key:value, node_ref_lists
         self._nodes = {}
-        self._nodes_by_key = {}
+        self._nodes_by_key = None
         trailers = 0
         pos = stream.tell()
         lines = stream.read().split('\n')
@@ -381,25 +393,29 @@ class GraphIndex(object):
             else:
                 node_value = value
             self._nodes[key] = node_value
-            if self._key_length > 1:
-                # TODO: We may want to do this lazily, but if we are calling
-                #       _buffer_all, we are likely to be doing
-                #       iter_entries_prefix
-                key_dict = self._nodes_by_key
-                if self.node_ref_lists:
-                    key_value = key, node_value[0], node_value[1]
-                else:
-                    key_value = key, node_value
-                # For a key of (foo, bar, baz) create
-                # _nodes_by_key[foo][bar][baz] = key_value
-                for subkey in key[:-1]:
-                    key_dict = key_dict.setdefault(subkey, {})
-                key_dict[key[-1]] = key_value
         # cache the keys for quick set intersections
         self._keys = set(self._nodes)
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
+
+    def _get_nodes_by_key(self):
+        if self._nodes_by_key is None:
+            nodes_by_key = {}
+            if self.node_ref_lists:
+                for key, (value, references) in self._nodes.iteritems():
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value, references
+            else:
+                for key, value in self._nodes.iteritems():
+                    key_dict = nodes_by_key
+                    for subkey in key[:-1]:
+                        key_dict = key_dict.setdefault(subkey, {})
+                    key_dict[key[-1]] = key, value
+            self._nodes_by_key = nodes_by_key
+        return self._nodes_by_key
 
     def iter_all_entries(self):
         """Iterate over all keys within the index.
@@ -593,6 +609,7 @@ class GraphIndex(object):
                 else:
                     yield self, key, self._nodes[key]
             return
+        nodes_by_key = self._get_nodes_by_key()
         for key in keys:
             # sanity check
             if key[0] is None:
@@ -600,7 +617,7 @@ class GraphIndex(object):
             if len(key) != self._key_length:
                 raise errors.BadIndexKey(key)
             # find what it refers to:
-            key_dict = self._nodes_by_key
+            key_dict = nodes_by_key
             elements = list(key)
             # find the subdict whose contents should be returned.
             try:
@@ -973,7 +990,7 @@ class GraphIndex(object):
                 raise errors.BadIndexData(self)
             # keys are tuples. Each element is a string that may occur many
             # times, so we intern them to save space. AB, RC, 200807
-            key = tuple(intern(element) for element in elements[:self._key_length])
+            key = tuple([intern(element) for element in elements[:self._key_length]])
             if first_key is None:
                 first_key = key
             absent, references, value = elements[-3:]

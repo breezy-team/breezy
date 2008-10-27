@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,51 +43,82 @@ from bzrlib import (
     errors,
     option,
     osutils,
-    registry,
     trace,
     win32utils,
     )
 """)
 
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_method,
-    )
+from bzrlib import registry
 # Compatibility
 from bzrlib.option import Option
 
 
-plugin_cmds = {}
+class CommandInfo(object):
+    """Information about a command."""
+
+    def __init__(self, aliases):
+        """The list of aliases for the command."""
+        self.aliases = aliases
+
+    @classmethod
+    def from_command(klass, command):
+        """Factory to construct a CommandInfo from a command."""
+        return klass(command.aliases)
+
+
+class CommandRegistry(registry.Registry):
+
+    @staticmethod
+    def _get_name(command_name):
+        if command_name.startswith("cmd_"):
+            return _unsquish_command_name(command_name)
+        else:
+            return command_name
+
+    def register(self, cmd, decorate=False):
+        """Utility function to help register a command
+
+        :param cmd: Command subclass to register
+        :param decorate: If true, allow overriding an existing command
+            of the same name; the old command is returned by this function.
+            Otherwise it is an error to try to override an existing command.
+        """
+        k = cmd.__name__
+        k_unsquished = self._get_name(k)
+        try:
+            previous = self.get(k_unsquished)
+        except KeyError:
+            previous = _builtin_commands().get(k_unsquished)
+        info = CommandInfo.from_command(cmd)
+        try:
+            registry.Registry.register(self, k_unsquished, cmd,
+                                       override_existing=decorate, info=info)
+        except KeyError:
+            trace.log_error('Two plugins defined the same command: %r' % k)
+            trace.log_error('Not loading the one in %r' %
+                            sys.modules[cmd.__module__])
+            trace.log_error('Previously this command was registered from %r' %
+                            sys.modules[previous.__module__])
+        return previous
+
+    def register_lazy(self, command_name, aliases, module_name):
+        """Register a command without loading its module.
+
+        :param command_name: The primary name of the command.
+        :param aliases: A list of aliases for the command.
+        :module_name: The module that the command lives in.
+        """
+        key = self._get_name(command_name)
+        registry.Registry.register_lazy(self, key, module_name, command_name,
+                                        info=CommandInfo(aliases))
+
+
+plugin_cmds = CommandRegistry()
 
 
 def register_command(cmd, decorate=False):
-    """Utility function to help register a command
-
-    :param cmd: Command subclass to register
-    :param decorate: If true, allow overriding an existing command
-        of the same name; the old command is returned by this function.
-        Otherwise it is an error to try to override an existing command.
-    """
     global plugin_cmds
-    k = cmd.__name__
-    if k.startswith("cmd_"):
-        k_unsquished = _unsquish_command_name(k)
-    else:
-        k_unsquished = k
-    if k_unsquished not in plugin_cmds:
-        plugin_cmds[k_unsquished] = cmd
-        ## trace.mutter('registered plugin command %s', k_unsquished)
-        if decorate and k_unsquished in builtin_command_names():
-            return _builtin_commands()[k_unsquished]
-    elif decorate:
-        result = plugin_cmds[k_unsquished]
-        plugin_cmds[k_unsquished] = cmd
-        return result
-    else:
-        trace.log_error('Two plugins defined the same command: %r' % k)
-        trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
-        trace.log_error('Previously this command was registered from %r' %
-                        sys.modules[plugin_cmds[k_unsquished].__module__])
+    return plugin_cmds.register(cmd, decorate)
 
 
 def _squish_command_name(cmd):
@@ -122,7 +153,7 @@ def _get_cmd_dict(plugins_override=True):
     """Return name->class mapping for all commands."""
     d = _builtin_commands()
     if plugins_override:
-        d.update(plugin_cmds)
+        d.update(plugin_cmds.iteritems())
     return d
 
     
@@ -154,12 +185,21 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     # In the future, we may actually support Unicode command names.
 
     # first look up this command under the specified name
-    cmds = _get_cmd_dict(plugins_override=plugins_override)
+    if plugins_override:
+        try:
+            return plugin_cmds.get(cmd_name)()
+        except KeyError:
+            pass
+    cmds = _get_cmd_dict(plugins_override=False)
     try:
         return cmds[cmd_name]()
     except KeyError:
         pass
-
+    if plugins_override:
+        for key in plugin_cmds.keys():
+            info = plugin_cmds.get_info(key)
+            if cmd_name in info.aliases:
+                return plugin_cmds.get(key)()
     # look for any command which claims this as an alias
     for real_cmd_name, cmd_class in cmds.iteritems():
         if cmd_name in cmd_class.aliases:
@@ -675,9 +715,6 @@ def get_alias(cmd, config=None):
 def run_bzr(argv):
     """Execute a command.
 
-    This is similar to main(), but without all the trappings for
-    logging and error handling.  
-    
     argv
        The command-line arguments, without the program name from argv[0]
        These should already be decoded. All library/test code calling
@@ -755,7 +792,7 @@ def run_bzr(argv):
         from bzrlib.builtins import cmd_version
         cmd_version().run_argv_aliases([])
         return 0
-        
+
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
@@ -768,7 +805,8 @@ def run_bzr(argv):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            alias_argv = [a.decode(bzrlib.user_encoding) for a in alias_argv]
+            user_encoding = osutils.get_user_encoding()
+            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
@@ -781,6 +819,10 @@ def run_bzr(argv):
     run_argv = [argv, alias_argv]
 
     try:
+        # We can be called recursively (tests for example), but we don't want
+        # the verbosity level to propagate.
+        saved_verbosity_level = option._verbosity_level
+        option._verbosity_level = 0
         if opt_lsprof:
             if opt_coverage_dir:
                 trace.warning(
@@ -796,20 +838,13 @@ def run_bzr(argv):
         else:
             ret = run(*run_argv)
         if 'memory' in debug.debug_flags:
-            try:
-                status_file = file('/proc/%s/status' % os.getpid(), 'rb')
-            except IOError:
-                pass
-            else:
-                status = status_file.read()
-                status_file.close()
-                trace.note("Process status after command:")
-                for line in status.splitlines():
-                    trace.note(line)
+            trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
-        # reset, in case we may do other commands later within the same process
-        option._verbosity_level = 0
+        # reset, in case we may do other commands later within the same
+        # process. Commands that want to execute sub-commands must propagate
+        # --verbose in their own way.
+        option._verbosity_level = saved_verbosity_level
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -835,13 +870,14 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     bzrlib.ui.ui_factory = TextUIFactory()
-     
+
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
         from bzrlib import symbol_versioning
         symbol_versioning.suppress_deprecation_warnings(override=False)
     try:
-        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+        user_encoding = osutils.get_user_encoding()
+        argv = [a.decode(user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:
         raise errors.BzrError(("Parameter '%r' is unsupported by the current "
                                                             "encoding." % a))

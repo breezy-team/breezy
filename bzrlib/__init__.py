@@ -22,6 +22,15 @@ import time
 # timestamps relative to program start in the log file kept by bzrlib.trace.
 _start_time = time.time()
 
+import sys
+if getattr(sys, '_bzr_lazy_regex', False):
+    # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
+    # hack as soon as possible so that as much of the standard library can
+    # benefit, including the 'string' module.
+    del sys._bzr_lazy_regex
+    import bzrlib.lazy_regex
+    bzrlib.lazy_regex.install_lazy_compile()
+
 from bzrlib.osutils import get_user_encoding
 
 
@@ -41,7 +50,7 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 8, 0, 'dev', 0)
+version_info = (1, 9, 0, 'dev', 0)
 
 
 # API compatibility version: bzrlib is currently API compatible with 1.7.
@@ -65,6 +74,10 @@ def _format_version_tuple(version_info):
     1.1.1rc2
     >>> print _format_version_tuple((1, 4, 0))
     1.4
+    >>> print _format_version_tuple((1, 4, 0, 'wibble', 0))
+    Traceback (most recent call last):
+    ...
+    ValueError: version_info (1, 4, 0, 'wibble', 0) not valid
     """
     if version_info[2] == 0:
         main_version = '%d.%d' % version_info[:2]
@@ -86,7 +99,7 @@ def _format_version_tuple(version_info):
     elif __release_type == 'candidate' and __sub != 0:
         __sub_string = 'rc' + str(__sub)
     else:
-        raise AssertionError("version_info %r not valid" % version_info)
+        raise ValueError("version_info %r not valid" % (version_info,))
 
     version_string = '%d.%d.%d.%s.%d' % version_info
     return main_version + __sub_string

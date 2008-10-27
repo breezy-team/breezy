@@ -36,7 +36,7 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.config import BranchConfig
-from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment1Subtree
+from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -91,6 +91,9 @@ class Branch(object):
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
         self._open_hook()
+        hooks = Branch.hooks['open']
+        for hook in hooks:
+            hook(self)
 
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
@@ -1068,6 +1071,8 @@ class BranchHooks(Hooks):
         # (branch, revision_history), and the branch will
         # be write-locked.
         self['set_rh'] = []
+        # Invoked after a branch is opened. The api signature is (branch).
+        self['open'] = []
         # invoked after a push operation completes.
         # the api signature is
         # (push_result)
@@ -1121,6 +1126,14 @@ class BranchHooks(Hooks):
         # (params) where params is a ChangeBranchTipParams with the members
         # (branch, old_revno, new_revno, old_revid, new_revid)
         self['post_change_branch_tip'] = []
+        # Introduced in 1.9
+        # Invoked when a stacked branch activates its fallback locations and
+        # allows the transformation of the url of said location.
+        # the api signature is
+        # (branch, url) where branch is the branch having its fallback
+        # location activated and url is the url for the fallback location.
+        # The hook should return a url.
+        self['transform_fallback_location'] = []
 
 
 # install the default hooks into the Branch class.
@@ -1341,7 +1354,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
     def __init__(self):
         super(BzrBranchFormat7, self).__init__()
         self._matchingbzrdir.repository_format = \
-            RepositoryFormatPackDevelopment1Subtree()
+            RepositoryFormatKnitPack5RichRoot()
 
     def supports_stacking(self):
         return True
@@ -1738,14 +1751,10 @@ class BzrBranch(Branch):
         """
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
-        target.lock_write()
-        try:
-            result = self._push_with_bound_branches(target, overwrite,
-                    stop_revision,
-                    _override_hook_source_branch=_override_hook_source_branch)
-            return result
-        finally:
-            target.unlock()
+        return _run_with_write_locked_target(
+            target, self._push_with_bound_branches, target, overwrite,
+            stop_revision,
+            _override_hook_source_branch=_override_hook_source_branch)
 
     def _push_with_bound_branches(self, target, overwrite,
             stop_revision,
@@ -1802,15 +1811,24 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
-
-        # We assume that during 'push' this repository is closer than
-        # the target.
-        graph = self.repository.get_graph(target.repository)
-        target.update_revisions(self, stop_revision, overwrite=overwrite,
-                                graph=graph)
-        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+        if result.old_revid != self.last_revision():
+            # We assume that during 'push' this repository is closer than
+            # the target.
+            graph = self.repository.get_graph(target.repository)
+            target.update_revisions(self, stop_revision, overwrite=overwrite,
+                                    graph=graph)
+        if self._push_should_merge_tags():
+            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
+
+    def _push_should_merge_tags(self):
+        """Should _basic_push merge this branch's tags into the target?
+        
+        The default implementation returns False if this branch has no tags,
+        and True the rest of the time.  Subclasses may override this.
+        """
+        return self.tags.supports_tags() and self.tags.get_tag_dict()
 
     def get_parent(self):
         """See Branch.get_parent."""
@@ -2011,6 +2029,13 @@ class BzrBranch7(BzrBranch5):
             errors.UnstackableBranchFormat):
             pass
         else:
+            for hook in Branch.hooks['transform_fallback_location']:
+                url = hook(self, url)
+                if url is None:
+                    hook_name = Branch.hooks.get_hook_name(hook)
+                    raise AssertionError(
+                        "'transform_fallback_location' hook %s returned "
+                        "None, not a URL." % hook_name)
             self._activate_fallback_location(url)
 
     def _check_stackable_repo(self):
@@ -2431,3 +2456,37 @@ class Converter6to7(object):
         branch._set_config_location('stacked_on_location', '')
         # update target format
         branch._transport.put_bytes('format', format.get_format_string())
+
+
+
+def _run_with_write_locked_target(target, callable, *args, **kwargs):
+    """Run ``callable(*args, **kwargs)``, write-locking target for the
+    duration.
+
+    _run_with_write_locked_target will attempt to release the lock it acquires.
+
+    If an exception is raised by callable, then that exception *will* be
+    propagated, even if the unlock attempt raises its own error.  Thus
+    _run_with_write_locked_target should be preferred to simply doing::
+
+        target.lock_write()
+        try:
+            return callable(*args, **kwargs)
+        finally:
+            target.unlock()
+    
+    """
+    # This is very similar to bzrlib.decorators.needs_write_lock.  Perhaps they
+    # should share code?
+    target.lock_write()
+    try:
+        result = callable(*args, **kwargs)
+    except:
+        exc_info = sys.exc_info()
+        try:
+            target.unlock()
+        finally:
+            raise exc_info[0], exc_info[1], exc_info[2]
+    else:
+        target.unlock()
+        return result

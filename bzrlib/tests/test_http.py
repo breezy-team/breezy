@@ -449,13 +449,6 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
             % bzrlib.__version__) > -1)
 
-    def test_get_smart_medium(self):
-        # For HTTP, get_smart_medium should return the transport object.
-        server = self.get_readonly_server()
-        http_transport = self._transport(server.get_url())
-        medium = http_transport.get_smart_medium()
-        self.assertIs(medium, http_transport)
-
     def test_has_on_bogus_host(self):
         # Get a free address and don't 'accept' on it, so that we
         # can be sure there is no http handler there, but set a
@@ -1145,7 +1138,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'proxied contents of foo\n')
+            self.assertEqual('proxied contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1154,7 +1147,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'contents of foo\n')
+            self.assertEqual('contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1747,5 +1740,6 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(errors.SmartProtocolError,
-                          t.send_http_smart_request, 'whatever')
+                          t.get_smart_medium().send_http_smart_request,
+                          'whatever')
 

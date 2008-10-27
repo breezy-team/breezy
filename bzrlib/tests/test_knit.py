@@ -19,7 +19,6 @@
 from cStringIO import StringIO
 import difflib
 import gzip
-import sha
 import sys
 
 from bzrlib import (
@@ -27,6 +26,7 @@ from bzrlib import (
     generate_ids,
     knit,
     multiparent,
+    osutils,
     pack,
     )
 from bzrlib.errors import (
@@ -48,14 +48,13 @@ from bzrlib.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
-from bzrlib.osutils import split_lines
-from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import (
     Feature,
     KnownFailure,
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
+    TestNotApplicable,
     )
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
@@ -375,7 +374,7 @@ class LowLevelKnitDataTests(TestCase):
         return sio.getvalue()
 
     def test_valid_knit_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -394,7 +393,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
     def test_not_enough_lines(self):
-        sha1sum = sha.new('foo\n').hexdigest()
+        sha1sum = osutils.sha('foo\n').hexdigest()
         # record says 2 lines data says 1
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
@@ -412,7 +411,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([(('rev-id-1',),  gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         # record says 1 lines data says 2
         gz_txt = self.create_gz_content('version rev-id-1 1 %s\n'
                                         'foo\n'
@@ -431,7 +430,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
     def test_mismatched_version_id(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -450,7 +449,7 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_uncompressed_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         txt = ('version rev-id-1 2 %s\n'
                'foo\n'
                'bar\n'
@@ -470,7 +469,7 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_corrupted_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -920,6 +919,32 @@ class KnitTests(TestCaseWithTransport):
     def make_test_knit(self, annotate=False, name='test'):
         mapper = ConstantMapper(name)
         return make_file_factory(annotate, mapper)(self.get_transport())
+
+
+class TestBadShaError(KnitTests):
+    """Tests for handling of sha errors."""
+
+    def test_exception_has_text(self):
+        # having the failed text included in the error allows for recovery.
+        source = self.make_test_knit()
+        target = self.make_test_knit(name="target")
+        if not source._max_delta_chain:
+            raise TestNotApplicable(
+                "cannot get delta-caused sha failures without deltas.")
+        # create a basis
+        basis = ('basis',)
+        broken = ('broken',)
+        source.add_lines(basis, (), ['foo\n'])
+        source.add_lines(broken, (basis,), ['foo\n', 'bar\n'])
+        # Seed target with a bad basis text
+        target.add_lines(basis, (), ['gam\n'])
+        target.insert_record_stream(
+            source.get_record_stream([broken], 'unordered', False))
+        err = self.assertRaises(errors.KnitCorrupt,
+            target.get_record_stream([broken], 'unordered', True).next)
+        self.assertEqual(['gam\n', 'bar\n'], err.content)
+        # Test for formatting with live data
+        self.assertStartsWith(str(err), "Knit ")
 
 
 class TestKnitIndex(KnitTests):
@@ -1641,7 +1666,7 @@ class TestStacking(KnitTests):
         key_basis = ('bar',)
         key_missing = ('missing',)
         test.add_lines(key, (), ['foo\n'])
-        key_sha1sum = sha.new('foo\n').hexdigest()
+        key_sha1sum = osutils.sha('foo\n').hexdigest()
         sha1s = test.get_sha1s([key])
         self.assertEqual({key: key_sha1sum}, sha1s)
         self.assertEqual([], basis.calls)
@@ -1649,7 +1674,7 @@ class TestStacking(KnitTests):
         # directly (rather than via text reconstruction) so that remote servers
         # etc don't have to answer with full content.
         basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
-        basis_sha1sum = sha.new('foo\nbar\n').hexdigest()
+        basis_sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         basis.calls = []
         sha1s = test.get_sha1s([key, key_missing, key_basis])
         self.assertEqual({key: key_sha1sum,

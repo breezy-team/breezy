@@ -37,6 +37,7 @@ from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import mutter, note
 
 
@@ -132,7 +133,8 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
-    __contains__ = has_id
+    def __contains__(self, file_id):
+        return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
@@ -648,7 +650,7 @@ def file_status(filename, old_tree, new_tree):
     return 'wtf?'
 
     
-
+@deprecated_function(deprecated_in((1, 9, 0)))
 def find_renames(old_inv, new_inv):
     for file_id in old_inv:
         if file_id not in new_inv:
@@ -657,7 +659,7 @@ def find_renames(old_inv, new_inv):
         new_name = new_inv.id2path(file_id)
         if old_name != new_name:
             yield (old_name, new_name)
-            
+
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.
@@ -835,10 +837,10 @@ class InterTree(InterObject):
         else:
             all_unversioned = deque()
         to_paths = {}
-        from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
+        from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
+        to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
@@ -936,7 +938,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if not file_id in self.target.inventory:
+            if not file_id in self.target.all_file_ids():
                 # common case - paths we have not emitted are not present in
                 # target.
                 to_path = None

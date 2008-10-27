@@ -472,23 +472,23 @@ class TestInterTreeProviderAdapter(TestCase):
         server2 = "b"
         format1 = WorkingTreeFormat2()
         format2 = WorkingTreeFormat3()
-        formats = [(str, format1, format2, "converter1"),
-            (int, format2, format1, "converter2")]
+        formats = [("1", str, format1, format2, "converter1"),
+            ("2", int, format2, format1, "converter2")]
         adapter = InterTreeTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].intertree_class, formats[0][0])
-        self.assertEqual(tests[0].workingtree_format, formats[0][1])
-        self.assertEqual(tests[0].workingtree_format_to, formats[0][2])
-        self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][3])
+        self.assertEqual(tests[0].intertree_class, formats[0][1])
+        self.assertEqual(tests[0].workingtree_format, formats[0][2])
+        self.assertEqual(tests[0].workingtree_format_to, formats[0][3])
+        self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][4])
         self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].intertree_class, formats[1][0])
-        self.assertEqual(tests[1].workingtree_format, formats[1][1])
-        self.assertEqual(tests[1].workingtree_format_to, formats[1][2])
-        self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][3])
+        self.assertEqual(tests[1].intertree_class, formats[1][1])
+        self.assertEqual(tests[1].workingtree_format, formats[1][2])
+        self.assertEqual(tests[1].workingtree_format_to, formats[1][3])
+        self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][4])
         self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
@@ -501,6 +501,19 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
         cwd = osutils.getcwd()
         self.assertIsSameRealPath(self.test_dir, cwd)
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
+
+    def test_assertEqualStat_equal(self):
+        from bzrlib.tests.test_dirstate import _FakeStat
+        self.build_tree(["foo"])
+        real = os.lstat("foo")
+        fake = _FakeStat(real.st_size, real.st_mtime, real.st_ctime,
+            real.st_dev, real.st_ino, real.st_mode)
+        self.assertEqualStat(real, fake)
+
+    def test_assertEqualStat_notequal(self):
+        self.build_tree(["foo", "bar"])
+        self.assertRaises(AssertionError, self.assertEqualStat,
+            os.lstat("foo"), os.lstat("bar"))
 
 
 class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
@@ -1333,10 +1346,52 @@ class TestTestCase(TestCase):
 
     def test_debug_flags_sanitised(self):
         """The bzrlib debug flags should be sanitised by setUp."""
+        if 'allow_debug' in tests.selftest_debug_flags:
+            raise TestNotApplicable(
+                '-Eallow_debug option prevents debug flag sanitisation')
         # we could set something and run a test that will check
         # it gets santised, but this is probably sufficient for now:
         # if someone runs the test with -Dsomething it will error.
         self.assertEqual(set(), bzrlib.debug.debug_flags)
+
+    def change_selftest_debug_flags(self, new_flags):
+        orig_selftest_flags = tests.selftest_debug_flags
+        self.addCleanup(self._restore_selftest_debug_flags, orig_selftest_flags)
+        tests.selftest_debug_flags = set(new_flags)
+        
+    def _restore_selftest_debug_flags(self, flags):
+        tests.selftest_debug_flags = flags
+
+    def test_allow_debug_flag(self):
+        """The -Eallow_debug flag prevents bzrlib.debug.debug_flags from being
+        sanitised (i.e. cleared) before running a test.
+        """
+        self.change_selftest_debug_flags(set(['allow_debug']))
+        bzrlib.debug.debug_flags = set(['a-flag'])
+        class TestThatRecordsFlags(TestCase):
+            def test_foo(nested_self):
+                self.flags = set(bzrlib.debug.debug_flags)
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertEqual(set(['a-flag']), self.flags)
+
+    def test_debug_flags_restored(self):
+        """The bzrlib debug flags should be restored to their original state
+        after the test was run, even if allow_debug is set.
+        """
+        self.change_selftest_debug_flags(set(['allow_debug']))
+        # Now run a test that modifies debug.debug_flags.
+        bzrlib.debug.debug_flags = set(['original-state'])
+        class TestThatModifiesFlags(TestCase):
+            def test_foo(self):
+                bzrlib.debug.debug_flags = set(['modified'])
+        test = TestThatModifiesFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertEqual(set(['original-state']), bzrlib.debug.debug_flags)
+
+    def make_test_result(self):
+        return bzrlib.tests.TextTestResult(
+            self._log_file, descriptions=0, verbosity=1)
 
     def inner_test(self):
         # the inner child test
@@ -1346,9 +1401,7 @@ class TestTestCase(TestCase):
         # the outer child test
         note("outer_start")
         self.inner_test = TestTestCase("inner_child")
-        result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1)
+        result = self.make_test_result()
         self.inner_test.run(result)
         note("outer finish")
 
@@ -1366,9 +1419,7 @@ class TestTestCase(TestCase):
         # the outer child test
         original_trace = bzrlib.trace._trace_file
         outer_test = TestTestCase("outer_child")
-        result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1)
+        result = self.make_test_result()
         outer_test.run(result)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
 

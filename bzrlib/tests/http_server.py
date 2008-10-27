@@ -20,6 +20,7 @@ import os
 import posixpath
 import random
 import re
+import select
 import SimpleHTTPServer
 import socket
 import SocketServer
@@ -418,6 +419,10 @@ class HttpServer(transport.Server):
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
 
+    def __repr__(self):
+        return "%s(%s:%s)" % \
+            (self.__class__.__name__, self.host, self.port)
+
     def _get_httpd(self):
         if self._httpd is None:
             rhandler = self.request_handler
@@ -467,6 +472,14 @@ class HttpServer(transport.Server):
                 httpd.handle_request()
             except socket.timeout:
                 pass
+            except (socket.error, select.error), e:
+               if e[0] == errno.EBADF:
+                   # Starting with python-2.6, handle_request may raise socket
+                   # or select exceptions when the server is shut down (as we
+                   # do).
+                   pass
+               else:
+                   raise
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)

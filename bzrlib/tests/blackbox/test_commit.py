@@ -20,7 +20,6 @@
 import os
 import sys
 
-import bzrlib
 from bzrlib import (
     osutils,
     ignores,
@@ -248,10 +247,10 @@ class TestCommit(ExternalBase):
         # LANG env variable has no effect on Windows
         # but some characters anyway cannot be represented
         # in default user encoding
-        char = probe_bad_non_ascii(bzrlib.user_encoding)
+        char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
-                'for user_encoding (%s)' % bzrlib.user_encoding)
+                'for user_encoding (%s)' % osutils.get_user_encoding())
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})

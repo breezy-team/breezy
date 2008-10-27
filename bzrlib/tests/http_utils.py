@@ -16,17 +16,17 @@
 
 from cStringIO import StringIO
 import errno
-import md5
 import re
-import sha
 import socket
 import threading
 import time
 import urllib2
 import urlparse
 
+
 from bzrlib import (
     errors,
+    osutils,
     tests,
     )
 from bzrlib.smart import medium, protocol
@@ -397,7 +397,7 @@ class DigestAuthServer(AuthServer):
         A1 = '%s:%s:%s' % (user, realm, password)
         A2 = '%s:%s' % (command, auth['uri'])
 
-        H = lambda x: md5.new(x).hexdigest()
+        H = lambda x: osutils.md5(x).hexdigest()
         KD = lambda secret, data: H("%s:%s" % (secret, data))
 
         nonce_count = int(auth['nc'], 16)

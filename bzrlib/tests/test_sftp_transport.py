@@ -29,6 +29,7 @@ except ImportError:
 
 from bzrlib import (
     bzrdir,
+    config,
     errors,
     tests,
     transport as _mod_transport,
@@ -465,6 +466,8 @@ class TestSocketDelay(TestCase):
 class Test_SFTPReadvHelper(tests.TestCase):
 
     def checkGetRequests(self, expected_requests, offsets):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
         self.assertEqual(expected_requests, helper._get_requests())
 
@@ -481,3 +484,27 @@ class Test_SFTPReadvHelper(tests.TestCase):
         self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
                               [(0, 40000), (40000, 100), (40100, 1900),
                                (42000, 24000)])
+
+
+class TestUsesAuthConfig(TestCaseWithSFTPServer):
+    """Test that AuthenticationConfig can supply default usernames."""
+
+    def get_transport_for_connection(self, set_config):
+        port = self.get_server()._listener.port
+        if set_config:
+            conf = config.AuthenticationConfig()
+            conf._get_config().update(
+                {'sftptest': {'scheme': 'ssh', 'port': port, 'user': 'bar'}})
+            conf._save()
+        t = get_transport('sftp://localhost:%d' % port)
+        # force a connection to be performed.
+        t.has('foo')
+        return t
+
+    def test_sftp_uses_config(self):
+        t = self.get_transport_for_connection(set_config=True)
+        self.assertEqual('bar', t._get_credentials()[0])
+
+    def test_sftp_is_none_if_no_config(self):
+        t = self.get_transport_for_connection(set_config=False)
+        self.assertIs(None, t._get_credentials()[0])

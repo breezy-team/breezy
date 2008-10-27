@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,6 +42,65 @@ from bzrlib import (
     osutils,
     trace,
     )
+from bzrlib.hooks import Hooks
+
+
+class LockHooks(Hooks):
+
+    def __init__(self):
+        Hooks.__init__(self)
+
+        # added in 1.8; called with a LockResult when a physical lock is
+        # acquired
+        self['lock_acquired'] = []
+
+        # added in 1.8; called with a LockResult when a physical lock is
+        # acquired
+        self['lock_released'] = []
+
+
+class Lock(object):
+    """Base class for locks.
+
+    :cvar hooks: Hook dictionary for operations on locks.
+    """
+
+    hooks = LockHooks()
+
+
+class LockResult(object):
+    """Result of an operation on a lock; passed to a hook"""
+
+    def __init__(self, lock_url, details=None):
+        """Create a lock result for lock with optional details about the lock."""
+        self.lock_url = lock_url
+        self.details = details
+
+    def __eq__(self, other):
+        return self.lock_url == other.lock_url and self.details == other.details
+
+
+try:
+    import fcntl
+    have_fcntl = True
+except ImportError:
+    have_fcntl = False
+
+have_pywin32 = False
+have_ctypes_win32 = False
+if sys.platform == 'win32':
+    import msvcrt
+    try:
+        import win32con, win32file, pywintypes, winerror
+        have_pywin32 = True
+    except ImportError:
+        pass
+
+    try:
+        import ctypes
+        have_ctypes_win32 = True
+    except ImportError:
+        pass
 
 
 class _OSLock(object):
@@ -81,23 +140,6 @@ class _OSLock(object):
 
     def unlock(self):
         raise NotImplementedError()
-
-
-try:
-    import fcntl
-    have_fcntl = True
-except ImportError:
-    have_fcntl = False
-try:
-    import win32con, win32file, pywintypes, winerror, msvcrt
-    have_pywin32 = True
-except ImportError:
-    have_pywin32 = False
-try:
-    import ctypes, msvcrt
-    have_ctypes = True
-except ImportError:
-    have_ctypes = False
 
 
 _lock_classes = []
@@ -332,7 +374,7 @@ if have_pywin32 and sys.platform == 'win32':
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
 
 
-if have_ctypes and sys.platform == 'win32':
+if have_ctypes_win32:
     # These constants were copied from the win32con.py module.
     LOCKFILE_FAIL_IMMEDIATELY = 1
     LOCKFILE_EXCLUSIVE_LOCK = 2
