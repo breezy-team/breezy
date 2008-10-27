@@ -16,6 +16,7 @@
 
 
 import errno
+import re
 
 from bzrlib import (
     errors,
@@ -286,6 +287,18 @@ class ShelfManager(object):
         self.transport = transport.clone('shelf')
         self.transport.ensure_base()
 
+    def get_shelf_filename(self, shelf_id):
+        return 'shelf-%d' % shelf_id
+
+    def get_shelf_ids(self, filenames):
+        matcher = re.compile('shelf-([1-9][0-9]*)')
+        shelf_ids = []
+        for filename in filenames:
+            match = matcher.match(filename)
+            if match is not None:
+                shelf_ids.append(int(match.group(1)))
+        return shelf_ids
+
     def new_shelf(self):
         """Return a file object and id for a new set of shelved changes."""
         last_shelf = self.last_shelf()
@@ -293,7 +306,8 @@ class ShelfManager(object):
             next_shelf = 1
         else:
             next_shelf = last_shelf + 1
-        shelf_file = open(self.transport.local_abspath(str(next_shelf)), 'wb')
+        filename = self.get_shelf_filename(next_shelf)
+        shelf_file = open(self.transport.local_abspath(filename), 'wb')
         return next_shelf, shelf_file
 
     def shelve_changes(self, creator, message=None):
@@ -311,8 +325,9 @@ class ShelfManager(object):
 
         :param shelf_id: The id of the shelf to retrive the file for.
         """
+        filename = self.get_shelf_filename(shelf_id)
         try:
-            return open(self.transport.local_abspath(str(shelf_id)), 'rb')
+            return open(self.transport.local_abspath(filename), 'rb')
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -335,16 +350,19 @@ class ShelfManager(object):
 
         :param shelf_id: id of the shelved changes to delete.
         """
-        self.transport.delete(str(shelf_id))
+        filename = self.get_shelf_filename(shelf_id)
+        self.transport.delete(filename)
 
     def active_shelves(self):
         """Return a list of shelved changes."""
-        return [int(f) for f in self.transport.list_dir('.')]
+        active = self.get_shelf_ids(self.transport.list_dir('.'))
+        active.sort()
+        return active
 
     def last_shelf(self):
         """Return the id of the last-created shelved change."""
         active = self.active_shelves()
         if len(active) > 0:
-            return max(active)
+            return active[-1]
         else:
             return None

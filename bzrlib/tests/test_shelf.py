@@ -365,6 +365,17 @@ class TestShelfManager(tests.TestCaseWithTransport):
     def get_manager(self):
         return self.make_branch_and_tree('.').get_shelf_manager()
 
+    def test_get_shelf_filename(self):
+        tree = self.make_branch_and_tree('.')
+        manager = tree.get_shelf_manager()
+        self.assertEqual('shelf-1', manager.get_shelf_filename(1))
+
+    def test_get_shelf_ids(self):
+        tree = self.make_branch_and_tree('.')
+        manager = tree.get_shelf_manager()
+        self.assertEqual([1, 3], manager.get_shelf_ids(
+                         ['shelf-1', 'shelf-02', 'shelf-3']))
+
     def test_new_shelf(self):
         manager = self.get_manager()
         shelf_id, shelf_file = manager.new_shelf()
