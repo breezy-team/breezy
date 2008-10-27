@@ -2416,13 +2416,15 @@ class InterRepository(InterObject):
                     break
             # If there are ghosts in the source graph, and the caller asked for
             # them, make sure that they are present in the target.
-            ghosts_to_check = revision_ids.intersection(ghosts)
-            if next_revs or ghosts_to_check:
-                # we don't care about other ghosts as we can't fetch them and
-                # haven't been asked to.
-                revs_to_get = set(next_revs) + ghosts_to_check
+            # We don't care about other ghosts as we can't fetch them and
+            # haven't been asked to.
+            ghosts_to_check = set(revision_ids.intersection(ghosts))
+            revs_to_get = set(next_revs).union(ghosts_to_check)
+            if revs_to_get:
+                have_revs = set(target_graph.get_parent_map(revs_to_get))
                 # we always have NULL_REVISION present.
-                have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
+                have_revs = have_revs.union(null_set)
+                # Check if the target is missing any ghosts we need.
                 ghosts_to_check.difference_update(have_revs)
                 if ghosts_to_check:
                     # One of the caller's revision_ids is a ghost in both the
