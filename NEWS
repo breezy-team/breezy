@@ -23,6 +23,10 @@ IN DEVELOPMENT
       btree index repositories, this can save 25% of the index size
       (mostly in the text indexes). (John Arbash Meinel)
 
+    * ``bzr push`` onto a existing branch on a smart server is faster, due
+      to Bazaar making more use of the ``get_parent_map`` RPC when
+      querying the remote branch's revision graph.  (Andrew Bennetts)
+
     * default username for bzr+ssh and sftp can be configured in
       authentication.conf. (Aaron Bentley)
 
