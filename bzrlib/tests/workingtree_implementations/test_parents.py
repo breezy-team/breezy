@@ -32,7 +32,12 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revision import Revision
-from bzrlib.tests import KnownFailure, SymlinkFeature, TestNotApplicable, UnicodeFilenameFeature
+from bzrlib.tests import (
+    KnownFailure,
+    SymlinkFeature,
+    TestNotApplicable,
+    UnicodeFilenameFeature,
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
