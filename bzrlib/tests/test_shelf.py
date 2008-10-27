@@ -17,7 +17,7 @@
 import os
 from textwrap import dedent
 
-from bzrlib import pack, shelf, tests, transform
+from bzrlib import errors, pack, shelf, tests, transform
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -313,3 +313,17 @@ class TestUnshelver(tests.TestCaseWithTransport):
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, filename)
         self.addCleanup(unshelver.finalize)
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
+
+    def test_unshelve_serialization(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('shelf', EMPTY_SHELF)])
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, 'shelf')
+
+    def test_corrupt_shelf(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('shelf', EMPTY_SHELF.replace('metadata',
+                                                                'foo'))])
+        e = self.assertRaises(errors.ShelfCorrupt,
+                              shelf.Unshelver.from_tree_and_shelf, tree,
+                              'shelf')
+        self.assertEqual('Shelf corrupt.', str(e))

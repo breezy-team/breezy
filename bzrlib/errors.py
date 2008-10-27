@@ -2905,3 +2905,7 @@ class TipChangeRejected(BzrError):
     def __init__(self, msg):
         self.msg = msg
 
+
+class ShelfCorrupt(BzrError):
+
+    _fmt = "Shelf corrupt."
