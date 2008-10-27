@@ -2906,6 +2906,11 @@ class TipChangeRejected(BzrError):
         self.msg = msg
 
 
+class ShelfCorrupt(BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
 class NoSuchShelfId(BzrError):
 
     _fmt = 'No changes are shelved with id "%(shelf_id)d".'

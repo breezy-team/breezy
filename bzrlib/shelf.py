@@ -246,7 +246,8 @@ class Unshelver(object):
         parser.accept_bytes(shelf_file.read())
         records = iter(parser.read_pending_records())
         names, metadata_bytes = records.next()
-        assert names[0] == ('metadata',)
+        if names[0] != ('metadata',):
+            raise errors.ShelfCorrupt
         metadata = bencode.bdecode(metadata_bytes)
         base_revision_id = metadata['revision_id']
         message = metadata.get('message')
