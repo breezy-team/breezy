@@ -20,6 +20,14 @@ from textwrap import dedent
 from bzrlib import pack, shelf, tests, transform
 
 
+EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
+               "B159\n"
+               "attribs\n\n"
+               "d10:_id_numberi0e18:_new_executabilityde7:_new_idde"
+               "9:_new_namede11:_new_parentde16:_non_present_idsde"
+               "17:_removed_contentsle11:_removed_idle14:_tree_path_idsdeeE")
+
+
 class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_rename(self):
@@ -225,14 +233,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         filename = creator.write_shelf()
-        self.assertFileEqual(
-            "Bazaar pack format 1 (introduced in 0.18)\n"
-            "B159\n"
-            "attribs\n\n"
-            "d10:_id_numberi0e18:_new_executabilityde7:_new_idde"
-            "9:_new_namede11:_new_parentde16:_non_present_idsde"
-            "17:_removed_contentsle11:_removed_idle14:_tree_path_idsdeeE",
-            filename)
+        self.assertFileEqual(EMPTY_SHELF, filename)
 
     def test_write_shelf(self):
         tree = self.make_branch_and_tree('tree')
