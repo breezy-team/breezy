@@ -2353,6 +2353,7 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
+    _walk_to_common_revisions_batch_size = 1
     _optimisers = []
     """The available optimised InterRepository types."""
 
@@ -2395,6 +2396,11 @@ class InterRepository(InterObject):
         """
         target_graph = self.target_get_graph()
         revision_ids = frozenset(revision_ids)
+        # Fast path for the case where all the revisions are already in the
+        # target repo.
+        # (Although this does incur an extra round trip for the
+        # fairly common case where the target doesn't already have the revision
+        # we're pushing.)
         if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
             return graph.SearchResult(revision_ids, set(), 0, set())
         missing_revs = set()
@@ -2402,25 +2408,40 @@ class InterRepository(InterObject):
         # ensure we don't pay silly lookup costs.
         searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
+        searcher_exhausted = False
         while True:
-            try:
-                next_revs, ghosts = searcher.next_with_ghosts()
-            except StopIteration:
-                break
-            if revision_ids.intersection(ghosts):
-                absent_ids = set(revision_ids.intersection(ghosts))
-                # If all absent_ids are present in target, no error is needed.
-                absent_ids.difference_update(
-                    set(target_graph.get_parent_map(absent_ids)))
-                if absent_ids:
-                    raise errors.NoSuchRevision(self.source, absent_ids.pop())
-            # we don't care about other ghosts as we can't fetch them and
+            next_revs = set()
+            ghosts = set()
+            # Iterate the searcher until we have enough next_revs
+            while len(next_revs) < self._walk_to_common_revisions_batch_size:
+                try:
+                    next_revs_part, ghosts_part = searcher.next_with_ghosts()
+                    next_revs.update(next_revs_part)
+                    ghosts.update(ghosts_part)
+                except StopIteration:
+                    searcher_exhausted = True
+                    break
+            # If there are ghosts in the source graph, and the caller asked for
+            # them, make sure that they are present in the target.
+            # We don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
-            next_revs = set(next_revs)
-            # we always have NULL_REVISION present.
-            have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
-            missing_revs.update(next_revs - have_revs)
-            searcher.stop_searching_any(have_revs)
+            ghosts_to_check = set(revision_ids.intersection(ghosts))
+            revs_to_get = set(next_revs).union(ghosts_to_check)
+            if revs_to_get:
+                have_revs = set(target_graph.get_parent_map(revs_to_get))
+                # we always have NULL_REVISION present.
+                have_revs = have_revs.union(null_set)
+                # Check if the target is missing any ghosts we need.
+                ghosts_to_check.difference_update(have_revs)
+                if ghosts_to_check:
+                    # One of the caller's revision_ids is a ghost in both the
+                    # source and the target.
+                    raise errors.NoSuchRevision(
+                        self.source, ghosts_to_check.pop())
+                missing_revs.update(next_revs - have_revs)
+                searcher.stop_searching_any(have_revs)
+            if searcher_exhausted:
+                break
         return searcher.get_result()
    
     @deprecated_method(one_two)
@@ -3028,6 +3049,8 @@ class InterDifferingSerializer(InterKnitRepo):
 
 
 class InterOtherToRemote(InterRepository):
+
+    _walk_to_common_revisions_batch_size = 50
 
     def __init__(self, source, target):
         InterRepository.__init__(self, source, target)
