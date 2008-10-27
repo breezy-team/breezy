@@ -19,6 +19,17 @@ import os
 from bzrlib import errors, pack, shelf, tests, transform
 
 
+EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
+               "B23\n"
+               "metadata\n\n"
+               "d11:revision_id5:null:e"
+               "B159\n"
+               "attribs\n\n"
+               "d10:_id_numberi0e18:_new_executabilityde7:_new_idde"
+               "9:_new_namede11:_new_parentde16:_non_present_idsde"
+               "17:_removed_contentsle11:_removed_idle14:_tree_path_idsdeeE")
+
+
 class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_rename(self):
@@ -219,6 +230,13 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator.transform()
         self.failUnlessExists('tree/foo')
 
+    def test_shelve_serialization(self):
+        tree = self.make_branch_and_tree('.')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        filename = creator.write_shelf()
+        self.assertFileEqual(EMPTY_SHELF, filename)
+
     def test_write_shelf(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
@@ -311,6 +329,20 @@ class TestUnshelver(tests.TestCaseWithTransport):
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
         self.addCleanup(unshelver.finalize)
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
+
+    def test_unshelve_serialization(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('shelf', EMPTY_SHELF)])
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, 'shelf')
+
+    def test_corrupt_shelf(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('shelf', EMPTY_SHELF.replace('metadata',
+                                                                'foo'))])
+        e = self.assertRaises(errors.ShelfCorrupt,
+                              shelf.Unshelver.from_tree_and_shelf, tree,
+                              'shelf')
+        self.assertEqual('Shelf corrupt.', str(e))
 
 
 class TestShelfManager(tests.TestCaseWithTransport):
