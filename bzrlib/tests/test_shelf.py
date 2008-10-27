@@ -21,6 +21,9 @@ from bzrlib import pack, shelf, tests, transform
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
+               "B23\n"
+               "metadata\n\n"
+               "d11:revision_id5:null:e"
                "B159\n"
                "attribs\n\n"
                "d10:_id_numberi0e18:_new_executabilityde7:_new_idde"
