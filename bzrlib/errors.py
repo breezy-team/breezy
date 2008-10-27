@@ -1496,7 +1496,7 @@ class RetryWithNewPacks(BzrError):
     _fmt = ("Pack files have changed, reload and retry. %(orig_error)s")
 
     def __init__(self, reload_occurred, exc_info):
-        """create a new RestartWithNewPacks error.
+        """create a new RetryWithNewPacks error.
 
         :param reload_occurred: Set to True if we know that the packs have
             already been reloaded, and we are failing because of an in-memory
@@ -1513,6 +1513,16 @@ class RetryWithNewPacks(BzrError):
         # TODO: The global error handler should probably treat this by
         #       raising/printing the original exception with a bit about
         #       RetryWithNewPacks also not being caught
+
+
+class RetryAutopack(RetryWithNewPacks):
+    """Raised when we are autopacking and we find a missing file.
+
+    Meant as a signaling exception, to tell the autopack code it should try
+    again.
+    """
+
+    _fmt = ("Pack files have changed, reload and try autopack again. %(orig_error)s")
 
 
 class NoSuchExportFormat(BzrError):

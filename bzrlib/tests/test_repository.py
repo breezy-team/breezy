@@ -750,7 +750,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         repo = self.make_repository('.', format=format)
         return repo._pack_collection
 
-    def make_packs_and_alt_repo(self):
+    def make_packs_and_alt_repo(self, write_lock=False):
         """Create a pack repo with 3 packs, and access it via a second repo."""
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
@@ -759,7 +759,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         rev2 = tree.commit('two')
         rev3 = tree.commit('three')
         r = repository.Repository.open('.')
-        r.lock_read()
+        if write_lock:
+            r.lock_write()
+        else:
+            r.lock_read()
         self.addCleanup(r.unlock)
         packs = r._pack_collection
         packs.ensure_loaded()
@@ -961,6 +964,23 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(new_names, packs.names())
         self.assertEqual({revs[-1]:(revs[-2],)}, r.get_parent_map([revs[-1]]))
         self.assertFalse(packs.reload_pack_names())
+
+    def test_autopack_reloads_and_stops(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        # After we have determined what needs to be autopacked, trigger a
+        # full-pack via the other repo which will cause us to re-evaluate and
+        # decide we don't need to do anything
+        orig_execute = packs._execute_pack_operations
+        def _munged_execute_pack_ops(*args, **kwargs):
+            tree.branch.repository.pack()
+            return orig_execute(*args, **kwargs)
+        packs._execute_pack_operations = _munged_execute_pack_ops
+        packs._max_pack_count = lambda x: 1
+        packs.pack_distribution = lambda x: [10]
+        self.assertFalse(packs.autopack())
+        self.assertEqual(1, len(packs.names()))
+        self.assertEqual(tree.branch.repository._pack_collection.names(),
+                         packs.names())
 
 
 class TestPack(TestCaseWithTransport):
