@@ -234,8 +234,13 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        filename = creator.write_shelf()
-        self.assertFileEqual(EMPTY_SHELF, filename)
+        shelf_file = open('shelf', 'wb')
+        self.addCleanup(shelf_file.close)
+        try:
+            creator.write_shelf(shelf_file)
+        finally:
+            shelf_file.close()
+        self.assertFileEqual(EMPTY_SHELF, 'shelf')
 
     def test_write_shelf(self):
         tree = self.make_branch_and_tree('tree')
@@ -333,15 +338,19 @@ class TestUnshelver(tests.TestCaseWithTransport):
     def test_unshelve_serialization(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('shelf', EMPTY_SHELF)])
-        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, 'shelf')
+        shelf_file = open('shelf', 'rb')
+        self.addCleanup(shelf_file.close)
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
 
     def test_corrupt_shelf(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('shelf', EMPTY_SHELF.replace('metadata',
                                                                 'foo'))])
+        shelf_file = open('shelf', 'rb')
+        self.addCleanup(shelf_file.close)
         e = self.assertRaises(errors.ShelfCorrupt,
                               shelf.Unshelver.from_tree_and_shelf, tree,
-                              'shelf')
+                              shelf_file)
         self.assertEqual('Shelf corrupt.', str(e))
 
 
