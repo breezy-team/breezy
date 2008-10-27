@@ -129,7 +129,7 @@ class BranchBuilder(object):
             ('add', ('path', 'file-id', 'kind', 'content' or None))
             ('modify', ('file-id', 'new-content'))
             ('unversion', 'file-id')
-            # not supported yet: ('rename', ('orig-path', 'new-path'))
+            ('rename', ('orig-path', 'new-path'))
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
         :return: The revision_id of the new commit
@@ -157,10 +157,7 @@ class BranchBuilder(object):
             to_add_kinds = []
             new_contents = {}
             to_unversion_ids = []
-            # TODO: MemoryTree doesn't support rename() or
-            #       apply_inventory_delta, so we'll postpone allowing renames
-            #       for now
-            # to_rename = []
+            to_rename = []
             for action, info in actions:
                 if action == 'add':
                     path, file_id, kind, content = info
@@ -177,6 +174,9 @@ class BranchBuilder(object):
                     new_contents[file_id] = content
                 elif action == 'unversion':
                     to_unversion_ids.append(info)
+                elif action == 'rename':
+                    from_relpath, to_relpath = info
+                    to_rename.append((from_relpath, to_relpath))
                 else:
                     raise ValueError('Unknown build action: "%s"' % (action,))
             if to_unversion_ids:
@@ -187,6 +187,8 @@ class BranchBuilder(object):
                     tree.add([path], [file_id], ['directory'])
                 else:
                     tree.mkdir(path, file_id)
+            for from_relpath, to_relpath in to_rename:
+                tree.rename_one(from_relpath, to_relpath)
             tree.add(to_add_files, to_add_file_ids, to_add_kinds)
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)

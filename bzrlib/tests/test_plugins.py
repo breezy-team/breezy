@@ -193,29 +193,59 @@ class TestLoadingPlugins(TestCaseInTempDir):
                 del bzrlib.plugins.ts_plugin
         self.failIf(getattr(bzrlib.plugins, 'ts_plugin', None))
 
-    def test_plugin_with_bad_name_does_not_load(self):
-        # Create badly-named plugin
-        file('bzr-bad plugin-name..py', 'w').close()
-
+    def load_and_capture(self, name):
+        """Load plugins from '.' capturing the output.
+        
+        :param name: The name of the plugin.
+        :return: A string with the log from the plugin loading call.
+        """
         # Capture output
         stream = StringIO()
-        handler = logging.StreamHandler(stream)
-        log = logging.getLogger('bzr')
-        log.addHandler(handler)
+        try:
+            handler = logging.StreamHandler(stream)
+            log = logging.getLogger('bzr')
+            log.addHandler(handler)
+            try:
+                try:
+                    bzrlib.plugin.load_from_path(['.'])
+                finally:
+                    if 'bzrlib.plugins.%s' % name in sys.modules:
+                        del sys.modules['bzrlib.plugins.%s' % name]
+                    if getattr(bzrlib.plugins, name, None):
+                        delattr(bzrlib.plugins, name)
+            finally:
+                # Stop capturing output
+                handler.flush()
+                handler.close()
+                log.removeHandler(handler)
+            return stream.getvalue()
+        finally:
+            stream.close()
+    
+    def test_plugin_with_bad_api_version_reports(self):
+        # This plugin asks for bzrlib api version 1.0.0, which is not supported
+        # anymore.
+        name = 'wants100.py'
+        f = file(name, 'w')
+        try:
+            f.write("import bzrlib.api\n"
+                "bzrlib.api.require_any_api(bzrlib, [(1, 0, 0)])\n")
+        finally:
+            f.close()
 
-        bzrlib.plugin.load_from_dir('.')
+        log = self.load_and_capture(name)
+        self.assertContainsRe(log,
+            r"It requested API version")
 
-        # Stop capturing output
-        handler.flush()
-        handler.close()
-        log.removeHandler(handler)
-
-        self.assertContainsRe(stream.getvalue(),
+    def test_plugin_with_bad_name_does_not_load(self):
+        # The file name here invalid for a python module.
+        name = 'bzr-bad plugin-name..py'
+        file(name, 'w').close()
+        log = self.load_and_capture(name)
+        self.assertContainsRe(log,
             r"Unable to load 'bzr-bad plugin-name\.' in '\.' as a plugin "
             "because the file path isn't a valid module name; try renaming "
             "it to 'bad_plugin_name_'\.")
-
-        stream.close()
 
 
 class TestPlugins(TestCaseInTempDir):
@@ -382,8 +412,8 @@ class TestPluginHelp(TestCaseInTempDir):
             self.assertContainsRe(help, '\[myplug\]')
         finally:
             # unregister command
-            if bzrlib.commands.plugin_cmds.get('myplug', None):
-                del bzrlib.commands.plugin_cmds['myplug']
+            if 'myplug' in bzrlib.commands.plugin_cmds:
+                bzrlib.commands.plugin_cmds.remove('myplug')
             # remove the plugin 'myplug'
             if getattr(bzrlib.plugins, 'myplug', None):
                 delattr(bzrlib.plugins, 'myplug')

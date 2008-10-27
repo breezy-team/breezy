@@ -116,9 +116,10 @@ class FtpTransport(ConnectedTransport):
 
         :return: The created connection and its associated credentials.
 
-        The credentials are only the password as it may have been entered
-        interactively by the user and may be different from the one provided
-        in base url at transport creation time.
+        The input credentials are only the password as it may have been
+        entered interactively by the user and may be different from the one
+        provided in base url at transport creation time.  The returned
+        credentials are username, password.
         """
         if credentials is None:
             user, password = self._user, self._password

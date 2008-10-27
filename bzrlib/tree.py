@@ -37,6 +37,7 @@ from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import mutter, note
 
 
@@ -132,7 +133,8 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
-    __contains__ = has_id
+    def __contains__(self, file_id):
+        return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
@@ -648,7 +650,7 @@ def file_status(filename, old_tree, new_tree):
     return 'wtf?'
 
     
-
+@deprecated_function(deprecated_in((1, 9, 0)))
 def find_renames(old_inv, new_inv):
     for file_id in old_inv:
         if file_id not in new_inv:
@@ -657,7 +659,7 @@ def find_renames(old_inv, new_inv):
         new_name = new_inv.id2path(file_id)
         if old_name != new_name:
             yield (old_name, new_name)
-            
+
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.

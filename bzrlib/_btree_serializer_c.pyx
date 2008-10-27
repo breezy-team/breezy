@@ -17,6 +17,10 @@
 
 """Pyrex extensions to btree node parsing."""
 
+#python2.4 support
+cdef extern from "python-compat.h":
+    pass
+
 cdef extern from "stdlib.h":
     ctypedef unsigned size_t
 

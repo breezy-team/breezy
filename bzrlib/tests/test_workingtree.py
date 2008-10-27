@@ -81,6 +81,25 @@ class TestDefaultFormat(TestCaseWithTransport):
             workingtree.WorkingTreeFormat.set_default_format(old_format)
         self.assertEqual(old_format, workingtree.WorkingTreeFormat.get_default_format())
 
+    def test_open(self):
+        tree = self.make_branch_and_tree('.')
+        open_direct = workingtree.WorkingTree.open('.')
+        self.assertEqual(tree.basedir, open_direct.basedir)
+        open_no_args = workingtree.WorkingTree.open()
+        self.assertEqual(tree.basedir, open_no_args.basedir)
+
+    def test_open_containing(self):
+        tree = self.make_branch_and_tree('.')
+        open_direct, relpath = workingtree.WorkingTree.open_containing('.')
+        self.assertEqual(tree.basedir, open_direct.basedir)
+        self.assertEqual('', relpath)
+        open_no_args, relpath = workingtree.WorkingTree.open_containing()
+        self.assertEqual(tree.basedir, open_no_args.basedir)
+        self.assertEqual('', relpath)
+        open_subdir, relpath = workingtree.WorkingTree.open_containing('subdir')
+        self.assertEqual(tree.basedir, open_subdir.basedir)
+        self.assertEqual('subdir', relpath)
+
 
 class SampleTreeFormat(workingtree.WorkingTreeFormat):
     """A sample format

@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    config,
     errors,
     graph,
     pack,
@@ -49,7 +50,11 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.symbol_versioning import one_four
 from bzrlib.transport import get_transport, http
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.transport.remote import RemoteTransport, RemoteTCPTransport
+from bzrlib.transport.remote import (
+    RemoteTransport,
+    RemoteSSHTransport,
+    RemoteTCPTransport,
+)
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
@@ -1012,6 +1017,22 @@ class TestTransportIsReadonly(tests.TestCase):
         self.assertEqual(
             [('call', 'Transport.is_readonly', ())],
             client._calls)
+
+
+class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
+
+    def test_defaults_to_none(self):
+        t = RemoteSSHTransport('bzr+ssh://example.com')
+        self.assertIs(None, t._get_credentials()[0])
+
+    def test_uses_authentication_config(self):
+        conf = config.AuthenticationConfig()
+        conf._get_config().update(
+            {'bzr+sshtest': {'scheme': 'ssh', 'user': 'bar', 'host':
+            'example.com'}})
+        conf._save()
+        t = RemoteSSHTransport('bzr+ssh://example.com')
+        self.assertEqual('bar', t._get_credentials()[0])
 
 
 class TestRemoteRepository(tests.TestCase):

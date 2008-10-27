@@ -17,7 +17,7 @@
 """Helper functions for Walkdirs on win32."""
 
 
-cdef extern from "_walkdirs_win32.h":
+cdef extern from "python-compat.h":
     struct _HANDLE:
         pass
     ctypedef _HANDLE *HANDLE
@@ -81,7 +81,14 @@ cdef class _Win32Stat:
     cdef readonly double st_ctime
     cdef readonly double st_mtime
     cdef readonly double st_atime
-    cdef readonly __int64 st_size
+    # We can't just declare this as 'readonly' because python2.4 doesn't define
+    # T_LONGLONG as a structure member. So instead we just use a property that
+    # will convert it correctly anyway.
+    cdef __int64 _st_size
+
+    property st_size:
+        def __get__(self):
+            return self._st_size
 
     # os.stat always returns 0, so we hard code it here
     cdef readonly int st_dev
@@ -180,7 +187,7 @@ cdef class Win32ReadDir:
         statvalue.st_ctime = _ftime_to_timestamp(&data.ftCreationTime)
         statvalue.st_mtime = _ftime_to_timestamp(&data.ftLastWriteTime)
         statvalue.st_atime = _ftime_to_timestamp(&data.ftLastAccessTime)
-        statvalue.st_size = _get_size(data)
+        statvalue._st_size = _get_size(data)
         statvalue.st_ino = 0
         statvalue.st_dev = 0
         return statvalue

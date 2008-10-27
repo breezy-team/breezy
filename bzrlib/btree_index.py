@@ -22,7 +22,6 @@ import bisect
 from bisect import bisect_right
 from copy import deepcopy
 import math
-import sha
 import struct
 import tempfile
 import zlib
@@ -140,6 +139,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         self._nodes = {}
         # Indicate it hasn't been built yet
         self._nodes_by_key = None
+        self._optimize_for_size = False
 
     def add_node(self, key, value, references=()):
         """Add a node to the index.
@@ -277,7 +277,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     length = _PAGE_SIZE
                     if internal_row.nodes == 0:
                         length -= _RESERVED_HEADER_BYTES # padded
-                    internal_row.writer = chunk_writer.ChunkWriter(length, 0)
+                    internal_row.writer = chunk_writer.ChunkWriter(length, 0,
+                        optimize_for_size=self._optimize_for_size)
                     internal_row.writer.write(_INTERNAL_FLAG)
                     internal_row.writer.write(_INTERNAL_OFFSET +
                         str(rows[pos + 1].nodes) + "\n")
@@ -285,7 +286,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             length = _PAGE_SIZE
             if rows[-1].nodes == 0:
                 length -= _RESERVED_HEADER_BYTES # padded
-            rows[-1].writer = chunk_writer.ChunkWriter(length)
+            rows[-1].writer = chunk_writer.ChunkWriter(length,
+                optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
             # this key did not fit in the node:
@@ -314,7 +316,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 # This will be padded, hence the -100
                 new_row.writer = chunk_writer.ChunkWriter(
                     _PAGE_SIZE - _RESERVED_HEADER_BYTES,
-                    reserved_bytes)
+                    reserved_bytes,
+                    optimize_for_size=self._optimize_for_size)
                 new_row.writer.write(_INTERNAL_FLAG)
                 new_row.writer.write(_INTERNAL_OFFSET +
                     str(rows[1].nodes - 1) + "\n")
