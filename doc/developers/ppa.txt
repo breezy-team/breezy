@@ -104,7 +104,7 @@ For people who have already set up everything they need, building the
 release packages is as simple as::
 
   cd ~/dev/bzr/releases/packaging
-  ln ~/dev/bzr/Releases/bzr-1.6.tar.gz ./bzr_1.6.orig.tar.gz
+  ln ~/dev/bzr/releases/bzr-1.6.tar.gz ./bzr_1.6.orig.tar.gz
   export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid"
   ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh 1.6~beta3-1~bazaar1
