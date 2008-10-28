@@ -3,16 +3,21 @@ Miklos Vajna <vmiklos-at-frugalware-dot-org>
 
 == Status
 
-Git and Darcs versions I tested:
+Darcs version I tested:
 
 ----
 $ darcs --version
 2.1.0 (release)
-$ git --version
-git version 1.6.0.2
 ----
 
 The supported darcs repo format is the 'old-fashioned' one.
+
+Git version:
+
+----
+$ git --version
+git version 1.6.0.2
+----
 
 Bzr versions:
 
