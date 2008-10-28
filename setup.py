@@ -144,6 +144,7 @@ class bzr_build(build):
     """Customized build distutils action.
     Generate bzr.1.
     """
+
     def run(self):
         build.run(self)
 
@@ -180,20 +181,42 @@ else:
 
 class build_ext_if_possible(build_ext):
 
+    user_options = build_ext.user_options + [
+        ('allow-python-fallback', None,
+         "When an extension cannot be built, allow falling"
+         " back to the pure-python implementation.")
+        ]
+
+    def initialize_options(self):
+        build_ext.initialize_options(self)
+        self.allow_python_fallback = False
+
     def run(self):
         try:
             build_ext.run(self)
         except DistutilsPlatformError, e:
+            if not self.allow_python_fallback:
+                log.warn('\n  Cannot build extensions.\n'
+                         '  Use --allow-python-fallback to use slower'
+                         ' python implementations instead.\n')
+                raise
             log.warn(str(e))
-            log.warn('Extensions cannot be built, '
-                     'will use the Python versions instead')
+            log.warn('\n  Extensions cannot be built.\n'
+                     '  Using the slower Python implementations instead.\n')
 
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
         except CCompilerError:
-            log.warn('Building of "%s" extension failed, '
-                     'will use the Python version instead' % (ext.name,))
+            if not self.allow_python_fallback:
+                log.warn('\n  Failed to build "%s".\n'
+                         '  Use --allow-python-fallback to use slower'
+                         ' python implementations instead.\n'
+                         % (ext.name,))
+                raise
+            log.warn('\n  Building of "%s" extension failed.\n'
+                     '  Using the slower Python implementation instead.'
+                     % (ext.name,))
 
 
 # Override the build_ext if we have Pyrex available
@@ -201,7 +224,7 @@ command_classes['build_ext'] = build_ext_if_possible
 unavailable_files = []
 
 
-def add_pyrex_extension(module_name, **kwargs):
+def add_pyrex_extension(module_name, libraries=None):
     """Add a pyrex module to build.
 
     This will use Pyrex to auto-generate the .c file if it is available.
@@ -217,26 +240,29 @@ def add_pyrex_extension(module_name, **kwargs):
     path = module_name.replace('.', '/')
     pyrex_name = path + '.pyx'
     c_name = path + '.c'
+    define_macros = []
+    if sys.platform == 'win32':
+        # pyrex uses the macro WIN32 to detect the platform, even though it should
+        # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
+        # right value.
+        define_macros.append(('WIN32', None))
     if have_pyrex:
-        ext_modules.append(Extension(module_name, [pyrex_name], **kwargs))
+        ext_modules.append(Extension(module_name, [pyrex_name],
+            define_macros=define_macros, libraries=libraries))
     else:
         if not os.path.isfile(c_name):
             unavailable_files.append(c_name)
         else:
-            ext_modules.append(Extension(module_name, [c_name], **kwargs))
+            ext_modules.append(Extension(module_name, [c_name],
+                define_macros=define_macros, libraries=libraries))
 
 
 add_pyrex_extension('bzrlib._btree_serializer_c')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_c',
-                         libraries=['Ws2_32']
-                       )
-    # pyrex uses the macro WIN32 to detect the platform, even though it should
-    # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
-    # right value.
-    add_pyrex_extension('bzrlib._walkdirs_win32',
-                        define_macros=[('WIN32', None)])
+                        libraries=['Ws2_32'])
+    add_pyrex_extension('bzrlib._walkdirs_win32')
 else:
     if have_pyrex and pyrex_version == '0.9.4.1':
         # Pyrex 0.9.4.1 fails to compile this extension correctly

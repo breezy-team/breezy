@@ -37,6 +37,7 @@ from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import mutter, note
 
 
@@ -262,6 +263,30 @@ class Tree(object):
         to which one is used.
         """
         raise NotImplementedError(self.get_file)
+
+    def get_file_text(self, file_id, path=None):
+        """Return the byte content of a file.
+
+        :param file_id: The file_id of the file.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
+        """
+        my_file = self.get_file(file_id, path)
+        try:
+            return my_file.read()
+        finally:
+            my_file.close()
+
+    def get_file_lines(self, file_id, path=None):
+        """Return the content of a file, as lines.
+
+        :param file_id: The file_id of the file.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
+        """
+        return osutils.split_lines(self.get_file_text(file_id, path))
 
     def get_file_mtime(self, file_id, path=None):
         """Return the modification time for a file.
@@ -649,7 +674,7 @@ def file_status(filename, old_tree, new_tree):
     return 'wtf?'
 
     
-
+@deprecated_function(deprecated_in((1, 9, 0)))
 def find_renames(old_inv, new_inv):
     for file_id in old_inv:
         if file_id not in new_inv:
@@ -658,7 +683,7 @@ def find_renames(old_inv, new_inv):
         new_name = new_inv.id2path(file_id)
         if old_name != new_name:
             yield (old_name, new_name)
-            
+
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.

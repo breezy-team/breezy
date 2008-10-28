@@ -24,6 +24,7 @@ import bisect
 import errno
 import os
 import stat
+import sys
 
 from bzrlib import cache_utf8, errors, osutils
 from bzrlib.dirstate import DirState
@@ -1070,7 +1071,8 @@ cdef class ProcessEntryC:
         target_minikind = _minikind_from_string(target_details[0])
         if path_info is not None and _versioned_minikind(target_minikind):
             if self.target_index != 0:
-                raise AssertionError("Unsupported target index %d" % target_index)
+                raise AssertionError("Unsupported target index %d" %
+                                     self.target_index)
             link_or_sha1 = _update_entry(self.state, entry, path_info[4], path_info[3])
             # The entry may have been modified by update_entry
             target_details = details_list[self.target_index]

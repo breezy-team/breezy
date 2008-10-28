@@ -319,7 +319,9 @@ def get_host_name():
 
 
 def _ensure_unicode(s):
+    from bzrlib import osutils
     if s and type(s) != unicode:
+        from bzrlib import osutils
         s = s.decode(osutils.get_user_encoding())
     return s
 
