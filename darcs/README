@@ -38,9 +38,10 @@ repo contains conflicts.
 
 === Independent
 
-Ideally it should work with any fast importer, but actually I just
-tested it with git fast-import, and gave bzr fast-import / hg fastimport
-a minimal testing.
+Ideally it should work with any fast importer, but actually I tested it
+with git fast-import, and gave bzr fast-import / hg fastimport a minimal
+testing. (AFAIK these are the tree fast-import implementations available
+ATM.)
 
 bzr fast-import needs a patch I posted
 https://bugs.launchpad.net/bzr-fastimport/+bug/285941[here].
