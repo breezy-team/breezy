@@ -649,6 +649,15 @@ def load_tests(basic_tests, module, test_loader):
                   "(bzr 1.6.1)\n",
               format_supports_external_lookups=True,
               index_class=GraphIndex),
+         dict(format_name='1.9',
+              format_string="Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='1.9-rich-root',
+              format_string="Bazaar RepositoryFormatKnitPack6RichRoot "
+                  "(bzr 1.9)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
          dict(format_name='development2',
               format_string="Bazaar development format 2 "
                   "(needs bzr.dev from before 1.8)\n",

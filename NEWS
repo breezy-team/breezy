@@ -14,6 +14,10 @@ IN DEVELOPMENT
     * New Branch hook ``transform_fallback_location`` allows a function to
       be called when looking up the stacked source. (Michael Hudson)
 
+    * New repository formats ``1.9`` and ``1.9-rich-root``. These have all
+      the functionality of ``1.6``, but use the new btree indexes.
+      (John Arbash Meinel)
+
   IMPROVEMENTS:
 
     * ``BTreeIndex`` code now is able to prefetch extra pages to help tune
