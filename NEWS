@@ -60,12 +60,18 @@ IN DEVELOPMENT
       could only happen if ``bzr reconcile`` decided that the parent
       ordering was incorrect in the file graph.  (John Arbash Meinel)
 
-    * Some compatibility fixes for building the extensions with MSVC and
-      for python2.4. (John Arbash Meinel, #277484)
-
     * Pack repositories are now able to reload the pack listing and retry
       the current operation if another action causes the data to be
       repacked.  (John Arbash Meinel, #153786)
+
+    * Some compatibility fixes for building the extensions with MSVC and
+      for python2.4. (John Arbash Meinel, #277484)
+
+    * The index logic is now able to reload the list of pack files if and
+      index ends up disappearing. We still don't reload if the pack data
+      itself goes missing after checking the index. This bug appears as a
+      transient failure (file not found) when another process is writing
+      to the repository.  (John Arbash Meinel, #153786)
 
   DOCUMENTATION:
 

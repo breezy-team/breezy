@@ -458,8 +458,8 @@ class AggregateIndex(object):
         """Create an AggregateIndex.
 
         :param reload_func: A function to call if we find we are missing an
-            index. Should have the form reload_func() => True/False to indicate
-            if reloading actually changed anything.
+            index. Should have the form reload_func() => True if the list of
+            active pack files has changed.
         """
         self._reload_func = reload_func
         self.index_to_pack = {}
