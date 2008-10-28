@@ -121,7 +121,7 @@ def safe_relpath_files(tree, file_list):
     new_list = []
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(osutils.dereference_path(filename)))
+            new_list.append(tree.canonical_relpath(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return new_list

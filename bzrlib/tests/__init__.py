@@ -3202,6 +3202,26 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
+class _CaseInsCasePresFilenameFeature(Feature):
+    """Is the file-system case insensitive, but case-preserving?"""
+
+    def _probe(self):
+        fileno, name = tempfile.mkstemp(prefix='MixedCase')
+        try:
+            # first check truly case-preserving for created files, then check
+            # case insensitive when opening existing files.
+            name = osutils.normpath(name)
+            base, rel = osutils.split(name)
+            found_rel = osutils.canonical_relpath(base, name)
+            return (found_rel==rel
+                    and os.path.isfile(name.upper())
+                    and os.path.isfile(name.lower()))
+        finally:
+            os.close(fileno)
+
+CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
+
+
 class TestScenarioApplier(object):
     """A tool to apply scenarios to tests."""
 

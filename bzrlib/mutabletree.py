@@ -344,7 +344,7 @@ class MutableTree(tree.Tree):
         # relative : it's cheaper to make a tree relative path an abspath
         # than to convert an abspath to tree relative.
         for filepath in file_list:
-            rf = _FastPath(self.relpath(filepath))
+            rf = _FastPath(self.canonical_relpath(filepath))
             # validate user parameters. Our recursive code avoids adding new files
             # that need such validation 
             if self.is_control_filename(rf.raw_path):
