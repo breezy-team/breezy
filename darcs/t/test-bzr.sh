@@ -6,10 +6,11 @@ cd ..
 if [ "$1" != "--stdout" ]; then
 	../darcs-fast-export.py test |(cd test.bzr; bzr fast-import -)
 	if [ $? = 0 ]; then
-		bzr branch test.bzr/master test.bzr.nonbare
+		cd test.bzr/master
+		bzr update
+		cd - >/dev/null
 		echo "bugs:"
-		diff --exclude .bzr -Naur test.bzr.nonbare test/_darcs/pristine
-		rm -rf test.bzr.nonbare
+		diff --exclude .bzr -Naur test.bzr/master test/_darcs/pristine
 	fi
 else
 	../darcs-fast-export.py test
