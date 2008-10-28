@@ -1,6 +1,1 @@
-hunk ./file 1
--g
-rmfile ./file
-addfile ./file2
-hunk ./file2 1
-+test
+rmfile ./file3
