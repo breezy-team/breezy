@@ -436,6 +436,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def get_file_lines(self, file_id, path=None):
+        """See Tree.get_file_lines()"""
+        file = self.get_file(file_id, path)
+        try:
+            return file.readlines()
+        finally:
+            file.close()
+
     @needs_read_lock
     def annotate_iter(self, file_id, default_revision=CURRENT_REVISION):
         """See Tree.annotate_iter

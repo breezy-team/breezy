@@ -285,9 +285,6 @@ class Tree(object):
         :param path: The path of the file.
         If both file_id and path are supplied, an implementation may use
         either one.
-
-        osutils.split_lines is always used, rather than calling file.readlines,
-        because the behavior of file.readlines may differ by platform.
         """
         return osutils.split_lines(self.get_file_text(file_id, path))
 
