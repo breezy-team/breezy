@@ -116,6 +116,7 @@ patches = xmldoc.getElementsByTagName('patch')
 patchnum = len(patches)
 
 count = 0
+paths = []
 for i in patches:
 	# apply the patch
 	buf = ["\nNew patches:\n"]
@@ -139,12 +140,15 @@ for i in patches:
 	print "committer %s %s %s" % (get_author(i), date, get_zone_str())
 	print "data %d\n%s" % (len(message), message)
 	# export the files
-	print "deleteall"
+	for j in paths:
+		print "D %s" % j
+	paths = []
 	for (root, dirs, files) in os.walk ("."):
 		for f in files:
 			j = os.path.normpath(os.path.join(root, f))
 			if j.startswith("_darcs") or "-darcs-backup" in j:
 				continue
+			paths.append(j)
 			sock = open(j)
 			buf = sock.read()
 			sock.close()
