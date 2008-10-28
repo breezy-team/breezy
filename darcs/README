@@ -14,6 +14,15 @@ git version 1.6.0.2
 
 The supported darcs repo format is the 'old-fashioned' one.
 
+Bzr versions:
+
+----
+$ bzr version
+Bazaar (bzr) 1.7.1
+$ ls /usr/lib/python*/site-packages/fastimport*
+/usr/lib/python2.5/site-packages/fastimport-0.6.0final0-py2.5.egg-info
+----
+
 == Goals
 
 === Converting huge repos
@@ -43,10 +52,8 @@ with git fast-import, and gave bzr fast-import / hg fastimport a minimal
 testing. (AFAIK these are the tree fast-import implementations available
 ATM.)
 
-bzr fast-import needs a patch I posted
-https://bugs.launchpad.net/bzr-fastimport/+bug/285941[here].
-
-hg fastimport needs three patches, till they are not in upstream, you can get my repo using
+hg fastimport needs three patches, till they are not in upstream, you
+can get my repo using
 
 ----
 $ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
