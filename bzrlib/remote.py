@@ -1211,7 +1211,12 @@ class RemoteRepository(object):
 
     def autopack(self):
         path = self.bzrdir._path_for_remote_call(self._client)
-        self._client.call('PackRepository.autopack', path)
+        try:
+            response = self._client.call('PackRepository.autopack', path)
+        except errors.ErrorFromSmartServer, err:
+            self._translate_error(err)
+        if response != ('ok',):
+            raise errors.UnexpectedSmartServerResponse(response)
 
 
 class RemotePacker(Packer):
@@ -1222,22 +1227,23 @@ class RemotePacker(Packer):
         Packer.__init__(self, pack_collection, packs, suffix, revision_ids)
 
     def _check_references(self):
-        external_refs = self.new_pack._external_compression_parents_of_texts()
-        if external_refs:
-            try:
-                # XXX: external_refs can be pretty long.  It's probably still
-                # more time- and bandwidth-efficient to send this list rather
-                # than doing lots of readvs, but ideally we wouldn't duplicate
-                # the data that's in the pack we're about to transfer.
-                self.client.call(
-                    'PackRepository.check_references', self.path,
-                    *external_refs)
-            except errors.ErrorFromSmartServer, err:
-                if err.error_verb == 'RevisionNotPresent':
-                    missing_revision_id, missing_file_id = err.error_args
-                    raise errors.RevisionNotPresent(
-                        missing_revision_id, missing_file_id)
-                raise
+        Packer._check_references(self)
+#        external_refs = self.new_pack._external_compression_parents_of_texts()
+#        if external_refs:
+#            try:
+#                # XXX: external_refs can be pretty long.  It's probably still
+#                # more time- and bandwidth-efficient to send this list rather
+#                # than doing lots of readvs, but ideally we wouldn't duplicate
+#                # the data that's in the pack we're about to transfer.
+#                self.client.call(
+#                    'PackRepository.check_references', self.path,
+#                    *external_refs)
+#            except errors.ErrorFromSmartServer, err:
+#                if err.error_verb == 'RevisionNotPresent':
+#                    missing_revision_id, missing_file_id = err.error_args
+#                    raise errors.RevisionNotPresent(
+#                        missing_revision_id, missing_file_id)
+#                raise
 
 
 class RemoteBranchLockableFiles(LockableFiles):

@@ -3169,8 +3169,10 @@ class InterPackToRemotePack(InterPackRepo):
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
+            copied_revs = pack.get_revision_count()
             target.autopack()
-            return (pack.get_revision_count(), [])
+            target._real_repository._pack_collection.reload_pack_names()
+            return (copied_revs, [])
         else:
             return (0, [])
     
