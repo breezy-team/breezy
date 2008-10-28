@@ -478,6 +478,12 @@ class DummyRepository(object):
     def supports_rich_root(self):
         return False
 
+    def get_graph(self):
+        raise NotImplementedError
+
+    def get_parent_map(self, revision_ids):
+        raise NotImplementedError
+
 
 class InterDummy(repository.InterRepository):
     """An inter-repository optimised code path for DummyRepository.
@@ -996,6 +1002,24 @@ class TestPacker(TestCaseWithTransport):
 
     # To date, this class has been factored out and nothing new added to it;
     # thus there are not yet any tests.
+
+
+class TestOptimisingPacker(TestCaseWithTransport):
+    """Tests for the OptimisingPacker class."""
+
+    def get_pack_collection(self):
+        repo = self.make_repository('.')
+        return repo._pack_collection
+
+    def test_open_pack_will_optimise(self):
+        packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
+                                            [], '.test')
+        new_pack = packer.open_pack()
+        self.assertIsInstance(new_pack, pack_repo.NewPack)
+        self.assertTrue(new_pack.revision_index._optimize_for_size)
+        self.assertTrue(new_pack.inventory_index._optimize_for_size)
+        self.assertTrue(new_pack.text_index._optimize_for_size)
+        self.assertTrue(new_pack.signature_index._optimize_for_size)
 
 
 class TestInterDifferingSerializer(TestCaseWithTransport):

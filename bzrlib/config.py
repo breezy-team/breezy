@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -1063,6 +1063,47 @@ class AuthenticationConfig(object):
             break
 
         return credentials
+
+    def set_credentials(self, name, host, user, scheme=None, password=None,
+                        port=None, path=None, verify_certificates=None):
+        """Set authentication credentials for a host.
+
+        Any existing credentials with matching scheme, host, port and path
+        will be deleted, regardless of name.
+
+        :param name: An arbitrary name to describe this set of credentials.
+        :param host: Name of the host that accepts these credentials.
+        :param user: The username portion of these credentials.
+        :param scheme: The URL scheme (e.g. ssh, http) the credentials apply
+            to.
+        :param password: Password portion of these credentials.
+        :param port: The IP port on the host that these credentials apply to.
+        :param path: A filesystem path on the host that these credentials
+            apply to.
+        :param verify_certificates: On https, verify server certificates if
+            True.
+        """
+        values = {'host': host, 'user': user}
+        if password is not None:
+            values['password'] = password
+        if scheme is not None:
+            values['scheme'] = scheme
+        if port is not None:
+            values['port'] = '%d' % port
+        if path is not None:
+            values['path'] = path
+        if verify_certificates is not None:
+            values['verify_certificates'] = str(verify_certificates)
+        config = self._get_config()
+        for_deletion = []
+        for section, existing_values in config.items():
+            for key in ('scheme', 'host', 'port', 'path'):
+                if existing_values.get(key) != values.get(key):
+                    break
+            else:
+                del config[section]
+        config.update({name: values})
+        self._save()
 
     def get_user(self, scheme, host, port=None,
                  realm=None, path=None, prompt=None):

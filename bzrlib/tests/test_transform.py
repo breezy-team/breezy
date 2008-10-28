@@ -53,7 +53,7 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               resolve_conflicts, cook_conflicts, 
                               build_tree, get_backup_name,
                               _FileMover, resolve_checkout,
-                              TransformPreview)
+                              TransformPreview, create_from_tree)
 
 class TestTreeTransform(tests.TestCaseWithTransport):
 
@@ -1313,6 +1313,43 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.cancel_creation(trans_id)
         transform.apply()
 
+    def test_create_from_tree(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree_contents([('tree1/foo/',), ('tree1/bar', 'baz')])
+        tree1.add(['foo', 'bar'], ['foo-id', 'bar-id'])
+        tree2 = self.make_branch_and_tree('tree2')
+        tt = TreeTransform(tree2)
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        bar_trans_id = tt.create_path('bar', tt.root)
+        create_from_tree(tt, bar_trans_id, tree1, 'bar-id')
+        tt.apply()
+        self.assertEqual('directory', osutils.file_kind('tree2/foo'))
+        self.assertFileEqual('baz', 'tree2/bar')
+
+    def test_create_from_tree_bytes(self):
+        """Provided lines are used instead of tree content."""
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree_contents([('tree1/foo', 'bar'),])
+        tree1.add('foo', 'foo-id')
+        tree2 = self.make_branch_and_tree('tree2')
+        tt = TreeTransform(tree2)
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id', bytes='qux')
+        tt.apply()
+        self.assertFileEqual('qux', 'tree2/foo')
+
+    def test_create_from_tree_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        tree1 = self.make_branch_and_tree('tree1')
+        os.symlink('bar', 'tree1/foo')
+        tree1.add('foo', 'foo-id')
+        tt = TreeTransform(self.make_branch_and_tree('tree2'))
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        tt.apply()
+        self.assertEqual('bar', os.readlink('tree2/foo'))
+
 
 class TransformGroup(object):
 
@@ -1976,6 +2013,13 @@ class TestTransformRollback(tests.TestCaseWithTransport):
         resolve_conflicts(tt)
 
 
+A_ENTRY = ('a-id', ('a', 'a'), True, (True, True),
+                  ('TREE_ROOT', 'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
+                  (False, False))
+ROOT_ENTRY = ('TREE_ROOT', ('', ''), False, (True, True), (None, None),
+              ('', ''), ('directory', 'directory'), (False, None))
+
+
 class TestTransformPreview(tests.TestCaseWithTransport):
 
     def create_tree(self):
@@ -2053,23 +2097,25 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                           (False, False))],
                           list(preview_tree.iter_changes(revision_tree)))
 
-    def test_include_unchanged_value_error(self):
+    def test_include_unchanged_succeeds(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              revision_tree, include_unchanged=True)
-        self.assertEqual('include_unchanged is not supported', str(e))
+        changes = preview_tree.iter_changes(revision_tree,
+                                            include_unchanged=True)
+        root = revision_tree.inventory.root.file_id
+
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
 
     def test_specific_files(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              revision_tree, specific_files=['pete'])
-        self.assertEqual('specific_files is not supported', str(e))
+        changes = preview_tree.iter_changes(revision_tree,
+                                            specific_files=[''])
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
 
-    def test_want_unversioned_value_error(self):
+    def test_want_unversioned(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        e = self.assertRaises(ValueError, preview_tree.iter_changes,
-                              revision_tree, want_unversioned=True)
-        self.assertEqual('want_unversioned is not supported', str(e))
+        changes = preview_tree.iter_changes(revision_tree,
+                                            want_unversioned=True)
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
 
     def test_ignore_extra_trees_no_specific_files(self):
         # extra_trees is harmless without specific_files, so we'll silently
@@ -2497,3 +2543,43 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(tt.finalize)
         final_tree = tt.get_preview_tree()
         self.assertEqual('a\nb\nc\n', final_tree.get_file_text('file-id'))
+
+    def test_merge_preview_into_workingtree(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        tt.new_file('name', tt.root, 'content', 'file-id')
+        tree2 = self.make_branch_and_tree('tree2')
+        pb = progress.DummyProgress()
+        merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
+                                         pb, tree.basis_tree())
+        merger.merge_type = Merge3Merger
+        merger.do_merge()
+
+    def test_merge_preview_into_workingtree_handles_conflicts(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/foo', 'bar')])
+        tree.add('foo', 'foo-id')
+        tree.commit('foo')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        trans_id = tt.trans_id_file_id('foo-id')
+        tt.delete_contents(trans_id)
+        tt.create_file('baz', trans_id)
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        self.build_tree_contents([('tree2/foo', 'qux')])
+        pb = progress.DummyProgress()
+        merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
+                                         pb, tree.basis_tree())
+        merger.merge_type = Merge3Merger
+        merger.do_merge()
+
+    def test_is_executable(self):
+        tree = self.make_branch_and_tree('tree')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('foo', preview.root, 'bar', 'baz-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(False, preview_tree.is_executable('baz-id',
+                                                           'tree/foo'))
+        self.assertEqual(False, preview_tree.is_executable('baz-id'))

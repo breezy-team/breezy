@@ -28,8 +28,11 @@ Overall developer documentation
 Process
 =======
 
-* `Releasing Bazaar <releasing.html>`_ |--| How to make a release of Bazaar,
-  and how to coordinate the monthly development cycle.
+* `The Bazaar Development Cycle <cycle.html>`_ |--| The monthly
+  development cycle and how to run it.
+  
+* `Releasing Bazaar <releasing.html>`_ |--| 
+  Checklist to make a release of Bazaar.
 
 * `Managing the Bazaar PPA <ppa.html>`_ |--| Packaging Bazaar for Ubuntu.
 

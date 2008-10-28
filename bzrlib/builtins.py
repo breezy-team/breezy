@@ -1090,7 +1090,14 @@ class cmd_renames(Command):
             old_tree.lock_read()
             try:
                 old_inv = old_tree.inventory
-                renames = list(_mod_tree.find_renames(old_inv, new_inv))
+                renames = []
+                iterator = tree.iter_changes(old_tree, include_unchanged=True)
+                for f, paths, c, v, p, n, k, e in iterator:
+                    if paths[0] == paths[1]:
+                        continue
+                    if None in (paths):
+                        continue
+                    renames.append(paths)
                 renames.sort()
                 for old_name, new_name in renames:
                     self.outf.write("%s => %s\n" % (old_name, new_name))
@@ -3434,6 +3441,9 @@ class cmd_missing(Command):
             show_ids=False, verbose=False, this=False, other=False,
             include_merges=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
+        def message(s):
+            if not is_quiet():
+                self.outf.write(s)
 
         if this:
             mine_only = this
@@ -3457,7 +3467,7 @@ class cmd_missing(Command):
                                              " or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            self.outf.write("Using saved parent location: "
+            message("Using saved parent location: "
                     + display_url + "\n")
 
         remote_branch = Branch.open(other_branch)
@@ -3481,8 +3491,8 @@ class cmd_missing(Command):
 
                 status_code = 0
                 if local_extra and not theirs_only:
-                    self.outf.write("You have %d extra revision(s):\n" %
-                                    len(local_extra))
+                    message("You have %d extra revision(s):\n" %
+                        len(local_extra))
                     for revision in iter_log_revisions(local_extra,
                                         local_branch.repository,
                                         verbose):
@@ -3494,9 +3504,9 @@ class cmd_missing(Command):
 
                 if remote_extra and not mine_only:
                     if printed_local is True:
-                        self.outf.write("\n\n\n")
-                    self.outf.write("You are missing %d revision(s):\n" %
-                                    len(remote_extra))
+                        message("\n\n\n")
+                    message("You are missing %d revision(s):\n" %
+                        len(remote_extra))
                     for revision in iter_log_revisions(remote_extra,
                                         remote_branch.repository,
                                         verbose):
@@ -3505,15 +3515,15 @@ class cmd_missing(Command):
 
                 if mine_only and not local_extra:
                     # We checked local, and found nothing extra
-                    self.outf.write('This branch is up to date.\n')
+                    message('This branch is up to date.\n')
                 elif theirs_only and not remote_extra:
                     # We checked remote, and found nothing extra
-                    self.outf.write('Other branch is up to date.\n')
+                    message('Other branch is up to date.\n')
                 elif not (mine_only or theirs_only or local_extra or
                           remote_extra):
                     # We checked both branches, and neither one had extra
                     # revisions
-                    self.outf.write("Branches are up to date.\n")
+                    message("Branches are up to date.\n")
             finally:
                 remote_branch.unlock()
         finally:
