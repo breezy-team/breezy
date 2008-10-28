@@ -85,6 +85,7 @@ class GraphIndexBuilder(object):
         self._nodes = {}
         self._nodes_by_key = None
         self._key_length = key_elements
+        self._optimize_for_size = False
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
@@ -278,6 +279,17 @@ class GraphIndexBuilder(object):
                 ' mismatched output length and expected length: %d %d' %
                 (len(result.getvalue()), expected_bytes))
         return result
+
+    def set_optimize(self, for_size=True):
+        """Change how the builder tries to optimize the result.
+
+        :param for_size: Tell the builder to try and make the index as small as
+            possible.
+        :return: None
+        """
+        # GraphIndexBuilder itself doesn't pay attention to the flag yet, but
+        # other builders do.
+        self._optimize_for_size = for_size
 
 
 class GraphIndex(object):

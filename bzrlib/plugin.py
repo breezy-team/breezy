@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,10 @@ called.
 import os
 import sys
 
+from bzrlib import osutils
+
 from bzrlib.lazy_import import lazy_import
+
 lazy_import(globals(), """
 import imp
 import re
@@ -44,7 +47,6 @@ from bzrlib import (
     config,
     debug,
     errors,
-    osutils,
     trace,
     )
 from bzrlib import plugins as _mod_plugins

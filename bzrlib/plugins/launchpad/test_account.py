@@ -64,21 +64,23 @@ class LaunchpadAccountTests(TestCaseInTempDir):
                              'SSH keys with Launchpad.', str(error))
 
     def test_set_lp_login_updates_authentication_conf(self):
-        self.assertEqual([None, None], account._get_auth_user().values())
+        self.assertIs(None, account._get_auth_user())
         account.set_lp_login('foo')
-        self.assertEqual({'production': 'foo', 'staging': 'foo'},
-                         account._get_auth_user())
+        self.assertEqual('foo', account._get_auth_user())
 
     def test_get_lp_login_does_not_update_for_none_user(self):
         account.get_lp_login()
-        self.assertEqual([None, None], account._get_auth_user().values())
+        self.assertIs(None, account._get_auth_user())
 
     def test_get_lp_login_updates_authentication_conf(self):
         account._set_global_option('foo')
-        self.assertEqual([None, None], account._get_auth_user().values())
+        self.assertIs(None, account._get_auth_user())
         account.get_lp_login()
-        self.assertEqual({'production': 'foo', 'staging': 'foo'},
-                         account._get_auth_user())
+        auth = config.AuthenticationConfig()
+        self.assertEqual('foo', account._get_auth_user(auth))
+        self.assertEqual('foo', auth.get_user('ssh', 'bazaar.launchpad.net'))
+        self.assertEqual('foo', auth.get_user('ssh',
+                                              'bazaar.staging.launchpad.net'))
 
     def test_get_lp_login_leaves_existing_credentials(self):
         auth = config.AuthenticationConfig()
