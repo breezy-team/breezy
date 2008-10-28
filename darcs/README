@@ -23,6 +23,13 @@ $ ls /usr/lib/python*/site-packages/fastimport*
 /usr/lib/python2.5/site-packages/fastimport-0.6.0final0-py2.5.egg-info
 ----
 
+Hg version:
+
+----
+$ hg version
+Mercurial Distributed SCM (version 1.0.2)
+----
+
 == Goals
 
 === Converting huge repos
@@ -48,12 +55,11 @@ repo contains conflicts.
 === Independent
 
 Ideally it should work with any fast importer, but actually I tested it
-with git fast-import, and gave bzr fast-import / hg fastimport a minimal
-testing. (AFAIK these are the tree fast-import implementations available
-ATM.)
+with git fast-import, bzr fast-import and hg fastimport. (AFAIK these
+are the tree fast-import implementations available ATM.)
 
-hg fastimport needs three patches, till they are not in upstream, you
-can get my repo using
+hg fastimport needs two patches, till they are not in upstream, you can
+get my repo using
 
 ----
 $ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
