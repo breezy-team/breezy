@@ -1268,8 +1268,12 @@ class CombinedGraphIndex(object):
         if self._reload_func is None:
             raise
         exc_type, exc_value, exc_traceback = sys.exc_info()
+        trace.mutter('Trying to reload after getting exception: %s',
+                     exc_value)
         if not self._reload_func():
             # We tried to reload, but nothing changed, so we fail anyway
+            trace.mutter('_reload_func indicated nothing has changed.'
+                         ' Raising original exception.')
             raise exc_type, exc_value, exc_traceback
 
     def validate(self):

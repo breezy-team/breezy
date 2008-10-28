@@ -46,8 +46,9 @@ IN DEVELOPMENT
 
     * The index logic is now able to reload the list of pack files if and
       index ends up disappearing. We still don't reload if the pack data
-      itself goes missing after checking the index.
-      (John Arbash Meinel, #153786)
+      itself goes missing after checking the index. This bug appears as a
+      transient failure (file not found) when another process is writing
+      to the repository.  (John Arbash Meinel, #153786)
 
   DOCUMENTATION:
 
