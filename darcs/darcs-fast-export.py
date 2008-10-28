@@ -143,11 +143,10 @@ for i in patches:
 	for j in paths:
 		print "D %s" % j
 	paths = []
+	os.chdir(os.path.join("_darcs", "pristine"))
 	for (root, dirs, files) in os.walk ("."):
 		for f in files:
 			j = os.path.normpath(os.path.join(root, f))
-			if j.startswith("_darcs") or "-darcs-backup" in j:
-				continue
 			paths.append(j)
 			sock = open(j)
 			buf = sock.read()
@@ -155,6 +154,7 @@ for i in patches:
 			# darcs does not track the executable bit :/
 			print "M 644 inline %s" % j
 			print "data %s\n%s" % (len(buf), buf)
+	os.chdir(os.path.join("..", ".."))
 	if message[:4] == "TAG ":
 		print "tag %s" % message[4:]
 		print "from :%s" % count
