@@ -1354,7 +1354,8 @@ class TestCase(unittest.TestCase):
         """
         # flush the log file, to get all content
         import bzrlib.trace
-        bzrlib.trace._trace_file.flush()
+        if bzrlib.trace._trace_file:
+            bzrlib.trace._trace_file.flush()
         if self._log_contents:
             # XXX: this can hardly contain the content flushed above --vila
             # 20080128
