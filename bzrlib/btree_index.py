@@ -651,64 +651,71 @@ class BTreeGraphIndex(object):
         return found
 
     def _compute_recommended_pages(self):
-        """Given the transport's recommended_page_size, determine num pages."""
+        """Convert transport's recommended_page_size into btree pages.
+
+        recommended_page_size is in bytes, we want to know how many _PAGE_SIZE
+        pages fit in that length.
+        """
         recommended_read = self._transport.recommended_page_size()
         recommended_pages = int(math.ceil(recommended_read /
                                           float(_PAGE_SIZE)))
         return recommended_pages
 
-    def _compute_num_pages(self):
-        """Determine the offset to the last page in this index."""
+    def _compute_total_pages_in_index(self):
+        """How many pages are in the index.
+
+        If we have read the header we will use the value stored there.
+        Otherwise it will be computed based on the length of the index.
+        """
         if self._size is None:
-            raise AssertionError('_compute_num_pages should not be called'
-                                 ' when self._size is None')
+            raise AssertionError('_compute_total_pages_in_index should not be'
+                                 ' called when self._size is None')
         if self._root_node is not None:
             # This is the number of pages as defined by the header
             return self._row_offsets[-1]
         # This is the number of pages as defined by the size of the index. They
         # should be indentical.
-        num_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
-        return num_pages
+        total_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
+        return total_pages
 
-    def _expand_nodes(self, node_indexes):
-        """Find extra nodes to download.
+    def _expand_offsets(self, offsets):
+        """Find extra pages to download.
 
         The idea is that we always want to make big-enough requests (like 64kB
         for http), so that we don't waste round trips. So given the entries
-        that we already have cached, and the new nodes being downloaded, figure
+        that we already have cached and the new pages being downloaded figure
         out what other pages we might want to read.
 
-        :param node_indexes: The nodes that have been requested to read.
-        :return: A new list of nodes to download
+        See also doc/developers/btree_index_prefetch.txt for more details.
+
+        :param offsets: The offsets to be read
+        :return: A list of offsets to download
         """
         if 'index' in debug.debug_flags:
-            trace.mutter('expanding: %s\tnodes: %s', self._name, node_indexes)
+            trace.mutter('expanding: %s\toffsets: %s', self._name, offsets)
 
-        if len(node_indexes) >= self._recommended_pages:
+        if len(offsets) >= self._recommended_pages:
             # Don't add more, we are already requesting more than enough
             if 'index' in debug.debug_flags:
                 trace.mutter('  not expanding large request (%s >= %s)',
-                             len(node_indexes), self._recommended_pages)
-            return node_indexes
+                             len(offsets), self._recommended_pages)
+            return offsets
         if self._size is None:
             # Don't try anything, because we don't know where the file ends
             if 'index' in debug.debug_flags:
                 trace.mutter('  not expanding without knowing index size')
-            return node_indexes
-        num_pages = self._compute_num_pages()
-        # The idea here is to get nodes "next to" the ones we are already
-        # getting.
-        cached_keys = self._get_cached_keys()
-
+            return offsets
+        total_pages = self._compute_total_pages_in_index()
+        cached_offsets = self._get_offsets_to_cached_pages()
         # If reading recommended_pages would read the rest of the index, just
         # do so.
-        if num_pages - len(cached_keys) <= self._recommended_pages:
+        if total_pages - len(cached_offsets) <= self._recommended_pages:
             # Read whatever is left
-            if cached_keys:
-                expanded = [x for x in xrange(num_pages)
-                               if x not in cached_keys]
+            if cached_offsets:
+                expanded = [x for x in xrange(total_pages)
+                               if x not in cached_offsets]
             else:
-                expanded = range(num_pages)
+                expanded = range(total_pages)
             if 'index' in debug.debug_flags:
                 trace.mutter('  reading all unread pages: %s', expanded)
             return expanded
@@ -720,10 +727,10 @@ class BTreeGraphIndex(object):
             # See doc/developers/btree_index_prefetch.txt for a discussion, and
             # a possible implementation when we are guessing that the second
             # layer index is small
-            final_nodes = node_indexes
+            final_offsets = offsets
         else:
             tree_depth = len(self._row_lengths)
-            if len(cached_keys) < tree_depth and len(node_indexes) == 1:
+            if len(cached_offsets) < tree_depth and len(offsets) == 1:
                 # We haven't read enough to justify expansion
                 # If we are only going to read the root node, and 1 leaf node,
                 # then it isn't worth expanding our request. Once we've read at
@@ -731,47 +738,58 @@ class BTreeGraphIndex(object):
                 # start expanding our requests.
                 if 'index' in debug.debug_flags:
                     trace.mutter('  not expanding on first reads')
-                return node_indexes
+                return offsets
+            final_offsets = self._expand_to_neighbors(offsets, cached_offsets,
+                                                      total_pages)
 
-            # Expand requests to neighbors until we have at least
-            # recommended_pages to request. We only want to expand requests
-            # within a given layer. We cheat a little bit and assume all
-            # requests will be in the same layer. This is true given the
-            # current design, but if it changes this algorithm may perform
-            # oddly.
-            final_nodes = set(node_indexes)
-            first = end = None
-            new_tips = set(final_nodes)
-            while len(final_nodes) < self._recommended_pages and new_tips:
-                next_tips = set()
-                for pos in new_tips:
-                    if first is None:
-                        first, end = self._find_layer_first_and_end(pos)
-                    previous = pos - 1
-                    if (previous > 0
-                        and previous not in cached_keys
-                        and previous not in final_nodes
-                        and previous >= first):
-                        next_tips.add(previous)
-                    after = pos + 1
-                    if (after < num_pages
-                        and after not in cached_keys
-                        and after not in final_nodes
-                        and after < end):
-                        next_tips.add(after)
-                    # This would keep us from going bigger than
-                    # recommended_pages by only expanding the first nodes.
-                    # However, if we are making a 'wide' request, it is
-                    # reasonable to expand all points equally.
-                    # if len(final_nodes) > recommended_pages:
-                    #     break
-                final_nodes.update(next_tips)
-                new_tips = next_tips
-
-        final_nodes = sorted(final_nodes)
+        final_offsets = sorted(final_offsets)
         if 'index' in debug.debug_flags:
-            trace.mutter('expanded:  %s', final_nodes)
-        return final_nodes
+            trace.mutter('expanded:  %s', final_offsets)
+        return final_offsets
+
+    def _expand_to_neighbors(self, offsets, cached_offsets, total_pages):
+        """Expand requests to neighbors until we have enough pages.
+
+        This is called from _expand_offsets after policy has determined that we
+        want to expand.
+        We only want to expand requests within a given layer. We cheat a little
+        bit and assume all requests will be in the same layer. This is true
+        given the current design, but if it changes this algorithm may perform
+        oddly.
+
+        :param offsets: requested offsets
+        :param cached_offsets: offsets for pages we currently have cached
+        :return: A set() of offsets after expansion
+        """
+        final_offsets = set(offsets)
+        first = end = None
+        new_tips = set(final_offsets)
+        while len(final_offsets) < self._recommended_pages and new_tips:
+            next_tips = set()
+            for pos in new_tips:
+                if first is None:
+                    first, end = self._find_layer_first_and_end(pos)
+                previous = pos - 1
+                if (previous > 0
+                    and previous not in cached_offsets
+                    and previous not in final_offsets
+                    and previous >= first):
+                    next_tips.add(previous)
+                after = pos + 1
+                if (after < total_pages
+                    and after not in cached_offsets
+                    and after not in final_offsets
+                    and after < end):
+                    next_tips.add(after)
+                # This would keep us from going bigger than
+                # recommended_pages by only expanding the first offsets.
+                # However, if we are making a 'wide' request, it is
+                # reasonable to expand all points equally.
+                # if len(final_offsets) > recommended_pages:
+                #     break
+            final_offsets.update(next_tips)
+            new_tips = next_tips
+        return final_offsets
 
     def _find_layer_first_and_end(self, offset):
         """Find the start/stop nodes for the layer corresponding to offset.
@@ -788,13 +806,13 @@ class BTreeGraphIndex(object):
                 break
         return first, end
 
-    def _get_cached_keys(self):
+    def _get_offsets_to_cached_pages(self):
         """Determine what nodes we already have cached."""
-        cached_keys = set(self._internal_node_cache.keys())
-        cached_keys.update(self._leaf_node_cache.keys())
+        cached_offsets = set(self._internal_node_cache.keys())
+        cached_offsets.update(self._leaf_node_cache.keys())
         if self._root_node is not None:
-            cached_keys.add(0)
-        return cached_keys
+            cached_offsets.add(0)
+        return cached_offsets
 
     def _get_root_node(self):
         if self._root_node is None:
@@ -815,7 +833,7 @@ class BTreeGraphIndex(object):
                 needed.append(idx)
         if not needed:
             return found
-        needed = self._expand_nodes(needed)
+        needed = self._expand_offsets(needed)
         found.update(self._get_and_cache_nodes(needed))
         return found
 
