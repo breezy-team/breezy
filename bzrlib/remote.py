@@ -39,6 +39,7 @@ from bzrlib.errors import (
     )
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
+from bzrlib.repofmt.pack_repo import Packer
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
@@ -800,6 +801,8 @@ class RemoteRepository(object):
             other, self).search_missing_revision_ids(revision_id, find_ghosts)
 
     def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
+        # Not delegated to _real_repository so that InterRepository.get has a
+        # chance to find an InterRepository specialised for RemoteRepository.
         if self.has_same_location(source):
             # check that last_revision is in 'from' and then return a
             # no-operation.
@@ -810,7 +813,6 @@ class RemoteRepository(object):
         inter = repository.InterRepository.get(source, self)
         try:
             return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
-
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
 
@@ -1206,6 +1208,36 @@ class RemoteRepository(object):
         stop_keys = ' '.join(recipe[1])
         count = str(recipe[2])
         return '\n'.join((start_keys, stop_keys, count))
+
+    def autopack(self):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        self._client.call('PackRepository.autopack', path)
+
+
+class RemotePacker(Packer):
+
+    def __init__(self, path, client, pack_collection, packs, suffix, revision_ids=None):
+        self.path = path
+        self.client = client
+        Packer.__init__(self, pack_collection, packs, suffix, revision_ids)
+
+    def _check_references(self):
+        external_refs = self.new_pack._external_compression_parents_of_texts()
+        if external_refs:
+            try:
+                # XXX: external_refs can be pretty long.  It's probably still
+                # more time- and bandwidth-efficient to send this list rather
+                # than doing lots of readvs, but ideally we wouldn't duplicate
+                # the data that's in the pack we're about to transfer.
+                self.client.call(
+                    'PackRepository.check_references', self.path,
+                    *external_refs)
+            except errors.ErrorFromSmartServer, err:
+                if err.error_verb == 'RevisionNotPresent':
+                    missing_revision_id, missing_file_id = err.error_args
+                    raise errors.RevisionNotPresent(
+                        missing_revision_id, missing_file_id)
+                raise
 
 
 class RemoteBranchLockableFiles(LockableFiles):
