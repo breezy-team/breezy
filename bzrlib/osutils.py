@@ -941,6 +941,48 @@ def relpath(base, path):
         return ''
 
 
+def _win32_canonical_relpath(base, path):
+    """Return the canonical path relative to base.
+
+    Like relpath, but on case-insensitive-case-preserving file-systems, this
+    will return the relpath as stored on the file-system rather than in the case
+    specified in the input string, for all existing portions of the path.
+
+    TODO: it should be possible to optimize this by using the win32 API
+    FindFiles function to look for the specified name - but using os.listdir()
+    still gives us the correct semantics in the short term.
+    """
+    rel = relpath(base, path)
+    # '.' will have been turned into ''
+    if not rel:
+        return rel
+
+    abs_base = abspath(base)
+    current = abs_base
+    _listdir = os.listdir
+
+    # use an explicit iterator so we can easily consume the rest on early exit.
+    bit_iter = iter(rel.replace('\\', '/').split('/'))
+    for bit in bit_iter:
+        lbit = bit.lower()
+        for look in _listdir(current):
+            if lbit == look.lower():
+                current = pathjoin(current, look)
+                break
+        else:
+            # got to the end, nothing matched, so we just return the
+            # non-existing bits as they were specified (the filename may be
+            # the target of a move, for example).
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
+    return current[len(abs_base)+1:]
+
+if sys.platform == "win32":
+    canonical_relpath = _win32_canonical_relpath
+else:
+    canonical_relpath = relpath
+
+
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 

@@ -420,6 +420,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         return osutils.relpath(self.basedir, path)
 
+    def canonical_relpath(self, path):
+        """Return the canonical path relative to base, or raise exception.
+
+        Like relpath, but on case-insensitive-case-preserving file-systems, this
+        will return the relpath as stored on the file-system rather than in the
+        case specified in the input string. The file/directory must exist.
+        """
+        return osutils.canonical_relpath(self.basedir, path)
+
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
