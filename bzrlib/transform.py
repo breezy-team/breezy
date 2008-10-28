@@ -1870,13 +1870,6 @@ class _PreviewTree(tree.Tree):
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
-    def get_file_text(self, file_id):
-        text_file = self.get_file(file_id)
-        try:
-            return text_file.read()
-        finally:
-            text_file.close()
-
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
         changes = self._changes(file_id)
