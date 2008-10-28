@@ -27,6 +27,7 @@ from bzrlib import (
     osutils,
     repository,
     revision as _mod_revision,
+    trace,
     treebuilder,
     )
 from bzrlib.bundle import read_mergeable_from_url
@@ -44,11 +45,13 @@ from bzrlib.merge import Merge3Merger
 from bzrlib.repofmt import knitrepo
 from bzrlib.osutils import sha_file, sha_string
 from bzrlib.tests import (
+    StringIOWrapper,
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestSkipped,
+    TestUIFactory,
     test_read_bundle,
     test_commit,
     )
@@ -1571,6 +1574,15 @@ class TestBundleWriterReader(TestCase):
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)
         self.assertRaises(errors.BadBundle, record_iter.next)
+
+
+class TestWriteOperationOutputsNote(TestCaseWithTransport):
+
+    def test_note_revision_count(self):
+        repository = self.make_repository('repo')
+        op = v4.BundleWriteOperation('null:', 'null:', repository, StringIO())
+        notes = self.applyCaptureNotes(op.do_write)[1]
+        self.assertEqual([('Bundling %d revision(s).', (0,))], notes)
 
 
 class TestReadMergeableFromUrl(TestCaseWithTransport):
