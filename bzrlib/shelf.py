@@ -176,17 +176,10 @@ class ShelfCreator(object):
         if version:
             to_transform.version_file(file_id, s_trans_id)
 
-    def read_tree_lines(self, tree, file_id):
-        """Read text lines from a tree.
-
-        (Tree.get_file_lines is not an official API)
-        """
-        return osutils.split_lines(tree.get_file_text(file_id))
-
     def _inverse_lines(self, new_lines, file_id):
         """Produce a version with only those changes removed from new_lines."""
         target_lines = self.target_tree.get_file_lines(file_id)
-        work_lines = self.read_tree_lines(self.work_tree, file_id)
+        work_lines = self.work_tree.get_file_lines(file_id)
         return merge3.Merge3(new_lines, target_lines, work_lines).merge_lines()
 
     def finalize(self):
