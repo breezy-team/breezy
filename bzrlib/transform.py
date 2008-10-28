@@ -1126,20 +1126,28 @@ class TreeTransformBase(object):
         """
         return _PreviewTree(self)
 
-    def _get_parents_texts(self, trans_id):
-        """Get texts for compression parents of this file."""
+    def _text_parent(self, trans_id):
         file_id = self.tree_file_id(trans_id)
         try:
             if file_id is None or self._tree.kind(file_id) != 'file':
-                return ()
+                return None
         except errors.NoSuchFile:
+            return None
+        return file_id
+
+    def _get_parents_texts(self, trans_id):
+        """Get texts for compression parents of this file."""
+        file_id = self._text_parent(trans_id)
+        if file_id is None:
             return ()
         return (self._tree.get_file_text(file_id),)
 
     def _get_parents_lines(self, trans_id):
         """Get lines for compression parents of this file."""
-        return tuple(osutils.split_lines(p) for p
-                     in self._get_parents_texts(trans_id))
+        file_id = self._text_parent(trans_id)
+        if file_id is None:
+            return ()
+        return (self._tree.get_file_lines(file_id),)
 
     def serialize(self, serializer):
         """Serialize this TreeTransform.
@@ -1869,13 +1877,6 @@ class _PreviewTree(tree.Tree):
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
-
-    def get_file_text(self, file_id):
-        text_file = self.get_file(file_id)
-        try:
-            return text_file.read()
-        finally:
-            text_file.close()
 
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
