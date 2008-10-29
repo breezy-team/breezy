@@ -809,7 +809,7 @@ class RemoteRepository(_RpcHelper):
         return repository.InterRepository.get(
             other, self).search_missing_revision_ids(revision_id, find_ghosts)
 
-    def fetch(self, source, revision_id=None, pb=None):
+    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
         if self.has_same_location(source):
             # check that last_revision is in 'from' and then return a
             # no-operation.
@@ -817,9 +817,12 @@ class RemoteRepository(_RpcHelper):
                 not revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
-        self._ensure_real()
-        return self._real_repository.fetch(
-            source, revision_id=revision_id, pb=pb)
+        inter = repository.InterRepository.get(source, self)
+        try:
+            return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
+
+        except NotImplementedError:
+            raise errors.IncompatibleRepositories(source, self)
 
     def create_bundle(self, target, base, fileobj, format=None):
         self._ensure_real()
