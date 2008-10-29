@@ -78,6 +78,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Improved hook documentation. (Michael Ernst)
+
   API CHANGES:
 
     * commands.plugins_cmds is now a CommandRegistry, not a dict.
