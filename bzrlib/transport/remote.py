@@ -28,6 +28,7 @@ from bzrlib import (
     config,
     debug,
     errors,
+    remote,
     trace,
     transport,
     urlutils,
@@ -143,8 +144,7 @@ class RemoteTransport(transport.ConnectedTransport):
         elif resp == ('no', ):
             return False
         else:
-            self._translate_error(resp)
-        raise errors.UnexpectedSmartServerResponse(resp)
+            raise errors.UnexpectedSmartServerResponse(resp)
 
     def get_smart_client(self):
         return self._get_connection()
@@ -161,25 +161,22 @@ class RemoteTransport(transport.ConnectedTransport):
         return self._combine_paths(self._path, relpath)
 
     def _call(self, method, *args):
-        try:
-            resp = self._call2(method, *args)
-        except errors.ErrorFromSmartServer, err:
-            self._translate_error(err.error_tuple)
-        self._translate_error(resp)
+        resp = self._call2(method, *args)
+        self._ensure_ok(resp)
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
         try:
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err.error_tuple)
+            self._translate_error(err)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         try:
             return self._client.call_with_body_bytes(method, args, body)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err.error_tuple)
+            self._translate_error(err)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -192,7 +189,7 @@ class RemoteTransport(transport.ConnectedTransport):
         elif resp == ('no', ):
             return False
         else:
-            self._translate_error(resp)
+            raise errors.UnexpectedSmartServerResponse(resp)
 
     def get(self, relpath):
         """Return file-like object reading the contents of a remote file.
@@ -206,7 +203,7 @@ class RemoteTransport(transport.ConnectedTransport):
         try:
             resp, response_handler = self._client.call_expecting_body('get', remote)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err.error_tuple, relpath)
+            self._translate_error(err, relpath)
         if resp != ('ok', ):
             response_handler.cancel_read_body()
             raise errors.UnexpectedSmartServerResponse(resp)
@@ -221,7 +218,6 @@ class RemoteTransport(transport.ConnectedTransport):
     def mkdir(self, relpath, mode=None):
         resp = self._call2('mkdir', self._remote_path(relpath),
             self._serialise_optional_mode(mode))
-        self._translate_error(resp)
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
@@ -243,7 +239,7 @@ class RemoteTransport(transport.ConnectedTransport):
         resp = self._call_with_body_bytes('put',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             upload_contents)
-        self._translate_error(resp)
+        self._ensure_ok(resp)
         return len(upload_contents)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
@@ -260,7 +256,7 @@ class RemoteTransport(transport.ConnectedTransport):
             (self._remote_path(relpath), self._serialise_optional_mode(mode),
              create_parent_str, self._serialise_optional_mode(dir_mode)),
             bytes)
-        self._translate_error(resp)
+        self._ensure_ok(resp)
 
     def put_file(self, relpath, upload_file, mode=None):
         # its not ideal to seek back, but currently put_non_atomic_file depends
@@ -290,11 +286,11 @@ class RemoteTransport(transport.ConnectedTransport):
             bytes)
         if resp[0] == 'appended':
             return int(resp[1])
-        self._translate_error(resp)
+        raise errors.UnexpectedSmartServerResponse(resp)
 
     def delete(self, relpath):
         resp = self._call2('delete', self._remote_path(relpath))
-        self._translate_error(resp)
+        self._ensure_ok(resp)
 
     def external_url(self):
         """See bzrlib.transport.Transport.external_url."""
@@ -322,7 +318,7 @@ class RemoteTransport(transport.ConnectedTransport):
                 [(c.start, c.length) for c in coalesced])
             resp, response_handler = result
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err.error_tuple)
+            self._translate_error(err)
 
         if resp[0] != 'readv':
             # This should raise an exception
@@ -381,59 +377,12 @@ class RemoteTransport(transport.ConnectedTransport):
     def rmdir(self, relpath):
         resp = self._call('rmdir', self._remote_path(relpath))
 
-    def _translate_error(self, resp, orig_path=None):
-        """Raise an exception from a response"""
-        if resp is None:
-            what = None
-        else:
-            what = resp[0]
-        if what == 'ok':
-            return
-        elif what == 'NoSuchFile':
-            if orig_path is not None:
-                error_path = orig_path
-            else:
-                error_path = resp[1]
-            raise errors.NoSuchFile(error_path)
-        elif what == 'error':
-            raise errors.SmartProtocolError(unicode(resp[1]))
-        elif what == 'FileExists':
-            raise errors.FileExists(resp[1])
-        elif what == 'DirectoryNotEmpty':
-            raise errors.DirectoryNotEmpty(resp[1])
-        elif what == 'ShortReadvError':
-            raise errors.ShortReadvError(resp[1], int(resp[2]),
-                                         int(resp[3]), int(resp[4]))
-        elif what in ('UnicodeEncodeError', 'UnicodeDecodeError'):
-            encoding = str(resp[1]) # encoding must always be a string
-            val = resp[2]
-            start = int(resp[3])
-            end = int(resp[4])
-            reason = str(resp[5]) # reason must always be a string
-            if val.startswith('u:'):
-                val = val[2:].decode('utf-8')
-            elif val.startswith('s:'):
-                val = val[2:].decode('base64')
-            if what == 'UnicodeDecodeError':
-                raise UnicodeDecodeError(encoding, val, start, end, reason)
-            elif what == 'UnicodeEncodeError':
-                raise UnicodeEncodeError(encoding, val, start, end, reason)
-        elif what == "ReadOnlyError":
-            raise errors.TransportNotPossible('readonly transport')
-        elif what == "ReadError":
-            if orig_path is not None:
-                error_path = orig_path
-            else:
-                error_path = resp[1]
-            raise errors.ReadError(error_path)
-        elif what == "PermissionDenied":
-            if orig_path is not None:
-                error_path = orig_path
-            else:
-                error_path = resp[1]
-            raise errors.PermissionDenied(error_path)
-        else:
-            raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
+    def _ensure_ok(self, resp):
+        if resp[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(resp)
+        
+    def _translate_error(self, err, orig_path=None):
+        remote._translate_error(err, path=orig_path)
 
     def disconnect(self):
         self.get_smart_medium().disconnect()
@@ -442,8 +391,7 @@ class RemoteTransport(transport.ConnectedTransport):
         resp = self._call2('stat', self._remote_path(relpath))
         if resp[0] == 'stat':
             return _SmartStat(int(resp[1]), int(resp[2], 8))
-        else:
-            self._translate_error(resp)
+        raise errors.UnexpectedSmartServerResponse(resp)
 
     ## def lock_read(self, relpath):
     ##     """Lock the given file for shared (read) access.
@@ -465,15 +413,13 @@ class RemoteTransport(transport.ConnectedTransport):
         resp = self._call2('list_dir', self._remote_path(relpath))
         if resp[0] == 'names':
             return [name.encode('ascii') for name in resp[1:]]
-        else:
-            self._translate_error(resp)
+        raise errors.UnexpectedSmartServerResponse(resp)
 
     def iter_files_recursive(self):
         resp = self._call2('iter_files_recursive', self._remote_path(''))
         if resp[0] == 'names':
             return resp[1:]
-        else:
-            self._translate_error(resp)
+        raise errors.UnexpectedSmartServerResponse(resp)
 
 
 class RemoteTCPTransport(RemoteTransport):
