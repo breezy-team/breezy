@@ -60,8 +60,8 @@ class RemoteTransport(transport.ConnectedTransport):
     RemoteTCPTransport, etc.
     """
 
-    # When making a readv request, cap it at requesting 50MB of data
-    _max_readv_bytes = 50*1024*1024
+    # When making a readv request, cap it at requesting 5MB of data
+    _max_readv_bytes = 5*1024*1024
 
     # IMPORTANT FOR IMPLEMENTORS: RemoteTransport MUST NOT be given encoding
     # responsibilities: Put those on SmartClient or similar. This is vital for
@@ -324,7 +324,7 @@ class RemoteTransport(transport.ConnectedTransport):
         cur_request = []
         cur_len = 0
         for c in coalesced:
-            if c.length + cur_len > self._max_readv_byte:
+            if c.length + cur_len > self._max_readv_bytes:
                 requests.append(cur_request)
                 cur_request = []
                 cur_len = 0
@@ -332,8 +332,9 @@ class RemoteTransport(transport.ConnectedTransport):
             cur_request.append(c)
             cur_len += c.length
         if 'hpss' in debug.debug_flags:
-            trace.mutter('readv %s offsets => %s coalesced => %s requests',
-                         len(offsets), len(coalesced), len(requests))
+            trace.mutter('%s.readv %s offsets => %s coalesced => %s requests',
+                         self.__class__.__name__, len(offsets), len(coalesced),
+                         len(requests))
         if cur_request:
             requests.append(cur_request)
         # Cache the results, but only until they have been fulfilled
