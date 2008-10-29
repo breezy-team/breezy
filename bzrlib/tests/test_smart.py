@@ -1037,6 +1037,53 @@ class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
             SmartServerResponse(('yes',)), response)
 
 
+class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
+
+    def make_repo_needing_autopacking(self, path='.'):
+        # Make a repo in need of autopacking.
+        tree = self.make_branch_and_tree('.', format='pack-0.92')
+        repo = tree.branch.repository
+        # monkey-patch the pack collection to disable autopacking
+        repo._pack_collection._max_pack_count = lambda count: count
+        for x in range(10):
+            tree.commit('commit %s' % x)
+        self.assertEqual(10, len(repo._pack_collection.names()))
+        del repo._pack_collection._max_pack_count
+        return repo
+
+    def test_autopack_needed(self):
+        repo = self.make_repo_needing_autopacking()
+        backing = self.get_transport()
+        request = smart.packrepository.SmartServerPackRepositoryAutopack(
+            backing)
+        response = request.execute('')
+        self.assertEqual(SmartServerResponse(('ok',)), response)
+        repo._pack_collection.reload_pack_names()
+        self.assertEqual(1, len(repo._pack_collection.names()))
+    
+    def test_autopack_not_needed(self):
+        tree = self.make_branch_and_tree('.', format='pack-0.92')
+        repo = tree.branch.repository
+        for x in range(9):
+            tree.commit('commit %s' % x)
+        backing = self.get_transport()
+        request = smart.packrepository.SmartServerPackRepositoryAutopack(
+            backing)
+        response = request.execute('')
+        self.assertEqual(SmartServerResponse(('ok',)), response)
+        repo._pack_collection.reload_pack_names()
+        self.assertEqual(9, len(repo._pack_collection.names()))
+    
+    def test_autopack_on_nonpack_format(self):
+        repo = self.make_repository('.', format='knit')
+        backing = self.get_transport()
+        request = smart.packrepository.SmartServerPackRepositoryAutopack(
+            backing)
+        response = request.execute('')
+        self.assertEqual(
+            FailedSmartServerResponse(('NotPackRepository',)), response)
+        
+
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
 
@@ -1082,6 +1129,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)
+        self.assertEqual(
+            smart.request.request_handlers.get('PackRepository.autopack'),
+            smart.packrepository.SmartServerPackRepositoryAutopack)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.gather_stats'),
             smart.repository.SmartServerRepositoryGatherStats)

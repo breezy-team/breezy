@@ -171,14 +171,7 @@ class FakeClient(_SmartClient):
     """Lookalike for _SmartClient allowing testing."""
     
     def __init__(self, fake_medium_base='fake base'):
-        """Create a FakeClient.
-
-        :param responses: A list of response-tuple, body-data pairs to be sent
-            back to callers.  A special case is if the response-tuple is
-            'unknown verb', then a UnknownSmartMethod will be raised for that
-            call, using the second element of the tuple as the verb in the
-            exception.
-        """
+        """Create a FakeClient."""
         self.responses = []
         self._calls = []
         self.expecting_body = False
@@ -1450,6 +1443,73 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         src_repo.copy_content_into(dest_repo)
 
 
+class _StubRealPackRepository(object):
+
+    def __init__(self, calls):
+        self._pack_collection = _StubPackCollection(calls)
+
+
+class _StubPackCollection(object):
+
+    def __init__(self, calls):
+        self.calls = calls
+
+    def autopack(self):
+        self.calls.append(('pack collection autopack',))
+
+    def reload_pack_names(self):
+        self.calls.append(('pack collection reload_pack_names',))
+
+    
+class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
+    """Tests for RemoteRepository.autopack implementation."""
+
+    def test_ok(self):
+        """When the server returns 'ok' and there's no _real_repository, then
+        nothing else happens: the autopack method is done.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'PackRepository.autopack', ('quack/',), 'success', ('ok',))
+        repo.autopack()
+        client.finished_test()
+
+    def test_ok_with_real_repo(self):
+        """When the server returns 'ok' and there is a _real_repository, then
+        the _real_repository's reload_pack_name's method will be called.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'PackRepository.autopack', ('quack/',),
+            'success', ('ok',))
+        repo._real_repository = _StubRealPackRepository(client._calls)
+        repo.autopack()
+        self.assertEqual(
+            [('call', 'PackRepository.autopack', ('quack/',)),
+             ('pack collection reload_pack_names',)],
+            client._calls)
+        
+    def test_backwards_compatibility(self):
+        """If the server does not recognise the PackRepository.autopack verb,
+        fallback to the real_repository's implementation.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_unknown_method_response('PackRepository.autopack')
+        def stub_ensure_real():
+            client._calls.append(('_ensure_real',))
+            repo._real_repository = _StubRealPackRepository(client._calls)
+        repo._ensure_real = stub_ensure_real
+        repo.autopack()
+        self.assertEqual(
+            [('call', 'PackRepository.autopack', ('quack/',)),
+             ('_ensure_real',),
+             ('pack collection autopack',)],
+            client._calls)
+
+
 class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
     """Base class for unit tests for bzrlib.remote._translate_error."""
 
@@ -1483,7 +1543,7 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
                 **context)
         return translated_error
 
-    
+
 class TestErrorTranslationSuccess(TestErrorTranslationBase):
     """Unit tests for bzrlib.remote._translate_error.
     
@@ -1550,6 +1610,14 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
             ('Diverged',), branch=branch, other_branch=other_branch)
         expected_error = errors.DivergedBranches(branch, other_branch)
         self.assertEqual(expected_error, translated_error)
+
+    def test_NotPackRepository(self):
+        repository = self.make_repository('')
+        translated_error = self.translateTuple(
+            ('NotPackRepository',), repository=repository)
+        self.assertIsInstance(translated_error, errors.InternalBzrError)
+        self.assertContainsRe(
+            str(translated_error), 'is not a pack repository')
 
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):

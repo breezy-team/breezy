@@ -25,15 +25,23 @@ from bzrlib.smart.request import (
 
 from bzrlib.smart.repository import (
     SmartServerRepositoryRequest,
-    SmartServerRepositoryReadLocked,
     )
 
 
 # XXX: define a base class that checks that 'repository' is a pack repo.
 
-class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
+class SmartServerPackRepoRequest(SmartServerRepositoryRequest):
 
-    def do_repository_request(self, repository):
+    def do_repository_request(self, repository, *args):
+        pack_collection = getattr(repository, '_pack_collection', None)
+        if pack_collection is None:
+            return FailedSmartServerResponse(('NotPackRepository',))
+        return self.do_pack_repo_request(repository, *args)
+
+
+class SmartServerPackRepositoryAutopack(SmartServerPackRepoRequest):
+
+    def do_pack_repo_request(self, repository):
         repository.lock_write()
         try:
             repository._pack_collection.autopack()
@@ -42,16 +50,20 @@ class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
-class SmartServerPackRepositoryCheckReferences(SmartServerRepositoryReadLocked):
+class SmartServerPackRepositoryCheckReferences(SmartServerPackRepoRequest):
 
-    def do_readlocked_repository_request(self, repository, *external_refs):
-        external_refs = set(
-            tuple(external_ref) for external_ref in external_refs)
+    def do_pack_repo_request(self, repository, *external_refs):
+        repository.lock_read()
         try:
-            repository._pack_collection._check_references_present(
-                external_refs)
-        except errors.RevisionNotPresent, e:
-            return FailedSmartServerResponse(
-                ('RevisionNotPresent', e.revision_id, e.file_id))
+            external_refs = set(
+                tuple(external_ref) for external_ref in external_refs)
+            try:
+                repository._pack_collection._check_references_present(
+                    external_refs)
+            except errors.RevisionNotPresent, e:
+                return FailedSmartServerResponse(
+                    ('RevisionNotPresent', e.revision_id, e.file_id))
+        finally:
+            repository.unlock()
         return SuccessfulSmartServerResponse(('ok',))
 

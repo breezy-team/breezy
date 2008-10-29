@@ -1215,6 +1215,13 @@ class RemoteRepository(object):
             response = self._client.call('PackRepository.autopack', path)
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_repository._pack_collection.autopack()
+            return
+        if self._real_repository is not None:
+            # Reset the real repository's cache of pack names.
+            self._real_repository._pack_collection.reload_pack_names()
         if response != ('ok',):
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -1834,4 +1841,11 @@ def _translate_error(err, **context):
         raise errors.UnstackableRepositoryFormat(*err.error_args)
     elif err.error_verb == 'NotStacked':
         raise errors.NotStacked(branch=find('branch'))
+    elif err.error_verb == 'NotPackRepository':
+        # There's no specific exception to raise for this, because it shouldn't
+        # happen unless something has changed the remote repo's format between
+        # smart requests.
+        raise errors.InternalBzrError(
+            'Tried to use PackRepository verb, but remote side says '
+            '%s is not a pack repository.' % (find('repository')))
     raise errors.UnknownErrorFromSmartServer(err)
