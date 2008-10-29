@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import errno
+import sys
 
 from bzrlib import (
     commands,
@@ -134,3 +135,43 @@ class TestSeeAlso(tests.TestCase):
         self.assertEqual(['bar', 'foo', 'gam'],
             command.get_see_also(['gam', 'bar', 'gam']))
 
+
+class TestRegisterLazy(tests.TestCase):
+
+    def setUp(self):
+        import bzrlib.tests.fake_command
+        del sys.modules['bzrlib.tests.fake_command']
+        global lazy_command_imported
+        lazy_command_imported = False
+
+    @staticmethod
+    def remove_fake():
+        commands.plugin_cmds.remove('fake')
+
+    def assertIsFakeCommand(self, cmd_obj):
+        from bzrlib.tests.fake_command import cmd_fake
+        self.assertIsInstance(cmd_obj, cmd_fake)
+
+    def test_register_lazy(self):
+        """Ensure lazy registration works"""
+        commands.plugin_cmds.register_lazy('cmd_fake', [],
+                                           'bzrlib.tests.fake_command')
+        self.addCleanup(self.remove_fake)
+        self.assertFalse(lazy_command_imported)
+        fake_instance = commands.get_cmd_object('fake')
+        self.assertTrue(lazy_command_imported)
+        self.assertIsFakeCommand(fake_instance)
+
+    def test_get_unrelated_does_not_import(self):
+        commands.plugin_cmds.register_lazy('cmd_fake', [],
+                                           'bzrlib.tests.fake_command')
+        self.addCleanup(self.remove_fake)
+        commands.get_cmd_object('status')
+        self.assertFalse(lazy_command_imported)
+
+    def test_aliases(self):
+        commands.plugin_cmds.register_lazy('cmd_fake', ['fake_alias'],
+                                           'bzrlib.tests.fake_command')
+        self.addCleanup(self.remove_fake)
+        fake_instance = commands.get_cmd_object('fake_alias')
+        self.assertIsFakeCommand(fake_instance)
