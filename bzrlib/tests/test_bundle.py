@@ -1582,7 +1582,7 @@ class TestWriteOperationOutputsNote(TestCaseWithTransport):
         repository = self.make_repository('repo')
         op = v4.BundleWriteOperation('null:', 'null:', repository, StringIO())
         notes = self.applyCaptureNotes(op.do_write)[1]
-        self.assertEqual([('Bundling %d revision(s).', (0,))], notes)
+        self.assertEqual(['Bundling 0 revision(s).'], notes)
 
 
 class TestReadMergeableFromUrl(TestCaseWithTransport):

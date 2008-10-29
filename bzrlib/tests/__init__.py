@@ -1724,7 +1724,7 @@ class TestCase(unittest.TestCase):
         trace_note = bzrlib.trace.note
         notes = []
         def note(fmt, *args):
-            notes.append((fmt, args))
+            notes.append((fmt % args))
         bzrlib.trace.note = note
         try:
             retval = kallable(*args, **kwargs)
