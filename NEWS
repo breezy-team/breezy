@@ -52,6 +52,10 @@ IN DEVELOPMENT
     * API versioning support now has a multiple-version checking api
       ``require_any_api``. (Robert Collins, #279447)
 
+    * ``bzr branch --stacked`` from a smart server to a standalone branch 
+      works again.  This fixes a regression in 1.7 and 1.8.
+      (Andrew Bennetts, #270397)
+
     * ``bzr co`` uses less memory. It used to unpack the entire WT into
       memory before writing it to disk. This was a little bit faster, but
       consumed lots of memory. (John Arbash Meinel, #269456)
