@@ -1760,6 +1760,7 @@ def _translate_error(err, **context):
       - bzrdir
       - token
       - other_branch
+      - path
 
     If the error from the server doesn't match a known pattern, then
     UnknownErrorFromSmartServer is raised.
@@ -1767,9 +1768,23 @@ def _translate_error(err, **context):
     def find(name):
         try:
             return context[name]
-        except KeyError, keyErr:
-            mutter('Missing key %r in context %r', keyErr.args[0], context)
+        except KeyError, key_err:
+            mutter('Missing key %r in context %r', key_err.args[0], context)
             raise err
+    def get_path():
+        """Get the path from the context if present, otherwise use first error
+        arg.
+        """
+        try:
+            return context['path']
+        except KeyError, key_err:
+            try:
+                return err.error_args[0]
+            except IndexError, idx_err:
+                mutter(
+                    'Missing key %r in context %r', key_err.args[0], context)
+                raise err
+
     if err.error_verb == 'NoSuchRevision':
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
@@ -1797,10 +1812,13 @@ def _translate_error(err, **context):
     elif err.error_verb == 'NotStacked':
         raise errors.NotStacked(branch=find('branch'))
     elif err.error_verb == 'PermissionDenied':
-        path = extra = None
-        if len(err.error_args) >= 1:
-            path = err.error_args[0]
+        path = get_path()
         if len(err.error_args) >= 2:
             extra = err.error_args[1]
+        else:
+            extra = None
         raise errors.PermissionDenied(path, extra=extra)
+    elif err.error_verb == 'ReadError':
+        path = get_path()
+        raise errors.ReadError(path)
     raise errors.UnknownErrorFromSmartServer(err)
