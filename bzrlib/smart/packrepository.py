@@ -16,7 +16,6 @@
 
 """Server-side pack repository related request implmentations."""
 
-from bzrlib import errors
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SuccessfulSmartServerResponse,
@@ -27,8 +26,6 @@ from bzrlib.smart.repository import (
     SmartServerRepositoryRequest,
     )
 
-
-# XXX: define a base class that checks that 'repository' is a pack repo.
 
 class SmartServerPackRepoRequest(SmartServerRepositoryRequest):
 
@@ -49,21 +46,4 @@ class SmartServerPackRepositoryAutopack(SmartServerPackRepoRequest):
             repository.unlock()
         return SuccessfulSmartServerResponse(('ok',))
 
-
-class SmartServerPackRepositoryCheckReferences(SmartServerPackRepoRequest):
-
-    def do_pack_repo_request(self, repository, *external_refs):
-        repository.lock_read()
-        try:
-            external_refs = set(
-                tuple(external_ref) for external_ref in external_refs)
-            try:
-                repository._pack_collection._check_references_present(
-                    external_refs)
-            except errors.RevisionNotPresent, e:
-                return FailedSmartServerResponse(
-                    ('RevisionNotPresent', e.revision_id, e.file_id))
-        finally:
-            repository.unlock()
-        return SuccessfulSmartServerResponse(('ok',))
 

@@ -39,7 +39,6 @@ from bzrlib.errors import (
     )
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
-from bzrlib.repofmt.pack_repo import Packer
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 
@@ -1224,33 +1223,6 @@ class RemoteRepository(object):
             self._real_repository._pack_collection.reload_pack_names()
         if response != ('ok',):
             raise errors.UnexpectedSmartServerResponse(response)
-
-
-class RemotePacker(Packer):
-
-    def __init__(self, path, client, pack_collection, packs, suffix, revision_ids=None):
-        self.path = path
-        self.client = client
-        Packer.__init__(self, pack_collection, packs, suffix, revision_ids)
-
-    def _check_references(self):
-        Packer._check_references(self)
-#        external_refs = self.new_pack._external_compression_parents_of_texts()
-#        if external_refs:
-#            try:
-#                # XXX: external_refs can be pretty long.  It's probably still
-#                # more time- and bandwidth-efficient to send this list rather
-#                # than doing lots of readvs, but ideally we wouldn't duplicate
-#                # the data that's in the pack we're about to transfer.
-#                self.client.call(
-#                    'PackRepository.check_references', self.path,
-#                    *external_refs)
-#            except errors.ErrorFromSmartServer, err:
-#                if err.error_verb == 'RevisionNotPresent':
-#                    missing_revision_id, missing_file_id = err.error_args
-#                    raise errors.RevisionNotPresent(
-#                        missing_revision_id, missing_file_id)
-#                raise
 
 
 class RemoteBranchLockableFiles(LockableFiles):

@@ -3138,7 +3138,7 @@ class InterPackToRemotePack(InterPackRepo):
     RemoteRepository.
 
     This will use the get_parent_map RPC rather than plain readvs, and also
-    uses RPCs for Packer._check_references and for autopacking.
+    uses an RPC for autopacking.
     """
 
     _walk_to_common_revisions_batch_size = 50
@@ -3156,14 +3156,10 @@ class InterPackToRemotePack(InterPackRepo):
         return False
 
     def _pack(self, source, target, revision_ids):
+        from bzrlib.repofmt.pack_repo import Packer
         packs = source._pack_collection.all_packs()
-        remote_client = target._client
-        remote_path = target.bzrdir._path_for_remote_call(remote_client)
-        remote_packer = remote.RemotePacker(
-            remote_path, remote_client,
-            target._real_repository._pack_collection, packs, '.fetch',
-            revision_ids)
-        pack = remote_packer.pack()
+        pack = Packer(target._pack_collection, packs, '.fetch',
+            revision_ids).pack()
         if pack is not None:
             target._real_repository._pack_collection._save_pack_names()
             copied_revs = pack.get_revision_count()
