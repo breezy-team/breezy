@@ -2357,9 +2357,7 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
 class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     """A repository with rich roots, no subtrees, stacking and btree indexes.
 
-    This format should be retained until the second release after bzr 1.7.
-
-    1.6.1-subtree[as it might have been] with B+Tree indices.
+    1.6-rich-root with B+Tree indices.
     """
 
     repository_class = KnitPackRepository
