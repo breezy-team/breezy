@@ -2353,8 +2353,16 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
+    _walk_to_common_revisions_batch_size = 1
     _optimisers = []
     """The available optimised InterRepository types."""
+
+    def __init__(self, source, target):
+        InterObject.__init__(self, source, target)
+        # These two attributes may be overridden by e.g. InterOtherToRemote to
+        # provide a faster implementation.
+        self.target_get_graph = self.target.get_graph
+        self.target_get_parent_map = self.target.get_parent_map
 
     def copy_content(self, revision_id=None):
         raise NotImplementedError(self.copy_content)
@@ -2386,8 +2394,13 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        target_graph = self.target.get_graph()
+        target_graph = self.target_get_graph()
         revision_ids = frozenset(revision_ids)
+        # Fast path for the case where all the revisions are already in the
+        # target repo.
+        # (Although this does incur an extra round trip for the
+        # fairly common case where the target doesn't already have the revision
+        # we're pushing.)
         if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
             return graph.SearchResult(revision_ids, set(), 0, set())
         missing_revs = set()
@@ -2395,25 +2408,40 @@ class InterRepository(InterObject):
         # ensure we don't pay silly lookup costs.
         searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
+        searcher_exhausted = False
         while True:
-            try:
-                next_revs, ghosts = searcher.next_with_ghosts()
-            except StopIteration:
-                break
-            if revision_ids.intersection(ghosts):
-                absent_ids = set(revision_ids.intersection(ghosts))
-                # If all absent_ids are present in target, no error is needed.
-                absent_ids.difference_update(
-                    set(target_graph.get_parent_map(absent_ids)))
-                if absent_ids:
-                    raise errors.NoSuchRevision(self.source, absent_ids.pop())
-            # we don't care about other ghosts as we can't fetch them and
+            next_revs = set()
+            ghosts = set()
+            # Iterate the searcher until we have enough next_revs
+            while len(next_revs) < self._walk_to_common_revisions_batch_size:
+                try:
+                    next_revs_part, ghosts_part = searcher.next_with_ghosts()
+                    next_revs.update(next_revs_part)
+                    ghosts.update(ghosts_part)
+                except StopIteration:
+                    searcher_exhausted = True
+                    break
+            # If there are ghosts in the source graph, and the caller asked for
+            # them, make sure that they are present in the target.
+            # We don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
-            next_revs = set(next_revs)
-            # we always have NULL_REVISION present.
-            have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
-            missing_revs.update(next_revs - have_revs)
-            searcher.stop_searching_any(have_revs)
+            ghosts_to_check = set(revision_ids.intersection(ghosts))
+            revs_to_get = set(next_revs).union(ghosts_to_check)
+            if revs_to_get:
+                have_revs = set(target_graph.get_parent_map(revs_to_get))
+                # we always have NULL_REVISION present.
+                have_revs = have_revs.union(null_set)
+                # Check if the target is missing any ghosts we need.
+                ghosts_to_check.difference_update(have_revs)
+                if ghosts_to_check:
+                    # One of the caller's revision_ids is a ghost in both the
+                    # source and the target.
+                    raise errors.NoSuchRevision(
+                        self.source, ghosts_to_check.pop())
+                missing_revs.update(next_revs - have_revs)
+                searcher.stop_searching_any(have_revs)
+            if searcher_exhausted:
+                break
         return searcher.get_result()
    
     @deprecated_method(one_two)
@@ -2781,7 +2809,7 @@ class InterPackRepo(InterSameDataRepository):
             # till then:
             source_revision_ids = frozenset(self.source.all_revision_ids())
             revision_ids = source_revision_ids - \
-                frozenset(self.target.get_parent_map(source_revision_ids))
+                frozenset(self.target_get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
             index = self.target._pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
@@ -2830,7 +2858,7 @@ class InterPackRepo(InterSameDataRepository):
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and vice versa, anywhere in the history of revision_id.
-            graph = self.target.get_graph(other_repository=self.source)
+            graph = self.target_get_graph(other_repository=self.source)
             searcher = graph._make_breadth_first_searcher([revision_id])
             found_ids = set()
             while True:
@@ -2846,7 +2874,7 @@ class InterPackRepo(InterSameDataRepository):
             # Double query here: should be able to avoid this by changing the
             # graph api further.
             result_set = found_ids - frozenset(
-                self.target.get_parent_map(found_ids))
+                self.target_get_parent_map(found_ids))
         else:
             source_ids = self.source.all_revision_ids()
             # source_ids is the worst possible case we may need to pull.
@@ -3022,6 +3050,8 @@ class InterDifferingSerializer(InterKnitRepo):
 
 class InterOtherToRemote(InterRepository):
 
+    _walk_to_common_revisions_batch_size = 50
+
     def __init__(self, source, target):
         InterRepository.__init__(self, source, target)
         self._real_inter = None
@@ -3037,6 +3067,9 @@ class InterOtherToRemote(InterRepository):
             self.target._ensure_real()
             real_target = self.target._real_repository
             self._real_inter = InterRepository.get(self.source, real_target)
+            # Make _real_inter use the RemoteRepository for get_parent_map
+            self._real_inter.target_get_graph = self.target.get_graph
+            self._real_inter.target_get_parent_map = self.target.get_parent_map
     
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()

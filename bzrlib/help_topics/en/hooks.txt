@@ -12,19 +12,36 @@ See `Using hooks`_ in the User Guide for examples.
 
 .. _Using hooks: ../user-guide/index.html#using-hooks
 
-The class of each hook is given immediately after each hook type below.
+The class that contains each hook is given in parentheses immediately
+after each hook type below.
+
+Each description also indicates whether the hook runs on the client (the
+machine where bzr was invoked) or the server (the machine addressed by
+the branch URL).  These may be, but are not necessarily, the same machine.
+
+Plugins (including hooks) are run on the server if any of these is true:
+
+  * The remote branch is on the same machine as the client, and the client
+    has plugins enabled.
+
+  * The connection is via a smart server (accessed with a URL starting with
+    "bzr://", "bzr+ssh://" or "bzr+http://", or accessed via a "http://"
+    URL when a smart server is available via HTTP), and that server has
+    plugins enabled.
 
 
 open (Branch)
 -------------
 
 Called after a Branch object is opened, with the Branch object.
+Runs on the client and on the server.
 
 
 post_push (Branch)
 ------------------
 
 Run after ``push`` has completed.
+Runs on the client.
 
 The hook signature is (push_result), containing the members
 
@@ -60,6 +77,7 @@ post_pull (Branch)
 ------------------
 
 Run after ``pull`` has completed.
+Runs on the client.
 
 The hook signature is (push_result) containing the members
 (source, local, master, old_revno, old_revid, new_revno, new_revid)
@@ -73,6 +91,8 @@ start_commit (MutableTree)
 --------------------------
 
 Run on the working tree before ``commit`` starts processing it.
+Runs on the client.
+
 Unlike the ``pre_commit`` hook (see below), the ``start_commit`` hook
 can safely change the working tree.
 
@@ -83,6 +103,7 @@ pre_commit (Branch)
 -------------------
 
 Run before ``commit`` has completed.
+Runs on the client.
 
 The hook signature is (local, master, old_revno, old_revid, future_revno,
 future_revid, tree_delta, future_tree) where old_revno is NULL_REVISION for
@@ -96,6 +117,7 @@ post_commit (Branch)
 --------------------
 
 Run after ``commit`` has completed.
+Runs on the client.
 
 The hook signature is (local, master, old_revno, old_revid, new_revno,
 new_revid) old_revid is NULL_REVISION for the first commit to a branch.
@@ -105,6 +127,7 @@ post_uncommit (Branch)
 ----------------------
 
 Run after ``uncommit`` has completed.
+Runs on the client.
 
 The api signature is (local, master, old_revno, old_revid, new_revno,
 new_revid) where local is the local branch or None, master is the target
@@ -115,6 +138,7 @@ pre_change_branch_tip (Branch)
 -------------------------------
 
 Run before a branch tip has been changed, while the branch is write-locked.
+Runs on the client and on the server.
 Note that push, pull, commit and uncommit all invoke this hook.
 
 The hook signature is (params), where params is an object containing
@@ -143,7 +167,9 @@ post_change_branch_tip (Branch)
 -------------------------------
 
 Run after a branch tip has been changed but while the branch is still
-write-locked. Note that push, pull, commit and uncommit all invoke this hook.
+write-locked.
+Runs on the client and on the server.
+Note that push, pull, commit and uncommit all invoke this hook.
 
 The hook signature is (params), where params is an object containing
 the members
@@ -200,6 +226,8 @@ server_started (SmartTCPServer)
 -------------------------------
 
 Invoked whenever the server starts serving a directory.
+Runs on the server.
+
 The hook signature is (backing urls, public url), where:
 
   backing_url
@@ -213,6 +241,8 @@ server_stopped (SmartTCPServer)
 -------------------------------
 
 Invoked whenever the server stops serving a directory.
+Runs on the server.
+
 The hook signature is the same as ``server_started``.
 
 
@@ -220,10 +250,14 @@ lock_acquired (LockDir)
 ----------------------------
 
 Called with a LockResult object when a lock has been successfully acquired.
+Runs on the client and on the server.
+
 (New in 1.8.)
 
 lock_released (LockDir)
 ----------------------------
 
 Called with a LockResult object when a lock has been successfully released.
+Runs on the client.
+
 (New in 1.8.)

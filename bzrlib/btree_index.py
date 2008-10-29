@@ -351,12 +351,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 # First key triggers the first row
                 rows.append(_LeafBuilderRow())
             key_count += 1
-            # TODO: Flattening the node into a string key and a line should
-            #       probably be put into a pyrex function. We can do a quick
-            #       iter over all the entries to determine the final length,
-            #       and then do a single malloc() rather than lots of
-            #       intermediate mallocs as we build everything up.
-            #       ATM 3 / 13s are spent flattening nodes (10s is compressing)
             string_key, line = _btree_serializer._flatten_node(node,
                                     self.reference_lists)
             self._add_key(string_key, line, rows)
@@ -611,7 +605,7 @@ class BTreeGraphIndex(object):
         self._name = name
         self._size = size
         self._file = None
-        self._page_size = transport.recommended_page_size()
+        self._recommended_pages = self._compute_recommended_pages()
         self._root_node = None
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
@@ -632,15 +626,7 @@ class BTreeGraphIndex(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def _get_root_node(self):
-        if self._root_node is None:
-            # We may not have a root node yet
-            nodes = list(self._read_nodes([0]))
-            if len(nodes):
-                self._root_node = nodes[0][1]
-        return self._root_node
-
-    def _cache_nodes(self, nodes, cache):
+    def _get_and_cache_nodes(self, nodes):
         """Read nodes and cache them in the lru.
 
         The nodes list supplied is sorted and then read from disk, each node
@@ -653,17 +639,190 @@ class BTreeGraphIndex(object):
 
         :return: A dict of {node_pos: node}
         """
-        if len(nodes) > cache._max_cache:
-            trace.mutter('Requesting %s > %s nodes, not all will be cached',
-                         len(nodes), cache._max_cache)
         found = {}
+        start_of_leaves = None
         for node_pos, node in self._read_nodes(sorted(nodes)):
             if node_pos == 0: # Special case
                 self._root_node = node
             else:
-                cache.add(node_pos, node)
+                if start_of_leaves is None:
+                    start_of_leaves = self._row_offsets[-2]
+                if node_pos < start_of_leaves:
+                    self._internal_node_cache.add(node_pos, node)
+                else:
+                    self._leaf_node_cache.add(node_pos, node)
             found[node_pos] = node
         return found
+
+    def _compute_recommended_pages(self):
+        """Convert transport's recommended_page_size into btree pages.
+
+        recommended_page_size is in bytes, we want to know how many _PAGE_SIZE
+        pages fit in that length.
+        """
+        recommended_read = self._transport.recommended_page_size()
+        recommended_pages = int(math.ceil(recommended_read /
+                                          float(_PAGE_SIZE)))
+        return recommended_pages
+
+    def _compute_total_pages_in_index(self):
+        """How many pages are in the index.
+
+        If we have read the header we will use the value stored there.
+        Otherwise it will be computed based on the length of the index.
+        """
+        if self._size is None:
+            raise AssertionError('_compute_total_pages_in_index should not be'
+                                 ' called when self._size is None')
+        if self._root_node is not None:
+            # This is the number of pages as defined by the header
+            return self._row_offsets[-1]
+        # This is the number of pages as defined by the size of the index. They
+        # should be indentical.
+        total_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
+        return total_pages
+
+    def _expand_offsets(self, offsets):
+        """Find extra pages to download.
+
+        The idea is that we always want to make big-enough requests (like 64kB
+        for http), so that we don't waste round trips. So given the entries
+        that we already have cached and the new pages being downloaded figure
+        out what other pages we might want to read.
+
+        See also doc/developers/btree_index_prefetch.txt for more details.
+
+        :param offsets: The offsets to be read
+        :return: A list of offsets to download
+        """
+        if 'index' in debug.debug_flags:
+            trace.mutter('expanding: %s\toffsets: %s', self._name, offsets)
+
+        if len(offsets) >= self._recommended_pages:
+            # Don't add more, we are already requesting more than enough
+            if 'index' in debug.debug_flags:
+                trace.mutter('  not expanding large request (%s >= %s)',
+                             len(offsets), self._recommended_pages)
+            return offsets
+        if self._size is None:
+            # Don't try anything, because we don't know where the file ends
+            if 'index' in debug.debug_flags:
+                trace.mutter('  not expanding without knowing index size')
+            return offsets
+        total_pages = self._compute_total_pages_in_index()
+        cached_offsets = self._get_offsets_to_cached_pages()
+        # If reading recommended_pages would read the rest of the index, just
+        # do so.
+        if total_pages - len(cached_offsets) <= self._recommended_pages:
+            # Read whatever is left
+            if cached_offsets:
+                expanded = [x for x in xrange(total_pages)
+                               if x not in cached_offsets]
+            else:
+                expanded = range(total_pages)
+            if 'index' in debug.debug_flags:
+                trace.mutter('  reading all unread pages: %s', expanded)
+            return expanded
+
+        if self._root_node is None:
+            # ATM on the first read of the root node of a large index, we don't
+            # bother pre-reading any other pages. This is because the
+            # likelyhood of actually reading interesting pages is very low.
+            # See doc/developers/btree_index_prefetch.txt for a discussion, and
+            # a possible implementation when we are guessing that the second
+            # layer index is small
+            final_offsets = offsets
+        else:
+            tree_depth = len(self._row_lengths)
+            if len(cached_offsets) < tree_depth and len(offsets) == 1:
+                # We haven't read enough to justify expansion
+                # If we are only going to read the root node, and 1 leaf node,
+                # then it isn't worth expanding our request. Once we've read at
+                # least 2 nodes, then we are probably doing a search, and we
+                # start expanding our requests.
+                if 'index' in debug.debug_flags:
+                    trace.mutter('  not expanding on first reads')
+                return offsets
+            final_offsets = self._expand_to_neighbors(offsets, cached_offsets,
+                                                      total_pages)
+
+        final_offsets = sorted(final_offsets)
+        if 'index' in debug.debug_flags:
+            trace.mutter('expanded:  %s', final_offsets)
+        return final_offsets
+
+    def _expand_to_neighbors(self, offsets, cached_offsets, total_pages):
+        """Expand requests to neighbors until we have enough pages.
+
+        This is called from _expand_offsets after policy has determined that we
+        want to expand.
+        We only want to expand requests within a given layer. We cheat a little
+        bit and assume all requests will be in the same layer. This is true
+        given the current design, but if it changes this algorithm may perform
+        oddly.
+
+        :param offsets: requested offsets
+        :param cached_offsets: offsets for pages we currently have cached
+        :return: A set() of offsets after expansion
+        """
+        final_offsets = set(offsets)
+        first = end = None
+        new_tips = set(final_offsets)
+        while len(final_offsets) < self._recommended_pages and new_tips:
+            next_tips = set()
+            for pos in new_tips:
+                if first is None:
+                    first, end = self._find_layer_first_and_end(pos)
+                previous = pos - 1
+                if (previous > 0
+                    and previous not in cached_offsets
+                    and previous not in final_offsets
+                    and previous >= first):
+                    next_tips.add(previous)
+                after = pos + 1
+                if (after < total_pages
+                    and after not in cached_offsets
+                    and after not in final_offsets
+                    and after < end):
+                    next_tips.add(after)
+                # This would keep us from going bigger than
+                # recommended_pages by only expanding the first offsets.
+                # However, if we are making a 'wide' request, it is
+                # reasonable to expand all points equally.
+                # if len(final_offsets) > recommended_pages:
+                #     break
+            final_offsets.update(next_tips)
+            new_tips = next_tips
+        return final_offsets
+
+    def _find_layer_first_and_end(self, offset):
+        """Find the start/stop nodes for the layer corresponding to offset.
+
+        :return: (first, end)
+            first is the first node in this layer
+            end is the first node of the next layer
+        """
+        first = end = 0
+        for roffset in self._row_offsets:
+            first = end
+            end = roffset
+            if offset < roffset:
+                break
+        return first, end
+
+    def _get_offsets_to_cached_pages(self):
+        """Determine what nodes we already have cached."""
+        cached_offsets = set(self._internal_node_cache.keys())
+        cached_offsets.update(self._leaf_node_cache.keys())
+        if self._root_node is not None:
+            cached_offsets.add(0)
+        return cached_offsets
+
+    def _get_root_node(self):
+        if self._root_node is None:
+            # We may not have a root node yet
+            self._get_internal_nodes([0])
+        return self._root_node
 
     def _get_nodes(self, cache, node_indexes):
         found = {}
@@ -676,7 +835,10 @@ class BTreeGraphIndex(object):
                 found[idx] = cache[idx]
             except KeyError:
                 needed.append(idx)
-        found.update(self._cache_nodes(needed, cache))
+        if not needed:
+            return found
+        needed = self._expand_offsets(needed)
+        found.update(self._get_and_cache_nodes(needed))
         return found
 
     def _get_internal_nodes(self, node_indexes):
@@ -1012,6 +1174,16 @@ class BTreeGraphIndex(object):
             self._get_root_node()
         return self._key_count
 
+    def _compute_row_offsets(self):
+        """Fill out the _row_offsets attribute based on _row_lengths."""
+        offsets = []
+        row_offset = 0
+        for row in self._row_lengths:
+            offsets.append(row_offset)
+            row_offset += row
+        offsets.append(row_offset)
+        self._row_offsets = offsets
+
     def _parse_header_from_bytes(self, bytes):
         """Parse the header from a region of bytes.
 
@@ -1053,13 +1225,7 @@ class BTreeGraphIndex(object):
                 if len(length)])
         except ValueError:
             raise errors.BadIndexOptions(self)
-        offsets = []
-        row_offset = 0
-        for row in self._row_lengths:
-            offsets.append(row_offset)
-            row_offset += row
-        offsets.append(row_offset)
-        self._row_offsets = offsets
+        self._compute_row_offsets()
 
         # calculate the bytes we have processed
         header_end = (len(signature) + sum(map(len, lines[0:4])) + 4)
@@ -1091,6 +1257,10 @@ class BTreeGraphIndex(object):
                     self._size = len(start)
                     size = min(_PAGE_SIZE, self._size)
             else:
+                if offset > self._size:
+                    raise AssertionError('tried to read past the end'
+                                         ' of the file %s > %s'
+                                         % (offset, self._size))
                 size = min(size, self._size - offset)
             ranges.append((offset, size))
         if not ranges:
