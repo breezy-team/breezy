@@ -134,6 +134,9 @@ class BzrError(StandardError):
             s = str(s)
         return s
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, str(self))
+
     def _get_format_string(self):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
