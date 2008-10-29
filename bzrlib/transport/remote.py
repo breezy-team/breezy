@@ -343,7 +343,7 @@ class RemoteTransport(transport.ConnectedTransport):
         # turn the list of offsets into a single stack to iterate
         offset_stack = iter(offsets)
         # using a list so it can be modified when passing down and coming back
-        next_offset = [cur_offset_and_size.next()]
+        next_offset = [offset_stack.next()]
         for cur_request in requests:
             try:
                 result = self._client.call_with_body_readv_array(
