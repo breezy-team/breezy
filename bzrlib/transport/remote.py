@@ -316,29 +316,50 @@ class RemoteTransport(transport.ConnectedTransport):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek))
 
-        try:
-            result = self._client.call_with_body_readv_array(
-                ('readv', self._remote_path(relpath),),
-                [(c.start, c.length) for c in coalesced])
-            resp, response_handler = result
-        except errors.ErrorFromSmartServer, err:
-            self._translate_error(err.error_tuple)
-
-        if resp[0] != 'readv':
-            # This should raise an exception
-            response_handler.cancel_read_body()
-            raise errors.UnexpectedSmartServerResponse(resp)
-
-        return self._handle_response(offsets, coalesced, response_handler)
-
-    def _handle_response(self, offsets, coalesced, response_handler):
+        max_combined = 50*1024*1024
+        # now that we've coallesced things, try to avoid making enormous
+        # requests
+        requests = []
+        cur_request = []
+        cur_len = 0
+        for c in coalesced:
+            if c.length + cur_len > max_combined:
+                requests.append(cur_request)
+                cur_request = []
+                cur_len = 0
+                continue
+            cur_request.append(c)
+            cur_len += c.length
+        if cur_request:
+            requests.append(cur_request)
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
         # turn the list of offsets into a stack
         offset_stack = iter(offsets)
+        for cur_request in requests:
+            try:
+                result = self._client.call_with_body_readv_array(
+                    ('readv', self._remote_path(relpath),),
+                    [(c.start, c.length) for c in cur_request])
+                resp, response_handler = result
+            except errors.ErrorFromSmartServer, err:
+                self._translate_error(err.error_tuple)
+
+            if resp[0] != 'readv':
+                # This should raise an exception
+                response_handler.cancel_read_body()
+                raise errors.UnexpectedSmartServerResponse(resp)
+
+            for res in self._handle_response(offset_stack, cur_request,
+                                             response_handler,
+                                             data_map):
+                yield res
+
+    def _handle_response(self, offset_stack, coalesced, response_handler,
+                         data_map):
         cur_offset_and_size = offset_stack.next()
         # FIXME: this should know how many bytes are needed, for clarity.
         data = response_handler.read_body_bytes()
-        # Cache the results, but only until they have been fulfilled
-        data_map = {}
         data_offset = 0
         for c_offset in coalesced:
             if len(data) < c_offset.length:

@@ -713,6 +713,8 @@ class Transport(object):
             offsets, in start-to-end order, with no duplicated regions,
             expanded by the transports recommended page size.
         """
+        # never make a single request larger than 1MB
+        max_length = 1*1024*1024
         offsets = sorted(offsets)
         # short circuit empty requests
         if len(offsets) == 0:
@@ -747,9 +749,12 @@ class Transport(object):
         current_finish = current_length + current_offset
         for offset, length in new_offsets[1:]:
             finish = offset + length
-            if offset > current_finish:
-                # there is a gap, output the current accumulator and start
-                # a new one for the region we're examining.
+            if (offset > current_finish
+                or (max_length and length + current_length > max_length)):
+                # there is a gap, or adding this section would create a range
+                # longer than max_length, either way, output the current
+                # accumulator and start a new one for the region we're
+                # examining.
                 offsets.append((current_offset, current_length))
                 current_offset = offset
                 current_length = length
