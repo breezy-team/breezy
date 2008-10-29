@@ -118,8 +118,8 @@ class Shelver(object):
             creator.finalize()
 
     def get_parsed_patch(self, file_id):
-        old_path = self.work_tree.id2path(file_id)
-        new_path = self.target_tree.id2path(file_id)
+        old_path = self.target_tree.id2path(file_id)
+        new_path = self.work_tree.id2path(file_id)
         try:
             patch = self.text_differ.diff(file_id, old_path, new_path, 'file',
                                           'file')

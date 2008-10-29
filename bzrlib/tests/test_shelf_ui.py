@@ -124,11 +124,12 @@ class TestShelver(tests.TestCaseWithTransport):
 
     def test_shelve_rename(self):
         tree = self.create_shelvable_tree()
-        tree.revert()
         tree.rename_one('foo', 'bar')
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve renaming foo => bar? [yNfq]', 'y')
-        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve? [yNfq]', 'y')
+        shelver.expect('Shelve? [yNfq]', 'y')
+        shelver.expect('Shelve 3 change(s)? [yNfq]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
