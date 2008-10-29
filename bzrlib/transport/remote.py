@@ -331,16 +331,19 @@ class RemoteTransport(transport.ConnectedTransport):
                 continue
             cur_request.append(c)
             cur_len += c.length
-        if 'hpss' in debug.debug_flags:
-            trace.mutter('%s.readv %s offsets => %s coalesced => %s requests',
-                         self.__class__.__name__, len(offsets), len(coalesced),
-                         len(requests))
         if cur_request:
             requests.append(cur_request)
+        if 'hpss' in debug.debug_flags:
+            trace.mutter('%s.readv %s offsets => %s coalesced'
+                         ' => %s requests (%s)',
+                         self.__class__.__name__, len(offsets), len(coalesced),
+                         len(requests), sum(map(len, requests)))
         # Cache the results, but only until they have been fulfilled
         data_map = {}
-        # turn the list of offsets into a stack
+        # turn the list of offsets into a single stack to iterate
         offset_stack = iter(offsets)
+        # using a list so it can be modified when passing down and coming back
+        next_offset = [cur_offset_and_size.next()]
         for cur_request in requests:
             try:
                 result = self._client.call_with_body_readv_array(
@@ -357,12 +360,13 @@ class RemoteTransport(transport.ConnectedTransport):
 
             for res in self._handle_response(offset_stack, cur_request,
                                              response_handler,
-                                             data_map):
+                                             data_map,
+                                             next_offset):
                 yield res
 
     def _handle_response(self, offset_stack, coalesced, response_handler,
-                         data_map):
-        cur_offset_and_size = offset_stack.next()
+                         data_map, next_offset):
+        cur_offset_and_size = next_offset[0]
         # FIXME: this should know how many bytes are needed, for clarity.
         data = response_handler.read_body_bytes()
         data_offset = 0
@@ -383,7 +387,7 @@ class RemoteTransport(transport.ConnectedTransport):
                 #       not have a real string.
                 if key == cur_offset_and_size:
                     yield cur_offset_and_size[0], this_data
-                    cur_offset_and_size = offset_stack.next()
+                    cur_offset_and_size = next_offset[0] = offset_stack.next()
                 else:
                     data_map[key] = this_data
             data_offset += c_offset.length
@@ -392,7 +396,7 @@ class RemoteTransport(transport.ConnectedTransport):
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
                 yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = offset_stack.next()
+                cur_offset_and_size = next_offset[0] = offset_stack.next()
 
     def rename(self, rel_from, rel_to):
         self._call('rename',
