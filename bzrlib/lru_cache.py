@@ -74,6 +74,17 @@ class LRUCache(object):
             return self[key]
         return default
 
+    def keys(self):
+        """Get the list of keys currently cached.
+
+        Note that values returned here may not be available by the time you
+        request them later. This is simply meant as a peak into the current
+        state.
+
+        :return: An unordered list of keys that are currently cached.
+        """
+        return self._cache.keys()
+
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
 

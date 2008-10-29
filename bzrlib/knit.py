@@ -95,6 +95,7 @@ from bzrlib.errors import (
     KnitHeaderError,
     RevisionNotPresent,
     RevisionAlreadyPresent,
+    SHA1KnitCorrupt,
     )
 from bzrlib.osutils import (
     contains_whitespace,
@@ -1054,12 +1055,7 @@ class KnitVersionedFiles(VersionedFiles):
             text = content.text()
             actual_sha = sha_strings(text)
             if actual_sha != digest:
-                raise KnitCorrupt(self,
-                    '\n  sha-1 %s'
-                    '\n  of reconstructed text does not match'
-                    '\n  expected %s'
-                    '\n  for version %s' %
-                    (actual_sha, digest, key))
+                raise SHA1KnitCorrupt(self, actual_sha, digest, key, text)
             text_map[key] = text
         return text_map, final_content
 
@@ -1669,7 +1665,6 @@ class KnitVersionedFiles(VersionedFiles):
         for source in sources:
             result.update(source.keys())
         return result
-
 
 
 class _KndxIndex(object):

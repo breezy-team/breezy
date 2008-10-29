@@ -11,10 +11,29 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * New Branch hook ``transform_fallback_location`` allows a function to
+      be called when looking up the stacked source. (Michael Hudson)
+
   IMPROVEMENTS:
+
+    * ``BTreeIndex`` code now is able to prefetch extra pages to help tune
+      the tradeoff between bandwidth and latency. Should be tuned
+      appropriately to not impact commands which need minimal information,
+      but provide a significant boost to ones that need more context. Only
+      has a direct impact on the ``--development2`` format which uses
+      btree's for the indexes. (John Arbash Meinel)
 
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
       the contents of a compressed btree file.  (John Arbash Meinel)
+
+    * ``bzr pack`` now tells the index builders to optimize for size. For
+      btree index repositories, this can save 25% of the index size
+      (mostly in the text indexes). (John Arbash Meinel)
+
+    * ``bzr push`` to an existing branch or repository on a smart server
+      is faster, due to Bazaar making more use of the ``get_parent_map``
+      RPC when querying the remote branch's revision graph.
+      (Andrew Bennetts)
 
     * default username for bzr+ssh and sftp can be configured in
       authentication.conf. (Aaron Bentley)
@@ -37,6 +56,10 @@ IN DEVELOPMENT
       memory before writing it to disk. This was a little bit faster, but
       consumed lots of memory. (John Arbash Meinel, #269456)
 
+    * ``bzr missing --quiet`` no longer prints messages about whether
+      there are missing revisions.  The exit code indicates whether there
+      were or not.  (Martin Pool, #284748)
+
     * Fixes to the ``annotate`` code. The fast-path which re-used the
       stored deltas was accidentally disabled all the time, instead of
       only when a branch was stacked. Second, the code would accidentally
@@ -44,9 +67,20 @@ IN DEVELOPMENT
       could only happen if ``bzr reconcile`` decided that the parent
       ordering was incorrect in the file graph.  (John Arbash Meinel)
 
+    * Some compatibility fixes for building the extensions with MSVC and
+      for python2.4. (John Arbash Meinel, #277484)
+
+    * The index logic is now able to reload the list of pack files if and
+      index ends up disappearing. We still don't reload if the pack data
+      itself goes missing after checking the index. This bug appears as a
+      transient failure (file not found) when another process is writing
+      to the repository.  (John Arbash Meinel, #153786)
+
   DOCUMENTATION:
 
   API CHANGES:
+
+    * commands.plugins_cmds is now a CommandRegistry, not a dict.
 
   TESTING:
 
