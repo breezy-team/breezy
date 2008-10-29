@@ -23,8 +23,8 @@ from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import CaseInsCasePresFilenameFeature
 
 class TestIncorrectUserCase(ExternalBase):
-    """Tests for when the filename as the 'correct' case on disk, but the user
-    has specified a version of the filename that differs in only by case.
+    """Tests for when the filename has the 'correct' case on disk, but the user
+    has specified a version of the filename that differs only by case.
     """
 
     _test_needs_features = [CaseInsCasePresFilenameFeature]
@@ -89,3 +89,36 @@ class TestIncorrectUserCase(ExternalBase):
         got = self.run_bzr('rm camelcaseparent LOWERCASEPARENT')[1]
         for expected in ['lowercaseparent/lowercase', 'CamelCaseParent/CamelCase']:
             self.assertContainsRe(got, 'deleted ' + expected + '\n')
+
+    def test_mv_newname(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+        self.run_bzr('ci -m message')
+
+        self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase\n',
+                          'mv camelcaseparent/camelcase camelcaseparent/NewCamelCase')
+
+    def test_mv_newcase(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+        self.run_bzr('ci -m message')
+
+        # perform a mv to the new case - we must ensure the file-system has the
+        # new case first.
+        os.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/camelCase')
+        self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/camelCase\n',
+                          'mv camelcaseparent/camelcase camelcaseparent/camelCase')
+
+    def test_re_add(self):
+        """Test than when a file has 'unintentioally' changed case, we can't
+        add a new entry using the new case."""
+        wt = self.make_branch_and_tree('.')
+        # create a file on disk with the mixed-case name
+        self.build_tree(['MixedCase'])
+        self.check_output('added MixedCase\n', 'add MixedCase')
+        # 'accidently' rename the file on disk
+        os.rename('MixedCase', 'mixedcase')
+        # XXX - test fails: bzr adds a new entry with name differing only by
+        # case, but it shouldn't.
+        # not sure what output we expect from bzr here!
+        self.check_output('oops\n', 'add mixedcase')
