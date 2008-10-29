@@ -3218,6 +3218,7 @@ class _CaseInsCasePresFilenameFeature(Feature):
                     and os.path.isfile(name.lower()))
         finally:
             os.close(fileno)
+            os.remove(name)
 
 CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
 
