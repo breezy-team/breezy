@@ -16,6 +16,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``BTreeIndex`` code now is able to prefetch extra pages to help tune
+      the tradeoff between bandwidth and latency. Should be tuned
+      appropriately to not impact commands which need minimal information,
+      but provide a significant boost to ones that need more context. Only
+      has a direct impact on the ``--development2`` format which uses
+      btree's for the indexes. (John Arbash Meinel)
+
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
       the contents of a compressed btree file.  (John Arbash Meinel)
 
@@ -65,10 +72,13 @@ IN DEVELOPMENT
 
     * The index logic is now able to reload the list of pack files if and
       index ends up disappearing. We still don't reload if the pack data
-      itself goes missing after checking the index.
-      (John Arbash Meinel, #153786)
+      itself goes missing after checking the index. This bug appears as a
+      transient failure (file not found) when another process is writing
+      to the repository.  (John Arbash Meinel, #153786)
 
   DOCUMENTATION:
+
+    * Improved hook documentation. (Michael Ernst)
 
   API CHANGES:
 
