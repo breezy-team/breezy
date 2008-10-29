@@ -326,8 +326,8 @@ class RemoteTransport(transport.ConnectedTransport):
         for c in coalesced:
             if c.length + cur_len > self._max_readv_bytes:
                 requests.append(cur_request)
-                cur_request = []
-                cur_len = 0
+                cur_request = [c]
+                cur_len = c.length
                 continue
             cur_request.append(c)
             cur_len += c.length
