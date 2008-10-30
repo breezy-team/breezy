@@ -1331,13 +1331,13 @@ class _BreadthFirstSearcher(object):
         Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
-        search list.  In this case, the call is a no-op.
+        search list.
 
-        It's ok to stop searching for a revision seen in a previous iteration,
-        but doing so won't automatically cause later revisions that are
-        connected via that revision to be stopped as well.  All explicitly
-        stopped revisions will be excluded from the search result's get_keys(),
-        though.
+        It is okay to call stop_searching_any() for revisions which were seen
+        in previous iterations. It is the callers responsibility to call
+        find_seen_ancestors() to make sure that current search tips that are
+        ancestors of those revisions are also stopped.  All explicitly stopped
+        revisions will be excluded from the search result's get_keys(), though.
         """
         # TODO: does this help performance?
         # if not revisions:
