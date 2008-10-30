@@ -44,6 +44,15 @@ IN DEVELOPMENT
     * lp: lookups no longer include usernames, making them shareable and
       shorter. (Aaron Bentley)
 
+    * New ``PackRepository.autopack`` smart server RPC, which does
+      autopacking entirely on the server.  This is much faster than
+      autopacking via plain file methods, which downloads a large amount
+      of pack data and then re-uploads the same pack data into a single
+      file.  This fixes a major (although infrequent) cause of lengthy
+      delays when using a smart server.  For example, pushing the 10th
+      revision to a repository with 9 packs now takes 43 RPCs rather than
+      179, and much less bandwidth too.  (Andrew Bennetts)
+
   BUG FIXES:
 
     * A failure to load a plugin due to an IncompatibleAPI exception is
