@@ -3158,7 +3158,7 @@ class InterPackToRemotePack(InterPackRepo):
     def _pack(self, source, target, revision_ids):
         from bzrlib.repofmt.pack_repo import Packer
         packs = source._pack_collection.all_packs()
-        pack = Packer(target._pack_collection, packs, '.fetch',
+        pack = Packer(target._real_repository._pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
             target._real_repository._pack_collection._save_pack_names()
