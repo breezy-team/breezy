@@ -2586,10 +2586,13 @@ class cmd_whoami(Command):
 
 
 class cmd_nick(Command):
-    """Print or set the branch nickname.  
+    """Print or set the branch nickname.
 
-    If unset, the tree root directory name is used as the nickname
-    To print the current nickname, execute with no argument.  
+    If unset, the tree root directory name is used as the nickname.
+    To print the current nickname, execute with no argument.
+
+    Bound branches use the nickname of its master branch unless it is set
+    locally.
     """
 
     _see_also = ['info']
@@ -3763,7 +3766,7 @@ class cmd_bind(Command):
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.
 
-    Bound branches uses the nickname of the master branch unless it is set
+    Bound branches use the nickname of its master branch unless it is set
     locally, in which case binding will update the the local nickname to be
     that of the master.
     """
@@ -4668,7 +4671,7 @@ class cmd_switch(Command):
     checkout of /path/to/branch, specifying 'newbranch' will find a branch at
     /path/to/newbranch.
 
-    Bound branches uses the nickname of the master branch unless it is set
+    Bound branches use the nickname of its master branch unless it is set
     locally, in which case switching will update the the local nickname to be
     that of the master.
     """
