@@ -1720,19 +1720,6 @@ class TestCase(unittest.TestCase):
             sys.stderr = real_stderr
             sys.stdin = real_stdin
 
-    def applyCaptureNotes(self, kallable, *args, **kwargs):
-        trace_note = bzrlib.trace.note
-        notes = []
-        def note(fmt, *args):
-            notes.append((fmt % args))
-        bzrlib.trace.note = note
-        try:
-            retval = kallable(*args, **kwargs)
-            return retval, notes
-        finally:
-            def restore_note():
-                bzrlib.trace.note = trace_note
-
     def reduceLockdirTimeout(self):
         """Reduce the default lock timeout for the duration of the test, so that
         if LockContention occurs during a test, it does so quickly.
