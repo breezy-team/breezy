@@ -51,7 +51,9 @@ IN DEVELOPMENT
       file.  This fixes a major (although infrequent) cause of lengthy
       delays when using a smart server.  For example, pushing the 10th
       revision to a repository with 9 packs now takes 43 RPCs rather than
-      179, and much less bandwidth too.  (Andrew Bennetts)
+      179, and much less bandwidth too.  This requires Bazaar 1.9 on both
+      the client and the server, otherwise the client will fallback to the
+      slower method.  (Andrew Bennetts)
 
   BUG FIXES:
 
