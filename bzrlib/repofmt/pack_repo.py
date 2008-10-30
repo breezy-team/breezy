@@ -1670,7 +1670,7 @@ class RepositoryPackCollection(object):
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
 
-    def reload_pack_names(self):
+    def reload_pack_names(self, disk_nodes=None):
         """Sync our pack listing with what is present in the repository.
 
         This should be called when we find out that something we thought was
@@ -1679,7 +1679,8 @@ class RepositoryPackCollection(object):
         """
         # This is functionally similar to _save_pack_names, but we don't write
         # out the new value.
-        disk_nodes, _, _ = self._diff_pack_names()
+        if disk_nodes is None:
+            disk_nodes, _, _ = self._diff_pack_names()
         self._packs_at_load = disk_nodes
         (removed, added,
          modified) = self._syncronize_pack_names_from_disk_nodes(disk_nodes)

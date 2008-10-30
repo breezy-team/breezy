@@ -44,6 +44,8 @@ class SmartServerPackRepositoryAutopack(SmartServerPackRepoRequest):
             repository._pack_collection.autopack()
         finally:
             repository.unlock()
-        return SuccessfulSmartServerResponse(('ok',))
+        pack_names_index = repository._pack_collection._iter_disk_pack_index()
+        pack_names_index = tuple((k, v) for (idx, k, v) in pack_names_index)
+        return SuccessfulSmartServerResponse(tuple(pack_names_index))
 
 
