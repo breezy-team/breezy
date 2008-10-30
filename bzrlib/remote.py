@@ -1221,17 +1221,14 @@ class RemoteRepository(_RpcHelper):
     def autopack(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            pack_names_index = self._client.call(
-                'PackRepository.autopack', path)
-            pack_names_index = set((tuple(k), v) for (k, v) in pack_names_index)
-        except errors.ErrorFromSmartServer, err:
-            self._translate_error(err)
+            pack_names_index = self._call('PackRepository.autopack', path)
         except errors.UnknownSmartMethod:
             self._ensure_real()
             self._real_repository._pack_collection.autopack()
             return
         if self._real_repository is not None:
             # Reset the real repository's cache of pack names.
+            pack_names_index = set((tuple(k), v) for (k, v) in pack_names_index)
             self._real_repository._pack_collection.reload_pack_names(
                 pack_names_index)
 
