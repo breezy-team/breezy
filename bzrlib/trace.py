@@ -246,11 +246,11 @@ def enable_default_logging():
     # Do this before we open the log file, so we prevent
     # get_terminal_encoding() from mutter()ing multiple times
     term_encoding = osutils.get_terminal_encoding()
-    start_time = time.strftime('%Y-%m-%d %H:%M:%S\n',
-                               time.localtime(_bzr_log_start_time))
+    start_time = osutils.format_local_date(_bzr_log_start_time,
+                                           timezone='local')
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
-    bzr_log_file.write(start_time)
+    bzr_log_file.write(start_time.encode('utf-8') + '\n')
     push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
