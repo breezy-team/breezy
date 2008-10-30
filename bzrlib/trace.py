@@ -246,12 +246,14 @@ def enable_default_logging():
     # Do this before we open the log file, so we prevent
     # get_terminal_encoding() from mutter()ing multiple times
     term_encoding = osutils.get_terminal_encoding()
+    start_time = time.strftime('%Y-%m-%d %H:%M:%S\n',
+                               time.localtime(_bzr_log_start_time))
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
+    bzr_log_file.write(start_time)
     push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
-    mutter('enabling logging: %s', time.asctime())
     # after hooking output into bzr_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
     writer_factory = codecs.getwriter(term_encoding)
