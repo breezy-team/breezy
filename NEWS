@@ -5,6 +5,8 @@
   * Will automatically pull if it's not possible to rebase. 
     (#240204)
 
+  * Use parent location as default rather than push location.
+
 0.4.1	2008-09-01
 
  BUG FIXES

@@ -124,9 +124,7 @@ class cmd_rebase(Command):
             if pending_merges:
                 upstream_location = "."
             else:
-                upstream_location = wt.branch.get_push_location()
-                if upstream_location is None:
-                    upstream_location = wt.branch.get_parent()
+                upstream_location = wt.branch.get_parent()
                 info("Rebasing on %s" % upstream_location)
         upstream = Branch.open_containing(upstream_location)[0]
         upstream_repository = upstream.repository
