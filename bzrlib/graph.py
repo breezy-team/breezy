@@ -1336,7 +1336,8 @@ class _BreadthFirstSearcher(object):
         It's ok to stop searching for a revision seen in a previous iteration,
         but doing so won't automatically cause later revisions that are
         connected via that revision to be stopped as well.  All explicitly
-        stopped revisions will be excluded from the search result, though.
+        stopped revisions will be excluded from the search result's get_keys(),
+        though.
         """
         # TODO: does this help performance?
         # if not revisions:
