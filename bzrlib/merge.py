@@ -55,7 +55,7 @@ from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note, is_quiet
 from bzrlib.transform import (TransformPreview, TreeTransform,
                               resolve_conflicts, cook_conflicts,
-                              conflict_pass, FinalPaths, create_by_entry,
+                              conflict_pass, FinalPaths, create_from_tree,
                               unique_add, ROOT_PARENT)
 from bzrlib.versionedfile import PlanWeaveMerge
 from bzrlib import ui
@@ -132,15 +132,18 @@ class Merger(object):
                                       _set_base_is_other_ancestor)
 
     @staticmethod
-    def from_uncommitted(tree, other_tree, pb):
+    def from_uncommitted(tree, other_tree, pb, base_tree=None):
         """Return a Merger for uncommitted changes in other_tree.
 
         :param tree: The tree to merge into
         :param other_tree: The tree to get uncommitted changes from
         :param pb: A progress indicator
+        :param base_tree: The basis to use for the merge.  If unspecified,
+            other_tree.basis_tree() will be used.
         """
-        merger = Merger(tree.branch, other_tree, other_tree.basis_tree(), tree,
-                        pb)
+        if base_tree is None:
+            base_tree = other_tree.basis_tree()
+        merger = Merger(tree.branch, other_tree, base_tree, tree, pb)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
         merger.other_basis = merger.base_rev_id
@@ -176,6 +179,7 @@ class Merger(object):
                           tree_branch=None):
         """Return a Merger for revision-ids.
 
+        :param pb: A progress indicator
         :param tree: The tree to merge changes into
         :param other: The revision-id to use as OTHER
         :param base: The revision-id to use as BASE.  If not specified, will
@@ -186,7 +190,8 @@ class Merger(object):
             not supplied, other_branch or tree.branch will be used.
         :param revision_graph: If you have a revision_graph precomputed, pass
             it in, otherwise it will be created for you.
-        :param pb: A progress indicator
+        :param tree_branch: The branch associated with tree.  If not supplied,
+            tree.branch will be used.
         """
         if tree_branch is None:
             tree_branch = tree.branch
@@ -873,9 +878,9 @@ class Merge3Merger(object):
         if self.tt.final_file_id(self.tt.root) is None:
             self.tt.version_file(self.tt.tree_file_id(self.tt.root), 
                                  self.tt.root)
-        if self.other_tree.inventory.root is None:
-            return
         other_root_file_id = self.other_tree.get_root_id()
+        if other_root_file_id is None:
+            return
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
@@ -1131,9 +1136,8 @@ class Merge3Merger(object):
                     self.tt.delete_contents(trans_id)
                 if file_id in self.other_tree:
                     # OTHER changed the file
-                    create_by_entry(self.tt,
-                                    self.other_tree.inventory[file_id],
-                                    self.other_tree, trans_id)
+                    create_from_tree(self.tt, trans_id,
+                                     self.other_tree, file_id)
                     if file_id not in self.this_tree:
                         self.tt.version_file(file_id, trans_id)
                     return "modified"
@@ -1237,13 +1241,12 @@ class Merge3Merger(object):
                     versioned = True
         return file_group
            
-    def _conflict_file(self, name, parent_id, tree, file_id, suffix, 
+    def _conflict_file(self, name, parent_id, tree, file_id, suffix,
                        lines=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        entry = tree.inventory[file_id]
-        create_by_entry(self.tt, entry, tree, trans_id, lines)
+        create_from_tree(self.tt, trans_id, tree, file_id, lines)
         return trans_id
 
     def merge_executable(self, file_id, file_status):

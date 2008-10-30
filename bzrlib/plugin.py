@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,10 @@ called.
 import os
 import sys
 
+from bzrlib import osutils
+
 from bzrlib.lazy_import import lazy_import
+
 lazy_import(globals(), """
 import imp
 import re
@@ -43,7 +46,7 @@ import zipfile
 from bzrlib import (
     config,
     debug,
-    osutils,
+    errors,
     trace,
     )
 from bzrlib import plugins as _mod_plugins
@@ -172,7 +175,10 @@ load_from_dirs = load_from_path
 
 
 def load_from_dir(d):
-    """Load the plugins in directory d."""
+    """Load the plugins in directory d.
+    
+    d must be in the plugins module path already.
+    """
     # Get the list of valid python suffixes for __init__.py?
     # this includes .py, .pyc, and .pyo (depending on if we are running -O)
     # but it doesn't include compiled modules (.so, .dll, etc)
@@ -199,7 +205,9 @@ def load_from_dir(d):
                     break
             else:
                 continue
-        if getattr(_mod_plugins, f, None):
+        if f == '__init__':
+            continue # We don't load __init__.py again in the plugin dir
+        elif getattr(_mod_plugins, f, None):
             trace.mutter('Plugin name %s already loaded', f)
         else:
             # trace.mutter('add plugin name %s', f)
@@ -210,7 +218,13 @@ def load_from_dir(d):
             exec "import bzrlib.plugins.%s" % name in {}
         except KeyboardInterrupt:
             raise
+        except errors.IncompatibleAPI, e:
+            trace.warning("Unable to load plugin %r. It requested API version "
+                "%s of module %s but the minimum exported version is %s, and "
+                "the maximum is %s" %
+                (name, e.wanted, e.api, e.minimum, e.current))
         except Exception, e:
+            trace.warning("%s" % e)
             ## import pdb; pdb.set_trace()
             if re.search('\.|-| ', name):
                 sanitised_name = re.sub('[-. ]', '_', name)

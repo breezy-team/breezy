@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    config,
     errors,
     graph,
     pack,
@@ -49,7 +50,11 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.symbol_versioning import one_four
 from bzrlib.transport import get_transport, http
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.transport.remote import RemoteTransport, RemoteTCPTransport
+from bzrlib.transport.remote import (
+    RemoteTransport,
+    RemoteSSHTransport,
+    RemoteTCPTransport,
+)
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
@@ -1014,6 +1019,22 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
 
+class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
+
+    def test_defaults_to_none(self):
+        t = RemoteSSHTransport('bzr+ssh://example.com')
+        self.assertIs(None, t._get_credentials()[0])
+
+    def test_uses_authentication_config(self):
+        conf = config.AuthenticationConfig()
+        conf._get_config().update(
+            {'bzr+sshtest': {'scheme': 'ssh', 'user': 'bar', 'host':
+            'example.com'}})
+        conf._save()
+        t = RemoteSSHTransport('bzr+ssh://example.com')
+        self.assertEqual('bar', t._get_credentials()[0])
+
+
 class TestRemoteRepository(tests.TestCase):
     """Base for testing RemoteRepository protocol usage.
     
@@ -1530,6 +1551,50 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.DivergedBranches(branch, other_branch)
         self.assertEqual(expected_error, translated_error)
 
+    def test_ReadError_no_args(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('ReadError',), path=path)
+        expected_error = errors.ReadError(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_ReadError(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('ReadError', path))
+        expected_error = errors.ReadError(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_no_args(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('PermissionDenied',), path=path)
+        expected_error = errors.PermissionDenied(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_one_arg(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('PermissionDenied', path))
+        expected_error = errors.PermissionDenied(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_one_arg_and_context(self):
+        """Given a choice between a path from the local context and a path on
+        the wire, _translate_error prefers the path from the local context.
+        """
+        local_path = 'local path'
+        remote_path = 'remote path'
+        translated_error = self.translateTuple(
+            ('PermissionDenied', remote_path), path=local_path)
+        expected_error = errors.PermissionDenied(local_path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_two_args(self):
+        path = 'a path'
+        extra = 'a string with extra info'
+        translated_error = self.translateTuple(
+            ('PermissionDenied', path, extra))
+        expected_error = errors.PermissionDenied(path, extra)
+        self.assertEqual(expected_error, translated_error)
+
+
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):
     """Unit tests for bzrlib.remote._translate_error's robustness.
@@ -1568,6 +1633,20 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
             self._get_log(keep_log_file=True),
             "Missing key 'branch' in context")
         
+    def test_path_missing(self):
+        """Some translations (PermissionDenied, ReadError) can determine the
+        'path' variable from either the wire or the local context.  If neither
+        has it, then an error is raised.
+        """
+        error_tuple = ('ReadError',)
+        server_error = errors.ErrorFromSmartServer(error_tuple)
+        translated_error = self.translateErrorFromSmartServer(server_error)
+        self.assertEqual(server_error, translated_error)
+        # In addition to re-raising ErrorFromSmartServer, some debug info has
+        # been muttered to the log file for developer to look at.
+        self.assertContainsRe(
+            self._get_log(keep_log_file=True), "Missing key 'path' in context")
+
 
 class TestStacking(tests.TestCaseWithTransport):
     """Tests for operations on stacked remote repositories.

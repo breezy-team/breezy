@@ -7,6 +7,128 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  USER-VISIBLE CHANGES:
+
+  NEW FEATURES:
+
+    * New Branch hook ``transform_fallback_location`` allows a function to
+      be called when looking up the stacked source. (Michael Hudson)
+
+  IMPROVEMENTS:
+
+    * ``BTreeIndex`` code now is able to prefetch extra pages to help tune
+      the tradeoff between bandwidth and latency. Should be tuned
+      appropriately to not impact commands which need minimal information,
+      but provide a significant boost to ones that need more context. Only
+      has a direct impact on the ``--development2`` format which uses
+      btree's for the indexes. (John Arbash Meinel)
+
+    * ``bzr dump-btree`` is a hidden command introduced to allow dumping
+      the contents of a compressed btree file.  (John Arbash Meinel)
+
+    * ``bzr pack`` now tells the index builders to optimize for size. For
+      btree index repositories, this can save 25% of the index size
+      (mostly in the text indexes). (John Arbash Meinel)
+
+    * ``bzr push`` to an existing branch or repository on a smart server
+      is faster, due to Bazaar making more use of the ``get_parent_map``
+      RPC when querying the remote branch's revision graph.
+      (Andrew Bennetts)
+
+    * default username for bzr+ssh and sftp can be configured in
+      authentication.conf. (Aaron Bentley)
+
+    * launchpad-login now provides a default username for bzr+ssh and sftp
+      URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
+
+    * lp: lookups no longer include usernames, making them shareable and
+      shorter. (Aaron Bentley)
+
+  BUG FIXES:
+
+    * A failure to load a plugin due to an IncompatibleAPI exception is
+      now correctly reported. (Robert Collins, #279451)
+
+    * API versioning support now has a multiple-version checking api
+      ``require_any_api``. (Robert Collins, #279447)
+
+    * ``bzr branch --stacked`` from a smart server to a standalone branch 
+      works again.  This fixes a regression in 1.7 and 1.8.
+      (Andrew Bennetts, #270397)
+
+    * ``bzr co`` uses less memory. It used to unpack the entire WT into
+      memory before writing it to disk. This was a little bit faster, but
+      consumed lots of memory. (John Arbash Meinel, #269456)
+
+    * ``bzr missing --quiet`` no longer prints messages about whether
+      there are missing revisions.  The exit code indicates whether there
+      were or not.  (Martin Pool, #284748)
+
+    * Fixes to the ``annotate`` code. The fast-path which re-used the
+      stored deltas was accidentally disabled all the time, instead of
+      only when a branch was stacked. Second, the code would accidentally
+      re-use a delta even if it wasn't against the left-parent, this
+      could only happen if ``bzr reconcile`` decided that the parent
+      ordering was incorrect in the file graph.  (John Arbash Meinel)
+
+    * "Permission denied" errors that occur when pushing a new branch to a
+      smart server no longer cause tracebacks.  (Andrew Bennetts, #278673)
+
+    * Some compatibility fixes for building the extensions with MSVC and
+      for python2.4. (John Arbash Meinel, #277484)
+
+    * The index logic is now able to reload the list of pack files if and
+      index ends up disappearing. We still don't reload if the pack data
+      itself goes missing after checking the index. This bug appears as a
+      transient failure (file not found) when another process is writing
+      to the repository.  (John Arbash Meinel, #153786)
+
+    * ``bzr switch`` and ``bzr bind`` will now update the branch nickname if
+      it was previously set. All checkouts will now refer to the bound branch
+      for a nickname if one was not explicitly set.
+      (Marius Kruger, #230903)
+
+  DOCUMENTATION:
+
+    * Improved hook documentation. (Michael Ernst)
+
+  API CHANGES:
+
+    * commands.plugins_cmds is now a CommandRegistry, not a dict.
+
+  TESTING:
+
+  INTERNALS:
+
+     * New AuthenticationConfig.set_credentials method allows easy programmatic
+       configuration of authetication credentials.
+
+  PORTABILITY:
+
+
+bzr 1.8 2008-10-16
+------------------
+
+Bazaar 1.8 includes several fixes that improve working tree performance,
+display of revision logs, and merges.  The bzr testsuite now passes on OS
+X and Python 2.6, and almost completely passes on Windows.  The
+smartserver code has gained several bug fixes and performance
+improvements, and can now run server-side hooks within an http server.
+
+  BUG FIXES:
+
+   * Fix "Must end write group" error when another error occurs during
+     ``bzr push``.  (Andrew Bennetts, #230902)
+
+  PORTABILITY:
+
+   * Some Pyrex versions require the WIN32 macro defined to compile on
+     that platform.  (Alexander Belchenko, Martin Pool, #277481)
+
+
+bzr 1.8rc1 2008-10-07
+---------------------
+
   CHANGES:
 
     * ``bzr log file`` has been changed. It now uses a different method
@@ -28,11 +150,11 @@ IN DEVELOPMENT
       pyrex >= 0.9.6 so it doesn't effect releases, only users running
       from the source tree. (John Arbash Meinel, #276868)
 
-  FEATURES
+  FEATURES:
 
     * bzr is now compatible with python-2.6. python-2.6 is not yet officially
       supported (nor released, tests were conducted with the dev version of
-      python-2.6rc2), but all known problems have been fixed . Feedback
+      python-2.6rc2), but all known problems have been fixed.  Feedback
       welcome.
       (Vincent Ladeuil, #269535)
 
@@ -79,6 +201,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Avoid random failures arising from misinterpreted ``errno`` values
+      in ``_readdir_pyx.read_dir``.
+      (Martin Pool, #279381)
+
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
       (Andrew Bennetts, #269214)
@@ -106,6 +232,9 @@ IN DEVELOPMENT
 
     * Make the first line of the manpage preamble a comment again.
       (David Futcher, #242106)
+
+    * Remove use of optional parameter in GSSAPI FTP support, since 
+      it breaks newer versions of Python-Kerberos. (Jelmer Vernooij)
 
     * The autopacking logic will now always create a single new pack from
       all of the content which it deems is worth moving. This avoids the

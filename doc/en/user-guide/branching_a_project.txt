@@ -37,7 +37,9 @@ Before getting a copy of a branch, have a quick think about
 where to put it on your filesystem. For maximum storage
 efficiency down the track, it is recommended that branches
 be created somewhere under a directory that has been set up
-as a shared repository. For example::
+as a shared repository. (See `Choosing a shared repository
+layout`_ in the appendices for guidelines and examples.)
+For example::
 
   bzr init-repo my-repo
   cd my-repo
@@ -89,7 +91,8 @@ will take up less disk space than the working copy of
 the latest version.
 
 As explained in later chapters, Bazaar also has support for
-lightweight checkouts of a branch, i.e. working trees with
+`lightweight checkouts <#getting-a-lightweight-checkout>`_ 
+of a branch, i.e. working trees with
 no local storage of history. Of course, disconnected usage
 is not available then but that's a tradeoff you can decide
 to make if local disk space is really tight for you. Support for

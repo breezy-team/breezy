@@ -41,6 +41,7 @@ from bzrlib.branch import (
     BzrBranchFormat5,
     BzrBranchFormat6,
     PullResult,
+    _run_with_write_locked_target,
     )
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
                            BzrDir, BzrDirFormat)
@@ -438,3 +439,70 @@ class TestPullResult(TestCase):
         # it's still supported
         a = "%d revisions pulled" % r
         self.assertEqual(a, "10 revisions pulled")
+
+
+
+class _StubLockable(object):
+    """Helper for TestRunWithWriteLockedTarget."""
+
+    def __init__(self, calls, unlock_exc=None):
+        self.calls = calls
+        self.unlock_exc = unlock_exc
+
+    def lock_write(self):
+        self.calls.append('lock_write')
+    
+    def unlock(self):
+        self.calls.append('unlock')
+        if self.unlock_exc is not None:
+            raise self.unlock_exc
+
+
+class _ErrorFromCallable(Exception):
+    """Helper for TestRunWithWriteLockedTarget."""
+
+
+class _ErrorFromUnlock(Exception):
+    """Helper for TestRunWithWriteLockedTarget."""
+
+
+class TestRunWithWriteLockedTarget(TestCase):
+    """Tests for _run_with_write_locked_target."""
+
+    def setUp(self):
+        self._calls = []
+
+    def func_that_returns_ok(self):
+        self._calls.append('func called')
+        return 'ok'
+
+    def func_that_raises(self):
+        self._calls.append('func called')
+        raise _ErrorFromCallable()
+
+    def test_success_unlocks(self):
+        lockable = _StubLockable(self._calls)
+        result = _run_with_write_locked_target(
+            lockable, self.func_that_returns_ok)
+        self.assertEqual('ok', result)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+    def test_exception_unlocks_and_propagates(self):
+        lockable = _StubLockable(self._calls)
+        self.assertRaises(_ErrorFromCallable,
+            _run_with_write_locked_target, lockable, self.func_that_raises)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+    def test_callable_succeeds_but_error_during_unlock(self):
+        lockable = _StubLockable(self._calls, unlock_exc=_ErrorFromUnlock())
+        self.assertRaises(_ErrorFromUnlock,
+            _run_with_write_locked_target, lockable, self.func_that_returns_ok)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+    def test_error_during_unlock_does_not_mask_original_error(self):
+        lockable = _StubLockable(self._calls, unlock_exc=_ErrorFromUnlock())
+        self.assertRaises(_ErrorFromCallable,
+            _run_with_write_locked_target, lockable, self.func_that_raises)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+
