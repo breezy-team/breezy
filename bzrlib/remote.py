@@ -973,7 +973,7 @@ class RemoteRepository(_RpcHelper):
         args = (path,) + tuple(keys)
         try:
             response = self._call_with_body_bytes_expecting_body(
-                verb, args, self._serialise_search_recipe(recipe))
+                verb, args, body)
         except errors.UnknownSmartMethod:
             # Server does not support this method, so get the whole graph.
             # Worse, we have to force a disconnection, because the server now

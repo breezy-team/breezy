@@ -2439,11 +2439,14 @@ class InterRepository(InterObject):
                     raise errors.NoSuchRevision(
                         self.source, ghosts_to_check.pop())
                 missing_revs.update(next_revs - have_revs)
-                searcher.stop_searching_any(have_revs)
+                # Because we may have walked past the original stop point, make
+                # sure everything is stopped
+                stop_revs = searcher.find_seen_ancestors(have_revs)
+                searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
         return searcher.get_result()
-   
+
     @deprecated_method(one_two)
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
