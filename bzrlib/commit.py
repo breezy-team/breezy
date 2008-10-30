@@ -205,7 +205,8 @@ class Commit(object):
                config=None,
                message_callback=None,
                recursive='down',
-               exclude=None):
+               exclude=None,
+               possible_master_transports=None):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -298,7 +299,7 @@ class Commit(object):
                 raise ConflictsInTree
 
             # Setup the bound branch variables as needed.
-            self._check_bound_branch()
+            self._check_bound_branch(possible_master_transports)
 
             # Check that the working tree is up to date
             old_revno, new_revno = self._check_out_of_date_tree()
@@ -444,7 +445,7 @@ class Commit(object):
             return
         raise PointlessCommit()
 
-    def _check_bound_branch(self):
+    def _check_bound_branch(self, possible_master_transports=None):
         """Check to see if the local branch is bound.
 
         If it is bound, then most of the commit will actually be
@@ -455,7 +456,8 @@ class Commit(object):
             raise errors.LocalRequiresBoundBranch()
 
         if not self.local:
-            self.master_branch = self.branch.get_master_branch()
+            self.master_branch = self.branch.get_master_branch(
+                possible_master_transports)
 
         if not self.master_branch:
             # make this branch the reference branch for out of date checks.

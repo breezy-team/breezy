@@ -239,6 +239,11 @@ bzr 1.8rc1 2008-10-07
     * Trivial documentation fix.
       (John Arbash Meinel, #270471)
 
+    * ``bzr switch`` and ``bzr bind`` will now update the branch nickname if
+      it was previously set. All checkouts will now refer to the bound branch
+      for a nickname if one was not explicitly set.
+      (Marius Kruger, #230903)
+
   DOCUMENTATION:
 
     * Explain revision/range identifiers. (Daniel Clemente)

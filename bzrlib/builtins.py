@@ -3786,6 +3786,8 @@ class cmd_bind(Command):
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                          ' Try merging, and then bind again.')
+        if b.get_config().has_explicit_nickname():
+            b.nick = b_other.nick
 
 
 class cmd_unbind(Command):
@@ -4653,7 +4655,8 @@ class cmd_switch(Command):
     of the new location and binds to it.
     
     In both cases, the working tree is updated and uncommitted changes
-    are merged. The user can commit or revert these as they desire.
+    are merged. The user can commit or revert these as they desire. The branch
+    nickname is also updated to be that of the branch being switched to.
 
     Pending merges need to be committed or reverted before using switch.
 
@@ -4672,6 +4675,7 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        branch = control_dir.open_branch()
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
@@ -4684,6 +4688,9 @@ class cmd_switch(Command):
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
+        if branch.get_config().has_explicit_nickname():
+            branch = control_dir.open_branch() #get the new branch!
+            branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
