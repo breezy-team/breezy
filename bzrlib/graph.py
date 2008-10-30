@@ -1332,6 +1332,11 @@ class _BreadthFirstSearcher(object):
 
         None of the specified revisions are required to be present in the
         search list.  In this case, the call is a no-op.
+
+        It's ok to stop searching for a revision seen in a previous iteration,
+        but doing so won't automatically cause later revisions that are
+        connected via that revision to be stopped as well.  All explicitly
+        stopped revisions will be excluded from the search result, though.
         """
         # TODO: does this help performance?
         # if not revisions:
@@ -1368,6 +1373,7 @@ class _BreadthFirstSearcher(object):
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
         self._stopped_keys.update(stopped)
+        self._stopped_keys.update(revisions - set([revision.NULL_REVISION]))
         return stopped
 
     def start_searching(self, revisions):
