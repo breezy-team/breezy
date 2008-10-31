@@ -2850,11 +2850,14 @@ class InterPackRepo(InterSameDataRepository):
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            target_pack_collection.autopack()
+            self._autopack()
             return (copied_revs, [])
         else:
             return (0, [])
 
+    def _autopack(self):
+        self.target._pack_collection.autopack()
+        
     def _get_target_pack_collection(self):
         return self.target._pack_collection
 
@@ -3161,6 +3164,9 @@ class InterPackToRemotePack(InterPackRepo):
                         return True
         return False
     
+    def _autopack(self):
+        self.target.autopack()
+        
     def _get_target_pack_collection(self):
         return self.target._real_repository._pack_collection
 
