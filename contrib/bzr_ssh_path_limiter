@@ -1,0 +1,18 @@
+#!/usr/bin/python
+
+# Inspired by Rusty and the hg_ssh script:
+# http://www.selenic.com/repo/index.cgi/hg-stable/file/tip/contrib/hg-ssh
+#
+# Use in ~/.ssh/authorized_keys like:
+#
+# command="bzr_ssh_path_limiter /home/foo/code" ssh-rsa ...
+
+import os, sys
+
+orig_cmd = os.getenv('SSH_ORIGINAL_COMMAND', '?')
+if orig_cmd == 'bzr serve --inet --directory=/ --allow-writes':
+    os.execlp('bzr', 'bzr', '--no-plugins', 'serve', '--inet', '--directory=' + sys.argv[1], '--allow-writes')
+
+sys.stderr.write('Illegal command: %s\n' % (orig_cmd,))
+sys.exit(1)
+
