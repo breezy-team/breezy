@@ -2325,6 +2325,16 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack6',
+    )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack6RichRoot',
+    )
 
 # Development formats. 
 # 1.7->1.8 go below here
@@ -2965,6 +2975,8 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack4,
                 RepositoryFormatKnitPack5,
                 RepositoryFormatKnitPack5RichRoot,
+                RepositoryFormatKnitPack6,
+                RepositoryFormatKnitPack6RichRoot,
                 RepositoryFormatPackDevelopment2,
                 RepositoryFormatPackDevelopment2Subtree,
                 )
@@ -2973,12 +2985,14 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack1,        # no rr, no subtree
                 RepositoryFormatPackDevelopment2, # no rr, no subtree
                 RepositoryFormatKnitPack5,        # no rr, no subtree
+                RepositoryFormatKnitPack6,        # no rr, no subtree
                 )
             richroot = (
                 RepositoryFormatKnit3,            # rr, subtree
                 RepositoryFormatKnitPack3,        # rr, subtree
                 RepositoryFormatKnitPack4,        # rr, no subtree
                 RepositoryFormatKnitPack5RichRoot,# rr, no subtree
+                RepositoryFormatKnitPack6RichRoot,# rr, no subtree
                 RepositoryFormatPackDevelopment2Subtree, # rr, subtree
                 )
             for format in norichroot:
