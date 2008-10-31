@@ -4,15 +4,27 @@ Bazaar Release Notes
 
 .. contents::
 
-IN DEVELOPMENT
---------------
 
-  USER-VISIBLE CHANGES:
+bzr 1.9 2008-10-31
+------------------
+
+This release of Bazaar adds a new repository format, ``1.9``, with smaller
+and more efficient index files.  This format can be specified when
+creating a new repository, or used to losslessly upgrade an existing
+repository.  bzr 1.9 also speeds most operations over the smart server
+protocol, makes annotate faster, and uses less memory when making
+checkouts or pulling large amounts of data.
+
 
   NEW FEATURES:
 
     * New Branch hook ``transform_fallback_location`` allows a function to
       be called when looking up the stacked source. (Michael Hudson)
+
+    * New repository formats ``1.9`` and ``1.9-rich-root``. These have all
+      the functionality of ``1.6``, but use the new btree indexes.
+      These indexes are both smaller and faster for access to historical
+      information.  (John Arbash Meinel)
 
   IMPROVEMENTS:
 
@@ -41,7 +53,7 @@ IN DEVELOPMENT
     * launchpad-login now provides a default username for bzr+ssh and sftp
       URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
 
-    * lp: lookups no longer include usernames, making them shareable and
+    * ``lp:`` lookups no longer include usernames, making them shareable and
       shorter. (Aaron Bentley)
 
     * New ``PackRepository.autopack`` smart server RPC, which does
@@ -107,14 +119,10 @@ IN DEVELOPMENT
 
     * commands.plugins_cmds is now a CommandRegistry, not a dict.
 
-  TESTING:
-
   INTERNALS:
 
      * New AuthenticationConfig.set_credentials method allows easy programmatic
        configuration of authetication credentials.
-
-  PORTABILITY:
 
 
 bzr 1.8 2008-10-16
