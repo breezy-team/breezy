@@ -1228,8 +1228,11 @@ class RemoteRepository(_RpcHelper):
             return
         if self._real_repository is not None:
             # Reset the real repository's cache of pack names.
+            # XXX: At some point we may be able to skip this and just rely on
+            # the automatic retry logic to do the right thing, but for now we
+            # err on the side of being correct rather than being optimal.
             self._real_repository._pack_collection.reload_pack_names()
-        if response != ('ok',):
+        if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
 
 
