@@ -810,6 +810,8 @@ class RemoteRepository(_RpcHelper):
             other, self).search_missing_revision_ids(revision_id, find_ghosts)
 
     def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
+        # Not delegated to _real_repository so that InterRepository.get has a
+        # chance to find an InterRepository specialised for RemoteRepository.
         if self.has_same_location(source):
             # check that last_revision is in 'from' and then return a
             # no-operation.
@@ -820,7 +822,6 @@ class RemoteRepository(_RpcHelper):
         inter = repository.InterRepository.get(source, self)
         try:
             return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
-
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
 
@@ -1216,6 +1217,23 @@ class RemoteRepository(_RpcHelper):
         stop_keys = ' '.join(recipe[1])
         count = str(recipe[2])
         return '\n'.join((start_keys, stop_keys, count))
+
+    def autopack(self):
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call('PackRepository.autopack', path)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_repository._pack_collection.autopack()
+            return
+        if self._real_repository is not None:
+            # Reset the real repository's cache of pack names.
+            # XXX: At some point we may be able to skip this and just rely on
+            # the automatic retry logic to do the right thing, but for now we
+            # err on the side of being correct rather than being optimal.
+            self._real_repository._pack_collection.reload_pack_names()
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
 
 
 class RemoteBranchLockableFiles(LockableFiles):

@@ -2800,7 +2800,6 @@ class InterPackRepo(InterSameDataRepository):
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
-        from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         self.count_copied = 0
@@ -2814,7 +2813,8 @@ class InterPackRepo(InterSameDataRepository):
             revision_ids = source_revision_ids - \
                 frozenset(self.target_get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
-            index = self.target._pack_collection.revision_index.combined_index
+            target_pack_collection = self._get_target_pack_collection()
+            index = target_pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
                 index.iter_entries(revision_keys))
             revision_ids = set(revision_ids) - present_revision_ids
@@ -2836,18 +2836,30 @@ class InterPackRepo(InterSameDataRepository):
                 raise errors.InstallFailed([revision_id])
             if len(revision_ids) == 0:
                 return (0, [])
-        packs = self.source._pack_collection.all_packs()
-        pack = Packer(self.target._pack_collection, packs, '.fetch',
+        return self._pack(self.source, self.target, revision_ids)
+
+    def _pack(self, source, target, revision_ids):
+        from bzrlib.repofmt.pack_repo import Packer
+        target_pack_collection = self._get_target_pack_collection()
+        packs = source._pack_collection.all_packs()
+        pack = Packer(target_pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            self.target._pack_collection._save_pack_names()
+            target_pack_collection._save_pack_names()
+            copied_revs = pack.get_revision_count()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self.target._pack_collection.autopack()
-            return (pack.get_revision_count(), [])
+            self._autopack()
+            return (copied_revs, [])
         else:
             return (0, [])
+
+    def _autopack(self):
+        self.target._pack_collection.autopack()
+        
+    def _get_target_pack_collection(self):
+        return self.target._pack_collection
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -3052,6 +3064,9 @@ class InterDifferingSerializer(InterKnitRepo):
 
 
 class InterOtherToRemote(InterRepository):
+    """An InterRepository that simply delegates to the 'real' InterRepository
+    calculated for (source, target._real_repository).
+    """
 
     _walk_to_common_revisions_batch_size = 50
 
@@ -3127,6 +3142,39 @@ class InterRemoteToOther(InterRepository):
 
 
 
+class InterPackToRemotePack(InterPackRepo):
+    """A specialisation of InterPackRepo for a target that is a
+    RemoteRepository.
+
+    This will use the get_parent_map RPC rather than plain readvs, and also
+    uses an RPC for autopacking.
+    """
+
+    _walk_to_common_revisions_batch_size = 50
+
+    @staticmethod
+    def is_compatible(source, target):
+        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        if isinstance(source._format, RepositoryFormatPack):
+            if isinstance(target, remote.RemoteRepository):
+                target._ensure_real()
+                if isinstance(target._real_repository._format,
+                              RepositoryFormatPack):
+                    if InterRepository._same_model(source, target):
+                        return True
+        return False
+    
+    def _autopack(self):
+        self.target.autopack()
+        
+    def _get_target_pack_collection(self):
+        return self.target._real_repository._pack_collection
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
@@ -3136,6 +3184,7 @@ InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterOtherToRemote)
 InterRepository.register_optimiser(InterRemoteToOther)
+InterRepository.register_optimiser(InterPackToRemotePack)
 
 
 class CopyConverter(object):
