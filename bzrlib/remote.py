@@ -1842,13 +1842,6 @@ def _translate_error(err, **context):
         raise errors.UnstackableRepositoryFormat(*err.error_args)
     elif err.error_verb == 'NotStacked':
         raise errors.NotStacked(branch=find('branch'))
-    elif err.error_verb == 'NotPackRepository':
-        # There's no specific exception to raise for this, because it shouldn't
-        # happen unless something has changed the remote repo's format between
-        # smart requests.
-        raise errors.InternalBzrError(
-            'Tried to use PackRepository verb, but remote side says '
-            '%s is not a pack repository.' % (find('repository')))
     elif err.error_verb == 'PermissionDenied':
         path = get_path()
         if len(err.error_args) >= 2:

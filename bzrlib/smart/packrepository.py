@@ -27,18 +27,14 @@ from bzrlib.smart.repository import (
     )
 
 
-class SmartServerPackRepoRequest(SmartServerRepositoryRequest):
+class SmartServerPackRepositoryAutopack(SmartServerRepositoryRequest):
 
-    def do_repository_request(self, repository, *args):
+    def do_repository_request(self, repository):
         pack_collection = getattr(repository, '_pack_collection', None)
         if pack_collection is None:
-            return FailedSmartServerResponse(('NotPackRepository',))
-        return self.do_pack_repo_request(repository, *args)
-
-
-class SmartServerPackRepositoryAutopack(SmartServerPackRepoRequest):
-
-    def do_pack_repo_request(self, repository):
+            # This is a not a pack repo, so asking for an autopack is just a
+            # no-op.
+            return SuccessfulSmartServerResponse(('ok',))
         repository.lock_write()
         try:
             repository._pack_collection.autopack()

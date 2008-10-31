@@ -1075,13 +1075,13 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         self.assertEqual(9, len(repo._pack_collection.names()))
     
     def test_autopack_on_nonpack_format(self):
+        """A request to autopack a non-pack repo is a no-op."""
         repo = self.make_repository('.', format='knit')
         backing = self.get_transport()
         request = smart.packrepository.SmartServerPackRepositoryAutopack(
             backing)
         response = request.execute('')
-        self.assertEqual(
-            FailedSmartServerResponse(('NotPackRepository',)), response)
+        self.assertEqual(SmartServerResponse(('ok',)), response)
         
 
 class TestHandlers(tests.TestCase):

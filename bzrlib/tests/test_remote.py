@@ -1611,13 +1611,6 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.DivergedBranches(branch, other_branch)
         self.assertEqual(expected_error, translated_error)
 
-    def test_NotPackRepository(self):
-        repository = self.make_repository('')
-        translated_error = self.translateTuple(
-            ('NotPackRepository',), repository=repository)
-        self.assertIsInstance(translated_error, errors.InternalBzrError)
-        self.assertContainsRe(
-            str(translated_error), 'is not a pack repository')
     def test_ReadError_no_args(self):
         path = 'a path'
         translated_error = self.translateTuple(('ReadError',), path=path)
