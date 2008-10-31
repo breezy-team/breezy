@@ -2316,6 +2316,87 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
                 " (deprecated)")
 
 
+class RepositoryFormatKnitPack6(RepositoryFormatPack):
+    """A repository with stacking and btree indexes,
+    without rich roots or subtrees.
+
+    This is equivalent to pack-1.6 with B+Tree indices.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackCommitBuilder
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('1.9')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Packs 6 (uses btree indexes, requires bzr 1.9)"
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
+    """A repository with rich roots, no subtrees, stacking and btree indexes.
+
+    This format should be retained until the second release after bzr 1.7.
+
+    1.6.1-subtree[as it might have been] with B+Tree indices.
+    """
+
+    repository_class = KnitPackRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = False # no subtrees
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+
+    @property
+    def _serializer(self):
+        return xml6.serializer_v6
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            '1.9-rich-root')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
+
+    def get_format_description(self):
+        return "Packs 6 rich-root (uses btree indexes, requires bzr 1.9)"
+
+
 class RepositoryFormatPackDevelopment2(RepositoryFormatPack):
     """A no-subtrees development repository.
 
