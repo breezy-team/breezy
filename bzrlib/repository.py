@@ -2810,7 +2810,8 @@ class InterPackRepo(InterSameDataRepository):
             revision_ids = source_revision_ids - \
                 frozenset(self.target_get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
-            index = self._get_target_revision_index()
+            target_pack_collection = self._get_target_pack_collection()
+            index = target_pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
                 index.iter_entries(revision_keys))
             revision_ids = set(revision_ids) - present_revision_ids
@@ -2836,21 +2837,23 @@ class InterPackRepo(InterSameDataRepository):
 
     def _pack(self, source, target, revision_ids):
         from bzrlib.repofmt.pack_repo import Packer
+        target_pack_collection = self._get_target_pack_collection()
         packs = source._pack_collection.all_packs()
-        pack = Packer(target._pack_collection, packs, '.fetch',
+        pack = Packer(target_pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            target._pack_collection._save_pack_names()
+            target_pack_collection._save_pack_names()
+            copied_revs = pack.get_revision_count()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            target._pack_collection.autopack()
-            return (pack.get_revision_count(), [])
+            target_pack_collection.autopack()
+            return (copied_revs, [])
         else:
             return (0, [])
 
-    def _get_target_revision_index(self):
-        return self.target._pack_collection.revision_index.combined_index
+    def _get_target_pack_collection(self):
+        return self.target._pack_collection
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -3154,25 +3157,9 @@ class InterPackToRemotePack(InterPackRepo):
                     if InterRepository._same_model(source, target):
                         return True
         return False
-
-    def _pack(self, source, target, revision_ids):
-        from bzrlib.repofmt.pack_repo import Packer
-        packs = source._pack_collection.all_packs()
-        pack = Packer(target._real_repository._pack_collection, packs, '.fetch',
-            revision_ids).pack()
-        if pack is not None:
-            target._real_repository._pack_collection._save_pack_names()
-            copied_revs = pack.get_revision_count()
-            # Trigger an autopack. This may duplicate effort as we've just done
-            # a pack creation, but for now it is simpler to think about as
-            # 'upload data, then repack if needed'.
-            target.autopack()
-            return (copied_revs, [])
-        else:
-            return (0, [])
     
-    def _get_target_revision_index(self):
-        return self.target._real_repository._pack_collection.revision_index.combined_index
+    def _get_target_pack_collection(self):
+        return self.target._real_repository._pack_collection
 
     @classmethod
     def _get_repo_format_to_test(self):
