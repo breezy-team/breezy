@@ -39,15 +39,22 @@ except ImportError:
 
 
 class Shelver(object):
+    """Interactively shelve the changes in a working tree."""
 
-    def __init__(self, work_tree, target_tree, path, auto=False,
+    def __init__(self, work_tree, target_tree, auto=False,
                  auto_apply=False, file_list=None, message=None):
+        """Constructor.
+
+        :param work_tree: The working tree to shelve changes from.
+        :param target_tree: The "unchanged" / old tree to compare the
+            work_tree to.
+        :param auto: If True, shelve each possible change.
+        :param auto_apply: If True, shelve changes with no final prompt.
+        :param file_list: If supplied, only files in this list may be  shelved.
+        :param message: The message to associate with the shelved changes.
+        """
         self.work_tree = work_tree
         self.target_tree = target_tree
-        self.path = path
-        self.diff_file = StringIO()
-        self.text_differ = diff.DiffText(self.target_tree, self.work_tree,
-                                         self.diff_file)
         if colordiff is not None:
             self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
         else:
@@ -61,12 +68,21 @@ class Shelver(object):
     @classmethod
     def from_args(klass, revision=None, all=False, file_list=None,
                   message=None, directory='.'):
+        """Create a shelver from commandline arguments.
+
+        :param revision: RevisionSpec of the revision to compare to.
+        :param all: If True, shelve all changes without prompting.
+        :param file_list: If supplied, only files in this list may be  shelved.
+        :param message: The message to associate with the shelved changes.
+        :param directory: The directory containing the working tree.
+        """
         tree, path = workingtree.WorkingTree.open_containing(directory)
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
-        return klass(tree, target_tree, path, all, all, file_list, message)
+        return klass(tree, target_tree, all, all, file_list, message)
 
     def run(self):
+        """Interactively shelve the changes."""
         creator = shelf.ShelfCreator(self.work_tree, self.target_tree,
                                      self.file_list)
         self.tempdir = tempfile.mkdtemp()
@@ -120,13 +136,12 @@ class Shelver(object):
     def get_parsed_patch(self, file_id):
         old_path = self.target_tree.id2path(file_id)
         new_path = self.work_tree.id2path(file_id)
-        try:
-            patch = self.text_differ.diff(file_id, old_path, new_path, 'file',
-                                          'file')
-            self.diff_file.seek(0)
-            return patches.parse_patch(self.diff_file)
-        finally:
-            self.diff_file.truncate(0)
+        diff_file = StringIO()
+        text_differ = diff.DiffText(self.target_tree, self.work_tree,
+                                    diff_file)
+        patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
+        diff_file.seek(0)
+        return patches.parse_patch(diff_file)
 
     def prompt(self, message):
         sys.stdout.write(message)

@@ -26,8 +26,8 @@ class ExpectShelver(shelf_ui.Shelver):
 
     def __init__(self, work_tree, target_tree, path=None, auto=False,
                  auto_apply=False, file_list=None, message=None):
-        shelf_ui.Shelver.__init__(self, work_tree, target_tree, path,
-                                  auto, auto_apply, file_list, message)
+        shelf_ui.Shelver.__init__(self, work_tree, target_tree, auto,
+                                  auto_apply, file_list, message)
         self.expected = []
         self.diff_writer = StringIO()
 
@@ -200,7 +200,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         tree.commit('added foo')
         self.build_tree_contents([('tree/foo', LINES_ZY)])
-        shelf_ui.Shelver(tree, tree.basis_tree(), None, auto_apply=True,
+        shelf_ui.Shelver(tree, tree.basis_tree(), auto_apply=True,
                          auto=True).run()
         return tree
 
