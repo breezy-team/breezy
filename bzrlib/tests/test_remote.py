@@ -1457,8 +1457,8 @@ class _StubPackCollection(object):
     def autopack(self):
         self.calls.append(('pack collection autopack',))
 
-    def reload_pack_names(self, disk_nodes=None):
-        self.calls.append(('pack collection reload_pack_names', disk_nodes))
+    def reload_pack_names(self):
+        self.calls.append(('pack collection reload_pack_names',))
 
     
 class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
@@ -1471,7 +1471,7 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'PackRepository.autopack', ('quack/',), 'success', ())
+            'PackRepository.autopack', ('quack/',), 'success', ('ok',))
         repo.autopack()
         client.finished_test()
 
@@ -1483,13 +1483,12 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
             'PackRepository.autopack', ('quack/',),
-            'success', [[('key',), '1 2 3 4']])
+            'success', ('ok',))
         repo._real_repository = _StubRealPackRepository(client._calls)
         repo.autopack()
         self.assertEqual(
             [('call', 'PackRepository.autopack', ('quack/',)),
-             ('pack collection reload_pack_names',
-              set([(('key',), '1 2 3 4')]))],
+             ('pack collection reload_pack_names',)],
             client._calls)
         
     def test_backwards_compatibility(self):
