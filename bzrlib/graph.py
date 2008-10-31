@@ -1331,7 +1331,13 @@ class _BreadthFirstSearcher(object):
         Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
-        search list.  In this case, the call is a no-op.
+        search list.
+
+        It is okay to call stop_searching_any() for revisions which were seen
+        in previous iterations. It is the callers responsibility to call
+        find_seen_ancestors() to make sure that current search tips that are
+        ancestors of those revisions are also stopped.  All explicitly stopped
+        revisions will be excluded from the search result's get_keys(), though.
         """
         # TODO: does this help performance?
         # if not revisions:
@@ -1368,6 +1374,7 @@ class _BreadthFirstSearcher(object):
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
         self._stopped_keys.update(stopped)
+        self._stopped_keys.update(revisions - set([revision.NULL_REVISION]))
         return stopped
 
     def start_searching(self, revisions):
