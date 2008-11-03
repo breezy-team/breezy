@@ -165,6 +165,12 @@ class DebBuild(object):
       watchfile = 'watch'
     return watchfile
 
+  def _rulesfile_name(self):
+    rulesfile = 'debian/rules'
+    if self._properties.larstiq():
+      rulesfile = 'rules'
+    return rulesfile
+
   def _has_watch(self):
     watchfile = self._watchfile_name()
     if not self._tree.has_filename(watchfile):
@@ -176,6 +182,21 @@ class DebBuild(object):
            "branch before I can use it to get the upstream tarball")
       return False
     return True
+
+  def _get_upstream_using_orig_source(self):
+    info("Using get-orig-source rule to retrieve upstream tarball")
+    rules_id = self._tree.path2id(self._rulesfile_name())
+    assert rules_id is not None, "rulesfile must be in the tree"
+    r = os.system("make -f %s get-orig-source" % self._rulesfile_name())
+    fetched_tarball = self._tarball_name()
+    if r != 0:
+      raise DebianError("get-orig-source rule failed")
+    if not os.path.exists(fetched_tarball):
+      raise DebianError("get-orig-source did not create %s" % self._tarball_name())
+    desired_tarball = self._tarball_name()
+    repack_tarball(fetched_tarball, desired_tarball,
+                   target_dir=self._properties.tarball_dir())
+    os.unlink(fetched_tarball)
 
   def _get_upstream_from_watch(self):
     (tmp, tempfilename) = tempfile.mkstemp()
@@ -254,15 +275,17 @@ class DebBuild(object):
       if not found:
         if self._get_upstream_from_archive():
           return tarball
-        if not self._has_watch():
-          raise DebianError('Could not find upstream tarball at '+tarball)
+        if not os.path.exists(tarballdir):
+          os.mkdir(tarballdir)
         else:
-          if not os.path.exists(tarballdir):
-            os.mkdir(tarballdir)
-          else:
-            if not os.path.isdir(tarballdir):
-              raise DebianError('%s is not a directory.' % tarballdir)
+          if not os.path.isdir(tarballdir):
+            raise DebianError('%s is not a directory.' % tarballdir)
+        if self._has_watch():
           self._get_upstream_from_watch()
+          return tarball
+        self._get_upstream_using_orig_source()
+        return tarball
+        raise DebianError('Could not find upstream tarball at '+tarball)
     return tarball
 
   def _tarball_name(self):

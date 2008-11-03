@@ -2,6 +2,8 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Add simple deb: directory service for Bazaar that uses the dpkg Vcs-* fields.
+  * Try to retrieve upstream tarball using get-orig-source rule in
+  debian/rules if everything else fails. (Closes: #498622)
 
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
