@@ -31,7 +31,8 @@ from bzrlib import (
     textfile,
     trace,
     ui,
-    workingtree)
+    workingtree,
+)
 try:
     from bzrlib.plugins.bzrtools import colordiff
 except ImportError:
@@ -50,7 +51,7 @@ class Shelver(object):
             work_tree to.
         :param auto: If True, shelve each possible change.
         :param auto_apply: If True, shelve changes with no final prompt.
-        :param file_list: If supplied, only files in this list may be  shelved.
+        :param file_list: If supplied, only files in this list may be shelved.
         :param message: The message to associate with the shelved changes.
         """
         self.work_tree = work_tree
@@ -103,7 +104,7 @@ class Shelver(object):
                         creator.shelve_creation(change[1])
                         changes_shelved += 1
                 if change[0] == 'delete file':
-                    if self.prompt_bool('Shelve removing file "%s"? '
+                    if self.prompt_bool('Shelve removing file "%s"?'
                                         % change[3]):
                         creator.shelve_deletion(change[1])
                         changes_shelved += 1
@@ -113,7 +114,7 @@ class Shelver(object):
                         creator.shelve_content_change(change[1])
                         changes_shelved += 1
                 if change[0] == 'rename':
-                    if self.prompt_bool('Shelve renaming %s => %s?' %
+                    if self.prompt_bool('Shelve renaming "%s" => "%s"?' %
                                    change[2:]):
                         creator.shelve_rename(change[1])
                         changes_shelved += 1
@@ -163,8 +164,8 @@ class Shelver(object):
     def prompt_bool(self, question):
         """Prompt the user with a yes/no question.
 
-        This may be overridden by self.auto, or auto may be supplied.
-        It may also *set* self.auto.  It may also raise SystemExit.
+        This may be overridden by self.auto.  It may also *set* self.auto.  It
+        may also raise SystemExit.
         :param question: The question to ask the user.
         :return: True or False
         """
@@ -189,11 +190,7 @@ class Shelver(object):
         :return: number of shelved hunks.
         """
         target_lines = self.target_tree.get_file_lines(file_id)
-        work_file = self.work_tree.get_file(file_id)
-        try:
-            textfile.text_file(work_file)
-        finally:
-            work_file.close()
+        textfile.check_text_lines(self.work_tree.get_file_lines(file_id))
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id)
         final_hunks = []
