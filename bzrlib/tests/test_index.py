@@ -350,6 +350,13 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder.add_node(('k', 'ey'), 'data', ([('reference', 'tokey')], ))
         builder.add_node(('reference', 'tokey'), 'data', ([],))
 
+    def test_set_optimize(self):
+        builder = GraphIndexBuilder(reference_lists=1, key_elements=2)
+        builder.set_optimize(for_size=True)
+        self.assertTrue(builder._optimize_for_size)
+        builder.set_optimize(for_size=False)
+        self.assertFalse(builder._optimize_for_size)
+
 
 class TestGraphIndex(TestCaseWithMemoryTransport):
 
@@ -927,6 +934,39 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         size = trans.put_file(name, stream)
         return GraphIndex(trans, name, size)
 
+    def make_combined_index_with_missing(self, missing=['1', '2']):
+        """Create a CombinedGraphIndex which will have missing indexes.
+
+        This creates a CGI which thinks it has 2 indexes, however they have
+        been deleted. If CGI._reload_func() is called, then it will repopulate
+        with a new index.
+
+        :param missing: The underlying indexes to delete
+        :return: (CombinedGraphIndex, reload_counter)
+        """
+        index1 = self.make_index('1', nodes=[(('1',), '', ())])
+        index2 = self.make_index('2', nodes=[(('2',), '', ())])
+        index3 = self.make_index('3', nodes=[
+            (('1',), '', ()),
+            (('2',), '', ())])
+
+        # total_reloads, num_changed, num_unchanged
+        reload_counter = [0, 0, 0]
+        def reload():
+            reload_counter[0] += 1
+            new_indices = [index3]
+            if index._indices == new_indices:
+                reload_counter[2] += 1
+                return False
+            reload_counter[1] += 1
+            index._indices[:] = new_indices
+            return True
+        index = CombinedGraphIndex([index1, index2], reload_func=reload)
+        trans = self.get_transport()
+        for fname in missing:
+            trans.delete(fname)
+        return index, reload_counter
+
     def test_open_missing_index_no_error(self):
         trans = self.get_transport()
         index1 = GraphIndex(trans, 'missing', 100)
@@ -1069,6 +1109,136 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
     def test_validate_empty(self):
         index = CombinedGraphIndex([])
         index.validate()
+
+    def test_key_count_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        self.assertEqual(2, index.key_count())
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_key_count_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        # Without a _reload_func we just raise the exception
+        self.assertRaises(errors.NoSuchFile, index.key_count)
+
+    def test_key_count_reloads_and_fails(self):
+        # We have deleted all underlying indexes, so we will try to reload, but
+        # still fail. This is mostly to test we don't get stuck in an infinite
+        # loop trying to reload
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertRaises(errors.NoSuchFile, index.key_count)
+        self.assertEqual([2, 1, 1], reload_counter)
+
+    def test_iter_entries_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        result = list(index.iter_entries([('1',), ('2',), ('3',)]))
+        index3 = index._indices[0]
+        self.assertEqual([(index3, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_entries_reloads_midway(self):
+        # The first index still looks present, so we get interrupted mid-way
+        # through
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
+        index1, index2 = index._indices
+        result = list(index.iter_entries([('1',), ('2',), ('3',)]))
+        index3 = index._indices[0]
+        # We had already yielded '1', so we just go on to the next, we should
+        # not yield '1' twice.
+        self.assertEqual([(index1, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_entries_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        # Without a _reload_func we just raise the exception
+        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+
+    def test_iter_entries_reloads_and_fails(self):
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertListRaises(errors.NoSuchFile, index.iter_entries, [('3',)])
+        self.assertEqual([2, 1, 1], reload_counter)
+
+    def test_iter_all_entries_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        result = list(index.iter_all_entries())
+        index3 = index._indices[0]
+        self.assertEqual([(index3, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_all_entries_reloads_midway(self):
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
+        index1, index2 = index._indices
+        result = list(index.iter_all_entries())
+        index3 = index._indices[0]
+        # We had already yielded '1', so we just go on to the next, we should
+        # not yield '1' twice.
+        self.assertEqual([(index1, ('1',), ''), (index3, ('2',), '')],
+                         result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_all_entries_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
+
+    def test_iter_all_entries_reloads_and_fails(self):
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertListRaises(errors.NoSuchFile, index.iter_all_entries)
+
+    def test_iter_entries_prefix_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        result = list(index.iter_entries_prefix([('1',)]))
+        index3 = index._indices[0]
+        self.assertEqual([(index3, ('1',), '')], result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_entries_prefix_reloads_midway(self):
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
+        index1, index2 = index._indices
+        result = list(index.iter_entries_prefix([('1',)]))
+        index3 = index._indices[0]
+        # We had already yielded '1', so we just go on to the next, we should
+        # not yield '1' twice.
+        self.assertEqual([(index1, ('1',), '')], result)
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_iter_entries_prefix_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
+                                                 [('1',)])
+
+    def test_iter_entries_prefix_reloads_and_fails(self):
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
+                                                 [('1',)])
+
+    def test_validate_reloads(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index.validate()
+        self.assertEqual([1, 1, 0], reload_counter)
+
+    def test_validate_reloads_midway(self):
+        index, reload_counter = self.make_combined_index_with_missing(['2'])
+        index.validate()
+
+    def test_validate_no_reload(self):
+        index, reload_counter = self.make_combined_index_with_missing()
+        index._reload_func = None
+        self.assertRaises(errors.NoSuchFile, index.validate)
+
+    def test_validate_reloads_and_fails(self):
+        index, reload_counter = self.make_combined_index_with_missing(
+                                    ['1', '2', '3'])
+        self.assertRaises(errors.NoSuchFile, index.validate)
 
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):

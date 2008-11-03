@@ -473,10 +473,17 @@ class TestFormatKnit1(TestCaseWithTransport):
 class DummyRepository(object):
     """A dummy repository for testing."""
 
+    _format = None
     _serializer = None
 
     def supports_rich_root(self):
         return False
+
+    def get_graph(self):
+        raise NotImplementedError
+
+    def get_parent_map(self, revision_ids):
+        raise NotImplementedError
 
 
 class InterDummy(repository.InterRepository):
@@ -940,6 +947,54 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # and the same instance should be returned on successive calls.
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 
+    def test_reload_pack_names_new_entry(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        rev1 = tree.commit('one')
+        rev2 = tree.commit('two')
+        r = repository.Repository.open('.')
+        r.lock_read()
+        self.addCleanup(r.unlock)
+        packs = r._pack_collection
+        packs.ensure_loaded()
+        names = packs.names()
+        # Add a new pack file into the repository
+        rev3 = tree.commit('three')
+        new_names = tree.branch.repository._pack_collection.names()
+        new_name = set(new_names).difference(names)
+        self.assertEqual(1, len(new_name))
+        new_name = new_name.pop()
+        # The old collection hasn't noticed yet
+        self.assertEqual(names, packs.names())
+        self.assertTrue(packs.reload_pack_names())
+        self.assertEqual(new_names, packs.names())
+        # And the repository can access the new revision
+        self.assertEqual({rev3:(rev2,)}, r.get_parent_map([rev3]))
+        self.assertFalse(packs.reload_pack_names())
+
+    def test_reload_pack_names_added_and_removed(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        rev1 = tree.commit('one')
+        rev2 = tree.commit('two')
+        r = repository.Repository.open('.')
+        r.lock_read()
+        self.addCleanup(r.unlock)
+        packs = r._pack_collection
+        packs.ensure_loaded()
+        names = packs.names()
+        # Now repack the whole thing
+        tree.branch.repository.pack()
+        new_names = tree.branch.repository._pack_collection.names()
+        # The other collection hasn't noticed yet
+        self.assertEqual(names, packs.names())
+        self.assertTrue(packs.reload_pack_names())
+        self.assertEqual(new_names, packs.names())
+        self.assertEqual({rev2:(rev1,)}, r.get_parent_map([rev2]))
+        self.assertFalse(packs.reload_pack_names())
+
 
 class TestPack(TestCaseWithTransport):
     """Tests for the Pack object."""
@@ -1019,6 +1074,24 @@ class TestPacker(TestCaseWithTransport):
 
     # To date, this class has been factored out and nothing new added to it;
     # thus there are not yet any tests.
+
+
+class TestOptimisingPacker(TestCaseWithTransport):
+    """Tests for the OptimisingPacker class."""
+
+    def get_pack_collection(self):
+        repo = self.make_repository('.')
+        return repo._pack_collection
+
+    def test_open_pack_will_optimise(self):
+        packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
+                                            [], '.test')
+        new_pack = packer.open_pack()
+        self.assertIsInstance(new_pack, pack_repo.NewPack)
+        self.assertTrue(new_pack.revision_index._optimize_for_size)
+        self.assertTrue(new_pack.inventory_index._optimize_for_size)
+        self.assertTrue(new_pack.text_index._optimize_for_size)
+        self.assertTrue(new_pack.signature_index._optimize_for_size)
 
 
 class TestInterDifferingSerializer(TestCaseWithTransport):

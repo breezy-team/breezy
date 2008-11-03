@@ -2474,6 +2474,16 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack6',
+    )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack6RichRoot',
+    )
 
 # Development formats. 
 # 1.7->1.8 go below here
@@ -2513,8 +2523,16 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
+    _walk_to_common_revisions_batch_size = 1
     _optimisers = []
     """The available optimised InterRepository types."""
+
+    def __init__(self, source, target):
+        InterObject.__init__(self, source, target)
+        # These two attributes may be overridden by e.g. InterOtherToRemote to
+        # provide a faster implementation.
+        self.target_get_graph = self.target.get_graph
+        self.target_get_parent_map = self.target.get_parent_map
 
     def copy_content(self, revision_id=None):
         raise NotImplementedError(self.copy_content)
@@ -2546,8 +2564,13 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        target_graph = self.target.get_graph()
+        target_graph = self.target_get_graph()
         revision_ids = frozenset(revision_ids)
+        # Fast path for the case where all the revisions are already in the
+        # target repo.
+        # (Although this does incur an extra round trip for the
+        # fairly common case where the target doesn't already have the revision
+        # we're pushing.)
         if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
             return graph.SearchResult(revision_ids, set(), 0, set())
         missing_revs = set()
@@ -2555,27 +2578,45 @@ class InterRepository(InterObject):
         # ensure we don't pay silly lookup costs.
         searcher = source_graph._make_breadth_first_searcher(revision_ids)
         null_set = frozenset([_mod_revision.NULL_REVISION])
+        searcher_exhausted = False
         while True:
-            try:
-                next_revs, ghosts = searcher.next_with_ghosts()
-            except StopIteration:
-                break
-            if revision_ids.intersection(ghosts):
-                absent_ids = set(revision_ids.intersection(ghosts))
-                # If all absent_ids are present in target, no error is needed.
-                absent_ids.difference_update(
-                    set(target_graph.get_parent_map(absent_ids)))
-                if absent_ids:
-                    raise errors.NoSuchRevision(self.source, absent_ids.pop())
-            # we don't care about other ghosts as we can't fetch them and
+            next_revs = set()
+            ghosts = set()
+            # Iterate the searcher until we have enough next_revs
+            while len(next_revs) < self._walk_to_common_revisions_batch_size:
+                try:
+                    next_revs_part, ghosts_part = searcher.next_with_ghosts()
+                    next_revs.update(next_revs_part)
+                    ghosts.update(ghosts_part)
+                except StopIteration:
+                    searcher_exhausted = True
+                    break
+            # If there are ghosts in the source graph, and the caller asked for
+            # them, make sure that they are present in the target.
+            # We don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
-            next_revs = set(next_revs)
-            # we always have NULL_REVISION present.
-            have_revs = set(target_graph.get_parent_map(next_revs)).union(null_set)
-            missing_revs.update(next_revs - have_revs)
-            searcher.stop_searching_any(have_revs)
+            ghosts_to_check = set(revision_ids.intersection(ghosts))
+            revs_to_get = set(next_revs).union(ghosts_to_check)
+            if revs_to_get:
+                have_revs = set(target_graph.get_parent_map(revs_to_get))
+                # we always have NULL_REVISION present.
+                have_revs = have_revs.union(null_set)
+                # Check if the target is missing any ghosts we need.
+                ghosts_to_check.difference_update(have_revs)
+                if ghosts_to_check:
+                    # One of the caller's revision_ids is a ghost in both the
+                    # source and the target.
+                    raise errors.NoSuchRevision(
+                        self.source, ghosts_to_check.pop())
+                missing_revs.update(next_revs - have_revs)
+                # Because we may have walked past the original stop point, make
+                # sure everything is stopped
+                stop_revs = searcher.find_seen_ancestors(have_revs)
+                searcher.stop_searching_any(stop_revs)
+            if searcher_exhausted:
+                break
         return searcher.get_result()
-   
+
     @deprecated_method(one_two)
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2932,7 +2973,6 @@ class InterPackRepo(InterSameDataRepository):
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
-        from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         self.count_copied = 0
@@ -2944,9 +2984,10 @@ class InterPackRepo(InterSameDataRepository):
             # till then:
             source_revision_ids = frozenset(self.source.all_revision_ids())
             revision_ids = source_revision_ids - \
-                frozenset(self.target.get_parent_map(source_revision_ids))
+                frozenset(self.target_get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
-            index = self.target._pack_collection.revision_index.combined_index
+            target_pack_collection = self._get_target_pack_collection()
+            index = target_pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
                 index.iter_entries(revision_keys))
             revision_ids = set(revision_ids) - present_revision_ids
@@ -2968,18 +3009,30 @@ class InterPackRepo(InterSameDataRepository):
                 raise errors.InstallFailed([revision_id])
             if len(revision_ids) == 0:
                 return (0, [])
-        packs = self.source._pack_collection.all_packs()
-        pack = Packer(self.target._pack_collection, packs, '.fetch',
+        return self._pack(self.source, self.target, revision_ids)
+
+    def _pack(self, source, target, revision_ids):
+        from bzrlib.repofmt.pack_repo import Packer
+        target_pack_collection = self._get_target_pack_collection()
+        packs = source._pack_collection.all_packs()
+        pack = Packer(target_pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            self.target._pack_collection._save_pack_names()
+            target_pack_collection._save_pack_names()
+            copied_revs = pack.get_revision_count()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self.target._pack_collection.autopack()
-            return (pack.get_revision_count(), [])
+            self._autopack()
+            return (copied_revs, [])
         else:
             return (0, [])
+
+    def _autopack(self):
+        self.target._pack_collection.autopack()
+        
+    def _get_target_pack_collection(self):
+        return self.target._pack_collection
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2993,7 +3046,7 @@ class InterPackRepo(InterSameDataRepository):
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and vice versa, anywhere in the history of revision_id.
-            graph = self.target.get_graph(other_repository=self.source)
+            graph = self.target_get_graph(other_repository=self.source)
             searcher = graph._make_breadth_first_searcher([revision_id])
             found_ids = set()
             while True:
@@ -3009,7 +3062,7 @@ class InterPackRepo(InterSameDataRepository):
             # Double query here: should be able to avoid this by changing the
             # graph api further.
             result_set = found_ids - frozenset(
-                self.target.get_parent_map(found_ids))
+                self.target_get_parent_map(found_ids))
         else:
             source_ids = self.source.all_revision_ids()
             # source_ids is the worst possible case we may need to pull.
@@ -3085,6 +3138,8 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack4,
                 RepositoryFormatKnitPack5,
                 RepositoryFormatKnitPack5RichRoot,
+                RepositoryFormatKnitPack6,
+                RepositoryFormatKnitPack6RichRoot,
                 RepositoryFormatPackDevelopment2,
                 RepositoryFormatPackDevelopment2Subtree,
                 RepositoryFormatPackDevelopment3,
@@ -3096,12 +3151,14 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatPackDevelopment2, # no rr, no subtree
                 RepositoryFormatPackDevelopment3, # no rr, no subtree
                 RepositoryFormatKnitPack5,        # no rr, no subtree
+                RepositoryFormatKnitPack6,        # no rr, no subtree
                 )
             richroot = (
                 RepositoryFormatKnit3,            # rr, subtree
                 RepositoryFormatKnitPack3,        # rr, subtree
                 RepositoryFormatKnitPack4,        # rr, no subtree
                 RepositoryFormatKnitPack5RichRoot,# rr, no subtree
+                RepositoryFormatKnitPack6RichRoot,# rr, no subtree
                 RepositoryFormatPackDevelopment2Subtree, # rr, subtree
                 RepositoryFormatPackDevelopment3Subtree, # rr, subtree
                 )
@@ -3239,6 +3296,11 @@ class InterDifferingSerializer(InterKnitRepo):
 
 
 class InterOtherToRemote(InterRepository):
+    """An InterRepository that simply delegates to the 'real' InterRepository
+    calculated for (source, target._real_repository).
+    """
+
+    _walk_to_common_revisions_batch_size = 50
 
     def __init__(self, source, target):
         InterRepository.__init__(self, source, target)
@@ -3255,6 +3317,9 @@ class InterOtherToRemote(InterRepository):
             self.target._ensure_real()
             real_target = self.target._real_repository
             self._real_inter = InterRepository.get(self.source, real_target)
+            # Make _real_inter use the RemoteRepository for get_parent_map
+            self._real_inter.target_get_graph = self.target.get_graph
+            self._real_inter.target_get_parent_map = self.target.get_parent_map
     
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()
@@ -3309,6 +3374,39 @@ class InterRemoteToOther(InterRepository):
 
 
 
+class InterPackToRemotePack(InterPackRepo):
+    """A specialisation of InterPackRepo for a target that is a
+    RemoteRepository.
+
+    This will use the get_parent_map RPC rather than plain readvs, and also
+    uses an RPC for autopacking.
+    """
+
+    _walk_to_common_revisions_batch_size = 50
+
+    @staticmethod
+    def is_compatible(source, target):
+        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        if isinstance(source._format, RepositoryFormatPack):
+            if isinstance(target, remote.RemoteRepository):
+                target._ensure_real()
+                if isinstance(target._real_repository._format,
+                              RepositoryFormatPack):
+                    if InterRepository._same_model(source, target):
+                        return True
+        return False
+    
+    def _autopack(self):
+        self.target.autopack()
+        
+    def _get_target_pack_collection(self):
+        return self.target._real_repository._pack_collection
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
@@ -3318,6 +3416,7 @@ InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterOtherToRemote)
 InterRepository.register_optimiser(InterRemoteToOther)
+InterRepository.register_optimiser(InterPackToRemotePack)
 
 
 class CopyConverter(object):
