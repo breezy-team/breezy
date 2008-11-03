@@ -44,7 +44,6 @@ from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
 from bzrlib.plugins.builddeb.errors import AddChangelogError
 
 # TODO: way of working out new version number.
-# TODO: support using an explicit standalone upstream branch.
 
 
 TAG_PREFIX = "upstream-"
@@ -53,6 +52,14 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
                             previous_version):
   """Determine the version string of an upstream branch.
 
+  The upstream version is determined from the most recent tag
+  in the upstream branch. If that tag does not point at the last revision, 
+  the revision number is added to it (<version>+bzr<revno>).
+
+  If there are no tags set on the upstream branch, the previous Debian 
+  version is used and combined with the bzr revision number 
+  (usually <version>+bzr<revno>).
+  
   :param revhistory: Branch revision history.
   :param reverse_tag_dict: Reverse tag dictionary (revid -> list of tags)
   :param package: Name of package.

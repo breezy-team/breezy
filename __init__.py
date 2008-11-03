@@ -492,6 +492,7 @@ class cmd_merge_upstream(Command):
                         Version(version), current_version)
             else:
                 version = merge_upstream_branch(tree, upstream_branch, package, version)
+                info("Using version string %s for upstream branch." % (version))
         finally:
             tree.unlock()
 
