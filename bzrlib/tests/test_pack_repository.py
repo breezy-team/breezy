@@ -37,6 +37,10 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
+from bzrlib.smart import (
+    client,
+    server,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -627,6 +631,44 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertTrue(large_pack_name in pack_names)
 
 
+class TestSmartServerAutopack(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestSmartServerAutopack, self).setUp()
+        # Create a smart server that publishes whatever the backing VFS server
+        # does.
+        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server.setUp(self.get_server())
+        self.addCleanup(self.smart_server.tearDown)
+        # Log all HPSS calls into self.hpss_calls.
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(self.format_name)
+
+    def test_autopack_rpc_is_used_when_using_hpss(self):
+        # Make local and remote repos
+        tree = self.make_branch_and_tree('local', format=self.get_format())
+        self.make_branch_and_tree('remote', format=self.get_format())
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        # Make 9 local revisions, and push them one at a time to the remote
+        # repo to produce 9 pack files.
+        for x in range(9):
+            tree.commit('commit %s' % x)
+            tree.branch.push(remote_branch)
+        # Make one more push to trigger an autopack
+        self.hpss_calls = []
+        tree.commit('commit triggering pack')
+        tree.branch.push(remote_branch)
+        self.assertTrue('PackRepository.autopack' in self.hpss_calls)
+
+
 def load_tests(basic_tests, module, test_loader):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
@@ -649,6 +691,15 @@ def load_tests(basic_tests, module, test_loader):
                   "(bzr 1.6.1)\n",
               format_supports_external_lookups=True,
               index_class=GraphIndex),
+         dict(format_name='1.9',
+              format_string="Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='1.9-rich-root',
+              format_string="Bazaar RepositoryFormatKnitPack6RichRoot "
+                  "(bzr 1.9)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
          dict(format_name='development2',
               format_string="Bazaar development format 2 "
                   "(needs bzr.dev from before 1.8)\n",

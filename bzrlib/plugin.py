@@ -205,7 +205,9 @@ def load_from_dir(d):
                     break
             else:
                 continue
-        if getattr(_mod_plugins, f, None):
+        if f == '__init__':
+            continue # We don't load __init__.py again in the plugin dir
+        elif getattr(_mod_plugins, f, None):
             trace.mutter('Plugin name %s already loaded', f)
         else:
             # trace.mutter('add plugin name %s', f)
