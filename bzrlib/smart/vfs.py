@@ -72,13 +72,7 @@ class GetRequest(VfsRequest):
 
     def do(self, relpath):
         relpath = self.translate_client_path(relpath)
-        try:
-            backing_bytes = self._backing_transport.get_bytes(relpath)
-        except errors.ReadError:
-            # cannot read the file
-            return request.FailedSmartServerResponse(('ReadError', ))
-        except errors.PermissionDenied:
-            return request.FailedSmartServerResponse(('PermissionDenied',))
+        backing_bytes = self._backing_transport.get_bytes(relpath)
         return request.SuccessfulSmartServerResponse(('ok',), backing_bytes)
 
 

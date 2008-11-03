@@ -153,6 +153,8 @@ Now that the release is publicly available, tell people about it.
     | 
     | <<NEWS section from this release back to the last major release>>
 
+#. Make an announcement through <https://launchpad.net/bzr/+announce>
+
 #. Update the IRC channel topic. Use the ``/topic`` command to do this,
    ensuring the new topic text keeps the project name, web site link, etc.
 
