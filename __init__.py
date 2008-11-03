@@ -35,6 +35,7 @@ from bzrlib import bzrdir
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
+from bzrlib.directory_service import directories
 from bzrlib.errors import (BzrCommandError,
                            NoSuchFile,
                            NoWorkingTree,
@@ -153,9 +154,9 @@ class cmd_builddeb(Command):
   You can also specify directories to use for different things. --build-dir
   is the directory to build the packages beneath, which defaults to
   '../build-area'. '--orig-dir' specifies the directory that contains the
-  .orig.tar.gz files , which defaults to '..'. '--result-dir' specifies where
+  .orig.tar.gz files , which defaults to '..'. '--result' specifies where
   the resulting package files should be placed, which defaults to '..'.
-  --result-dir will have problems if you use a build command that places
+  --result will have problems if you use a build command that places
   the results in a different directory.
 
   The --reuse option will be useful if you are in merge mode, and the upstream
@@ -420,18 +421,18 @@ class cmd_merge_upstream(Command):
             if tree.changes_from(tree.basis_tree()).has_changed():
                 raise BzrCommandError("There are uncommitted changes in the "
                         "working tree. You must commit before using this "
-                        "command")
+                        "command.")
             config = debuild_config(tree, tree, no_user_config)
             if config.merge:
-                raise BzrCommandError("Merge upstream in merge mode is not yet "
-                        "supported")
+                raise BzrCommandError("Merge upstream in merge mode is not "
+                        "yet supported.")
             if config.native:
-                raise BzrCommandError("Merge upstream in native mode is not yet "
-                        "supported")
+                raise BzrCommandError("Merge upstream in native mode is not "
+                        "yet supported.")
             if config.export_upstream:
                 location = config.export_upstream
             if config.split:
-                raise BzrCommandError("Split mode is not yet supported")
+                raise BzrCommandError("Split mode is not yet supported.")
 
             if location is None:
                 raise BzrCommandError("No location specified to merge")
@@ -444,10 +445,10 @@ class cmd_merge_upstream(Command):
                 current_version = None
 
             if package is None:
-                raise BzrCommandError("You did not specify --package, and there "
-                        "is no changelog from which to determine the package "
-                        "name, which is needed to know the name to give the "
-                        ".orig.tar.gz. Please specify --package.")
+                raise BzrCommandError("You did not specify --package, and "
+                        "there is no changelog from which to determine the "
+                        "package name, which is needed to know the name to "
+                        "give the .orig.tar.gz. Please specify --package.")
 
             try:
                 upstream_branch = Branch.open(location)
@@ -800,6 +801,9 @@ class cmd_test_builddeb(Command):
 
 register_command(cmd_test_builddeb)
 
+directories.register_lazy("deb:", 'bzrlib.plugins.builddeb.directory', 
+        'VcsDirectory', 
+        "Directory that uses Debian Vcs-* control fields to look up branches")
 
 if __name__ == '__main__':
   print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "

@@ -73,6 +73,7 @@ from bzrlib.plugins.builddeb.errors import (ImportError,
 from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
                 upstream_tag_to_version,
                 )
+from bzrlib.plugins.builddeb.util import strip_changelog_message
 
 
 files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
@@ -262,10 +263,10 @@ def import_archive(tree, archive_file, file_ids_from=None):
             for other_tree in file_ids_from:
                 if other_tree.has_filename(relative_path):
                     file_id = other_tree.path2id(relative_path)
-                    assert file_id is not None
-                    tt.version_file(file_id, trans_id)
-                    found = True
-                    break
+                    if file_id is not None:
+                        tt.version_file(file_id, trans_id)
+                        found = True
+                        break
             if not found:
                 name = basename(member.name.rstrip('/'))
                 file_id = generate_ids.gen_file_id(name)
@@ -282,10 +283,10 @@ def import_archive(tree, archive_file, file_ids_from=None):
             for other_tree in file_ids_from:
                 if other_tree.has_filename(relative_path):
                     file_id = other_tree.path2id(relative_path)
-                    assert file_id is not None
-                    tt.version_file(file_id, trans_id)
-                    found = True
-                    break
+                    if file_id is not None:
+                        tt.version_file(file_id, trans_id)
+                        found = True
+                        break
             if not found:
                 tt.version_file(trans_id, trans_id)
         added.add(relative_path)
@@ -599,7 +600,7 @@ class DscImporter(object):
         changelog = Changelog(file=changelog_contents, max_blocks=1)
         if changelog._blocks:
           author = changelog._blocks[0].author
-          changes = changelog._blocks[0].changes()
+          changes = strip_changelog_message(changelog._blocks[0].changes())
           message = ''
           sep = ''
           for change in reversed(changes):
@@ -1546,7 +1547,7 @@ class DistributionBranch(object):
           changelog = Changelog(file=changelog_contents, max_blocks=1)
           if changelog._blocks:
             author = changelog._blocks[0].author
-            changes = changelog._blocks[0].changes()
+            changes = strip_changelog_message(changelog._blocks[0].changes())
             message = ''
             sep = ''
             for change in reversed(changes):
