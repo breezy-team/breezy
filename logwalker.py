@@ -354,6 +354,8 @@ class CachingLogWalker(CacheTable):
         self.mutter("get previous %r:%r", path, revnum)
         row = self.cache.get_previous(path, revnum)
         if row is None:
+            if revnum == 0:
+                return (None, -1)
             return (path, revnum-1)
         (branch_path, action, copyfrom_path, copyfrom_rev) = row
         branch_path = branch_path.encode('utf-8')
