@@ -41,4 +41,6 @@ typedef struct {
 
 #pragma GCC visibility pop
 
+extern void initeditor(void);
+
 #endif /* _BZR_SVN_EDITOR_H_ */

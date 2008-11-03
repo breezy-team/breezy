@@ -137,7 +137,7 @@ PyTypeObject TxDeltaWindowHandler_Type = {
 	
 	/* Methods to implement standard operations */
 	
-	(destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
+	NULL, // done in initeditor() (destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
 	NULL, /*	printfunc tp_print;	*/
 	NULL, /*	getattrfunc tp_getattr;	*/
 	NULL, /*	setattrfunc tp_setattr;	*/
@@ -235,7 +235,7 @@ PyTypeObject FileEditor_Type = {
 	
 	/* Methods to implement standard operations */
 	
-	(destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
+	NULL, // Done in initeditor() (destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
 	NULL, /*	printfunc tp_print;	*/
 	NULL, /*	getattrfunc tp_getattr;	*/
 	NULL, /*	setattrfunc tp_setattr;	*/
@@ -492,7 +492,7 @@ PyTypeObject DirectoryEditor_Type = {
 	
 	/* Methods to implement standard operations */
 	
-	(destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
+	NULL, // Done in initeditor() (destructor)PyObject_Del, /*	destructor tp_dealloc;	*/
 	NULL, /*	printfunc tp_print;	*/
 	NULL, /*	getattrfunc tp_getattr;	*/
 	NULL, /*	setattrfunc tp_setattr;	*/
@@ -688,3 +688,9 @@ PyTypeObject Editor_Type = {
 };
 
 
+void initeditor(void)
+{
+    TxDeltaWindowHandler_Type.tp_dealloc = (destructor)PyObject_Del;
+    FileEditor_Type.tp_dealloc = (destructor)PyObject_Del;
+    DirectoryEditor_Type.tp_dealloc = (destructor)PyObject_Del;
+}
