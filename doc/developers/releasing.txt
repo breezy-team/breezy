@@ -91,6 +91,9 @@ Making the source tarball
   
      make dist
 
+   This also makes a zip file, which is easier to access on Microsoft
+   Windows.
+
 #. Now we'll try expanding this tarball and running the test suite
    to check for packaging problems::
  
@@ -107,7 +110,9 @@ available to the world.
    series, to take you to e.g. <https://launchpad.net/bzr/1.1>.  Then
    click "Register a release", and add information about this release.
 
-#. Within that release, upload the source tarball and the GPG signature.
+#. Within that release, upload the source tarball and zipfile and the GPG
+   signature.  Or, if you prefer, use the
+   ``tools/packaging/lp-upload-release`` script to do this.
 
 #. Link from http://bazaar-vcs.org/Download to the tarball and signature.
 
@@ -147,6 +152,8 @@ Now that the release is publicly available, tell people about it.
     | for various systems will be available soon.
     | 
     | <<NEWS section from this release back to the last major release>>
+
+#. Make an announcement through <https://launchpad.net/bzr/+announce>
 
 #. Update the IRC channel topic. Use the ``/topic`` command to do this,
    ensuring the new topic text keeps the project name, web site link, etc.
