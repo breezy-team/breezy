@@ -11,6 +11,8 @@ bzr-svn 0.4.14	UNRELEASED
 
    * Fix python2.6 deprecation warnings. (#292306)
 
+   * Ignore with tags that happen to be files. (#290664)
+
 bzr-svn 0.4.13	2008-09-24
 
   BUG FIXES

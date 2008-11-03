@@ -872,7 +872,10 @@ class SvnRepository(Repository):
                                 tr = int(self.transport.get_dir(cf, cr)[2][properties.PROP_ENTRY_COMMITTED_REV])
                             tags[p] = self.generate_revision_id(tr, tp, mapping)
                         else:
-                            tags[bp] = self.generate_revision_id(revnum, bp, mapping, revprops=revprops)
+                            try:
+                                tags[bp] = self.generate_revision_id(revnum, bp, mapping, revprops=revprops)
+                            except SubversionException, (_, errors.ERR_FS_NOT_DIRECTORY):
+                                pass
         finally:
             pb.finished()
 
