@@ -14,6 +14,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * When making a large readv() request over ``bzr+ssh``, break up the
+      request into more manageable chunks. Because the RPC is not yet able
+      to stream, this helps keep us from buffering too much information at
+      once. (John Arbash Meinel)
+
   BUG FIXES:
 
   DOCUMENTATION:
