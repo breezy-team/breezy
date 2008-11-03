@@ -1124,6 +1124,26 @@ class KnitVersionedFiles(VersionedFiles):
             record_map[key] = record, record_details, digest, next
         return record_map
 
+    def _split_by_prefix(self, keys):
+        """For the given keys, split them up based on their prefix.
+
+        To keep memory pressure somewhat under control, split the
+        requests back into per-file-id requests, otherwise "bzr co"
+        extracts the full tree into memory before writing it to disk.
+        This should be revisited if _get_content_maps() can ever cross
+        file-id boundaries.
+
+        :param keys: An iterable of key tuples
+        :return: A dict of {prefix: [key_list]}
+        """
+        split_by_prefix = {}
+        for key in keys:
+            if len(key) == 1:
+                split_by_prefix.setdefault('', []).append(key)
+            else:
+                split_by_prefix.setdefault(key[0], []).append(key)
+        return split_by_prefix
+
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """Get a stream of records for keys.
 
@@ -1223,11 +1243,18 @@ class KnitVersionedFiles(VersionedFiles):
         if include_delta_closure:
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
-            text_map, _ = self._get_content_maps(present_keys,
-                needed_from_fallback - absent_keys)
-            for key in present_keys:
-                yield FulltextContentFactory(key, global_map[key], None,
-                    ''.join(text_map[key]))
+            non_local_keys = needed_from_fallback - absent_keys
+            prefix_split_keys = self._split_by_prefix(present_keys)
+            prefix_split_non_local_keys = self._split_by_prefix(non_local_keys)
+            for prefix, keys in prefix_split_keys.iteritems():
+                non_local = prefix_split_non_local_keys.get(prefix, [])
+                non_local = set(non_local)
+                text_map, _ = self._get_content_maps(keys, non_local)
+                for key in keys:
+                    lines = text_map.pop(key)
+                    text = ''.join(lines)
+                    yield FulltextContentFactory(key, global_map[key], None,
+                                                 text)
         else:
             for source, keys in source_keys:
                 if source is parent_maps[0]:
@@ -2641,6 +2668,7 @@ class _KnitAnnotator(object):
                 (rev_id, parent_ids, record) = nodes_to_annotate.pop()
                 (index_memo, compression_parent, parents,
                  record_details) = self._all_build_details[rev_id]
+                blocks = None
                 if compression_parent is not None:
                     comp_children = self._compression_children[compression_parent]
                     if rev_id not in comp_children:
@@ -2667,14 +2695,16 @@ class _KnitAnnotator(object):
                         copy_base_content=(not reuse_content))
                     fulltext = self._add_fulltext_content(rev_id,
                                                           fulltext_content)
-                    blocks = KnitContent.get_line_delta_blocks(delta,
-                            parent_fulltext, fulltext)
+                    if compression_parent == parent_ids[0]:
+                        # the compression_parent is the left parent, so we can
+                        # re-use the delta
+                        blocks = KnitContent.get_line_delta_blocks(delta,
+                                parent_fulltext, fulltext)
                 else:
                     fulltext_content = self._knit._factory.parse_fulltext(
                         record, rev_id)
                     fulltext = self._add_fulltext_content(rev_id,
                         fulltext_content)
-                    blocks = None
                 nodes_to_annotate.extend(
                     self._add_annotation(rev_id, fulltext, parent_ids,
                                      left_matching_blocks=blocks))
@@ -2695,7 +2725,7 @@ class _KnitAnnotator(object):
 
         :param key: The key to annotate.
         """
-        if True or len(self._knit._fallback_vfs) > 0:
+        if len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
         records = self._get_build_graph(key)
