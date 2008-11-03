@@ -165,7 +165,7 @@ class Shelver(object):
         """Prompt the user with a yes/no question.
 
         This may be overridden by self.auto.  It may also *set* self.auto.  It
-        may also raise SystemExit.
+        may also raise UserAbort.
         :param question: The question to ask the user.
         :return: True or False
         """
@@ -178,7 +178,7 @@ class Shelver(object):
             self.auto = True
             return True
         if char == 'q':
-            sys.exit(0)
+            raise errors.UserAbort()
         else:
             return False
 

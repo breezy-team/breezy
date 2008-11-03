@@ -18,7 +18,7 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib import shelf_ui, tests
+from bzrlib import errors, shelf_ui, tests
 
 
 class ExpectShelver(shelf_ui.Shelver):
@@ -173,7 +173,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq]', 'q')
-        self.assertRaises(SystemExit, shelver.run)
+        self.assertRaises(errors.UserAbort, shelver.run)
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_all(self):

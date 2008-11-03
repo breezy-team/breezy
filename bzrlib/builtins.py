@@ -4762,7 +4762,10 @@ class cmd_shelve(Command):
 
     def run(self, revision=None, all=False, file_list=None, message=None):
         from bzrlib.shelf_ui import Shelver
-        Shelver.from_args(revision, all, file_list, message).run()
+        try:
+            Shelver.from_args(revision, all, file_list, message).run()
+        except errors.UserAbort:
+            return 0
 
 
 class cmd_unshelve(Command):

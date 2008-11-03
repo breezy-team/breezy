@@ -2920,3 +2920,8 @@ class NoSuchShelfId(BzrError):
 
     def __init__(self, shelf_id):
         BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class UserAbort(BzrError):
+
+    _fmt = 'The user aborted the operation.'
