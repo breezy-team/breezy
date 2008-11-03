@@ -234,23 +234,29 @@ def _open_bzr_log():
 
 def enable_default_logging():
     """Configure default logging: messages to stderr and debug to .bzr.log
-    
+
     This should only be called once per process.
 
     Non-command-line programs embedding bzrlib do not need to call this.  They
     can instead either pass a file to _push_log_file, or act directly on
     logging.getLogger("bzr").
-    
+
     Output can be redirected away by calling _push_log_file.
     """
+    # Do this before we open the log file, so we prevent
+    # get_terminal_encoding() from mutter()ing multiple times
+    term_encoding = osutils.get_terminal_encoding()
+    start_time = osutils.format_local_date(_bzr_log_start_time,
+                                           timezone='local')
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
+    bzr_log_file.write(start_time.encode('utf-8') + '\n')
     push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    writer_factory = codecs.getwriter(osutils.get_terminal_encoding())
+    writer_factory = codecs.getwriter(term_encoding)
     encoded_stderr = writer_factory(sys.stderr, errors='replace')
     stderr_handler = logging.StreamHandler(encoded_stderr)
     stderr_handler.setLevel(logging.INFO)

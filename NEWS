@@ -4,17 +4,56 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
 
-  USER-VISIBLE CHANGES:
+  CHANGES:
+
+  NEW FEATURES:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+  INTERNALS:
+
+
+Bzr 1.9 2008-10-31
+------------------
+
+This release of Bazaar adds a new repository format, ``1.9``, with smaller
+and more efficient index files.  This format can be specified when
+creating a new repository, or used to losslessly upgrade an existing
+repository.  bzr 1.9 also speeds most operations over the smart server
+protocol, makes annotate faster, and uses less memory when making
+checkouts or pulling large amounts of data.
+
 
   NEW FEATURES:
 
     * New Branch hook ``transform_fallback_location`` allows a function to
       be called when looking up the stacked source. (Michael Hudson)
 
+    * New repository formats ``1.9`` and ``1.9-rich-root``. These have all
+      the functionality of ``1.6``, but use the new btree indexes.
+      These indexes are both smaller and faster for access to historical
+      information.  (John Arbash Meinel)
+
   IMPROVEMENTS:
+
+    * ``BTreeIndex`` code now is able to prefetch extra pages to help tune
+      the tradeoff between bandwidth and latency. Should be tuned
+      appropriately to not impact commands which need minimal information,
+      but provide a significant boost to ones that need more context. Only
+      has a direct impact on the ``--development2`` format which uses
+      btree's for the indexes. (John Arbash Meinel)
 
     * ``bzr dump-btree`` is a hidden command introduced to allow dumping
       the contents of a compressed btree file.  (John Arbash Meinel)
@@ -34,8 +73,19 @@ IN DEVELOPMENT
     * launchpad-login now provides a default username for bzr+ssh and sftp
       URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
 
-    * lp: lookups no longer include usernames, making them shareable and
+    * ``lp:`` lookups no longer include usernames, making them shareable and
       shorter. (Aaron Bentley)
+
+    * New ``PackRepository.autopack`` smart server RPC, which does
+      autopacking entirely on the server.  This is much faster than
+      autopacking via plain file methods, which downloads a large amount
+      of pack data and then re-uploads the same pack data into a single
+      file.  This fixes a major (although infrequent) cause of lengthy
+      delays when using a smart server.  For example, pushing the 10th
+      revision to a repository with 9 packs now takes 44 RPCs rather than
+      179, and much less bandwidth too.  This requires Bazaar 1.9 on both
+      the client and the server, otherwise the client will fallback to the
+      slower method.  (Andrew Bennetts)
 
   BUG FIXES:
 
@@ -44,6 +94,10 @@ IN DEVELOPMENT
 
     * API versioning support now has a multiple-version checking api
       ``require_any_api``. (Robert Collins, #279447)
+
+    * ``bzr branch --stacked`` from a smart server to a standalone branch 
+      works again.  This fixes a regression in 1.7 and 1.8.
+      (Andrew Bennetts, #270397)
 
     * ``bzr co`` uses less memory. It used to unpack the entire WT into
       memory before writing it to disk. This was a little bit faster, but
@@ -60,23 +114,35 @@ IN DEVELOPMENT
       could only happen if ``bzr reconcile`` decided that the parent
       ordering was incorrect in the file graph.  (John Arbash Meinel)
 
+    * "Permission denied" errors that occur when pushing a new branch to a
+      smart server no longer cause tracebacks.  (Andrew Bennetts, #278673)
+
     * Some compatibility fixes for building the extensions with MSVC and
       for python2.4. (John Arbash Meinel, #277484)
 
+    * The index logic is now able to reload the list of pack files if and
+      index ends up disappearing. We still don't reload if the pack data
+      itself goes missing after checking the index. This bug appears as a
+      transient failure (file not found) when another process is writing
+      to the repository.  (John Arbash Meinel, #153786)
+
+    * ``bzr switch`` and ``bzr bind`` will now update the branch nickname if
+      it was previously set. All checkouts will now refer to the bound branch
+      for a nickname if one was not explicitly set.
+      (Marius Kruger, #230903)
+
   DOCUMENTATION:
+
+    * Improved hook documentation. (Michael Ernst)
 
   API CHANGES:
 
     * commands.plugins_cmds is now a CommandRegistry, not a dict.
 
-  TESTING:
-
   INTERNALS:
 
      * New AuthenticationConfig.set_credentials method allows easy programmatic
        configuration of authetication credentials.
-
-  PORTABILITY:
 
 
 bzr 1.8 2008-10-16
@@ -216,6 +282,11 @@ bzr 1.8rc1 2008-10-07
 
     * Trivial documentation fix.
       (John Arbash Meinel, #270471)
+
+    * ``bzr switch`` and ``bzr bind`` will now update the branch nickname if
+      it was previously set. All checkouts will now refer to the bound branch
+      for a nickname if one was not explicitly set.
+      (Marius Kruger, #230903)
 
   DOCUMENTATION:
 
