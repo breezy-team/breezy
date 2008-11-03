@@ -23,7 +23,7 @@ from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
 
 from cStringIO import StringIO
-import md5
+from bzrlib.osutils import md5
 
 from bzrlib.plugins.svn import properties
 from bzrlib.plugins.svn.delta import apply_txdelta_handler
@@ -61,7 +61,7 @@ def md5_strings(strings):
     :param strings: Strings to find the MD5sum of.
     :return: MD5sum
     """
-    s = md5.new()
+    s = md5()
     map(s.update, strings)
     return s.hexdigest()
 
@@ -322,7 +322,7 @@ class FileRevisionBuildEditor(FileBuildEditor):
         self.file_stream = None
 
     def _apply_textdelta(self, base_checksum=None):
-        actual_checksum = md5.new(self.file_data).hexdigest()
+        actual_checksum = md5(self.file_data).hexdigest()
         assert (base_checksum is None or base_checksum == actual_checksum,
             "base checksum mismatch: %r != %r" % (base_checksum, 
                                                   actual_checksum))

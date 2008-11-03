@@ -26,7 +26,7 @@ from bzrlib.plugins.svn.mapping3.scheme import (BranchingScheme, guess_scheme_fr
                              parse_list_scheme_text, NoBranchingScheme,
                              TrunkBranchingScheme, ListBranchingScheme)
 from bzrlib.plugins.svn.ra import DIRENT_KIND
-import sha
+from bzrlib.osutils import sha
 
 SVN_PROP_BZR_BRANCHING_SCHEME = 'bzr:branching-scheme'
 
@@ -266,7 +266,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
         if len(ret) > 150:
             ret = "%d@%s:%s;%s" % (revnum, uuid, 
                                 mapping.escape_svn_path(branch),
-                                sha.new(inv_path).hexdigest())
+                                sha(inv_path).hexdigest())
         assert isinstance(ret, str)
         return osutils.safe_file_id(ret)
 
