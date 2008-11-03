@@ -122,8 +122,8 @@ class Shelver(object):
                 changes = creator.work_transform.iter_changes()
                 reporter = delta._ChangeReporter()
                 delta.report_changes(changes, reporter)
-                if (self.prompt_bool('Shelve %d change(s)?' %
-                    changes_shelved, auto=self.auto_apply)):
+                if (self.auto_apply or self.prompt_bool(
+                    'Shelve %d change(s)?' % changes_shelved)):
                     shelf_id = self.manager.shelve_changes(creator,
                                                            self.message)
                     trace.note('Changes shelved with id "%d".' % shelf_id)
@@ -134,6 +134,11 @@ class Shelver(object):
             creator.finalize()
 
     def get_parsed_patch(self, file_id):
+        """Return a parsed version of a file's patch.
+
+        :param file_id: The id of the file to generate a patch for.
+        :return: A patches.Patch.
+        """
         old_path = self.target_tree.id2path(file_id)
         new_path = self.work_tree.id2path(file_id)
         diff_file = StringIO()
@@ -144,16 +149,26 @@ class Shelver(object):
         return patches.parse_patch(diff_file)
 
     def prompt(self, message):
+        """Prompt the user for a character.
+
+        :param message: The message to prompt a user with.
+        :return: A character.
+        """
         sys.stdout.write(message)
         char = osutils.getchar()
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
         sys.stdout.flush()
         return char
 
-    def prompt_bool(self, question, auto=None):
-        if auto is None:
-            auto = self.auto
-        if auto:
+    def prompt_bool(self, question):
+        """Prompt the user with a yes/no question.
+
+        This may be overridden by self.auto, or auto may be supplied.
+        It may also *set* self.auto.  It may also raise SystemExit.
+        :param question: The question to ask the user.
+        :return: True or False
+        """
+        if self.auto:
             return True
         char = self.prompt(question + ' [yNfq]')
         if char == 'y':
@@ -167,6 +182,12 @@ class Shelver(object):
             return False
 
     def handle_modify_text(self, creator, file_id):
+        """Provide diff hunk selection for modified text.
+
+        :param creator: a ShelfCreator
+        :param file_id: The id of the file to shelve.
+        :return: number of shelved hunks.
+        """
         target_lines = self.target_tree.get_file_lines(file_id)
         work_file = self.work_tree.get_file(file_id)
         try:
@@ -195,9 +216,17 @@ class Shelver(object):
 
 
 class Unshelver(object):
+    """Unshelve changes into a working tree."""
 
     @classmethod
     def from_args(klass, shelf_id=None, action='apply', directory='.'):
+        """Create an unshelver from commandline arguments.
+
+        :param shelf_id: Integer id of the shelf, as a string.
+        :param action: action to perform.  May be 'apply', 'dry-run',
+            'delete'.
+        :param directory: The directory to unshelve changes into.
+        """
         tree, path = workingtree.WorkingTree.open_containing(directory)
         manager = tree.get_shelf_manager()
         if shelf_id is not None:
@@ -221,7 +250,18 @@ class Unshelver(object):
 
     def __init__(self, tree, manager, shelf_id, apply_changes=True,
                  delete_shelf=True, read_shelf=True):
+        """Constructor.
+
+        :param tree: The working tree to unshelve into.
+        :param manager: The ShelveManager containing the shelved changes.
+        :param shelf_id:
+        :param apply_changes: If True, apply the shelved changes to the
+            working tree.
+        :param delete_shelf: If True, delete the changes from the shelf.
+        :param read_shelf: If True, read the changes from the shelf.
+        """
         self.tree = tree
+        manager = tree.get_shelf_manager()
         self.manager = manager
         self.shelf_id = shelf_id
         self.apply_changes = apply_changes
@@ -229,6 +269,7 @@ class Unshelver(object):
         self.read_shelf = read_shelf
 
     def run(self):
+        """Perform the unshelving operation."""
         self.tree.lock_write()
         cleanups = [self.tree.unlock]
         try:
@@ -255,6 +296,7 @@ class Unshelver(object):
                 cleanup()
 
     def show_changes(self, merger):
+        """Show the changes that this operation specifies."""
         tree_merger = merger.make_merger()
         # This implicitly shows the changes via the reporter, so we're done...
         tt = tree_merger.make_preview_transform()
