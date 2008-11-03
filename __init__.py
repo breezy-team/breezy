@@ -407,10 +407,10 @@ class cmd_merge_upstream(Command):
             "this release is targetted at", type=str)
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,
-            distribution_opt]
+            distribution_opt, 'revision']
 
     def run(self, location=None, version=None, distribution=None, package=None,
-            no_user_config=None):
+            no_user_config=None, revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import merge_upstream_branch
@@ -491,7 +491,14 @@ class cmd_merge_upstream(Command):
                 conflicts = db.merge_upstream(tarball_filename,
                         Version(version), current_version)
             else:
-                version = merge_upstream_branch(tree, upstream_branch, package, version)
+                if revision is not None:
+                  if len(revision) > 1:
+                    raise BzrCommandError("builddeb takes only a single --revision")
+                  upstream_revid = revision[0].in_branch(upstream_branch).rev_id
+                else:
+                  upstream_revid = None
+                version = merge_upstream_branch(tree, upstream_branch, package, 
+                                                upstream_revid, version)
                 info("Using version string %s for upstream branch." % (version))
         finally:
             tree.unlock()

@@ -97,15 +97,17 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
   return Version("%s+bzr%d" % (previous_version, len(revhistory)))
 
 
-def merge_upstream_branch(tree, upstream_branch, package, version=None):
+def merge_upstream_branch(tree, upstream_branch, package, 
+                          upstream_revid=None, version=None):
   """Merge an upstream release from a branch.
 
   :param tree: Mutable tree to merge into.
   :param upstream_branch: Upstream branch object
   :param package: Package name.
+  :param upstream_revid: Revision id in upstream branch to merge
   :param version: Optional version string. If none is specified, will 
                   be determined from the branch.
-  :param version: Actual version string that was used
+  :return: Actual version string that was used
   """
   if version is None:
     cl_id = tree.path2id('debian/changelog')
@@ -113,9 +115,17 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
      raise AddChangelogError('debian/changelog')
     cl = Changelog(tree.get_file_text(cl_id))
     previous_version = cl.upstream_version
-    version = upstream_branch_version(upstream_branch.revision_history(),
-                upstream_branch.tags.get_reverse_tag_dict(), package,
-                previous_version)
+    if upstream_revid is None:
+      upstream_revid = upstream_branch.last_revision()
+    upstream_branch.lock_read()
+    try:
+      upstream_history = list(upstream_branch.repository.iter_reverse_revision_history(upstream_revid))
+      upstream_history.reverse()
+      version = upstream_branch_version(upstream_history,
+                  upstream_branch.tags.get_reverse_tag_dict(), package,
+                  previous_version)
+    finally:
+      upstream_branch.unlock()
   tree.merge_from_branch(upstream_branch)
   return version
 
