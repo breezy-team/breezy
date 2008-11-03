@@ -143,6 +143,8 @@ def upstream_tag_to_version(tag_name, package=None):
         tag_name.startswith("%s-" % package) or
         tag_name.startswith("%s_" % package))):
     return Version(tag_name[len(package)+1:])
+  if tag_name.startswith("release-"):
+    return Version(tag_name[len("release-"):])
   if tag_name[0] == "v" and tag_name[1].isdigit():
     return Version(tag_name[1:])
   if all([c.isdigit() or c in (".", "~") for c in tag_name]):
