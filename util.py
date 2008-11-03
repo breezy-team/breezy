@@ -78,6 +78,22 @@ def find_changelog(t, merge):
     changelog.parse_changelog(contents, max_blocks=1, allow_empty_author=True)
     return changelog, larstiq
 
+def strip_changelog_message(changes):
+  while changes[-1] == '':
+    changes.pop()
+  while changes[0] == '':
+    changes.pop(0)
+
+  whitespace_column_re = re.compile(r'  |\t')
+  changes = map(lambda line: whitespace_column_re.sub('', line, 1), changes)
+
+  leader_re = re.compile(r'[ \t]*[*+-] ')
+  count = len(filter(leader_re.match, changes))
+  if count == 1:
+    return map(lambda line: leader_re.sub('', line, 1).lstrip(), changes)
+  else:
+    return changes
+
 def tarball_name(package, version):
   """Return the name of the .orig.tar.gz for the given package and version."""
 

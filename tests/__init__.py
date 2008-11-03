@@ -101,9 +101,6 @@ class RepackTarballAdaptor(object):
   def adapt(self, test):
     result = TestSuite()
     for (name, function, source) in tarball_functions:
-      # XXX: Zip files are horrible, but work out how to repack them.
-      if name == '.zip':
-        continue
       new_test = deepcopy(test)
       source = os.path.basename(source)
       new_test.build_tarball = function(source)
@@ -126,6 +123,7 @@ def test_suite():
             'test_import_dsc',
             'test_merge_upstream',
             'test_repack_tarball_extra',
+            'test_revspec',
             'test_util',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
