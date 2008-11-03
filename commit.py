@@ -226,7 +226,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         txdelta = file_editor.apply_textdelta()
         digest = send_stream(StringIO(contents), txdelta)
         if 'validate' in debug.debug_flags:
-            from fetch import md5_strings
+            from bzrlib.plugins.svn.fetch import md5_strings
             assert digest == md5_strings(contents)
 
     def _dir_process(self, path, file_id, dir_editor):

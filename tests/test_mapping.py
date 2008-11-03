@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sha
+from bzrlib.osutils import sha
 
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.tests import TestCase, TestNotApplicable
@@ -229,7 +229,7 @@ class Mappingv2Tests(MappingTestAdapter, TestCase):
 
 
 def sha1(text):
-    return sha.new(text).hexdigest()
+    return sha(text).hexdigest()
 
 
 class Mappingv3FilePropTests(MappingTestAdapter, TestCase):

@@ -2821,6 +2821,8 @@ void initra(void)
 	if (PyType_Ready(&AuthProvider_Type) < 0)
 		return;
 
+	initeditor();
+
 	apr_initialize();
 	pool = Pool(NULL);
 	if (pool == NULL)

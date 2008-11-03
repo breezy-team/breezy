@@ -23,7 +23,7 @@ from bzrlib.trace import mutter
 from bzrlib.revisiontree import RevisionTree
 
 import os
-import md5
+from bzrlib.osutils import md5
 from cStringIO import StringIO
 import urllib
 
@@ -88,7 +88,7 @@ class SvnRevisionTree(RevisionTree):
         finally:
             repository.transport.add_connection(conn)
 
-    def get_file_text(self, file_id):
+    def get_file_text(self, file_id, path=None):
         return self.file_data[file_id]
 
 
@@ -196,7 +196,7 @@ class FileTreeEditor(object):
             ie = self.tree._inventory.add_path(self.path, 'file', file_id)
         ie.revision = revision_id
 
-        actual_checksum = md5.new(file_data).hexdigest()
+        actual_checksum = md5(file_data).hexdigest()
         assert(checksum is None or checksum == actual_checksum,
                 "checksum mismatch: %r != %r" % (checksum, actual_checksum))
 
@@ -312,8 +312,10 @@ class SvnBasisTree(RevisionTree):
     def get_file_byname(self, name):
         return open(self.abspath(name))
 
-    def get_file_text(self, file_id):
-        return self.get_file_byname(self.id2path(file_id)).read()
+    def get_file_text(self, file_id, path=None):
+        if path is None:
+            path = self.id2path(file_id)
+        return self.get_file_byname(path).read()
 
     def annotate_iter(self, file_id,
                       default_revision=CURRENT_REVISION):
