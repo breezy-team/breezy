@@ -187,13 +187,14 @@ class DebBuild(object):
     info("Using get-orig-source rule to retrieve upstream tarball")
     rules_id = self._tree.path2id(self._rulesfile_name())
     assert rules_id is not None, "rulesfile must be in the tree"
-    r = os.system("make -f %s get-orig-source" % self._rulesfile_name())
     fetched_tarball = self._tarball_name()
+    r = os.system("make -f %s get-orig-source" % self._rulesfile_name())
     if r != 0:
       raise DebianError("get-orig-source rule failed")
     if not os.path.exists(fetched_tarball):
-      raise DebianError("get-orig-source did not create %s" % self._tarball_name())
+      raise DebianError("get-orig-source did not create %s" % fetched_tarball)
     desired_tarball = self._tarball_name()
+    from repack_tarball import repack_tarball
     repack_tarball(fetched_tarball, desired_tarball,
                    target_dir=self._properties.tarball_dir())
     os.unlink(fetched_tarball)
