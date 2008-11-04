@@ -26,7 +26,7 @@ from bzrlib import (
     pack,
     transform,
     ui,
-    workingtree
+    workingtree,
 )
 from bzrlib.util import bencode
 

@@ -12,6 +12,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * New `shelve` and `unshelve` commands allow undoing and redoing changes.
+      (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * When making a large readv() request over ``bzr+ssh``, break up the
