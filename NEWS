@@ -30,7 +30,7 @@ IN DEVELOPMENT
   INTERNALS:
 
 
-Bzr 1.9 2008-10-31
+bzr 1.9 2008-10-31
 ------------------
 
 This release of Bazaar adds a new repository format, ``1.9``, with smaller
