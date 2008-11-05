@@ -2,7 +2,7 @@ bzr-svn 0.4.15	UNRELEASED
 
   BUG FIXES
 
-   * Ignore tags that happen to be files.
+   * Ignore tags that happen to be files. (#294283)
 
 bzr-svn 0.4.14	2008-11-03
 
