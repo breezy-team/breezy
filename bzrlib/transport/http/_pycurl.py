@@ -311,9 +311,6 @@ class PyCurlTransport(HttpTransportBase):
             if password is not None: # '' is a valid password
                 userpass += password
             curl.setopt(pycurl.USERPWD, userpass)
-        # XXX: Temporarily disable peer verification
-#        curl.setopt(pycurl.SSL_VERIFYHOST, 2)
-        curl.setopt(pycurl.SSL_VERIFYPEER, 0)
 
     def _curl_perform(self, curl, header, more_headers=[]):
         """Perform curl operation and translate exceptions."""
@@ -366,7 +363,18 @@ def get_test_permutations():
     from bzrlib.tests import http_server
     permutations = [(PyCurlTransport, http_server.HttpServer_PyCurl),]
     if tests.HTTPSServerFeature.available():
-        from bzrlib.tests import https_server
-        permutations.append((PyCurlTransport,
+        from bzrlib.tests import (
+            https_server,
+            ssl_certs,
+            )
+
+        class HTTPS_pycurl_transport(PyCurlTransport):
+
+            def __init__(self, base, _from_transport=None):
+                super(HTTPS_pycurl_transport, self).__init__(base,
+                                                             _from_transport)
+                self.cabundle = str(ssl_certs.build_path('ca.crt'))
+
+        permutations.append((HTTPS_pycurl_transport,
                              https_server.HTTPSServer_PyCurl))
     return permutations

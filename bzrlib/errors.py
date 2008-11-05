@@ -17,9 +17,6 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-import sys
-
-
 from bzrlib import (
     osutils,
     symbol_versioning,
