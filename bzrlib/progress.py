@@ -16,21 +16,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Simple text-mode progress indicator.
+"""Progress indicators.
 
-To display an indicator, create a ProgressBar object.  Call it,
-passing Progress objects indicating the current state.  When done,
-call clear().
+The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
+will maintain a ProgressBarStack for you.
 
-Progress is suppressed when output is not sent to a terminal, so as
-not to clutter log files.
+For direct use, the factory ProgressBar will return an auto-detected progress
+bar that should match your terminal type. You can manually create a
+ProgressBarStack too if you need multiple levels of cooperating progress bars.
+Note that bzrlib's internal functions use the ui module, so if you are using
+bzrlib it really is best to use bzrlib.ui.ui_factory.
 """
-
-# TODO: should be a global option e.g. --silent that disables progress
-# indicators, preferably without needing to adjust all code that
-# potentially calls them.
-
-# TODO: If not on a tty perhaps just print '......' for the benefit of IDEs, etc
 
 # TODO: Optionally show elapsed time instead/as well as ETA; nicer
 # when the rate is unpredictable
@@ -193,7 +189,6 @@ class _BaseProgressBar(object):
     def finished(self):
         """Return this bar to its progress stack."""
         self.clear()
-        assert self._stack is not None
         self._stack.return_pb(self)
 
     def note(self, fmt_string, *args, **kwargs):
@@ -298,7 +293,6 @@ class TTYProgressBar(_BaseProgressBar):
         self.child_fraction = 0
         self._have_output = False
     
-
     def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
         # time.time consistently takes 40/4000 ms = 0.01 ms.
@@ -320,7 +314,7 @@ class TTYProgressBar(_BaseProgressBar):
         return False
         
     def tick(self):
-        self.update(self.last_msg, self.last_cnt, self.last_total, 
+        self.update(self.last_msg, self.last_cnt, self.last_total,
                     self.child_fraction)
 
     def child_update(self, message, current, total):
@@ -330,13 +324,11 @@ class TTYProgressBar(_BaseProgressBar):
                 pass
             elif self.last_cnt + child_fraction <= self.last_total:
                 self.child_fraction = child_fraction
-            else:
-                mutter('not updating child fraction')
         if self.last_msg is None:
             self.last_msg = ''
         self.tick()
 
-    def update(self, msg, current_cnt=None, total_cnt=None, 
+    def update(self, msg, current_cnt=None, total_cnt=None,
                child_fraction=0):
         """Update and redraw progress bar."""
         if msg is None:
@@ -438,7 +430,7 @@ class TTYProgressBar(_BaseProgressBar):
         self._have_output = True
         #self.to_file.flush()
             
-    def clear(self):        
+    def clear(self):
         if self._have_output:
             self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         self._have_output = False
@@ -491,7 +483,24 @@ class ChildProgress(_BaseProgressBar):
     def note(self, *args, **kwargs):
         self.parent.note(*args, **kwargs)
 
- 
+
+class InstrumentedProgress(TTYProgressBar):
+    """TTYProgress variant that tracks outcomes"""
+
+    def __init__(self, *args, **kwargs):
+        self.always_throttled = True
+        self.never_throttle = False
+        TTYProgressBar.__init__(self, *args, **kwargs)
+
+    def throttle(self, old_message):
+        if self.never_throttle:
+            result =  False
+        else:
+            result = TTYProgressBar.throttle(self, old_message)
+        if result is False:
+            self.always_throttled = False
+
+
 def str_tdelta(delt):
     if delt is None:
         return "-:--:--"
@@ -521,8 +530,6 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     
     total_duration = float(elapsed) * float(total) / float(current)
 
-    assert total_duration >= elapsed
-
     if last_updates and len(last_updates) >= n_recent:
         avg = sum(last_updates) / float(len(last_updates))
         time_left = avg * (total - current)
@@ -549,42 +556,4 @@ class ProgressPhase(object):
             self.cur_phase = 0
         else:
             self.cur_phase += 1
-        assert self.cur_phase < self.total
         self.pb.update(self.message, self.cur_phase, self.total)
-
-
-def run_tests():
-    import doctest
-    result = doctest.testmod()
-    if result[1] > 0:
-        if result[0] == 0:
-            print "All tests passed"
-    else:
-        print "No tests to run"
-
-
-def demo():
-    sleep = time.sleep
-    
-    print 'dumb-terminal test:'
-    pb = DotsProgressBar()
-    for i in range(100):
-        pb.update('Leoparden', i, 99)
-        sleep(0.1)
-    sleep(1.5)
-    pb.clear()
-    sleep(1.5)
-    
-    print 'smart-terminal test:'
-    pb = ProgressBar(show_pct=True, show_bar=True, show_spinner=False)
-    for i in range(100):
-        pb.update('Elephanten', i, 99)
-        sleep(0.1)
-    sleep(2)
-    pb.clear()
-    sleep(1)
-
-    print 'done!'
-
-if __name__ == "__main__":
-    demo()

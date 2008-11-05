@@ -132,12 +132,7 @@ class SSHVendorManager(object):
 
     def _get_vendor_by_inspection(self):
         """Return the vendor or None by checking for known SSH implementations."""
-        # detection of plink vendor is disabled because of bug #107593
-        # https://bugs.launchpad.net/bzr/+bug/107593
-        # who want plink should explicitly enable it with BZR_SSH environment
-        # variable.
-        #~for args in (['ssh', '-V'], ['plink', '-V']):
-        for args in (['ssh', '-V'],):
+        for args in (['ssh', '-V'], ['plink', '-V']):
             version = self._get_ssh_version_string(args)
             vendor = self._get_vendor_by_version_string(version, args)
             if vendor is not None:
@@ -177,19 +172,34 @@ def _ignore_sigint():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-class LoopbackSFTP(object):
+class SocketAsChannelAdapter(object):
     """Simple wrapper for a socket that pretends to be a paramiko Channel."""
 
     def __init__(self, sock):
         self.__socket = sock
 
+    def get_name(self):
+        return "bzr SocketAsChannelAdapter"
+    
     def send(self, data):
         return self.__socket.send(data)
 
     def recv(self, n):
-        return self.__socket.recv(n)
+        try:
+            return self.__socket.recv(n)
+        except socket.error, e:
+            if e.args[0] in (errno.EPIPE, errno.ECONNRESET, errno.ECONNABORTED,
+                             errno.EBADF):
+                # Connection has closed.  Paramiko expects an empty string in
+                # this case, not an exception.
+                return ''
+            raise
 
     def recv_ready(self):
+        # TODO: jam 20051215 this function is necessary to support the
+        # pipelined() function. In reality, it probably should use
+        # poll() or select() to actually return if there is data
+        # available, otherwise we probably don't get any benefit
         return True
 
     def close(self):
@@ -242,7 +252,7 @@ class LoopbackVendor(SSHVendor):
             sock.connect((host, port))
         except socket.error, e:
             self._raise_connection_error(host, port=port, orig_error=e)
-        return SFTPClient(LoopbackSFTP(sock))
+        return SFTPClient(SocketAsChannelAdapter(sock))
 
 register_ssh_vendor('loopback', LoopbackVendor())
 
@@ -352,7 +362,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   subsystem='sftp')
             sock = self._connect(argv)
-            return SFTPClient(sock)
+            return SFTPClient(SocketAsChannelAdapter(sock))
         except _sftp_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
         except (OSError, IOError), e:
@@ -392,11 +402,6 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        assert subsystem is not None or command is not None, (
-            'Must specify a command or subsystem')
-        if subsystem is not None:
-            assert command is None, (
-                'subsystem and command are mutually exclusive')
         args = ['ssh',
                 '-oForwardX11=no', '-oForwardAgent=no',
                 '-oClearAllForwardings=yes', '-oProtocol=2',
@@ -419,11 +424,6 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        assert subsystem is not None or command is not None, (
-            'Must specify a command or subsystem')
-        if subsystem is not None:
-            assert command is None, (
-                'subsystem and command are mutually exclusive')
         args = ['ssh', '-x']
         if port is not None:
             args.extend(['-p', str(port)])
@@ -443,12 +443,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        assert subsystem is not None or command is not None, (
-            'Must specify a command or subsystem')
-        if subsystem is not None:
-            assert command is None, (
-                'subsystem and command are mutually exclusive')
-        args = ['plink', '-x', '-a', '-ssh', '-2']
+        args = ['plink', '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])
         if username is not None:
@@ -463,18 +458,10 @@ register_ssh_vendor('plink', PLinkSubprocessVendor())
 
 
 def _paramiko_auth(username, password, host, port, paramiko_transport):
-    # paramiko requires a username, but it might be none if nothing was supplied
-    # use the local username, just in case.
-    # We don't override username, because if we aren't using paramiko,
-    # the username might be specified in ~/.ssh/config and we don't want to
-    # force it to something else
-    # Also, it would mess up the self.relpath() functionality
-    auth = config.AuthenticationConfig()
+    # paramiko requires a username, but it might be none if nothing was
+    # supplied.  If so, use the local username.
     if username is None:
-        username = auth.get_user('ssh', host, port=port)
-        if username is None:
-            # Default to local user
-            username = getpass.getuser()
+        username = getpass.getuser()
 
     if _use_ssh_agent:
         agent = paramiko.Agent()
@@ -501,6 +488,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
+    auth = config.AuthenticationConfig()
     password = auth.get_password('ssh', host, username, port=port)
     try:
         paramiko_transport.auth_password(username, password)
@@ -605,13 +593,6 @@ class SSHSubprocess(object):
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
-
-    def recv_ready(self):
-        # TODO: jam 20051215 this function is necessary to support the
-        # pipelined() function. In reality, it probably should use
-        # poll() or select() to actually return if there is data
-        # available, otherwise we probably don't get any benefit
-        return True
 
     def recv(self, count):
         return os.read(self.proc.stdout.fileno(), count)

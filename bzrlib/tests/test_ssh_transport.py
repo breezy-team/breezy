@@ -76,11 +76,7 @@ class SSHVendorManagerTests(TestCase):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         manager.set_ssh_version_string("plink")
-        # because autodetection of plink vendor is temporary disabled
-        # next test is no longer pass. so it's disabled as well.
-        #~self.assertIsInstance(manager.get_vendor({}), PLinkSubprocessVendor)
-        # expect error instead (bialix 20071115)
-        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        self.assertIsInstance(manager.get_vendor({}), PLinkSubprocessVendor)
 
     def test_cached_vendor(self):
         manager = TestSSHVendorManager()
@@ -188,7 +184,7 @@ class SubprocessVendorsTests(TestCase):
         self.assertEqual(
             vendor._get_vendor_specific_argv(
                 "user", "host", 100, command=["bzr"]),
-            ["plink", "-x", "-a", "-ssh", "-2",
+            ["plink", "-x", "-a", "-ssh", "-2", "-batch",
                 "-P", "100",
                 "-l", "user",
                 "host", "bzr"]
@@ -199,7 +195,7 @@ class SubprocessVendorsTests(TestCase):
         self.assertEqual(
             vendor._get_vendor_specific_argv(
                 "user", "host", 100, subsystem="sftp"),
-            ["plink", "-x", "-a", "-ssh", "-2",
+            ["plink", "-x", "-a", "-ssh", "-2", "-batch",
                 "-P", "100",
                 "-l", "user",
                 "-s", "host", "sftp"]

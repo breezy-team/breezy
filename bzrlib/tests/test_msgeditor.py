@@ -20,11 +20,11 @@
 import os
 import sys
 
-import bzrlib
 from bzrlib import (
     errors,
     msgeditor,
     osutils,
+    tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.config import ensure_config_dir_exists, config_filename
@@ -257,8 +257,7 @@ if len(sys.argv) == 2:
         self.assertFileEqual(expected, msgfilename)
 
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
-        from bzrlib.tests.test_diff import UnicodeFilename
-        self.requireFeature(UnicodeFilename)
+        self.requireFeature(tests.UnicodeFilenameFeature)
         if hasattr(self, 'info'):
             os.mkdir(self.info['directory'])
             os.chdir(self.info['directory'])
@@ -280,10 +279,10 @@ if len(sys.argv) == 2:
             # LANG env variable has no effect on Windows
             # but some characters anyway cannot be represented
             # in default user encoding
-            char = probe_bad_non_ascii(bzrlib.user_encoding)
+            char = probe_bad_non_ascii(osutils.get_user_encoding())
             if char is None:
                 raise TestSkipped('Cannot find suitable non-ascii character '
-                    'for user_encoding (%s)' % bzrlib.user_encoding)
+                    'for user_encoding (%s)' % osutils.get_user_encoding())
 
             self.make_fake_editor(message=char)
 

@@ -74,6 +74,17 @@ class LRUCache(object):
             return self[key]
         return default
 
+    def keys(self):
+        """Get the list of keys currently cached.
+
+        Note that values returned here may not be available by the time you
+        request them later. This is simply meant as a peak into the current
+        state.
+
+        :return: An unordered list of keys that are currently cached.
+        """
+        return self._cache.keys()
+
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
 
@@ -109,8 +120,9 @@ class LRUCache(object):
         self._queue = new_queue
         # All entries should be of the same size. There should be one entry in
         # queue for each entry in cache, and all refcounts should == 1
-        assert (len(self._queue) == len(self._cache) ==
-                len(self._refcount) == sum(self._refcount.itervalues()))
+        if not (len(self._queue) == len(self._cache) ==
+                len(self._refcount) == sum(self._refcount.itervalues())):
+            raise AssertionError()
 
     def _remove(self, key):
         """Remove an entry, making sure to maintain the invariants."""

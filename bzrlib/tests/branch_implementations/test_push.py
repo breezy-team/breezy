@@ -18,13 +18,21 @@
 
 import os
  
-from bzrlib import bzrdir, errors
+from bzrlib import (
+    branch,
+    builtins,
+    bzrdir,
+    debug,
+    errors,
+    tests,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
-from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
+from bzrlib.smart import client, server
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalURLServer
 
 
@@ -153,6 +161,22 @@ class TestPush(TestCaseWithBranch):
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
 
+    def test_push_overwrite_of_non_tip_with_stop_revision(self):
+        """Combining the stop_revision and overwrite options works.
+        
+        This was <https://bugs.launchpad.net/bzr/+bug/234229>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.branch.push(target)
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
+
 
 class TestPushHook(TestCaseWithBranch):
 
@@ -182,7 +206,8 @@ class TestPushHook(TestCaseWithBranch):
     def test_post_push_empty_history(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
+        Branch.hooks.install_named_hook('post_push',
+                                        self.capture_post_push_hook, None)
         source.push(target)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -210,7 +235,8 @@ class TestPushHook(TestCaseWithBranch):
             local = BzrDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
+        Branch.hooks.install_named_hook('post_push',
+                                        self.capture_post_push_hook, None)
         source.push(local)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -229,7 +255,8 @@ class TestPushHook(TestCaseWithBranch):
         sourcedir = target.bzrdir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
-        Branch.hooks.install_hook('post_push', self.capture_post_push_hook)
+        Branch.hooks.install_named_hook('post_push',
+                                        self.capture_post_push_hook, None)
         source.branch.push(target.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -238,3 +265,68 @@ class TestPushHook(TestCaseWithBranch):
              2, rev2, True, None, True)
             ],
             self.hook_calls)
+
+
+class EmptyPushSmartEffortTests(TestCaseWithBranch):
+    """Tests that a push of 0 revisions should make a limited number of smart
+    protocol RPCs.
+    """
+
+    def setUp(self):
+        # Skip some scenarios that don't apply to these tests.
+        if (self.transport_server is not None and
+            issubclass(self.transport_server, server.SmartTCPServer)):
+            raise tests.TestNotApplicable(
+                'Does not apply when remote backing branch is also '
+                'a smart branch')
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise tests.TestNotApplicable(
+                'Branch format 4 is not usable via HPSS.')
+        super(EmptyPushSmartEffortTests, self).setUp()
+        # Create a smart server that publishes whatever the backing VFS server
+        # does.
+        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server.setUp(self.get_server())
+        self.addCleanup(self.smart_server.tearDown)
+        # Make two empty branches, 'empty' and 'target'.
+        self.empty_branch = self.make_branch('empty')
+        self.make_branch('target')
+        # Log all HPSS calls into self.hpss_calls.
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
+
+    def test_empty_branch_api(self):
+        """The branch_obj.push API should make a limited number of HPSS calls.
+        """
+        transport = get_transport(self.smart_server.get_url()).clone('target')
+        target = Branch.open_from_transport(transport)
+        self.empty_branch.push(target)
+        self.assertEqual(
+            ['BzrDir.open',
+             'BzrDir.open_branch',
+             'BzrDir.find_repositoryV2',
+             'Branch.get_stacked_on_url',
+             'Branch.lock_write',
+             'Branch.last_revision_info',
+             'Branch.unlock'],
+            self.hpss_calls)
+
+    def test_empty_branch_command(self):
+        """The 'bzr push' command should make a limited number of HPSS calls.
+        """
+        cmd = builtins.cmd_push()
+        cmd.outf = tests.StringIOWrapper()
+        cmd.run(
+            directory=self.get_url() + 'empty',
+            location=self.smart_server.get_url() + 'target')
+        # HPSS calls as of 2008/09/22:
+        # [BzrDir.open, BzrDir.open_branch, BzrDir.find_repositoryV2,
+        # Branch.get_stacked_on_url, get, get, Branch.lock_write,
+        # Branch.last_revision_info, Branch.unlock]
+        self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
+
+

@@ -27,6 +27,7 @@ import os
 from bzrlib import (
     add,
     bzrdir,
+    hooks,
     )
 from bzrlib.osutils import dirname
 from bzrlib.revisiontree import RevisionTree
@@ -95,8 +96,12 @@ class MutableTree(tree.Tree):
         TODO: Perhaps callback with the ids and paths as they're added.
         """
         if isinstance(files, basestring):
-            assert(ids is None or isinstance(ids, basestring))
-            assert(kinds is None or isinstance(kinds, basestring))
+            # XXX: Passing a single string is inconsistent and should be
+            # deprecated.
+            if not (ids is None or isinstance(ids, basestring)):
+                raise AssertionError()
+            if not (kinds is None or isinstance(kinds, basestring)):
+                raise AssertionError()
             files = [files]
             if ids is not None:
                 ids = [ids]
@@ -108,11 +113,12 @@ class MutableTree(tree.Tree):
         if ids is None:
             ids = [None] * len(files)
         else:
-            assert(len(ids) == len(files))
+            if not (len(ids) == len(files)):
+                raise AssertionError()
         if kinds is None:
             kinds = [None] * len(files)
-        else:
-            assert(len(kinds) == len(files))
+        elif not len(kinds) == len(files):
+            raise AssertionError()
         for f in files:
             # generic constraint checks:
             if self.is_control_filename(f):
@@ -175,21 +181,43 @@ class MutableTree(tree.Tree):
         from bzrlib import commit
         if revprops is None:
             revprops = {}
+        possible_master_transports=[]
         if not 'branch-nick' in revprops:
-            revprops['branch-nick'] = self.branch.nick
+            revprops['branch-nick'] = self.branch._get_nick(
+                possible_master_transports)
         author = kwargs.pop('author', None)
         if author is not None:
-            assert 'author' not in revprops
+            if 'author' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
             revprops['author'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
+        for hook in MutableTree.hooks['start_commit']:
+            hook(self)
         committed_id = commit.Commit().commit(working_tree=self,
-            revprops=revprops, *args, **kwargs)
+            revprops=revprops,
+            possible_master_transports=possible_master_transports,
+            *args, **kwargs)
         return committed_id
 
     def _gather_kinds(self, files, kinds):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
+
+    def get_file_with_stat(self, file_id, path=None):
+        """Get a file handle and stat object for file_id.
+
+        The default implementation returns (self.get_file, None) for backwards
+        compatibility.
+
+        :param file_id: The file id to read.
+        :param path: The path of the file, if it is known.
+        :return: A tuple (file_handle, stat_value_or_None). If the tree has
+            no stat facility, or need for a stat cache feedback during commit,
+            it may return None for the second element of the tuple.
+        """
+        return (self.get_file(file_id, path), None)
 
     @needs_read_lock
     def last_revision(self):
@@ -237,6 +265,36 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.mkdir)
 
+    def _observed_sha1(self, file_id, path, (sha1, stat_value)):
+        """Tell the tree we have observed a paths sha1.
+
+        The intent of this function is to allow trees that have a hashcache to
+        update the hashcache during commit. If the observed file is too new
+        (based on the stat_value) to be safely hash-cached the tree will ignore
+        it. 
+
+        The default implementation does nothing.
+
+        :param file_id: The file id
+        :param path: The file path
+        :param sha1: The sha 1 that was observed.
+        :param stat_value: A stat result for the file the sha1 was read from.
+        :return: None
+        """
+
+    @needs_write_lock
+    def put_file_bytes_non_atomic(self, file_id, bytes):
+        """Update the content of a file in the tree.
+        
+        Note that the file is written in-place rather than being
+        written to a temporary location and renamed. As a consequence,
+        readers can potentially see the file half-written.
+
+        :param file_id: file-id of the file
+        :param bytes: the new file contents
+        """
+        raise NotImplementedError(self.put_file_bytes_non_atomic)
+
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parents ids of the working tree.
 
@@ -273,7 +331,6 @@ class MutableTree(tree.Tree):
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
         from bzrlib.inventory import InventoryEntry
-        assert isinstance(recurse, bool)
         if action is None:
             action = add.AddAction()
         
@@ -464,6 +521,24 @@ class MutableTree(tree.Tree):
         inventory.apply_delta(delta)
         rev_tree = RevisionTree(self.branch.repository, inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
+
+
+class MutableTreeHooks(hooks.Hooks):
+    """A dictionary mapping a hook name to a list of callables for mutabletree 
+    hooks.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        """
+        hooks.Hooks.__init__(self)
+        # Invoked before a commit is done in a tree. New in 1.4
+        self['start_commit'] = []
+
+
+# install the default hooks into the MutableTree class.
+MutableTree.hooks = MutableTreeHooks()
 
 
 class _FastPath(object):

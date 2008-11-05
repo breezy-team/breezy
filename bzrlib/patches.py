@@ -1,4 +1,4 @@
-# Copyright (C) 2004 - 2006 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2004 - 2006, 2008 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-import re
 
 
 class PatchSyntax(Exception):
@@ -95,6 +94,7 @@ def parse_range(textrange):
 
  
 def hunk_from_header(line):
+    import re
     matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
     if matches is None:
         raise MalformedHunkHeader("Does not match format.", line)
@@ -220,7 +220,6 @@ class Hunk:
             return self.shift_to_mod_lines(pos)
 
     def shift_to_mod_lines(self, pos):
-        assert (pos >= self.orig_pos-1 and pos <= self.orig_pos+self.orig_range)
         position = self.orig_pos-1
         shift = 0
         for line in self.lines:
@@ -355,7 +354,8 @@ def iter_lines_handle_nl(iter_lines):
     last_line = None
     for line in iter_lines:
         if line == NO_NL:
-            assert last_line.endswith('\n')
+            if not last_line.endswith('\n'):
+                raise AssertionError()
             last_line = last_line[:-1]
             line = None
         if last_line is not None:
@@ -393,13 +393,23 @@ def iter_patched(orig_lines, patch_lines):
     """Iterate through a series of lines with a patch applied.
     This handles a single file, and does exact, not fuzzy patching.
     """
-    if orig_lines is not None:
-        orig_lines = orig_lines.__iter__()
-    seen_patch = []
-    patch_lines = iter_lines_handle_nl(patch_lines.__iter__())
+    patch_lines = iter_lines_handle_nl(iter(patch_lines))
     get_patch_names(patch_lines)
+    return iter_patched_from_hunks(orig_lines, iter_hunks(patch_lines))
+
+
+def iter_patched_from_hunks(orig_lines, hunks):
+    """Iterate through a series of lines with a patch applied.
+    This handles a single file, and does exact, not fuzzy patching.
+
+    :param orig_lines: The unpatched lines.
+    :param hunks: An iterable of Hunk instances.
+    """
+    seen_patch = []
     line_no = 1
-    for hunk in iter_hunks(patch_lines):
+    if orig_lines is not None:
+        orig_lines = iter(orig_lines)
+    for hunk in hunks:
         while line_no < hunk.orig_pos:
             orig_line = orig_lines.next()
             yield orig_line
@@ -415,7 +425,8 @@ def iter_patched(orig_lines, patch_lines):
                 if isinstance(hunk_line, ContextLine):
                     yield orig_line
                 else:
-                    assert isinstance(hunk_line, RemoveLine)
+                    if not isinstance(hunk_line, RemoveLine):
+                        raise AssertionError(hunk_line)
                 line_no += 1
     if orig_lines is not None:
         for line in orig_lines:

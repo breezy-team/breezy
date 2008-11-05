@@ -259,6 +259,14 @@ class TestDiff(DiffBase):
         output = self.run_bzr('diff -r 1.. branch1', retcode=1)
         self.assertContainsRe(output[0], '\n\\-original line\n\\+new line\n')
 
+    def test_diff_to_working_tree_in_subdir(self):
+        self.example_branch2()
+        self.build_tree_contents([('branch1/file1', 'new line')])
+        os.mkdir('branch1/dir1')
+        os.chdir('branch1/dir1')
+        output = self.run_bzr('diff -r 1..', retcode=1)
+        self.assertContainsRe(output[0], '\n\\-original line\n\\+new line\n')
+
     def test_diff_across_rename(self):
         """The working tree path should always be considered for diffing"""
         tree = self.make_example_branch()

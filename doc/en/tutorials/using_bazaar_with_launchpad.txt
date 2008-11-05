@@ -68,7 +68,8 @@ most obvious for projects like:
 * frameworks, e.g. Zope, Ruby on Rails, Spring, etc.
 
 However it applies equally for popular applications on which add-ons are
-built, e.g. FireFox, Thunderbird, OpenOffice, Drupal, Wordpress, Joomla, etc.
+built, e.g. Firefox, Thunderbird, OpenOffice.org, Drupal, Wordpress, Joomla,
+etc.
 
 Tools that assist communities work together to track and manage
 issues and fixes across community boundaries are required. These

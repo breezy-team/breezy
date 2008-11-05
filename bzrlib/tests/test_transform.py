@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,27 +16,34 @@
 
 import os
 import stat
+from StringIO import StringIO
 import sys
 
 from bzrlib import (
     errors,
     generate_ids,
+    osutils,
+    progress,
+    revision as _mod_revision,
     symbol_versioning,
     tests,
     urlutils,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
-                              UnversionedParent, ParentLoop, DeletingParent,)
+                              UnversionedParent, ParentLoop, DeletingParent,
+                              NonDirectoryParent)
+from bzrlib.diff import show_diff_trees
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, 
                            PathsNotVersionedError, ExistingLimbo,
                            ExistingPendingDeletion, ImmortalLimbo,
                            ImmortalPendingDeletion, LockError)
 from bzrlib.osutils import file_kind, pathjoin
-from bzrlib.merge import Merge3Merger
+from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
     CaseInsensitiveFilesystemFeature,
+    HardlinkFeature,
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
@@ -44,8 +51,10 @@ from bzrlib.tests import (
     )
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
-                              find_interesting, build_tree, get_backup_name,
-                              change_entry, _FileMover, resolve_checkout)
+                              build_tree, get_backup_name,
+                              _FileMover, resolve_checkout,
+                              TransformPreview, create_from_tree)
+from bzrlib.util import bencode
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -57,7 +66,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
 
     def get_transform(self):
         transform = TreeTransform(self.wt)
-        #self.addCleanup(transform.finalize)
+        self.addCleanup(transform.finalize)
         return transform, transform.root
 
     def test_existing_limbo(self):
@@ -78,7 +87,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
     def test_existing_pending_deletion(self):
         transform, root = self.get_transform()
         deletion_path = self._limbodir = urlutils.local_path_from_url(
-            transform._tree._control_files.controlfilename('pending-deletion'))
+            transform._tree._transport.abspath('pending-deletion'))
         os.mkdir(pathjoin(deletion_path, 'blocking-directory'))
         self.assertRaises(ImmortalPendingDeletion, transform.apply)
         self.assertRaises(LockError, self.wt.unlock)
@@ -127,6 +136,21 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
+
+    def test_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'contents')
+        transform.apply()
+        target = self.make_branch_and_tree('target')
+        target_transform = TreeTransform(target)
+        trans_id = target_transform.create_path('file1', target_transform.root)
+        target_transform.create_hardlink(self.wt.abspath('file1'), trans_id)
+        target_transform.apply()
+        self.failUnlessExists('target/file1')
+        source_stat = os.stat(self.wt.abspath('file1'))
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)
 
     def test_convenience(self):
         transform, root = self.get_transform()
@@ -250,9 +274,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.new_file('FiLe', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([], result)
+        transform.finalize()
         # Force the tree to report that it is case insensitive, for conflict
         # generation tests
         tree.case_sensitive = False
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
+        transform.new_file('FiLe', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([('duplicate', 'new-1', 'new-2', 'file')], result)
 
@@ -268,9 +297,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.new_file('file', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([], result)
+        transform.finalize()
         # Force the tree to report that it is case insensitive, for conflict
         # generation tests
         tree.case_sensitive = False
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        transform.new_file('file', transform.root, 'content')
         result = transform.find_conflicts()
         self.assertEqual([('duplicate', 'new-1', 'new-2', 'file')], result)
 
@@ -623,6 +656,61 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqual(conflicts_s[6], 'Conflict moving oz/emeraldcity into'
                                          ' oz/emeraldcity.  Cancelled move.')
 
+    def prepare_wrong_parent_kind(self):
+        tt, root = self.get_transform()
+        tt.new_file('parent', root, 'contents', 'parent-id')
+        tt.apply()
+        tt, root = self.get_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.new_file('child,', parent_id, 'contents2', 'file-id')
+        return tt
+
+    def test_find_conflicts_wrong_parent_kind(self):
+        tt = self.prepare_wrong_parent_kind()
+        tt.find_conflicts()
+
+    def test_resolve_conflicts_wrong_existing_parent_kind(self):
+        tt = self.prepare_wrong_parent_kind()
+        raw_conflicts = resolve_conflicts(tt)
+        self.assertEqual(set([('non-directory parent', 'Created directory',
+                         'new-3')]), raw_conflicts)
+        cooked_conflicts = cook_conflicts(raw_conflicts, tt)
+        self.assertEqual([NonDirectoryParent('Created directory', 'parent.new',
+        'parent-id')], cooked_conflicts)
+        tt.apply()
+        self.assertEqual(None, self.wt.path2id('parent'))
+        self.assertEqual('parent-id', self.wt.path2id('parent.new'))
+
+    def test_resolve_conflicts_wrong_new_parent_kind(self):
+        tt, root = self.get_transform()
+        parent_id = tt.new_directory('parent', root, 'parent-id')
+        tt.new_file('child,', parent_id, 'contents2', 'file-id')
+        tt.apply()
+        tt, root = self.get_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.delete_contents(parent_id)
+        tt.create_file('contents', parent_id)
+        raw_conflicts = resolve_conflicts(tt)
+        self.assertEqual(set([('non-directory parent', 'Created directory',
+                         'new-3')]), raw_conflicts)
+        tt.apply()
+        self.assertEqual(None, self.wt.path2id('parent'))
+        self.assertEqual('parent-id', self.wt.path2id('parent.new'))
+
+    def test_resolve_conflicts_wrong_parent_kind_unversioned(self):
+        tt, root = self.get_transform()
+        parent_id = tt.new_directory('parent', root)
+        tt.new_file('child,', parent_id, 'contents2')
+        tt.apply()
+        tt, root = self.get_transform()
+        parent_id = tt.trans_id_tree_path('parent')
+        tt.delete_contents(parent_id)
+        tt.create_file('contents', parent_id)
+        resolve_conflicts(tt)
+        tt.apply()
+        self.assertIs(None, self.wt.path2id('parent'))
+        self.assertIs(None, self.wt.path2id('parent.new'))
+
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
         kansas = create.new_directory('kansas', root, 'kansas-id')
@@ -661,16 +749,6 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         rename.set_executability(True, myfile)
         rename.apply()
 
-    def test_find_interesting(self):
-        create, root = self.get_transform()
-        wt = create._tree
-        create.new_file('vfile', root, 'myfile-text', 'myfile-id')
-        create.new_file('uvfile', root, 'othertext')
-        create.apply()
-        result = self.applyDeprecated(symbol_versioning.zero_fifteen,
-            find_interesting, wt, wt, ['vfile'])
-        self.assertEqual(result, set(['myfile-id']))
-
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.
         
@@ -703,6 +781,8 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform, root = self.get_transform()
         transform.new_file('file1', root, 'contents', 'file1-id', True)
         transform.apply()
+        self.wt.lock_write()
+        self.addCleanup(self.wt.unlock)
         self.assertTrue(self.wt.is_executable('file1-id'))
         transform, root = self.get_transform()
         file1_id = transform.trans_id_tree_file_id('file1-id')
@@ -748,17 +828,17 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.apply()
         transform, root = self.get_transform()
         try:
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             old = transform.trans_id_tree_file_id('id-1')
             transform.unversion_file(old)
             self.assertEqual([('id-1', ('old', None), False, (True, False),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (True, True))], list(transform._iter_changes()))
+                (True, True))], list(transform.iter_changes()))
             transform.new_directory('new', root, 'id-1')
             self.assertEqual([('id-1', ('old', 'new'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'new'),
                 ('file', 'directory'),
-                (True, False))], list(transform._iter_changes()))
+                (True, False))], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -773,7 +853,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             transform.version_file('id-1', old)
             self.assertEqual([('id-1', (None, 'old'), False, (False, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -789,61 +869,61 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             old = transform.trans_id_tree_path('old')
             subdir = transform.trans_id_tree_file_id('subdir-id')
             new = transform.trans_id_tree_path('new')
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
 
             #content deletion
             transform.delete_contents(old)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', None),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
 
             #content change
             transform.create_file('blah', old)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform.cancel_deletion(old)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform.cancel_creation(old)
 
             # move file_id to a different file
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.unversion_file(old)
             transform.version_file('id-1', new)
             transform.adjust_path('old', root, new)
             self.assertEqual([('id-1', ('old', 'old'), True, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform.cancel_versioning(new)
             transform._removed_id = set()
 
             #execute bit
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.set_executability(True, old)
             self.assertEqual([('id-1', ('old', 'old'), False, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'old'), ('file', 'file'),
-                (False, True))], list(transform._iter_changes()))
+                (False, True))], list(transform.iter_changes()))
             transform.set_executability(None, old)
 
             # filename
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.adjust_path('new', root, old)
             transform._new_parent = {}
             self.assertEqual([('id-1', ('old', 'new'), False, (True, True),
                 ('eert_toor', 'eert_toor'), ('old', 'new'), ('file', 'file'),
-                (False, False))], list(transform._iter_changes()))
+                (False, False))], list(transform.iter_changes()))
             transform._new_name = {}
 
             # parent directory
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.adjust_path('new', subdir, old)
             transform._new_name = {}
             self.assertEqual([('id-1', ('old', 'subdir/old'), False,
                 (True, True), ('eert_toor', 'subdir-id'), ('old', 'old'),
                 ('file', 'file'), (False, False))],
-                list(transform._iter_changes()))
+                list(transform.iter_changes()))
             transform._new_path = {}
 
         finally:
@@ -871,7 +951,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                 ('id-2', (u'file2', u'file2'), False, (True, True),
                 ('eert_toor', 'eert_toor'), ('file2', u'file2'),
                 ('file', 'file'), (False, True))],
-                list(transform._iter_changes()))
+                list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -891,7 +971,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             transform.adjust_path('flitter', root, floater)
             self.assertEqual([('floater-id', ('floater', 'flitter'), False,
             (True, True), ('toor_eert', 'toor_eert'), ('floater', 'flitter'),
-            (None, None), (False, False))], list(transform._iter_changes()))
+            (None, None), (False, False))], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -906,14 +986,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         try:
             old = transform.trans_id_tree_path('old')
             subdir = transform.trans_id_tree_file_id('subdir-id')
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
             transform.delete_contents(subdir)
             transform.create_directory(subdir)
             transform.set_executability(False, old)
             transform.unversion_file(old)
             transform.version_file('id-1', old)
             transform.adjust_path('old', root, old)
-            self.assertEqual([], list(transform._iter_changes()))
+            self.assertEqual([], list(transform.iter_changes()))
         finally:
             transform.finalize()
 
@@ -1084,27 +1164,27 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.cancel_creation(parent)
         transform.finalize()
 
-    def test_change_entry(self):
-        txt = 'bzrlib.transform.change_entry was deprecated in version 0.90.'
-        self.callDeprecated([txt], change_entry, None, None, None, None, None,
-            None, None, None)
-
-    def test_case_insensitive_clash(self):
-        self.requireFeature(CaseInsensitiveFilesystemFeature)
+    def test_rollback_on_directory_clash(self):
         def tt_helper():
             wt = self.make_branch_and_tree('.')
             tt = TreeTransform(wt)  # TreeTransform obtains write lock
             try:
-                tt.new_file('foo', tt.root, 'bar')
-                tt.new_file('Foo', tt.root, 'spam')
+                foo = tt.new_directory('foo', tt.root)
+                tt.new_file('bar', foo, 'foobar')
+                baz = tt.new_directory('baz', tt.root)
+                tt.new_file('qux', baz, 'quux')
+                # Ask for a rename 'foo' -> 'baz'
+                tt.adjust_path('baz', tt.root, foo)
                 # Lie to tt that we've already resolved all conflicts.
                 tt.apply(no_conflicts=True)
             except:
                 wt.unlock()
                 raise
+        # The rename will fail because the target directory is not empty (but
+        # raises FileExists anyway).
         err = self.assertRaises(errors.FileExists, tt_helper)
         self.assertContainsRe(str(err),
-            "^File exists: .+/foo")
+            "^File exists: .+/baz")
 
     def test_two_directories_clash(self):
         def tt_helper():
@@ -1113,6 +1193,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             try:
                 foo_1 = tt.new_directory('foo', tt.root)
                 tt.new_directory('bar', foo_1)
+                # Adding the same directory with a different content
                 foo_2 = tt.new_directory('foo', tt.root)
                 tt.new_directory('baz', foo_2)
                 # Lie to tt that we've already resolved all conflicts.
@@ -1131,6 +1212,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
             try:
                 foo_1 = tt.new_directory('foo', tt.root)
                 tt.new_directory('bar', foo_1)
+                # Adding the same directory with a different content
                 foo_2 = tt.new_directory('foo', tt.root)
                 tt.new_directory('baz', foo_2)
                 # Lie to tt that we've already resolved all conflicts.
@@ -1141,6 +1223,134 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         err = self.assertRaises(errors.FileExists, tt_helper)
         self.assertContainsRe(str(err),
             "^File exists: .+/foo")
+
+    def test_file_to_directory(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add(['foo'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        tt.delete_contents(foo_trans_id)
+        tt.create_directory(foo_trans_id)
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.create_file(["aa\n"], bar_trans_id)
+        tt.version_file("bar-1", bar_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo/bar")
+        wt.lock_read()
+        try:
+            self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                    "directory")
+        finally:
+            wt.unlock()
+        wt.commit("two")
+        changes = wt.changes_from(wt.basis_tree())
+        self.assertFalse(changes.has_changed(), changes)
+
+    def test_file_to_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add(['foo'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        tt.delete_contents(foo_trans_id)
+        tt.create_symlink("bar", foo_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                "symlink")
+
+    def test_dir_to_file(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.delete_contents(foo_trans_id)
+        tt.delete_versioned(bar_trans_id)
+        tt.create_file(["aa\n"], foo_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                "file")
+
+    def test_dir_to_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        wt.add(['foo', 'foo/bar'])
+        wt.commit("one")
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        foo_trans_id = tt.trans_id_tree_path("foo")
+        bar_trans_id = tt.trans_id_tree_path("foo/bar")
+        tt.delete_contents(foo_trans_id)
+        tt.delete_versioned(bar_trans_id)
+        self.build_tree(['baz'])
+        tt.create_hardlink("baz", foo_trans_id)
+        tt.apply()
+        self.failUnlessExists("foo")
+        self.failUnlessExists("baz")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.assertEqual(wt.inventory.get_file_kind(wt.path2id("foo")),
+                "file")
+
+    def test_no_final_path(self):
+        transform, root = self.get_transform()
+        trans_id = transform.trans_id_file_id('foo')
+        transform.create_file('bar', trans_id)
+        transform.cancel_creation(trans_id)
+        transform.apply()
+
+    def test_create_from_tree(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree_contents([('tree1/foo/',), ('tree1/bar', 'baz')])
+        tree1.add(['foo', 'bar'], ['foo-id', 'bar-id'])
+        tree2 = self.make_branch_and_tree('tree2')
+        tt = TreeTransform(tree2)
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        bar_trans_id = tt.create_path('bar', tt.root)
+        create_from_tree(tt, bar_trans_id, tree1, 'bar-id')
+        tt.apply()
+        self.assertEqual('directory', osutils.file_kind('tree2/foo'))
+        self.assertFileEqual('baz', 'tree2/bar')
+
+    def test_create_from_tree_bytes(self):
+        """Provided lines are used instead of tree content."""
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree_contents([('tree1/foo', 'bar'),])
+        tree1.add('foo', 'foo-id')
+        tree2 = self.make_branch_and_tree('tree2')
+        tt = TreeTransform(tree2)
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id', bytes='qux')
+        tt.apply()
+        self.assertFileEqual('qux', 'tree2/foo')
+
+    def test_create_from_tree_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        tree1 = self.make_branch_and_tree('tree1')
+        os.symlink('bar', 'tree1/foo')
+        tree1.add('foo', 'foo-id')
+        tt = TreeTransform(self.make_branch_and_tree('tree2'))
+        foo_trans_id = tt.create_path('foo', tt.root)
+        create_from_tree(tt, foo_trans_id, tree1, 'foo-id')
+        tt.apply()
+        self.assertEqual('bar', os.readlink('tree2/foo'))
 
 
 class TransformGroup(object):
@@ -1161,6 +1371,7 @@ def conflict_text(tree, merge):
 
 
 class TestTransformMerge(TestCaseInTempDir):
+
     def test_text_merge(self):
         root_id = generate_ids.gen_root_id()
         base = TransformGroup("base", root_id)
@@ -1196,6 +1407,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.tt.new_file('i', this.root, '1\n2\n3\n4\n', 'i')
         this.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
+
         # textual merge
         self.assertEqual(this.wt.get_file('a').read(), 'y\nb\nc\nd\bz\n')
         # three-way text conflict
@@ -1499,12 +1711,19 @@ class TestBuildTree(tests.TestCaseWithTransport):
         # children of non-root directories should not be renamed
         self.assertEqual(2, transform_result.rename_count)
 
-    def test_build_tree_accelerator_tree(self):
+    def create_ab_tree(self):
+        """Create a committed test tree with two files"""
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', 'A')])
         self.build_tree_contents([('source/file2', 'B')])
         source.add(['file1', 'file2'], ['file1-id', 'file2-id'])
         source.commit('commit files')
+        source.lock_write()
+        self.addCleanup(source.unlock)
+        return source
+
+    def test_build_tree_accelerator_tree(self):
+        source = self.create_ab_tree()
         self.build_tree_contents([('source/file2', 'C')])
         calls = []
         real_source_get_file = source.get_file
@@ -1512,8 +1731,6 @@ class TestBuildTree(tests.TestCaseWithTransport):
             calls.append(file_id)
             return real_source_get_file(file_id, path)
         source.get_file = get_file
-        source.lock_read()
-        self.addCleanup(source.unlock)
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
         revision_tree.lock_read()
@@ -1522,14 +1739,10 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual(['file1-id'], calls)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_tree_missing_file(self):
-        source = self.make_branch_and_tree('source')
-        self.build_tree_contents([('source/file1', 'A')])
-        self.build_tree_contents([('source/file2', 'B')])
-        source.add(['file1', 'file2'])
-        source.commit('commit files')
+        source = self.create_ab_tree()
         os.unlink('source/file1')
         source.remove(['file2'])
         target = self.make_branch_and_tree('target')
@@ -1539,9 +1752,10 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(revision_tree, target, source)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
 
     def test_build_tree_accelerator_wrong_kind(self):
+        self.requireFeature(SymlinkFeature)
         source = self.make_branch_and_tree('source')
         self.build_tree_contents([('source/file1', '')])
         self.build_tree_contents([('source/file2', '')])
@@ -1557,8 +1771,6 @@ class TestBuildTree(tests.TestCaseWithTransport):
             calls.append(file_id)
             return real_source_get_file(file_id, path)
         source.get_file = get_file
-        source.lock_read()
-        self.addCleanup(source.unlock)
         target = self.make_branch_and_tree('target')
         revision_tree = source.basis_tree()
         revision_tree.lock_read()
@@ -1567,7 +1779,32 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], calls)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
+
+    def test_build_tree_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.create_ab_tree()
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source, hardlink=True)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)
+
+        # Explicitly disallowing hardlinks should prevent them.
+        target2 = self.make_branch_and_tree('target2')
+        build_tree(revision_tree, target2, source, hardlink=False)
+        target2.lock_read()
+        self.addCleanup(target2.unlock)
+        self.assertEqual([], list(target2.iter_changes(revision_tree)))
+        source_stat = os.stat('source/file1')
+        target2_stat = os.stat('target2/file1')
+        self.assertNotEqual(source_stat, target2_stat)
 
     def test_build_tree_accelerator_tree_moved(self):
         source = self.make_branch_and_tree('source')
@@ -1584,7 +1821,38 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(revision_tree, target, source)
         target.lock_read()
         self.addCleanup(target.unlock)
-        self.assertEqual([], list(target._iter_changes(revision_tree)))
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
+
+    def test_build_tree_hardlinks_preserve_execute(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.create_ab_tree()
+        tt = TreeTransform(source)
+        trans_id = tt.trans_id_tree_file_id('file1-id')
+        tt.set_executability(True, trans_id)
+        tt.apply()
+        self.assertTrue(source.is_executable('file1-id'))
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source, hardlink=True)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
+        self.assertTrue(source.is_executable('file1-id'))
+
+    def test_case_insensitive_build_tree_inventory(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file', 'source/FILE'])
+        source.add(['file', 'FILE'], ['lower-id', 'upper-id'])
+        source.commit('added files')
+        # Don't try this at home, kids!
+        # Force the tree to report that it is case insensitive
+        target = self.make_branch_and_tree('target')
+        target.case_sensitive = False
+        build_tree(source.basis_tree(), target, source, delta_from_tree=True)
+        self.assertEqual('file.moved', target.id2path('lower-id'))
+        self.assertEqual('FILE', target.id2path('upper-id'))
 
 
 class MockTransform(object):
@@ -1745,3 +2013,848 @@ class TestTransformRollback(tests.TestCaseWithTransport):
         parent = tt.trans_id_file_id('parent-id')
         tt.new_file('file', parent, 'Contents')
         resolve_conflicts(tt)
+
+
+A_ENTRY = ('a-id', ('a', 'a'), True, (True, True),
+                  ('TREE_ROOT', 'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
+                  (False, False))
+ROOT_ENTRY = ('TREE_ROOT', ('', ''), False, (True, True), (None, None),
+              ('', ''), ('directory', 'directory'), (False, None))
+
+
+class TestTransformPreview(tests.TestCaseWithTransport):
+
+    def create_tree(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'content 1')])
+        tree.add('a', 'a-id')
+        tree.commit('rev1', rev_id='rev1')
+        return tree.branch.repository.revision_tree('rev1')
+
+    def get_empty_preview(self):
+        repository = self.make_repository('repo')
+        tree = repository.revision_tree(_mod_revision.NULL_REVISION)
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        return preview
+
+    def test_transform_preview(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+
+    def test_transform_preview_tree(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        preview.get_preview_tree()
+
+    def test_transform_new_file(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(preview_tree.kind('file2-id'), 'file')
+        self.assertEqual(
+            preview_tree.get_file('file2-id').read(), 'content B\n')
+
+    def test_diff_preview_tree(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('file2', preview.root, 'content B\n', 'file2-id')
+        preview_tree = preview.get_preview_tree()
+        out = StringIO()
+        show_diff_trees(revision_tree, preview_tree, out)
+        lines = out.getvalue().splitlines()
+        self.assertEqual(lines[0], "=== added file 'file2'")
+        # 3 lines of diff administrivia
+        self.assertEqual(lines[4], "+content B")
+
+    def test_transform_conflicts(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('a', preview.root, 'content 2')
+        resolve_conflicts(preview)
+        trans_id = preview.trans_id_file_id('a-id')
+        self.assertEqual('a.moved', preview.final_name(trans_id))
+
+    def get_tree_and_preview_tree(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        a_trans_id = preview.trans_id_file_id('a-id')
+        preview.delete_contents(a_trans_id)
+        preview.create_file('b content', a_trans_id)
+        preview_tree = preview.get_preview_tree()
+        return revision_tree, preview_tree
+
+    def test_iter_changes(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        root = revision_tree.inventory.root.file_id
+        self.assertEqual([('a-id', ('a', 'a'), True, (True, True),
+                          (root, root), ('a', 'a'), ('file', 'file'),
+                          (False, False))],
+                          list(preview_tree.iter_changes(revision_tree)))
+
+    def test_include_unchanged_succeeds(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        changes = preview_tree.iter_changes(revision_tree,
+                                            include_unchanged=True)
+        root = revision_tree.inventory.root.file_id
+
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
+
+    def test_specific_files(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        changes = preview_tree.iter_changes(revision_tree,
+                                            specific_files=[''])
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
+
+    def test_want_unversioned(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        changes = preview_tree.iter_changes(revision_tree,
+                                            want_unversioned=True)
+        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
+
+    def test_ignore_extra_trees_no_specific_files(self):
+        # extra_trees is harmless without specific_files, so we'll silently
+        # accept it, even though we won't use it.
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        preview_tree.iter_changes(revision_tree, extra_trees=[preview_tree])
+
+    def test_ignore_require_versioned_no_specific_files(self):
+        # require_versioned is meaningless without specific_files.
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        preview_tree.iter_changes(revision_tree, require_versioned=False)
+
+    def test_ignore_pb(self):
+        # pb could be supported, but TT.iter_changes doesn't support it.
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        preview_tree.iter_changes(revision_tree, pb=progress.DummyProgress())
+
+    def test_kind(self):
+        revision_tree = self.create_tree()
+        preview = TransformPreview(revision_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('file', preview.root, 'contents', 'file-id')
+        preview.new_directory('directory', preview.root, 'dir-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('file', preview_tree.kind('file-id'))
+        self.assertEqual('directory', preview_tree.kind('dir-id'))
+
+    def test_get_file_mtime(self):
+        preview = self.get_empty_preview()
+        file_trans_id = preview.new_file('file', preview.root, 'contents',
+                                         'file-id')
+        limbo_path = preview._limbo_name(file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(os.stat(limbo_path).st_mtime,
+                         preview_tree.get_file_mtime('file-id'))
+
+    def test_get_file(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'contents', 'file-id')
+        preview_tree = preview.get_preview_tree()
+        tree_file = preview_tree.get_file('file-id')
+        try:
+            self.assertEqual('contents', tree_file.read())
+        finally:
+            tree_file.close()
+
+    def test_get_symlink_target(self):
+        self.requireFeature(SymlinkFeature)
+        preview = self.get_empty_preview()
+        preview.new_symlink('symlink', preview.root, 'target', 'symlink-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('target',
+                         preview_tree.get_symlink_target('symlink-id'))
+
+    def test_all_file_ids(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/c'])
+        tree.add(['a', 'b', 'c'], ['a-id', 'b-id', 'c-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.unversion_file(preview.trans_id_file_id('b-id'))
+        c_trans_id = preview.trans_id_file_id('c-id')
+        preview.unversion_file(c_trans_id)
+        preview.version_file('c-id', c_trans_id)
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(set(['a-id', 'c-id', tree.get_root_id()]),
+                         preview_tree.all_file_ids())
+
+    def test_path2id_deleted_unchanged(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/unchanged', 'tree/deleted'])
+        tree.add(['unchanged', 'deleted'], ['unchanged-id', 'deleted-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.unversion_file(preview.trans_id_file_id('deleted-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('unchanged-id', preview_tree.path2id('unchanged'))
+        self.assertIs(None, preview_tree.path2id('deleted'))
+
+    def test_path2id_created(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/unchanged'])
+        tree.add(['unchanged'], ['unchanged-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('new', preview.trans_id_file_id('unchanged-id'),
+            'contents', 'new-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('new-id', preview_tree.path2id('unchanged/new'))
+
+    def test_path2id_moved(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/old_parent/', 'tree/old_parent/child'])
+        tree.add(['old_parent', 'old_parent/child'],
+                 ['old_parent-id', 'child-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        new_parent = preview.new_directory('new_parent', preview.root,
+                                           'new_parent-id')
+        preview.adjust_path('child', new_parent,
+                            preview.trans_id_file_id('child-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertIs(None, preview_tree.path2id('old_parent/child'))
+        self.assertEqual('child-id', preview_tree.path2id('new_parent/child'))
+
+    def test_path2id_renamed_parent(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/old_name/', 'tree/old_name/child'])
+        tree.add(['old_name', 'old_name/child'],
+                 ['parent-id', 'child-id'])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.adjust_path('new_name', preview.root,
+                            preview.trans_id_file_id('parent-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertIs(None, preview_tree.path2id('old_name/child'))
+        self.assertEqual('child-id', preview_tree.path2id('new_name/child'))
+
+    def assertMatchingIterEntries(self, tt, specific_file_ids=None):
+        preview_tree = tt.get_preview_tree()
+        preview_result = list(preview_tree.iter_entries_by_dir(
+                              specific_file_ids))
+        tree = tt._tree
+        tt.apply()
+        actual_result = list(tree.iter_entries_by_dir(specific_file_ids))
+        self.assertEqual(actual_result, preview_result)
+
+    def test_iter_entries_by_dir_new(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = TreeTransform(tree)
+        tt.new_file('new', tt.root, 'contents', 'new-id')
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_deleted(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/deleted'])
+        tree.add('deleted', 'deleted-id')
+        tt = TreeTransform(tree)
+        tt.delete_contents(tt.trans_id_file_id('deleted-id'))
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_unversioned(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/removed'])
+        tree.add('removed', 'removed-id')
+        tt = TreeTransform(tree)
+        tt.unversion_file(tt.trans_id_file_id('removed-id'))
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_moved(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/moved', 'tree/new_parent/'])
+        tree.add(['moved', 'new_parent'], ['moved-id', 'new_parent-id'])
+        tt = TreeTransform(tree)
+        tt.adjust_path('moved', tt.trans_id_file_id('new_parent-id'),
+                       tt.trans_id_file_id('moved-id'))
+        self.assertMatchingIterEntries(tt)
+
+    def test_iter_entries_by_dir_specific_file_ids(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.set_root_id('tree-root-id')
+        self.build_tree(['tree/parent/', 'tree/parent/child'])
+        tree.add(['parent', 'parent/child'], ['parent-id', 'child-id'])
+        tt = TreeTransform(tree)
+        self.assertMatchingIterEntries(tt, ['tree-root-id', 'child-id'])
+
+    def test_symlink_content_summary(self):
+        self.requireFeature(SymlinkFeature)
+        preview = self.get_empty_preview()
+        preview.new_symlink('path', preview.root, 'target', 'path-id')
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('symlink', None, None, 'target'), summary)
+
+    def test_missing_content_summary(self):
+        preview = self.get_empty_preview()
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('missing', None, None, None), summary)
+
+    def test_deleted_content_summary(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/path/'])
+        tree.add('path')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.delete_contents(preview.trans_id_tree_path('path'))
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('missing', None, None, None), summary)
+
+    def test_file_content_summary_executable(self):
+        if not osutils.supports_executable():
+            raise TestNotApplicable()
+        preview = self.get_empty_preview()
+        path_id = preview.new_file('path', preview.root, 'contents', 'path-id')
+        preview.set_executability(True, path_id)
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(4, len(summary))
+        self.assertEqual('file', summary[0])
+        # size must be known
+        self.assertEqual(len('contents'), summary[1])
+        # executable
+        self.assertEqual(True, summary[2])
+        # will not have hash (not cheap to determine)
+        self.assertIs(None, summary[3])
+
+    def test_change_executability(self):
+        if not osutils.supports_executable():
+            raise TestNotApplicable()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/path'])
+        tree.add('path')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        path_id = preview.trans_id_tree_path('path')
+        preview.set_executability(True, path_id)
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(True, summary[2])
+
+    def test_file_content_summary_non_exec(self):
+        preview = self.get_empty_preview()
+        preview.new_file('path', preview.root, 'contents', 'path-id')
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(4, len(summary))
+        self.assertEqual('file', summary[0])
+        # size must be known
+        self.assertEqual(len('contents'), summary[1])
+        # not executable
+        if osutils.supports_executable():
+            self.assertEqual(False, summary[2])
+        else:
+            self.assertEqual(None, summary[2])
+        # will not have hash (not cheap to determine)
+        self.assertIs(None, summary[3])
+
+    def test_dir_content_summary(self):
+        preview = self.get_empty_preview()
+        preview.new_directory('path', preview.root, 'path-id')
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(('directory', None, None, None), summary)
+
+    def test_tree_content_summary(self):
+        preview = self.get_empty_preview()
+        path = preview.new_directory('path', preview.root, 'path-id')
+        preview.set_tree_reference('rev-1', path)
+        summary = preview.get_preview_tree().path_content_summary('path')
+        self.assertEqual(4, len(summary))
+        self.assertEqual('tree-reference', summary[0])
+
+    def test_annotate(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'a\n')])
+        tree.add('file', 'file-id')
+        tree.commit('a', rev_id='one')
+        self.build_tree_contents([('tree/file', 'a\nb\n')])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(file_trans_id)
+        preview.create_file('a\nb\nc\n', file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        expected = [
+            ('one', 'a\n'),
+            ('me:', 'b\n'),
+            ('me:', 'c\n'),
+        ]
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertEqual(expected, annotation)
+
+    def test_annotate_missing(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
+        preview_tree = preview.get_preview_tree()
+        expected = [
+            ('me:', 'a\n'),
+            ('me:', 'b\n'),
+            ('me:', 'c\n'),
+         ]
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertEqual(expected, annotation)
+
+    def test_annotate_rename(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'a\n')])
+        tree.add('file', 'file-id')
+        tree.commit('a', rev_id='one')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.adjust_path('newname', preview.root, file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        expected = [
+            ('one', 'a\n'),
+        ]
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertEqual(expected, annotation)
+
+    def test_annotate_deleted(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'a\n')])
+        tree.add('file', 'file-id')
+        tree.commit('a', rev_id='one')
+        self.build_tree_contents([('tree/file', 'a\nb\n')])
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        annotation = preview_tree.annotate_iter('file-id', 'me:')
+        self.assertIs(None, annotation)
+
+    def test_stored_kind(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual('file', preview_tree.stored_kind('file-id'))
+
+    def test_is_executable(self):
+        preview = self.get_empty_preview()
+        preview.new_file('file', preview.root, 'a\nb\nc\n', 'file-id')
+        preview.set_executability(True, preview.trans_id_file_id('file-id'))
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(True, preview_tree.is_executable('file-id'))
+
+    def test_get_set_parent_ids(self):
+        revision_tree, preview_tree = self.get_tree_and_preview_tree()
+        self.assertEqual([], preview_tree.get_parent_ids())
+        preview_tree.set_parent_ids(['rev-1'])
+        self.assertEqual(['rev-1'], preview_tree.get_parent_ids())
+
+    def test_plan_file_merge(self):
+        work_a = self.make_branch_and_tree('wta')
+        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        work_a.add('file', 'file-id')
+        base_id = work_a.commit('base version')
+        tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        preview = TransformPreview(work_a)
+        self.addCleanup(preview.finalize)
+        trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(trans_id)
+        preview.create_file('b\nc\nd\ne\n', trans_id)
+        self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
+        tree_a = preview.get_preview_tree()
+        tree_a.set_parent_ids([base_id])
+        self.assertEqual([
+            ('killed-a', 'a\n'),
+            ('killed-b', 'b\n'),
+            ('unchanged', 'c\n'),
+            ('unchanged', 'd\n'),
+            ('new-a', 'e\n'),
+            ('new-b', 'f\n'),
+        ], list(tree_a.plan_file_merge('file-id', tree_b)))
+
+    def test_plan_file_merge_revision_tree(self):
+        work_a = self.make_branch_and_tree('wta')
+        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        work_a.add('file', 'file-id')
+        base_id = work_a.commit('base version')
+        tree_b = work_a.bzrdir.sprout('wtb').open_workingtree()
+        preview = TransformPreview(work_a.basis_tree())
+        self.addCleanup(preview.finalize)
+        trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(trans_id)
+        preview.create_file('b\nc\nd\ne\n', trans_id)
+        self.build_tree_contents([('wtb/file', 'a\nc\nd\nf\n')])
+        tree_a = preview.get_preview_tree()
+        tree_a.set_parent_ids([base_id])
+        self.assertEqual([
+            ('killed-a', 'a\n'),
+            ('killed-b', 'b\n'),
+            ('unchanged', 'c\n'),
+            ('unchanged', 'd\n'),
+            ('new-a', 'e\n'),
+            ('new-b', 'f\n'),
+        ], list(tree_a.plan_file_merge('file-id', tree_b)))
+
+    def test_walkdirs(self):
+        preview = self.get_empty_preview()
+        preview.version_file('tree-root', preview.root)
+        preview_tree = preview.get_preview_tree()
+        file_trans_id = preview.new_file('a', preview.root, 'contents',
+                                         'a-id')
+        expected = [(('', 'tree-root'),
+                    [('a', 'a', 'file', None, 'a-id', 'file')])]
+        self.assertEqual(expected, list(preview_tree.walkdirs()))
+
+    def test_extras(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/removed-file', 'tree/existing-file',
+                         'tree/not-removed-file'])
+        work_tree.add(['removed-file', 'not-removed-file'])
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('new-file', preview.root, 'contents')
+        preview.new_file('new-versioned-file', preview.root, 'contents',
+                         'new-versioned-id')
+        tree = preview.get_preview_tree()
+        preview.unversion_file(preview.trans_id_tree_path('removed-file'))
+        self.assertEqual(set(['new-file', 'removed-file', 'existing-file']),
+                         set(tree.extras()))
+
+    def test_merge_into_preview(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file','b\n')])
+        work_tree.add('file', 'file-id')
+        work_tree.commit('first commit')
+        child_tree = work_tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file','b\nc\n')])
+        child_tree.commit('child commit')
+        child_tree.lock_write()
+        self.addCleanup(child_tree.unlock)
+        work_tree.lock_write()
+        self.addCleanup(work_tree.unlock)
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        preview_tree = preview.get_preview_tree()
+        file_trans_id = preview.trans_id_file_id('file-id')
+        preview.delete_contents(file_trans_id)
+        preview.create_file('a\nb\n', file_trans_id)
+        pb = progress.DummyProgress()
+        merger = Merger.from_revision_ids(pb, preview_tree,
+                                          child_tree.branch.last_revision(),
+                                          other_branch=child_tree.branch,
+                                          tree_branch=work_tree.branch)
+        merger.merge_type = Merge3Merger
+        tt = merger.make_merger().make_preview_transform()
+        self.addCleanup(tt.finalize)
+        final_tree = tt.get_preview_tree()
+        self.assertEqual('a\nb\nc\n', final_tree.get_file_text('file-id'))
+
+    def test_merge_preview_into_workingtree(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        tt.new_file('name', tt.root, 'content', 'file-id')
+        tree2 = self.make_branch_and_tree('tree2')
+        pb = progress.DummyProgress()
+        merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
+                                         pb, tree.basis_tree())
+        merger.merge_type = Merge3Merger
+        merger.do_merge()
+
+    def test_merge_preview_into_workingtree_handles_conflicts(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/foo', 'bar')])
+        tree.add('foo', 'foo-id')
+        tree.commit('foo')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        trans_id = tt.trans_id_file_id('foo-id')
+        tt.delete_contents(trans_id)
+        tt.create_file('baz', trans_id)
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        self.build_tree_contents([('tree2/foo', 'qux')])
+        pb = progress.DummyProgress()
+        merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
+                                         pb, tree.basis_tree())
+        merger.merge_type = Merge3Merger
+        merger.do_merge()
+
+    def test_is_executable(self):
+        tree = self.make_branch_and_tree('tree')
+        preview = TransformPreview(tree)
+        self.addCleanup(preview.finalize)
+        preview.new_file('foo', preview.root, 'bar', 'baz-id')
+        preview_tree = preview.get_preview_tree()
+        self.assertEqual(False, preview_tree.is_executable('baz-id',
+                                                           'tree/foo'))
+        self.assertEqual(False, preview_tree.is_executable('baz-id'))
+
+
+class FakeSerializer(object):
+    """Serializer implementation that simply returns the input.
+
+    The input is returned in the order used by pack.ContainerPushParser.
+    """
+    @staticmethod
+    def bytes_record(bytes, names):
+        return names, bytes
+
+
+class TestSerializeTransform(tests.TestCaseWithTransport):
+
+    _test_needs_features = [tests.UnicodeFilenameFeature]
+
+    def get_preview(self, tree=None):
+        if tree is None:
+            tree = self.make_branch_and_tree('tree')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        return tt
+
+    def assertSerializesTo(self, expected, tt):
+        records = list(tt.serialize(FakeSerializer()))
+        self.assertEqual(expected, records)
+
+    @staticmethod
+    def default_attribs():
+        return {
+            '_id_number': 1,
+            '_new_name': {},
+            '_new_parent': {},
+            '_new_executability': {},
+            '_new_id': {},
+            '_tree_path_ids': {'': 'new-0'},
+            '_removed_id': [],
+            '_removed_contents': [],
+            '_non_present_ids': {},
+            }
+
+    def make_records(self, attribs, contents):
+        records = [
+            (((('attribs'),),), bencode.bencode(attribs))]
+        records.extend([(((n, k),), c) for n, k, c in contents])
+        return records
+
+    def creation_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 3
+        attribs['_new_name'] = {
+            'new-1': u'foo\u1234'.encode('utf-8'), 'new-2': 'qux'}
+        attribs['_new_id'] = {'new-1': 'baz', 'new-2': 'quxx'}
+        attribs['_new_parent'] = {'new-1': 'new-0', 'new-2': 'new-0'}
+        attribs['_new_executability'] = {'new-1': 1}
+        contents = [
+            ('new-1', 'file', 'i 1\nbar\n'),
+            ('new-2', 'directory', ''),
+            ]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_creation(self):
+        tt = self.get_preview()
+        tt.new_file(u'foo\u1234', tt.root, 'bar', 'baz', True)
+        tt.new_directory('qux', tt.root, 'quxx')
+        self.assertSerializesTo(self.creation_records(), tt)
+
+    def test_deserialize_creation(self):
+        tt = self.get_preview()
+        tt.deserialize(iter(self.creation_records()))
+        self.assertEqual(3, tt._id_number)
+        self.assertEqual({'new-1': u'foo\u1234',
+                          'new-2': 'qux'}, tt._new_name)
+        self.assertEqual({'new-1': 'baz', 'new-2': 'quxx'}, tt._new_id)
+        self.assertEqual({'new-1': tt.root, 'new-2': tt.root}, tt._new_parent)
+        self.assertEqual({'baz': 'new-1', 'quxx': 'new-2'}, tt._r_new_id)
+        self.assertEqual({'new-1': True}, tt._new_executability)
+        self.assertEqual({'new-1': 'file',
+                          'new-2': 'directory'}, tt._new_contents)
+        foo_limbo = open(tt._limbo_name('new-1'), 'rb')
+        try:
+            foo_content = foo_limbo.read()
+        finally:
+            foo_limbo.close()
+        self.assertEqual('bar', foo_content)
+
+    def symlink_creation_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_new_name'] = {'new-1': u'foo\u1234'.encode('utf-8')}
+        attribs['_new_parent'] = {'new-1': 'new-0'}
+        contents = [('new-1', 'symlink', u'bar\u1234'.encode('utf-8'))]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_symlink_creation(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tt = self.get_preview()
+        tt.new_symlink(u'foo\u1234', tt.root, u'bar\u1234')
+        self.assertSerializesTo(self.symlink_creation_records(), tt)
+
+    def test_deserialize_symlink_creation(self):
+        tt = self.get_preview()
+        tt.deserialize(iter(self.symlink_creation_records()))
+        # XXX readlink should be returning unicode, not utf-8
+        foo_content = os.readlink(tt._limbo_name('new-1')).decode('utf-8')
+        self.assertEqual(u'bar\u1234', foo_content)
+
+    def make_destruction_preview(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([u'foo\u1234', 'bar'])
+        tree.add([u'foo\u1234', 'bar'], ['foo-id', 'bar-id'])
+        return self.get_preview(tree)
+
+    def destruction_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 3
+        attribs['_removed_id'] = ['new-1']
+        attribs['_removed_contents'] = ['new-2']
+        attribs['_tree_path_ids'] = {
+            '': 'new-0',
+            u'foo\u1234'.encode('utf-8'): 'new-1',
+            'bar': 'new-2',
+            }
+        return self.make_records(attribs, [])
+
+    def test_serialize_destruction(self):
+        tt = self.make_destruction_preview()
+        foo_trans_id = tt.trans_id_tree_file_id('foo-id')
+        tt.unversion_file(foo_trans_id)
+        bar_trans_id = tt.trans_id_tree_file_id('bar-id')
+        tt.delete_contents(bar_trans_id)
+        self.assertSerializesTo(self.destruction_records(), tt)
+
+    def test_deserialize_destruction(self):
+        tt = self.make_destruction_preview()
+        tt.deserialize(iter(self.destruction_records()))
+        self.assertEqual({u'foo\u1234': 'new-1',
+                          'bar': 'new-2',
+                          '': tt.root}, tt._tree_path_ids)
+        self.assertEqual({'new-1': u'foo\u1234',
+                          'new-2': 'bar',
+                          tt.root: ''}, tt._tree_id_paths)
+        self.assertEqual(set(['new-1']), tt._removed_id)
+        self.assertEqual(set(['new-2']), tt._removed_contents)
+
+    def missing_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_non_present_ids'] = {
+            'boo': 'new-1',}
+        return self.make_records(attribs, [])
+
+    def test_serialize_missing(self):
+        tt = self.get_preview()
+        boo_trans_id = tt.trans_id_file_id('boo')
+        self.assertSerializesTo(self.missing_records(), tt)
+
+    def test_deserialize_missing(self):
+        tt = self.get_preview()
+        tt.deserialize(iter(self.missing_records()))
+        self.assertEqual({'boo': 'new-1'}, tt._non_present_ids)
+
+    def make_modification_preview(self):
+        LINES_ONE = 'aa\nbb\ncc\ndd\n'
+        LINES_TWO = 'z\nbb\nx\ndd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', LINES_ONE)])
+        tree.add('file', 'file-id')
+        return self.get_preview(tree), LINES_TWO
+
+    def modification_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_tree_path_ids'] = {
+            'file': 'new-1',
+            '': 'new-0',}
+        attribs['_removed_contents'] = ['new-1']
+        contents = [('new-1', 'file',
+                     'i 1\nz\n\nc 0 1 1 1\ni 1\nx\n\nc 0 3 3 1\n')]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_modification(self):
+        tt, LINES = self.make_modification_preview()
+        trans_id = tt.trans_id_file_id('file-id')
+        tt.delete_contents(trans_id)
+        tt.create_file(LINES, trans_id)
+        self.assertSerializesTo(self.modification_records(), tt)
+
+    def test_deserialize_modification(self):
+        tt, LINES = self.make_modification_preview()
+        tt.deserialize(iter(self.modification_records()))
+        self.assertFileEqual(LINES, tt._limbo_name('new-1'))
+
+    def make_kind_change_preview(self):
+        LINES = 'a\nb\nc\nd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo/'])
+        tree.add('foo', 'foo-id')
+        return self.get_preview(tree), LINES
+
+    def kind_change_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_tree_path_ids'] = {
+            'foo': 'new-1',
+            '': 'new-0',}
+        attribs['_removed_contents'] = ['new-1']
+        contents = [('new-1', 'file',
+                     'i 4\na\nb\nc\nd\n\n')]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_kind_change(self):
+        tt, LINES = self.make_kind_change_preview()
+        trans_id = tt.trans_id_file_id('foo-id')
+        tt.delete_contents(trans_id)
+        tt.create_file(LINES, trans_id)
+        self.assertSerializesTo(self.kind_change_records(), tt)
+
+    def test_deserialize_kind_change(self):
+        tt, LINES = self.make_kind_change_preview()
+        tt.deserialize(iter(self.kind_change_records()))
+        self.assertFileEqual(LINES, tt._limbo_name('new-1'))
+
+    def make_add_contents_preview(self):
+        LINES = 'a\nb\nc\nd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo'])
+        tree.add('foo')
+        os.unlink('tree/foo')
+        return self.get_preview(tree), LINES
+
+    def add_contents_records(self):
+        attribs = self.default_attribs()
+        attribs['_id_number'] = 2
+        attribs['_tree_path_ids'] = {
+            'foo': 'new-1',
+            '': 'new-0',}
+        contents = [('new-1', 'file',
+                     'i 4\na\nb\nc\nd\n\n')]
+        return self.make_records(attribs, contents)
+
+    def test_serialize_add_contents(self):
+        tt, LINES = self.make_add_contents_preview()
+        trans_id = tt.trans_id_tree_path('foo')
+        tt.create_file(LINES, trans_id)
+        self.assertSerializesTo(self.add_contents_records(), tt)
+
+    def test_deserialize_add_contents(self):
+        tt, LINES = self.make_add_contents_preview()
+        tt.deserialize(iter(self.add_contents_records()))
+        self.assertFileEqual(LINES, tt._limbo_name('new-1'))
+
+    def test_get_parents_lines(self):
+        LINES_ONE = 'aa\nbb\ncc\ndd\n'
+        LINES_TWO = 'z\nbb\nx\ndd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', LINES_ONE)])
+        tree.add('file', 'file-id')
+        tt = self.get_preview(tree)
+        trans_id = tt.trans_id_tree_path('file')
+        self.assertEqual((['aa\n', 'bb\n', 'cc\n', 'dd\n'],),
+            tt._get_parents_lines(trans_id))
+
+    def test_get_parents_texts(self):
+        LINES_ONE = 'aa\nbb\ncc\ndd\n'
+        LINES_TWO = 'z\nbb\nx\ndd\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', LINES_ONE)])
+        tree.add('file', 'file-id')
+        tt = self.get_preview(tree)
+        trans_id = tt.trans_id_tree_path('file')
+        self.assertEqual((LINES_ONE,),
+            tt._get_parents_texts(trans_id))

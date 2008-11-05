@@ -17,7 +17,7 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib import log
+from bzrlib import log, registry
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.log import (show_log,
                         get_view_revisions,
@@ -36,6 +36,23 @@ from bzrlib.revisionspec import (
     RevisionInfo,
     RevisionSpec,
     )
+
+
+class TestCaseWithoutPropsHandler(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCaseWithoutPropsHandler, self).setUp()
+        # keep a reference to the "current" custom prop. handler registry
+        self.properties_handler_registry = \
+            log.properties_handler_registry
+        # clean up the registry in log
+        log.properties_handler_registry = registry.Registry()
+        
+    def _cleanup(self):
+        super(TestCaseWithoutPropsHandler, self)._cleanup()
+        # restore the custom properties handler registry
+        log.properties_handler_registry = \
+            self.properties_handler_registry
 
 
 class LogCatcher(LogFormatter):
@@ -355,7 +372,7 @@ class TestShortLogFormatter(TestCaseWithTransport):
             wt.unlock()
 
 
-class TestLongLogFormatter(TestCaseWithTransport):
+class TestLongLogFormatter(TestCaseWithoutPropsHandler):
 
     def test_verbose_log(self):
         """Verbose log includes changed files
@@ -425,7 +442,7 @@ message:
     message:
       merge branch 2
         ------------------------------------------------------------
-        revno: 1.1.1.1.1
+        revno: 1.2.1
         committer: Lorem Ipsum <test@example.com>
         branch nick: smallerchild
         timestamp: Just now
@@ -561,6 +578,106 @@ message:
   add a
 ''')
 
+    def test_properties_in_log(self):
+        """Log includes the custom properties returned by the registered 
+        handlers.
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_properties_in_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>')
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        try:
+            def trivial_custom_prop_handler(revision):
+                return {'test_prop':'test_value'}
+            
+            log.properties_handler_registry.register(
+                'trivial_custom_prop_handler', 
+                trivial_custom_prop_handler)
+            show_log(b, formatter)
+        finally:
+            log.properties_handler_registry.remove(
+                'trivial_custom_prop_handler')
+            self.assertEqualDiff(sio.getvalue(), '''\
+------------------------------------------------------------
+revno: 1
+test_prop: test_value
+author: John Doe <jdoe@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: test_properties_in_log
+timestamp: Wed 2005-11-23 12:08:27 +1000
+message:
+  add a
+''')
+
+    def test_error_in_properties_handler(self):
+        """Log includes the custom properties returned by the registered 
+        handlers.
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_author_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>',
+                  revprops={'first_prop':'first_value'})
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        try:
+            def trivial_custom_prop_handler(revision):
+                raise StandardError("a test error")
+            
+            log.properties_handler_registry.register(
+                'trivial_custom_prop_handler', 
+                trivial_custom_prop_handler)
+            self.assertRaises(StandardError, show_log, b, formatter,)
+        finally:
+            log.properties_handler_registry.remove(
+                'trivial_custom_prop_handler')
+                
+    def test_properties_handler_bad_argument(self):
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_author_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>',
+                  revprops={'a_prop':'test_value'})
+        sio = StringIO()
+        formatter = LongLogFormatter(to_file=sio)
+        try:
+            def bad_argument_prop_handler(revision):
+                return {'custom_prop_name':revision.properties['a_prop']}
+                
+            log.properties_handler_registry.register(
+                'bad_argument_prop_handler', 
+                bad_argument_prop_handler)
+            
+            self.assertRaises(AttributeError, formatter.show_properties, 
+                'a revision', '')
+            
+            revision = b.repository.get_revision(b.last_revision())
+            formatter.show_properties(revision, '')
+            self.assertEqualDiff(sio.getvalue(),
+                '''custom_prop_name: test_value\n''')
+        finally:
+            log.properties_handler_registry.remove(
+                'bad_argument_prop_handler')
 
 
 class TestLineLogFormatter(TestCaseWithTransport):
@@ -575,8 +692,8 @@ class TestLineLogFormatter(TestCaseWithTransport):
         self.build_tree(['a'])
         wt.add('a')
         b.nick = 'test-line-log'
-        wt.commit(message='add a', 
-                  timestamp=1132711707, 
+        wt.commit(message='add a',
+                  timestamp=1132711707,
                   timezone=36000,
                   committer='Line-Log-Formatter Tester <test@line.log>')
         logfile = file('out.tmp', 'w+')
@@ -674,10 +791,10 @@ class TestGetViewRevisions(TestCaseWithTransport):
         full_rev_nos_for_reference = {
             '1': '1',
             '2': '2',
-            '3a': '2.2.1', #first commit tree 3
-            '3b': '2.1.1', # first commit tree 2
+            '3a': '2.1.1', #first commit tree 3
+            '3b': '2.2.1', # first commit tree 2
             '3c': '3', #merges 3b to main
-            '4a': '2.1.2', # second commit tree 2
+            '4a': '2.2.2', # second commit tree 2
             '4b': '4', # merges 4a to main
             }
         return mainline_revs, rev_nos, wt
@@ -685,6 +802,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_forward(self):
         """Test the get_view_revisions method"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
@@ -696,6 +815,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_reverse(self):
         """Test the get_view_revisions with reverse"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
@@ -707,6 +828,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
@@ -721,6 +844,8 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge_reverse(self):
         """Test get_view_revisions in reverse when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
         self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
@@ -735,11 +860,13 @@ class TestGetViewRevisions(TestCaseWithTransport):
     def test_get_view_revisions_merge2(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-            ('3a', '2.2.1', 1), ('3b', '2.1.1', 1), ('4b', '4', 0),
-            ('4a', '2.1.2', 1)]
+            ('3a', '2.1.1', 1), ('3b', '2.2.1', 1), ('4b', '4', 0),
+            ('4a', '2.2.2', 1)]
         self.assertEqual(expected, revisions)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'forward', include_merges=False))
@@ -859,10 +986,10 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
         view_revs_iter = log.get_view_revisions(mainline, revnos, tree.branch,
                                                 'reverse', True)
         actual_revs = log._filter_revisions_touching_file_id(
-                            tree.branch, 
+                            tree.branch,
                             file_id,
-                            mainline,
-                            list(view_revs_iter))
+                            list(view_revs_iter),
+                            'reverse')
         self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
 
     def test_file_id_f1(self):
@@ -879,6 +1006,20 @@ class TestGetRevisionsTouchingFileID(TestCaseWithTransport):
     def test_file_id_f3(self):
         tree = self.create_tree_with_single_merge()
         # f3 should be marked as modified by revisions A, B, C, and D
+        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+    def test_file_id_with_ghosts(self):
+        # This is testing bug #209948, where having a ghost would cause
+        # _filter_revisions_touching_file_id() to fail.
+        tree = self.create_tree_with_single_merge()
+        # We need to add a revision, so switch back to a write-locked tree
+        tree.unlock()
+        tree.lock_write()
+        first_parent = tree.last_revision()
+        tree.set_parent_ids([first_parent, 'ghost-revision-id'])
+        self.build_tree_contents([('tree/f1', 'A\nB\nXX\n')])
+        tree.commit('commit with a ghost', rev_id='XX')
+        self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
 
 

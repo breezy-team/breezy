@@ -30,19 +30,66 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
 
     def do(self, path):
         from bzrlib.bzrdir import BzrDirFormat
-        t = self._backing_transport.clone(path)
-        default_format = BzrDirFormat.get_default_format()
-        real_bzrdir = default_format.open(t, _found=True)
         try:
-            real_bzrdir._format.probe_transport(t)
-        except (errors.NotBranchError, errors.UnknownFormatError):
+            t = self.transport_from_client_path(path)
+        except errors.PathNotChild:
+            # The client is trying to ask about a path that they have no access
+            # to.
+            # Ideally we'd return a FailedSmartServerResponse here rather than
+            # a "successful" negative, but we want to be compatibile with
+            # clients that don't anticipate errors from this method.
             answer = 'no'
         else:
-            answer = 'yes'
+            default_format = BzrDirFormat.get_default_format()
+            real_bzrdir = default_format.open(t, _found=True)
+            try:
+                real_bzrdir._format.probe_transport(t)
+            except (errors.NotBranchError, errors.UnknownFormatError):
+                answer = 'no'
+            else:
+                answer = 'yes'
         return SuccessfulSmartServerResponse((answer,))
 
 
 class SmartServerRequestFindRepository(SmartServerRequest):
+
+    def _boolean_to_yes_no(self, a_boolean):
+        if a_boolean:
+            return 'yes'
+        else:
+            return 'no'
+
+    def _find(self, path):
+        """try to find a repository from path upwards
+        
+        This operates precisely like 'bzrdir.find_repository'.
+        
+        :return: (relpath, rich_root, tree_ref, external_lookup) flags. All are
+            strings, relpath is a / prefixed path, and the other three are
+            either 'yes' or 'no'.
+        :raises errors.NoRepositoryPresent: When there is no repository
+            present.
+        """
+        bzrdir = BzrDir.open_from_transport(
+            self.transport_from_client_path(path))
+        repository = bzrdir.find_repository()
+        # the relpath of the bzrdir in the found repository gives us the 
+        # path segments to pop-out.
+        relpath = repository.bzrdir.root_transport.relpath(
+            bzrdir.root_transport.base)
+        if len(relpath):
+            segments = ['..'] * len(relpath.split('/'))
+        else:
+            segments = []
+        rich_root = self._boolean_to_yes_no(repository.supports_rich_root())
+        tree_ref = self._boolean_to_yes_no(
+            repository._format.supports_tree_reference)
+        external_lookup = self._boolean_to_yes_no(
+            repository._format.supports_external_lookups)
+        return '/'.join(segments), rich_root, tree_ref, external_lookup
+
+
+class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
     def do(self, path):
         """try to find a repository from path upwards
@@ -52,27 +99,39 @@ class SmartServerRequestFindRepository(SmartServerRequest):
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
 
+        This is the initial version of this method introduced with the smart
+        server. Modern clients will try the V2 method that adds support for the
+        supports_external_lookups attribute.
+
         :return: norepository or ok, relpath.
         """
-        bzrdir = BzrDir.open_from_transport(self._backing_transport.clone(path))
         try:
-            repository = bzrdir.find_repository()
-            # the relpath of the bzrdir in the found repository gives us the 
-            # path segments to pop-out.
-            relpath = repository.bzrdir.root_transport.relpath(bzrdir.root_transport.base)
-            if len(relpath):
-                segments = ['..'] * len(relpath.split('/'))
-            else:
-                segments = []
-            if repository.supports_rich_root():
-                rich_root = 'yes'
-            else:
-                rich_root = 'no'
-            if repository._format.supports_tree_reference:
-                tree_ref = 'yes'
-            else:
-                tree_ref = 'no'
-            return SuccessfulSmartServerResponse(('ok', '/'.join(segments), rich_root, tree_ref))
+            path, rich_root, tree_ref, external_lookup = self._find(path)
+            return SuccessfulSmartServerResponse(('ok', path, rich_root, tree_ref))
+        except errors.NoRepositoryPresent:
+            return FailedSmartServerResponse(('norepository', ))
+
+
+class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
+
+    def do(self, path):
+        """try to find a repository from path upwards
+        
+        This operates precisely like 'bzrdir.find_repository'.
+        
+        If a bzrdir is not present, an exception is propogated
+        rather than 'no branch' because these are different conditions.
+
+        This is the second edition of this method introduced in bzr 1.3, which
+        returns information about the supports_external_lookups format
+        attribute too.
+
+        :return: norepository or ok, relpath.
+        """
+        try:
+            path, rich_root, tree_ref, external_lookup = self._find(path)
+            return SuccessfulSmartServerResponse(
+                ('ok', path, rich_root, tree_ref, external_lookup))
         except errors.NoRepositoryPresent:
             return FailedSmartServerResponse(('norepository', ))
 
@@ -85,7 +144,7 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         The default format of the server is used.
         :return: SmartServerResponse(('ok', ))
         """
-        target_transport = self._backing_transport.clone(path)
+        target_transport = self.transport_from_client_path(path)
         BzrDirFormat.get_default_format().initialize_on_transport(target_transport)
         return SuccessfulSmartServerResponse(('ok', ))
 
@@ -98,7 +157,8 @@ class SmartServerRequestOpenBranch(SmartServerRequest):
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
         """
-        bzrdir = BzrDir.open_from_transport(self._backing_transport.clone(path))
+        bzrdir = BzrDir.open_from_transport(
+            self.transport_from_client_path(path))
         try:
             reference_url = bzrdir.get_branch_reference()
             if reference_url is None:

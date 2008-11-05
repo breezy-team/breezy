@@ -56,7 +56,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('send -o-')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -68,7 +68,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('bundle')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -190,6 +190,11 @@ class TestSend(tests.TestCaseWithTransport):
         stdout = self.run_bzr('send -f branch --output -')[0]
         self.assertContainsRe(stdout, 'revision3')
 
+    def test_note_revisions(self):
+        self.make_trees()
+        stderr = self.run_bzr('send -f branch --output file1')[1]
+        self.assertContainsRe(stderr, r'Bundling 1 revision\(s\).\n')
+
     def test_mailto_option(self):
         self.make_trees()
         branch = _mod_branch.Branch.open('branch')
@@ -200,6 +205,17 @@ class TestSend(tests.TestCaseWithTransport):
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch --mail-to jrandom@example.org')
         branch.get_config().set_user_option('submit_to', 'jrandom@example.org')
+        self.run_bzr_error(('Unknown mail client: bogus',),
+                           'send -f branch')
+
+    def test_mailto_child_option(self):
+        """Make sure that child_submit_to is used."""
+        self.make_trees()
+        branch = _mod_branch.Branch.open('branch')
+        branch.get_config().set_user_option('mail_client', 'bogus')
+        parent = _mod_branch.Branch.open('parent')
+        parent.get_config().set_user_option('child_submit_to', 
+                           'somebody@example.org')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 

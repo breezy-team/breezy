@@ -20,7 +20,6 @@
 import os
 import sys
 
-import bzrlib
 from bzrlib import (
     osutils,
     ignores,
@@ -248,10 +247,10 @@ class TestCommit(ExternalBase):
         # LANG env variable has no effect on Windows
         # but some characters anyway cannot be represented
         # in default user encoding
-        char = probe_bad_non_ascii(bzrlib.user_encoding)
+        char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
-                'for user_encoding (%s)' % bzrlib.user_encoding)
+                'for user_encoding (%s)' % osutils.get_user_encoding())
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -330,6 +329,35 @@ class TestCommit(ExternalBase):
         # version or the u2 version.
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
         self.run_bzr('commit -m checkin-merge-of-the-offline-work-from-u1 u1')
+
+    def test_commit_exclude_excludes_modified_files(self):
+        """Commit -x foo should ignore changes to foo."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added b' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertEqual('b\n', out)
+        self.assertEqual('', err)
+
+    def test_commit_exclude_twice_uses_both_rules(self):
+        """Commit -x foo -x bar should ignore changes to foo and bar."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b', '-x', 'c'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added c' in out)
+        self.assertFalse('added b' in err)
+        self.assertFalse('added c' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertTrue('b\n' in out)
+        self.assertTrue('c\n' in out)
+        self.assertEqual('', err)
 
     def test_commit_respects_spec_for_removals(self):
         """Commit with a file spec should only commit removals that match"""

@@ -20,7 +20,7 @@
 
 import os
 
-from bzrlib.osutils import sha, has_symlinks
+from bzrlib import osutils
 from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
 from bzrlib.testament import Testament, StrictTestament, StrictTestament3
 from bzrlib.transform import TreeTransform
@@ -211,21 +211,21 @@ REV_1_SHORT = """\
 bazaar-ng testament short form 1
 revision-id: test@user-1
 sha1: %s
-""" % sha(REV_1_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_1_TESTAMENT).hexdigest()
 
 
 REV_1_SHORT_STRICT = """\
 bazaar-ng testament short form 2.1
 revision-id: test@user-1
 sha1: %s
-""" % sha(REV_1_STRICT_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_1_STRICT_TESTAMENT).hexdigest()
 
 
 REV_1_SHORT_STRICT3 = """\
 bazaar testament short form 3 strict
 revision-id: test@user-1
 sha1: %s
-""" % sha(REV_1_STRICT_TESTAMENT3).hexdigest()
+""" % osutils.sha(REV_1_STRICT_TESTAMENT3).hexdigest()
 
 
 REV_2_TESTAMENT = """\
@@ -293,21 +293,21 @@ REV_2_SHORT = """\
 bazaar-ng testament short form 1
 revision-id: test@user-2
 sha1: %s
-""" % sha(REV_2_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_2_TESTAMENT).hexdigest()
 
 
 REV_2_SHORT_STRICT = """\
 bazaar-ng testament short form 2.1
 revision-id: test@user-2
 sha1: %s
-""" % sha(REV_2_STRICT_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_2_STRICT_TESTAMENT).hexdigest()
 
 
 REV_2_SHORT_STRICT3 = """\
 bazaar testament short form 3 strict
 revision-id: test@user-2
 sha1: %s
-""" % sha(REV_2_STRICT_TESTAMENT3).hexdigest()
+""" % osutils.sha(REV_2_STRICT_TESTAMENT3).hexdigest()
 
 
 REV_PROPS_TESTAMENT = """\

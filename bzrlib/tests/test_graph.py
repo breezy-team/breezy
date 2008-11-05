@@ -165,7 +165,7 @@ double_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
 # Complex shortcut
 # This has a failure mode in that a shortcut will find some nodes in common,
 # but the common searcher won't have time to find that one branch is actually
-# in common. The extra nodes at the top are because we want to avoid
+# in common. The extra nodes at the beginning are because we want to avoid
 # walking off the graph. Specifically, node G should be considered common, but
 # is likely to be seen by M long before the common searcher finds it.
 #
@@ -181,25 +181,169 @@ double_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
 #     |\
 #     e f
 #     | |\
-#     i | h
-#     |\| |
-#     | g |
-#     | | |
-#     | j |
+#     | g h
+#     |/| |
+#     i j |
 #     | | |
 #     | k |
 #     | | |
 #     | l |
 #     |/|/
 #     m n
-complex_shortcut = {'d':[NULL_REVISION],
-                    'x':['d'], 'y':['x'],
-                    'e':['y'], 'f':['d'], 'g':['f', 'i'], 'h':['f'],
-                    'i':['e'], 'j':['g'], 'k':['j'],
-                    'l':['k'], 'm':['i', 's'], 'n':['s', 'h'],
-                    'o':['l'], 'p':['o'], 'q':['p'],
-                    'r':['q'], 's':['r'],
+complex_shortcut = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+                    'e':['d'], 'f':['d'], 'g':['f'], 'h':['f'],
+                    'i':['e', 'g'], 'j':['g'], 'k':['j'],
+                    'l':['k'], 'm':['i', 'l'], 'n':['l', 'h']}
+
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e |
+#     | |
+#     f |
+#     | |
+#     g h
+#     | |\
+#     i | j
+#     |\| |
+#     | k |
+#     | | |
+#     | l |
+#     | | |
+#     | m |
+#     | | |
+#     | n |
+#     | | |
+#     | o |
+#     | | |
+#     | p |
+#     | | |
+#     | q |
+#     | | |
+#     | r |
+#     | | |
+#     | s |
+#     | | |
+#     |/|/
+#     t u
+complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+                    'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
+                    'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
+                    'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
+                    't':['i', 's'], 'u':['s', 'j'], 
                     }
+
+# Graph where different walkers will race to find the common and uncommon
+# nodes.
+#
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e k
+#     | |
+#     f-+-p
+#     | | |
+#     | l |
+#     | | |
+#     | m |
+#     | |\|
+#     g n q
+#     |\| |
+#     h o |
+#     |/| |
+#     i r |
+#     | | |
+#     | s |
+#     | | |
+#     | t |
+#     | | |
+#     | u |
+#     | | |
+#     | v |
+#     | | |
+#     | w |
+#     | | |
+#     | x |
+#     | |\|
+#     | y z
+#     |/
+#     j
+#
+# x is found to be common right away, but is the start of a long series of
+# common commits.
+# o is actually common, but the i-j shortcut makes it look like it is actually
+# unique to j at first, you have to traverse all of x->o to find it.
+# q,m gives the walker from j a common point to stop searching, as does p,f.
+# k-n exists so that the second pass still has nodes that are worth searching,
+# rather than instantly cancelling the extra walker.
+
+racing_shortcuts = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
+    'e':['d'], 'f':['e'], 'g':['f'], 'h':['g'], 'i':['h', 'o'], 'j':['i', 'y'],
+    'k':['d'], 'l':['k'], 'm':['l'], 'n':['m'], 'o':['n', 'g'], 'p':['f'],
+    'q':['p', 'm'], 'r':['o'], 's':['r'], 't':['s'], 'u':['t'], 'v':['u'],
+    'w':['v'], 'x':['w'], 'y':['x'], 'z':['x', 'q']}
+
+
+# A graph with multiple nodes unique to one side.
+#
+# NULL_REVISION
+#     |
+#     a
+#     |
+#     b
+#     |
+#     c
+#     |
+#     d
+#     |\
+#     e f
+#     |\ \
+#     g h i
+#     |\ \ \
+#     j k l m
+#     | |/ x|
+#     | n o p
+#     | |/  |
+#     | q   |
+#     | |   |
+#     | r   |
+#     | |   |
+#     | s   |
+#     | |   |
+#     | t   |
+#     | |   |
+#     | u   |
+#     | |   |
+#     | v   |
+#     | |   |
+#     | w   |
+#     | |   |
+#     | x   |
+#     |/ \ /
+#     y   z
+#
+
+multiple_interesting_unique = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'],
+    'd':['c'], 'e':['d'], 'f':['d'], 'g':['e'], 'h':['e'], 'i':['f'],
+    'j':['g'], 'k':['g'], 'l':['h'], 'm':['i'], 'n':['k', 'l'],
+    'o':['m'], 'p':['m', 'l'], 'q':['n', 'o'], 'r':['q'], 's':['r'],
+    't':['s'], 'u':['t'], 'v':['u'], 'w':['v'], 'x':['w'],
+    'y':['j', 'x'], 'z':['x', 'p']}
+
 
 # Shortcut with extra root
 # We have a long history shortcut, and an extra root, which is why we can't
@@ -238,31 +382,77 @@ boundary = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e'], 'e': ['f'],
             'f':[NULL_REVISION]}
 
 
+# A graph that contains a ghost
+#  NULL_REVISION
+#       |
+#       f
+#       |
+#       e   g
+#      / \ /
+#     b   d
+#     | \ |
+#     a   c
+
+with_ghost = {'a': ['b'], 'c': ['b', 'd'], 'b':['e'], 'd':['e', 'g'],
+              'e': ['f'], 'f':[NULL_REVISION], NULL_REVISION:()}
+
+# A graph that shows we can shortcut finding revnos when reaching them from the
+# side.
+#  NULL_REVISION
+#       |
+#       a
+#       |
+#       b
+#       |
+#       c
+#       |
+#       d
+#       |
+#       e
+#      / \
+#     f   g
+#     |
+#     h
+#     |
+#     i
+
+with_tail = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'], 'e':['d'],
+             'f':['e'], 'g':['e'], 'h':['f'], 'i':['h']}
+
+
 class InstrumentedParentsProvider(object):
 
     def __init__(self, parents_provider):
         self.calls = []
         self._real_parents_provider = parents_provider
 
-    def get_parents(self, nodes):
-        self.calls.extend(nodes)
-        return self._real_parents_provider.get_parents(nodes)
-
     def get_parent_map(self, nodes):
         self.calls.extend(nodes)
         return self._real_parents_provider.get_parent_map(nodes)
 
 
+class TestGraphBase(tests.TestCase):
+
+    def make_graph(self, ancestors):
+        return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
+
+    def make_breaking_graph(self, ancestors, break_on):
+        """Make a Graph that raises an exception if we hit a node."""
+        g = self.make_graph(ancestors)
+        orig_parent_map = g.get_parent_map
+        def get_parent_map(keys):
+            bad_keys = set(keys).intersection(break_on)
+            if bad_keys:
+                self.fail('key(s) %s was accessed' % (sorted(bad_keys),))
+            return orig_parent_map(keys)
+        g.get_parent_map = get_parent_map
+        return g
+
+
 class TestGraph(TestCaseWithMemoryTransport):
 
     def make_graph(self, ancestors):
-        # XXX: This seems valid, is there a reason to actually create a
-        # repository and put things in it?
         return _mod_graph.Graph(_mod_graph.DictParentsProvider(ancestors))
-        tree = self.prepare_memory_tree('.')
-        self.build_ancestry(tree, ancestors)
-        self.addCleanup(tree.unlock)
-        return tree.branch.repository.get_graph()
 
     def prepare_memory_tree(self, location):
         tree = self.make_branch_and_memory_tree(location)
@@ -351,6 +541,31 @@ class TestGraph(TestCaseWithMemoryTransport):
                          graph.find_unique_lca('rev2a', 'rev2b',
                          count_steps=True))
 
+    def assertRemoveDescendants(self, expected, graph, revisions):
+        parents = graph.get_parent_map(revisions)
+        self.assertEqual(expected,
+                         graph._remove_simple_descendants(revisions, parents))
+
+    def test__remove_simple_descendants(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev1']), graph,
+            set(['rev1', 'rev2a', 'rev2b', 'rev3', 'rev4']))
+
+    def test__remove_simple_descendants_disjoint(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev1', 'rev3']), graph,
+            set(['rev1', 'rev3']))
+
+    def test__remove_simple_descendants_chain(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev1']), graph,
+            set(['rev1', 'rev2a', 'rev3']))
+
+    def test__remove_simple_descendants_siblings(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertRemoveDescendants(set(['rev2a', 'rev2b']), graph,
+            set(['rev2a', 'rev2b', 'rev3']))
+
     def test_unique_lca_criss_cross(self):
         """Ensure we don't pick non-unique lcas in a criss-cross"""
         graph = self.make_graph(criss_cross)
@@ -421,9 +636,6 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_extended_history(self):
         graph = self.make_graph(extended_history_shortcut)
-        self.expectFailure('find_difference cannot handle shortcuts',
-            self.assertEqual, (set(['e']), set(['f'])),
-                graph.find_difference('e', 'f'))
         self.assertEqual((set(['e']), set(['f'])),
                          graph.find_difference('e', 'f'))
         self.assertEqual((set(['f']), set(['e'])),
@@ -436,36 +648,18 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_graph_difference_complex_shortcut(self):
         graph = self.make_graph(complex_shortcut)
-        self.expectFailure('find_difference cannot handle shortcuts',
-            self.assertEqual, (set(['m']), set(['h', 'n'])),
-                graph.find_difference('m', 'n'))
-        self.assertEqual((set(['m']), set(['h', 'n'])),
+        self.assertEqual((set(['m', 'i', 'e']), set(['n', 'h'])),
                          graph.find_difference('m', 'n'))
+
+    def test_graph_difference_complex_shortcut2(self):
+        graph = self.make_graph(complex_shortcut2)
+        self.assertEqual((set(['t']), set(['j', 'u'])),
+                         graph.find_difference('t', 'u'))
 
     def test_graph_difference_shortcut_extra_root(self):
         graph = self.make_graph(shortcut_extra_root)
-        self.expectFailure('find_difference cannot handle shortcuts',
-            self.assertEqual, (set(['e']), set(['f', 'g'])),
-                graph.find_difference('e', 'f'))
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
-
-    def test_stacked_parents_provider_get_parents(self):
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
-        self.assertEqual([['rev4',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev1', 'rev2']))
-        self.assertEqual([['rev3',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                                  stacked.get_parents, ['rev2', 'rev1']))
-        self.assertEqual([['rev3',], ['rev3']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev2', 'rev2']))
-        self.assertEqual([['rev4',], ['rev4']],
-             self.applyDeprecated(symbol_versioning.one_one,
-                         stacked.get_parents, ['rev1', 'rev1']))
 
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
@@ -515,6 +709,25 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = _mod_graph.Graph(instrumented_provider)
         self.assertFalse(graph.is_ancestor('a', 'c'))
         self.assertTrue('null:' not in instrumented_provider.calls)
+
+    def test_iter_ancestry(self):
+        nodes = boundary.copy()
+        nodes[NULL_REVISION] = ()
+        graph = self.make_graph(nodes)
+        expected = nodes.copy()
+        expected.pop('a') # 'a' is not in the ancestry of 'c', all the
+                          # other nodes are
+        self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
+        self.assertEqual(nodes, dict(graph.iter_ancestry(['a', 'c'])))
+
+    def test_iter_ancestry_with_ghost(self):
+        graph = self.make_graph(with_ghost)
+        expected = with_ghost.copy()
+        # 'a' is not in the ancestry of 'c', and 'g' is a ghost
+        expected['g'] = None
+        self.assertEqual(expected, dict(graph.iter_ancestry(['a', 'c'])))
+        expected.pop('a') 
+        self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
 
     def test_filter_candidate_lca(self):
         """Test filter_candidate_lca for a corner case
@@ -626,13 +839,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         """
         class stub(object):
             pass
-        def get_parents(keys):
-            result = []
-            for key in keys:
-                if key == 'deeper':
-                    self.fail('key deeper was accessed')
-                result.append(graph_dict[key])
-            return result
         def get_parent_map(keys):
             result = {}
             for key in keys:
@@ -641,7 +847,6 @@ class TestGraph(TestCaseWithMemoryTransport):
                 result[key] = graph_dict[key]
             return result
         an_obj = stub()
-        an_obj.get_parents = get_parents
         an_obj.get_parent_map = get_parent_map
         graph = _mod_graph.Graph(an_obj)
         return graph.heads(search)
@@ -681,6 +886,488 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual(set(['h1', 'h2']),
             self._run_heads_break_deeper(graph_dict, ['h1', 'h2']))
 
+    def test_breadth_first_search_start_ghosts(self):
+        graph = self.make_graph({})
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual((set(), set(['a-ghost'])), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['a-ghost'])
+        self.assertEqual(set(['a-ghost']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_deep_ghosts(self):
+        graph = self.make_graph({
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            })
+        # with_ghosts reports the ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def test_breadth_first_search_change_next_to_next_with_ghosts(self):
+        # To make the API robust, we allow calling both next() and
+        # next_with_ghosts() on the same searcher.
+        graph = self.make_graph({
+            'head':['present'],
+            'present':['child', 'ghost'],
+            'child':[],
+            })
+        # start with next_with_ghosts
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual((set(['child']), set(['ghost'])),
+            search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next)
+        # start with next
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['child', 'ghost']),
+            search.next())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+
+    def test_breadth_first_change_search(self):
+        # Changing the search should work with both next and next_with_ghosts.
+        graph = self.make_graph({
+            'head':['present'],
+            'present':['stopped'],
+            'other':['other_2'],
+            'other_2':[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual((set(['head']), set()), search.next_with_ghosts())
+        self.assertEqual((set(['present']), set()), search.next_with_ghosts())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        self.assertEqual((set(['other']), set(['other_ghost'])),
+            search.start_searching(['other', 'other_ghost']))
+        self.assertEqual((set(['other_2']), set()), search.next_with_ghosts())
+        self.assertRaises(StopIteration, search.next_with_ghosts)
+        # next includes them
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertEqual(set(['head']), search.next())
+        self.assertEqual(set(['present']), search.next())
+        self.assertEqual(set(['present']),
+            search.stop_searching_any(['present']))
+        search.start_searching(['other', 'other_ghost'])
+        self.assertEqual(set(['other_2']), search.next())
+        self.assertRaises(StopIteration, search.next)
+
+    def assertSeenAndResult(self, instructions, search, next):
+        """Check the results of .seen and get_result() for a seach.
+
+        :param instructions: A list of tuples:
+            (seen, recipe, included_keys, starts, stops).
+            seen, recipe and included_keys are results to check on the search
+            and the searches get_result(). starts and stops are parameters to
+            pass to start_searching and stop_searching_any during each
+            iteration, if they are not None.
+        :param search: The search to use.
+        :param next: A callable to advance the search.
+        """
+        for seen, recipe, included_keys, starts, stops in instructions:
+            next()
+            if starts is not None:
+                search.start_searching(starts)
+            if stops is not None:
+                search.stop_searching_any(stops)
+            result = search.get_result()
+            self.assertEqual(recipe, result.get_recipe())
+            self.assertEqual(set(included_keys), result.get_keys())
+            self.assertEqual(seen, search.seen)
+
+    def test_breadth_first_get_result_excludes_current_pending(self):
+        graph = self.make_graph({
+            'head':['child'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # At the start, nothing has been seen, to its all excluded:
+        result = search.get_result()
+        self.assertEqual((set(['head']), set(['head']), 0),
+            result.get_recipe())
+        self.assertEqual(set(), result.get_keys())
+        self.assertEqual(set(), search.seen)
+        # using next:
+        expected = [
+            (set(['head']), (set(['head']), set(['child']), 1),
+             ['head'], None, None),
+            (set(['head', 'child']), (set(['head']), set([NULL_REVISION]), 2),
+             ['head', 'child'], None, None),
+            (set(['head', 'child', NULL_REVISION]), (set(['head']), set(), 3),
+             ['head', 'child', NULL_REVISION], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_get_result_starts_stops(self):
+        graph = self.make_graph({
+            'head':['child'],
+            'child':[NULL_REVISION],
+            'otherhead':['otherchild'],
+            'otherchild':['excluded'],
+            'excluded':[NULL_REVISION],
+            NULL_REVISION:[]
+            })
+        search = graph._make_breadth_first_searcher([])
+        # Starting with nothing and adding a search works:
+        search.start_searching(['head'])
+        # head has been seen:
+        result = search.get_result()
+        self.assertEqual((set(['head']), set(['child']), 1),
+            result.get_recipe())
+        self.assertEqual(set(['head']), result.get_keys())
+        self.assertEqual(set(['head']), search.seen)
+        # using next:
+        expected = [
+            # stop at child, and start a new search at otherhead:
+            # - otherhead counts as seen immediately when start_searching is
+            # called.
+            (set(['head', 'child', 'otherhead']),
+             (set(['head', 'otherhead']), set(['child', 'otherchild']), 2),
+             ['head', 'otherhead'], ['otherhead'], ['child']),
+            (set(['head', 'child', 'otherhead', 'otherchild']),
+             (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
+             ['head', 'otherhead', 'otherchild'], None, None),
+            # stop searching excluded now
+            (set(['head', 'child', 'otherhead', 'otherchild', 'excluded']),
+             (set(['head', 'otherhead']), set(['child', 'excluded']), 3),
+             ['head', 'otherhead', 'otherchild'], None, ['excluded']),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher([])
+        search.start_searching(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_stop_searching_not_queried(self):
+        # A client should be able to say 'stop node X' even if X has not been
+        # returned to the client.
+        graph = self.make_graph({
+            'head':['child', 'ghost1'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        expected = [
+            # NULL_REVISION and ghost1 have not been returned
+            (set(['head']), (set(['head']), set(['child', 'ghost1']), 1),
+             ['head'], None, [NULL_REVISION, 'ghost1']),
+            # ghost1 has been returned, NULL_REVISION is to be returned in the
+            # next iteration.
+            (set(['head', 'child', 'ghost1']),
+             (set(['head']), set(['ghost1', NULL_REVISION]), 2),
+             ['head', 'child'], None, [NULL_REVISION, 'ghost1']),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_stop_searching_late(self):
+        # A client should be able to say 'stop node X' and have it excluded
+        # from the result even if X was seen in an older iteration of the
+        # search.
+        graph = self.make_graph({
+            'head':['middle'],
+            'middle':['child'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        expected = [
+            (set(['head']), (set(['head']), set(['middle']), 1),
+             ['head'], None, None),
+            (set(['head', 'middle']), (set(['head']), set(['child']), 2),
+             ['head', 'middle'], None, None),
+            # 'middle' came from the previous iteration, but we don't stop
+            # searching it until *after* advancing the searcher.
+            (set(['head', 'middle', 'child']),
+             (set(['head']), set(['middle', 'child']), 1),
+             ['head'], None, ['middle', 'child']),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_get_result_ghosts_are_excluded(self):
+        graph = self.make_graph({
+            'head':['child', 'ghost'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head']),
+             (set(['head']), set(['ghost', 'child']), 1),
+             ['head'], None, None),
+            (set(['head', 'child', 'ghost']),
+             (set(['head']), set([NULL_REVISION, 'ghost']), 2),
+             ['head', 'child'], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_get_result_starting_a_ghost_ghost_is_excluded(self):
+        graph = self.make_graph({
+            'head':['child'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head', 'ghost']),
+             (set(['head', 'ghost']), set(['child', 'ghost']), 1),
+             ['head'], ['ghost'], None),
+            (set(['head', 'child', 'ghost']),
+             (set(['head', 'ghost']), set([NULL_REVISION, 'ghost']), 2),
+             ['head', 'child'], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_revision_count_includes_NULL_REVISION(self):
+        graph = self.make_graph({
+            'head':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head']),
+             (set(['head']), set([NULL_REVISION]), 1),
+             ['head'], None, None),
+            (set(['head', NULL_REVISION]),
+             (set(['head']), set([]), 2),
+             ['head', NULL_REVISION], None, None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
+    def test_breadth_first_search_get_result_after_StopIteration(self):
+        # StopIteration should not invalid anything..
+        graph = self.make_graph({
+            'head':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        # using next:
+        expected = [
+            (set(['head']),
+             (set(['head']), set([NULL_REVISION]), 1),
+             ['head'], None, None),
+            (set(['head', 'ghost', NULL_REVISION]),
+             (set(['head', 'ghost']), set(['ghost']), 2),
+             ['head', NULL_REVISION], ['ghost'], None),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        self.assertRaises(StopIteration, search.next)
+        self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        result = search.get_result()
+        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+            result.get_recipe())
+        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+        self.assertRaises(StopIteration, search.next)
+        self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
+        result = search.get_result()
+        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+            result.get_recipe())
+        self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
+
+
+class TestFindUniqueAncestors(TestGraphBase):
+
+    def assertFindUniqueAncestors(self, graph, expected, node, common):
+        actual = graph.find_unique_ancestors(node, common)
+        self.assertEqual(expected, sorted(actual))
+
+    def test_empty_set(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev1'])
+        self.assertFindUniqueAncestors(graph, [], 'rev2b', ['rev2b'])
+        self.assertFindUniqueAncestors(graph, [], 'rev3', ['rev1', 'rev3'])
+
+    def test_single_node(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, ['rev2a'], 'rev2a', ['rev1'])
+        self.assertFindUniqueAncestors(graph, ['rev2b'], 'rev2b', ['rev1'])
+        self.assertFindUniqueAncestors(graph, ['rev3'], 'rev3', ['rev2a'])
+
+    def test_minimal_ancestry(self):
+        graph = self.make_breaking_graph(extended_history_shortcut,
+                                         [NULL_REVISION, 'a', 'b'])
+        self.assertFindUniqueAncestors(graph, ['e'], 'e', ['d'])
+
+        graph = self.make_breaking_graph(extended_history_shortcut,
+                                         ['b'])
+        self.assertFindUniqueAncestors(graph, ['f'], 'f', ['a', 'd'])
+
+        graph = self.make_breaking_graph(complex_shortcut,
+                                         ['a', 'b'])
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['i'])
+        self.assertFindUniqueAncestors(graph, ['e', 'g', 'i'], 'i', ['h'])
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['g'])
+        self.assertFindUniqueAncestors(graph, ['h'], 'h', ['j'])
+
+    def test_in_ancestry(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph, [], 'rev1', ['rev3'])
+        self.assertFindUniqueAncestors(graph, [], 'rev2b', ['rev4'])
+
+    def test_multiple_revisions(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindUniqueAncestors(graph,
+            ['rev4'], 'rev4', ['rev3', 'rev2b'])
+        self.assertFindUniqueAncestors(graph,
+            ['rev2a', 'rev3', 'rev4'], 'rev4', ['rev2b'])
+
+    def test_complex_shortcut(self):
+        graph = self.make_graph(complex_shortcut)
+        self.assertFindUniqueAncestors(graph,
+            ['h', 'n'], 'n', ['m'])
+        self.assertFindUniqueAncestors(graph,
+            ['e', 'i', 'm'], 'm', ['n'])
+
+    def test_complex_shortcut2(self):
+        graph = self.make_graph(complex_shortcut2)
+        self.assertFindUniqueAncestors(graph,
+            ['j', 'u'], 'u', ['t'])
+        self.assertFindUniqueAncestors(graph,
+            ['t'], 't', ['u'])
+
+    def test_multiple_interesting_unique(self):
+        graph = self.make_graph(multiple_interesting_unique)
+        self.assertFindUniqueAncestors(graph,
+            ['j', 'y'], 'y', ['z'])
+        self.assertFindUniqueAncestors(graph,
+            ['p', 'z'], 'z', ['y'])
+
+    def test_racing_shortcuts(self):
+        graph = self.make_graph(racing_shortcuts)
+        self.assertFindUniqueAncestors(graph,
+            ['p', 'q', 'z'], 'z', ['y'])
+        self.assertFindUniqueAncestors(graph,
+            ['h', 'i', 'j', 'y'], 'j', ['z'])
+
+
+class TestGraphFindDistanceToNull(TestGraphBase):
+    """Test an api that should be able to compute a revno"""
+
+    def assertFindDistance(self, revno, graph, target_id, known_ids):
+        """Assert the output of Graph.find_distance_to_null()"""
+        actual = graph.find_distance_to_null(target_id, known_ids)
+        self.assertEqual(revno, actual)
+
+    def test_nothing_known(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindDistance(0, graph, NULL_REVISION, [])
+        self.assertFindDistance(1, graph, 'rev1', [])
+        self.assertFindDistance(2, graph, 'rev2a', [])
+        self.assertFindDistance(2, graph, 'rev2b', [])
+        self.assertFindDistance(3, graph, 'rev3', [])
+        self.assertFindDistance(4, graph, 'rev4', [])
+
+    def test_rev_is_ghost(self):
+        graph = self.make_graph(ancestry_1)
+        e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                              graph.find_distance_to_null, 'rev_missing', [])
+        self.assertEqual('rev_missing', e.revision_id)
+        self.assertEqual('rev_missing', e.ghost_revision_id)
+
+    def test_ancestor_is_ghost(self):
+        graph = self.make_graph({'rev':['parent']})
+        e = self.assertRaises(errors.GhostRevisionsHaveNoRevno,
+                              graph.find_distance_to_null, 'rev', [])
+        self.assertEqual('rev', e.revision_id)
+        self.assertEqual('parent', e.ghost_revision_id)
+
+    def test_known_in_ancestry(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindDistance(2, graph, 'rev2a', [('rev1', 1)])
+        self.assertFindDistance(3, graph, 'rev3', [('rev2a', 2)])
+
+    def test_known_in_ancestry_limits(self):
+        graph = self.make_breaking_graph(ancestry_1, ['rev1'])
+        self.assertFindDistance(4, graph, 'rev4', [('rev3', 3)])
+
+    def test_target_is_ancestor(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertFindDistance(2, graph, 'rev2a', [('rev3', 3)])
+
+    def test_target_is_ancestor_limits(self):
+        """We shouldn't search all history if we run into ourselves"""
+        graph = self.make_breaking_graph(ancestry_1, ['rev1'])
+        self.assertFindDistance(3, graph, 'rev3', [('rev4', 4)])
+
+    def test_target_parallel_to_known_limits(self):
+        # Even though the known revision isn't part of the other ancestry, they
+        # eventually converge
+        graph = self.make_breaking_graph(with_tail, ['a'])
+        self.assertFindDistance(6, graph, 'f', [('g', 6)])
+        self.assertFindDistance(7, graph, 'h', [('g', 6)])
+        self.assertFindDistance(8, graph, 'i', [('g', 6)])
+        self.assertFindDistance(6, graph, 'g', [('i', 8)])
+
+
+class TestFindMergeOrder(TestGraphBase):
+
+    def assertMergeOrder(self, expected, graph, tip, base_revisions):
+        self.assertEqual(expected, graph.find_merge_order(tip, base_revisions))
+
+    def test_parents(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertMergeOrder(['rev3', 'rev2b'], graph, 'rev4',
+                                                        ['rev3', 'rev2b'])
+        self.assertMergeOrder(['rev3', 'rev2b'], graph, 'rev4',
+                                                        ['rev2b', 'rev3'])
+
+    def test_ancestors(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertMergeOrder(['rev1', 'rev2b'], graph, 'rev4',
+                                                        ['rev1', 'rev2b'])
+        self.assertMergeOrder(['rev1', 'rev2b'], graph, 'rev4',
+                                                        ['rev2b', 'rev1'])
+
+    def test_shortcut_one_ancestor(self):
+        # When we have enough info, we can stop searching
+        graph = self.make_breaking_graph(ancestry_1, ['rev3', 'rev2b', 'rev4'])
+        # Single ancestors shortcut right away
+        self.assertMergeOrder(['rev3'], graph, 'rev4', ['rev3'])
+
+    def test_shortcut_after_one_ancestor(self):
+        graph = self.make_breaking_graph(ancestry_1, ['rev2a', 'rev2b'])
+        self.assertMergeOrder(['rev3', 'rev1'], graph, 'rev4', ['rev1', 'rev3'])
+
 
 class TestCachingParentsProvider(tests.TestCase):
 
@@ -689,20 +1376,6 @@ class TestCachingParentsProvider(tests.TestCase):
         dict_pp = _mod_graph.DictParentsProvider({'a':('b',)})
         self.inst_pp = InstrumentedParentsProvider(dict_pp)
         self.caching_pp = _mod_graph.CachingParentsProvider(self.inst_pp)
-
-    def test_get_parents(self):
-        """Requesting the same revision should be returned from cache"""
-        self.assertEqual({}, self.caching_pp._cache)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual([('b',)],
-            self.applyDeprecated(symbol_versioning.one_one,
-            self.caching_pp.get_parents, ['a']))
-        # No new call, as it should have been returned from the cache
-        self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual({'a':('b',)}, self.caching_pp._cache)
 
     def test_get_parent_map(self):
         """Requesting the same revision should be returned from cache"""
@@ -738,3 +1411,41 @@ class TestCachingParentsProvider(tests.TestCase):
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
+
+
+class TestCollapseLinearRegions(tests.TestCase):
+
+    def assertCollapsed(self, collapsed, original):
+        self.assertEqual(collapsed,
+                         _mod_graph.collapse_linear_regions(original))
+
+    def test_collapse_nothing(self):
+        d = {1:[2, 3], 2:[], 3:[]}
+        self.assertCollapsed(d, d)
+        d = {1:[2], 2:[3, 4], 3:[5], 4:[5], 5:[]}
+        self.assertCollapsed(d, d)
+
+    def test_collapse_chain(self):
+        # Any time we have a linear chain, we should be able to collapse
+        d = {1:[2], 2:[3], 3:[4], 4:[5], 5:[]}
+        self.assertCollapsed({1:[5], 5:[]}, d)
+        d = {5:[4], 4:[3], 3:[2], 2:[1], 1:[]}
+        self.assertCollapsed({5:[1], 1:[]}, d)
+        d = {5:[3], 3:[4], 4:[1], 1:[2], 2:[]}
+        self.assertCollapsed({5:[2], 2:[]}, d)
+
+    def test_collapse_with_multiple_children(self):
+        #    7
+        #    |
+        #    6
+        #   / \
+        #  4   5
+        #  |   |
+        #  2   3
+        #   \ /
+        #    1
+        #
+        # 4 and 5 cannot be removed because 6 has 2 children
+        # 2 and 3 cannot be removed because 1 has 2 parents
+        d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
+        self.assertCollapsed(d, d)

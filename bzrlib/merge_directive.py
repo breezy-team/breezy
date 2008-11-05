@@ -136,6 +136,21 @@ class _BaseMergeDirective(object):
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
             patch, patch_type, public_branch, message)
 
+    def get_disk_name(self, branch):
+        """Generate a suitable basename for storing this directive on disk
+
+        :param branch: The Branch this merge directive was generated fro
+        :return: A string
+        """
+        revno, revision_id = branch.last_revision_info()
+        if self.revision_id == revision_id:
+            revno = [revno]
+        else:
+            revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
+                ['merge'])
+        nick = re.sub('(\W+)', '-', branch.nick).strip('-')
+        return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
+
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
         tree_1 = repository.revision_tree(ancestor_id)
@@ -195,7 +210,11 @@ class _BaseMergeDirective(object):
                 except errors.RevisionNotPresent:
                     # At least one dependency isn't present.  Try installing
                     # missing revisions from the submit branch
-                    submit_branch = _mod_branch.Branch.open(self.target_branch)
+                    try:
+                        submit_branch = \
+                            _mod_branch.Branch.open(self.target_branch)
+                    except errors.NotBranchError:
+                        raise errors.TargetNotBranch(self.target_branch)
                     missing_revisions = []
                     bundle_revisions = set(r.revision_id for r in
                                            info.real_revisions)
@@ -259,7 +278,8 @@ class MergeDirective(_BaseMergeDirective):
         """
         _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
-        assert patch_type in (None, 'diff', 'bundle'), patch_type
+        if patch_type not in (None, 'diff', 'bundle'):
+            raise ValueError(patch_type)
         if patch_type != 'bundle' and source_branch is None:
             raise errors.NoMergeSource()
         if patch_type is not None and patch is None:

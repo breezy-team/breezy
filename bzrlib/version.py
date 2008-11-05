@@ -57,7 +57,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         python_dll = "python%d%d.dll" % sys.version_info[:2]
         to_file.write(os.path.join(basedir, python_dll) + ' ')
     # and now version of python interpreter
-    to_file.write('.'.join(map(str, sys.version_info)))
+    to_file.write(bzrlib._format_version_tuple(sys.version_info))
     to_file.write('\n')
 
     to_file.write("  Python standard library:" + ' ')
@@ -72,7 +72,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     if show_config:
         config_dir = os.path.normpath(config.config_dir())  # use native slashes
         if not isinstance(config_dir, unicode):
-            config_dir = config_dir.decode(bzrlib.user_encoding)
+            config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Bazaar configuration: %s\n" % (config_dir,))
         to_file.write("  Bazaar log file: ")
         to_file.write(trace._bzr_log_filename + '\n')

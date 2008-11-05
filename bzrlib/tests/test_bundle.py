@@ -16,37 +16,40 @@
 
 from cStringIO import StringIO
 import os
+import socket
 import sys
-import tempfile
+import threading
 
 from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    osutils,
     repository,
     revision as _mod_revision,
     treebuilder,
     )
-from bzrlib.bzrdir import BzrDir
+from bzrlib.bundle import read_mergeable_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
+from bzrlib.bzrdir import BzrDir
+from bzrlib.directory_service import directories
 from bzrlib.bundle.serializer import write_bundle, read_bundle, v09, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
-                           NoSuchFile,)
 from bzrlib.merge import Merge3Merger
 from bzrlib.repofmt import knitrepo
-from bzrlib.osutils import sha_file
+from bzrlib.osutils import sha_file, sha_string
 from bzrlib.tests import (
     SymlinkFeature,
     TestCase,
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestSkipped,
+    test_read_bundle,
     test_commit,
     )
 from bzrlib.transform import TreeTransform
@@ -103,7 +106,7 @@ class MockTree(object):
         elif kind == 'symlink':
             ie = InventoryLink(file_id, name, parent_id)
         else:
-            raise BzrError('unknown kind %r' % kind)
+            raise errors.BzrError('unknown kind %r' % kind)
         ie.text_sha1 = text_sha_1
         ie.text_size = text_size
         return ie
@@ -166,14 +169,14 @@ class BTreeTester(TestCase):
         self.assertEqual(btree.path2id("grandparent/parent"), "b")
         self.assertEqual(btree.path2id("grandparent/parent/file"), "c")
 
-        assert btree.path2id("grandparent2") is None
-        assert btree.path2id("grandparent2/parent") is None
-        assert btree.path2id("grandparent2/parent/file") is None
+        self.assertTrue(btree.path2id("grandparent2") is None)
+        self.assertTrue(btree.path2id("grandparent2/parent") is None)
+        self.assertTrue(btree.path2id("grandparent2/parent/file") is None)
 
         btree.note_rename("grandparent", "grandparent2")
-        assert btree.old_path("grandparent") is None
-        assert btree.old_path("grandparent/parent") is None
-        assert btree.old_path("grandparent/parent/file") is None
+        self.assertTrue(btree.old_path("grandparent") is None)
+        self.assertTrue(btree.old_path("grandparent/parent") is None)
+        self.assertTrue(btree.old_path("grandparent/parent/file") is None)
 
         self.assertEqual(btree.id2path("a"), "grandparent2")
         self.assertEqual(btree.id2path("b"), "grandparent2/parent")
@@ -183,9 +186,9 @@ class BTreeTester(TestCase):
         self.assertEqual(btree.path2id("grandparent2/parent"), "b")
         self.assertEqual(btree.path2id("grandparent2/parent/file"), "c")
 
-        assert btree.path2id("grandparent") is None
-        assert btree.path2id("grandparent/parent") is None
-        assert btree.path2id("grandparent/parent/file") is None
+        self.assertTrue(btree.path2id("grandparent") is None)
+        self.assertTrue(btree.path2id("grandparent/parent") is None)
+        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
         btree.note_rename("grandparent/parent", "grandparent2/parent2")
         self.assertEqual(btree.id2path("a"), "grandparent2")
@@ -196,8 +199,8 @@ class BTreeTester(TestCase):
         self.assertEqual(btree.path2id("grandparent2/parent2"), "b")
         self.assertEqual(btree.path2id("grandparent2/parent2/file"), "c")
 
-        assert btree.path2id("grandparent2/parent") is None
-        assert btree.path2id("grandparent2/parent/file") is None
+        self.assertTrue(btree.path2id("grandparent2/parent") is None)
+        self.assertTrue(btree.path2id("grandparent2/parent/file") is None)
 
         btree.note_rename("grandparent/parent/file", 
                           "grandparent2/parent2/file2")
@@ -209,7 +212,7 @@ class BTreeTester(TestCase):
         self.assertEqual(btree.path2id("grandparent2/parent2"), "b")
         self.assertEqual(btree.path2id("grandparent2/parent2/file2"), "c")
 
-        assert btree.path2id("grandparent2/parent2/file") is None
+        self.assertTrue(btree.path2id("grandparent2/parent2/file") is None)
 
     def test_moves(self):
         """Ensure that file moves have the proper effect on children"""
@@ -218,7 +221,7 @@ class BTreeTester(TestCase):
                           "grandparent/alt_parent/file")
         self.assertEqual(btree.id2path("c"), "grandparent/alt_parent/file")
         self.assertEqual(btree.path2id("grandparent/alt_parent/file"), "c")
-        assert btree.path2id("grandparent/parent/file") is None
+        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
     def unified_diff(self, old, new):
         out = StringIO()
@@ -230,8 +233,8 @@ class BTreeTester(TestCase):
         btree = self.make_tree_1()[0]
         btree.note_rename("grandparent/parent/file", 
                           "grandparent/alt_parent/file")
-        assert btree.id2path("e") is None
-        assert btree.path2id("grandparent/parent/file") is None
+        self.assertTrue(btree.id2path("e") is None)
+        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
         btree.note_id("e", "grandparent/parent/file")
         return btree
 
@@ -295,8 +298,8 @@ class BTreeTester(TestCase):
         btree = self.make_tree_1()[0]
         self.assertEqual(btree.get_file("c").read(), "Hello\n")
         btree.note_deletion("grandparent/parent/file")
-        assert btree.id2path("c") is None
-        assert btree.path2id("grandparent/parent/file") is None
+        self.assertTrue(btree.id2path("c") is None)
+        self.assertTrue(btree.path2id("grandparent/parent/file") is None)
 
     def sorted_ids(self, tree):
         ids = list(tree)
@@ -432,16 +435,17 @@ class BundleTester(object):
         return bundle 
 
     def test_non_bundle(self):
-        self.assertRaises(NotABundle, read_bundle, StringIO('#!/bin/sh\n'))
+        self.assertRaises(errors.NotABundle,
+                          read_bundle, StringIO('#!/bin/sh\n'))
 
     def test_malformed(self):
-        self.assertRaises(BadBundle, read_bundle, 
+        self.assertRaises(errors.BadBundle, read_bundle,
                           StringIO('# Bazaar revision bundle v'))
 
     def test_crlf_bundle(self):
         try:
             read_bundle(StringIO('# Bazaar revision bundle v0.8\r\n'))
-        except BadBundle:
+        except errors.BadBundle:
             # It is currently permitted for bundles with crlf line endings to
             # make read_bundle raise a BadBundle, but this should be fixed.
             # Anything else, especially NotABundle, is an error.
@@ -452,7 +456,7 @@ class BundleTester(object):
         """
 
         if checkout_dir is None:
-            checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
+            checkout_dir = osutils.mkdtemp(prefix='test-branch-', dir='.')
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
@@ -461,29 +465,33 @@ class BundleTester(object):
         ancestors = write_bundle(self.b1.repository, rev_id, 'null:', s,
                                  format=self.format)
         s.seek(0)
-        assert isinstance(s.getvalue(), str), (
-            "Bundle isn't a bytestring:\n %s..." % repr(s.getvalue())[:40])
+        self.assertIsInstance(s.getvalue(), str)
         install_bundle(tree.branch.repository, read_bundle(s))
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
+            old.lock_read()
+            new.lock_read()
+            try:
+                # Check that there aren't any inventory level changes
+                delta = new.changes_from(old)
+                self.assertFalse(delta.has_changed(),
+                                 'Revision %s not copied correctly.'
+                                 % (ancestor,))
 
-            # Check that there aren't any inventory level changes
-            delta = new.changes_from(old)
-            self.assertFalse(delta.has_changed(),
-                             'Revision %s not copied correctly.'
-                             % (ancestor,))
-
-            # Now check that the file contents are all correct
-            for inventory_id in old:
-                try:
-                    old_file = old.get_file(inventory_id)
-                except NoSuchFile:
-                    continue
-                if old_file is None:
-                    continue
-                self.assertEqual(old_file.read(),
-                                 new.get_file(inventory_id).read())
+                # Now check that the file contents are all correct
+                for inventory_id in old:
+                    try:
+                        old_file = old.get_file(inventory_id)
+                    except errors.NoSuchFile:
+                        continue
+                    if old_file is None:
+                        continue
+                    self.assertEqual(old_file.read(),
+                                     new.get_file(inventory_id).read())
+            finally:
+                new.unlock()
+                old.unlock()
         if not _mod_revision.is_null(rev_id):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
@@ -498,6 +506,13 @@ class BundleTester(object):
         sure everything matches the builtin branch.
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
+        to_tree.lock_write()
+        try:
+            self._valid_apply_bundle(base_rev_id, info, to_tree)
+        finally:
+            to_tree.unlock()
+
+    def _valid_apply_bundle(self, base_rev_id, info, to_tree):
         original_parents = to_tree.get_parent_ids()
         repository = to_tree.branch.repository
         original_parents = to_tree.get_parent_ids()
@@ -604,7 +619,7 @@ class BundleTester(object):
         self.tree1.commit('removed', rev_id='a@cset-0-3')
         
         bundle = self.get_valid_bundle('a@cset-0-2', 'a@cset-0-3')
-        self.assertRaises((TestamentMismatch,
+        self.assertRaises((errors.TestamentMismatch,
             errors.VersionedFileInvalidChecksum), self.get_invalid_bundle,
             'a@cset-0-2', 'a@cset-0-3')
         # Check a rollup bundle 
@@ -782,7 +797,7 @@ class BundleTester(object):
         # Handle international characters
         os.mkdir('b1')
         try:
-            f = open(u'b1/with Dod\xe9', 'wb')
+            f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
         except UnicodeEncodeError:
             raise TestSkipped("Filesystem doesn't support unicode")
 
@@ -794,44 +809,30 @@ class BundleTester(object):
             u'William Dod\xe9\n').encode('utf-8'))
         f.close()
 
-        self.tree1.add([u'with Dod\xe9'], ['withdod-id'])
+        self.tree1.add([u'with Dod\N{Euro Sign}'], ['withdod-id'])
         self.tree1.commit(u'i18n commit from William Dod\xe9',
                           rev_id='i18n-1', committer=u'William Dod\xe9')
-
-        if sys.platform == 'darwin':
-            from bzrlib.workingtree import WorkingTree3
-            if type(self.tree1) is WorkingTree3:
-                self.knownFailure("Bug #141438: fails for WorkingTree3 on OSX")
-
-            # On Mac the '\xe9' gets changed to 'e\u0301'
-            self.assertEqual([u'.bzr', u'with Dode\u0301'],
-                             sorted(os.listdir(u'b1')))
-            delta = self.tree1.changes_from(self.tree1.basis_tree())
-            self.assertEqual([(u'with Dod\xe9', 'withdod-id', 'file')],
-                             delta.removed)
-            self.knownFailure("Mac OSX doesn't preserve unicode"
-                              " combining characters.")
 
         # Add
         bundle = self.get_valid_bundle('null:', 'i18n-1')
 
         # Modified
-        f = open(u'b1/with Dod\xe9', 'wb')
+        f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
         f.write(u'Modified \xb5\n'.encode('utf8'))
         f.close()
         self.tree1.commit(u'modified', rev_id='i18n-2')
 
         bundle = self.get_valid_bundle('i18n-1', 'i18n-2')
-        
+
         # Renamed
-        self.tree1.rename_one(u'with Dod\xe9', u'B\xe5gfors')
+        self.tree1.rename_one(u'with Dod\N{Euro Sign}', u'B\N{Euro Sign}gfors')
         self.tree1.commit(u'renamed, the new i18n man', rev_id='i18n-3',
                           committer=u'Erik B\xe5gfors')
 
         bundle = self.get_valid_bundle('i18n-2', 'i18n-3')
 
         # Removed
-        self.tree1.remove([u'B\xe5gfors'])
+        self.tree1.remove([u'B\N{Euro Sign}gfors'])
         self.tree1.commit(u'removed', rev_id='i18n-4')
 
         bundle = self.get_valid_bundle('i18n-3', 'i18n-4')
@@ -1005,18 +1006,31 @@ class BundleTester(object):
         self.assertNotContainsRe(inv_text, 'format="5"')
         self.assertContainsRe(inv_text, 'format="7"')
 
-    def test_across_models(self):
+    def make_repo_with_installed_revisions(self):
         tree = self.make_simple_tree('knit')
         tree.commit('hello', rev_id='rev1')
         tree.commit('hello', rev_id='rev2')
         bundle = read_bundle(self.create_bundle_text('null:', 'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
+        return repo
+
+    def test_across_models(self):
+        repo = self.make_repo_with_installed_revisions()
         inv = repo.get_inventory('rev2')
         self.assertEqual('rev2', inv.root.revision)
-        root_vf = repo.weave_store.get_weave(inv.root.file_id,
-                                             repo.get_transaction())
-        self.assertEqual(root_vf.versions(), ['rev1', 'rev2'])
+        root_id = inv.root.file_id
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({(root_id, 'rev1'):(),
+            (root_id, 'rev2'):((root_id, 'rev1'),)},
+            repo.texts.get_parent_map([(root_id, 'rev1'), (root_id, 'rev2')]))
+
+    def test_inv_hash_across_serializers(self):
+        repo = self.make_repo_with_installed_revisions()
+        recorded_inv_sha1 = repo.get_inventory_sha1('rev2')
+        xml = repo.get_inventory_xml('rev2')
+        self.assertEqual(sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):
         tree = self.make_simple_tree('dirstate-with-subtree')
@@ -1326,13 +1340,18 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         tree2 = self.make_branch_and_tree('target')
         target_repo = tree2.branch.repository
         install_bundle(target_repo, serializer.read(s))
-        vf = target_repo.weave_store.get_weave('fileid-2',
-            target_repo.get_transaction())
-        self.assertEqual('contents1\nstatic\n', vf.get_text('rev1'))
-        self.assertEqual('contents2\nstatic\n', vf.get_text('rev2'))
+        target_repo.lock_read()
+        self.addCleanup(target_repo.unlock)
+        self.assertEqual({'1':'contents1\nstatic\n',
+            '2':'contents2\nstatic\n'},
+            dict(target_repo.iter_files_bytes(
+                [('fileid-2', 'rev1', '1'), ('fileid-2', 'rev2', '2')])))
         rtree = target_repo.revision_tree('rev2')
-        inventory_vf = target_repo.get_inventory_weave()
-        self.assertEqual(['rev1'], inventory_vf.get_parents('rev2'))
+        inventory_vf = target_repo.inventories
+        # If the inventory store has a graph, it must match the revision graph.
+        self.assertSubset(
+            [inventory_vf.get_parent_map([('rev2',)])[('rev2',)]],
+            [None, (('rev1',),)])
         self.assertEqual('changed file',
                          target_repo.get_revision('rev2').message)
 
@@ -1551,4 +1570,70 @@ class TestBundleWriterReader(TestCase):
         record = record_iter.next()
         self.assertEqual((None, {'foo': 'bar', 'storage_kind': 'header'},
             'info', None, None), record)
-        self.assertRaises(BadBundle, record_iter.next)
+        self.assertRaises(errors.BadBundle, record_iter.next)
+
+
+class TestReadMergeableFromUrl(TestCaseWithTransport):
+
+    def test_read_mergeable_skips_local(self):
+        """A local bundle named like the URL should not be read.
+        """
+        out, wt = test_read_bundle.create_bundle_file(self)
+        class FooService(object):
+            """A directory service that always returns source"""
+
+            def look_up(self, name, url):
+                return 'source'
+        directories.register('foo:', FooService, 'Testing directory service')
+        self.addCleanup(lambda: directories.remove('foo:'))
+        self.build_tree_contents([('./foo:bar', out.getvalue())])
+        self.assertRaises(errors.NotABundle, read_mergeable_from_url,
+                          'foo:bar')
+
+    def test_smart_server_connection_reset(self):
+        """If a smart server connection fails during the attempt to read a
+        bundle, then the ConnectionReset error should be propagated.
+        """
+        # Instantiate a server that will provoke a ConnectionReset
+        sock_server = _DisconnectingTCPServer()
+        sock_server.setUp()
+        self.addCleanup(sock_server.tearDown)
+        # We don't really care what the url is since the server will close the
+        # connection without interpreting it
+        url = sock_server.get_url()
+        self.assertRaises(errors.ConnectionReset, read_mergeable_from_url, url)
+
+
+class _DisconnectingTCPServer(object):
+    """A TCP server that immediately closes any connection made to it."""
+
+    def setUp(self):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind(('127.0.0.1', 0))
+        self.sock.listen(1)
+        self.port = self.sock.getsockname()[1]
+        self.thread = threading.Thread(
+            name='%s (port %d)' % (self.__class__.__name__, self.port),
+            target=self.accept_and_close)
+        self.thread.start()
+
+    def accept_and_close(self):
+        conn, addr = self.sock.accept()
+        conn.shutdown(socket.SHUT_RDWR)
+        conn.close()
+
+    def get_url(self):
+        return 'bzr://127.0.0.1:%d/' % (self.port,)
+
+    def tearDown(self):
+        try:
+            # make sure the thread dies by connecting to the listening socket,
+            # just in case the test failed to do so.
+            conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            conn.connect(self.sock.getsockname())
+            conn.close()
+        except socket.error:
+            pass
+        self.sock.close()
+        self.thread.join()
+

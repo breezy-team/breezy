@@ -10,8 +10,6 @@
 A minimal front end to the Docutils Publisher, producing HTML.
 """
 
-# modified version for 
-
 try:
     import locale
     locale.setlocale(locale.LC_ALL, '')
@@ -21,8 +19,7 @@ except:
 import docutils
 from docutils.core import publish_cmdline, default_description
 
-
-if docutils.__version__ <= '0.4.1':
+if True: # this is still required in the distutils trunk as-at June 2008.
     from docutils.parsers.rst.states import Body
     # we have some option names that contain dot; which is not allowed by
     # python-docutils 0.4-4 -- so monkeypatch in a better pattern

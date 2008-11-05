@@ -30,6 +30,10 @@ connection even for requests that urllib2 doesn't expect to contain body data.
 
 And a custom Request class that lets us track redirections, and
 handle authentication schemes.
+
+For coherency with python libraries, we use capitalized header names throughout
+the code, even if the header names will be titled just before sending the
+request (see AbstractHTTPHandler.do_open).
 """
 
 DEBUG = 0
@@ -63,6 +67,18 @@ from bzrlib import (
     )
 
 
+class _BufferedMakefileSocket(object):
+
+    def __init__(self, sock):
+        self.sock = sock
+
+    def makefile(self, mode='r', bufsize=-1):
+        return self.sock.makefile(mode, 65536)
+
+    def __getattr__(self, name):
+        return getattr(self.sock, name)
+
+
 # We define our own Response class to keep our httplib pipe clean
 class Response(httplib.HTTPResponse):
     """Custom HTTPResponse, to avoid the need to decorate.
@@ -73,6 +89,20 @@ class Response(httplib.HTTPResponse):
 
     # Some responses have bodies in which we have no interest
     _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
+
+    # in finish() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
+    def __init__(self, sock, *args, **kwargs):
+        # httplib creates a fileobject that doesn't do buffering, which
+        # makes fp.readline() very expensive because it only reads one byte
+        # at a time.  So we wrap the socket in an object that forces
+        # sock.makefile to make a buffered file.
+        sock = _BufferedMakefileSocket(sock)
+        httplib.HTTPResponse.__init__(self, sock, *args, **kwargs)
 
     def begin(self):
         """Begin to read the response from the server.
@@ -112,12 +142,6 @@ class Response(httplib.HTTPResponse):
             # below we keep the socket with the server opened.
             self.will_close = False
 
-    # in finish() below, we may have to discard several MB in the worst
-    # case. To avoid buffering that much, we read and discard by chunks
-    # instead. The underlying file is either a socket or a StringIO, so reading
-    # 8k chunks should be fine.
-    _discarded_buf_size = 8192
-
     def finish(self):
         """Finish reading the body.
 
@@ -133,16 +157,13 @@ class Response(httplib.HTTPResponse):
         if not self.isclosed():
             # Make sure nothing was left to be read on the socket
             pending = 0
-            while self.length and self.length > self._discarded_buf_size:
-                data = self.read(self._discarded_buf_size)
-                pending += len(data)
-            if self.length:
-                data = self.read(self.length)
+            data = True
+            while data and self.length:
+                # read() will update self.length
+                data = self.read(min(self.length, self._discarded_buf_size))
                 pending += len(data)
             if pending:
-                trace.mutter(
-                    "%s bytes left on the HTTP socket",
-                    pending)
+                trace.mutter("%s bytes left on the HTTP socket", pending)
             self.close()
         return pending
 
@@ -299,7 +320,8 @@ class _ConnectRequest(Request):
         # confused
         Request.__init__(self, 'CONNECT', request.get_full_url(),
                          connection=request.connection)
-        assert request.proxied_host is not None
+        if request.proxied_host is None:
+            raise AssertionError()
         self.proxied_host = request.proxied_host
 
     def get_selector(self):
@@ -396,10 +418,6 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
-                        # FIXME: Spell it User-*A*gent once we
-                        # know how to properly avoid bogus
-                        # urllib2 using capitalize() for headers
-                        # instead of title(sp?).
                         'User-agent': 'bzr/%s (urllib)' % bzrlib_version,
                         'Accept': '*/*',
                         }
@@ -492,13 +510,21 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         The request will be retried once if it fails.
         """
         connection = request.connection
-        assert connection is not None, \
-            'Cannot process a request without a connection'
+        if connection is None:
+            raise AssertionError(
+                'Cannot process a request without a connection')
 
         # Get all the headers
         headers = {}
         headers.update(request.header_items())
         headers.update(request.unredirected_hdrs)
+        # Some servers or proxies will choke on headers not properly
+        # cased. httplib/urllib/urllib2 all use capitalize to get canonical
+        # header names, but only python2.5 urllib2 use title() to fix them just
+        # before sending the request. And not all versions of python 2.5 do
+        # that. Since we replace urllib2.AbstractHTTPHandler.do_open we do it
+        # ourself below.
+        headers = dict((name.title(), val) for name, val in headers.iteritems())
 
         try:
             method = request.get_method()
@@ -544,7 +570,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             req = request
             r = response
             r.recv = r.read
-            fp = socket._fileobject(r)
+            fp = socket._fileobject(r, bufsize=65536)
             resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
@@ -585,7 +611,6 @@ class HTTPSHandler(AbstractHTTPHandler):
 
     def https_open(self, request):
         connection = request.connection
-        assert isinstance(connection, HTTPSConnection)
         if connection.sock is None and \
                 connection.proxied_host is not None and \
                 request.get_method() != 'CONNECT' : # Don't loop
@@ -1323,7 +1348,9 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
 
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 403:
-            raise errors.TransportError('Server refuses to fullfil the request')
+            raise errors.TransportError(
+                'Server refuses to fulfill the request (403 Forbidden)'
+                ' for %s' % req.get_full_url())
         else:
             raise errors.InvalidHttpResponse(req.get_full_url(),
                                              'Unable to handle http code %d: %s'

@@ -79,6 +79,9 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
     """Create a version file based on a custom template."""
 
     def generate(self, to_file):
+        if self._template is None:
+            raise errors.NoTemplate()
+
         info = Template()
         info.add('build_date', create_date_str())
         info.add('branch_nick', self._branch.nick)

@@ -16,7 +16,7 @@ Bazaar has default rules for deciding which files are
 interesting and which ones are not. You can tune those rules as
 explained in `Ignoring files`_ below.
 
-Unless many other VCS tools, Bazaar tracks directories as first class
+Unlike many other VCS tools, Bazaar tracks directories as first class
 items. As a consequence, empty directories are correctly supported -
 you don't need to create a dummy file inside a directory just to
 ensure it gets tracked and included in project exports.
@@ -73,16 +73,21 @@ use ``bzr ignored``::
     config.h                 ./config.h
     configure.in~            *~
 
-It is OK to have either an ignore pattern match a versioned file, or to
-add an ignored file.  Ignore patterns have no effect on versioned files;
-they only determine whether unversioned files are reported as unknown or
-ignored.
+Note that ignore patterns are only matched against non-versioned files,
+and control whether they are treated as "unknown" or "ignored".  If a file
+is explicitly added, it remains versioned regardless of whether it matches
+an ignore pattern.
 
 The ``.bzrignore`` file should normally be versioned, so that new copies
 of the branch see the same patterns::
 
     % bzr add .bzrignore
     % bzr commit -m "Add ignore patterns"
+
+The command ``bzr ignore PATTERN`` can be used to easily add PATTERN to
+the ``.bzrignore file`` (creating it if necessary and registering it to
+be tracked by Bazaar).  Removing and modifying patterns are done by
+directly editing the ``.bzrignore`` file.
 
 Global ignores
 --------------

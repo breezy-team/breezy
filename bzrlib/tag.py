@@ -28,11 +28,15 @@ when the branch is opened.  Clients should typically do
 
 from warnings import warn
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.util import bencode
+""")
+
 from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.util import bencode
 
 
 class _Tags(object):
@@ -196,7 +200,8 @@ class BasicTags(_Tags):
         :param overwrite: Overwrite conflicting tags in the target branch
 
         :returns: A list of tags that conflicted, each of which is 
-            (tagname, source_target, dest_target).
+            (tagname, source_target, dest_target), or None if no copying was
+            done.
         """
         if self.branch == to_tags.branch:
             return

@@ -23,10 +23,13 @@ responses.
 
 
 import httplib
+from cStringIO import StringIO
+import rfc822
 
 from bzrlib import (
     errors,
     trace,
+    osutils,
     )
 
 
@@ -54,6 +57,15 @@ class RangeFile(object):
     progress. Only one range is available at a given time, so all accesses
     should happen with monotonically increasing offsets.
     """
+
+    # in _checked_read() below, we may have to discard several MB in the worst
+    # case. To avoid buffering that much, we read and discard by chunks
+    # instead. The underlying file is either a socket or a StringIO, so reading
+    # 8k chunks should be fine.
+    _discarded_buf_size = 8192
+
+    # maximum size of read requests -- used to avoid MemoryError issues in recv
+    _max_read_size = 512 * 1024
 
     def __init__(self, path, infile):
         """Constructor.
@@ -96,11 +108,21 @@ class RangeFile(object):
             # string entity.
             # To be on the safe side we allow it before any boundary line
             boundary_line = self._file.readline()
+
         if boundary_line != '--' + self._boundary + '\r\n':
-            raise errors.InvalidHttpResponse(
-                self._path,
-                "Expected a boundary (%s) line, got '%s'" % (self._boundary,
-                                                             boundary_line))
+            # rfc822.unquote() incorrectly unquotes strings enclosed in <>
+            # IIS 6 and 7 incorrectly wrap boundary strings in <>
+            # together they make a beautiful bug, which we will be gracious
+            # about here
+            if (self._unquote_boundary(boundary_line) != 
+                '--' + self._boundary + '\r\n'):
+                raise errors.InvalidHttpResponse(
+                    self._path,
+                    "Expected a boundary (%s) line, got '%s'"
+                    % (self._boundary, boundary_line))
+
+    def _unquote_boundary(self, b):
+        return b[:2] + rfc822.unquote(b[2:-2]) + b[-2:]
 
     def read_range_definition(self):
         """Read a new range definition in a multi parts message.
@@ -145,23 +167,27 @@ class RangeFile(object):
         self.set_range(start, size)
 
     def _checked_read(self, size):
-        """Read the file checking for short reads"""
+        """Read the file checking for short reads.
+
+        The data read is discarded along the way.
+        """
         pos = self._pos
-        data = self._file.read(size)
-        data_len = len(data)
-        if size > 0 and data_len != size:
-            raise errors.ShortReadvError(self._path, pos, size, data_len)
-        self._pos += data_len
-        return data
+        remaining = size
+        while remaining > 0:
+            data = self._file.read(min(remaining, self._discarded_buf_size))
+            remaining -= len(data)
+            if not data:
+                raise errors.ShortReadvError(self._path, pos, size,
+                                             size - remaining)
+        self._pos += size
 
     def _seek_to_next_range(self):
         # We will cross range boundaries
         if self._boundary is None:
             # If we don't have a boundary, we can't find another range
-            raise errors.InvalidRange(
-                self._path, self._pos,
-                "Range (%s, %s) exhausted"
-                % (self._start, self._size))
+            raise errors.InvalidRange(self._path, self._pos,
+                                      "Range (%s, %s) exhausted"
+                                      % (self._start, self._size))
         self.read_boundary()
         self.read_range_definition()
 
@@ -172,6 +198,9 @@ class RangeFile(object):
         client to clean the socket if we leave bytes unread. This may occur for
         the final boundary line of a multipart response or for any range
         request not entirely consumed by the client (due to offset coalescing)
+
+        :param size:  The number of bytes to read.  Leave unspecified or pass
+            -1 to read to EOF.
         """
         if (self._size > 0
             and self._pos == self._start + self._size):
@@ -191,17 +220,17 @@ class RangeFile(object):
                     "Can't read %s bytes across range (%s, %s)"
                     % (size, self._start, self._size))
 
+        # read data from file
+        buffer = StringIO()
+        limited = size
         if self._size > 0:
             # Don't read past the range definition
             limited = self._start + self._size - self._pos
             if size >= 0:
                 limited = min(limited, size)
-            data = self._file.read(limited)
-        else:
-            # Size of file unknown, the user may have specified a size or not,
-            # we delegate that to the filesocket object (-1 means read until
-            # EOF)
-            data = self._file.read(size)
+        osutils.pumpfile(self._file, buffer, limited, self._max_read_size)
+        data = buffer.getvalue()
+
         # Update _pos respecting the data effectively read
         self._pos += len(data)
         return data

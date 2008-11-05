@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -515,6 +515,16 @@ class DeletingParent(HandledConflict):
              "%(action)s."
 
 
+class NonDirectoryParent(HandledConflict):
+    """An attempt to add files to a directory that is not a director or
+    an attempt to change the kind of a directory with files.
+    """
+
+    typestring = 'non-directory parent'
+
+    format = "Conflict: %(path)s is not a directory, but has files in it."\
+             "  %(action)s."
+
 ctype = {}
 
 
@@ -527,4 +537,4 @@ def register_types(*conflict_types):
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
                DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,
-               DeletingParent,)
+               DeletingParent, NonDirectoryParent)

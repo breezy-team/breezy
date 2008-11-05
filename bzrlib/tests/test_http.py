@@ -34,9 +34,11 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     osutils,
+    remote as _mod_remote,
     tests,
     transport,
     ui,
@@ -446,13 +448,6 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertTrue(server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
             % bzrlib.__version__) > -1)
-
-    def test_get_smart_medium(self):
-        # For HTTP, get_smart_medium should return the transport object.
-        server = self.get_readonly_server()
-        http_transport = self._transport(server.get_url())
-        medium = http_transport.get_smart_medium()
-        self.assertIs(medium, http_transport)
 
     def test_has_on_bogus_host(self):
         # Get a free address and don't 'accept' on it, so that we
@@ -904,6 +899,88 @@ class TestMultipleRangeWithoutContentLengthServer(TestRangeRequestServer):
 
     _req_handler_class = MultipleRangeWithoutContentLengthRequestHandler
 
+
+class TruncatedMultipleRangeRequestHandler(
+    http_server.TestingHTTPRequestHandler):
+    """Reply to multiple range requests truncating the last ones.
+
+    This server generates responses whose Content-Length describes all the
+    ranges, but fail to include the last ones leading to client short reads.
+    This has been observed randomly with lighttpd (bug #179368).
+    """
+
+    _truncated_ranges = 2
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        self.send_response(206)
+        self.send_header('Accept-Ranges', 'bytes')
+        boundary = 'tagada'
+        self.send_header('Content-Type',
+                         'multipart/byteranges; boundary=%s' % boundary)
+        boundary_line = '--%s\r\n' % boundary
+        # Calculate the Content-Length
+        content_length = 0
+        for (start, end) in ranges:
+            content_length += len(boundary_line)
+            content_length += self._header_line_length(
+                'Content-type', 'application/octet-stream')
+            content_length += self._header_line_length(
+                'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
+            content_length += len('\r\n') # end headers
+            content_length += end - start # + 1
+        content_length += len(boundary_line)
+        self.send_header('Content-length', content_length)
+        self.end_headers()
+
+        # Send the multipart body
+        cur = 0
+        for (start, end) in ranges:
+            self.wfile.write(boundary_line)
+            self.send_header('Content-type', 'application/octet-stream')
+            self.send_header('Content-Range', 'bytes %d-%d/%d'
+                             % (start, end, file_size))
+            self.end_headers()
+            if cur + self._truncated_ranges >= len(ranges):
+                # Abruptly ends the response and close the connection
+                self.close_connection = 1
+                return
+            self.send_range_content(file, start, end - start + 1)
+            cur += 1
+        # No final boundary
+        self.wfile.write(boundary_line)
+
+
+class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
+
+    _req_handler_class = TruncatedMultipleRangeRequestHandler
+
+    def setUp(self):
+        super(TestTruncatedMultipleRangeServer, self).setUp()
+        self.build_tree_contents([('a', '0123456789')],)
+
+    def test_readv_with_short_reads(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # Force separate ranges for each offset
+        t._bytes_to_read_before_seek = 0
+        ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
+        self.assertEqual((0, '0'), ireadv.next())
+        self.assertEqual((2, '2'), ireadv.next())
+        if not self._testing_pycurl():
+            # Only one request have been issued so far (except for pycurl that
+            # try to read the whole response at once)
+            self.assertEqual(1, server.GET_request_nb)
+        self.assertEqual((4, '45'), ireadv.next())
+        self.assertEqual((9, '9'), ireadv.next())
+        # Both implementations issue 3 requests but:
+        # - urllib does two multiple (4 ranges, then 2 ranges) then a single
+        #   range,
+        # - pycurl does two multiple (4 ranges, 4 ranges) then a single range
+        self.assertEqual(3, server.GET_request_nb)
+        # Finally the client have tried a single range request and stays in
+        # that mode
+        self.assertEqual('single', t._range_hint)
+
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
     """Errors out when range specifiers exceed the limit"""
 
@@ -966,7 +1043,7 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
         self.assertEqual(l[2], (4096, '0004'))
         self.assertEqual(l[3], (8192, '0008'))
         # The server will refuse to serve the first request (too much ranges),
-        # a second request will succeeds.
+        # a second request will succeed.
         self.assertEqual(2, self.get_readonly_server().GET_request_nb)
 
 
@@ -982,6 +1059,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def tearDown(self):
         self._restore_env()
+        tests.TestCase.tearDown(self)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -1060,7 +1138,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'proxied contents of foo\n')
+            self.assertEqual('proxied contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1069,7 +1147,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'contents of foo\n')
+            self.assertEqual('contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1584,6 +1662,13 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         return http_utils.HTTPServerWithSmarts(
             protocol_version=self._protocol_version)
 
+    def test_open_bzrdir(self):
+        branch = self.make_branch('relpath')
+        http_server = self.get_readonly_server()
+        url = http_server.get_url() + 'relpath'
+        bd = bzrdir.BzrDir.open(url)
+        self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
+
     def test_bulk_data(self):
         # We should be able to send and receive bulk data in a single message.
         # The 'readv' command in the smart protocol both sends and receives
@@ -1635,4 +1720,26 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         expected_end_of_response = '\r\n\r\nok\x012\n'
         self.assertEndsWith(response, expected_end_of_response)
 
+
+class ForbiddenRequestHandler(http_server.TestingHTTPRequestHandler):
+    """No smart server here request handler."""
+
+    def do_POST(self):
+        self.send_error(403, "Forbidden")
+
+
+class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
+    """Test smart client behaviour against an http server without smarts."""
+
+    _req_handler_class = ForbiddenRequestHandler
+
+    def test_probe_smart_server(self):
+        """Test error handling against server refusing smart requests."""
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # No need to build a valid smart request here, the server will not even
+        # try to interpret it.
+        self.assertRaises(errors.SmartProtocolError,
+                          t.get_smart_medium().send_http_smart_request,
+                          'whatever')
 

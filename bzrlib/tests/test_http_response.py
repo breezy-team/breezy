@@ -48,6 +48,9 @@ from bzrlib.transport.http import (
     response,
     _urllib2_wrappers,
     )
+from bzrlib.tests.file_utils import (
+    FakeReadFile,
+    )
 
 
 class ReadSocket(object):
@@ -58,6 +61,7 @@ class ReadSocket(object):
 
     def makefile(self, mode='r', bufsize=None):
         return self.readfile
+
 
 class FakeHTTPConnection(_urllib2_wrappers.HTTPConnection):
 
@@ -221,6 +225,7 @@ class TestRangeFileSizeUnknown(tests.TestCase, TestRangeFileMixin):
         self.assertEquals('', f.read(0))
         self.assertEquals('', f.read(1))
 
+
 class TestRangeFileSizeKnown(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for a whole file whose size is known."""
 
@@ -249,7 +254,8 @@ class TestRangeFileSingleRange(tests.TestCase, TestRangeFileMixin):
         f._pos = 0 # Force an invalid pos
         self.assertRaises(errors.InvalidRange, f.read, 2)
 
-class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
+
+class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
     """Test a RangeFile for multiple ranges.
 
     The RangeFile used for the tests contains three ranges:
@@ -262,10 +268,16 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
     fact) in real uses but may lead to hard to track bugs.
     """
 
-    def setUp(self):
-        super(TestRangeFilMultipleRanges, self).setUp()
+    # The following is used to represent the boundary paramter defined
+    # in HTTP response headers and the boundary lines that separate
+    # multipart content.
 
-        boundary = 'separation'
+    boundary = "separation"
+
+    def setUp(self):
+        super(TestRangeFileMultipleRanges, self).setUp()
+
+        boundary = self.boundary
 
         content = ''
         self.first_range_start = 25
@@ -277,19 +289,22 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
             content += self._multipart_byterange(part, start, boundary,
                                                  file_size)
         # Final boundary
-        content += self._boundary_line(boundary)
+        content += self._boundary_line()
 
         self._file = response.RangeFile('Multiple_ranges_file',
                                         StringIO(content))
+        self.set_file_boundary()
+
+    def _boundary_line(self):
+        """Helper to build the formatted boundary line."""
+        return '--' + self.boundary + '\r\n'
+
+    def set_file_boundary(self):
         # Ranges are set by decoding the range headers, the RangeFile user is
         # supposed to call the following before using seek or read since it
         # requires knowing the *response* headers (in that case the boundary
         # which is part of the Content-Type header).
-        self._file.set_boundary(boundary)
-
-    def _boundary_line(self, boundary):
-        """Helper to build the formatted boundary line."""
-        return '--' + boundary + '\r\n'
+        self._file.set_boundary(self.boundary)
 
     def _multipart_byterange(self, data, offset, boundary, file_size='*'):
         """Encode a part of a file as a multipart/byterange MIME type.
@@ -307,7 +322,7 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
         :return: a string containing the data encoded as it will appear in the
             HTTP response body.
         """
-        bline = self._boundary_line(boundary)
+        bline = self._boundary_line()
         # Each range begins with a boundary line
         range = bline
         # A range is described by a set of headers, but only 'Content-Range' is
@@ -361,6 +376,14 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
         f.seek(126) # skip the two first ranges
         self.assertEquals('AB', f.read(2))
 
+    def test_checked_read_dont_overflow_buffers(self):
+        f = self._file
+        start = self.first_range_start
+        # We force a very low value to exercise all code paths in _checked_read
+        f._discarded_buf_size = 8
+        f.seek(126) # skip the two first ranges
+        self.assertEquals('AB', f.read(2))
+
     def test_seek_twice_between_ranges(self):
         f = self._file
         start = self.first_range_start
@@ -381,6 +404,31 @@ class TestRangeFilMultipleRanges(tests.TestCase, TestRangeFileMixin):
         self.assertEquals(self.alpha, f.read())
         self.assertEquals(self.alpha.upper(), f.read())
         self.assertRaises(errors.InvalidHttpResponse, f.read, 1)
+
+
+class TestRangeFileMultipleRangesQuotedBoundaries(TestRangeFileMultipleRanges):
+    """Perform the same tests as TestRangeFileMultipleRanges, but uses 
+    an angle-bracket quoted boundary string like IIS 6.0 and 7.0
+    (but not IIS 5, which breaks the RFC in a different way
+    by using square brackets, not angle brackets)
+    
+    This reveals a bug caused by 
+    
+    - The bad implementation of RFC 822 unquoting in Python (angles are not 
+      quotes), coupled with 
+
+    - The bad implementation of RFC 2046 in IIS (angles are not permitted chars
+      in boundary lines).
+ 
+    """
+    # The boundary as it appears in boundary lines
+    # IIS 6 and 7 use this value
+    _boundary_trimmed = "q1w2e3r4t5y6u7i8o9p0zaxscdvfbgnhmjklkl"
+    boundary = '<' + _boundary_trimmed + '>'
+
+    def set_file_boundary(self):
+        # Emulate broken rfc822.unquote() here by removing angles
+        self._file.set_boundary(self._boundary_trimmed)
 
 
 class TestRangeFileVarious(tests.TestCase):
@@ -745,3 +793,38 @@ class TestHandleResponse(tests.TestCase):
         out.read()  # Read the whole range
         # Fail to find the boundary line
         self.assertRaises(errors.InvalidHttpResponse, out.seek, 1, 1)
+
+
+class TestRangeFileSizeReadLimited(tests.TestCase):
+    """Test RangeFile _max_read_size functionality which limits the size of
+    read blocks to prevent MemoryError messages in socket.recv.
+    """
+
+    def setUp(self):
+        # create a test datablock larger than _max_read_size.
+        chunk_size = response.RangeFile._max_read_size
+        test_pattern = '0123456789ABCDEF'
+        self.test_data =  test_pattern * (3 * chunk_size / len(test_pattern))
+        self.test_data_len = len(self.test_data)
+
+    def test_max_read_size(self):
+        """Read data in blocks and verify that the reads are not larger than
+           the maximum read size.
+        """
+        # retrieve data in large blocks from response.RangeFile object
+        mock_read_file = FakeReadFile(self.test_data)
+        range_file = response.RangeFile('test_max_read_size', mock_read_file)
+        response_data = range_file.read(self.test_data_len)
+
+        # verify read size was equal to the maximum read size
+        self.assertTrue(mock_read_file.get_max_read_size() > 0)
+        self.assertEqual(mock_read_file.get_max_read_size(),
+                         response.RangeFile._max_read_size)
+        self.assertEqual(mock_read_file.get_read_count(), 3)
+
+        # report error if the data wasn't equal (we only report the size due
+        # to the length of the data)
+        if response_data != self.test_data:
+            message = "Data not equal.  Expected %d bytes, received %d."
+            self.fail(message % (len(response_data), self.test_data_len))
+

@@ -17,21 +17,20 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+import optparse
 import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import optparse
-
 from bzrlib import (
     errors,
-    log,
-    registry,
     revisionspec,
-    symbol_versioning,
     )
 """)
-from bzrlib.trace import warning
+
+from bzrlib import (
+    registry as _mod_registry,
+    )
 
 
 def _parse_revision_str(revstr):
@@ -180,12 +179,13 @@ class Option(object):
         self.type = type
         self._short_name = short_name
         if type is None:
-            assert argname is None
+            if argname:
+                raise ValueError('argname not valid for booleans')
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
         if param_name is None:
-            self._param_name = self.name
+            self._param_name = self.name.replace('-', '_')
         else:
             self._param_name = param_name
         self.custom_callback = custom_callback
@@ -210,22 +210,22 @@ class Option(object):
             option_strings.append('-%s' % short_name)
         optargfn = self.type
         if optargfn is None:
-            parser.add_option(action='callback', 
-                              callback=self._optparse_bool_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_bool_callback,
                               callback_args=(True,),
                               help=self.help,
                               *option_strings)
             negation_strings = ['--%s' % self.get_negation_name()]
-            parser.add_option(action='callback', 
-                              callback=self._optparse_bool_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_bool_callback,
                               callback_args=(False,),
                               help=optparse.SUPPRESS_HELP, *negation_strings)
         else:
-            parser.add_option(action='callback', 
-                              callback=self._optparse_callback, 
+            parser.add_option(action='callback',
+                              callback=self._optparse_callback,
                               type='string', metavar=self.argname.upper(),
                               help=self.help,
-                              default=OptionParser.DEFAULT_VALUE, 
+                              default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
 
     def _optparse_bool_callback(self, option, opt_str, value, parser, bool_v):
@@ -306,8 +306,9 @@ class RegistryOption(Option):
         else:
             return self.converter(value)
 
-    def __init__(self, name, help, registry, converter=None,
-        value_switches=False, title=None, enum_switch=True):
+    def __init__(self, name, help, registry=None, converter=None,
+        value_switches=False, title=None, enum_switch=True,
+        lazy_registry=None):
         """
         Constructor.
 
@@ -321,9 +322,20 @@ class RegistryOption(Option):
             '--knit' can be used interchangeably.
         :param enum_switch: If true, a switch is provided with the option name,
             which takes a value.
+        :param lazy_registry: A tuple of (module name, attribute name) for a
+            registry to be lazily loaded.
         """
         Option.__init__(self, name, help, type=self.convert)
-        self.registry = registry
+        self._registry = registry
+        if registry is None:
+            if lazy_registry is None:
+                raise AssertionError(
+                    'One of registry or lazy_registry must be given.')
+            self._lazy_registry = _mod_registry._LazyObjectGetter(
+                *lazy_registry)
+        if registry is not None and lazy_registry is not None:
+            raise AssertionError(
+                'registry and lazy_registry are mutually exclusive')
         self.name = name
         self.converter = converter
         self.value_switches = value_switches
@@ -332,6 +344,12 @@ class RegistryOption(Option):
         if self.title is None:
             self.title = name
 
+    @property
+    def registry(self):
+        if self._registry is None:
+            self._registry = self._lazy_registry.get_obj()
+        return self._registry
+    
     @staticmethod
     def from_kwargs(name_, help=None, title=None, value_switches=False,
                     enum_switch=True, **kwargs):
@@ -341,10 +359,14 @@ class RegistryOption(Option):
         RegistryOption constructor.  Any other keyword arguments are treated
         as values for the option, and they value is treated as the help.
         """
-        reg = registry.Registry()
+        reg = _mod_registry.Registry()
         for name, switch_help in kwargs.iteritems():
             name = name.replace('_', '-')
             reg.register(name, name, help=switch_help)
+            if not value_switches:
+                help = help + '  "' + name + '": ' + switch_help
+                if not help.endswith("."):
+                    help = help + "."
         return RegistryOption(name_, help, reg, title=title,
             value_switches=value_switches, enum_switch=enum_switch)
 
@@ -430,13 +452,8 @@ def _global_option(name, **kwargs):
     Option.OPTIONS[name] = Option(name, **kwargs)
 
 
-def _global_registry_option(name, help, registry, **kwargs):
+def _global_registry_option(name, help, registry=None, **kwargs):
     Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
-
-
-class MergeTypeRegistry(registry.Registry):
-
-    pass
 
 
 # This is the verbosity level detected during command line parsing.
@@ -465,6 +482,11 @@ def _verbosity_level_callback(option, opt_str, value, parser):
             _verbosity_level -= 1
         else:
             _verbosity_level = -1
+
+
+class MergeTypeRegistry(_mod_registry.Registry):
+
+    pass
 
 
 _merge_type_registry = MergeTypeRegistry()
@@ -515,16 +537,16 @@ _global_option('change',
                help='Select changes introduced by the specified revision. See also "help revisionspec".')
 _global_option('show-ids',
                help='Show internal object ids.')
-_global_option('timezone', 
+_global_option('timezone',
                type=str,
-               help='display timezone as local, original, or utc')
+               help='Display timezone as local, original, or utc.')
 _global_option('unbound')
 _global_option('version')
 _global_option('email')
 _global_option('update')
 _global_registry_option('log-format', "Use specified log format.",
-                        log.log_formatter_registry, value_switches=True,
-                        title='Log format')
+                        lazy_registry=('bzrlib.log', 'log_formatter_registry'),
+                        value_switches=True, title='Log format')
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')

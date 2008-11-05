@@ -46,18 +46,26 @@ a_dots_c = u'\xe4'
 a_dots_d = u'a\u0308'
 z_umlat_c = u'\u017d'
 z_umlat_d = u'Z\u030c'
+squared_c = u'\xbc' # This gets mapped to '2' if we use NFK[CD]
+squared_d = u'\xbc'
+quarter_c = u'\xb2' # Gets mapped to u'1\u20444' (1/4) if we use NFK[CD]
+quarter_d = u'\xb2'
 
 
 class TestNormalization(TestCase):
     """Verify that we have our normalizations correct."""
 
     def test_normalize(self):
-        self.assertEqual(a_circle_d, normalize('NFKD', a_circle_c))
-        self.assertEqual(a_circle_c, normalize('NFKC', a_circle_d))
-        self.assertEqual(a_dots_d, normalize('NFKD', a_dots_c))
-        self.assertEqual(a_dots_c, normalize('NFKC', a_dots_d))
-        self.assertEqual(z_umlat_d, normalize('NFKD', z_umlat_c))
-        self.assertEqual(z_umlat_c, normalize('NFKC', z_umlat_d))
+        self.assertEqual(a_circle_d, normalize('NFD', a_circle_c))
+        self.assertEqual(a_circle_c, normalize('NFC', a_circle_d))
+        self.assertEqual(a_dots_d, normalize('NFD', a_dots_c))
+        self.assertEqual(a_dots_c, normalize('NFC', a_dots_d))
+        self.assertEqual(z_umlat_d, normalize('NFD', z_umlat_c))
+        self.assertEqual(z_umlat_c, normalize('NFC', z_umlat_d))
+        self.assertEqual(squared_d, normalize('NFC', squared_c))
+        self.assertEqual(squared_c, normalize('NFD', squared_d))
+        self.assertEqual(quarter_d, normalize('NFC', quarter_c))
+        self.assertEqual(quarter_c, normalize('NFD', quarter_d))
 
 
 class NormalizedFilename(TestCaseWithTransport):
@@ -74,6 +82,10 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual((a_dots_c, True), anf(a_dots_d))
         self.assertEqual((z_umlat_c, True), anf(z_umlat_c))
         self.assertEqual((z_umlat_c, True), anf(z_umlat_d))
+        self.assertEqual((squared_c, True), anf(squared_c))
+        self.assertEqual((squared_c, True), anf(squared_d))
+        self.assertEqual((quarter_c, True), anf(quarter_c))
+        self.assertEqual((quarter_c, True), anf(quarter_d))
 
     def test__inaccessible_normalized_filename(self):
         inf = osutils._inaccessible_normalized_filename
@@ -86,6 +98,10 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual((a_dots_c, False), inf(a_dots_d))
         self.assertEqual((z_umlat_c, True), inf(z_umlat_c))
         self.assertEqual((z_umlat_c, False), inf(z_umlat_d))
+        self.assertEqual((squared_c, True), inf(squared_c))
+        self.assertEqual((squared_c, True), inf(squared_d))
+        self.assertEqual((quarter_c, True), inf(quarter_c))
+        self.assertEqual((quarter_c, True), inf(quarter_d))
 
     def test_functions(self):
         if osutils.normalizes_filenames():
@@ -121,7 +137,8 @@ class NormalizedFilename(TestCaseWithTransport):
         # a_circle_c and a_dots_c actually map to the same file
         # adding a suffix kicks in the 'preserving but insensitive'
         # route, and maintains the right files
-        files = [a_circle_c+'.1', a_dots_c+'.2', z_umlat_c+'.3']
+        files = [a_circle_c+'.1', a_dots_c+'.2', z_umlat_c+'.3',
+                 squared_c+'.4', quarter_c+'.5']
         try:
             self.build_tree(files, line_endings='native')
         except UnicodeError:

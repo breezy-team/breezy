@@ -31,6 +31,7 @@ import unittest
 from bzrlib import (
     errors,
     osutils,
+    tests,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
@@ -38,7 +39,6 @@ from bzrlib.errors import (ConnectionError,
                            FileExists,
                            InvalidURL,
                            LockError,
-                           NoSmartServer,
                            NoSuchFile,
                            NotLocalUrl,
                            PathError,
@@ -75,10 +75,9 @@ class TransportTestProviderAdapter(TestScenarioApplier):
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
         if getattr(module, 'get_test_permutations', None) is None:
-            raise AssertionError("transport module %s doesn't provide get_test_permutations()"
-                    % module.__name__)
-            ##warning("transport module %s doesn't provide get_test_permutations()"
-            ##       % module.__name__)
+            raise AssertionError(
+                "transport module %s doesn't provide get_test_permutations()"
+                % module.__name__)
             return []
         return module.get_test_permutations()
 
@@ -96,10 +95,18 @@ class TransportTestProviderAdapter(TestScenarioApplier):
                     result.append(scenario)
             except errors.DependencyNotPresent, e:
                 # Continue even if a dependency prevents us 
-                # from running this test
+                # from adding this test
                 pass
         return result
 
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for tranport implementations."""
+    result = loader.suiteClass()
+    adapter = TransportTestProviderAdapter()
+    for test in tests.iter_suite_tests(standard_tests):
+        result.addTests(adapter.adapt(test))
+    return result
 
 
 class TransportTests(TestTransportImplementation):
@@ -170,6 +177,11 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
     def test_has_root_works(self):
+        from bzrlib.smart import server
+        if self.transport_server is server.SmartTCPServer_for_testing:
+            raise TestNotApplicable(
+                "SmartTCPServer_for_testing intentionally does not allow "
+                "access to /.")
         current_transport = self.get_transport()
         self.assertTrue(current_transport.has('/'))
         root = current_transport.clone('/')
@@ -939,14 +951,14 @@ class TransportTests(TestTransportImplementation):
         except TransportNotPossible:
             # ok, this transport does not support delete_tree
             return
-        
+
         # did it delete that trivial case?
         self.assertRaises(NoSuchFile, t.stat, 'adir')
 
         self.build_tree(['adir/',
-                         'adir/file', 
-                         'adir/subdir/', 
-                         'adir/subdir/file', 
+                         'adir/file',
+                         'adir/subdir/',
+                         'adir/subdir/file',
                          'adir/subdir2/',
                          'adir/subdir2/file',
                          ], transport=t)
@@ -1033,7 +1045,7 @@ class TransportTests(TestTransportImplementation):
             return
 
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e']
-        sizes = [14, 0, 16, 0, 18] 
+        sizes = [14, 0, 16, 0, 18]
         self.build_tree(paths, transport=t, line_endings='binary')
 
         for path, size in zip(paths, sizes):
@@ -1061,17 +1073,17 @@ class TransportTests(TestTransportImplementation):
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
         t = self.get_transport()
-        
+
         if not t.listable():
             self.assertRaises(TransportNotPossible, t.list_dir, '.')
             return
 
-        def sorted_list(d):
-            l = list(t.list_dir(d))
+        def sorted_list(d, transport):
+            l = list(transport.list_dir(d))
             l.sort()
             return l
 
-        self.assertEqual([], sorted_list('.'))
+        self.assertEqual([], sorted_list('.', t))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
         # a%25b checks that quoting is done consistently across transports
@@ -1083,8 +1095,13 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(tree_names)
 
         self.assertEqual(
-            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.'))
-        self.assertEqual(['d', 'e'], sorted_list('c'))
+            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('', t))
+        self.assertEqual(
+            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.', t))
+        self.assertEqual(['d', 'e'], sorted_list('c', t))
+
+        # Cloning the transport produces an equivalent listing
+        self.assertEqual(['d', 'e'], sorted_list('', t.clone('c')))
 
         if not t.is_readonly():
             t.delete('c/d')
@@ -1092,9 +1109,9 @@ class TransportTests(TestTransportImplementation):
         else:
             os.unlink('c/d')
             os.unlink('b')
-            
-        self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.'))
-        self.assertEqual(['e'], sorted_list('c'))
+
+        self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.', t))
+        self.assertEqual(['e'], sorted_list('c', t))
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
@@ -1109,7 +1126,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(['a/', 'a/%'], transport=t)
         else:
             self.build_tree(['a/', 'a/%'])
-        
+
         names = list(t.list_dir('a'))
         self.assertEqual(['%25'], names)
         self.assertIsInstance(names[0], str)
@@ -1235,7 +1252,7 @@ class TransportTests(TestTransportImplementation):
         self.failIf(t3.has('b/d'))
 
         if t1.is_readonly():
-            open('b/d', 'wb').write('newfile\n')
+            self.build_tree_contents([('b/d', 'newfile\n')])
         else:
             t2.put_bytes('d', 'newfile\n')
 
@@ -1320,6 +1337,23 @@ class TransportTests(TestTransportImplementation):
 
         self.assertEqual(transport.clone("/").abspath('foo'),
                          transport.abspath("/foo"))
+
+    def test_win32_abspath(self):
+        # Note: we tried to set sys.platform='win32' so we could test on
+        # other platforms too, but then osutils does platform specific
+        # things at import time which defeated us...
+        if sys.platform != 'win32':
+            raise TestSkipped(
+                'Testing drive letters in abspath implemented only for win32')
+
+        # smoke test for abspath on win32.
+        # a transport based on 'file:///' never fully qualifies the drive.
+        transport = get_transport("file:///")
+        self.failUnlessEqual(transport.abspath("/"), "file:///")
+
+        # but a transport that starts with a drive spec must keep it.
+        transport = get_transport("file:///C:/")
+        self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):
         transport = self.get_transport()
@@ -1529,7 +1563,7 @@ class TransportTests(TestTransportImplementation):
         content = osutils.rand_bytes(200*1024)
         content_size = len(content)
         if transport.is_readonly():
-            file('a', 'w').write(content)
+            self.build_tree_contents([('a', content)])
         else:
             transport.put_bytes('a', content)
         def check_result_data(result_vector):
@@ -1580,6 +1614,9 @@ class TransportTests(TestTransportImplementation):
             self.assertTrue(result[0][0] <= 400)
             self.assertTrue(result[0][0] + data_len >= 1034)
             check_result_data(result)
+
+    def test_readv_with_adjust_for_latency_with_big_file(self):
+        transport = self.get_transport()
         # test from observed failure case.
         if transport.is_readonly():
             file('a', 'w').write('a'*1024*1024)

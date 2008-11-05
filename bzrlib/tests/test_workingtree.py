@@ -28,7 +28,6 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
-from bzrlib.symbol_versioning import zero_thirteen
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import (
@@ -82,6 +81,25 @@ class TestDefaultFormat(TestCaseWithTransport):
             workingtree.WorkingTreeFormat.set_default_format(old_format)
         self.assertEqual(old_format, workingtree.WorkingTreeFormat.get_default_format())
 
+    def test_open(self):
+        tree = self.make_branch_and_tree('.')
+        open_direct = workingtree.WorkingTree.open('.')
+        self.assertEqual(tree.basedir, open_direct.basedir)
+        open_no_args = workingtree.WorkingTree.open()
+        self.assertEqual(tree.basedir, open_no_args.basedir)
+
+    def test_open_containing(self):
+        tree = self.make_branch_and_tree('.')
+        open_direct, relpath = workingtree.WorkingTree.open_containing('.')
+        self.assertEqual(tree.basedir, open_direct.basedir)
+        self.assertEqual('', relpath)
+        open_no_args, relpath = workingtree.WorkingTree.open_containing()
+        self.assertEqual(tree.basedir, open_no_args.basedir)
+        self.assertEqual('', relpath)
+        open_subdir, relpath = workingtree.WorkingTree.open_containing('subdir')
+        self.assertEqual(tree.basedir, open_subdir.basedir)
+        self.assertEqual('subdir', relpath)
+
 
 class SampleTreeFormat(workingtree.WorkingTreeFormat):
     """A sample format
@@ -95,7 +113,7 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
         return "Sample tree format."
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None):
+                   accelerator_tree=None, hardlink=False):
         """Sample branches cannot be created."""
         t = a_bzrdir.get_workingtree_transport(self)
         t.put_bytes('format', self.get_format_string())
@@ -217,7 +235,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         control.create_repository()
         control.create_branch()
         tree = workingtree.WorkingTreeFormat3().initialize(control)
-        tree._control_files._transport.delete("pending-merges")
+        tree._transport.delete("pending-merges")
         self.assertEqual([], tree.get_parent_ids())
 
 
@@ -250,19 +268,6 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
 
-
-class TestNonFormatSpecificCode(TestCaseWithTransport):
-    """This class contains tests of workingtree that are not format specific."""
-
-    def test_gen_file_id(self):
-        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_file_id,
-                                      'filename')
-        self.assertStartsWith(file_id, 'filename-')
-
-    def test_gen_root_id(self):
-        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_root_id)
-        self.assertStartsWith(file_id, 'tree_root-')
-        
 
 class InstrumentedTree(object):
     """A instrumented tree to check the needs_tree_write_lock decorator."""

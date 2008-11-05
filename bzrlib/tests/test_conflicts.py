@@ -26,6 +26,7 @@ from bzrlib.conflicts import (
     DuplicateID,
     DuplicateEntry,
     MissingParent,
+    NonDirectoryParent,
     ParentLoop,
     PathConflict,
     TextConflict,
@@ -56,6 +57,7 @@ example_conflicts = ConflictList([
     ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
                None, '\xc3\xaed2e'),
     UnversionedParent('Versioned directory', u'p\xe5thf', '\xc3\xaedf'),
+    NonDirectoryParent('Created directory', u'p\xe5thg', '\xc3\xaedg'),
 ])
 
 
@@ -83,7 +85,7 @@ class TestConflicts(TestCaseWithTransport):
         restore('hello.sploo')
         self.assertEqual(len(tree.conflicts()), 0)
         self.assertFileEqual('hello world2', 'hello')
-        assert not os.path.lexists('hello.sploo')
+        self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(NotConflicted, restore, 'hello')
         self.assertRaises(NotConflicted, restore, 'hello.sploo')
 

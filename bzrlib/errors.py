@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -80,7 +80,8 @@ class BzrError(StandardError):
         parameters.
 
         :param msg: If given, this is the literal complete text for the error,
-        not subject to expansion.
+           not subject to expansion. 'msg' is used instead of 'message' because
+           python evolved and, in 2.6, forbids the use of 'message'.
         """
         StandardError.__init__(self)
         if msg is not None:
@@ -92,11 +93,11 @@ class BzrError(StandardError):
             for key, value in kwds.items():
                 setattr(self, key, value)
 
-    def __str__(self):
+    def _format(self):
         s = getattr(self, '_preformatted_string', None)
         if s is not None:
-            # contains a preformatted message; must be cast to plain str
-            return str(s)
+            # contains a preformatted message
+            return s
         try:
             fmt = self._get_format_string()
             if fmt:
@@ -104,8 +105,6 @@ class BzrError(StandardError):
                 s = fmt % d
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
-                if isinstance(s, unicode):
-                    return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
@@ -113,6 +112,29 @@ class BzrError(StandardError):
                    self.__dict__,
                    getattr(self, '_fmt', None),
                    e)
+
+    def __unicode__(self):
+        u = self._format()
+        if isinstance(u, str):
+            # Try decoding the str using the default encoding.
+            u = unicode(u)
+        elif not isinstance(u, unicode):
+            # Try to make a unicode object from it, because __unicode__ must
+            # return a unicode object.
+            u = unicode(u)
+        return u
+
+    def __str__(self):
+        s = self._format()
+        if isinstance(s, unicode):
+            s = s.encode('utf8')
+        else:
+            # __str__ must return a str.
+            s = str(s)
+        return s
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, str(self))
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -130,6 +152,11 @@ class BzrError(StandardError):
                self.__dict__,
                getattr(self, '_fmt', None),
                )
+
+    def __eq__(self, other):
+        if self.__class__ != other.__class__:
+            return NotImplemented
+        return self.__dict__ == other.__dict__
 
 
 class InternalBzrError(BzrError):
@@ -181,12 +208,29 @@ class AlreadyBuilding(BzrError):
     _fmt = "The tree builder is already building a tree."
 
 
+class BranchError(BzrError):
+    """Base class for concrete 'errors about a branch'."""
+
+    def __init__(self, branch):
+        BzrError.__init__(self, branch=branch)
+
+
 class BzrCheckError(InternalBzrError):
 
     _fmt = "Internal check failed: %(msg)s"
 
     def __init__(self, msg):
         BzrError.__init__(self)
+        self.msg = msg
+
+
+class DirstateCorrupt(BzrError):
+
+    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
+
+    def __init__(self, state, msg):
+        BzrError.__init__(self)
+        self.state = state
         self.msg = msg
 
 
@@ -263,6 +307,16 @@ class RootMissing(InternalBzrError):
         "record_entry_contents.")
 
 
+class NoPublicBranch(BzrError):
+
+    _fmt = 'There is no public branch set for "%(branch_url)s".'
+
+    def __init__(self, branch):
+        import bzrlib.urlutils as urlutils
+        public_location = urlutils.unescape_for_display(branch.base, 'ascii')
+        BzrError.__init__(self, branch_url=public_location)
+
+
 class NoHelpTopic(BzrError):
 
     _fmt = ("No help could be found for '%(topic)s'. "
@@ -289,6 +343,11 @@ class NoSuchIdInRepository(NoSuchId):
 
     def __init__(self, repository, file_id):
         BzrError.__init__(self, repository=repository, file_id=file_id)
+
+
+class NotStacked(BranchError):
+
+    _fmt = "The branch '%(branch)s' is not stacked."
 
 
 class InventoryModified(InternalBzrError):
@@ -340,16 +399,6 @@ class BzrCommandError(BzrError):
     # are not intended to be caught anyway.  UI code need not subclass
     # BzrCommandError, and non-UI code should not throw a subclass of
     # BzrCommandError.  ADHB 20051211
-    def __init__(self, msg):
-        # Object.__str__() must return a real string
-        # returning a Unicode string is a python error.
-        if isinstance(msg, unicode):
-            self.msg = msg.encode('utf8')
-        else:
-            self.msg = msg
-
-    def __str__(self):
-        return self.msg
 
 
 class NotWriteLocked(BzrError):
@@ -495,6 +544,11 @@ class DirectoryNotEmpty(PathError):
     _fmt = 'Directory not empty: "%(path)s"%(extra)s'
 
 
+class HardLinkNotSupported(PathError):
+
+    _fmt = 'Hard-linking "%(path)s" is not supported'
+
+
 class ReadingCompleted(InternalBzrError):
     
     _fmt = ("The MediumRequest '%(request)s' has already had finish_reading "
@@ -522,11 +576,35 @@ class InvalidURL(PathError):
 
 class InvalidURLJoin(PathError):
 
-    _fmt = 'Invalid URL join request: "%(args)s"%(extra)s'
+    _fmt = "Invalid URL join request: %(reason)s: %(base)r + %(join_args)r"
 
-    def __init__(self, msg, base, args):
-        PathError.__init__(self, base, msg)
-        self.args = [base] + list(args)
+    def __init__(self, reason, base, join_args):
+        self.reason = reason
+        self.base = base
+        self.join_args = join_args
+        PathError.__init__(self, base, reason)
+
+
+class InvalidRebaseURLs(PathError):
+
+    _fmt = "URLs differ by more than path: %(from_)r and %(to)r"
+
+    def __init__(self, from_, to):
+        self.from_ = from_
+        self.to = to
+        PathError.__init__(self, from_, 'URLs differ by more than path.')
+
+
+class UnavailableRepresentation(InternalBzrError):
+
+    _fmt = ("The encoding '%(wanted)s' is not available for key %(key)s which "
+        "is encoded as '%(native)s'.")
+
+    def __init__(self, key, wanted, native):
+        InternalBzrError.__init__(self)
+        self.wanted = wanted
+        self.native = native
+        self.key = key
 
 
 class UnknownHook(BzrError):
@@ -545,6 +623,28 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class UnstackableBranchFormat(BzrError):
+
+    _fmt = ("The branch '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the branch to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
+
+
+class UnstackableRepositoryFormat(BzrError):
+
+    _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
+        "You will need to upgrade the repository to permit branch stacking.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self)
+        self.format = format
+        self.url = url
 
 
 class ReadError(PathError):
@@ -665,7 +765,11 @@ class UnsupportedFormatError(BzrError):
 
 class UnknownFormatError(BzrError):
     
-    _fmt = "Unknown branch format: %(format)r"
+    _fmt = "Unknown %(kind)s format: %(format)r"
+
+    def __init__(self, format, kind='branch'):
+        self.kind = kind
+        self.format = format
 
 
 class IncompatibleFormat(BzrError):
@@ -680,11 +784,15 @@ class IncompatibleFormat(BzrError):
 
 class IncompatibleRepositories(BzrError):
 
-    _fmt = "Repository %(target)s is not compatible with repository"\
-        " %(source)s"
+    _fmt = "%(target)s\n" \
+            "is not compatible with\n" \
+            "%(source)s\n" \
+            "%(details)s"
 
-    def __init__(self, source, target):
-        BzrError.__init__(self, target=target, source=source)
+    def __init__(self, source, target, details=None):
+        if details is None:
+            details = "(no details)"
+        BzrError.__init__(self, target=target, source=source, details=details)
 
 
 class IncompatibleRevision(BzrError):
@@ -777,6 +885,17 @@ class BadFileKindError(BzrError):
         BzrError.__init__(self, filename=filename, kind=kind)
 
 
+class BadFilenameEncoding(BzrError):
+
+    _fmt = ('Filename %(filename)r is not valid in your current filesystem'
+            ' encoding %(fs_encoding)s')
+
+    def __init__(self, filename, fs_encoding):
+        BzrError.__init__(self)
+        self.filename = filename
+        self.fs_encoding = fs_encoding
+
+
 class ForbiddenControlFileError(BzrError):
 
     _fmt = 'Cannot operate on "%(filename)s" because it is a control file'
@@ -833,17 +952,6 @@ class ReadOnlyError(LockError):
 
     def __init__(self, obj):
         self.obj = obj
-
-
-class ReadOnlyLockError(LockError):
-
-    _fmt = "Cannot acquire write lock on %(fname)s. %(msg)s"
-
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_ninetytwo)
-    def __init__(self, fname, msg):
-        LockError.__init__(self, '')
-        self.fname = fname
-        self.msg = msg
 
 
 class LockFailed(LockError):
@@ -1007,18 +1115,6 @@ class NoSuchRevision(InternalBzrError):
         BzrError.__init__(self, branch=branch, revision=revision)
 
 
-# zero_ninetyone: this exception is no longer raised and should be removed
-class NotLeftParentDescendant(InternalBzrError):
-
-    _fmt = ("Revision %(old_revision)s is not the left parent of"
-            " %(new_revision)s, but branch %(branch_location)s expects this")
-
-    def __init__(self, branch, old_revision, new_revision):
-        BzrError.__init__(self, branch_location=branch.base,
-                          old_revision=old_revision,
-                          new_revision=new_revision)
-
-
 class RangeInChangeOption(BzrError):
 
     _fmt = "Option --change does not accept revision ranges"
@@ -1150,12 +1246,9 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BranchError):
 
     _fmt = "Branch %(branch)s has no commits."
-
-    def __init__(self, branch):
-        BzrError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
@@ -1333,6 +1426,21 @@ class KnitCorrupt(KnitError):
         self.how = how
 
 
+class SHA1KnitCorrupt(KnitCorrupt):
+
+    _fmt = ("Knit %(filename)s corrupt: sha-1 of reconstructed text does not "
+        "match expected sha-1. key %(key)s expected sha %(expected)s actual "
+        "sha %(actual)s")
+
+    def __init__(self, filename, actual, expected, key, content):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.actual = actual
+        self.expected = expected
+        self.key = key
+        self.content = content
+
+
 class KnitDataStreamIncompatible(KnitError):
     # Not raised anymore, as we can convert data streams.  In future we may
     # need it again for more exotic cases, so we're keeping it around for now.
@@ -1419,6 +1527,30 @@ class SmartProtocolError(TransportError):
     def __init__(self, details):
         self.details = details
 
+
+class UnexpectedProtocolVersionMarker(TransportError):
+
+    _fmt = "Received bad protocol version marker: %(marker)r"
+
+    def __init__(self, marker):
+        self.marker = marker
+
+
+class UnknownSmartMethod(InternalBzrError):
+
+    _fmt = "The server does not recognise the '%(verb)s' request."
+
+    def __init__(self, verb):
+        self.verb = verb
+
+
+class SmartMessageHandlerError(InternalBzrError):
+
+    _fmt = "The message handler raised an exception: %(exc_value)s."
+
+    def __init__(self, exc_info):
+        self.exc_type, self.exc_value, self.tb = exc_info
+        
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
@@ -1747,6 +1879,7 @@ class BzrMoveFailedError(BzrError):
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
 
     def __init__(self, from_path='', to_path='', extra=None):
+        from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
             self.extra = ': ' + str(extra)
@@ -1756,12 +1889,12 @@ class BzrMoveFailedError(BzrError):
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
         if has_from:
-            self.from_path = osutils.splitpath(from_path)[-1]
+            self.from_path = splitpath(from_path)[-1]
         else:
             self.from_path = ''
 
         if has_to:
-            self.to_path = osutils.splitpath(to_path)[-1]
+            self.to_path = splitpath(to_path)[-1]
         else:
             self.to_path = ''
 
@@ -1967,6 +2100,17 @@ class ConflictFormatError(BzrError):
     _fmt = "Format error in conflict listings"
 
 
+class CorruptDirstate(BzrError):
+
+    _fmt = ("Inconsistency in dirstate file %(dirstate_path)s.\n"
+            "Error: %(description)s")
+
+    def __init__(self, dirstate_path, description):
+        BzrError.__init__(self)
+        self.dirstate_path = dirstate_path
+        self.description = description
+
+
 class CorruptRepository(BzrError):
 
     _fmt = ("An error has been detected in the repository %(repo_path)s.\n"
@@ -1977,6 +2121,19 @@ class CorruptRepository(BzrError):
         self.repo_path = repo.bzrdir.root_transport.base
 
 
+class InconsistentDelta(BzrError):
+    """Used when we get a delta that is not valid."""
+
+    _fmt = ("An inconsistent delta was supplied involving %(path)r,"
+            " %(file_id)r\nreason: %(reason)s")
+
+    def __init__(self, path, file_id, reason):
+        BzrError.__init__(self)
+        self.path = path
+        self.file_id = file_id
+        self.reason = reason
+
+
 class UpgradeRequired(BzrError):
 
     _fmt = "To use this feature you must upgrade your branch at %(path)s."
@@ -1984,6 +2141,11 @@ class UpgradeRequired(BzrError):
     def __init__(self, path):
         BzrError.__init__(self)
         self.path = path
+
+
+class RepositoryUpgradeRequired(UpgradeRequired):
+
+    _fmt = "To use this feature you must upgrade your repository at %(path)s."
 
 
 class LocalRequiresBoundBranch(BzrError):
@@ -2135,6 +2297,7 @@ class NoSmartServer(NotBranchError):
 
     _fmt = "No smart server available at %(url)s"
 
+    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
     def __init__(self, url):
         self.url = url
 
@@ -2154,6 +2317,17 @@ class SSHVendorNotFound(BzrError):
             " Please set BZR_SSH environment variable.")
 
 
+class GhostRevisionsHaveNoRevno(BzrError):
+    """When searching for revnos, if we encounter a ghost, we are stuck"""
+
+    _fmt = ("Could not determine revno for {%(revision_id)s} because"
+            " its ancestry shows a ghost at {%(ghost_revision_id)s}")
+
+    def __init__(self, revision_id, ghost_revision_id):
+        self.revision_id = revision_id
+        self.ghost_revision_id = ghost_revision_id
+
+        
 class GhostRevisionUnusableHere(BzrError):
 
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."
@@ -2237,6 +2411,19 @@ class PatchMissing(BzrError):
         self.patch_type = patch_type
 
 
+class TargetNotBranch(BzrError):
+    """A merge directive's target branch is required, but isn't a branch"""
+
+    _fmt = ("Your branch does not have all of the revisions required in "
+            "order to merge this merge directive and the target "
+            "location specified in the merge directive is not a branch: "
+            "%(location)s.")
+
+    def __init__(self, location):
+        BzrError.__init__(self)
+        self.location = location
+
+
 class UnsupportedInventoryKind(BzrError):
     
     _fmt = """Unsupported entry kind %(kind)s"""
@@ -2285,7 +2472,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade --dirstate-tags.")
+            " you may be able to use bzr upgrade.")
 
     def __init__(self, branch):
         self.branch = branch
@@ -2335,6 +2522,51 @@ class UnexpectedSmartServerResponse(BzrError):
     def __init__(self, response_tuple):
         self.response_tuple = response_tuple
 
+
+class ErrorFromSmartServer(BzrError):
+    """An error was received from a smart server.
+
+    :seealso: UnknownErrorFromSmartServer
+    """
+
+    _fmt = "Error received from smart server: %(error_tuple)r"
+
+    internal_error = True
+
+    def __init__(self, error_tuple):
+        self.error_tuple = error_tuple
+        try:
+            self.error_verb = error_tuple[0]
+        except IndexError:
+            self.error_verb = None
+        self.error_args = error_tuple[1:]
+
+
+class UnknownErrorFromSmartServer(BzrError):
+    """An ErrorFromSmartServer could not be translated into a typical bzrlib
+    error.
+
+    This is distinct from ErrorFromSmartServer so that it is possible to
+    distinguish between the following two cases:
+      - ErrorFromSmartServer was uncaught.  This is logic error in the client
+        and so should provoke a traceback to the user.
+      - ErrorFromSmartServer was caught but its error_tuple could not be
+        translated.  This is probably because the server sent us garbage, and
+        should not provoke a traceback.
+    """
+
+    _fmt = "Server sent an unexpected error: %(error_tuple)r"
+
+    internal_error = False
+
+    def __init__(self, error_from_smart_server):
+        """Constructor.
+
+        :param error_from_smart_server: An ErrorFromSmartServer instance.
+        """
+        self.error_from_smart_server = error_from_smart_server
+        self.error_tuple = error_from_smart_server.error_tuple
+        
 
 class ContainerError(BzrError):
     """Base class of container errors."""
@@ -2457,6 +2689,18 @@ class BzrDirError(BzrError):
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
 
+class UnsyncedBranches(BzrDirError):
+
+    _fmt = ("'%(display_url)s' is not in sync with %(target_url)s.  See"
+            " bzr help sync-for-reconfigure.")
+
+    def __init__(self, bzrdir, target_branch):
+        BzrDirError.__init__(self, bzrdir)
+        import bzrlib.urlutils as urlutils
+        self.target_url = urlutils.unescape_for_display(target_branch.base,
+                                                        'ascii')
+
+
 class AlreadyBranch(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a branch."
@@ -2475,6 +2719,16 @@ class AlreadyCheckout(BzrDirError):
 class AlreadyLightweightCheckout(BzrDirError):
 
     _fmt = "'%(display_url)s' is already a lightweight checkout."
+
+
+class AlreadyUsingShared(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already using a shared repository."
+
+
+class AlreadyStandalone(BzrDirError):
+
+    _fmt = "'%(display_url)s' is already standalone."
 
 
 class ReconfigurationNotSupported(BzrDirError):
@@ -2506,6 +2760,11 @@ class MissingTemplateVariable(BzrError):
         self.name = name
 
 
+class NoTemplate(BzrError):
+
+    _fmt = 'No template specified.'
+
+
 class UnableCreateSymlink(BzrError):
 
     _fmt = 'Unable to create symlink %(path_str)son this platform'
@@ -2528,3 +2787,140 @@ class UnsupportedTimezoneFormat(BzrError):
 
     def __init__(self, timezone):
         self.timezone = timezone
+
+
+class CommandAvailableInPlugin(StandardError):
+    
+    internal_error = False
+
+    def __init__(self, cmd_name, plugin_metadata, provider):
+        
+        self.plugin_metadata = plugin_metadata
+        self.cmd_name = cmd_name
+        self.provider = provider
+
+    def __str__(self):
+
+        _fmt = ('"%s" is not a standard bzr command. \n' 
+                'However, the following official plugin provides this command: %s\n'
+                'You can install it by going to: %s'
+                % (self.cmd_name, self.plugin_metadata['name'], 
+                    self.plugin_metadata['url']))
+
+        return _fmt
+
+
+class NoPluginAvailable(BzrError):
+    pass    
+
+
+class NotATerminal(BzrError):
+
+    _fmt = 'Unable to ask for a password without real terminal.'
+
+
+class UnableEncodePath(BzrError):
+
+    _fmt = ('Unable to encode %(kind)s path %(path)r in '
+            'user encoding %(user_encoding)s')
+
+    def __init__(self, path, kind):
+        from bzrlib.osutils import get_user_encoding
+        self.path = path
+        self.kind = kind
+        self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchAlias(BzrError):
+
+    _fmt = ('The alias "%(alias_name)s" does not exist.')
+
+    def __init__(self, alias_name):
+        BzrError.__init__(self, alias_name=alias_name)
+
+
+class DirectoryLookupFailure(BzrError):
+    """Base type for lookup errors."""
+
+    pass
+
+
+class InvalidLocationAlias(DirectoryLookupFailure):
+
+    _fmt = '"%(alias_name)s" is not a valid location alias.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name)
+
+
+class UnsetLocationAlias(DirectoryLookupFailure):
+
+    _fmt = 'No %(alias_name)s location assigned.'
+
+    def __init__(self, alias_name):
+        DirectoryLookupFailure.__init__(self, alias_name=alias_name[1:])
+
+
+class CannotBindAddress(BzrError):
+
+    _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
+
+    def __init__(self, host, port, orig_error):
+        BzrError.__init__(self, host=host, port=port,
+            orig_error=orig_error[1])
+
+
+class UnknownRules(BzrError):
+
+    _fmt = ('Unknown rules detected: %(unknowns_str)s.')
+
+    def __init__(self, unknowns):
+        BzrError.__init__(self, unknowns_str=", ".join(unknowns))
+
+
+class HookFailed(BzrError):
+    """Raised when a pre_change_branch_tip hook function fails anything other
+    than TipChangeRejected.
+    """
+
+    _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
+            "%(traceback_text)s%(exc_value)s")
+
+    def __init__(self, hook_stage, hook_name, exc_info):
+        import traceback
+        self.hook_stage = hook_stage
+        self.hook_name = hook_name
+        self.exc_info = exc_info
+        self.exc_type = exc_info[0]
+        self.exc_value = exc_info[1]
+        self.exc_tb = exc_info[2]
+        self.traceback_text = ''.join(traceback.format_tb(self.exc_tb))
+
+
+class TipChangeRejected(BzrError):
+    """A pre_change_branch_tip hook function may raise this to cleanly and
+    explicitly abort a change to a branch tip.
+    """
+    
+    _fmt = u"Tip change rejected: %(msg)s"
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class ShelfCorrupt(BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
+class NoSuchShelfId(BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class UserAbort(BzrError):
+
+    _fmt = 'The user aborted the operation.'

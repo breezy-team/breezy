@@ -21,7 +21,7 @@ from cStringIO import StringIO
 
 # make GzipFile faster:
 import gzip
-from gzip import U32, LOWU32, FEXTRA, FCOMMENT, FNAME, FHCRC
+from gzip import FEXTRA, FCOMMENT, FNAME, FHCRC
 import sys
 import struct
 import zlib
@@ -30,6 +30,21 @@ import zlib
 import bzrlib
 
 __all__ = ["GzipFile", "bytes_to_gzip"]
+
+
+def U32(i):
+    """Return i as an unsigned integer, assuming it fits in 32 bits.
+
+    If it's >= 2GB when viewed as a 32-bit unsigned int, return a long.
+    """
+    if i < 0:
+        i += 1L << 32
+    return i
+
+
+def LOWU32(i):
+    """Return the low-order 32 bits of an int, as a non-negative int."""
+    return i & 0xFFFFFFFFL
 
 
 def bytes_to_gzip(bytes, factory=zlib.compressobj,
@@ -149,7 +164,8 @@ class GzipFile(gzip.GzipFile):
 
         if buf == "":
             self._add_read_data(self.decompress.flush())
-            assert len(self.decompress.unused_data) >= 8, "what does flush do?"
+            if len(self.decompress.unused_data) < 8:
+                raise AssertionError("what does flush do?")
             self._gzip_tail = self.decompress.unused_data[0:8]
             self._read_eof()
             # tell the driving read() call we have stuffed all the data
@@ -175,7 +191,8 @@ class GzipFile(gzip.GzipFile):
                 self._gzip_tail = self.decompress.unused_data[0:8]
             elif seek_length < 0:
                 # we haven't read enough to check the checksum.
-                assert -8 < seek_length, "too great a seek."
+                if not (-8 < seek_length):
+                    raise AssertionError("too great a seek")
                 buf = self.fileobj.read(-seek_length)
                 self._gzip_tail = self.decompress.unused_data + buf
             else:
@@ -200,7 +217,8 @@ class GzipFile(gzip.GzipFile):
         # We then check the that the computed CRC and size of the
         # uncompressed data matches the stored values.  Note that the size
         # stored is the true file size mod 2**32.
-        assert len(self._gzip_tail) == 8, "gzip trailer is incorrect length."
+        if not (len(self._gzip_tail) == 8):
+            raise AssertionError("gzip trailer is incorrect length.")
         crc32, isize = struct.unpack("<LL", self._gzip_tail)
         # note that isize is unsigned - it can exceed 2GB
         if crc32 != U32(self.crc):

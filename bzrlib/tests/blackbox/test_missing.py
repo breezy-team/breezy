@@ -1,6 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
-# vim: encoding=utf-8
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +25,21 @@ from bzrlib.tests import TestCaseWithTransport
 
 
 class TestMissing(TestCaseWithTransport):
+
+    def test_missing_quiet(self):
+        # <https://bugs.launchpad.net/bzr/+bug/284748>
+        # create a source branch
+        #
+        # XXX: This still needs a test that missing is quiet when there are
+        # missing revisions.
+        a_tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='initial')
+
+        out, err = self.run_bzr('missing -q .')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_missing(self):
         missing = "You are missing 1 revision(s):"
@@ -77,9 +90,8 @@ class TestMissing(TestCaseWithTransport):
         lines2 = self.run_bzr('missing ../b --mine-only', retcode=1)[0]
         lines2 = lines2.splitlines()
         self.assertEqual(lines, lines2)
-        lines3 = self.run_bzr('missing ../b --theirs-only', retcode=1)[0]
-        lines3 = lines3.splitlines()
-        self.assertEqual(0, len(lines3))
+        lines3 = self.run_bzr('missing ../b --theirs-only', retcode=0)[0]
+        self.assertEqualDiff('Other branch is up to date.\n', lines3)
 
         # relative to a, missing the 'merge' commit 
         os.chdir('../b')
@@ -89,9 +101,8 @@ class TestMissing(TestCaseWithTransport):
         lines2 = self.run_bzr('missing ../a --theirs-only', retcode=1)[0]
         lines2 = lines2.splitlines()
         self.assertEqual(lines, lines2)
-        lines3 = self.run_bzr('missing ../a --mine-only', retcode=1)[0]
-        lines3 = lines3.splitlines()
-        self.assertEqual(0, len(lines3))
+        lines3 = self.run_bzr('missing ../a --mine-only', retcode=0)[0]
+        self.assertEqualDiff('This branch is up to date.\n', lines3)
         lines4 = self.run_bzr('missing ../a --short', retcode=1)[0]
         lines4 = lines4.splitlines()
         self.assertEqual(4, len(lines4))
@@ -109,9 +120,22 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqual("modified:", lines8[-2])
         self.assertEqual("  a", lines8[-1])
 
+        os.chdir('../a')
+        self.assertEqualDiff('Other branch is up to date.\n',
+                             self.run_bzr('missing ../b --theirs-only')[0])
+
         # after a pull we're back on track
         b_tree.pull(a_branch)
-        self.assertEqual("Branches are up to date.\n", self.run_bzr('missing ../a')[0])
+        self.assertEqualDiff("Branches are up to date.\n",
+                             self.run_bzr('missing ../b')[0])
+        os.chdir('../b')
+        self.assertEqualDiff('Branches are up to date.\n',
+                             self.run_bzr('missing ../a')[0])
+        # If you supply mine or theirs you only know one side is up to date
+        self.assertEqualDiff('This branch is up to date.\n',
+                             self.run_bzr('missing ../a --mine-only')[0])
+        self.assertEqualDiff('Other branch is up to date.\n',
+                             self.run_bzr('missing ../a --theirs-only')[0])
 
     def test_missing_check_last_location(self):
         # check that last location shown as filepath not file URL
@@ -131,7 +155,7 @@ class TestMissing(TestCaseWithTransport):
 
         # check last location
         lines, err = self.run_bzr('missing', working_dir='../b')
-        self.assertEquals('Using last location: %s\n'
+        self.assertEquals('Using saved parent location: %s\n'
                           'Branches are up to date.\n' % location,
                           lines)
         self.assertEquals('', err)

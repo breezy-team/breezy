@@ -25,8 +25,10 @@ import re
 import urlparse
 import urllib
 import sys
+import weakref
 
 from bzrlib import (
+    debug,
     errors,
     ui,
     urlutils,
@@ -34,7 +36,6 @@ from bzrlib import (
 from bzrlib.smart import medium
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        zero_seventeen,
         )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
@@ -52,8 +53,9 @@ def extract_auth(url, password_manager):
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
-    assert re.match(r'^(https?)(\+\w+)?://', url), \
-            'invalid absolute url %r' % url
+    if not re.match(r'^(https?)(\+\w+)?://', url):
+        raise ValueError(
+            'invalid absolute url %r' % (url,))
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
 
     if '@' in netloc:
@@ -78,7 +80,7 @@ def extract_auth(url, password_manager):
     return url
 
 
-class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
+class HttpTransportBase(ConnectedTransport):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -102,6 +104,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         self._impl_name = impl_name
         super(HttpTransportBase, self).__init__(base,
                                                 _from_transport=_from_transport)
+        self._medium = None
         # range hint is handled dynamically throughout the life
         # of the transport object. We start by trying multi-range
         # requests and if the server returns bogus results, we
@@ -160,16 +163,16 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
                     path=self._path)
         return auth
 
-    def get_request(self):
-        return SmartClientHTTPMediumRequest(self)
-
     def get_smart_medium(self):
-        """See Transport.get_smart_medium.
+        """See Transport.get_smart_medium."""
+        if self._medium is None:
+            # Since medium holds some state (smart server probing at least), we
+            # need to keep it around. Note that this is needed because medium
+            # has the same 'base' attribute as the transport so it can't be
+            # shared between transports having different bases.
+            self._medium = SmartClientHTTPMedium(self)
+        return self._medium
 
-        HttpTransportBase directly implements the minimal interface of
-        SmartMediumClient, so this returns self.
-        """
-        return self
 
     def _degrade_range_hint(self, relpath, ranges, exc_info):
         if self._range_hint == 'multi':
@@ -217,6 +220,7 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
         offsets = list(offsets)
 
         try_again = True
+        retried_offset = None
         while try_again:
             try_again = False
 
@@ -229,7 +233,8 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             # Turn it into a list, we will iterate it several times
             coalesced = list(coalesced)
-            mutter('http readv of %s  offsets => %s collapsed %s',
+            if 'http' in debug.debug_flags:
+                mutter('http readv of %s  offsets => %s collapsed %s',
                     relpath, len(offsets), len(coalesced))
 
             # Cache the data read, but only until it's been used
@@ -271,10 +276,20 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
             except (errors.ShortReadvError, errors.InvalidRange,
                     errors.InvalidHttpRange), e:
-                self._degrade_range_hint(relpath, coalesced, sys.exc_info())
+                mutter('Exception %r: %s during http._readv',e, e)
+                if (not isinstance(e, errors.ShortReadvError)
+                    or retried_offset == cur_offset_and_size):
+                    # We don't degrade the range hint for ShortReadvError since
+                    # they do not indicate a problem with the server ability to
+                    # handle ranges. Except when we fail to get back a required
+                    # offset twice in a row. In that case, falling back to
+                    # single range or whole file should help or end up in a
+                    # fatal exception.
+                    self._degrade_range_hint(relpath, coalesced, sys.exc_info())
                 # Some offsets may have been already processed, so we retry
                 # only the unsuccessful ones.
                 offsets = [cur_offset_and_size] + [o for o in iter_offsets]
+                retried_offset = cur_offset_and_size
                 try_again = True
 
     def _coalesce_readv(self, relpath, coalesced):
@@ -502,12 +517,50 @@ class HttpTransportBase(ConnectedTransport, medium.SmartClientMedium):
 
         return ','.join(strings)
 
+
+# TODO: May be better located in smart/medium.py with the other
+# SmartMedium classes
+class SmartClientHTTPMedium(medium.SmartClientMedium):
+
+    def __init__(self, http_transport):
+        super(SmartClientHTTPMedium, self).__init__(http_transport.base)
+        # We don't want to create a circular reference between the http
+        # transport and its associated medium. Since the transport will live
+        # longer than the medium, the medium keep only a weak reference to its
+        # transport.
+        self._http_transport_ref = weakref.ref(http_transport)
+
+    def get_request(self):
+        return SmartClientHTTPMediumRequest(self)
+
+    def should_probe(self):
+        return True
+
+    def remote_path_from_transport(self, transport):
+        # Strip the optional 'bzr+' prefix from transport so it will have the
+        # same scheme as self.
+        transport_base = transport.base
+        if transport_base.startswith('bzr+'):
+            transport_base = transport_base[4:]
+        rel_url = urlutils.relative_url(self.base, transport_base)
+        return urllib.unquote(rel_url)
+
     def send_http_smart_request(self, bytes):
-        code, body_filelike = self._post(bytes)
-        assert code == 200, 'unexpected HTTP response code %r' % (code,)
+        try:
+            # Get back the http_transport hold by the weak reference
+            t = self._http_transport_ref()
+            code, body_filelike = t._post(bytes)
+            if code != 200:
+                raise InvalidHttpResponse(
+                    t._remote_path('.bzr/smart'),
+                    'Expected 200 response code, got %r' % (code,))
+        except errors.InvalidHttpResponse, e:
+            raise errors.SmartProtocolError(str(e))
         return body_filelike
 
 
+# TODO: May be better located in smart/medium.py with the other
+# SmartMediumRequest classes
 class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
 
@@ -523,7 +576,16 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
         self._response_body = data
 
     def _read_bytes(self, count):
+        """See SmartClientMediumRequest._read_bytes."""
         return self._response_body.read(count)
+
+    def _read_line(self):
+        line, excess = medium._get_line(self._response_body.read)
+        if excess != '':
+            raise AssertionError(
+                '_get_line returned excess bytes, but this mediumrequest '
+                'cannot handle excess. (%r)' % (excess,))
+        return line
 
     def _finished_reading(self):
         """See SmartClientMediumRequest._finished_reading."""

@@ -14,8 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Basic server-side logic for dealing with requests."""
+"""Basic server-side logic for dealing with requests.
 
+**XXX**:
+
+The class names are a little confusing: the protocol will instantiate a
+SmartServerRequestHandler, whose dispatch_command method creates an instance of
+a SmartServerRequest subclass.
+
+The request_handlers registry tracks SmartServerRequest classes (rather than
+SmartServerRequestHandler).
+"""
 
 import tempfile
 
@@ -24,20 +33,43 @@ from bzrlib import (
     errors,
     registry,
     revision,
+    urlutils,
     )
-from bzrlib.bundle.serializer import write_bundle
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.bundle import serializer
+""")
 
 
 class SmartServerRequest(object):
-    """Base class for request handlers."""
+    """Base class for request handlers.
+    
+    To define a new request, subclass this class and override the `do` method
+    (and if appropriate, `do_body` as well).  Request implementors should take
+    care to call `translate_client_path` and `transport_from_client_path` as
+    appropriate when dealing with paths received from the client.
+    """
+    # XXX: rename this class to BaseSmartServerRequestHandler ?  A request
+    # *handler* is a different concept to the request.
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Constructor.
 
         :param backing_transport: the base transport to be used when performing
             this request.
+        :param root_client_path: the client path that maps to the root of
+            backing_transport.  This is used to interpret relpaths received
+            from the client.  Clients will not be able to refer to paths above
+            this root.  If root_client_path is None, then no translation will
+            be performed on client paths.  Default is '/'.
         """
         self._backing_transport = backing_transport
+        if root_client_path is not None:
+            if not root_client_path.startswith('/'):
+                root_client_path = '/' + root_client_path
+            if not root_client_path.endswith('/'):
+                root_client_path += '/'
+        self._root_client_path = root_client_path
 
     def _check_enabled(self):
         """Raises DisabledMethod if this method is disabled."""
@@ -66,14 +98,58 @@ class SmartServerRequest(object):
 
     def do_body(self, body_bytes):
         """Called if the client sends a body with the request.
+
+        The do() method is still called, and must have returned None.
         
         Must return a SmartServerResponse.
         """
-        # TODO: if a client erroneously sends a request that shouldn't have a
-        # body, what to do?  Probably SmartServerRequestHandler should catch
-        # this NotImplementedError and translate it into a 'bad request' error
-        # to send to the client.
         raise NotImplementedError(self.do_body)
+
+    def do_chunk(self, chunk_bytes):
+        """Called with each body chunk if the request has a streamed body.
+
+        The do() method is still called, and must have returned None.
+        """
+        raise NotImplementedError(self.do_chunk)
+
+    def do_end(self):
+        """Called when the end of the request has been received."""
+        pass
+    
+    def translate_client_path(self, client_path):
+        """Translate a path received from a network client into a local
+        relpath.
+
+        All paths received from the client *must* be translated.
+
+        :param client_path: the path from the client.
+        :returns: a relpath that may be used with self._backing_transport
+            (unlike the untranslated client_path, which must not be used with
+            the backing transport).
+        """
+        if self._root_client_path is None:
+            # no translation necessary!
+            return client_path
+        if not client_path.startswith('/'):
+            client_path = '/' + client_path
+        if client_path.startswith(self._root_client_path):
+            path = client_path[len(self._root_client_path):]
+            relpath = urlutils.joinpath('/', path)
+            if not relpath.startswith('/'):
+                raise ValueError(relpath)
+            return '.' + relpath
+        else:
+            raise errors.PathNotChild(client_path, self._root_client_path)
+
+    def transport_from_client_path(self, client_path):
+        """Get a backing transport corresponding to the location referred to by
+        a network client.
+
+        :seealso: translate_client_path
+        :returns: a transport cloned from self._backing_transport
+        """
+        relpath = self.translate_client_path(client_path)
+        return self._backing_transport.clone(relpath)
 
 
 class SmartServerResponse(object):
@@ -106,8 +182,8 @@ class SmartServerResponse(object):
                 other.body_stream is self.body_stream)
 
     def __repr__(self):
-        return "<SmartServerResponse %r args=%r body=%r>" % (
-            self.is_successful(), self.args, self.body)
+        return "<%s args=%r body=%r>" % (self.__class__.__name__,
+            self.args, self.body)
 
 
 class FailedSmartServerResponse(SmartServerResponse):
@@ -143,7 +219,7 @@ class SmartServerRequestHandler(object):
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
 
-    def __init__(self, backing_transport, commands):
+    def __init__(self, backing_transport, commands, root_client_path):
         """Constructor.
 
         :param backing_transport: a Transport to handle requests for.
@@ -151,6 +227,7 @@ class SmartServerRequestHandler(object):
             subclasses. e.g. bzrlib.transport.smart.vfs.vfs_commands.
         """
         self._backing_transport = backing_transport
+        self._root_client_path = root_client_path
         self._commands = commands
         self._body_bytes = ''
         self.response = None
@@ -179,8 +256,8 @@ class SmartServerRequestHandler(object):
         try:
             command = self._commands.get(cmd)
         except LookupError:
-            raise errors.SmartProtocolError("bad request %r" % (cmd,))
-        self._command = command(self._backing_transport)
+            raise errors.UnknownSmartMethod(cmd)
+        self._command = command(self._backing_transport, self._root_client_path)
         self._run_handler_code(self._command.execute, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
@@ -213,13 +290,22 @@ class SmartServerRequestHandler(object):
         except errors.ShortReadvError, e:
             return FailedSmartServerResponse(('ShortReadvError',
                 e.path, str(e.offset), str(e.length), str(e.actual)))
+        except errors.UnstackableRepositoryFormat, e:
+            return FailedSmartServerResponse(('UnstackableRepositoryFormat',
+                str(e.format), e.url))
+        except errors.UnstackableBranchFormat, e:
+            return FailedSmartServerResponse(('UnstackableBranchFormat',
+                str(e.format), e.url))
+        except errors.NotStacked, e:
+            return FailedSmartServerResponse(('NotStacked',))
         except UnicodeError, e:
             # If it is a DecodeError, than most likely we are starting
             # with a plain string
             str_or_unicode = e.object
             if isinstance(str_or_unicode, unicode):
-                # XXX: UTF-8 might have \x01 (our seperator byte) in it.  We
-                # should escape it somehow.
+                # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
+                # byte) in it, so this encoding could cause broken responses.
+                # Newer clients use protocol v3, so will be fine.
                 val = 'u:' + str_or_unicode.encode('utf-8')
             else:
                 val = 's:' + str_or_unicode.encode('base64')
@@ -231,6 +317,38 @@ class SmartServerRequestHandler(object):
                 return FailedSmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
+        except errors.ReadError, e:
+            # cannot read the file
+            return FailedSmartServerResponse(('ReadError', e.path))
+        except errors.PermissionDenied, e:
+            return FailedSmartServerResponse(
+                ('PermissionDenied', e.path, e.extra))
+
+    def headers_received(self, headers):
+        # Just a no-op at the moment.
+        pass
+
+    def args_received(self, args):
+        cmd = args[0]
+        args = args[1:]
+        try:
+            command = self._commands.get(cmd)
+        except LookupError:
+            raise errors.UnknownSmartMethod(cmd)
+        self._command = command(self._backing_transport)
+        self._run_handler_code(self._command.execute, args, {})
+
+    def prefixed_body_received(self, body_bytes):
+        """No more body data will be received."""
+        self._run_handler_code(self._command.do_body, (body_bytes,), {})
+        # cannot read after this.
+        self.finished_reading = True
+
+    def body_chunk_received(self, chunk_bytes):
+        self._run_handler_code(self._command.do_chunk, (chunk_bytes,), {})
+
+    def end_received(self):
+        self._run_handler_code(self._command.do_end, (), {})
 
 
 class HelloRequest(SmartServerRequest):
@@ -247,12 +365,12 @@ class GetBundleRequest(SmartServerRequest):
 
     def do(self, path, revision_id):
         # open transport relative to our base
-        t = self._backing_transport.clone(path)
+        t = self.transport_from_client_path(path)
         control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
         repo = control.open_repository()
         tmpf = tempfile.TemporaryFile()
         base_revision = revision.NULL_REVISION
-        write_bundle(repo, revision_id, base_revision, tmpf)
+        serializer.write_bundle(repo, revision_id, base_revision, tmpf)
         tmpf.seek(0)
         return SuccessfulSmartServerResponse((), tmpf.read())
 
@@ -274,6 +392,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
 request_handlers.register_lazy(
+    'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
+request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
@@ -282,9 +402,17 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.set_last_revision', 'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
 request_handlers.register_lazy(
+    'Branch.set_last_revision_info', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestSetLastRevisionInfo')
+request_handlers.register_lazy(
+    'Branch.set_last_revision_ex', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestSetLastRevisionEx')
+request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
-    'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepository')
+    'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV1')
+request_handlers.register_lazy(
+    'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV2')
 request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir', 'SmartServerRequestInitializeBzrDir')
 request_handlers.register_lazy(
@@ -315,12 +443,15 @@ request_handlers.register_lazy(
     'readv', 'bzrlib.smart.vfs', 'ReadvRequest')
 request_handlers.register_lazy(
     'rename', 'bzrlib.smart.vfs', 'RenameRequest')
+request_handlers.register_lazy(
+    'PackRepository.autopack', 'bzrlib.smart.packrepository',
+    'SmartServerPackRepositoryAutopack')
 request_handlers.register_lazy('Repository.gather_stats',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGatherStats')
-request_handlers.register_lazy(
-    'Repository.stream_knit_data_for_revisions', 'bzrlib.smart.repository',
-    'SmartServerRepositoryStreamKnitDataForRevisions')
+request_handlers.register_lazy('Repository.get_parent_map',
+                               'bzrlib.smart.repository',
+                               'SmartServerRepositoryGetParentMap')
 request_handlers.register_lazy(
     'Repository.get_revision_graph', 'bzrlib.smart.repository', 'SmartServerRepositoryGetRevisionGraph')
 request_handlers.register_lazy(

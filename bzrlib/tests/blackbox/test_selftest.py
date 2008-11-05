@@ -34,9 +34,6 @@ from bzrlib.tests import (
                           TestUIFactory,
                           TestSkipped,
                           )
-from bzrlib.symbol_versioning import (
-    zero_eighteen,
-    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -260,7 +257,7 @@ class TestRunBzrCaptured(ExternalBase):
 class TestRunBzrSubprocess(TestCaseWithTransport):
 
     def test_run_bzr_subprocess(self):
-        """The run_bzr_helper_external comand behaves nicely."""
+        """The run_bzr_helper_external command behaves nicely."""
         result = self.run_bzr_subprocess('--version')
         result = self.run_bzr_subprocess(['--version'])
         result = self.run_bzr_subprocess('--version', retcode=None)
@@ -274,10 +271,6 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
                                       'magic merge'], retcode=3)[1]
         self.assertContainsRe(err, 'Bad value "magic merge" for option'
                               ' "merge-type"')
-        self.callDeprecated(['passing varargs to run_bzr_subprocess was'
-                             ' deprecated in version 0.91.'],
-                            self.run_bzr_subprocess,
-                            'arg1', 'arg2', 'arg3', retcode=3)
 
     def test_run_bzr_subprocess_env(self):
         """run_bzr_subprocess can set environment variables in the child only.
@@ -558,3 +551,39 @@ class TestSelftestListOnly(TestCase):
             out_rand2.splitlines(), 2)
         self.assertEqual(tests_rand, tests_rand2)
 
+
+class TestSelftestWithIdList(TestCaseInTempDir):
+
+    def test_load_list(self):
+        # We don't want to call selftest for the whole suite, so we start with
+        # a reduced list.
+        test_list_fname = 'test.list'
+        fl = open(test_list_fname, 'wt')
+        fl.write('%s\n' % self.id())
+        fl.close()
+        out, err = self.run_bzr(
+            ['selftest', '--load-list', test_list_fname, '--list'])
+        self.assertContainsRe(out, "Listed 1 test in")
+
+    def test_load_unknown(self):
+        out, err = self.run_bzr('selftest --load-list I_do_not_exist ',
+                                retcode=3)
+
+
+class TestSelftestStartingWith(TestCase):
+
+    def test_starting_with_single_argument(self):
+        out, err = self.run_bzr(
+            ['selftest', '--starting-with', self.id(), '--list'])
+        self.assertContainsRe(out, "Listed 1 test in")
+        self.assertContainsRe(out, self.id())
+
+    def test_starting_with_multiple_argument(self):
+        out, err = self.run_bzr(
+            ['selftest',
+             '--starting-with', self.id(),
+             '--starting-with', 'bzrlib.tests.test_sampler',
+             '--list'])
+        self.assertContainsRe(out, "Listed 2 tests in")
+        self.assertContainsRe(out, self.id())
+        self.assertContainsRe(out, 'bzrlib.tests.test_sampler')

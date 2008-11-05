@@ -51,11 +51,9 @@ class AtomicFile(object):
         global _hostname
 
         self._fd = None
-        assert mode in ('wb', 'wt'), \
-            "invalid AtomicFile mode %r" % mode
 
         if _hostname is None:
-            _hostname = socket.gethostname()
+            _hostname = osutils.get_host_name()
 
         self.tmpfilename = '%s.%d.%s.tmp' % (filename, _pid, _hostname)
 
@@ -64,6 +62,8 @@ class AtomicFile(object):
         flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
         if mode == 'wb':
             flags |= osutils.O_BINARY
+        elif mode != 'wt':
+            raise ValueError("invalid AtomicFile mode %r" % mode)
 
         if new_mode is not None:
             local_mode = new_mode

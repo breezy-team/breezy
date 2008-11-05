@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,43 +18,66 @@
 """
 
 import os
-from bzrlib.trace import mutter
+import sys
 import tarfile
-from bzrlib import errors, export
+import time
+
+from bzrlib import errors, export, osutils
+from bzrlib.export import _export_iter_entries
+from bzrlib.trace import mutter
 
 
-def tar_exporter(tree, dest, root, compression=None):
+def tar_exporter(tree, dest, root, subdir, compression=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
-    from time import time
-    now = time()
-    compression = str(compression or '')
-    if root is None:
-        root = export.get_root_name(dest)
-    ball = tarfile.open(dest, 'w:' + compression)
     mutter('export version %r', tree)
-    inv = tree.inventory
-    entries = inv.iter_entries()
-    entries.next() # skip root
-    for dp, ie in entries:
-        # .bzrignore has no meaning outside of a working tree
-        # so do not export it
-        if dp == ".bzrignore":
-            continue
-        
-        mutter("  export {%s} kind %s to %s", ie.file_id, ie.kind, dest)
-        item, fileobj = ie.get_tar_item(root, dp, now, tree)
+    now = time.time()
+    compression = str(compression or '')
+    if dest == '-':
+        # XXX: If no root is given, the output tarball will contain files
+        # named '-/foo'; perhaps this is the most reasonable thing.
+        ball = tarfile.open(None, 'w|' + compression, sys.stdout)
+    else:
+        if root is None:
+            root = export.get_root_name(dest)
+        ball = tarfile.open(dest, 'w:' + compression)
+    for dp, ie in _export_iter_entries(tree, subdir):
+        filename = osutils.pathjoin(root, dp).encode('utf8')
+        item = tarfile.TarInfo(filename)
+        item.mtime = now
+        if ie.kind == "file":
+            item.type = tarfile.REGTYPE
+            if tree.is_executable(ie.file_id):
+                item.mode = 0755
+            else:
+                item.mode = 0644
+            item.size = ie.text_size
+            fileobj = tree.get_file(ie.file_id)
+        elif ie.kind == "directory":
+            item.type = tarfile.DIRTYPE
+            item.name += '/'
+            item.size = 0
+            item.mode = 0755
+            fileobj = None
+        elif ie.kind == "symlink":
+            item.type = tarfile.SYMTYPE
+            item.size = 0
+            item.mode = 0755
+            item.linkname = ie.symlink_target
+            fileobj = None
+        else:
+            raise BzrError("don't know how to export {%s} of kind %r" %
+                           (ie.file_id, ie.kind))
         ball.addfile(item, fileobj)
     ball.close()
 
 
-def tgz_exporter(tree, dest, root):
-    tar_exporter(tree, dest, root, compression='gz')
+def tgz_exporter(tree, dest, root, subdir):
+    tar_exporter(tree, dest, root, subdir, compression='gz')
 
 
-def tbz_exporter(tree, dest, root):
-    tar_exporter(tree, dest, root, compression='bz2')
-
+def tbz_exporter(tree, dest, root, subdir):
+    tar_exporter(tree, dest, root, subdir, compression='bz2')

@@ -22,7 +22,6 @@ from bzrlib import (
     )
 import bzrlib
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tree import RevisionTree
 
 
 class TestTreeWithCommits(TestCaseWithTransport):
@@ -51,9 +50,10 @@ class TestTreeWithCommits(TestCaseWithTransport):
             self.t.branch.repository.revision_tree(revid_2).get_parent_ids())
         # TODO commit a merge and check it is reported correctly.
 
-        # the parents for a revision_tree(None) are []:
+        # the parents for a revision_tree(NULL_REVISION) are []:
         self.assertEqual([],
-            self.t.branch.repository.revision_tree(None).get_parent_ids())
+            self.t.branch.repository.revision_tree(
+                revision.NULL_REVISION).get_parent_ids())
 
     def test_empty_no_root(self):
         null_tree = self.t.branch.repository.revision_tree(

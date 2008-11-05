@@ -180,10 +180,10 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 20, [(0, 10), (10, 10)])],
                    [(0, 10), (10, 10)])
 
-    # XXX: scary, http.readv() can't handle that --vila20071209
     def test_coalesce_overlapped(self):
-        self.check([(0, 15, [(0, 10), (5, 10)])],
-                   [(0, 10), (5, 10)])
+        self.assertRaises(ValueError,
+            self.check, [(0, 15, [(0, 10), (5, 10)])],
+                        [(0, 10), (5, 10)])
 
     def test_coalesce_limit(self):
         self.check([(10, 50, [(0, 10), (10, 10), (20, 10),
@@ -640,6 +640,11 @@ class TestConnectedTransport(TestCase):
         self.failUnless(t._password is None)
 
         self.assertEquals(t.base, 'http://simple.example.com/home/source/')
+
+    def test_parse_url_with_at_in_user(self):
+        # Bug 228058
+        t = ConnectedTransport('ftp://user@host.com@www.host.com/')
+        self.assertEquals(t._user, 'user@host.com')
 
     def test_parse_quoted_url(self):
         t = ConnectedTransport('http://ro%62ey:h%40t@ex%41mple.com:2222/path')

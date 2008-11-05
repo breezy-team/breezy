@@ -68,8 +68,8 @@ class TestCommitHook(TestCaseWithBranch):
 
     def test_post_commit_to_origin(self):
         tree = self.make_branch_and_memory_tree('branch')
-        Branch.hooks.install_hook('post_commit',
-            self.capture_post_commit_hook)
+        Branch.hooks.install_named_hook('post_commit',
+            self.capture_post_commit_hook, None)
         tree.lock_write()
         tree.add('')
         revid = tree.commit('a revision')
@@ -90,8 +90,8 @@ class TestCommitHook(TestCaseWithBranch):
         except errors.UpgradeRequired:
             # cant bind this format, the test is irrelevant.
             return
-        Branch.hooks.install_hook('post_commit',
-            self.capture_post_commit_hook)
+        Branch.hooks.install_named_hook('post_commit',
+            self.capture_post_commit_hook, None)
         tree.lock_write()
         tree.add('')
         revid = tree.commit('a revision')
@@ -108,8 +108,8 @@ class TestCommitHook(TestCaseWithBranch):
         tree.lock_write()
         tree.add('')
         revid = tree.commit('first revision')
-        Branch.hooks.install_hook('post_commit',
-            self.capture_post_commit_hook)
+        Branch.hooks.install_named_hook('post_commit',
+            self.capture_post_commit_hook, None)
         revid2 = tree.commit('second revision')
         # having committed from up the branch, we should get the
         # before and after revnos and revids correctly.
@@ -123,11 +123,12 @@ class TestCommitHook(TestCaseWithBranch):
     def test_pre_commit_passes(self):
         empty_delta = TreeDelta()
         root_delta = TreeDelta()
-        root_delta.added = [('', '', 'directory')]
         tree = self.make_branch_and_memory_tree('branch')
         tree.lock_write()
-        tree.add('', '')
-        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        tree.add('')
+        root_delta.added = [('', tree.path2id(''), 'directory')]
+        Branch.hooks.install_named_hook("pre_commit",
+            self.capture_pre_commit_hook, None)
         revid1 = tree.commit('first revision')
         revid2 = tree.commit('second revision')
         self.assertEqual([
@@ -140,17 +141,18 @@ class TestCommitHook(TestCaseWithBranch):
     def test_pre_commit_fails(self):
         empty_delta = TreeDelta()
         root_delta = TreeDelta()
-        root_delta.added = [('', '', 'directory')]
         tree = self.make_branch_and_memory_tree('branch')
         tree.lock_write()
-        tree.add('', '')
+        tree.add('')
+        root_delta.added = [('', tree.path2id(''), 'directory')]
         class PreCommitException(Exception): pass
         def hook_func(local, master,
                       old_revno, old_revid, new_revno, new_revid,
                       tree_delta, future_tree):
             raise PreCommitException(new_revid)
-        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
-        Branch.hooks.install_hook("pre_commit", hook_func)
+        Branch.hooks.install_named_hook("pre_commit",
+            self.capture_pre_commit_hook, None)
+        Branch.hooks.install_named_hook("pre_commit", hook_func, None)
         revids = [None, None, None]
         # this commit will raise an exception
         # so the commit is rolled back and revno unchanged
@@ -160,7 +162,8 @@ class TestCommitHook(TestCaseWithBranch):
         # unregister all pre_commit hooks
         Branch.hooks["pre_commit"] = []
         # and re-register the capture hook
-        Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+        Branch.hooks.install_named_hook("pre_commit",
+            self.capture_pre_commit_hook, None)
         # now these commits should go through
         for i in range(1, 3):
             revids[i] = tree.commit('message')
@@ -199,7 +202,8 @@ class TestCommitHook(TestCaseWithBranch):
             tree.unversion(['to_be_unversioned_id'])
             tree.mkdir('added_dir', 'added_dir_id')
             # start to capture pre_commit delta
-            Branch.hooks.install_hook("pre_commit", self.capture_pre_commit_hook)
+            Branch.hooks.install_named_hook("pre_commit",
+                self.capture_pre_commit_hook, None)
             revid2 = tree.commit('second revision')
         finally:
             tree.unlock()
