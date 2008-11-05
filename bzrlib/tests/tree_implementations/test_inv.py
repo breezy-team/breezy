@@ -77,18 +77,6 @@ class TestInventory(TestCaseWithTree):
 
     def test_symlink_target(self):
         self.requireFeature(SymlinkFeature)
-
-        import sys
-        from bzrlib.tests import KnownFailure
-        from bzrlib.tests.tree_implementations import _dirstate_tree_from_workingtree
-        if (self.workingtree_to_test_tree is _dirstate_tree_from_workingtree
-            and sys.version_info >= (2, 6)):
-            # Furthermore the problem here is that it interacts badly with a
-            # '\0\n\0'.join(lines) where lines contains *one* unicode string
-            # where all the other strings are not unicode.
-            raise  KnownFailure("python-2.6 os.readlink returns unicode path"
-                                " if called with unicode path")
-
         self._set_up()
         if isinstance(self.tree, (MutableTree, _PreviewTree)):
             raise TestSkipped(
@@ -111,18 +99,6 @@ class TestInventory(TestCaseWithTree):
 
     def test_symlink(self):
         self.requireFeature(SymlinkFeature)
-
-        import sys
-        from bzrlib.tests import KnownFailure
-        from bzrlib.tests.tree_implementations import _dirstate_tree_from_workingtree
-        if (self.workingtree_to_test_tree is _dirstate_tree_from_workingtree
-            and sys.version_info >= (2, 6)):
-            # Furthermore the problem here is that it interacts badly with a
-            # '\0\n\0'.join(lines) where lines contains *one* unicode string
-            # where all the other strings are not unicode.
-            raise  KnownFailure("python-2.6 os.readlink returns unicode path"
-                                " if called with unicode path")
-
         self._set_up()
         entry = get_entry(self.tree, self.tree.path2id('symlink'))
         self.assertEqual(entry.kind, 'symlink')

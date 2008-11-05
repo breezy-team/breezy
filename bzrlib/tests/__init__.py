@@ -3317,7 +3317,6 @@ class _UnicodeFilename(Feature):
             os.stat(u'\u03b1')
         except UnicodeEncodeError:
             return False
-
         except (IOError, OSError):
             # The filesystem allows the Unicode filename but the file doesn't
             # exist.

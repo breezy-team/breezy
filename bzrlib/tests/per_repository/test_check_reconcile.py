@@ -22,7 +22,6 @@ That is, tests for reconcile and check.
 from bzrlib import osutils
 
 from bzrlib.inventory import Inventory, InventoryFile
-from bzrlib.osutils import sha
 from bzrlib.revision import Revision
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
