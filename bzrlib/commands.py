@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,37 +53,72 @@ from bzrlib import registry
 from bzrlib.option import Option
 
 
-plugin_cmds = {}
+class CommandInfo(object):
+    """Information about a command."""
+
+    def __init__(self, aliases):
+        """The list of aliases for the command."""
+        self.aliases = aliases
+
+    @classmethod
+    def from_command(klass, command):
+        """Factory to construct a CommandInfo from a command."""
+        return klass(command.aliases)
+
+
+class CommandRegistry(registry.Registry):
+
+    @staticmethod
+    def _get_name(command_name):
+        if command_name.startswith("cmd_"):
+            return _unsquish_command_name(command_name)
+        else:
+            return command_name
+
+    def register(self, cmd, decorate=False):
+        """Utility function to help register a command
+
+        :param cmd: Command subclass to register
+        :param decorate: If true, allow overriding an existing command
+            of the same name; the old command is returned by this function.
+            Otherwise it is an error to try to override an existing command.
+        """
+        k = cmd.__name__
+        k_unsquished = self._get_name(k)
+        try:
+            previous = self.get(k_unsquished)
+        except KeyError:
+            previous = _builtin_commands().get(k_unsquished)
+        info = CommandInfo.from_command(cmd)
+        try:
+            registry.Registry.register(self, k_unsquished, cmd,
+                                       override_existing=decorate, info=info)
+        except KeyError:
+            trace.log_error('Two plugins defined the same command: %r' % k)
+            trace.log_error('Not loading the one in %r' %
+                            sys.modules[cmd.__module__])
+            trace.log_error('Previously this command was registered from %r' %
+                            sys.modules[previous.__module__])
+        return previous
+
+    def register_lazy(self, command_name, aliases, module_name):
+        """Register a command without loading its module.
+
+        :param command_name: The primary name of the command.
+        :param aliases: A list of aliases for the command.
+        :module_name: The module that the command lives in.
+        """
+        key = self._get_name(command_name)
+        registry.Registry.register_lazy(self, key, module_name, command_name,
+                                        info=CommandInfo(aliases))
+
+
+plugin_cmds = CommandRegistry()
 
 
 def register_command(cmd, decorate=False):
-    """Utility function to help register a command
-
-    :param cmd: Command subclass to register
-    :param decorate: If true, allow overriding an existing command
-        of the same name; the old command is returned by this function.
-        Otherwise it is an error to try to override an existing command.
-    """
     global plugin_cmds
-    k = cmd.__name__
-    if k.startswith("cmd_"):
-        k_unsquished = _unsquish_command_name(k)
-    else:
-        k_unsquished = k
-    if k_unsquished not in plugin_cmds:
-        plugin_cmds[k_unsquished] = cmd
-        ## trace.mutter('registered plugin command %s', k_unsquished)
-        if decorate and k_unsquished in builtin_command_names():
-            return _builtin_commands()[k_unsquished]
-    elif decorate:
-        result = plugin_cmds[k_unsquished]
-        plugin_cmds[k_unsquished] = cmd
-        return result
-    else:
-        trace.log_error('Two plugins defined the same command: %r' % k)
-        trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
-        trace.log_error('Previously this command was registered from %r' %
-                        sys.modules[plugin_cmds[k_unsquished].__module__])
+    return plugin_cmds.register(cmd, decorate)
 
 
 def _squish_command_name(cmd):
@@ -118,7 +153,7 @@ def _get_cmd_dict(plugins_override=True):
     """Return name->class mapping for all commands."""
     d = _builtin_commands()
     if plugins_override:
-        d.update(plugin_cmds)
+        d.update(plugin_cmds.iteritems())
     return d
 
     
@@ -150,12 +185,21 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     # In the future, we may actually support Unicode command names.
 
     # first look up this command under the specified name
-    cmds = _get_cmd_dict(plugins_override=plugins_override)
+    if plugins_override:
+        try:
+            return plugin_cmds.get(cmd_name)()
+        except KeyError:
+            pass
+    cmds = _get_cmd_dict(plugins_override=False)
     try:
         return cmds[cmd_name]()
     except KeyError:
         pass
-
+    if plugins_override:
+        for key in plugin_cmds.keys():
+            info = plugin_cmds.get_info(key)
+            if cmd_name in info.aliases:
+                return plugin_cmds.get(key)()
     # look for any command which claims this as an alias
     for real_cmd_name, cmd_class in cmds.iteritems():
         if cmd_name in cmd_class.aliases:

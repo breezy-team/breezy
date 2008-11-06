@@ -62,7 +62,7 @@ class TestCommandEncoding(TestCase):
                 bzr,
                 ['echo-exact', u'foo\xb5'])
         finally:
-            plugin_cmds.pop('echo-exact')
+            plugin_cmds.remove('echo-exact')
 
     def test_strict_utf8(self):
         def bzr(*args, **kwargs):
@@ -75,7 +75,7 @@ class TestCommandEncoding(TestCase):
             self.assertEqual(u'foo\xb5'.encode('utf-8'),
                              bzr(['echo-strict', u'foo\xb5']))
         finally:
-            plugin_cmds.pop('echo-strict')
+            plugin_cmds.remove('echo-strict')
 
     def test_strict_ascii(self):
         def bzr(*args, **kwargs):
@@ -90,7 +90,7 @@ class TestCommandEncoding(TestCase):
                 bzr,
                 ['echo-strict', u'foo\xb5'])
         finally:
-            plugin_cmds.pop('echo-strict')
+            plugin_cmds.remove('echo-strict')
 
     def test_replace_utf8(self):
         def bzr(*args, **kwargs):
@@ -103,7 +103,7 @@ class TestCommandEncoding(TestCase):
             self.assertEqual(u'foo\xb5'.encode('utf-8'),
                              bzr(['echo-replace', u'foo\xb5']))
         finally:
-            plugin_cmds.pop('echo-replace')
+            plugin_cmds.remove('echo-replace')
 
     def test_replace_ascii(self):
         def bzr(*args, **kwargs):
@@ -116,6 +116,6 @@ class TestCommandEncoding(TestCase):
             # ascii can't encode \xb5
             self.assertEqual('foo?', bzr(['echo-replace', u'foo\xb5']))
         finally:
-            plugin_cmds.pop('echo-replace')
+            plugin_cmds.remove('echo-replace')
 
 

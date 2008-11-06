@@ -317,6 +317,33 @@ class TestBoundBranches(TestCaseWithTransport):
                             working_dir='tree_1')
         self.assertIs(None, tree.branch.get_bound_location())
 
+    def test_bind_nick(self):
+        """Bind should not update implicit nick."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        self.assertEqual(child.branch.nick, 'child')
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+        self.run_bzr('bind ../base')
+        self.assertEqual(child.branch.nick, base.branch.nick)
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+
+    def test_bind_explicit_nick(self):
+        """Bind should update explicit nick."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        child.branch.nick = "explicit_nick"
+        self.assertEqual(child.branch.nick, "explicit_nick")
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            "explicit_nick")
+        self.run_bzr('bind ../base')
+        self.assertEqual(child.branch.nick, base.branch.nick)
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            base.branch.nick)
+
     def test_commit_after_merge(self):
         base_tree, child_tree = self.create_branches()
 

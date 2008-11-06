@@ -63,6 +63,44 @@ class LaunchpadAccountTests(TestCaseInTempDir):
         self.assertEqualDiff('The user test-user has not registered any '
                              'SSH keys with Launchpad.', str(error))
 
+    def test_set_lp_login_updates_authentication_conf(self):
+        self.assertIs(None, account._get_auth_user())
+        account.set_lp_login('foo')
+        self.assertEqual('foo', account._get_auth_user())
+
+    def test_get_lp_login_does_not_update_for_none_user(self):
+        account.get_lp_login()
+        self.assertIs(None, account._get_auth_user())
+
+    def test_get_lp_login_updates_authentication_conf(self):
+        account._set_global_option('foo')
+        self.assertIs(None, account._get_auth_user())
+        account.get_lp_login()
+        auth = config.AuthenticationConfig()
+        self.assertEqual('foo', account._get_auth_user(auth))
+        self.assertEqual('foo', auth.get_user('ssh', 'bazaar.launchpad.net'))
+        self.assertEqual('foo', auth.get_user('ssh',
+                                              'bazaar.staging.launchpad.net'))
+
+    def test_get_lp_login_leaves_existing_credentials(self):
+        auth = config.AuthenticationConfig()
+        auth.set_credentials('Foo', 'bazaar.launchpad.net', 'foo', 'ssh')
+        auth.set_credentials('Bar', 'bazaar.staging.launchpad.net', 'foo',
+                             'ssh')
+        account._set_global_option('foo')
+        account.get_lp_login()
+        auth = config.AuthenticationConfig()
+        credentials = auth.get_credentials('ssh', 'bazaar.launchpad.net')
+        self.assertEqual('Foo', credentials['name'])
+
+    def test_get_lp_login_errors_on_mismatch(self):
+        account._set_auth_user('foo')
+        account._set_global_option('bar')
+        e = self.assertRaises(account.MismatchedUsernames,
+                              account.get_lp_login)
+        self.assertEqual('bazaar.conf and authentication.conf disagree about'
+            ' launchpad account name.  Please re-run launchpad-login.', str(e))
+
 
 class CheckAccountTests(TestCaseWithMemoryTransport):
 

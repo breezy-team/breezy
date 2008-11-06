@@ -1616,4 +1616,19 @@ def file_kind(f, _lstat=os.lstat):
             raise errors.NoSuchFile(f)
         raise
 
-
+if sys.platform == "win32":
+    import msvcrt
+    def getchar():
+        return msvcrt.getch()
+else:
+    import tty
+    import termios
+    def getchar():
+        fd = sys.stdin.fileno()
+        settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, settings)
+        return ch
