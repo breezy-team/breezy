@@ -3387,11 +3387,12 @@ class InterPackToRemotePack(InterPackRepo):
     @staticmethod
     def is_compatible(source, target):
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
-        if isinstance(source._format, RepositoryFormatPack):
+        prereqs = lambda fmt: (
+            isinstance(fmt, RepositoryFormatPack) and not fmt.supports_chks)
+        if prereqs(source._format):
             if isinstance(target, remote.RemoteRepository):
                 target._ensure_real()
-                if isinstance(target._real_repository._format,
-                              RepositoryFormatPack):
+                if prereqs(target._real_repository._format):
                     if InterRepository._same_model(source, target):
                         return True
         return False
