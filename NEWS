@@ -4,10 +4,70 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
 
-  USER-VISIBLE CHANGES:
+  CHANGES:
+
+  NEW FEATURES:
+
+    * New `shelve` and `unshelve` commands allow undoing and redoing changes.
+      (Aaron Bentley)
+
+  IMPROVEMENTS:
+
+    * When making a large readv() request over ``bzr+ssh``, break up the
+      request into more manageable chunks. Because the RPC is not yet able
+      to stream, this helps keep us from buffering too much information at
+      once. (John Arbash Meinel)
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+    * The logic in commit now delegates inventory basis calculations to
+      the ``CommitBuilder`` object; this requires that the commit builder
+      in use has been updated to support the new ``recording_deletes`` and
+      ``record_delete`` methods. (Robert Collins)
+
+  TESTING:
+
+  INTERNALS:
+
+    * New method ``bzrlib.repository.Repository.add_inventory_delta``
+      allows adding an inventory via an inventory delta, which can be
+      more efficient for some repository types. (Robert Collins)
+
+    * New module ``chk_map`` providing a persistent CHK store backed map.
+      (Robert Collins)
+
+    * Passing None in as the last element of a key tuple to
+      ``VersionedFiles.add`` will now cause a content-hash-key to be
+      allocated. (Robert Collins)
+
+    * Repository ``CommitBuilder`` objects can now accumulate an inventory
+      delta. To enable this functionality call ``builder.recording_deletes``
+      and additionally call ``builder.record_delete`` when a delete
+      against the basis occurs. (Robert Collins)
+
+    * The Repository model has been extended to allow some formats to
+      expose data via CHK based lookups (Though no formats support this as
+      yet). (Robert Collins)
+
+
+bzr 1.9 2008-10-31
+------------------
+
+This release of Bazaar adds a new repository format, ``1.9``, with smaller
+and more efficient index files.  This format can be specified when
+creating a new repository, or used to losslessly upgrade an existing
+repository.  bzr 1.9 also speeds most operations over the smart server
+protocol, makes annotate faster, and uses less memory when making
+checkouts or pulling large amounts of data.
+
 
   NEW FEATURES:
 
@@ -46,7 +106,7 @@ IN DEVELOPMENT
     * launchpad-login now provides a default username for bzr+ssh and sftp
       URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
 
-    * lp: lookups no longer include usernames, making them shareable and
+    * ``lp:`` lookups no longer include usernames, making them shareable and
       shorter. (Aaron Bentley)
 
     * New ``PackRepository.autopack`` smart server RPC, which does
@@ -112,41 +172,10 @@ IN DEVELOPMENT
 
     * commands.plugins_cmds is now a CommandRegistry, not a dict.
 
-    * The logic in commit now delegates inventory basis calculations to
-      the ``CommitBuilder`` object; this requires that the commit builder
-      in use has been updated to support the new ``recording_deletes`` and
-      ``record_delete`` methods. (Robert Collins)
-
-  TESTING:
-
   INTERNALS:
 
-    * New AuthenticationConfig.set_credentials method allows easy programmatic
-      configuration of authetication credentials.
-
-    * New method ``bzrlib.repository.Repository.add_inventory_delta``
-      allows adding an inventory via an inventory delta, which can be
-      more efficient for some repository types. (Robert Collins)
-
-    * New module ``chk_map`` providing a persistent CHK store backed map.
-      (Robert Collins)
-
-    * Passing None in as the last element of a key tuple to
-      ``VersionedFiles.add`` will now cause a content-hash-key to be
-      allocated. (Robert Collins)
-
-    * Repository ``CommitBuilder`` objects can now accumulate an inventory
-      delta. To enable this functionality call ``builder.recording_deletes``
-      and additionally call ``builder.record_delete`` when a delete
-      against the basis occurs. (Robert Collins)
-
-    * The Repository model has been extended to allow some formats to
-      expose data via CHK based lookups (Though no formats support this as
-      yet). (Robert Collins)
-
-  API CHANGES:
-
-  PORTABILITY:
+     * New AuthenticationConfig.set_credentials method allows easy programmatic
+       configuration of authetication credentials.
 
 
 bzr 1.8 2008-10-16

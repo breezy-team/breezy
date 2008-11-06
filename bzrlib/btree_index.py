@@ -848,17 +848,21 @@ class BTreeGraphIndex(object):
         """
         return self._get_nodes(self._internal_node_cache, node_indexes)
 
-    def _get_leaf_nodes(self, node_indexes):
-        """Get a bunch of nodes, from cache or disk."""
-        found = self._get_nodes(self._leaf_node_cache, node_indexes)
+    def _cache_leaf_values(self, nodes):
+        """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in found.itervalues():
+            for node in nodes.itervalues():
                 for key, value in node.keys.iteritems():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node
                         # before.
                         break
                     self._leaf_value_cache[key] = value
+
+    def _get_leaf_nodes(self, node_indexes):
+        """Get a bunch of nodes, from cache or disk."""
+        found = self._get_nodes(self._leaf_node_cache, node_indexes)
+        self._cache_leaf_values(found)
         return found
 
     def iter_all_entries(self):

@@ -2509,6 +2509,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 self)._get_rules_searcher(default_searcher)
         return self._rules_searcher
 
+    def get_shelf_manager(self):
+        """Return the ShelfManager for this WorkingTree."""
+        from bzrlib.shelf import ShelfManager
+        return ShelfManager(self, self._transport)
+
 
 class WorkingTree2(WorkingTree):
     """This is the Format 2 working tree.

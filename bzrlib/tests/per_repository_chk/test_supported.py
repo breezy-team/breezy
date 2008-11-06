@@ -65,13 +65,15 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.unlock()
 
     def test_pack_preserves_chk_bytes_store(self):
+        expected_set = set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
+            ('sha1:d0826cf765ff45bd602f602ecb0efbe375ea3b50',)])
         repo = self.make_repository('.')
         repo.lock_write()
         try:
             repo.start_write_group()
             try:
-                repo.chk_bytes.add_lines((None,), None, ["chkroot:\n", "0\n"],
-                    random_id=True)
+                repo.chk_bytes.add_lines((None,), None,
+                    ["chkroot:\n", "0\n", "0\n"], random_id=True)
             except:
                 repo.abort_write_group()
                 raise
@@ -87,19 +89,13 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             else:
                 repo.commit_write_group()
             repo.pack()
-            self.assertEqual(
-                set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
-                     ('sha1:8e13ef930ff710425830ffd5077146b259b49534',)]),
-                repo.chk_bytes.keys())
+            self.assertEqual(expected_set, repo.chk_bytes.keys())
         finally:
             repo.unlock()
         # and reopening
         repo = repo.bzrdir.open_repository()
         repo.lock_read()
         try:
-            self.assertEqual(
-                set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
-                     ('sha1:8e13ef930ff710425830ffd5077146b259b49534',)]),
-                repo.chk_bytes.keys())
+            self.assertEqual(expected_set, repo.chk_bytes.keys())
         finally:
             repo.unlock()
