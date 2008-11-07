@@ -5,7 +5,7 @@ Bazaar Release Notes
 .. contents::
 
 
-bzr 1.9 2008-10-31
+bzr 1.9 2008-11-07
 ------------------
 
 This release of Bazaar adds a new repository format, ``1.9``, with smaller
@@ -15,6 +15,13 @@ repository.  bzr 1.9 also speeds most operations over the smart server
 protocol, makes annotate faster, and uses less memory when making
 checkouts or pulling large amounts of data.
 
+  BUG FIXES:
+
+   * Fix SSL/https on Python2.6.  (Vincent Ladeuil, #293054)
+
+
+Bzr 1.9rc1 2008-10-31
+---------------------
 
   NEW FEATURES:
 
