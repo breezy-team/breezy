@@ -5,6 +5,8 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   * Support merging upstream from a Bazaar branch. (Closes: #493386)
   * Make --version option and location argument to merge-upstream optional.
   * Add -d option to merge-upstream.
+  * Try to retrieve upstream tarball using get-orig-source rule in
+  debian/rules if everything else fails. (Closes: #498622)
 
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
