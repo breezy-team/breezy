@@ -49,12 +49,8 @@ from bzrlib.plugins.builddeb.errors import AddChangelogError
 TAG_PREFIX = "upstream-"
 
 
-def upstream_revision_suffix(revno):
-  return "bzr%d" % revno
-
-
 def upstream_branch_version(revhistory, reverse_tag_dict, package, 
-                            previous_version):
+                            previous_version, upstream_revision_suffix):
   """Determine the version string of an upstream branch.
 
   The upstream version is determined from the most recent tag
@@ -92,10 +88,10 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
                                                    package=package)
         if upstream_version is not None:
           if r != revhistory[-1]:
-            upstream_version.upstream_version += "+%s" % upstream_revision_suffix(len(revhistory))
+            upstream_version.upstream_version += "+%s" % upstream_revision_suffix(revhistory[-1])
           return upstream_version
 
-  return Version(previous_upstream_version + upstream_revision_suffix(len(revhistory)))
+  return Version(previous_upstream_version + upstream_revision_suffix(revhistory[-1]))
 
 
 def merge_upstream_branch(tree, upstream_branch, package, version=None):
@@ -114,9 +110,13 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
      raise AddChangelogError('debian/changelog')
     cl = Changelog(tree.get_file_text(cl_id))
     previous_version = cl.upstream_version
-    version = upstream_branch_version(upstream_branch.revision_history(),
+    revhistory = upstream_branch.revision_history()
+    def revision_suffix(revid):
+      return "bzr%d" % upstream_branch.get_rev_id(revid, revhistory)
+    version = upstream_branch_version(revhistory,
                 upstream_branch.tags.get_reverse_tag_dict(), package,
-                previous_version)
+                previous_version, 
+                revision_suffix)
   tree.merge_from_branch(upstream_branch)
   return version
 
