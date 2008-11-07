@@ -234,9 +234,12 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
 # Build the appropriate socket wrapper for ssl
 try:
-    import ssl # python 2.6
+    # python 2.6 introduced a better ssl package
+    import ssl
     _ssl_wrap_socket = ssl.wrap_socket
 except ImportError:
+    # python versions prior to 2.6 don't have ssl and ssl.wrap_socket instead
+    # they use httplib.FakeSocket
     def _ssl_wrap_socket(sock, key_file, cert_file):
         ssl_sock = socket.ssl(sock, key_file, cert_file)
         return httplib.FakeSocket(sock, ssl_sock)
