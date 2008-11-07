@@ -27,6 +27,8 @@ IN DEVELOPMENT
   DOCUMENTATION:
 
   API CHANGES:
+    * Transport implementations must provide copy_tree_to_transport.  A default
+      implementation is provided for Transport subclasses.
 
   TESTING:
 
