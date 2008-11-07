@@ -879,6 +879,15 @@ class BTreeGraphIndex(object):
                 "iter_all_entries scales with size of history.")
         if not self.key_count():
             return
+        if self._row_offsets[-1] == 1:
+            # There is only the root node, and we read that via key_count()
+            if self.node_ref_lists:
+                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                    yield (self, key, value, refs)
+            else:
+                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                    yield (self, key, value)
+            return
         start_of_leaves = self._row_offsets[-2]
         end_of_leaves = self._row_offsets[-1]
         needed_nodes = range(start_of_leaves, end_of_leaves)
@@ -1246,6 +1255,7 @@ class BTreeGraphIndex(object):
         :param nodes: The nodes to read. 0 - first node, 1 - second node etc.
         :return: None
         """
+        bytes = None
         ranges = []
         for index in nodes:
             offset = index * _PAGE_SIZE
@@ -1255,11 +1265,9 @@ class BTreeGraphIndex(object):
                 if self._size:
                     size = min(_PAGE_SIZE, self._size)
                 else:
-                    stream = self._transport.get(self._name)
-                    start = stream.read(_PAGE_SIZE)
-                    # Avoid doing this again
-                    self._size = len(start)
-                    size = min(_PAGE_SIZE, self._size)
+                    bytes = self._transport.get_bytes(self._name)
+                    self._size = len(bytes)
+                    break
             else:
                 if offset > self._size:
                     raise AssertionError('tried to read past the end'
@@ -1267,15 +1275,19 @@ class BTreeGraphIndex(object):
                                          % (offset, self._size))
                 size = min(size, self._size - offset)
             ranges.append((offset, size))
-        if not ranges:
-            return
-        if self._file is None:
-            data_ranges = self._transport.readv(self._name, ranges)
+        if bytes is not None:
+            data_ranges = [(start, bytes[start:start+_PAGE_SIZE])
+                           for start in xrange(0, len(bytes), _PAGE_SIZE)]
         else:
-            data_ranges = []
-            for offset, size in ranges:
-                self._file.seek(offset)
-                data_ranges.append((offset, self._file.read(size)))
+            if not ranges:
+                return
+            if self._file is None:
+                data_ranges = self._transport.readv(self._name, ranges)
+            else:
+                data_ranges = []
+                for offset, size in ranges:
+                    self._file.seek(offset)
+                    data_ranges.append((offset, self._file.read(size)))
         for offset, data in data_ranges:
             if offset == 0:
                 # extract the header
