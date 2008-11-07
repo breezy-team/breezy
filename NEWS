@@ -19,6 +19,10 @@ checkouts or pulling large amounts of data.
 
    * Fix SSL/https on Python2.6.  (Vincent Ladeuil, #293054)
 
+    * ``SFTPTransport.readv()`` had a bug when requests were out-of-order.
+      This only triggers some-of-the-time on Knit format repositories.
+      (John Arbash Meinel, #293746)
+
 
 Bzr 1.9rc1 2008-10-31
 ---------------------
