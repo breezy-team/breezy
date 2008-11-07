@@ -405,16 +405,18 @@ class cmd_merge_upstream(Command):
                          type=str)
     distribution_opt = Option('distribution', help="The distribution that "
             "this release is targetted at", type=str)
+    directory_opt = Option('directory', help='Working tree into which to merge.',
+                           short_name='d', type=unicode)
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,
-            distribution_opt, 'revision']
+            distribution_opt, directory_opt, 'revision']
 
-    def run(self, location=None, version=None, distribution=None, package=None,
-            no_user_config=None, revision=None):
+    def run(self, tarball, version=None, distribution=".", package=None,
+            no_user_config=None, directory=None, revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import merge_upstream_branch
-        tree, _ = WorkingTree.open_containing('.')
+        tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
             # Check for uncommitted changes.
