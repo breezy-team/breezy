@@ -48,6 +48,11 @@ from bzrlib.plugins.builddeb.errors import AddChangelogError
 
 TAG_PREFIX = "upstream-"
 
+
+def upstream_revision_suffix(revno):
+  return "bzr%d" % revno
+
+
 def upstream_branch_version(revhistory, reverse_tag_dict, package, 
                             previous_version):
   """Determine the version string of an upstream branch.
@@ -87,10 +92,10 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
                                                    package=package)
         if upstream_version is not None:
           if r != revhistory[-1]:
-            upstream_version.upstream_version += "+bzr%d" % len(revhistory)
+            upstream_version.upstream_version += "+%s" % upstream_revision_suffix(len(revhistory))
           return upstream_version
 
-  return Version(previous_upstream_version + "bzr%d" % len(revhistory))
+  return Version(previous_upstream_version + upstream_revision_suffix(len(revhistory)))
 
 
 def merge_upstream_branch(tree, upstream_branch, package, version=None):
