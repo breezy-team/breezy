@@ -181,8 +181,10 @@ class MutableTree(tree.Tree):
         from bzrlib import commit
         if revprops is None:
             revprops = {}
+        possible_master_transports=[]
         if not 'branch-nick' in revprops:
-            revprops['branch-nick'] = self.branch.nick
+            revprops['branch-nick'] = self.branch._get_nick(
+                possible_master_transports)
         author = kwargs.pop('author', None)
         if author is not None:
             if 'author' in revprops:
@@ -194,7 +196,9 @@ class MutableTree(tree.Tree):
         for hook in MutableTree.hooks['start_commit']:
             hook(self)
         committed_id = commit.Commit().commit(working_tree=self,
-            revprops=revprops, *args, **kwargs)
+            revprops=revprops,
+            possible_master_transports=possible_master_transports,
+            *args, **kwargs)
         return committed_id
 
     def _gather_kinds(self, files, kinds):

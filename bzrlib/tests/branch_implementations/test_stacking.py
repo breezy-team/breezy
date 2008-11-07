@@ -17,12 +17,15 @@
 """Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     )
 from bzrlib.revision import NULL_REVISION
+from bzrlib.smart import server
 from bzrlib.tests import TestNotApplicable, KnownFailure
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
+from bzrlib.transport import get_transport
 
 
 class TestStacking(TestCaseWithBranch):
@@ -108,6 +111,38 @@ class TestStacking(TestCaseWithBranch):
         except (errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             raise TestNotApplicable(e)
+        # stacked repository
+        self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        new_tree = new_dir.open_workingtree()
+        new_branch_revid = new_tree.commit('something local')
+        self.assertRevisionNotInRepository('mainline', new_branch_revid)
+        self.assertRevisionInRepository('newbranch', new_branch_revid)
+
+    # XXX: this helper probably belongs on TestCaseWithTransport
+    def make_smart_server(self, path):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        return remote_transport
+
+    def test_sprout_stacked_from_smart_server(self):
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline')
+        trunk_revid = trunk_tree.commit('mainline')
+        # Make sure that we can make a stacked branch from it
+        try:
+            trunk_tree.bzrdir.sprout('testbranch', stacked=True)
+        except (errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat), e:
+            raise TestNotApplicable(e)
+        # Now serve the original mainline from a smart server
+        remote_transport = self.make_smart_server('mainline')
+        remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
+        # and make branch from the smart server which is stacked
+        new_dir = remote_bzrdir.sprout('newbranch', stacked=True)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
         new_tree = new_dir.open_workingtree()
@@ -336,3 +371,23 @@ class TestStacking(TestCaseWithBranch):
         rtree.lock_read()
         self.addCleanup(rtree.unlock)
         self.assertEqual('new content', rtree.get_file_by_path('a').read())
+
+    def test_transform_fallback_location_hook(self):
+        # The 'transform_fallback_location' branch hook allows us to inspect
+        # and transform the URL of the fallback location for the branch.
+        stack_on = self.make_branch('stack-on')
+        stacked = self.make_branch('stacked')
+        try:
+            stacked.set_stacked_on_url('../stack-on')
+        except (errors.UnstackableRepositoryFormat,
+                errors.UnstackableBranchFormat):
+            raise TestNotApplicable('Format does not support stacking.')
+        self.get_transport().rename('stack-on', 'new-stack-on')
+        hook_calls = []
+        def hook(stacked_branch, url):
+            hook_calls.append(url)
+            return '../new-stack-on'
+        branch.Branch.hooks.install_named_hook(
+            'transform_fallback_location', hook, None)
+        branch.Branch.open('stacked')
+        self.assertEqual(['../stack-on'], hook_calls)

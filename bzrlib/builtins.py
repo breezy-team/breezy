@@ -2586,10 +2586,13 @@ class cmd_whoami(Command):
 
 
 class cmd_nick(Command):
-    """Print or set the branch nickname.  
+    """Print or set the branch nickname.
 
-    If unset, the tree root directory name is used as the nickname
-    To print the current nickname, execute with no argument.  
+    If unset, the tree root directory name is used as the nickname.
+    To print the current nickname, execute with no argument.
+
+    Bound branches use the nickname of its master branch unless it is set
+    locally.
     """
 
     _see_also = ['info']
@@ -3441,6 +3444,9 @@ class cmd_missing(Command):
             show_ids=False, verbose=False, this=False, other=False,
             include_merges=False):
         from bzrlib.missing import find_unmerged, iter_log_revisions
+        def message(s):
+            if not is_quiet():
+                self.outf.write(s)
 
         if this:
             mine_only = this
@@ -3464,7 +3470,7 @@ class cmd_missing(Command):
                                              " or specified.")
             display_url = urlutils.unescape_for_display(parent,
                                                         self.outf.encoding)
-            self.outf.write("Using saved parent location: "
+            message("Using saved parent location: "
                     + display_url + "\n")
 
         remote_branch = Branch.open(other_branch)
@@ -3488,8 +3494,8 @@ class cmd_missing(Command):
 
                 status_code = 0
                 if local_extra and not theirs_only:
-                    self.outf.write("You have %d extra revision(s):\n" %
-                                    len(local_extra))
+                    message("You have %d extra revision(s):\n" %
+                        len(local_extra))
                     for revision in iter_log_revisions(local_extra,
                                         local_branch.repository,
                                         verbose):
@@ -3501,9 +3507,9 @@ class cmd_missing(Command):
 
                 if remote_extra and not mine_only:
                     if printed_local is True:
-                        self.outf.write("\n\n\n")
-                    self.outf.write("You are missing %d revision(s):\n" %
-                                    len(remote_extra))
+                        message("\n\n\n")
+                    message("You are missing %d revision(s):\n" %
+                        len(remote_extra))
                     for revision in iter_log_revisions(remote_extra,
                                         remote_branch.repository,
                                         verbose):
@@ -3512,15 +3518,15 @@ class cmd_missing(Command):
 
                 if mine_only and not local_extra:
                     # We checked local, and found nothing extra
-                    self.outf.write('This branch is up to date.\n')
+                    message('This branch is up to date.\n')
                 elif theirs_only and not remote_extra:
                     # We checked remote, and found nothing extra
-                    self.outf.write('Other branch is up to date.\n')
+                    message('Other branch is up to date.\n')
                 elif not (mine_only or theirs_only or local_extra or
                           remote_extra):
                     # We checked both branches, and neither one had extra
                     # revisions
-                    self.outf.write("Branches are up to date.\n")
+                    message("Branches are up to date.\n")
             finally:
                 remote_branch.unlock()
         finally:
@@ -3759,6 +3765,10 @@ class cmd_bind(Command):
 
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.
+
+    Bound branches use the nickname of its master branch unless it is set
+    locally, in which case binding will update the the local nickname to be
+    that of the master.
     """
 
     _see_also = ['checkouts', 'unbind']
@@ -3783,6 +3793,8 @@ class cmd_bind(Command):
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                          ' Try merging, and then bind again.')
+        if b.get_config().has_explicit_nickname():
+            b.nick = b_other.nick
 
 
 class cmd_unbind(Command):
@@ -4648,7 +4660,7 @@ class cmd_switch(Command):
     For heavyweight checkouts, this checks that there are no local commits
     versus the current bound branch, then it makes the local branch a mirror
     of the new location and binds to it.
-    
+
     In both cases, the working tree is updated and uncommitted changes
     are merged. The user can commit or revert these as they desire.
 
@@ -4658,6 +4670,10 @@ class cmd_switch(Command):
     directory of the current branch. For example, if you are currently in a
     checkout of /path/to/branch, specifying 'newbranch' will find a branch at
     /path/to/newbranch.
+
+    Bound branches use the nickname of its master branch unless it is set
+    locally, in which case switching will update the the local nickname to be
+    that of the master.
     """
 
     takes_args = ['to_location']
@@ -4669,6 +4685,7 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        branch = control_dir.open_branch()
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
@@ -4681,6 +4698,9 @@ class cmd_switch(Command):
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
+        if branch.get_config().has_explicit_nickname():
+            branch = control_dir.open_branch() #get the new branch!
+            branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
@@ -4705,6 +4725,72 @@ class cmd_hooks(Command):
                                     (branch_hooks.get_hook_name(hook),))
             else:
                 self.outf.write("  <no hooks installed>\n")
+
+
+class cmd_shelve(Command):
+    """Temporarily set aside some changes from the current tree.
+
+    Shelve allows you to temporarily put changes you've made "on the shelf",
+    ie. out of the way, until a later time when you can bring them back from
+    the shelf with the 'unshelve' command.
+
+    Shelve is intended to help separate several sets of changes that have
+    been inappropriately mingled.  If you just want to get rid of all changes
+    and you don't need to restore them later, use revert.  If you want to
+    shelve all text changes at once, use shelve --all.
+
+    If filenames are specified, only the changes to those files will be
+    shelved. Other files will be left untouched.
+
+    If a revision is specified, changes since that revision will be shelved.
+
+    You can put multiple items on the shelf, and by default, 'unshelve' will
+    restore the most recently shelved changes.
+
+    While you have patches on the shelf you can view and manipulate them with
+    the 'shelf' command. Run 'bzr shelf -h' for more info.
+    """
+
+    takes_args = ['file*']
+
+    takes_options = [
+        'revision',
+        Option('all', help='Shelve all changes.'),
+        'message',
+    ]
+    _see_also = ['unshelve']
+
+    def run(self, revision=None, all=False, file_list=None, message=None):
+        from bzrlib.shelf_ui import Shelver
+        try:
+            Shelver.from_args(revision, all, file_list, message).run()
+        except errors.UserAbort:
+            return 0
+
+
+class cmd_unshelve(Command):
+    """Restore shelved changes.
+
+    By default, the most recently shelved changes are restored. However if you
+    specify a patch by name those changes will be restored instead.  This
+    works best when the changes don't depend on each other.
+    """
+
+    takes_args = ['shelf_id?']
+    takes_options = [
+        RegistryOption.from_kwargs(
+            'action', help="The action to perform.",
+            enum_switch=False, value_switches=True,
+            apply="Apply changes and remove from the shelf.",
+            dry_run="Show changes, but do not apply or remove them.",
+            delete_only="Delete changes without applying them."
+        )
+    ]
+    _see_also = ['shelve']
+
+    def run(self, shelf_id=None, action='apply'):
+        from bzrlib.shelf_ui import Unshelver
+        Unshelver.from_args(shelf_id, action).run()
 
 
 def _create_prefix(cur_transport):

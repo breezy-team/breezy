@@ -353,13 +353,48 @@ def load_tests(standard_tests, module, loader):
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual("unknown", plugin.__version__)
 
-    def test___version__with_version_info(self):
+    def test_str__version__with_version_info(self):
+        self.setup_plugin("version_info = '1.2.3'")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3", plugin.__version__)
+
+    def test_noniterable__version__with_version_info(self):
+        self.setup_plugin("version_info = (1)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1", plugin.__version__)
+
+    def test_1__version__with_version_info(self):
+        self.setup_plugin("version_info = (1,)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1", plugin.__version__)
+
+    def test_1_2__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2", plugin.__version__)
+
+    def test_1_2_3__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3", plugin.__version__)
+
+    def test_candidate__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'candidate', 1)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3rc1", plugin.__version__)
+
+    def test_dev__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'dev', 0)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3dev", plugin.__version__)
+
+    def test_dev_fallback__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
         plugin = bzrlib.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3dev4", plugin.__version__)
+        self.assertEqual("1.2.3.dev.4", plugin.__version__)
 
     def test_final__version__with_version_info(self):
-        self.setup_plugin("version_info = (1, 2, 3, 'final', 4)")
+        self.setup_plugin("version_info = (1, 2, 3, 'final', 0)")
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual("1.2.3", plugin.__version__)
 
@@ -412,8 +447,8 @@ class TestPluginHelp(TestCaseInTempDir):
             self.assertContainsRe(help, '\[myplug\]')
         finally:
             # unregister command
-            if bzrlib.commands.plugin_cmds.get('myplug', None):
-                del bzrlib.commands.plugin_cmds['myplug']
+            if 'myplug' in bzrlib.commands.plugin_cmds:
+                bzrlib.commands.plugin_cmds.remove('myplug')
             # remove the plugin 'myplug'
             if getattr(bzrlib.plugins, 'myplug', None):
                 delattr(bzrlib.plugins, 'myplug')

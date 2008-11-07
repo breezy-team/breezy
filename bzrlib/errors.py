@@ -134,6 +134,9 @@ class BzrError(StandardError):
             s = str(s)
         return s
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, str(self))
+
     def _get_format_string(self):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
@@ -1422,6 +1425,21 @@ class KnitCorrupt(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.how = how
+
+
+class SHA1KnitCorrupt(KnitCorrupt):
+
+    _fmt = ("Knit %(filename)s corrupt: sha-1 of reconstructed text does not "
+        "match expected sha-1. key %(key)s expected sha %(expected)s actual "
+        "sha %(actual)s")
+
+    def __init__(self, filename, actual, expected, key, content):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.actual = actual
+        self.expected = expected
+        self.key = key
+        self.content = content
 
 
 class KnitDataStreamIncompatible(KnitError):
@@ -2890,3 +2908,20 @@ class TipChangeRejected(BzrError):
     def __init__(self, msg):
         self.msg = msg
 
+
+class ShelfCorrupt(BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
+class NoSuchShelfId(BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class UserAbort(BzrError):
+
+    _fmt = 'The user aborted the operation.'

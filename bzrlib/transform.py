@@ -26,9 +26,11 @@ from bzrlib import (
     delta,
     errors,
     inventory,
+    multiparent,
     osutils,
     revision as _mod_revision,
     )
+from bzrlib.util import bencode
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
@@ -48,6 +50,7 @@ from bzrlib.osutils import (
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
+        deprecated_in,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
@@ -1123,6 +1126,105 @@ class TreeTransformBase(object):
         """
         return _PreviewTree(self)
 
+    def _text_parent(self, trans_id):
+        file_id = self.tree_file_id(trans_id)
+        try:
+            if file_id is None or self._tree.kind(file_id) != 'file':
+                return None
+        except errors.NoSuchFile:
+            return None
+        return file_id
+
+    def _get_parents_texts(self, trans_id):
+        """Get texts for compression parents of this file."""
+        file_id = self._text_parent(trans_id)
+        if file_id is None:
+            return ()
+        return (self._tree.get_file_text(file_id),)
+
+    def _get_parents_lines(self, trans_id):
+        """Get lines for compression parents of this file."""
+        file_id = self._text_parent(trans_id)
+        if file_id is None:
+            return ()
+        return (self._tree.get_file_lines(file_id),)
+
+    def serialize(self, serializer):
+        """Serialize this TreeTransform.
+
+        :param serializer: A Serialiser like pack.ContainerSerializer.
+        """
+        new_name = dict((k, v.encode('utf-8')) for k, v in
+                        self._new_name.items())
+        new_executability = dict((k, int(v)) for k, v in
+                                 self._new_executability.items())
+        tree_path_ids = dict((k.encode('utf-8'), v)
+                             for k, v in self._tree_path_ids.items())
+        attribs = {
+            '_id_number': self._id_number,
+            '_new_name': new_name,
+            '_new_parent': self._new_parent,
+            '_new_executability': new_executability,
+            '_new_id': self._new_id,
+            '_tree_path_ids': tree_path_ids,
+            '_removed_id': list(self._removed_id),
+            '_removed_contents': list(self._removed_contents),
+            '_non_present_ids': self._non_present_ids,
+            }
+        yield serializer.bytes_record(bencode.bencode(attribs),
+                                      (('attribs',),))
+        for trans_id, kind in self._new_contents.items():
+            if kind == 'file':
+                cur_file = open(self._limbo_name(trans_id), 'rb')
+                try:
+                    lines = osutils.split_lines(cur_file.read())
+                finally:
+                    cur_file.close()
+                parents = self._get_parents_lines(trans_id)
+                mpdiff = multiparent.MultiParent.from_lines(lines, parents)
+                content = ''.join(mpdiff.to_patch())
+            if kind == 'directory':
+                content = ''
+            if kind == 'symlink':
+                content = os.readlink(self._limbo_name(trans_id))
+            yield serializer.bytes_record(content, ((trans_id, kind),))
+
+
+    def deserialize(self, records):
+        """Deserialize a stored TreeTransform.
+
+        :param records: An iterable of (names, content) tuples, as per
+            pack.ContainerPushParser.
+        """
+        names, content = records.next()
+        attribs = bencode.bdecode(content)
+        self._id_number = attribs['_id_number']
+        self._new_name = dict((k, v.decode('utf-8'))
+                            for k, v in attribs['_new_name'].items())
+        self._new_parent = attribs['_new_parent']
+        self._new_executability = dict((k, bool(v)) for k, v in
+            attribs['_new_executability'].items())
+        self._new_id = attribs['_new_id']
+        self._r_new_id = dict((v, k) for k, v in self._new_id.items())
+        self._tree_path_ids = {}
+        self._tree_id_paths = {}
+        for bytepath, trans_id in attribs['_tree_path_ids'].items():
+            path = bytepath.decode('utf-8')
+            self._tree_path_ids[path] = trans_id
+            self._tree_id_paths[trans_id] = path
+        self._removed_id = set(attribs['_removed_id'])
+        self._removed_contents = set(attribs['_removed_contents'])
+        self._non_present_ids = attribs['_non_present_ids']
+        for ((trans_id, kind),), content in records:
+            if kind == 'file':
+                mpdiff = multiparent.MultiParent.from_patch(content)
+                lines = mpdiff.to_lines(self._get_parents_texts(trans_id))
+                self.create_file(lines, trans_id)
+            if kind == 'directory':
+                self.create_directory(trans_id)
+            if kind == 'symlink':
+                self.create_symlink(content.decode('utf-8'), trans_id)
+
 
 class TreeTransform(TreeTransformBase):
     """Represent a tree transformation.
@@ -1458,6 +1560,9 @@ class _PreviewTree(tree.Tree):
         self._final_paths = FinalPaths(transform)
         self.__by_parent = None
         self._parent_ids = []
+        self._all_children_cache = {}
+        self._path2trans_id_cache = {}
+        self._final_name_cache = {}
 
     def _changes(self, file_id):
         for changes in self._transform.iter_changes():
@@ -1550,15 +1655,25 @@ class _PreviewTree(tree.Tree):
             return self._transform._tree.has_id(file_id)
 
     def _path2trans_id(self, path):
+        # We must not use None here, because that is a valid value to store.
+        trans_id = self._path2trans_id_cache.get(path, object)
+        if trans_id is not object:
+            return trans_id
         segments = splitpath(path)
         cur_parent = self._transform.root
         for cur_segment in segments:
             for child in self._all_children(cur_parent):
-                if self._transform.final_name(child) == cur_segment:
+                final_name = self._final_name_cache.get(child)
+                if final_name is None:
+                    final_name = self._transform.final_name(child)
+                    self._final_name_cache[child] = final_name
+                if final_name == cur_segment:
                     cur_parent = child
                     break
             else:
+                self._path2trans_id_cache[path] = None
                 return None
+        self._path2trans_id_cache[path] = cur_parent
         return cur_parent
 
     def path2id(self, path):
@@ -1572,10 +1687,14 @@ class _PreviewTree(tree.Tree):
             raise errors.NoSuchId(self, file_id)
 
     def _all_children(self, trans_id):
+        children = self._all_children_cache.get(trans_id)
+        if children is not None:
+            return children
         children = set(self._transform.iter_tree_children(trans_id))
         # children in the _new_parent set are provided by _by_parent.
         children.difference_update(self._transform._new_parent.keys())
         children.update(self._by_parent.get(trans_id, []))
+        self._all_children_cache[trans_id] = children
         return children
 
     def iter_children(self, file_id):
@@ -1690,7 +1809,14 @@ class _PreviewTree(tree.Tree):
         try:
             return self._transform._new_executability[trans_id]
         except KeyError:
-            return self._transform._tree.is_executable(file_id, path)
+            try:
+                return self._transform._tree.is_executable(file_id, path)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    return False
+                raise
+            except errors.NoSuchId:
+                return False
 
     def path_content_summary(self, path):
         trans_id = self._path2trans_id(path)
@@ -1728,11 +1854,11 @@ class _PreviewTree(tree.Tree):
                       require_versioned=True, want_unversioned=False):
         """See InterTree.iter_changes.
 
-        This implementation does not support include_unchanged, specific_files,
-        or want_unversioned.  extra_trees, require_versioned, and pb are
-        ignored.
+        This has a fast path that is only used when the from_tree matches
+        the transform tree, and no fancy options are supplied.
         """
-        if from_tree is not self._transform._tree:
+        if (from_tree is not self._transform._tree or include_unchanged or
+            specific_files or want_unversioned):
             return tree.InterTree(from_tree, self).iter_changes(
                 include_unchanged=include_unchanged,
                 specific_files=specific_files,
@@ -1740,10 +1866,6 @@ class _PreviewTree(tree.Tree):
                 extra_trees=extra_trees,
                 require_versioned=require_versioned,
                 want_unversioned=want_unversioned)
-        if include_unchanged:
-            raise ValueError('include_unchanged is not supported')
-        if specific_files is not None:
-            raise ValueError('specific_files is not supported')
         if want_unversioned:
             raise ValueError('want_unversioned is not supported')
         return self._transform.iter_changes()
@@ -1755,13 +1877,6 @@ class _PreviewTree(tree.Tree):
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
-
-    def get_file_text(self, file_id):
-        text_file = self.get_file(file_id)
-        try:
-            return text_file.read()
-        finally:
-            text_file.close()
 
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
@@ -2140,8 +2255,12 @@ def new_by_entry(tt, entry, parent_id, tree):
         raise errors.BadFileKindError(name, kind)
 
 
+@deprecated_function(deprecated_in((1, 9, 0)))
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
-    """Create new file contents according to an inventory entry."""
+    """Create new file contents according to an inventory entry.
+
+    DEPRECATED.  Use create_from_tree instead.
+    """
     if entry.kind == "file":
         if lines is None:
             lines = tree.get_file(entry.file_id).readlines()
@@ -2150,6 +2269,25 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_symlink(tree.get_symlink_target(entry.file_id), trans_id)
     elif entry.kind == "directory":
         tt.create_directory(trans_id)
+
+
+def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
+    """Create new file contents according to tree contents."""
+    kind = tree.kind(file_id)
+    if kind == 'directory':
+        tt.create_directory(trans_id)
+    elif kind == "file":
+        if bytes is None:
+            tree_file = tree.get_file(file_id)
+            try:
+                bytes = tree_file.readlines()
+            finally:
+                tree_file.close()
+        tt.create_file(bytes, trans_id)
+    elif kind == "symlink":
+        tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
+    else:
+        raise AssertionError('Unknown kind %r' % kind)
 
 
 def create_entry_executability(tt, entry, trans_id):
