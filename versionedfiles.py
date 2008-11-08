@@ -71,6 +71,27 @@ class SvnTexts(VersionedFiles):
                         sha1=osutils.sha_strings(lines),
                         text=''.join(lines))
 
+    def _get_parent(self, fileid, revid):
+        (branch_path, revnum, mapping) = self.repository.lookup_revision_id(revid)
+        fileidmap = self.repository.get_fileid_map(revnum, branch_path, mapping)
+        path = None
+        for k, (v_fileid, v_revid) in fileidmap.items():
+            if v_fileid == fileid:
+                path = k
+        if path is None:
+            return
+
+        svn_fileprops = self.repository.branchprop_list.get_changed_properties(branch_path, revnum)
+        svn_revprops = self.repository._log.revprop_list(revnum)
+        text_parents = mapping.import_text_parents(svn_revprops, svn_fileprops)
+        if path in text_parents:
+            return text_parents[path]
+
+        # Not explicitly record - so find the last place where this file was modified
+        # and report that.
+
+        return 
+
     def get_parent_map(self, keys):
         invs = {}
 

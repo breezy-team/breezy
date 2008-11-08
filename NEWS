@@ -8,6 +8,8 @@ bzr-svn 0.4.15	UNRELEASED
 
    * Support copying from files with spaces in their names over http. (#268304)
 
+   * Fix knit corruption because text revisions weren't stored properly. (#277043)
+
 bzr-svn 0.4.14	2008-11-03
 
   BUG FIXES
