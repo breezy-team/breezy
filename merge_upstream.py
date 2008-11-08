@@ -42,6 +42,7 @@ from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      )
 
 from bzrlib.plugins.builddeb.errors import AddChangelogError
+from bzrlib.plugins.builddeb.util import get_snapshot_revision
 
 # TODO: way of working out new version number.
 
@@ -68,16 +69,7 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
   :param add_rev: Function that can add a revision suffix to a version string.
   :return: Name of the upstream revision.
   """
-  # Parse previous_version
-  # if it contains ~bzr:
-  if "~bzr" in previous_version or "+bzr" in previous_version:
-    # check if new tags appeared since previous_version's revision
-    # if they didn't, update revno in ~bzr<revno>
-    bzr_revno = int(previous_version[previous_version.find("bzr")+3:])
-  else:
-    bzr_revno = 0
-
-  for r in reversed(revhistory[bzr_revno:]):
+  for r in reversed(revhistory):
     if r in reverse_tag_dict:
       # If there is a newer version tagged in branch, 
       # convert to upstream version 
@@ -140,6 +132,12 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
     cl = Changelog(tree.get_file_text(cl_id))
     previous_version = cl.upstream_version
     revhistory = upstream_branch.revision_history()
+    previous_revspec = get_snapshot_revision(previous_version)
+    if previous_revspec is not None:
+      previous_revno, _ previous_revspec.in_history(upstream_branch)
+      # Trim revision history - we don't care about any revisions 
+      # before the revision of the previous version
+      revhistory = revhistory[previous_revno:]
     version = upstream_branch_version(revhistory,
                 upstream_branch.tags.get_reverse_tag_dict(), package,
                 previous_version, 
