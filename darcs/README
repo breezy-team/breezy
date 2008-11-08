@@ -100,3 +100,8 @@ Using git:
 ----
 $ git clone git://vmiklos.hu/darcs-fast-export
 ----
+
+== TODO
+
+- support the darcs2 format
+- support incremental conversion
