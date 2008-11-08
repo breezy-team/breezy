@@ -496,11 +496,11 @@ class cmd_merge_upstream(Command):
                 if revision is not None:
                   if len(revision) > 1:
                     raise BzrCommandError("builddeb takes only a single --revision")
-                  upstream_revid = revision[0].in_branch(upstream_branch).rev_id
+                  upstream_revspec = revision[0]
                 else:
-                  upstream_revid = None
+                  upstream_revspec = None
                 version = merge_upstream_branch(tree, upstream_branch, package, 
-                                                upstream_revid, version)
+                                                upstream_revspec, version)
                 info("Using version string %s for upstream branch." % (version))
         finally:
             tree.unlock()
