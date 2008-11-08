@@ -344,6 +344,11 @@ class BzrSvnMappingv3FileProps(mapping.BzrSvnMappingFileProps, BzrSvnMappingv3):
         if can_use_custom_revprops:
             self.revprop_map.export_text_parents(can_use_custom_revprops, text_parents, svn_revprops, fileprops)
 
+    def export_text_revisions(self, can_use_custom_revprops, text_revisions, svn_revprops, fileprops):
+        mapping.BzrSvnMappingFileProps.export_text_revisions(self, can_use_custom_revprops, text_revisions, svn_revprops, fileprops)
+        if can_use_custom_revprops:
+            self.revprop_map.export_text_revisions(can_use_custom_revprops, text_revisions, svn_revprops, fileprops)
+
     def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops):
         (svn_revprops, fileprops) = mapping.BzrSvnMappingFileProps.export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, old_fileprops)
         if can_use_custom_revprops:
@@ -393,6 +398,12 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
         else:
             return self.fileprops.import_text_parents(svn_revprops, fileprops)
 
+    def import_text_revisions(self, svn_revprops, fileprops):
+        if svn_revprops.has_key(mapping.SVN_REVPROP_BZR_TEXT_REVISIONS):
+            return self.revprops.import_text_revisions(svn_revprops, fileprops)
+        else:
+            return self.fileprops.import_text_revisions(svn_revprops, fileprops)
+
     def import_fileid_map(self, svn_revprops, fileprops):
         if svn_revprops.has_key(mapping.SVN_REVPROP_BZR_MAPPING_VERSION):
             return self.revprops.import_fileid_map(svn_revprops, fileprops)
@@ -414,6 +425,10 @@ class BzrSvnMappingv3Hybrid(BzrSvnMappingv3):
     def export_text_parents(self, can_use_custom_revprops, text_parents, revprops, fileprops):
         self.fileprops.export_text_parents(can_use_custom_revprops, text_parents, revprops, fileprops)
         self.revprops.export_text_parents(can_use_custom_revprops, text_parents, revprops, fileprops)
+
+    def export_text_revisions(self, can_use_custom_revprops, text_revisions, revprops, fileprops):
+        self.fileprops.export_text_revisions(can_use_custom_revprops, text_revisions, revprops, fileprops)
+        self.revprops.export_text_revisions(can_use_custom_revprops, text_revisions, revprops, fileprops)
 
     def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         self.fileprops.import_revision(svn_revprops, fileprops, uuid, branch, revnum, rev)

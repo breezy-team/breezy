@@ -108,7 +108,7 @@ class FileIdMap(object):
         self.repos = repos
 
     def _use_text_revids(self, mapping, revmeta, map):
-        text_revids = mapping.import_text_parents(revmeta.revprops, revmeta.fileprops).items()
+        text_revids = mapping.import_text_revisions(revmeta.revprops, revmeta.fileprops).items()
         for path, revid in text_revids:
             assert path in map
             map[path] = (map[path][0], revid)

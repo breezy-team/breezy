@@ -38,6 +38,7 @@ from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import parse_revision_id
 from bzrlib.plugins.svn.repository import SvnRepositoryFormat, SvnRepository
 from bzrlib.plugins.svn.transport import _url_escape_uri
+from bzrlib.plugins.svn.versionedfiles import SvnTexts
 
 
 def _revision_id_to_svk_feature(revid):
@@ -131,7 +132,7 @@ class SvnCommitBuilder(RootCommitBuilder):
     def __init__(self, repository, branch, parents, config, timestamp, 
                  timezone, committer, revprops, revision_id, old_inv=None,
                  push_metadata=True,
-                 graph=None):
+                 graph=None, texts=None):
         """Instantiate a new SvnCommitBuilder.
 
         :param repository: SvnRepository to commit to.
@@ -152,6 +153,8 @@ class SvnCommitBuilder(RootCommitBuilder):
             config, timestamp, timezone, committer, revprops, revision_id)
         self.branch = branch
         self.push_metadata = push_metadata
+        self._text_parents = {}
+        self._texts = texts
 
         # Gather information about revision on top of which the commit is 
         # happening
@@ -433,30 +436,32 @@ class SvnCommitBuilder(RootCommitBuilder):
                     old_inv.id2path(child_ie.file_id) != new_child_path or
                     old_inv[child_ie.file_id].revision != child_ie.revision or
                     old_inv[child_ie.file_id].parent_id != child_ie.parent_id):
-                    ret.append((child_ie.file_id, new_child_path, child_ie.revision))
+                    ret.append((child_ie.file_id, new_child_path, child_ie.revision, self._text_parents[child_ie.file_id]))
 
                 if (child_ie.kind == 'directory' and 
                     child_ie.file_id in self.visit_dirs):
                     ret += _dir_process_file_id(old_inv, new_inv, new_child_path, child_ie.file_id)
             return ret
 
-
         fileids = {}
         text_parents = {}
-
+        text_revisions = {}
         changes = []
 
         if (self.old_inv.root is None or 
             self.new_inventory.root.file_id != self.old_inv.root.file_id):
-            changes.append((self.new_inventory.root.file_id, "", self.new_inventory.root.revision))
+            changes.append((self.new_inventory.root.file_id, "", self.new_inventory.root.revision, self._text_parents[self.new_inventory.root.file_id]))
 
         changes += _dir_process_file_id(self.old_inv, self.new_inventory, "", self.new_inventory.root.file_id)
 
-        for id, path, revid in changes:
+        for id, path, revid, parents in changes:
             fileids[path] = id
             if revid is not None and revid != self.base_revid and revid != self._new_revision_id:
-                text_parents[path] = revid
-        return (fileids, text_parents)
+                text_revisions[path] = revid
+            if ((id not in self.old_inv and parents != []) or 
+                (id in self.old_inv and parents != [self.base_revid])):
+                text_parents[path] = parents
+        return (fileids, text_revisions, text_parents)
 
     def commit(self, message):
         """Finish the commit.
@@ -476,8 +481,9 @@ class SvnCommitBuilder(RootCommitBuilder):
         repository_latest_revnum = self.repository.get_latest_revnum()
         lock = self.repository.transport.lock_write(".")
 
-        (fileids, text_parents) = self._determine_texts_identity()
+        (fileids, text_revisions, text_parents) = self._determine_texts_identity()
 
+        self.base_mapping.export_text_revisions(self.supports_custom_revprops, text_revisions, self._svn_revprops, self._svnprops)
         self.base_mapping.export_text_parents(self.supports_custom_revprops, text_parents, 
                                               self._svn_revprops, self._svnprops)
         self.base_mapping.export_fileid_map(self.supports_custom_revprops, fileids, 
@@ -589,6 +595,27 @@ class SvnCommitBuilder(RootCommitBuilder):
                 accessed when the entry has a revision of None - that is when 
                 it is a candidate to commit.
         """
+        if self._texts is None:
+            self._text_parents[ie.file_id] = [parent_inv[ie.file_id].revision for parent_inv in parent_invs if ie.file_id in parent_inv]
+        elif isinstance(self._texts, SvnTexts):
+            overridden_parents = self._texts._get_parent(ie.file_id, ie.revision)
+            if overridden_parents is None:
+                if ie.file_id in self.old_inv:
+                    self._text_parents[ie.file_id] = [self.old_inv[ie.file_id].revision]
+                else:
+                    self._text_parents[ie.file_id] = []
+            else:
+                self._text_parents[ie.file_id] = overridden_parents
+        else:
+            key = (ie.file_id, ie.revision)
+            parent_map = self._texts.get_parent_map([key])
+            if ie.parent_id is None and (not key in parent_map or parent_map[key] is None):
+                # non-rich-root repositories don't have a text for the root
+                self._text_parents[ie.file_id] = self.parents
+            else:
+                assert parent_map[key] is not None, "No parents found for %r" % (key,)
+                self._text_parents[ie.file_id] = [r[1] for r in parent_map[key]]
+
         self.new_inventory.add(ie)
         assert (ie.file_id not in self.old_inv or 
                 self.old_inv[ie.file_id].revision is not None)
@@ -745,7 +772,8 @@ def push_revision_tree(graph, target, config, source_repo, base_revid,
                                rev.timezone, rev.committer, rev.properties, 
                                revision_id, base_tree.inventory, 
                                push_metadata=push_metadata,
-                               graph=graph)
+                               graph=graph,
+                               texts=source_repo.texts)
                          
     replay_delta(builder, base_tree, old_tree)
     try:

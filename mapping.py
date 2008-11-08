@@ -32,6 +32,7 @@ SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_REVISION_INFO = 'bzr:revision-info'
 SVN_PROP_BZR_REVISION_ID = 'bzr:revision-id:v%d-' % MAPPING_VERSION
+SVN_PROP_BZR_TEXT_REVISIONS = 'bzr:text-revisions'
 SVN_PROP_BZR_TEXT_PARENTS = 'bzr:text-parents'
 SVN_PROP_BZR_LOG = 'bzr:log'
 
@@ -46,6 +47,7 @@ SVN_REVPROP_BZR_ROOT = 'bzr:root'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 SVN_REVPROP_BZR_TIMESTAMP = 'bzr:timestamp'
 SVN_REVPROP_BZR_LOG = 'bzr:log'
+SVN_REVPROP_BZR_TEXT_REVISIONS = 'bzr:text-revisions'
 SVN_REVPROP_BZR_TEXT_PARENTS = 'bzr:text-parents'
 
 
@@ -384,6 +386,15 @@ class BzrSvnMapping(object):
         """
         raise NotImplementedError(self.export_text_parents)
 
+    def export_text_revisions(self, can_use_custom_revprops, text_revisions, revprops, fileprops):
+        """Store a text revisions map.
+
+        :param text_parents: Text revision map
+        :param revprops: Revision properties
+        :param fileprops: File properties
+        """
+        raise NotImplementedError(self.export_text_revisions)
+
     def export_revision(self, can_use_custom_revprops, branch_root, timestamp, timezone, committer, revprops, revision_id, revno, merges, fileprops):
         """Determines the revision properties and branch root file 
         properties.
@@ -472,8 +483,20 @@ def parse_text_parents_property(text):
     return ret
 
 
+def parse_text_revisions_property(text):
+    ret = {}
+    for line in text.splitlines():
+        (entry, revid) = line.split("\t", 1)
+        ret[urllib.unquote(entry)] = osutils.safe_revision_id(revid)
+    return ret
+
+
 def generate_text_parents_property(text_parents):
     return "".join(["%s\t%s\n" % (urllib.quote(path.encode("utf-8")), text_parents[path]) for path in sorted(text_parents.keys())])
+
+
+def generate_text_revisions_property(text_revisions):
+    return "".join(["%s\t%s\n" % (urllib.quote(path.encode("utf-8")), text_revisions[path]) for path in sorted(text_revisions.keys())])
 
 
 class BzrSvnMappingFileProps(object):
@@ -496,11 +519,23 @@ class BzrSvnMappingFileProps(object):
             return {}
         return parse_text_parents_property(metadata)
 
+    def import_text_revisions(self, svn_revprops, fileprops):
+        metadata = fileprops.get(SVN_PROP_BZR_TEXT_REVISIONS)
+        if metadata is None:
+            return {}
+        return parse_text_revisions_property(metadata)
+
     def export_text_parents(self, can_use_custom_revprops, text_parents, svn_revprops, fileprops):
         if text_parents != {}:
             fileprops[SVN_PROP_BZR_TEXT_PARENTS] = generate_text_parents_property(text_parents)
         else:
             fileprops[SVN_PROP_BZR_TEXT_PARENTS] = ""
+
+    def export_text_revisions(self, can_use_custom_revprops, text_revisions, svn_revprops, fileprops):
+        if text_revisions != {}:
+            fileprops[SVN_PROP_BZR_TEXT_REVISIONS] = generate_text_revisions_property(text_revisions)
+        else:
+            fileprops[SVN_PROP_BZR_TEXT_REVISIONS] = ""
 
     def get_rhs_parents(self, branch_path, revprops, fileprops):
         bzr_merges = fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
@@ -600,8 +635,16 @@ class BzrSvnMappingRevProps(object):
             return {}
         return parse_text_parents_property(svn_revprops[SVN_REVPROP_BZR_TEXT_PARENTS])
 
+    def import_text_revisions(self, svn_revprops, fileprops):
+        if not svn_revprops.has_key(SVN_REVPROP_BZR_TEXT_REVISIONS):
+            return {}
+        return parse_text_revisions_property(svn_revprops[SVN_REVPROP_BZR_TEXT_REVISIONS])
+
     def export_text_parents(self, can_use_custom_revprops, text_parents, svn_revprops, fileprops):
         svn_revprops[SVN_REVPROP_BZR_TEXT_PARENTS] = generate_text_parents_property(text_parents)
+
+    def export_text_revisions(self, can_use_custom_revprops, text_revisions, svn_revprops, fileprops):
+        svn_revprops[SVN_REVPROP_BZR_TEXT_REVISIONS] = generate_text_revisions_property(text_revisions)
 
     def get_rhs_parents(self, branch_path, svn_revprops, 
                         fileprops):
