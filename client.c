@@ -373,7 +373,7 @@ static PyObject *client_commit(PyObject *self, PyObject *args, PyObject *kwargs)
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
-	if (!string_list_to_apr_array(temp_pool, targets, &apr_targets)) {
+	if (!path_list_to_apr_array(temp_pool, targets, &apr_targets)) {
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	}
@@ -402,7 +402,7 @@ static PyObject *client_delete(PyObject *self, PyObject *args)
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
-	if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
+	if (!path_list_to_apr_array(temp_pool, paths, &apr_paths)) {
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	}
@@ -515,7 +515,7 @@ static PyObject *client_update(PyObject *self, PyObject *args)
 	temp_pool = Pool(NULL);
 	if (temp_pool == NULL)
 		return NULL;
-	if (!string_list_to_apr_array(temp_pool, paths, &apr_paths)) {
+	if (!path_list_to_apr_array(temp_pool, paths, &apr_paths)) {
 		apr_pool_destroy(temp_pool);
 		return NULL;
 	}
