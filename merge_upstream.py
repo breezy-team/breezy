@@ -65,6 +65,8 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
   :param reverse_tag_dict: Reverse tag dictionary (revid -> list of tags)
   :param package: Name of package.
   :param previous_version: Previous upstream version in debian changelog.
+  :param upstream_revision_suffix: Function that can add a revision suffix 
+                                   to a version string.
   :return: Name of the upstream revision.
   """
   # Parse previous_version
@@ -73,10 +75,8 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
     # check if new tags appeared since previous_version's revision
     # if they didn't, update revno in ~bzr<revno>
     bzr_revno = int(previous_version[previous_version.find("bzr")+3:])
-    previous_upstream_version = previous_version[:previous_version.find("bzr")]
   else:
     bzr_revno = 0
-    previous_upstream_version = previous_version + "+"
 
   for r in reversed(revhistory[bzr_revno:]):
     if r in reverse_tag_dict:
@@ -88,10 +88,11 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
                                                    package=package)
         if upstream_version is not None:
           if r != revhistory[-1]:
-            upstream_version.upstream_version += "+%s" % upstream_revision_suffix(revhistory[-1])
+            upstream_version.upstream_version = upstream_revision_suffix(upstream_version.upstream_version, 
+                                                                         revhistory[-1])
           return upstream_version
 
-  return Version(previous_upstream_version + upstream_revision_suffix(revhistory[-1]))
+  return Version(upstream_revision_suffix(previous_version, revhistory[-1]))
 
 
 def merge_upstream_branch(tree, upstream_branch, package, version=None):
@@ -111,8 +112,14 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
     cl = Changelog(tree.get_file_text(cl_id))
     previous_version = cl.upstream_version
     revhistory = upstream_branch.revision_history()
-    def revision_suffix(revid):
-      return "bzr%d" % upstream_branch.get_rev_id(revid, revhistory)
+    def revision_suffix(version_string, revid):
+      revno = upstream_branch.get_rev_id(revid, revhistory)
+      offset = version_string.rfind("+bzr")
+      if offset == -1:
+        offset = version_string.rfind("~bzr")
+      if offset == -1:
+        return "%s+bzr%d" % (version_string, revno)
+      return version_string[:offset+1] + "bzr%d" % revno
     version = upstream_branch_version(revhistory,
                 upstream_branch.tags.get_reverse_tag_dict(), package,
                 previous_version, 

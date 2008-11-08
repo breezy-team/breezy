@@ -272,8 +272,11 @@ class TestUpstreamBranchVersion(TestCase):
   """Test that the upstream version of a branch can be determined correctly.
   """
 
-  def get_suffix(self, revid):
-    return "bzr%d" % (self.revhistory.index(revid)+1)
+  def get_suffix(self, version_string, revid):
+    revno = self.revhistory.index(revid)+1
+    if "bzr" in version_string:
+      return "%sbzr%d" % (version_string.split("bzr")[0], revno)
+    return "%s+bzr%d" % (version_string, revno)
 
   def test_snapshot_none_existing(self):
     self.revhistory = ["somerevid"]
