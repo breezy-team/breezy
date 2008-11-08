@@ -870,7 +870,10 @@ class SvnRepository(Repository):
                             if not changes.changes_path(newpaths, p, False) and layout.is_branch(cf):
                                 tp = cf
                                 tr = int(self.transport.get_dir(cf, cr)[2][properties.PROP_ENTRY_COMMITTED_REV])
-                            tags[p] = self.generate_revision_id(tr, tp, mapping)
+                            try:
+                                tags[p] = self.generate_revision_id(tr, tp, mapping)
+                            except SubversionException, (_, errors.ERR_FS_NOT_DIRECTORY):
+                                pass
                         else:
                             try:
                                 tags[bp] = self.generate_revision_id(revnum, bp, mapping, revprops=revprops)
