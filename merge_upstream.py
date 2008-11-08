@@ -36,6 +36,7 @@ from bzrlib.errors import (BzrCommandError,
                            NoSuchTag,
                            TagAlreadyExists,
                            )
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      import_dir,
                                                      import_zip,
@@ -132,9 +133,10 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
     cl = Changelog(tree.get_file_text(cl_id))
     previous_version = cl.upstream_version
     revhistory = upstream_branch.revision_history()
-    previous_revspec = get_snapshot_revision(previous_version)
-    if previous_revspec is not None:
-      previous_revno, _ previous_revspec.in_history(upstream_branch)
+    previous_revision = get_snapshot_revision(previous_version)
+    if previous_revision is not None:
+      previous_revspec = RevisionSpec.from_string(previous_revision)
+      previous_revno, _ = previous_revspec.in_history(upstream_branch)
       # Trim revision history - we don't care about any revisions 
       # before the revision of the previous version
       revhistory = revhistory[previous_revno:]
