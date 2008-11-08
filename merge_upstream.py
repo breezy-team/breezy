@@ -36,6 +36,7 @@ from bzrlib.errors import (BzrCommandError,
                            NoSuchTag,
                            TagAlreadyExists,
                            )
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.plugins.bzrtools.upstream_import import (import_tar,
                                                      import_dir,
                                                      import_zip,
@@ -69,6 +70,10 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
   :param add_rev: Function that can add a revision suffix to a version string.
   :return: Name of the upstream revision.
   """
+  if revhistory == []:
+    # No new version to merge
+    return Version(previous_version)
+
   for r in reversed(revhistory):
     if r in reverse_tag_dict:
       # If there is a newer version tagged in branch, 
@@ -138,8 +143,9 @@ def merge_upstream_branch(tree, upstream_branch, package,
     else:
       upstream_revno = upstream_branch.revno()
     revhistory = upstream_branch.revision_history()
-    previous_revspec = get_snapshot_revision(previous_version)
-    if previous_revspec is not None:
+    previous_revision = get_snapshot_revision(previous_version)
+    if previous_revision is not None:
+      previous_revspec = RevisionSpec.from_string(previous_revision)
       previous_revno, _ = previous_revspec.in_history(upstream_branch)
       # Trim revision history - we don't care about any revisions 
       # before the revision of the previous version
