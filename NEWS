@@ -1,5 +1,13 @@
 bzr-svn 0.4.15	UNRELEASED
 
+  BUG FIXES
+
+   * Fix compatibility with Bazaar 1.10.
+
+   * Ignore tags that happen to be files (another instance). (#290664)
+
+   * Support copying from files with spaces in their names over http. (#268304)
+
 bzr-svn 0.4.14	2008-11-03
 
   BUG FIXES

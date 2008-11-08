@@ -37,6 +37,7 @@ from bzrlib.plugins.svn.svk import (
 from bzrlib.plugins.svn.logwalker import lazy_dict
 from bzrlib.plugins.svn.mapping import parse_revision_id
 from bzrlib.plugins.svn.repository import SvnRepositoryFormat, SvnRepository
+from bzrlib.plugins.svn.transport import _url_escape_uri
 
 
 def _revision_id_to_svk_feature(revid):
@@ -281,7 +282,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                                   new_child_path)
                 child_editor = dir_editor.add_file(
                         full_new_child_path, 
-                    urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id)),
+                    _url_escape_uri(urlutils.join(self.repository.transport.svn_url, self.base_path, self.old_inv.id2path(child_ie.file_id))),
                     self.base_revnum)
 
             # open if they existed at the same location
@@ -348,7 +349,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.mutter('copy dir %r -> %r', old_child_path, new_child_path)
                 child_editor = dir_editor.add_directory(
                     urlutils.join(self.branch.get_branch_path(), new_child_path),
-                    urlutils.join(self.repository.transport.svn_url, self.base_path, old_child_path), self.base_revnum)
+                    _url_escape_uri(urlutils.join(self.repository.transport.svn_url, self.base_path, old_child_path), self.base_revnum))
 
             # open if they existed at the same location and 
             # the directory was touched
@@ -410,7 +411,7 @@ class SvnCommitBuilder(RootCommitBuilder):
                 self.mutter("removing branch dir %r", name)
                 ret[-1].delete_entry(name, -1)
             if base_path is not None:
-                base_url = urlutils.join(self.repository.transport.svn_url, base_path)
+                base_url = _url_escape_uri(urlutils.join(self.repository.transport.svn_url, base_path))
             else:
                 base_url = None
             self.mutter("adding branch dir %r", name)
