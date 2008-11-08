@@ -739,7 +739,7 @@ class cmd_mark_uploaded(Command):
             config = debuild_config(t, t, no_user_config)
             if not merge:
                 merge = config.merge
-            (changelog, larstiq) = find_changelog(t, False)
+            (changelog, larstiq) = find_changelog(t, merge)
             distributions = changelog.distributions.strip()
             target_dist = distributions.split()[0]
             distribution_name = lookup_distribution(target_dist)
