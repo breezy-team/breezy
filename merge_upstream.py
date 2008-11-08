@@ -50,7 +50,7 @@ TAG_PREFIX = "upstream-"
 
 
 def upstream_branch_version(revhistory, reverse_tag_dict, package, 
-                            previous_version, upstream_revision_suffix):
+                            previous_version, add_rev):
   """Determine the version string of an upstream branch.
 
   The upstream version is determined from the most recent tag
@@ -65,8 +65,7 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
   :param reverse_tag_dict: Reverse tag dictionary (revid -> list of tags)
   :param package: Name of package.
   :param previous_version: Previous upstream version in debian changelog.
-  :param upstream_revision_suffix: Function that can add a revision suffix 
-                                   to a version string.
+  :param add_rev: Function that can add a revision suffix to a version string.
   :return: Name of the upstream revision.
   """
   # Parse previous_version
@@ -88,11 +87,40 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
                                                    package=package)
         if upstream_version is not None:
           if r != revhistory[-1]:
-            upstream_version.upstream_version = upstream_revision_suffix(upstream_version.upstream_version, 
+            upstream_version.upstream_version = add_rev(upstream_version.upstream_version, 
                                                                          revhistory[-1])
           return upstream_version
 
-  return Version(upstream_revision_suffix(previous_version, revhistory[-1]))
+  return Version(add_rev(previous_version, revhistory[-1]))
+
+
+def upstream_version_add_revision(upstream_branch, version_string, revid):
+  """Update the revision in a upstream version string.
+
+  :param branch: Branch in which the revision can be found
+  :param version_string: Original version string
+  :param revid: Revision id of the revision
+  """
+  revno = upstream_branch.revision_id_to_revno(revid)
+  
+  if "+bzr" in version_string:
+    return "%s+bzr%d" % (version_string[:version_string.rfind("+bzr")], revno)
+
+  if "~bzr" in version_string:
+    return "%s~bzr%d" % (version_string[:version_string.rfind("~bzr")], revno)
+
+  rev = upstream_branch.repository.get_revision(revid)
+  svn_revmeta = getattr(rev, "svn_meta", None)
+  if svn_revmeta is not None:
+    svn_revno = svn_revmeta.revnum
+
+    if "+svn" in version_string:
+      return "%s+svn%d" % (version_string[:version_string.rfind("+svn")], svn_revno)
+    if "~svn" in version_string:
+      return "%s~svn%d" % (version_string[:version_string.rfind("~svn")], svn_revno)
+    return "%s+svn%d" % (version_string, svn_revno)
+
+  return "%s+bzr%d" % (version_string, revno)
 
 
 def merge_upstream_branch(tree, upstream_branch, package, version=None):
@@ -112,18 +140,10 @@ def merge_upstream_branch(tree, upstream_branch, package, version=None):
     cl = Changelog(tree.get_file_text(cl_id))
     previous_version = cl.upstream_version
     revhistory = upstream_branch.revision_history()
-    def revision_suffix(version_string, revid):
-      revno = upstream_branch.get_rev_id(revid, revhistory)
-      offset = version_string.rfind("+bzr")
-      if offset == -1:
-        offset = version_string.rfind("~bzr")
-      if offset == -1:
-        return "%s+bzr%d" % (version_string, revno)
-      return version_string[:offset+1] + "bzr%d" % revno
     version = upstream_branch_version(revhistory,
                 upstream_branch.tags.get_reverse_tag_dict(), package,
                 previous_version, 
-                revision_suffix)
+                lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
   tree.merge_from_branch(upstream_branch)
   return version
 

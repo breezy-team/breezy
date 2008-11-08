@@ -29,6 +29,7 @@ from bzrlib.errors import (BzrCommandError,
                            NoSuchTag,
                            TagAlreadyExists,
                            )
+from bzrlib.revision import Revision
 from bzrlib.tests import KnownFailure, TestCase, TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
@@ -42,7 +43,8 @@ from bzrlib.plugins.builddeb.import_dsc import (
 from bzrlib.plugins.builddeb.merge_upstream import (
         merge_upstream, 
         upstream_branch_version,
-        upstream_tag_to_version
+        upstream_tag_to_version,
+        upstream_version_add_revision
         )
 
 
@@ -266,6 +268,55 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     rh = wt.branch.revision_history()
     self.assertEqual(wt.branch.tags.lookup_tag('upstream-debian-0.2'),
             wt.get_parent_ids()[1])
+
+
+class TestUpstreamVersionAddRevision(TestCaseWithTransport):
+  """Test that updating the version string works."""
+
+  def setUp(self):
+    super(TestUpstreamVersionAddRevision, self).setUp()
+    self.revnos = {}
+    self.svn_revnos = {"somesvnrev": 45}
+    self.revnos = {"somerev": 42, "somesvnrev": 12}
+    self.repository = self
+
+  def revision_id_to_revno(self, revid):
+    return self.revnos[revid]
+
+  def get_revision(self, revid):
+    class MockSvnMeta(object):
+      
+      def __init__(self, svn_revno):
+        self.revnum = svn_revno
+
+    rev = Revision(revid)
+    if revid in self.svn_revnos:
+      rev.svn_meta = MockSvnMeta(self.svn_revnos[revid])
+    return rev
+
+  def test_update_plus_rev(self):
+    self.assertEquals("1.3+bzr42", 
+        upstream_version_add_revision(self, "1.3+bzr23", "somerev"))
+
+  def test_update_tilde_rev(self):
+    self.assertEquals("1.3~bzr42", 
+        upstream_version_add_revision(self, "1.3~bzr23", "somerev"))
+
+  def test_new_rev(self):
+    self.assertEquals("1.3+bzr42", 
+        upstream_version_add_revision(self, "1.3", "somerev"))
+
+  def test_svn_new_rev(self):
+    self.assertEquals("1.3+svn45", 
+        upstream_version_add_revision(self, "1.3", "somesvnrev"))
+
+  def test_svn_plus_rev(self):
+    self.assertEquals("1.3+svn45", 
+        upstream_version_add_revision(self, "1.3+svn3", "somesvnrev"))
+
+  def test_svn_tilde_rev(self):
+    self.assertEquals("1.3~svn45", 
+        upstream_version_add_revision(self, "1.3~svn800", "somesvnrev"))
 
 
 class TestUpstreamBranchVersion(TestCase):
