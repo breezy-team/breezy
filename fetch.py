@@ -506,7 +506,9 @@ class RevisionBuildEditor(DeltaBuildEditor):
         if self._text_parents is None:
             self._text_parents = self.mapping.import_text_parents(self.revmeta.revprops,
                                                                   self.revmeta.fileprops)
-        return self._text_parents.get(path)
+        ret = self._text_parents.get(path)
+        assert ret is None or isinstance(ret, list)
+        return ret
 
 
 class FileTreeDeltaBuildEditor(FileBuildEditor):

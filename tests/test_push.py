@@ -617,7 +617,7 @@ class PushNewBranchTests(TestCaseWithSubversionRepository):
         wt1.branch.push(Branch.open(repos_url+"/trunk"))
         r = Repository.open(repos_url)
         props = r.branchprop_list.get_changed_properties("trunk", 3)
-        self.assertEquals(props['bzr:text-parents'], 'bar2.txt\tside1\n')
+        self.assertEquals(props['bzr:text-revisions'], 'bar2.txt\tside1\n')
 
         os.mkdir("cpy")
         cpy = BzrDir.create("cpy", format.get_rich_root_format())

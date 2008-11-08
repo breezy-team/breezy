@@ -478,8 +478,9 @@ def generate_fileid_property(fileids):
 def parse_text_parents_property(text):
     ret = {}
     for line in text.splitlines():
-        (entry, parent_revid) = line.split("\t", 1)
-        ret[urllib.unquote(entry)] = osutils.safe_revision_id(parent_revid)
+        parts = line.split("\t")
+        entry = parts[0]
+        ret[urllib.unquote(entry)] = filter(lambda x: x != "", [osutils.safe_revision_id(parent_revid) for parent_revid in parts[1:]])
     return ret
 
 
@@ -492,7 +493,7 @@ def parse_text_revisions_property(text):
 
 
 def generate_text_parents_property(text_parents):
-    return "".join(["%s\t%s\n" % (urllib.quote(path.encode("utf-8")), text_parents[path]) for path in sorted(text_parents.keys())])
+    return "".join(["%s\t%s\n" % (urllib.quote(path.encode("utf-8")), "\t".join(text_parents[path])) for path in sorted(text_parents.keys())])
 
 
 def generate_text_revisions_property(text_revisions):
