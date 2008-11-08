@@ -391,3 +391,49 @@ if len(sys.argv) == 2:
 
         self.monkey_patch_gpg()
         self.run_bzr('sign-my-commits')
+
+    def test_knit_corruption(self):
+        cwd = os.getcwd()
+        svn_url = self.make_client('d', 'wc')
+
+        os.chdir('wc')
+        for d in ['trunk', 'branches', 'tags']:
+           os.mkdir(d)
+        f = open('trunk/file', 'wb')
+        f.write('Hi\n')
+        f.close()
+        self.client_add("trunk")
+        self.client_add("tags")
+        self.client_add("branches")
+        self.client_commit(".", "initial check-in")
+        self.client_update(".")
+        os.chdir(cwd)
+
+        self.run_bzr('init-repo --1.9-rich-root --no-trees shared')
+        os.chdir('shared')
+        self.run_bzr('branch %s/trunk trunk' % svn_url)
+        os.chdir(cwd)
+
+        self.run_bzr('branch shared/trunk bzr-branch')
+        os.chdir('bzr-branch')
+        f = open('file', 'ab')
+        f.write('Bye\n')
+        f.close()
+        self.run_bzr('ci -m "Add bye."')
+        f = open('file', 'ab')
+        f.write('Good riddance.\n')
+        f.close()
+        self.run_bzr('ci -m "Add good riddance."')
+
+        self.run_bzr('svn-push %s/branches/my-branch' % svn_url)
+        os.chdir(cwd)
+
+        self.run_bzr('co %s/trunk bzr-trunk' % svn_url)
+        os.chdir('bzr-trunk')
+        self.run_bzr('merge %s/branches/my-branch' % svn_url)
+        self.run_bzr('nick my-branch')
+        self.run_bzr('ci -m "Merge my-branch"')
+
+        os.chdir(cwd)
+        os.chdir('shared/trunk')
+        self.run_bzr('pull')
