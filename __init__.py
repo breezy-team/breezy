@@ -411,7 +411,7 @@ class cmd_merge_upstream(Command):
     takes_options = [package_opt, no_user_conf_opt, version_opt,
             distribution_opt, directory_opt, 'revision']
 
-    def run(self, tarball, version=None, distribution=".", package=None,
+    def run(self, location=None, version=None, distribution=".", package=None,
             no_user_config=None, directory=None, revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
