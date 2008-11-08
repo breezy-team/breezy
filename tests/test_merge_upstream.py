@@ -334,6 +334,11 @@ class TestUpstreamBranchVersion(TestCase):
     self.assertEquals(Version("1.2+bzr1"),
         upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
 
+  def test_snapshot_nothing_new(self):
+    self.revhistory = []
+    self.assertEquals(Version("1.2"),
+        upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
+
   def test_new_tagged_release(self):
     """Last revision is tagged - use as upstream version."""
     self.revhistory = ["somerevid"]

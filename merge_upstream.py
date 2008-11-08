@@ -70,6 +70,10 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
   :param add_rev: Function that can add a revision suffix to a version string.
   :return: Name of the upstream revision.
   """
+  if revhistory == []:
+    # No new version to merge
+    return Version(previous_version)
+
   for r in reversed(revhistory):
     if r in reverse_tag_dict:
       # If there is a newer version tagged in branch, 
