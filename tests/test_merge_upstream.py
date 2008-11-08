@@ -29,6 +29,7 @@ from bzrlib.errors import (BzrCommandError,
                            NoSuchTag,
                            TagAlreadyExists,
                            )
+from bzrlib.revision import Revision
 from bzrlib.tests import KnownFailure, TestCase, TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
@@ -42,7 +43,8 @@ from bzrlib.plugins.builddeb.import_dsc import (
 from bzrlib.plugins.builddeb.merge_upstream import (
         merge_upstream, 
         upstream_branch_version,
-        upstream_tag_to_version
+        upstream_tag_to_version,
+        upstream_version_add_revision
         )
 
 
@@ -268,31 +270,91 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
             wt.get_parent_ids()[1])
 
 
+class TestUpstreamVersionAddRevision(TestCaseWithTransport):
+  """Test that updating the version string works."""
+
+  def setUp(self):
+    super(TestUpstreamVersionAddRevision, self).setUp()
+    self.revnos = {}
+    self.svn_revnos = {"somesvnrev": 45}
+    self.revnos = {"somerev": 42, "somesvnrev": 12}
+    self.repository = self
+
+  def revision_id_to_revno(self, revid):
+    return self.revnos[revid]
+
+  def get_revision(self, revid):
+    class MockSvnMeta(object):
+      
+      def __init__(self, svn_revno):
+        self.revnum = svn_revno
+
+    rev = Revision(revid)
+    if revid in self.svn_revnos:
+      rev.svn_meta = MockSvnMeta(self.svn_revnos[revid])
+    return rev
+
+  def test_update_plus_rev(self):
+    self.assertEquals("1.3+bzr42", 
+        upstream_version_add_revision(self, "1.3+bzr23", "somerev"))
+
+  def test_update_tilde_rev(self):
+    self.assertEquals("1.3~bzr42", 
+        upstream_version_add_revision(self, "1.3~bzr23", "somerev"))
+
+  def test_new_rev(self):
+    self.assertEquals("1.3+bzr42", 
+        upstream_version_add_revision(self, "1.3", "somerev"))
+
+  def test_svn_new_rev(self):
+    self.assertEquals("1.3+svn45", 
+        upstream_version_add_revision(self, "1.3", "somesvnrev"))
+
+  def test_svn_plus_rev(self):
+    self.assertEquals("1.3+svn45", 
+        upstream_version_add_revision(self, "1.3+svn3", "somesvnrev"))
+
+  def test_svn_tilde_rev(self):
+    self.assertEquals("1.3~svn45", 
+        upstream_version_add_revision(self, "1.3~svn800", "somesvnrev"))
+
+
 class TestUpstreamBranchVersion(TestCase):
   """Test that the upstream version of a branch can be determined correctly.
   """
 
+  def get_suffix(self, version_string, revid):
+    revno = self.revhistory.index(revid)+1
+    if "bzr" in version_string:
+      return "%sbzr%d" % (version_string.split("bzr")[0], revno)
+    return "%s+bzr%d" % (version_string, revno)
+
   def test_snapshot_none_existing(self):
+    self.revhistory = ["somerevid"]
     self.assertEquals(Version("1.2+bzr1"),
-        upstream_branch_version(["somerevid"], {}, "bla", "1.2"))
+        upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
 
   def test_new_tagged_release(self):
     """Last revision is tagged - use as upstream version."""
+    self.revhistory = ["somerevid"]
     self.assertEquals(Version("1.3"), 
-        upstream_branch_version(["somerevid"], {"somerevid": ["1.3"]}, "bla", "1.2"))
+        upstream_branch_version(self.revhistory, {"somerevid": ["1.3"]}, "bla", "1.2", self.get_suffix))
 
   def test_refresh_snapshot_pre(self):
+    self.revhistory = ["oldrevid", "somerevid"]
     self.assertEquals(Version("1.3~bzr2"), 
-        upstream_branch_version(["oldrevid", "somerevid"], {}, "bla", "1.3~bzr1"))
+        upstream_branch_version(self.revhistory, {}, "bla", "1.3~bzr1", self.get_suffix))
 
   def test_refresh_snapshot_post(self):
+    self.revhistory = ["oldrevid", "somerevid"]
     self.assertEquals(Version("1.3+bzr2"), 
-        upstream_branch_version(["oldrevid", "somerevid"], {}, "bla", "1.3+bzr1"))
+        upstream_branch_version(self.revhistory, {}, "bla", "1.3+bzr1", self.get_suffix))
 
   def test_new_tag_refresh_snapshot(self):
+    self.revhistory = ["oldrevid", "somerevid", "newrevid"]
     self.assertEquals(Version("1.3+bzr3"), 
-        upstream_branch_version(["oldrevid", "somerevid", "newrevid"], 
-                                {"somerevid": ["1.3"]}, "bla", "1.2+bzr1"))
+        upstream_branch_version(self.revhistory, 
+                                {"somerevid": ["1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
 
 
 class TestUpstreamTagToVersion(TestCase):

@@ -48,8 +48,9 @@ from bzrlib.plugins.builddeb.errors import AddChangelogError
 
 TAG_PREFIX = "upstream-"
 
+
 def upstream_branch_version(revhistory, reverse_tag_dict, package, 
-                            previous_version):
+                            previous_version, add_rev):
   """Determine the version string of an upstream branch.
 
   The upstream version is determined from the most recent tag
@@ -64,37 +65,62 @@ def upstream_branch_version(revhistory, reverse_tag_dict, package,
   :param reverse_tag_dict: Reverse tag dictionary (revid -> list of tags)
   :param package: Name of package.
   :param previous_version: Previous upstream version in debian changelog.
+  :param add_rev: Function that can add a revision suffix to a version string.
   :return: Name of the upstream revision.
   """
-  # Check if upstream has a tag set on branch.last_revision()
-  # Yes? Convert to upstream_version and return
-  if revhistory[-1] in reverse_tag_dict:
-    for tag in reverse_tag_dict[revhistory[-1]]:
-      upstream_version = upstream_tag_to_version(tag, package=package)
-      if upstream_version is not None:
-        return upstream_version
-  
   # Parse previous_version
   # if it contains ~bzr:
   if "~bzr" in previous_version or "+bzr" in previous_version:
     # check if new tags appeared since previous_version's revision
     # if they didn't, update revno in ~bzr<revno>
     bzr_revno = int(previous_version[previous_version.find("bzr")+3:])
-    for r in reversed(revhistory[bzr_revno:]):
-      if r in reverse_tag_dict:
-        # If there is a newer version tagged in branch, 
-        # convert to upstream version 
-        # return <upstream_version>+bzr<revno>
-        for tag in reverse_tag_dict[r]:
-          upstream_version = upstream_tag_to_version(tag, 
-                                                     package=package)
-          if upstream_version is not None:
-            upstream_version.upstream_version += "+bzr%d" % len(revhistory)
-            return upstream_version
+  else:
+    bzr_revno = 0
 
-    return Version("%s%d" % (previous_version[:previous_version.find("bzr")+3],
-                     len(revhistory)))
-  return Version("%s+bzr%d" % (previous_version, len(revhistory)))
+  for r in reversed(revhistory[bzr_revno:]):
+    if r in reverse_tag_dict:
+      # If there is a newer version tagged in branch, 
+      # convert to upstream version 
+      # return <upstream_version>+bzr<revno>
+      for tag in reverse_tag_dict[r]:
+        upstream_version = upstream_tag_to_version(tag, 
+                                                   package=package)
+        if upstream_version is not None:
+          if r != revhistory[-1]:
+            upstream_version.upstream_version = add_rev(upstream_version.upstream_version, 
+                                                                         revhistory[-1])
+          return upstream_version
+
+  return Version(add_rev(previous_version, revhistory[-1]))
+
+
+def upstream_version_add_revision(upstream_branch, version_string, revid):
+  """Update the revision in a upstream version string.
+
+  :param branch: Branch in which the revision can be found
+  :param version_string: Original version string
+  :param revid: Revision id of the revision
+  """
+  revno = upstream_branch.revision_id_to_revno(revid)
+  
+  if "+bzr" in version_string:
+    return "%s+bzr%d" % (version_string[:version_string.rfind("+bzr")], revno)
+
+  if "~bzr" in version_string:
+    return "%s~bzr%d" % (version_string[:version_string.rfind("~bzr")], revno)
+
+  rev = upstream_branch.repository.get_revision(revid)
+  svn_revmeta = getattr(rev, "svn_meta", None)
+  if svn_revmeta is not None:
+    svn_revno = svn_revmeta.revnum
+
+    if "+svn" in version_string:
+      return "%s+svn%d" % (version_string[:version_string.rfind("+svn")], svn_revno)
+    if "~svn" in version_string:
+      return "%s~svn%d" % (version_string[:version_string.rfind("~svn")], svn_revno)
+    return "%s+svn%d" % (version_string, svn_revno)
+
+  return "%s+bzr%d" % (version_string, revno)
 
 
 def merge_upstream_branch(tree, upstream_branch, package, 
@@ -123,7 +149,8 @@ def merge_upstream_branch(tree, upstream_branch, package,
       upstream_history.reverse()
       version = upstream_branch_version(upstream_history,
                   upstream_branch.tags.get_reverse_tag_dict(), package,
-                  previous_version)
+                  previous_version,
+                  lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
     finally:
       upstream_branch.unlock()
   tree.merge_from_branch(upstream_branch)

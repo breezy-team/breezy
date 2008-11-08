@@ -3,6 +3,7 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   [ Jelmer Vernooij ]
   * Add simple deb: directory service for Bazaar that uses the dpkg Vcs-* fields.
   * Support merging upstream from a Bazaar branch. (Closes: #493386)
+   + Also support merging from upstream Subversion branches. (LP: #295275)
   * Make --version option and location argument to merge-upstream optional.
   * Add -d option to merge-upstream.
   * Try to retrieve upstream tarball using get-orig-source rule in
