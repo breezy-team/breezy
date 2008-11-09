@@ -10,6 +10,9 @@ bzr-svn 0.4.15	UNRELEASED
 
    * Fix knit corruption because text revisions weren't stored properly. (#277043)
 
+   * Cope with file properties being modified by other parties than 
+     bzr-svn. (#295284)
+
 bzr-svn 0.4.14	2008-11-03
 
   BUG FIXES

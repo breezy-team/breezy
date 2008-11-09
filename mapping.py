@@ -51,6 +51,15 @@ SVN_REVPROP_BZR_TEXT_REVISIONS = 'bzr:text-revisions'
 SVN_REVPROP_BZR_TEXT_PARENTS = 'bzr:text-parents'
 
 
+def find_new_lines((oldvalue, newvalue)):
+    if oldvalue is None:
+        oldvalue = ""
+    if not newvalue.startswith(oldvalue):
+        raise ValueError("Existing contents were changed")
+    appended = newvalue[len(oldvalue):]
+    return appended.splitlines()
+
+
 def escape_svn_path(x):
     """Escape a Subversion path for use in a revision identifier.
 
@@ -541,7 +550,15 @@ class BzrSvnMappingFileProps(object):
     def get_rhs_parents(self, branch_path, revprops, fileprops):
         bzr_merges = fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
         if bzr_merges is not None:
-            return parse_merge_property(bzr_merges[1].splitlines()[-1])
+            try:
+                new_lines = find_new_lines(bzr_merges)
+            except ValueError, e:
+                mutter(str(e))
+                return ()
+            if len(new_lines) != 1:
+                mutter("unexpected number of lines in bzr merge property: %r" % new_lines)
+                return ()
+            return parse_merge_property(new_lines[0])
 
         return ()
 
@@ -598,12 +615,18 @@ class BzrSvnMappingFileProps(object):
         if text is None:
             return (None, None)
 
-        lines = text[1].splitlines()
-        if len(lines) == 0:
+        try:
+            new_lines = find_new_lines(text)
+        except ValueError, e:
+            mutter(str(e))
+            return (None, None)
+
+        if len(new_lines) != 1:
+            mutter("unexpected number of lines: %r" % new_lines)
             return (None, None)
 
         try:
-            return parse_revid_property(lines[-1])
+            return parse_revid_property(new_lines[0])
         except errors.InvalidPropertyValue, e:
             mutter(str(e))
             return (None, None)
