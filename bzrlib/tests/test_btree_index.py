@@ -612,6 +612,28 @@ class TestBTreeIndex(BTreeTestCase):
             transport._activity)
         self.assertEqual(1199, size)
 
+    def test__read_nodes_no_size_one_page_reads_once(self):
+        self.make_index(nodes=[(('key',), 'value', ())])
+        trans = get_transport('trace+' + self.get_url())
+        index = btree_index.BTreeGraphIndex(trans, 'index', None)
+        del trans._activity[:]
+        nodes = dict(index._read_nodes([0]))
+        self.assertEqual([0], nodes.keys())
+        node = nodes[0]
+        self.assertEqual([('key',)], node.keys.keys())
+        self.assertEqual([('get', 'index')], trans._activity)
+
+    def test__read_nodes_no_size_multiple_pages(self):
+        index = self.make_index(2, 2, nodes=self.make_nodes(160, 2, 2))
+        index.key_count()
+        num_pages = index._row_offsets[-1]
+        # Reopen with a traced transport and no size
+        trans = get_transport('trace+' + self.get_url())
+        index = btree_index.BTreeGraphIndex(trans, 'index', None)
+        del trans._activity[:]
+        nodes = dict(index._read_nodes([0]))
+        self.assertEqual(range(num_pages), nodes.keys())
+
     def test_2_levels_key_count_2_2(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
         nodes = self.make_nodes(160, 2, 2)

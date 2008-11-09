@@ -1246,6 +1246,7 @@ class BTreeGraphIndex(object):
         :param nodes: The nodes to read. 0 - first node, 1 - second node etc.
         :return: None
         """
+        bytes = None
         ranges = []
         for index in nodes:
             offset = index * _PAGE_SIZE
@@ -1255,11 +1256,12 @@ class BTreeGraphIndex(object):
                 if self._size:
                     size = min(_PAGE_SIZE, self._size)
                 else:
-                    stream = self._transport.get(self._name)
-                    start = stream.read(_PAGE_SIZE)
-                    # Avoid doing this again
-                    self._size = len(start)
-                    size = min(_PAGE_SIZE, self._size)
+                    # The only case where we don't know the size, is for very
+                    # small indexes. So we read the whole thing
+                    bytes = self._transport.get_bytes(self._name)
+                    self._size = len(bytes)
+                    ranges.append((0, len(bytes)))
+                    break
             else:
                 if offset > self._size:
                     raise AssertionError('tried to read past the end'
@@ -1269,7 +1271,10 @@ class BTreeGraphIndex(object):
             ranges.append((offset, size))
         if not ranges:
             return
-        if self._file is None:
+        if bytes:
+            data_ranges = [(offset, bytes[offset:offset+_PAGE_SIZE])
+                           for offset in xrange(0, len(bytes), _PAGE_SIZE)]
+        elif self._file is None:
             data_ranges = self._transport.readv(self._name, ranges)
         else:
             data_ranges = []
