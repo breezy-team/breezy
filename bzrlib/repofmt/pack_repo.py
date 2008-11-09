@@ -584,7 +584,7 @@ class Packer(object):
         for pack in packs:
             index = getattr(pack, index_attribute)
             indices.append(index)
-            pack_map[index] = (pack.pack_transport, pack.file_name())
+            pack_map[index] = pack.access_tuple()
         return pack_map, indices
 
     def _index_contents(self, pack_map, key_filter=None):
