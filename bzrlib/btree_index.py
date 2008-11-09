@@ -881,15 +881,21 @@ class BTreeGraphIndex(object):
             return
         start_of_leaves = self._row_offsets[-2]
         end_of_leaves = self._row_offsets[-1]
-        needed_nodes = range(start_of_leaves, end_of_leaves)
+        needed_offsets = range(start_of_leaves, end_of_leaves)
+        if needed_offsets == [0]:
+            # Special case when we only have a root node, as we have already
+            # read everything
+            nodes = [(0, self._root_node)]
+        else:
+            nodes = self._read_nodes(needed_offsets)
         # We iterate strictly in-order so that we can use this function
         # for spilling index builds to disk.
         if self.node_ref_lists:
-            for _, node in self._read_nodes(needed_nodes):
+            for _, node in nodes:
                 for key, (value, refs) in sorted(node.keys.items()):
                     yield (self, key, value, refs)
         else:
-            for _, node in self._read_nodes(needed_nodes):
+            for _, node in nodes:
                 for key, (value, refs) in sorted(node.keys.items()):
                     yield (self, key, value)
 

@@ -579,9 +579,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been requested (as we generally have the
         # size available, and doing many small readvs is inappropriate).
         # We can't tell how much was actually read here, but - check the code.
-        self.assertEqual([('get', 'index'),
-            ('readv', 'index', [(0, 72)], False, None)],
-            transport._activity)
+        self.assertEqual([('get', 'index')], transport._activity)
 
     def test_empty_key_count(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
@@ -720,6 +718,15 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertTrue(
             btree_index.BTreeGraphIndex(transport1, 'index', 10) !=
             btree_index.BTreeGraphIndex(transport1, 'index', 20))
+
+    def test_iter_all_only_root_no_size(self):
+        self.make_index(nodes=[(('key',), 'value', ())])
+        trans = get_transport('trace+' + self.get_url(''))
+        index = btree_index.BTreeGraphIndex(trans, 'index', None)
+        del trans._activity[:]
+        self.assertEqual([(('key',), 'value')],
+                         [x[1:] for x in index.iter_all_entries()])
+        self.assertEqual([('get', 'index')], trans._activity)
 
     def test_iter_all_entries_reads(self):
         # iterating all entries reads the header, then does a linear
