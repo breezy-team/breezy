@@ -564,9 +564,42 @@ class Packer(object):
         # _copy_inventory_texts
         self._text_filter = None
         self._extra_init()
+        self._pack_ordering = None
 
     def _extra_init(self):
         """A template hook to allow extending the constructor trivially."""
+
+    def _packs_list_to_pack_map_and_index_list(self, packs, index_attribute):
+        """Convert a list of packs to an index pack map and index list.
+
+        :param packs: The packs list to process.
+        :param index_attribute: The attribute that the desired index is found
+            on.
+        :return: A tuple (map, list) where map contains the dict from
+            index:pack_tuple, and lsit contains the indices in the same order
+            as the packs list.
+        """
+        indices = []
+        pack_map = {}
+        for pack in packs:
+            index = getattr(pack, index_attribute)
+            indices.append(index)
+            pack_map[index] = (pack.pack_transport, pack.file_name())
+        return pack_map, indices
+
+    def _index_contents(self, pack_map, key_filter=None):
+        """Get an iterable of the index contents from a pack_map.
+
+        :param pack_map: A map from indices to pack details.
+        :param key_filter: An optional filter to limit the
+            keys returned.
+        """
+        indices = [index for index in pack_map.iterkeys()]
+        all_index = CombinedGraphIndex(indices)
+        if key_filter is None:
+            return all_index.iter_all_entries()
+        else:
+            return all_index.iter_entries(key_filter)
 
     def pack(self, pb=None):
         """Create a new pack by reading data from other packs.
@@ -624,9 +657,9 @@ class Packer(object):
         else:
             revision_keys = None
         # select revision keys
-        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+        revision_index_map = self._packs_list_to_pack_map_and_index_list(
             self.packs, 'revision_index')[0]
-        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
+        revision_nodes = self._index_contents(revision_index_map, revision_keys)
         # copy revision keys and adjust values
         self.pb.update("Copying revision texts", 1)
         total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
@@ -652,9 +685,9 @@ class Packer(object):
         # querying for keys here could introduce a bug where an inventory item
         # is missed, so do not change it to query separately without cross
         # checking like the text key check below.
-        inventory_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+        inventory_index_map = self._packs_list_to_pack_map_and_index_list(
             self.packs, 'inventory_index')[0]
-        inv_nodes = self._pack_collection._index_contents(inventory_index_map, inv_keys)
+        inv_nodes = self._index_contents(inventory_index_map, inv_keys)
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
@@ -740,9 +773,9 @@ class Packer(object):
         self._copy_text_texts()
         # select signature keys
         signature_filter = self._revision_keys # same keyspace
-        signature_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+        signature_index_map = self._packs_list_to_pack_map_and_index_list(
             self.packs, 'signature_index')[0]
-        signature_nodes = self._pack_collection._index_contents(signature_index_map,
+        signature_nodes = self._index_contents(signature_index_map,
             signature_filter)
         # copy signature keys and adjust values
         self.pb.update("Copying signature texts", 4)
@@ -866,9 +899,9 @@ class Packer(object):
                 record_index += 1
 
     def _get_text_nodes(self):
-        text_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
+        text_index_map = self._packs_list_to_pack_map_and_index_list(
             self.packs, 'text_index')[0]
-        return text_index_map, self._pack_collection._index_contents(text_index_map,
+        return text_index_map, self._index_contents(text_index_map,
             self._text_filter)
 
     def _least_readv_node_readv(self, nodes):
@@ -1514,57 +1547,6 @@ class RepositoryPackCollection(object):
         self.packs = []
         self._packs_by_name = {}
         self._packs_at_load = None
-
-    def _make_index_map(self, index_suffix):
-        """Return information on existing indices.
-
-        :param suffix: Index suffix added to pack name.
-
-        :returns: (pack_map, indices) where indices is a list of GraphIndex 
-        objects, and pack_map is a mapping from those objects to the 
-        pack tuple they describe.
-        """
-        # TODO: stop using this; it creates new indices unnecessarily.
-        self.ensure_loaded()
-        suffix_map = {'.rix': 'revision_index',
-            '.six': 'signature_index',
-            '.iix': 'inventory_index',
-            '.tix': 'text_index',
-        }
-        return self._packs_list_to_pack_map_and_index_list(self.all_packs(),
-            suffix_map[index_suffix])
-
-    def _packs_list_to_pack_map_and_index_list(self, packs, index_attribute):
-        """Convert a list of packs to an index pack map and index list.
-
-        :param packs: The packs list to process.
-        :param index_attribute: The attribute that the desired index is found
-            on.
-        :return: A tuple (map, list) where map contains the dict from
-            index:pack_tuple, and lsit contains the indices in the same order
-            as the packs list.
-        """
-        indices = []
-        pack_map = {}
-        for pack in packs:
-            index = getattr(pack, index_attribute)
-            indices.append(index)
-            pack_map[index] = (pack.pack_transport, pack.file_name())
-        return pack_map, indices
-
-    def _index_contents(self, pack_map, key_filter=None):
-        """Get an iterable of the index contents from a pack_map.
-
-        :param pack_map: A map from indices to pack details.
-        :param key_filter: An optional filter to limit the
-            keys returned.
-        """
-        indices = [index for index in pack_map.iterkeys()]
-        all_index = CombinedGraphIndex(indices)
-        if key_filter is None:
-            return all_index.iter_all_entries()
-        else:
-            return all_index.iter_entries(key_filter)
 
     def _unlock_names(self):
         """Release the mutex around the pack-names index."""
