@@ -1,0 +1,3 @@
+version=3
+opts="uversionmangle=s/rc/~rc/;s/b/~b/" \
+https://launchpad.net/bzr/+download http://launchpad.net/bzr/.*/bzr-(.+).tar.gz

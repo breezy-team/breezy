@@ -1,0 +1,41 @@
+Source: bzr
+Section: devel
+Priority: optional
+Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
+Uploaders: Rob Weir <rweir@ertius.org>, Jeff Bailey <jbailey@raspberryginger.com>, Wouter van Heyst <larstiq@larstiq.dyndns.org>, Reinhard Tartler <siretart@tauware.de>, Jelmer Vernooij <jelmer@samba.org>
+Build-Depends: debhelper, cdbs, quilt, python, python-all-dev, python-central, python-docutils, graphviz
+Standards-Version: 3.8.0
+XS-Python-Version: >= 2.4
+Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/unstable
+Homepage: http://bazaar-vcs.org
+XS-Dm-Upload-Allowed: yes
+
+Package: bzr
+Architecture: any
+Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree
+Recommends: bzrtools, python-paramiko, ca-certificates
+Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils, python-kerberos (>= 1.0+svn2455-1)
+XB-Python-Version: ${python:Versions}
+Description: easy to use distributed version control system
+ Bazaar is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ Publishing of branches can be done over plain HTTP, that is, no special
+ software is needed on the server to host Bazaar branches. Branches can
+ be pushed to the server via sftp (which most SSH instalations come
+ with), FTP, or over a custom and faster protocol if bzr is installed in
+ the remote end.
+ .
+ Merging in Bazaar is easy, as the implementation is able to avoid many
+ spurious conflicts, deals well with repeated merges between branches,
+ and is able to handle modifications to renamed files correctly.
+ .
+ Bazaar is written in Python, and has a flexible plugin interface which
+ can be used to extend its functionality. Many plugins exist, providing
+ useful commands (bzrtools), graphical interfaces (bzr-gtk), or native
+ interaction with Subversion branches (bzr-svn).
+ .
+ Install python-paramiko if you are going to push branches to remote
+ hosts with sftp, and python-pycurl if you'd like for SSL certificates
+ always to be verified.

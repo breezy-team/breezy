@@ -52,3 +52,10 @@ bzrlib/_*.so
 bzrlib/_*.pyd
 # generated help topics
 doc/en/user-reference/*.txt
+.bzr-builddeb/local.conf
+debian
+./bzr
+./files
+./stamp-*
+./*.debhelper
+./*.substvars
