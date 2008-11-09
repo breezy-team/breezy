@@ -124,7 +124,7 @@ class DirectoryBuildEditor(object):
             # Replay lazy_dict, since it may be more expensive
             if type(self.editor.revmeta.fileprops) != dict:
                 self.editor.revmeta.fileprops = {}
-            self.editor.revmeta.fileprops[name] = value
+            self.editor.revmeta.fileprops[name] = (None, value)
 
         if name in (properties.PROP_ENTRY_COMMITTED_DATE,
                     properties.PROP_ENTRY_COMMITTED_REV,

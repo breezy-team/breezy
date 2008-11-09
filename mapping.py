@@ -509,22 +509,22 @@ class BzrSvnMappingFileProps(object):
     def import_revision(self, svn_revprops, fileprops, uuid, branch, revnum, rev):
         parse_svn_revprops(svn_revprops, rev)
         if SVN_PROP_BZR_LOG in fileprops:
-            rev.message = fileprops[SVN_PROP_BZR_LOG]
+            rev.message = fileprops[SVN_PROP_BZR_LOG][1]
         metadata = fileprops.get(SVN_PROP_BZR_REVISION_INFO)
         if metadata is not None:
-            parse_revision_metadata(metadata, rev)
+            parse_revision_metadata(metadata[1], rev)
 
     def import_text_parents(self, svn_revprops, fileprops):
         metadata = fileprops.get(SVN_PROP_BZR_TEXT_PARENTS)
         if metadata is None:
             return {}
-        return parse_text_parents_property(metadata)
+        return parse_text_parents_property(metadata[1])
 
     def import_text_revisions(self, svn_revprops, fileprops):
         metadata = fileprops.get(SVN_PROP_BZR_TEXT_REVISIONS)
         if metadata is None:
             return {}
-        return parse_text_revisions_property(metadata)
+        return parse_text_revisions_property(metadata[1])
 
     def export_text_parents(self, can_use_custom_revprops, text_parents, svn_revprops, fileprops):
         if text_parents != {}:
@@ -541,13 +541,13 @@ class BzrSvnMappingFileProps(object):
     def get_rhs_parents(self, branch_path, revprops, fileprops):
         bzr_merges = fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), None)
         if bzr_merges is not None:
-            return parse_merge_property(bzr_merges.splitlines()[-1])
+            return parse_merge_property(bzr_merges[1].splitlines()[-1])
 
         return ()
 
     def get_rhs_ancestors(self, branch_path, revprops, fileprops):
         ancestry = []
-        for l in fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), "").splitlines():
+        for l in fileprops.get(SVN_PROP_BZR_ANCESTRY+str(self.scheme), (None, ""))[1].splitlines():
             ancestry.extend(l.split("\n"))
         return ancestry
 
@@ -555,7 +555,7 @@ class BzrSvnMappingFileProps(object):
         fileids = fileprops.get(SVN_PROP_BZR_FILEIDS, None)
         if fileids is None:
             return {}
-        return parse_fileid_property(fileids)
+        return parse_fileid_property(fileids[1])
 
     def _record_merges(self, merges, fileprops):
         """Store the extra merges (non-LHS parents) in a file property.
@@ -598,7 +598,7 @@ class BzrSvnMappingFileProps(object):
         if text is None:
             return (None, None)
 
-        lines = text.splitlines()
+        lines = text[1].splitlines()
         if len(lines) == 0:
             return (None, None)
 

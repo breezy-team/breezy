@@ -92,7 +92,8 @@ class RevisionMetadata(object):
         else:
             previous = logwalker.lazy_dict({}, self.repository.branchprop_list.get_properties, prev_path.encode("utf-8"), prev_revnum)
 
-        return tuple(self.repository._svk_merged_revisions(self.branch_path, self.revnum, mapping, self.fileprops, previous))
+        return tuple(self.repository._svk_merged_revisions(self.branch_path, self.revnum, mapping, 
+            self.fileprops))
 
     def get_parent_ids(self, mapping):
         parents_cache = getattr(self.repository._real_parents_provider, "_cache", None)
@@ -555,15 +556,14 @@ class SvnRepository(Repository):
         return parent_map
 
     def _svk_merged_revisions(self, branch, revnum, mapping, 
-                              current_fileprops, previous_fileprops):
+                              changed_fileprops):
         """Find out what SVK features were merged in a revision.
 
         """
-        current = current_fileprops.get(SVN_PROP_SVK_MERGE, "")
-        if current == "":
+        previous, current = changed_fileprops.get(SVN_PROP_SVK_MERGE, ("", ""))
+        if current in (None, ""):
             return
-        previous = previous_fileprops.get(SVN_PROP_SVK_MERGE, "")
-        for feature in svk_features_merged_since(current, previous):
+        for feature in svk_features_merged_since(current, previous or ""):
             # We assume svk:merge is only relevant on non-bzr-svn revisions. 
             # If this is a bzr-svn revision, the bzr-svn properties 
             # would be parsed instead.
