@@ -13,6 +13,8 @@ bzr-svn 0.4.15	UNRELEASED
    * Cope with file properties being modified by other parties than 
      bzr-svn. (#295284)
 
+   * Fix erroneous call to object.__init__() causing issues with Python2.6.
+
 bzr-svn 0.4.14	2008-11-03
 
   BUG FIXES

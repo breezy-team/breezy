@@ -335,7 +335,6 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
 class BzrSvnMappingv3FileProps(mapping.BzrSvnMappingFileProps, BzrSvnMappingv3):
 
     def __init__(self, scheme, guessed_scheme=None):
-        mapping.BzrSvnMappingFileProps.__init__(self, scheme, guessed_scheme)
         BzrSvnMappingv3.__init__(self, scheme, guessed_scheme)
         self.revprop_map = mapping.BzrSvnMappingRevProps()
 
