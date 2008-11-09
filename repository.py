@@ -437,7 +437,7 @@ class SvnRepository(Repository):
 
     def set_make_working_trees(self, new_value):
         """See Repository.set_make_working_trees()."""
-        pass # FIXME: ignored, nowhere to store it... 
+        pass # ignored, nowhere to store it... 
 
     def make_working_trees(self):
         """See Repository.make_working_trees().

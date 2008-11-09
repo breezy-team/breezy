@@ -345,6 +345,39 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                           repos.generate_revision_id(2, 'branches/abranch', repos.get_mapping())
                           ], items)
 
+    def test_follow_history_corrupt_fileprops(self):
+        repos_url = self.make_repository("a")
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.add_dir("trunk")
+        trunk.change_prop("bzr:revision-id:v3-trunk0", "1 bla\n")
+        trunk.add_file("trunk/afile").modify("data")
+        dc.add_dir("branches")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.change_prop("bzr:revision-id:v3-trunk0", "1 bla\n2 blie\n")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.change_prop("bzr:revision-id:v3-trunk0", "1 bla\n")
+        dc.close()
+
+        dc = self.get_commit_editor(repos_url)
+        trunk = dc.open_dir("trunk")
+        trunk.change_prop("bzr:revision-id:v3-trunk0", "1 bla\n2 hoi\n")
+        dc.close()
+
+        repos = Repository.open(repos_url)
+        set_branching_scheme(repos, TrunkBranchingScheme())
+
+        items = list(repos.iter_reverse_revision_history("hoi"))
+        self.assertEqual(["hoi", 
+                          repos.get_mapping().generate_revision_id(repos.uuid, 3, 'trunk'),
+                          "blie", "bla"], items)
+
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({
