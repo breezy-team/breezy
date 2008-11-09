@@ -22,8 +22,10 @@ from bzrlib.trace import mutter
 from bzrlib.plugins.svn.cache import CacheTable
 from bzrlib.plugins.svn.core import SubversionException
 from bzrlib.plugins.svn.errors import InvalidPropertyValue, ERR_FS_NO_SUCH_REVISION, InvalidBzrSvnRevision
-from bzrlib.plugins.svn.mapping import (parse_revision_id, BzrSvnMapping, 
-                     SVN_PROP_BZR_REVISION_ID, parse_revid_property)
+from bzrlib.plugins.svn.mapping import (find_new_lines, parse_revision_id, 
+                                        BzrSvnMapping, 
+                                        SVN_PROP_BZR_REVISION_ID, 
+                                        parse_revid_property)
 from bzrlib.plugins.svn.mapping3 import BzrSvnMappingv3FileProps
 from bzrlib.plugins.svn.mapping3.scheme import BranchingScheme
 
@@ -112,8 +114,16 @@ class RevidMap(object):
                 if not propname.startswith(SVN_PROP_BZR_REVISION_ID):
                     continue
                 try:
+                    new_lines = find_new_lines((oldpropvalue, propvalue))
+                    if len(new_lines) != 1:
+                        continue
+                except ValueError:
+                    # Don't warn about encountering an invalid property, 
+                    # that will already have happened earlier
+                    continue
+                try:
                     (entry_revno, entry_revid) = parse_revid_property(
-                        propvalue.splitlines()[-1])
+                        new_lines[0])
                 except InvalidPropertyValue:
                     # Don't warn about encountering an invalid property, 
                     # that will already have happened earlier
