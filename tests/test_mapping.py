@@ -25,7 +25,7 @@ from bzrlib.plugins.svn.errors import InvalidPropertyValue
 from bzrlib.plugins.svn.mapping import (generate_revision_metadata, parse_revision_metadata, 
                      parse_revid_property, parse_merge_property, parse_text_revisions_property,
                      generate_text_revisions_property, BzrSvnMappingv1, BzrSvnMappingv2, 
-                     BzrSvnMappingv4, parse_revision_id)
+                     BzrSvnMappingv4, parse_revision_id, find_new_lines)
 from bzrlib.plugins.svn.mapping3 import (BzrSvnMappingv3FileProps, BzrSvnMappingv3RevProps, 
                       BzrSvnMappingv3Hybrid)
 from bzrlib.plugins.svn.mapping3.scheme import NoBranchingScheme
@@ -341,3 +341,19 @@ class ParseRevisionIdTests(object):
     def test_except_nonsvn(self):
         self.assertRaises(InvalidRevisionId, 
                          parse_revision_id, "blah")
+
+
+class FindNewLinesTests(TestCase):
+
+    def test_new(self):
+        self.assertEquals(["bla"], find_new_lines((None, "bla\n")))
+
+    def test_none(self):
+        self.assertEquals([], find_new_lines(("", "")))
+
+    def test_existing(self):
+        self.assertEquals(["blie"], find_new_lines(("bla\n", "bla\nblie\n")))
+
+    def test_changes(self):
+        self.assertRaises(ValueError, find_new_lines, 
+                ("bla\n", "ala\nblie\n"))
