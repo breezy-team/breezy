@@ -29,6 +29,8 @@ from bzrlib.plugins.svn import errors, remote
 from bzrlib import errors as bzr_errors
 """)
 
+ERR_RA_DAV_NOT_VCC = 20014
+
 def get_rich_root_format():
     format = BzrDirFormat.get_default_format()
     if format.repository_format.rich_root_data:
@@ -85,7 +87,7 @@ class SvnRemoteFormat(BzrDirFormat):
         try: 
             return remote.SvnRemoteAccess(transport, self)
         except SubversionException, (_, num):
-            if num == errors.ERR_RA_DAV_REQUEST_FAILED:
+            if num in (errors.ERR_RA_DAV_REQUEST_FAILED, ERR_RA_DAV_NOT_VCC):
                 raise bzr_errors.NotBranchError(transport.base)
             raise
 
