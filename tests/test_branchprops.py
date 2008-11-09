@@ -81,13 +81,13 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         logwalk = self.get_log_walker(transport=SvnRaTransport(repos_url))
 
         bp = PathPropertyProvider(logwalk)
-        self.assertEquals("data\n",
+        self.assertEquals((None, "data\n"),
                           bp.get_changed_properties("", 1)["myprop"])
 
         bp = PathPropertyProvider(logwalk)
-        self.assertEquals("newdata\n", 
+        self.assertEquals(("data\n", "newdata\n"), 
                           bp.get_changed_properties("", 2)["myprop"])
 
         bp = PathPropertyProvider(logwalk)
-        self.assertEquals("newdata\n", 
+        self.assertEquals((None, "newdata\n"), 
                           bp.get_changed_properties("", 3)["myp2"])
