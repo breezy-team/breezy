@@ -122,7 +122,7 @@ patches = xmldoc.getElementsByTagName('patch')
 # this may be huge and we need it many times
 patchnum = len(patches)
 
-count = 0
+count = 1
 paths = []
 for i in patches:
 	# apply the patch
