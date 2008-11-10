@@ -85,6 +85,7 @@ def log(s):
 
 origin = os.path.abspath(sys.argv[1])
 working = "%s.darcs" % origin
+patchfile = "%s.patch" % origin
 logfile = "%s.log" % origin
 logsock = open(logfile, "w")
 
@@ -109,7 +110,13 @@ sys.stdout.flush()
 os.mkdir(working)
 cwd = os.getcwd()
 os.chdir(working)
-os.system("darcs init --old-fashioned-inventory")
+darcs2 = True
+if os.path.exists(os.path.join(origin, "_darcs", "pristine")):
+	darcs2 = False
+if darcs2:
+	os.system("darcs init --darcs-2")
+else:
+	os.system("darcs init --old-fashioned-inventory")
 
 patches = xmldoc.getElementsByTagName('patch')
 # this may be huge and we need it many times
@@ -119,19 +126,25 @@ count = 0
 paths = []
 for i in patches:
 	# apply the patch
-	buf = ["\nNew patches:\n"]
 	hash = i.attributes['hash'].value
-	sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
-	buf.append(sock.read())
-	sock.close()
-	sock = os.popen("darcs changes --context")
-	buf.append(sock.read())
-	sock.close()
-	pout, pin = popen2.popen2("darcs apply --allow-conflicts")
-	pin.write("".join(buf))
-	pin.close()
-	log("Applying %s:\n%s" % (hash, pout.read()))
-	pout.close()
+	if not darcs2:
+		buf = ["\nNew patches:\n"]
+		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
+		buf.append(sock.read())
+		sock.close()
+		sock = os.popen("darcs changes --context")
+		buf.append(sock.read())
+		sock.close()
+		pout, pin = popen2.popen2("darcs apply --allow-conflicts")
+		pin.write("".join(buf))
+		pin.close()
+		log("Applying %s:\n%s" % (hash, pout.read()))
+		pout.close()
+	else:
+		os.chdir(origin)
+		os.system("darcs send -a -o %s --matches='hash %s' %s" % (patchfile, hash, working))
+		os.chdir(working)
+		os.system("darcs apply --allow-conflicts < %s" % patchfile)
 	message = get_patchname(i)
 	# export the commit
 	print "commit refs/heads/master"
