@@ -564,37 +564,33 @@ class Packer(object):
         # _copy_inventory_texts
         self._text_filter = None
         self._extra_init()
-        self._pack_ordering = None
 
     def _extra_init(self):
         """A template hook to allow extending the constructor trivially."""
 
-    def _packs_list_to_pack_map_and_index_list(self, packs, index_attribute):
+    def _pack_map_and_index_list(self, index_attribute, include_pack_obj=False):
         """Convert a list of packs to an index pack map and index list.
 
-        :param packs: The packs list to process.
         :param index_attribute: The attribute that the desired index is found
             on.
         :return: A tuple (map, list) where map contains the dict from
-            index:pack_tuple, and lsit contains the indices in the same order
-            as the packs list.
+            index:pack_tuple, and lsit contains the indices in the preferred
+            access order.
         """
         indices = []
         pack_map = {}
-        for pack in packs:
-            index = getattr(pack, index_attribute)
+        for pack_obj in self.packs:
+            index = getattr(pack_obj, index_attribute)
             indices.append(index)
-            pack_map[index] = pack.access_tuple()
+            pack_map[index] = pack_obj
         return pack_map, indices
 
-    def _index_contents(self, pack_map, key_filter=None):
+    def _index_contents(self, indices, key_filter=None):
         """Get an iterable of the index contents from a pack_map.
 
-        :param pack_map: A map from indices to pack details.
-        :param key_filter: An optional filter to limit the
-            keys returned.
+        :param indices: The list of indices to query
+        :param key_filter: An optional filter to limit the keys returned.
         """
-        indices = [index for index in pack_map.iterkeys()]
         all_index = CombinedGraphIndex(indices)
         if key_filter is None:
             return all_index.iter_all_entries()
@@ -649,6 +645,39 @@ class Packer(object):
             index_builder_class=self._pack_collection._index_builder_class,
             index_class=self._pack_collection._index_class)
 
+    def _update_pack_order(self, entries, index_to_pack_map):
+        """Determine how we want our packs to be ordered.
+
+        This changes the sort order of self.packs, based on the order found in
+        'entries'. This is mostly used to move unused packs to the end of the
+        list, so that future requests can avoid probing them.
+
+        :param entries: A list of (index, ...) tuples
+        :param index_to_pack_map: A mapping from index objects to pack objects.
+        """
+        packs = []
+        seen_indexes = set()
+        for entry in entries:
+            index = entry[0]
+            if index not in seen_indexes:
+                packs.append(index_to_pack_map[index])
+                seen_indexes.add(index)
+        if len(packs) == len(self.packs):
+            if 'pack' in debug.debug_flags:
+                mutter('Not changing pack list, all packs used.')
+            return
+        seen_packs = set(packs)
+        for pack in self.packs:
+            if pack not in seen_packs:
+                packs.append(pack)
+                seen_packs.add(pack)
+        if 'pack' in debug.debug_flags:
+            old_names = [p.access_tuple()[1] for p in self.packs]
+            new_names = [p.access_tuple()[1] for p in packs]
+            mutter('Reordering packs\nfrom: %s\n  to: %s',
+                   old_names, new_names)
+        self.packs = packs
+
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
         # select revisions
@@ -657,9 +686,11 @@ class Packer(object):
         else:
             revision_keys = None
         # select revision keys
-        revision_index_map = self._packs_list_to_pack_map_and_index_list(
-            self.packs, 'revision_index')[0]
-        revision_nodes = self._index_contents(revision_index_map, revision_keys)
+        revision_index_map, revision_indices = self._pack_map_and_index_list(
+            'revision_index')
+        revision_nodes = self._index_contents(revision_indices, revision_keys)
+        revision_nodes = list(revision_nodes)
+        self._update_pack_order(revision_nodes, revision_index_map)
         # copy revision keys and adjust values
         self.pb.update("Copying revision texts", 1)
         total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
@@ -685,9 +716,9 @@ class Packer(object):
         # querying for keys here could introduce a bug where an inventory item
         # is missed, so do not change it to query separately without cross
         # checking like the text key check below.
-        inventory_index_map = self._packs_list_to_pack_map_and_index_list(
-            self.packs, 'inventory_index')[0]
-        inv_nodes = self._index_contents(inventory_index_map, inv_keys)
+        inventory_index_map, inventory_indices = self._pack_map_and_index_list(
+            'inventory_index')
+        inv_nodes = self._index_contents(inventory_indices, inv_keys)
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
@@ -773,9 +804,9 @@ class Packer(object):
         self._copy_text_texts()
         # select signature keys
         signature_filter = self._revision_keys # same keyspace
-        signature_index_map = self._packs_list_to_pack_map_and_index_list(
-            self.packs, 'signature_index')[0]
-        signature_nodes = self._index_contents(signature_index_map,
+        signature_index_map, signature_indices = self._pack_map_and_index_list(
+            'signature_index')
+        signature_nodes = self._index_contents(signature_indices,
             signature_filter)
         # copy signature keys and adjust values
         self.pb.update("Copying signature texts", 4)
@@ -831,7 +862,8 @@ class Packer(object):
             # linear scan up the pack
             pack_readv_requests.sort()
             # copy the data
-            transport, path = index_map[index]
+            pack_obj = index_map[index]
+            transport, path = pack_obj.access_tuple()
             reader = pack.make_readv_reader(transport, path,
                 [offset[0:2] for offset in pack_readv_requests])
             for (names, read_func), (_1, _2, (key, eol_flag)) in \
@@ -875,7 +907,8 @@ class Packer(object):
         pb.update("Copied record", record_index, total_items)
         for index, readv_vector, node_vector in readv_group_iter:
             # copy the data
-            transport, path = index_map[index]
+            pack_obj = index_map[index]
+            transport, path = pack_obj.access_tuple()
             reader = pack.make_readv_reader(transport, path, readv_vector)
             for (names, read_func), (key, eol_flag, references) in \
                 izip(reader.iter_records(), node_vector):
@@ -899,9 +932,9 @@ class Packer(object):
                 record_index += 1
 
     def _get_text_nodes(self):
-        text_index_map = self._packs_list_to_pack_map_and_index_list(
-            self.packs, 'text_index')[0]
-        return text_index_map, self._index_contents(text_index_map,
+        text_index_map, text_indices = self._pack_map_and_index_list(
+            'text_index')
+        return text_index_map, self._index_contents(text_indices,
             self._text_filter)
 
     def _least_readv_node_readv(self, nodes):
@@ -1252,9 +1285,6 @@ class RepositoryPackCollection(object):
             return False
         # XXX: the following may want to be a class, to pack with a given
         # policy.
-        mutter('Auto-packing repository %s, which has %d pack files, '
-            'containing %d revisions into %d packs.', self, total_packs,
-            total_revisions, self._max_pack_count(total_revisions))
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1275,6 +1305,13 @@ class RepositoryPackCollection(object):
             existing_packs.append((revision_count, pack))
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
+        num_new_packs = len(pack_operations)
+        num_old_packs = sum([len(po[1]) for po in pack_operations])
+        num_revs_effected = sum([po[0] for po in pack_operations])
+        mutter('Auto-packing repository %s, which has %d pack files, '
+            'containing %d revisions. Packing %d files into %d effecting %d'
+            ' revisions', self, total_packs, total_revisions, num_old_packs,
+            num_new_packs, num_revs_effected)
         self._execute_pack_operations(pack_operations)
         return True
 
