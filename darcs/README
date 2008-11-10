@@ -10,8 +10,6 @@ $ darcs --version
 2.1.0 (release)
 ----
 
-The supported darcs repo format is the 'old-fashioned' one.
-
 Git version:
 
 ----
@@ -35,27 +33,13 @@ $ hg version
 Mercurial Distributed SCM (version 1.0.2)
 ----
 
-== Goals
+== Features
 
-=== Converting huge repos
+=== Fast
 
-darcs-fast-export (compared to darcs2git or tailor) provides a fast and
-simple darcs backend for fast-import.
-
-Thus, the code itself is only about 150 lines, and converting a huge
-repo (26094 patches, repo size 210M) took about 10 hours for me.
-
-Compared to darcs2git, it does not try to find conflict resolutions (to
-map them to merge commits), to avoid being slow.
-
-Compared to tailor, it is more correct, because the end result being the
-exact same of the original repo is guaranteed by darcs itself.
-
-There was an other project named `darcs-fast-export`, but it has been
-renamed to http://github.com/freshtonic/undarcs/tree/master[undarcs],
-just in case you would confuse the two projects.  It is faster than
-`darcs-fast-export` but it will not produce correct result in case your
-repo contains conflicts.
+darcs-fast-export provides a fast darcs backend for fast-import.
+Converting a huge repo (26094 patches, repo size 210M) took about 10
+hours for me.
 
 === Independent
 
@@ -101,7 +85,23 @@ Using git:
 $ git clone git://vmiklos.hu/darcs-fast-export
 ----
 
+== Alternatives
+
+- http://repo.or.cz/w/darcs2git.git[darcs2git] tries to find conflict
+  resolutions (to map them to merge commits), which is ideally an even
+  better conversion than the official darcs1 -> darcs2 converter, but it's
+  much slower because of this. It does not support the darcs2 format,
+  either.
+
+- http://progetti.arstecnica.it/tailor[tailor] is a nice any2any VCS
+  converter, but the end result usually does not match the original repo
+  because it tries to be too intelligent (it tracks renames and such which
+  is completely unnecessary for git).
+
+- http://github.com/freshtonic/undarcs/tree/master[undarcs] claims to be
+  fast, but it produces incorrect result in case the repo contains
+  conflicts.
+
 == TODO
 
-- support the darcs2 format
 - support incremental conversion
