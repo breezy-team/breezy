@@ -142,9 +142,13 @@ for i in patches:
 		pout.close()
 	else:
 		os.chdir(origin)
-		os.system("darcs send -a -o %s --matches='hash %s' %s" % (patchfile, hash, working))
+		sock = os.popen("darcs send -a -o %s --matches='hash %s' %s" % (patchfile, hash, working))
+		log("Extracting %s:\n%s" % (hash, sock.read()))
+		sock.close()
 		os.chdir(working)
-		os.system("darcs apply --allow-conflicts < %s" % patchfile)
+		sock = os.popen("darcs apply --allow-conflicts < %s" % patchfile)
+		log("Applying %s:\n%s" % (hash, sock.read()))
+		sock.close()
 	message = get_patchname(i)
 	# export the commit
 	print "commit refs/heads/master"
