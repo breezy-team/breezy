@@ -10,7 +10,8 @@ if [ "$1" != "--stdout" ]; then
 		bzr update
 		cd - >/dev/null
 		echo "bugs:"
-		diff --exclude .bzr -Naur test.bzr/master test/_darcs/pristine
+		diff --exclude _darcs --exclude .bzr -Naur test.bzr/master test
+		exit $?
 	fi
 else
 	../darcs-fast-export.py test
