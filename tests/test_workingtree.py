@@ -19,13 +19,16 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchFile, OutOfDateTree
+from bzrlib.errors import NoSuchFile, OutOfDateTree, NotBranchError
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import has_symlinks, supports_executable
+from bzrlib.repository import Repository
 from bzrlib.tests import KnownFailure, TestCase
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
+from bzrlib.plugins.svn.mapping3 import config_set_scheme
+from bzrlib.plugins.svn.mapping3.scheme import TrunkBranchingScheme
 from bzrlib.plugins.svn.transport import svn_config
 from bzrlib.plugins.svn.tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.workingtree import generate_ignore_list
@@ -64,6 +67,20 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         inv = tree.read_working_inventory()
         self.assertIsInstance(inv, Inventory)
         self.assertTrue(inv.has_filename(u"I²C"))
+
+    def test_not_branch_path(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({"dc/trunk/file": "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "initial")
+        self.client_update("dc")
+        self.build_tree({"dc/trunk/dir": None})
+        self.client_add("dc/trunk/dir")
+        config_set_scheme(Repository.open(repos_url), TrunkBranchingScheme(0), 
+                          None, True)
+        self.assertRaises(NotBranchError, WorkingTree.open, "dc")
+        self.assertRaises(NotBranchError, WorkingTree.open, "dc/trunk/dir")
+        tree = WorkingTree.open("dc/trunk")
 
     def test_smart_add_file(self):
         self.make_client('a', 'dc')
