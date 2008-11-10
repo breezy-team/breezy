@@ -1,0 +1,5 @@
+VERSION         DESCRIPTION
+-----------------------------------------------------------------------------
+0.3           - add darcs2 support
+0.2           - add bzr and hg support
+0.1           - initial short and fast version, supporting darcs1->git
