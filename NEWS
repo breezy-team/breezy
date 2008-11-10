@@ -1,5 +1,10 @@
 bzr-svn 0.4.16	UNRELEASED
 
+  BUG FIXES
+
+   * Don't print backtrace when error occurs while accessing repository root.
+     (#296224)
+
 bzr-svn 0.4.15	2008-11-10
 
   BUG FIXES

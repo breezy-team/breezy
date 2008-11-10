@@ -38,6 +38,7 @@ from bzrlib.plugins.svn.cache import create_cache_dir, sqlite3
 from bzrlib.plugins.svn.changes import changes_path, find_prev_location
 from bzrlib.plugins.svn.config import SvnRepositoryConfig
 from bzrlib.plugins.svn.core import SubversionException
+from bzrlib.plugins.svn.errors import convert_svn_error
 from bzrlib.plugins.svn.mapping import (SVN_REVPROP_BZR_SIGNATURE,
                      BzrSvnMapping,
                      get_default_mapping, 
@@ -257,6 +258,7 @@ class SvnRepository(Repository):
     def is_write_locked(self):
         return (self._lock_mode == 'w')
 
+    @convert_svn_error
     def get_latest_revnum(self):
         if self._lock_mode in ('r','w') and self._cached_revnum:
             return self._cached_revnum
