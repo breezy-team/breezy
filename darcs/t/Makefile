@@ -1,4 +1,4 @@
-T = $(wildcard test-*.sh)
+T = $(wildcard test*.sh)
 
 all: $(T)
 
