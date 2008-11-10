@@ -431,7 +431,7 @@ class cmd_merge_upstream(Command):
             if config.native:
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "yet supported.")
-            if config.export_upstream:
+            if config.export_upstream and location is None:
                 location = config.export_upstream
             if config.split:
                 raise BzrCommandError("Split mode is not yet supported.")
