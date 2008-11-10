@@ -17,7 +17,9 @@
 """Foreign branch utilities."""
 
 from bzrlib import errors, registry
+from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
+from bzrlib.trace import info
 
 
 class VcsMapping(object):
@@ -69,6 +71,16 @@ class VcsMappingRegistry(registry.Registry):
     def get_default(self):
         """Convenience function for obtaining the default mapping to use."""
         return self.get(self._get_default_key())
+
+
+class ForeignBranch(Branch):
+
+    def __init__(self, mapping):
+        super(ForeignBranch, self).__init__()
+        self.mapping = mapping
+
+    def dpull(self, source, stop_revision=None):
+        raise NotImplementedError(self.pull)
 
 
 class FakeControlFiles(object):
@@ -132,7 +144,12 @@ class cmd_dpush(Command):
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
-        revid_map = target_branch.dpull(source_branch)
+        if not isinstance(target_branch, ForeignBranch):
+            info("target branch is not a foreign branch, using regular push.")
+            target_branch.pull(source_branch)
+            no_rebase = True
+        else:
+            revid_map = target_branch.dpull(source_branch)
         # We successfully created the target, remember it
         if source_branch.get_push_location() is None or remember:
             source_branch.set_push_location(target_branch.base)
@@ -151,7 +168,30 @@ def test_suite():
     from bzrlib.tests import TestUtil
     loader = TestUtil.TestLoader()
     suite = TestSuite()
+    import test_versionedfiles
     testmod_names = ['test_versionedfiles',]
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     return suite
+
+def escape_commit_message(message):
+    """Replace xml-incompatible control characters."""
+    if message is None:
+        return None
+    import re
+    # FIXME: RBC 20060419 this should be done by the revision
+    # serialiser not by commit. Then we can also add an unescaper
+    # in the deserializer and start roundtripping revision messages
+    # precisely. See repository_implementations/test_repository.py
+    
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    message, _ = re.subn(
+        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+        lambda match: match.group(0).encode('unicode_escape'),
+        message)
+    return message
+
+
 

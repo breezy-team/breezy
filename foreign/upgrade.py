@@ -22,7 +22,6 @@ from bzrlib.trace import info
 
 import itertools
 
-
 class RebaseNotPresent(DependencyNotPresent):
     _fmt = "Unable to import bzr-rebase (required for upgrade support): %(error)s"
 
@@ -74,8 +73,10 @@ def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
 def determine_fileid_renames(old_tree, new_tree):
     for old_file_id in old_tree:
         new_file_id = new_tree.path2id(old_tree.id2path(old_file_id))
+        if old_file_id == new_file_id:
+            continue
         if new_file_id is not None:
-            yield old_file_id, new_file_id
+            yield new_tree.id2path(new_file_id), old_file_id, new_file_id
 
 
 def upgrade_workingtree(wt, foreign_repository, new_mapping, mapping_registry, 
@@ -87,21 +88,55 @@ def upgrade_workingtree(wt, foreign_repository, new_mapping, mapping_registry,
     wt.lock_write()
     try:
         old_revid = wt.last_revision()
-        renames = upgrade_branch(wt.branch, foreign_repository, new_mapping=new_mapping,
+        revid_renames = upgrade_branch(wt.branch, foreign_repository, new_mapping=new_mapping,
                                  mapping_registry=mapping_registry,
                                  allow_changes=allow_changes, verbose=verbose)
         last_revid = wt.branch.last_revision()
-        wt.set_last_revision(last_revid)
+        if old_revid == last_revid:
+            return revid_renames
 
+        fileid_renames = dict([(path, (old_fileid, new_fileid)) for (path, old_fileid, new_fileid) in determine_fileid_renames(wt.branch.repository.revision_tree(old_revid), wt.branch.repository.revision_tree(last_revid))])
+        old_fileids = []
+        new_fileids = []
+        new_root_id = None
         # Adjust file ids in working tree
-        for (old_fileid, new_fileid) in determine_fileid_renames(wt.branch.repository.revision_tree(old_revid), wt.basis_tree()):
-            path = wt.id2path(old_fileid)
-            wt.remove(path)
-            wt.add([path], [new_fileid])
+        for path in sorted(fileid_renames.keys(), reverse=True):
+            if path != "":
+                old_fileids.append(fileid_renames[path][0])
+                new_fileids.append((path, fileid_renames[path][1]))
+            else:
+                new_root_id = fileid_renames[path][1]
+        new_fileids.reverse()
+        wt.unversion(old_fileids)
+        if new_root_id is not None:
+            wt.set_root_id(new_root_id)
+        wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
+        wt.set_last_revision(last_revid)
     finally:
         wt.unlock()
 
-    return renames
+    return revid_renames
+
+
+def upgrade_tags(tags, repository, foreign_repository, new_mapping, mapping_registry, 
+                 allow_changes=False, verbose=False, branch_renames=None):
+    """Upgrade a tags dictionary."""
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        tags_dict = tags.get_tag_dict()
+        for i, (name, revid) in enumerate(tags_dict.items()):
+            pb.update("upgrading tags", i, len(tags_dict))
+            if branch_renames is not None and revid in branch_renames:
+                renames = branch_renames
+            else:
+                renames = upgrade_repository(repository, foreign_repository, 
+                      revision_id=revid, new_mapping=new_mapping,
+                      mapping_registry=mapping_registry,
+                      allow_changes=allow_changes, verbose=verbose)
+            if revid in renames:
+                tags.set_tag(name, renames[revid])
+    finally:
+        pb.finished()
 
 
 def upgrade_branch(branch, foreign_repository, new_mapping, 
@@ -118,6 +153,9 @@ def upgrade_branch(branch, foreign_repository, new_mapping,
               revision_id=revid, new_mapping=new_mapping,
               mapping_registry=mapping_registry,
               allow_changes=allow_changes, verbose=verbose)
+    upgrade_tags(branch.tags, branch.repository, foreign_repository, 
+           new_mapping=new_mapping, mapping_registry=mapping_registry, 
+           allow_changes=allow_changes, verbose=verbose)
     if len(renames) > 0:
         branch.generate_revision_history(renames[revid])
     return renames
@@ -144,11 +182,11 @@ def generate_upgrade_map(new_mapping, revs, mapping_registry):
              dictionary.
     """
     rename_map = {}
-    # Create a list of revisions that can be renamed during the upgade
+    # Create a list of revisions that can be renamed during the upgrade
     for revid in revs:
         assert isinstance(revid, str)
         try:
-            (foreign_revid, mapping) = mapping_registry.parse_revision_id(revid)
+            (foreign_revid, _) = mapping_registry.parse_revision_id(revid)
         except InvalidRevisionId:
             # Not a foreign revision, nothing to do
             continue
@@ -202,8 +240,7 @@ def create_upgrade_plan(repository, foreign_repository, new_mapping,
         heads = [revision_id]
 
     plan = generate_transpose_plan(graph.iter_ancestry(heads), upgrade_map, 
-      graph,
-      lambda revid: create_upgraded_revid(revid, new_mapping.upgrade_suffix))
+      graph, lambda revid: create_upgraded_revid(revid, new_mapping.upgrade_suffix))
     def remove_parents((oldrevid, (newrevid, parents))):
         return (oldrevid, newrevid)
     upgrade_map.update(dict(map(remove_parents, plan.items())))

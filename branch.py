@@ -24,6 +24,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 
+from bzrlib.plugins.git.foreign import ForeignBranch
 from bzrlib.plugins.git.mapping import default_mapping
 
 class GitTagDict(tag.BasicTags):
@@ -64,7 +65,7 @@ class GitBranchFormat(branch.BranchFormat):
         return True
 
 
-class GitBranch(branch.Branch):
+class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, bzrdir, repository, head, base, lockfiles):
