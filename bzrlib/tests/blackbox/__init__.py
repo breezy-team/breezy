@@ -64,6 +64,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_filtered_view_ops',
                      'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_hooks',
