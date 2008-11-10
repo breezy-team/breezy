@@ -8,8 +8,10 @@ if [ "$1" != "--stdout" ]; then
 	if [ $? = 0 ]; then
 		git clone -q test.git test.git.nonbare
 		echo "bugs:"
-		diff --exclude .git -Naur test.git.nonbare test/_darcs/pristine
+		diff --exclude _darcs --exclude .git -Naur test.git.nonbare test
+		ret=$?
 		rm -rf test.git.nonbare
+		exit $?
 	fi
 else
 	../darcs-fast-export.py test
