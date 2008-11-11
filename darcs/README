@@ -54,6 +54,16 @@ get my repo using
 $ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
 ----
 
+=== Formats
+
+It supports both the 'darcs-2' and the 'old-fashioned-inventory' darcs
+repository formats.
+
+=== Incremental conversions
+
+It supports the usual `--export-marks` / `--import-marks` switches to
+allow incremental conversion.
+
 == Usage
 
 Typical usage (given that `test/` is a darcs repo):
@@ -101,7 +111,3 @@ $ git clone git://vmiklos.hu/darcs-fast-export
 - http://github.com/freshtonic/undarcs/tree/master[undarcs] claims to be
   fast, but it produces incorrect result in case the repo contains
   conflicts.
-
-== TODO
-
-- support incremental conversion

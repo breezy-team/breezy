@@ -179,6 +179,8 @@ for i in patches:
 	date = int(time.mktime(time.strptime(i.attributes['date'].value, "%Y%m%d%H%M%S"))) + get_zone_int()
 	print "committer %s %s %s" % (get_author(i), date, get_zone_str())
 	print "data %d\n%s" % (len(message), message)
+	if count > 1:
+		print "from :%s" % (count-1)
 	# export the files
 	for j in paths:
 		print "D %s" % j
