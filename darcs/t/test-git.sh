@@ -10,7 +10,7 @@ cd ..
 if [ "$1" != "--stdout" ]; then
 	../darcs-fast-export.py test |(cd test.git; git fast-import)
 	if [ $? = 0 ]; then
-		diff_git
+		diff_git test
 		exit $?
 	fi
 else
