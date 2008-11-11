@@ -1514,15 +1514,9 @@ class Repository(object):
         yield ("inventory", None, revision_ids)
 
         # signatures
-        revisions_with_signatures = set()
-        for rev_id in revision_ids:
-            try:
-                self.get_signature_text(rev_id)
-            except errors.NoSuchRevision:
-                # not signed.
-                pass
-            else:
-                revisions_with_signatures.add(rev_id)
+        revisions_with_signatures = set(
+            self.signatures.get_parent_map(revision_ids))
+        revisions_with_signatures.intersection_update(revision_ids)
         yield ("signatures", None, revisions_with_signatures)
 
         # revisions
