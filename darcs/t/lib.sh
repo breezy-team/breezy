@@ -65,3 +65,9 @@ diff_git()
 	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur $1.git.nonbare $1
 	return $?
 }
+
+die()
+{
+	echo "fatal: $@"
+	exit 1
+}
