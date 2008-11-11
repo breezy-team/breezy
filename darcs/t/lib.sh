@@ -60,6 +60,7 @@ third line"
 
 diff_git()
 {
+	rm -rf $1.git.nonbare
 	git clone -q $1.git $1.git.nonbare
 	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur $1.git.nonbare $1
 	return $?
