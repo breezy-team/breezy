@@ -12,9 +12,7 @@ if [ "$1" != "--stdout" ]; then
 	if [ $? = 0 ]; then
 		git clone -q test2.git test2.git.nonbare
 		diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur test2.git.nonbare test2
-		ret=$?
-		rm -rf test2.git.nonbare
-		exit $ret
+		exit $?
 	fi
 else
 	../darcs-fast-export.py test2
