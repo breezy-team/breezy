@@ -95,7 +95,8 @@ class MissingPrefix(BzrError):
 
 
 class RevpropChangeFailed(BzrError):
-    _fmt = """Unable to set revision property %(name)s."""
+    _fmt = """Unable to set revision property %(name)s. 
+Does the repository pre-revprop-change hook allow property changes?"""
 
     def __init__(self, name):
         BzrError.__init__(self)
