@@ -71,3 +71,11 @@ die()
 	echo "fatal: $@"
 	exit 1
 }
+
+upd_file_darcs()
+{
+	cd $1
+	echo $3 > $2
+	_drrec -a -m "updated '$2' to '$3'"
+	cd ..
+}
