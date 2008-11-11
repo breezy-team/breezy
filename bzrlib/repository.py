@@ -1600,6 +1600,13 @@ class Repository(object):
             versions).  knit-kind is one of 'file', 'inventory', 'signatures',
             'revisions'.  file-id is None unless knit-kind is 'file'.
         """
+        for result in self._find_file_keys_to_fetch(revision_ids, _files_pb):
+            yield result
+        del _files_pb
+        for result in self._find_non_file_keys_to_fetch(revision_ids):
+            yield result
+
+    def _find_file_keys_to_fetch(self, revision_ids, pb):
         # XXX: it's a bit weird to control the inventory weave caching in this
         # generator.  Ideally the caching would be done in fetch.py I think.  Or
         # maybe this generator should explicitly have the contract that it
@@ -1612,14 +1619,12 @@ class Repository(object):
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
-            if _files_pb is not None:
-                _files_pb.update("fetch texts", count, num_file_ids)
+            if pb is not None:
+                pb.update("fetch texts", count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
-        # We're done with the files_pb.  Note that it finished by the caller,
-        # just as it was created by the caller.
-        del _files_pb
 
+    def _find_non_file_keys_to_fetch(self, revision_ids):
         # inventory
         yield ("inventory", None, revision_ids)
 

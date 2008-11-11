@@ -157,11 +157,10 @@ class RepoFetcher(object):
         phase = 'file'
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            from_repo = self.from_repository
             revs = search.get_keys()
-            graph = self.from_repository.get_graph()
-            revs = list(graph.iter_topo_order(revs))
-            data_to_fetch = self.from_repository.item_keys_introduced_by(revs,
-                                                                         pb)
+            revs = list(from_repo.get_graph().iter_topo_order(revs))
+            data_to_fetch = from_repo.item_keys_introduced_by(revs, pb)
             text_keys = []
             for knit_kind, file_id, revisions in data_to_fetch:
                 if knit_kind != phase:
@@ -189,16 +188,17 @@ class RepoFetcher(object):
                     # Before we process the inventory we generate the root
                     # texts (if necessary) so that the inventories references
                     # will be valid.
-                    self._generate_root_texts(revs)
+                    self._generate_root_texts(revisions)
                     # NB: This currently reopens the inventory weave in source;
                     # using a single stream interface instead would avoid this.
-                    self._fetch_inventory_weave(revs, pb)
+                    self._fetch_inventory_weave(revisions, pb)
                 elif knit_kind == "signatures":
                     # Nothing to do here; this will be taken care of when
                     # _fetch_revision_texts happens.
                     pass
                 elif knit_kind == "revisions":
-                    self._fetch_revision_texts(revs, pb)
+                    self._fetch_revision_texts(revisions, pb)
+                    self.count_copied += len(revisions)
                 else:
                     raise AssertionError("Unknown knit kind %r" % knit_kind)
             if self.to_repository._fetch_reconcile:
@@ -206,7 +206,6 @@ class RepoFetcher(object):
         finally:
             if pb is not None:
                 pb.finished()
-        self.count_copied += len(revs)
         
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to

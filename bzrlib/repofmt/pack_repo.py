@@ -53,6 +53,7 @@ from bzrlib import (
     errors,
     lockable_files,
     lockdir,
+    revision as _mod_revision,
     symbol_versioning,
     )
 
@@ -2163,6 +2164,49 @@ class CHKInventoryRepository(KnitPackRepository):
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)
 
+    def _find_revision_outside_set(self, revision_ids):
+        revision_set = frozenset(revision_ids)
+        for revid in revision_ids:
+            parent_ids = self.get_parent_map([revid]).get(revid, ())
+            for parent in parent_ids:
+                if parent in revision_set:
+                    # Parent is not outside the set
+                    continue
+                if parent not in self.get_parent_map([parent]):
+                    # Parent is a ghost
+                    continue
+                return parent
+        return _mod_revision.NULL_REVISION
+
+    def _find_file_keys_to_fetch(self, revision_ids, pb):
+        rich_root = self.supports_rich_root()
+        revision_outside_set = self._find_revision_outside_set(revision_ids)
+        if revision_outside_set == _mod_revision.NULL_REVISION:
+            uninteresting_chk_refs = set()
+        else:
+            uninteresting_inv = self.get_inventory(revision_outside_set)
+            uninteresting_map = uninteresting_inv.id_to_entry
+            uninteresting_map._ensure_root()
+            uninteresting_chk_refs = set(uninteresting_map._root_node.refs())
+        for idx, inv in enumerate(self.iter_inventories(revision_ids)):
+            pb.update('fetch', idx, len(revision_ids))
+            inv_chk_map = inv.id_to_entry
+            inv_chk_map._ensure_root()
+            candidate_names = {}
+            for name, ref in inv_chk_map._root_node._nodes.iteritems():
+                if ref in uninteresting_chk_refs:
+                    continue
+                candidate_names[name] = ref
+            for name, bytes in inv_chk_map.iteritems(candidate_names):
+                entry = inv._bytes_to_entry(bytes)
+                if entry.name == '' and not rich_root:
+                    continue
+                if entry.revision == inv.revision_id:
+                    # add it to uninteresting_chk_refs to
+                    # avoid processing twice it if we see it again later.
+                    uninteresting_chk_refs.add(candidate_names[name])
+                    yield ("file", entry.file_id, [entry.revision])
+        
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
 
