@@ -1400,7 +1400,6 @@ class KnitVersionedFiles(VersionedFiles):
                     del buffered_index_entries[key]
         # If there were any deltas which had a missing basis parent, error.
         if buffered_index_entries:
-            print buffered_index_entries
             raise errors.RevisionNotPresent(buffered_index_entries.keys()[0],
                 self)
 
