@@ -14,7 +14,7 @@ if [ "$1" != "--stdout" ]; then
 		diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur test2.git.nonbare test2
 		ret=$?
 		rm -rf test2.git.nonbare
-		exit $?
+		exit $ret
 	fi
 else
 	../darcs-fast-export.py test2
