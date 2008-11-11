@@ -1,3 +1,7 @@
+. lib.sh
+
+create_darcs test --old-fashioned-inventory
+
 rm -rf test.darcs test.bzr
 mkdir test.bzr
 cd test.bzr
@@ -10,7 +14,7 @@ if [ "$1" != "--stdout" ]; then
 		bzr update
 		cd - >/dev/null
 		echo "bugs:"
-		diff --exclude _darcs --exclude .bzr -Naur test.bzr/master test
+		diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Naur test.bzr/master test
 		exit $?
 	fi
 else
