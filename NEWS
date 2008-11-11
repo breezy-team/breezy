@@ -35,6 +35,8 @@ IN DEVELOPMENT
 
     * ``bzr selftest`` now fails if no doctests are found in a module
       that's expected to have them.  (Martin Pool)
+      
+    * Doctests now stop on the first failure.  (Martin Pool)
 
   INTERNALS:
 

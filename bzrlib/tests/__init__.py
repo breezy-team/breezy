@@ -2971,7 +2971,8 @@ def test_suite(keep_only=None, starting_with=None):
             # No tests to keep here, move along
             continue
         try:
-            doc_suite = doctest.DocTestSuite(mod)
+            doc_suite = doctest.DocTestSuite(mod,
+            	optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
