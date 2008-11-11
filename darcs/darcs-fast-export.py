@@ -90,6 +90,16 @@ export_marks_file = None
 if args[0].startswith("--export-marks="):
 	export_marks_file = args[0].split('=')[1]
 	args = args[1:]
+import_marks = []
+import_marks_file = None
+if args[0].startswith("--import-marks="):
+	import_marks_file = args[0].split('=')[1]
+	args = args[1:]
+
+if import_marks_file:
+	sock = open(import_marks_file)
+	for i in sock.readlines():
+		import_marks.append(i.strip().split(' ')[1])
 
 origin = os.path.abspath(args[0])
 working = "%s.darcs" % origin
@@ -135,6 +145,9 @@ paths = []
 for i in patches:
 	# apply the patch
 	hash = i.attributes['hash'].value
+	if hash in import_marks:
+		count += 1
+		continue
 	if not darcs2:
 		buf = ["\nNew patches:\n"]
 		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
