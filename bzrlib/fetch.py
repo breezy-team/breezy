@@ -158,13 +158,9 @@ class RepoFetcher(object):
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             from_repo = self.from_repository
-            find_keys_to_fetch = getattr(from_repo, '_find_keys_to_fetch', None)
-            if find_keys_to_fetch is not None:
-                data_to_fetch = find_keys_to_fetch(search, pb)
-            else:
-                revs = search.get_keys()
-                revs = list(from_repo.get_graph().iter_topo_order(revs))
-                data_to_fetch = from_repo.item_keys_introduced_by(revs, pb)
+            revs = search.get_keys()
+            revs = list(from_repo.get_graph().iter_topo_order(revs))
+            data_to_fetch = from_repo.item_keys_introduced_by(revs, pb)
             text_keys = []
             for knit_kind, file_id, revisions in data_to_fetch:
                 if knit_kind != phase:

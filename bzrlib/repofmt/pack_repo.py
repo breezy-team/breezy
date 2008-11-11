@@ -2178,11 +2178,9 @@ class CHKInventoryRepository(KnitPackRepository):
                 return parent
         return _mod_revision.NULL_REVISION
 
-    def _find_keys_to_fetch(self, search, pb):
-        keys = search.get_keys()
+    def _find_file_keys_to_fetch(self, revision_ids, pb):
         rich_root = self.supports_rich_root()
-        #import pdb; pdb.set_trace()
-        revision_outside_set = self._find_revision_outside_set(keys)
+        revision_outside_set = self._find_revision_outside_set(revision_ids)
         if revision_outside_set == _mod_revision.NULL_REVISION:
             uninteresting_chk_refs = set()
         else:
@@ -2190,26 +2188,24 @@ class CHKInventoryRepository(KnitPackRepository):
             uninteresting_map = uninteresting_inv.id_to_entry
             uninteresting_map._ensure_root()
             uninteresting_chk_refs = set(uninteresting_map._root_node.refs())
-        for inv in self.iter_inventories(keys):
+        for idx, inv in enumerate(self.iter_inventories(revision_ids)):
+            pb.update('fetch', idx, len(revision_ids))
             inv_chk_map = inv.id_to_entry
             inv_chk_map._ensure_root()
-            candidate_names = []
+            candidate_names = {}
             for name, ref in inv_chk_map._root_node._nodes.iteritems():
                 if ref in uninteresting_chk_refs:
                     continue
-                candidate_names.append(name)
-                # We will process it, so add it to uninteresting_chk_refs to
-                # avoid processing twice it if we see it again later.
-                uninteresting_chk_refs.add(ref)
+                candidate_names[name] = ref
             for name, bytes in inv_chk_map.iteritems(candidate_names):
                 entry = inv._bytes_to_entry(bytes)
                 if entry.name == '' and not rich_root:
                     continue
                 if entry.revision == inv.revision_id:
+                    # add it to uninteresting_chk_refs to
+                    # avoid processing twice it if we see it again later.
+                    uninteresting_chk_refs.add(candidate_names[name])
                     yield ("file", entry.file_id, [entry.revision])
-
-        for result in self._non_file_keys_introduced_by(keys):
-            yield result
         
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
