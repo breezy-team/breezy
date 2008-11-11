@@ -230,6 +230,7 @@ def _open_bzr_log():
     # TODO: What should happen if we fail to open the trace file?  Maybe the
     # objects should be pointed at /dev/null or the equivalent?  Currently
     # returns None which will cause failures later.
+    return None
 
 
 def enable_default_logging():
@@ -250,7 +251,8 @@ def enable_default_logging():
                                            timezone='local')
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
-    bzr_log_file.write(start_time.encode('utf-8') + '\n')
+    if bzr_log_file is not None:
+        bzr_log_file.write(start_time.encode('utf-8') + '\n')
     push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
