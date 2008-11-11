@@ -53,6 +53,7 @@ from bzrlib import (
     errors,
     lockable_files,
     lockdir,
+    revision as _mod_revision,
     symbol_versioning,
     )
 
@@ -2163,6 +2164,15 @@ class CHKInventoryRepository(KnitPackRepository):
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)
 
+    def _find_revision_outside_set(self, revision_ids):
+        revision_set = frozenset(revision_ids)
+        for revid in revision_ids:
+            parent_ids = self.get_parent_map([revid]).get(revid, ())
+            for parent in parent_ids:
+                if parent not in revision_set:
+                    return parent
+        return _mod_revision.NULL_REVISION
+        
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
 
