@@ -2953,6 +2953,7 @@ def test_suite(keep_only=None, starting_with=None):
 
     modules_to_doctest = [
         'bzrlib',
+        'bzrlib.branchbuilder',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
