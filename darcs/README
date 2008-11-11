@@ -111,3 +111,11 @@ $ git clone git://vmiklos.hu/darcs-fast-export
 - http://github.com/freshtonic/undarcs/tree/master[undarcs] claims to be
   fast, but it produces incorrect result in case the repo contains
   conflicts.
+
+== Thanks
+
+- Jason Dagit for helping me with darcs2 issues
+- Shawn O. Pearce and Johannes Schindelin for writing `git-fast-import`
+  / `git-fast-export`
+- Ian Clatworthy for writing bzr fast-import
+- Paul Crowley for writing hg fast-import
