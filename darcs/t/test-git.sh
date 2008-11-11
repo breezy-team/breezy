@@ -10,8 +10,7 @@ cd ..
 if [ "$1" != "--stdout" ]; then
 	../darcs-fast-export.py test |(cd test.git; git fast-import)
 	if [ $? = 0 ]; then
-		git clone -q test.git test.git.nonbare
-		diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur test.git.nonbare test
+		diff_git
 		exit $?
 	fi
 else

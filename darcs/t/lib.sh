@@ -57,3 +57,10 @@ third line"
 	_drrec -a -m "remove file"
 	cd ..
 }
+
+diff_git()
+{
+	git clone -q $1.git $1.git.nonbare
+	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur $1.git.nonbare $1
+	return $?
+}
