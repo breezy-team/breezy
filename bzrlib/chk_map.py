@@ -14,7 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Persistent maps from string->string using CHK stores."""
+"""Persistent maps from tuple_of_strings->string using CHK stores.
+
+Overview and current status:
+
+The CHKMap class implements a dict from tuple_of_strings->string by using a trie
+with internal nodes of 8-bit fan out; The key tuples are mapped to strings by
+joining them by \x00, and \x00 padding shorter keys out to the length of the
+longest key. Leaf nodes are packed as densely as possible, and internal nodes
+are all and additional 8-bits wide leading to a sparse upper tree. 
+
+Updates to a CHKMap are done preferentially via the apply_delta method, to
+allow optimisation of the update operation; but individual map/unmap calls are
+possible and supported. All changes via map/unmap are buffered in memory until
+the _save method is called to force serialisation of the tree. apply_delta
+performs a _save implicitly.
+
+TODO:
+-----
+
+Densely packed upper nodes.
+
+"""
 
 import osutils
 
@@ -31,7 +52,7 @@ class CHKMap(object):
         """
         self._store = store
         if root_key is None:
-            self._root_node = RootNode()
+            self._root_node = LeafNode()
         else:
             self._root_node = root_key
 
@@ -46,11 +67,11 @@ class CHKMap(object):
         for old, new, value in delta:
             if old is not None and old != new:
                 # unmap
-                self._unmap(old)
+                self.unmap(old)
         for old, new, value in delta:
             if new is not None:
                 # map
-                self._map(new, value)
+                self.map(new, value)
         return self._save()
 
     def _ensure_root(self):
@@ -59,8 +80,7 @@ class CHKMap(object):
             # Demand-load the root
             bytes = self._read_bytes(self._root_node)
             root_key = self._root_node
-            self._root_node = RootNode()
-            self._root_node.deserialise(bytes, root_key)
+            self._root_node = _deserialise(bytes, root_key)
 
     def _read_bytes(self, key):
         stream = self._store.get_record_stream([key], 'unordered', True)
@@ -89,15 +109,7 @@ class CHKMap(object):
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
-        if key_filter is not None:
-            for name, key, in self._root_node._nodes.iteritems():
-                if name in key_filter:
-                    bytes = self._read_bytes(key)
-                    yield name, ValueNode.deserialise(bytes).value
-        else:
-            for name, key, in self._root_node._nodes.iteritems():
-                bytes = self._read_bytes(key)
-                yield name, ValueNode.deserialise(bytes).value
+        return self._root_node.iteritems(self._store, key_filter=key_filter)
 
     def key(self):
         """Return the key for this map."""
@@ -110,8 +122,23 @@ class CHKMap(object):
         self._ensure_root()
         return len(self._root_node)
 
+    def map(self, key, value):
+        """Map a key tuple to value."""
+        # Need a root object.
+        self._ensure_root()
+        prefix, node_details = self._root_node.map(self._store, key, value)
+        if len(node_details) == 1:
+            self._root_node = node_details[0][1]
+        else:
+            self._root_node = InternalNode()
+            self._root_node.set_maximum_size(node_details[0][1].maximum_size)
+            self._root_node._key_width = node_details[0][1]._key_width
+            for split, node in node_details:
+                self._root_node.add_node(split, node)
+
     def _map(self, key, value):
         """Map key to value."""
+        # Ne
         self._ensure_root()
         # Store the value
         bytes = ValueNode(value).serialise()
@@ -123,6 +150,11 @@ class CHKMap(object):
         chk = ("sha1:" + sha1,)
         # And link into the root
         self._root_node.add_child(key, chk)
+
+    def unmap(self, key):
+        """remove key from the map."""
+        self._ensure_root()
+        self._root_node.unmap(self._store, key)
 
     def _unmap(self, key):
         """remove key from the map."""
@@ -137,13 +169,8 @@ class CHKMap(object):
         if type(self._root_node) == tuple:
             # Already saved.
             return self._root_node
-        # TODO: flush root_nodes children?
-        bytes = self._root_node.serialise()
-        sha1, _, _ = self._store.add_lines((None,), (),
-            osutils.split_lines(bytes))
-        result = ("sha1:" + sha1,)
-        self._root_node._key = result
-        return result
+        keys = list(self._root_node.serialise(self._store))
+        return keys[-1]
 
 
 class Node(object):
@@ -182,7 +209,10 @@ class Node(object):
 
 
 class LeafNode(Node):
-    """A node containing actual key:value pairs."""
+    """A node containing actual key:value pairs.
+    
+    :ivar _items: A dict of key->value items. The key is in tuple form.
+    """
 
     def __init__(self):
         Node.__init__(self)
@@ -222,7 +252,7 @@ class LeafNode(Node):
         result._size = len(bytes)
         return result
 
-    def iteritems(self, key_filter=None):
+    def iteritems(self, store, key_filter=None):
         if key_filter is not None:
             for item in self._items.iteritems():
                 if item[0] in key_filter:
@@ -234,7 +264,20 @@ class LeafNode(Node):
     def key(self):
         return self._key
 
-    def map(self, key, value):
+    def _key_count(self, parent_width, cut_width):
+        """Return the number of keys in/under this node between two widths.
+
+        :param parent_width: The start offset in keys to consider.
+        :param cut_width: The width to stop considering at.
+        """
+        # This assumes the keys are unique up to parent_width.
+        serialised_keys = set()
+        for key in self._items:
+            serialised_key = '\x00'.join(key)
+            serialised_keys.add(serialised_key[parent_width:cut_width])
+        return len(serialised_keys)
+
+    def map(self, store, key, value):
         """Map key to value."""
         if key in self._items:
             self._size -= 2 + len('\x00'.join(key)) + len(self._items[key])
@@ -245,13 +288,23 @@ class LeafNode(Node):
         self._key = None
         if (self._maximum_size and self._current_size() > self._maximum_size and
             self._len > 1):
-            result = InternalNode()
-            result.set_maximum_size(self._maximum_size)
-            result._key_width = self._key_width
-            result._add_node(self)
-            return result
+            common_prefix = self.unique_serialised_prefix()
+            split_at = len(common_prefix) + 1
+            result = {}
+            for key, value in self._items.iteritems():
+                serialised_key = self._serialised_key(key)
+                prefix = serialised_key[:split_at]
+                if prefix not in result:
+                    node = LeafNode()
+                    node.set_maximum_size(self._maximum_size)
+                    node._key_width = self._key_width
+                    result[prefix] = node
+                else:
+                    node = result[prefix]
+                node.map(store, key, value)
+            return common_prefix, result.items()
         else:
-            return self
+            return self.unique_serialised_prefix(), [("", self)]
 
     def serialise(self, store):
         """Serialise the tree to store.
@@ -269,7 +322,32 @@ class LeafNode(Node):
         self._key = ("sha1:" + sha1,)
         return [self._key]
 
-    def unmap(self, key):
+    def _serialised_key(self, key):
+        """Return the serialised key for key in this node."""
+        return '\x00'.join(key)
+
+    def unique_serialised_prefix(self):
+        """Return the unique key prefix for this node.
+
+        :return: A bytestring of the longest serialised key prefix that is
+            unique within this node.
+        """
+        # may want to cache this eventually :- but wait for enough
+        # functionality to profile.
+        keys = list(self._items.keys())
+        if not keys:
+            return ""
+        current_prefix = self._serialised_key(keys.pop(-1))
+        while current_prefix and keys:
+            next_key = self._serialised_key(keys.pop(-1))
+            for pos, (left, right) in enumerate(zip(current_prefix, next_key)):
+                if left != right:
+                    pos -= 1
+                    break
+            current_prefix = current_prefix[:pos + 1]
+        return current_prefix
+
+    def unmap(self, store, key):
         """Unmap key from the node."""
         self._size -= 2 + len('\x00'.join(key)) + len(self._items[key])
         self._len -= 1
@@ -279,7 +357,11 @@ class LeafNode(Node):
 
 
 class InternalNode(Node):
-    """A node that contains references to other nodes."""
+    """A node that contains references to other nodes.
+    
+    An InternalNode is responsible for mapping serialised key prefixes to child
+    nodes. It is greedy - it will defer splitting itself as long as possible.
+    """
 
     def __init__(self):
         Node.__init__(self)
@@ -287,6 +369,18 @@ class InternalNode(Node):
         # self._size = 12
         # How many octets key prefixes within this node are.
         self._node_width = 0
+
+    def add_node(self, prefix, node):
+        """Add a child node with prefix prefix, and node node.
+
+        :param prefix: The serialised key prefix for node.
+        :param node: The node being added.
+        """
+        self._len += len(node)
+        if not len(self._items):
+            self._node_width = len(prefix)
+        self._items[prefix] = node
+        self._key = None
 
     def _add_node(self, node):
         """Add a node to the InternalNode.
@@ -322,7 +416,7 @@ class InternalNode(Node):
                     child.set_maximum_size(self._maximum_size)
                     child._key_width = self._key_width
                     items[actual_key] = child
-                child.map(key_value[0], key_value[1])
+                child.map(store, key_value[0], key_value[1])
                 self._len += 1
         else:
             raise NotImplementedError(self._add_node)
@@ -332,74 +426,155 @@ class InternalNode(Node):
         return (self._size + len(str(self._len)) + len(str(self._key_width)) +
             len(str(self._maximum_size)))
 
-    def iteritems(self, key_filter=None):
+    @classmethod
+    def deserialise(klass, bytes, key):
+        """Deseriaise bytes to an InternalNode, with key key.
+
+        :param bytes: The bytes of the node.
+        :param key: The key that the serialised node has.
+        :return: An InternalNode instance.
+        """
+        result = InternalNode()
+        lines = bytes.splitlines()
+        items = {}
+        if lines[0] != 'chknode:':
+            raise ValueError("not a serialised internal node: %r" % bytes)
+        maximum_size = int(lines[1])
+        width = int(lines[2])
+        length = int(lines[3])
+        for line in lines[4:]:
+            prefix, flat_key = line.rsplit('\x00', 1)
+            items[prefix] = (flat_key,)
+        result._items = items
+        result._len = length
+        result._maximum_size = maximum_size
+        result._key = key
+        result._key_width = width
+        result._size = len(bytes)
+        result._node_width = len(prefix)
+        return result
+
+    def iteritems(self, store, key_filter=None):
+        for node in self._iter_nodes(store, key_filter=key_filter):
+            for item in node.iteritems(store, key_filter=key_filter):
+                yield item
+
+    def _iter_nodes(self, store, key_filter=None):
+        """Iterate over node objects which match key_filter.
+
+        :param store: A store to use for accessing content.
+        :param key_filter: A key filter to filter nodes. Only nodes that might
+            contain a key in key_filter will be returned.
+        :return: An iterable of nodes.
+        """
+        nodes = []
+        keys = set()
         if key_filter is None:
-            for child in self._items.itervalues():
-                for item in child.iteritems():
-                    yield item
+            for node in self._items.itervalues():
+                if type(node) == tuple:
+                    keys.add(node)
+                else:
+                    nodes.append(node)
         else:
             serialised_filter = set([self._serialised_key(key) for key in
                 key_filter])
-            for key, child in self._items.iteritems():
-                if key in serialised_filter:
-                    for item in child.iteritems(key_filter):
-                        yield item
-
-    def map(self, key, value):
-        """Map key to value."""
-        serialised_key = self._serialised_key(key)
-        try:
-            child = self._items[serialised_key]
-        except KeyError:
-            child = LeafNode()
-            child.set_maximum_size(self._maximum_size)
-            child._key_width = self._key_width
-            self._items[serialised_key] = child
-        old_len = len(child)
-        new_child = child.map(key, value)
-        # TODO: rebalance/enforce balance
-        if new_child is not child:
-            # The child has exceeded its size; if we take more bytes off the
-            # key prefix for the child, that may fit into our node;
-            # How many more bytes can we fit?
-            remaining_size = max(0, self.maximum_size - self._current_size())
-            size_per_row = (self._node_width + 45 + 2)
-            # without increasing the key width:
-            extra_rows = remaining_size / size_per_row
-            if extra_rows:
-                # What is the minimum node width increase to split new_child:
-                offset_bytes = [1]
-                offset = self._node_width - 1
-                while len(offset_bytes) == 1 and offset < new_child._node_width:
-                    offset += 1
-                    offset_bytes = set(child_key[offset] for child_key in
-                        new_child._items.keys())
-                if len(offset_bytes) > 1:
-                    # We've found the fan out point
-                    increase = self._node_width - offset
-                    # calculate how many more pointers we need to carry
-                    new_keys = len(offset_bytes)
-                    for subnode in self._items.values():
-                        new_keys += subnode._key_count(self._node_width, offset)
-                    if (new_keys * (offset + 45 + 2) +
-                        self._prelude_size() > self._maximum_size):
-                        # can't fit it all, accept the new child
-                        self._items[serialised_key] = new_child
+            for prefix, node in self._items.iteritems():
+                if prefix in serialised_filter:
+                    if type(node) == tuple:
+                        keys.add(node)
                     else:
-                        # increasing the 
-                        pass
-                else:
-                    # it didn't fan out! wtf!
-                    raise AssertionError("no fan out")
+                        nodes.append(node)
+        if keys:
+            # demand load some pages.
+            stream = store.get_record_stream(keys, 'unordered', True)
+            for record in stream:
+                node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+                nodes.append(node)
+        return nodes
+
+    def map(self, store, key, value):
+        """Map key to value."""
+        if not len(self._items):
+            raise AssertionError("cant map in an empty InternalNode.")
+        children = self._iter_nodes(store, key_filter=[key])
+        serialised_key = self._serialised_key(key)
+        if children:
+            child = children[0]
+        else:
+            # new child needed:
+            child = self._new_child(serialised_key, LeafNode)
+        old_len = len(child)
+        prefix, node_details = child.map(store, key, value)
+        if len(node_details) == 1:
+            # child may have shrunk, or might be the same.
+            self._len = self._len - old_len + len(child)
+            self._items[serialised_key] = child
+            return self.unique_serialised_prefix(), [("", self)]
+        # child has overflown - create a new intermediate node.
+        # XXX: This is where we might want to try and expand our depth
+        # to refer to more bytes of every child (which would give us
+        # multiple pointers to child nodes, but less intermediate nodes)
+        child = self._new_child(serialised_key, InternalNode)
+        for split, node in node_details:
+            child.add_node(split, node)
+        self._len = self._len - old_len + len(child)
+        return self.unique_serialised_prefix(), [("", self)]
+
+    def _new_child(self, serialised_key, klass):
+        """Create a new child node of type klass."""
+        child = klass()
+        child.set_maximum_size(self._maximum_size)
+        child._key_width = self._key_width
+        self._items[serialised_key] = child
+        return child
+
+    def serialise(self, store):
+        """Serialise the node to store.
+
+        :param store: A VersionedFiles honouring the CHK extensions.
+        :return: An iterable of the keys inserted by this operation.
+        """
+        for node in self._items.itervalues():
+            if type(node) == tuple:
+                # Never deserialised.
+                continue
+            if node._key is not None:
+                # Never altered
+                continue
+            for key in node.serialise(store):
+                yield key
+        lines = ["chknode:\n"]
+        lines.append("%d\n" % self._maximum_size)
+        lines.append("%d\n" % self._key_width)
+        lines.append("%d\n" % self._len)
+        for prefix, node in sorted(self._items.items()):
+            if type(node) == tuple:
+                key = node[0]
             else:
-                # leave it split
-                self._items[serialised_key] = new_child
-        self._len += 1
-        return self
+                key = node._key[0]
+            lines.append("%s\x00%s\n" % (prefix, key))
+        sha1, _, _ = store.add_lines((None,), (), lines)
+        self._key = ("sha1:" + sha1,)
+        yield self._key
 
     def _serialised_key(self, key):
         """Return the serialised key for key in this node."""
         return ('\x00'.join(key) + '\x00'*self._node_width)[:self._node_width]
+
+    def _split(self, offset):
+        """Split this node into smaller nodes starting at offset.
+
+        :param offset: The offset to start the new child nodes at.
+        :return: An iterable of (prefix, node) tuples. prefix is a byte
+            prefix for reaching node.
+        """
+        if offset >= self._node_width:
+            for node in self._items.values():
+                for result in node._split(offset):
+                    yield result
+            return
+        for key, node in self._items.items():
+            pass
 
     def _key_count(self, parent_width, cut_width):
         """Return the number of keys in/under this node between two widths.
@@ -409,22 +584,76 @@ class InternalNode(Node):
         """
         if cut_width > self._node_width:
             raise NotImplementedError(self._key_count)
-        # Generate a list of unique substrings
+        # This assumes the keys are unique up to parent_width.
+        serialised_keys = set()
+        for serialised_key in self._items:
+            serialised_keys.add(serialised_key[parent_width:cut_width])
+        return len(serialised_keys)
 
+    def _prelude_size(self):
+        """Return the size of the node prelude."""
+        return 15
 
-    def unmap(self, key):
+    def unique_serialised_prefix(self):
+        """Return the unique key prefix for this node.
+
+        :return: A bytestring of the longest serialised key prefix that is
+            unique within this node.
+        """
+        # may want to cache this eventually :- but wait for enough
+        # functionality to profile.
+        keys = list(self._items.keys())
+        if not keys:
+            return ""
+        current_prefix = keys.pop(-1)
+        while current_prefix and keys:
+            next_key = keys.pop(-1)
+            for pos, (left, right) in enumerate(zip(current_prefix, next_key)):
+                if left != right:
+                    pos -= 1
+                    break
+            current_prefix = current_prefix[:pos + 1]
+        return current_prefix
+
+    def unmap(self, store, key):
         """Remove key from this node and it's children."""
+        if not len(self._items):
+            raise AssertionError("cant unmap in an empty InternalNode.")
         serialised_key = self._serialised_key(key)
-        child = self._items[serialised_key]
-        new_child = child.unmap(key)
-        # TODO shrink/rebalance
-        if not len(new_child):
+        children = self._iter_nodes(store, key_filter=[key])
+        serialised_key = self._serialised_key(key)
+        if children:
+            child = children[0]
+        else:
+            raise KeyError(key)
+        self._len -= 1
+        unmapped = child.unmap(store, key)
+        if len(unmapped) == 0:
+            # All child nodes are gone, remove the child:
             del self._items[serialised_key]
-            if len(self._items) == 1:
-                return self._items.values()[0]
-        elif new_child is not child:
-            self._items[serialised_key] = new_child
+        else:
+            # Stash the returned node
+            self._items[serialised_key] = unmapped
+        if len(self) == 1:
+            # this node is no longer needed:
+            return self._items.values()[0]
         return self
+        prefix, node_details = child.map(store, key, value)
+        if len(node_details) == 1:
+            # child may have shrunk, or might be the same.
+            self._len = self._len - old_len + len(child)
+            self._items[serialised_key] = child
+            return self.unique_serialised_prefix(), [("", self)]
+        # child has overflown - create a new intermediate node.
+        # XXX: This is where we might want to try and expand our depth
+        # to refer to more bytes of every child (which would give us
+        # multiple pointers to child nodes, but less intermediate nodes)
+        child = self._new_child(serialised_key, InternalNode)
+        for split, node in node_details:
+            child.add_node(split, node)
+        self._len = self._len - old_len + len(child)
+        return self.unique_serialised_prefix(), [("", self)]
+
 
 
 class RootNode(Node):
@@ -551,5 +780,9 @@ def _deserialise(bytes, key):
         result = RootNode()
         result.deserialise(bytes, key)
         return result
+    elif bytes.startswith("chkleaf:\n"):
+        return LeafNode.deserialise(bytes, key)
+    elif bytes.startswith("chknode:\n"):
+        return InternalNode.deserialise(bytes, key)
     else:
         raise AssertionError("Unknown node type.")
