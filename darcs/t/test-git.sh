@@ -1,3 +1,7 @@
+. lib.sh
+
+create_darcs test --old-fashioned-inventory
+
 rm -rf test.darcs test.git
 mkdir test.git
 cd test.git
@@ -8,7 +12,7 @@ if [ "$1" != "--stdout" ]; then
 	if [ $? = 0 ]; then
 		git clone -q test.git test.git.nonbare
 		echo "bugs:"
-		diff --exclude _darcs --exclude .git -Naur test.git.nonbare test
+		diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur test.git.nonbare test
 		ret=$?
 		rm -rf test.git.nonbare
 		exit $?
