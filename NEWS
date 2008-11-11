@@ -12,6 +12,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * New ``commit_message_template`` hook that is called by the commit 
+      code to generate a template commit message. (Jelmer Vernooij)
+
     * New `shelve` and `unshelve` commands allow undoing and redoing changes.
       (Aaron Bentley)
 
