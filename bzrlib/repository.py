@@ -1619,7 +1619,10 @@ class Repository(object):
         # We're done with the files_pb.  Note that it finished by the caller,
         # just as it was created by the caller.
         del _files_pb
+        for result in self._non_file_keys_introduced_by(revision_ids):
+            yield result
 
+    def _non_file_keys_introduced_by(self, revision_ids):
         # inventory
         yield ("inventory", None, revision_ids)
 
