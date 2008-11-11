@@ -2169,8 +2169,13 @@ class CHKInventoryRepository(KnitPackRepository):
         for revid in revision_ids:
             parent_ids = self.get_parent_map([revid]).get(revid, ())
             for parent in parent_ids:
-                if parent not in revision_set:
-                    return parent
+                if parent in revision_set:
+                    # Parent is not outside the set
+                    continue
+                if parent not in self.get_parent_map([parent]):
+                    # Parent is a ghost
+                    continue
+                return parent
         return _mod_revision.NULL_REVISION
         
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
