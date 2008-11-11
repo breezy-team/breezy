@@ -118,7 +118,8 @@ class SvnRemoteAccess(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def import_branch(self, source, stop_revision=None, _push_merged=None):
+    def import_branch(self, source, stop_revision=None, _push_merged=None,
+                      _override_svn_revprops=None):
         """Create a new branch in this repository, possibly 
         with the specified history, optionally importing revisions.
         
@@ -140,14 +141,15 @@ class SvnRemoteAccess(BzrDir):
                 if repos.transport.check_path(target_branch_path,
                     repos.get_latest_revnum()) != core.NODE_NONE:
                     raise AlreadyBranchError(full_branch_url)
-                push_new(repos, target_branch_path, source.repository, stop_revision)
+                push_new(repos, target_branch_path, source.repository, stop_revision,
+                         override_svn_revprops=_override_svn_revprops)
             finally:
                 repos.unlock()
             branch = self.open_branch()
             branch.lock_write()
             try:
                 branch.pull(source, stop_revision=stop_revision, 
-                            _push_merged=_push_merged)
+                            _push_merged=_push_merged, _override_svn_revprops=_override_svn_revprops)
             finally:
                 branch.unlock()
         finally:

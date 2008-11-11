@@ -359,10 +359,13 @@ class cmd_svn_push(Command):
             short_name='d',
             type=unicode,
             ),
-            Option("merged", help="Push merged (right hand side) revisions.")]
+            Option("merged", help="Push merged (right hand side) revisions."),
+            Option("svn-override-revprops", type=str, 
+                help="Comma-separated list of svn properties to override (date/author)")
+            ]
 
     def run(self, location=None, revision=None, remember=False, 
-            directory=None, merged=None):
+            directory=None, merged=None, svn_override_revprops=None):
         from bzrlib.bzrdir import BzrDir
         from bzrlib.branch import Branch
         from bzrlib.errors import NotBranchError, BzrCommandError
@@ -381,6 +384,14 @@ class cmd_svn_push(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
+        if svn_override_revprops is not None:
+            override_svn_revprops = svn_override_revprops.split(",")
+            if len(set(override_svn_revprops).difference(set(["author", "date"]))) > 0:
+                raise BzrCommandError("Can only override 'author' and 'date' revision properties")
+            override_svn_revprops = [("svn:" + v) for v in override_svn_revprops]
+        else:
+            override_svn_revprops = None
+
         source_branch.lock_read()
         try:
             bzrdir = BzrDir.open(location)
@@ -396,11 +407,13 @@ class cmd_svn_push(Command):
                 target_branch = bzrdir.open_branch()
                 target_branch.lock_write()
                 try:
-                    target_branch.pull(source_branch, stop_revision=revision_id, _push_merged=merged)
+                    target_branch.pull(source_branch, stop_revision=revision_id, _push_merged=merged,
+                                       _override_svn_revprops=override_svn_revprops)
                 finally:
                     target_branch.unlock()
             except NotBranchError:
-                target_branch = bzrdir.import_branch(source_branch, revision_id, _push_merged=merged)
+                target_branch = bzrdir.import_branch(source_branch, revision_id, _push_merged=merged,
+                                       _override_svn_revprops=override_svn_revprops)
         finally:
             source_branch.unlock()
         # We successfully created the target, remember it

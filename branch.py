@@ -353,7 +353,8 @@ class SvnBranch(Branch):
         return self.generate_revision_id(self.get_revnum())
 
     def pull(self, source, overwrite=False, stop_revision=None, 
-             _hook_master=None, run_hooks=True, _push_merged=None):
+             _hook_master=None, run_hooks=True, _push_merged=None,
+             _override_svn_revprops=None):
         """See Branch.pull()."""
         result = PullResult()
         result.source_branch = source
@@ -363,7 +364,8 @@ class SvnBranch(Branch):
         try:
             (result.old_revno, result.old_revid) = self.last_revision_info()
             self.update_revisions(source, stop_revision, overwrite, 
-                                  _push_merged=_push_merged)
+                                  _push_merged=_push_merged,
+                                  _override_svn_revprops=_override_svn_revprops)
             result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
             (result.new_revno, result.new_revid) = self.last_revision_info()
             return result
@@ -402,7 +404,8 @@ class SvnBranch(Branch):
         destination.set_last_revision_info(revno, revision_id)
 
     def update_revisions(self, other, stop_revision=None, overwrite=False, 
-                         graph=None, _push_merged=False):
+                         graph=None, _push_merged=False, 
+                         _override_svn_revprops=None):
         """See Branch.update_revisions()."""
         if stop_revision is None:
             stop_revision = ensure_null(other.last_revision())
@@ -427,10 +430,10 @@ class SvnBranch(Branch):
         if _push_merged is None:
             _push_merged = self.layout.push_merged_revisions(self.project)
         self._push_missing_revisions(graph, other, other_graph, todo, 
-                                     _push_merged)
+                                     _push_merged, _override_svn_revprops)
 
     def _push_missing_revisions(self, my_graph, other, other_graph, todo, 
-                                push_merged=False):
+                                push_merged=False, _override_svn_revprops=None):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
@@ -439,7 +442,7 @@ class SvnBranch(Branch):
                 if push_merged:
                     parent_revids = other_graph.get_parent_map([revid])[revid]
                     push_ancestors(self.repository, other.repository, self.layout, self.project, parent_revids, other_graph)
-                push(my_graph, self, other.repository, revid)
+                push(my_graph, self, other.repository, revid, override_svn_revprops=_override_svn_revprops)
                 self._clear_cached_state()
         finally:
             pb.finished()
