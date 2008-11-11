@@ -10,7 +10,6 @@ cd ..
 if [ "$1" != "--stdout" ]; then
 	../darcs-fast-export.py test |(cd test.hg; hg fastimport /dev/stdin)
 	if [ $? = 0 ]; then
-		echo "bugs:"
 		diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' -Naur test.hg test
 		exit $?
 	fi

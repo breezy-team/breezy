@@ -13,7 +13,6 @@ if [ "$1" != "--stdout" ]; then
 		cd test.bzr/master
 		bzr update
 		cd - >/dev/null
-		echo "bugs:"
 		diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Naur test.bzr/master test
 		exit $?
 	fi

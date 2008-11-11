@@ -11,7 +11,6 @@ if [ "$1" != "--stdout" ]; then
 	../darcs-fast-export.py test2 |(cd test2.git; git fast-import)
 	if [ $? = 0 ]; then
 		git clone -q test2.git test2.git.nonbare
-		echo "bugs:"
 		diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur test2.git.nonbare test2
 		ret=$?
 		rm -rf test2.git.nonbare
