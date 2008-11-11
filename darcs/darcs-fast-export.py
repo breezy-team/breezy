@@ -83,7 +83,15 @@ def progress(s):
 def log(s):
 	logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
 
-origin = os.path.abspath(sys.argv[1])
+# our stupid option parser
+args = sys.argv[1:]
+export_marks = []
+export_marks_file = None
+if args[0].startswith("--export-marks="):
+	export_marks_file = args[0].split('=')[1]
+	args = args[1:]
+
+origin = os.path.abspath(args[0])
 working = "%s.darcs" % origin
 patchfile = "%s.patch" % origin
 logfile = "%s.log" % origin
@@ -153,6 +161,8 @@ for i in patches:
 	# export the commit
 	print "commit refs/heads/master"
 	print "mark :%s" % count
+	if export_marks_file:
+		export_marks.append(":%s %s" % (count, hash))
 	date = int(time.mktime(time.strptime(i.attributes['date'].value, "%Y%m%d%H%M%S"))) + get_zone_int()
 	print "committer %s %s %s" % (get_author(i), date, get_zone_str())
 	print "data %d\n%s" % (len(message), message)
@@ -183,3 +193,8 @@ for i in patches:
 
 shutil.rmtree(working)
 logsock.close()
+
+if export_marks_file:
+	sock = open(export_marks_file, 'w')
+	sock.write("\n".join(export_marks))
+	sock.close()
