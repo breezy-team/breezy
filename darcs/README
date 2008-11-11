@@ -100,13 +100,13 @@ $ git clone git://vmiklos.hu/darcs-fast-export
 - http://repo.or.cz/w/darcs2git.git[darcs2git] tries to find conflict
   resolutions (to map them to merge commits), which is ideally an even
   better conversion than the official darcs1 -> darcs2 converter, but it's
-  much slower because of this. It does not support the darcs2 format,
-  either.
+  much slower because of this. It does not support the darcs2 format
+  and/or incremental conversions, either.
 
 - http://progetti.arstecnica.it/tailor[tailor] is a nice any2any VCS
-  converter, but the end result usually does not match the original repo
-  because it tries to be too intelligent (it tracks renames and such which
-  is completely unnecessary for git).
+  converter, but the end result can easily differ to the original repo
+  because tailor replays all the changesets itself, while
+  darcs-fast-export just leaves this task to darcs.
 
 - http://github.com/freshtonic/undarcs/tree/master[undarcs] claims to be
   fast, but it produces incorrect result in case the repo contains
