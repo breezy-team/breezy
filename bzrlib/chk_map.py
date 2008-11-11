@@ -53,6 +53,20 @@ class CHKMap(object):
                 self._map(new, value)
         return self._save()
 
+    def copy_to(self, store):
+        """Copy all of the refs from this map into store."""
+        root_key = self.key()
+        if root_key in store.get_parent_map([root_key]):
+            # Target already has the content, return
+            return
+        self._ensure_root()
+        keys = self._root_node.refs()
+        present_keys = store.get_parent_map(keys)
+        missing_keys = [key for key in keys if key not in present_keys]
+        missing_keys.append(root_key)
+        store.insert_record_stream(self._store.get_record_stream(
+            missing_keys, 'unordered', False))
+
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
         if type(self._root_node) == tuple:

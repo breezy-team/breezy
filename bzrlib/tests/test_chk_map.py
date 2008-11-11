@@ -166,6 +166,56 @@ class TestMap(TestCaseWithStore):
             sorted(list(chkmap.iteritems())))
 
 
+class TestCaseWithTwoStores(TestCaseWithTransport):
+
+    def _make_chk_bytes(self, path):
+        repo = self.make_repository(path, format="development3")
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        return repo.chk_bytes
+
+    def make_chk_bytes(self):
+        chk_bytes1 = self._make_chk_bytes('a')
+        chk_bytes2 = self._make_chk_bytes('b')
+        return chk_bytes1, chk_bytes2
+
+
+class TestChkMapCopyTo(TestCaseWithTwoStores):
+
+    def disable_insert(self, store):
+        def add_lines_fail(*args, **kwargs):
+            self.fail('We should not need to add any content')
+        def insert_record_stream_fail(*args, **kwargs):
+            self.fail('We should not need to insert any content')
+        store.add_lines = add_lines_fail
+        store.insert_record_stream = insert_record_stream_fail
+
+    def test_to_self(self):
+        chk_bytes1, chk_bytes2 = self.make_chk_bytes()
+        root_key = CHKMap.from_dict(chk_bytes1, {'key': 'value'})
+        chkmap = CHKMap(chk_bytes1, root_key)
+        self.disable_insert(chk_bytes1)
+
+    def test_simple(self):
+        chk_bytes1, chk_bytes2 = self.make_chk_bytes()
+        root_key = CHKMap.from_dict(chk_bytes1, {'key': 'value'})
+        chkmap = CHKMap(chk_bytes1, root_key)
+        chkmap.copy_to(chk_bytes2)
+        newmap = CHKMap(chk_bytes2, root_key)
+        self.assertEqual(chkmap.key(), newmap.key())
+        self.assertEqual({'key': 'value'}, dict(newmap.iteritems()))
+
+    def test_target_has_root(self):
+        chk_bytes1, chk_bytes2 = self.make_chk_bytes()
+        root_key = CHKMap.from_dict(chk_bytes1, {'key': 'value'})
+        chkmap = CHKMap(chk_bytes1, root_key)
+        CHKMap.from_dict(chk_bytes2, {'key': 'value'})
+        self.disable_insert(chk_bytes2)
+        chkmap.copy_to(chk_bytes2)
+
+
 class TestRootNode(TestCaseWithTransport):
 
     def test__current_size(self):

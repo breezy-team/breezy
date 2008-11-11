@@ -1441,12 +1441,18 @@ class CHKInventory(CommonInventory):
         result = CHKInventory()
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
-        result.id_to_entry = chk_map.CHKMap(chk_store, None)
-        delta = []
-        for path, entry in inventory.iter_entries():
-            delta.append((None, entry.file_id, result._entry_to_bytes(entry)))
-        result.id_to_entry.apply_delta(delta)
-        result.id_to_entry._save()
+        if isinstance(inventory, CHKInventory):
+            inventory.id_to_entry.copy_to(chk_store)
+            result.id_to_entry = chk_map.CHKMap(chk_store,
+                                                inventory.id_to_entry.key())
+        else:
+            result.id_to_entry = chk_map.CHKMap(chk_store, None)
+            delta = []
+            for path, entry in inventory.iter_entries():
+                delta.append((None, entry.file_id,
+                              result._entry_to_bytes(entry)))
+            result.id_to_entry.apply_delta(delta)
+            result.id_to_entry._save()
         return result
 
     def __getitem__(self, file_id):
