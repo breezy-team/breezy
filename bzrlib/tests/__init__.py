@@ -2953,14 +2953,12 @@ def test_suite(keep_only=None, starting_with=None):
 
     modules_to_doctest = [
         'bzrlib',
-        'bzrlib.errors',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
         'bzrlib.lockdir',
         'bzrlib.merge3',
         'bzrlib.option',
-        'bzrlib.store',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.timestamp',
@@ -2976,6 +2974,8 @@ def test_suite(keep_only=None, starting_with=None):
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
+        if len(doc_suite._tests) == 0:
+            raise errors.BzrError("no doctests found in %s" % (mod,))
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
