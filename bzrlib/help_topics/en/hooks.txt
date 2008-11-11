@@ -276,3 +276,5 @@ The hook signature is (commit, start_message), where:
     The original commit message, None initially.
 
 The hook should return a new commit message template.
+
+(New in 1.10.)

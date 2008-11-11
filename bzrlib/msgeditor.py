@@ -285,7 +285,7 @@ class MessageEditorHooks(Hooks):
         These are all empty initially.
         """
         Hooks.__init__(self)
-        # Introduced in 1.8:
+        # Introduced in 1.10:
         # Invoked to generate the commit message template shown in the editor
         # The api signature is:
         # (commit, message), and the function should return the new message
