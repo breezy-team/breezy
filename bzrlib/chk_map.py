@@ -264,19 +264,6 @@ class LeafNode(Node):
     def key(self):
         return self._key
 
-    def _key_count(self, parent_width, cut_width):
-        """Return the number of keys in/under this node between two widths.
-
-        :param parent_width: The start offset in keys to consider.
-        :param cut_width: The width to stop considering at.
-        """
-        # This assumes the keys are unique up to parent_width.
-        serialised_keys = set()
-        for key in self._items:
-            serialised_key = '\x00'.join(key)
-            serialised_keys.add(serialised_key[parent_width:cut_width])
-        return len(serialised_keys)
-
     def map(self, store, key, value):
         """Map key to value."""
         if key in self._items:
@@ -325,6 +312,10 @@ class LeafNode(Node):
     def _serialised_key(self, key):
         """Return the serialised key for key in this node."""
         return '\x00'.join(key)
+
+    def refs(self):
+        """Return the references to other CHK's held by this node."""
+        return []
 
     def unique_serialised_prefix(self):
         """Return the unique key prefix for this node.
@@ -537,23 +528,17 @@ class InternalNode(Node):
         for key, node in self._items.items():
             pass
 
-    def _key_count(self, parent_width, cut_width):
-        """Return the number of keys in/under this node between two widths.
-
-        :param parent_width: The start offset in keys to consider.
-        :param cut_width: The width to stop considering at.
-        """
-        if cut_width > self._node_width:
-            raise NotImplementedError(self._key_count)
-        # This assumes the keys are unique up to parent_width.
-        serialised_keys = set()
-        for serialised_key in self._items:
-            serialised_keys.add(serialised_key[parent_width:cut_width])
-        return len(serialised_keys)
-
-    def _prelude_size(self):
-        """Return the size of the node prelude."""
-        return 15
+    def refs(self):
+        """Return the references to other CHK's held by this node."""
+        if self._key is None:
+            raise AssertionError("unserialised nodes have no refs.")
+        refs = []
+        for value in self._items.itervalues():
+            if type(value) == tuple:
+                refs.append(value)
+            else:
+                refs.append(value.key())
+        return refs
 
     def unique_serialised_prefix(self):
         """Return the unique key prefix for this node.
@@ -599,90 +584,6 @@ class InternalNode(Node):
             # this node is no longer needed:
             return self._items.values()[0]
         return self
-
-
-class RootNode(Node):
-    """A root node in a CHKMap."""
-
-    def __init__(self):
-        Node.__init__(self)
-        self._nodes = {}
-        self._size = 12
-        self.prefix_width = 0
-
-    def add_child(self, name, child):
-        """Add a child to the node.
-
-        If the node changes, it's key is reset.
-
-        :param name: The name of the child. A bytestring.
-        :param child: The child, a key tuple for the childs value.
-        """
-        if self._maximum_size and self._current_size() >= self._maximum_size:
-            return False
-        if name in self._nodes:
-            self.remove_child(name)
-        self._nodes[name] = child
-        self._len += 1
-        self._key = None
-        self._size += len(name) + len(child[0]) + 2
-        return True
-
-    def _current_size(self):
-        """Answer the current serialised size of this node."""
-        return (self._size + len(str(self._maximum_size)) + len(str(self._len))
-            + len(str(self.prefix_width)))
-
-    def deserialise(self, bytes, key):
-        """Set the nodes value to that contained in bytes.
-        
-        :param bytes: The bytes of the node.
-        :param key: The key that the serialised node has.
-        """
-        lines = bytes.splitlines()
-        nodes = {}
-        if lines[0] != 'chkroot:':
-            raise ValueError("not a serialised root node: %r" % bytes)
-        maximum_size = int(lines[1])
-        prefix_width = int(lines[2])
-        length = int(lines[3])
-        for line in lines[4:]:
-            name, value = line.split('\x00')
-            nodes[name] = (value,)
-        self._nodes = nodes
-        self._len = length
-        self._maximum_size = maximum_size
-        self._key = key
-        self.prefix_width = prefix_width
-
-    def refs(self):
-        """Get the CHK key references this node holds."""
-        return self._nodes.values()
-
-    def remove_child(self, name):
-        """Remove name from the node.
-
-        If the node changes, it's key is reset.
-
-        :param name: The name to remove from the node.
-        """
-        node = self._nodes.pop(name)
-        self._size -= 2 + len(name) + len(node[0])
-        self._len -= 1
-        self._key = None
-
-    def serialise(self):
-        """Flatten the node to a bytestring.
-
-        :return: A bytestring.
-        """
-        lines = ["chkroot:\n"]
-        lines.append("%d\n" % self._maximum_size)
-        lines.append("%d\n" % self.prefix_width)
-        lines.append("%d\n" % self._len)
-        for name, child in sorted(self._nodes.items()):
-            lines.append("%s\x00%s\n" % (name, child[0]))
-        return "".join(lines)
 
 
 def _deserialise(bytes, key):

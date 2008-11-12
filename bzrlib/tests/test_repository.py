@@ -683,8 +683,7 @@ class TestDevelopment3(TestCaseWithTransport):
         repo.add_inventory(revid, inv, [])
         self.assertEqual(set([(revid,)]), repo.inventories.keys())
         self.assertEqual(
-            set([('sha1:a12ffb3c1810005e8ed9388d29602e1e9e8e06ac',),
-                 ('sha1:fd7f4d1237b9ae0021bd8c52e99a930430444c79',)]),
+            set([('sha1:daaf97ebc784b6b6ef029d1710cc812d0ff200ff',)]),
             repo.chk_bytes.keys())
 
 

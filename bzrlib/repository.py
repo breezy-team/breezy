@@ -2503,14 +2503,15 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
+# 1.9->1.110 go below here
 format_registry.register_lazy(
-    "Bazaar development format 3 (needs bzr.dev from before 1.8)\n",
+    "Bazaar development format 3 (needs bzr.dev from before 1.10)\n",
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment3',
     )
 format_registry.register_lazy(
     ("Bazaar development format 3 with subtree support "
-        "(needs bzr.dev from before 1.8)\n"),
+        "(needs bzr.dev from before 1.10)\n"),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment3Subtree',
     )

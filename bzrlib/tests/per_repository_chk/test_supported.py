@@ -65,15 +65,18 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.unlock()
 
     def test_pack_preserves_chk_bytes_store(self):
-        expected_set = set([('sha1:062ef095245d8617d7671e50a71b529d13d93022',),
-            ('sha1:d0826cf765ff45bd602f602ecb0efbe375ea3b50',)])
+        expected_set = set([('sha1:4e6482a3a5cb2d61699971ac77befe11a0ec5779',),
+            ('sha1:af554bebcd35f8573896f3f6314bc46dd832e01c',)])
         repo = self.make_repository('.')
         repo.lock_write()
         try:
             repo.start_write_group()
             try:
+                # Internal node pointing at a leaf.
                 repo.chk_bytes.add_lines((None,), None,
-                    ["chkroot:\n", "0\n", "0\n"], random_id=True)
+                    ["chknode:\n", "0\n", "1\n", "1\n",
+                     "foo\x00sha1:4e6482a3a5cb2d61699971ac77befe11a0ec5779\n"],
+                     random_id=True)
             except:
                 repo.abort_write_group()
                 raise
@@ -81,8 +84,9 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
                 repo.commit_write_group()
             repo.start_write_group()
             try:
-                repo.chk_bytes.add_lines((None,), None, ["chkvalue:\n"],
-                    random_id=True)
+                # Leaf in a separate pack.
+                repo.chk_bytes.add_lines((None,), None,
+                    ["chkleaf:\n", "0\n", "1\n", "0\n"], random_id=True)
             except:
                 repo.abort_write_group()
                 raise

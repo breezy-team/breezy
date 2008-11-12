@@ -807,15 +807,10 @@ class Packer(object):
         new_refs = set()
         def accumlate_refs(lines):
             # XXX: move to a generic location
-            kind = lines[0]
-            if kind == 'chkroot:\n':
-                node = chk_map.RootNode()
-                node.deserialise(''.join(lines),  None)
-                new_refs.update(node.refs())
-            elif kind == 'chkvalue:\n':
-                pass
-            else:
-                raise ValueError("unknown chk node %r" % lines[0])
+            # Yay mismatch:
+            bytes = ''.join(lines)
+            node = chk_map._deserialise(bytes, ("unknown",))
+            new_refs.update(node.refs())
         self._copy_nodes(chk_nodes, chk_index_map, self.new_pack._writer,
             self.new_pack.chk_index, output_lines=accumlate_refs)
         return new_refs
@@ -2188,24 +2183,51 @@ class CHKInventoryRepository(KnitPackRepository):
             uninteresting_map = uninteresting_inv.id_to_entry
             uninteresting_map._ensure_root()
             uninteresting_chk_refs = set(uninteresting_map._root_node.refs())
+            pending_nodes = set([uninteresting_map._root_node])
+            while pending_nodes:
+                nodes = pending_nodes
+                pending_nodes = set()
+                for node in nodes:
+                    uninteresting_chk_refs.add(node.key())
+                    if not isinstance(node, chk_map.InternalNode):
+                        continue
+                    for subnode in node._iter_nodes(uninteresting_map._store):
+                        pending_nodes.add(subnode)
+        # XXX: This currently only avoids traversing top level unchanged trees.
+        # What we need is parallel traversal with uninteresting-only trees
+        # pruned, interesting-only trees included, common trees with identical
+        # pointers pruned, common trees with different pointers examined
+        # further.
         for idx, inv in enumerate(self.iter_inventories(revision_ids)):
             pb.update('fetch', idx, len(revision_ids))
             inv_chk_map = inv.id_to_entry
             inv_chk_map._ensure_root()
-            candidate_names = {}
-            for name, ref in inv_chk_map._root_node._nodes.iteritems():
-                if ref in uninteresting_chk_refs:
-                    continue
-                candidate_names[name] = ref
-            for name, bytes in inv_chk_map.iteritems(candidate_names):
-                entry = inv._bytes_to_entry(bytes)
-                if entry.name == '' and not rich_root:
-                    continue
-                if entry.revision == inv.revision_id:
-                    # add it to uninteresting_chk_refs to
-                    # avoid processing twice it if we see it again later.
-                    uninteresting_chk_refs.add(candidate_names[name])
-                    yield ("file", entry.file_id, [entry.revision])
+            pending_nodes = set([inv_chk_map._root_node])
+            while pending_nodes:
+                nodes = pending_nodes
+                pending_nodes = set()
+                for node in nodes:
+                    # Do not examine this node again
+                    uninteresting_chk_refs.add(node.key())
+                    if not isinstance(node, chk_map.InternalNode):
+                        # Leaf node: pull out its contents:
+                        for name, bytes in node.iteritems():
+                            entry = inv._bytes_to_entry(bytes)
+                            if entry.name == '' and not rich_root:
+                                continue
+                            if entry.revision == inv.revision_id:
+                                yield ("file", entry.file_id, [entry.revision])
+                        continue
+                    # Recurse deeper
+                    # Two-pass; api fixup needed to allow exclusion
+                    wanted_keys = set()
+                    for key, value in node._items.iteritems:
+                        if key in uninteresting_chk_refs:
+                            continue
+                        wanted_keys.add((key,))
+                    for subnode in node._iter_nodes(inv_chk_map._store,
+                        key_filter=wanted_keys):
+                        pending_nodes.add(subnode)
         
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
@@ -2803,9 +2825,9 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
 class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
     """A no-subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.7.
+    This format should be retained until the second release after bzr 1.11.
 
-    This is pack-1.6.1 with B+Tree indices and a chk index.
+    This is pack-1.9 with CHKMap based inventories.
     """
 
     repository_class = CHKInventoryRepository
@@ -2828,7 +2850,7 @@ class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 3 (needs bzr.dev from before 1.8)\n"
+        return "Bazaar development format 3 (needs bzr.dev from before 1.10)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -2842,9 +2864,9 @@ class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
 class RepositoryFormatPackDevelopment3Subtree(RepositoryFormatPack):
     """A subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.7.
+    This format should be retained until the second release after bzr 1.11.
 
-    1.6.1-subtree[as it might have been] with B+Tree indices and a chk index.
+    1.9-subtree[as it might have been] with CHKMap based inventories.
     """
 
     repository_class = CHKInventoryRepository
@@ -2879,7 +2901,7 @@ class RepositoryFormatPackDevelopment3Subtree(RepositoryFormatPack):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar development format 3 with subtree support "
-            "(needs bzr.dev from before 1.8)\n")
+            "(needs bzr.dev from before 1.10)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
