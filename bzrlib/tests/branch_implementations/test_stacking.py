@@ -404,4 +404,5 @@ class TestStacking(TestCaseWithBranch):
         b = bzrdir.create_branch()
         transport = self.get_transport('stacked')
         b.bzrdir.clone_on_transport(transport, stacked_on=b.base)
+        # Ensure that opening the branch doesn't raise.
         branch.Branch.open(transport.base)
