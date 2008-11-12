@@ -1347,9 +1347,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         transports = [self.bzrdir.root_transport]
         if self._real_branch is not None:
             transports.append(self._real_branch._transport)
-        fallback_bzrdir = BzrDir.open(fallback_url, transports)
-        fallback_repo = fallback_bzrdir.open_repository()
-        self.repository.add_fallback_repository(fallback_repo)
+        stacked_on = branch.Branch.open(fallback_url,
+                                        possible_transports=transports)
+        self.repository.add_fallback_repository(stacked_on.repository)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport

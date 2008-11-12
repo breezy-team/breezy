@@ -391,3 +391,18 @@ class TestStacking(TestCaseWithBranch):
             'transform_fallback_location', hook, None)
         branch.Branch.open('stacked')
         self.assertEqual(['../stack-on'], hook_calls)
+
+    def test_stack_on_repository_branch(self):
+        # Stacking should work when the repo isn't co-located with the
+        # stack-on branch.
+        try:
+            repo = self.make_repository('repo', shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable()
+        # Avoid make_branch, which produces standalone branches.
+        bzrdir = self.make_bzrdir('repo/stack-on')
+        b = bzrdir.create_branch()
+        transport = self.get_transport('stacked')
+        b.bzrdir.clone_on_transport(transport, stacked_on=b.base)
+        # Ensure that opening the branch doesn't raise.
+        branch.Branch.open(transport.base)
