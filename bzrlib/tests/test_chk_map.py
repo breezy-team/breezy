@@ -37,8 +37,9 @@ class TestCaseWithStore(TestCaseWithTransport):
         self.addCleanup(repo.abort_write_group)
         return repo.chk_bytes
 
-    def _get_map(self, a_dict, maximum_size=0):
-        chk_bytes = self.get_chk_bytes()
+    def _get_map(self, a_dict, maximum_size=0, chk_bytes=None):
+        if chk_bytes is None:
+            chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, a_dict, maximum_size=maximum_size)
         chkmap = CHKMap(chk_bytes, root_key)
         return chkmap
@@ -94,8 +95,8 @@ class TestMap(TestCaseWithStore):
         self.assertEqual(new_root, chkmap._root_node._key)
 
     def test_apply_ab_empty(self):
-        # applying a delta ("a", None, None) to an empty chkmap generates the
-        # same map as from_dict_ab.
+        # applying a delta ("a", None, None) to a map with 'a' in it generates
+        # an empty map.
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {("a",):"b"})
         chkmap = CHKMap(chk_bytes, root_key)
@@ -106,6 +107,16 @@ class TestMap(TestCaseWithStore):
         # The update should have left us with an in memory root node, with an
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
+
+    def test_iter_changes_empty_ab(self):
+        # Asking for changes between an empty dict to a dict with keys returns
+        # all the keys.
+        basis = self._get_map({})
+        target = self._get_map(
+            {('a',): 'content here', ('b',): 'more content'},
+            chk_bytes=basis._store)
+        self.assertEqual([(('a',), None, 'content here'),
+            (('b',), None, 'more content')], list(target.iter_changes(basis)))
 
     def test_iteritems_empty(self):
         chk_bytes = self.get_chk_bytes()

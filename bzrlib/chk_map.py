@@ -106,6 +106,28 @@ class CHKMap(object):
         result.apply_delta(delta)
         return result._save()
 
+    def iter_changes(self, basis):
+        """Iterate over the changes between basis and self.
+
+        :return: An iterator of tuples: (key, old_value, new_value). Old_value
+            is None for keys only in self; new_value is None for keys only in
+            basis.
+        """
+        # Cheap but let tests pass
+        new = dict(self.iteritems())
+        old = dict(basis.iteritems())
+        new_keys = set(new)
+        old_keys = set(old)
+        result = []
+        for key in new_keys - old_keys:
+            result.append((key, None, new[key]))
+        for key in old_keys - new_keys:
+            result.append((key, old[key], None))
+        for key in old_keys.intersection(new_keys):
+            if new[key] != old[key]:
+                result.append((key, old[key], new[key]))
+        return result
+
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
