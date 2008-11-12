@@ -9,13 +9,8 @@ bzr init-repo .
 cd ..
 if [ "$1" != "--stdout" ]; then
 	../darcs-fast-export.py test |(cd test.bzr; bzr fast-import -)
-	if [ $? = 0 ]; then
-		cd test.bzr/master
-		bzr update
-		cd - >/dev/null
-		diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Naur test.bzr/master test
-		exit $?
-	fi
+	diff_bzr test
+	exit $?
 else
 	../darcs-fast-export.py test
 fi
