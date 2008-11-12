@@ -27,9 +27,19 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * TooManyConcurrentRequests no longer occur when a fetch fails and
+      tries to abort a write group.  This allows the root cause (e.g. a
+      network interruption) to be reported.  (Andrew Bennetts, #297014)
+
   DOCUMENTATION:
 
   API CHANGES:
+
+    * ``Repository.abort_write_group`` now accepts an optional
+      ``suppress_errors`` flag.  Repository implementations that override
+      ``abort_write_group`` will need to be updated to accept the new
+      argument.  Subclasses that only override ``_abort_write_group``
+      don't need to change.
 
     * Transport implementations must provide copy_tree_to_transport.  A default
       implementation is provided for Transport subclasses.

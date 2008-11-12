@@ -55,7 +55,8 @@ from bzrlib.symbol_versioning import (
         one_two,
         one_six,
         )
-from bzrlib.trace import mutter, mutter_callsite, warning
+from bzrlib.trace import (
+    log_exception_quietly, note, mutter, mutter_callsite, warning)
 
 
 # Old formats display a warning, but only once
@@ -513,7 +514,7 @@ class Repository(object):
         r'.* revision="(?P<revision_id>[^"]+)"'
         )
 
-    def abort_write_group(self):
+    def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
 
         :seealso: start_write_group.
@@ -521,7 +522,15 @@ class Repository(object):
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
             raise errors.BzrError('mismatched lock context and write group.')
-        self._abort_write_group()
+        try:
+            self._abort_write_group()
+        except Exception, exc:
+            self._write_group = None
+            if not suppress_errors:
+                raise
+            mutter('abort_write_group failed')
+            log_exception_quietly()
+            note('bzr: ERROR (ignored): %s', exc)
         self._write_group = None
 
     def _abort_write_group(self):
