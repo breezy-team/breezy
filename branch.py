@@ -24,6 +24,7 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock
 
+from bzrlib.plugins.git.foreign import ForeignBranch
 from bzrlib.plugins.git.mapping import default_mapping
 
 class GitTagDict(tag.BasicTags):
@@ -35,7 +36,7 @@ class GitTagDict(tag.BasicTags):
     def get_tag_dict(self):
         ret = {}
         for tag in self.repository._git.tags:
-            ret[tag.name] = default_mapping.revision_id_foreign_to_bzr(tag.commit.id)
+            ret[tag.name] = self.branch.mapping.revision_id_foreign_to_bzr(tag.commit.id)
         return ret
 
     def set_tag(self, name, revid):
@@ -64,12 +65,12 @@ class GitBranchFormat(branch.BranchFormat):
         return True
 
 
-class GitBranch(branch.Branch):
+class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, bzrdir, repository, head, base, lockfiles):
         self.repository = repository
-        super(GitBranch, self).__init__()
+        super(GitBranch, self).__init__(default_mapping)
         self.control_files = lockfiles
         self.bzrdir = bzrdir
         self.head = head
@@ -84,7 +85,7 @@ class GitBranch(branch.Branch):
         # perhaps should escape this ?
         if self.head is None:
             return revision.NULL_REVISION
-        return default_mapping.revision_id_foreign_to_bzr(self.head)
+        return self.mapping.revision_id_foreign_to_bzr(self.head)
 
     def _make_tags(self):
         return GitTagDict(self)
@@ -109,7 +110,7 @@ class GitBranch(branch.Branch):
             skip += max_count
             for cm in cms:
                 if cm.id == nextid:
-                    ret.append(default_mapping.revision_id_foreign_to_bzr(cm.id))
+                    ret.append(self.mapping.revision_id_foreign_to_bzr(cm.id))
                     if cm.parents == []:
                         nextid = None
                     else:
