@@ -1003,6 +1003,10 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
 
 
 properties_handler_registry = registry.Registry()
+properties_handler_registry.register_lazy("foreign",
+                                          "bzrlib.foreign",
+                                          "show_foreign_properties")
+
 
 # adapters which revision ids to log are filtered. When log is called, the
 # log_rev_iterator is adapted through each of these factory methods.
