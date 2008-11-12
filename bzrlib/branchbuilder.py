@@ -16,11 +16,16 @@
 
 """Utility for create branches with particular contents."""
 
-from bzrlib import bzrdir, errors, memorytree
+from bzrlib import (
+    bzrdir, 
+    commit,
+    errors,
+    memorytree,
+    )
 
 
 class BranchBuilder(object):
-    """A BranchBuilder aids creating Branches with particular shapes.
+    r"""A BranchBuilder aids creating Branches with particular shapes.
     
     The expected way to use BranchBuilder is to construct a
     BranchBuilder on the transport you want your branch on, and then call
@@ -30,14 +35,19 @@ class BranchBuilder(object):
     real data.
 
     For instance:
-      builder = BranchBuilder(self.get_transport().clone('relpath'))
-      builder.start_series()
-      builder.build_snapshot('rev-id', [],
-        [('add', ('filename', 'f-id', 'file', 'content\n'))])
-      builder.build_snapshot('rev2-id', ['rev-id'],
-        [('modify', ('f-id', 'new-content\n'))])
-      builder.finish_series()
-      branch = builder.get_branch()
+
+    >>> from bzrlib.transport.memory import MemoryTransport
+    >>> builder = BranchBuilder(MemoryTransport("memory:///"))
+    >>> builder.start_series()
+    >>> builder.build_snapshot('rev-id', None, [
+    ...     ('add', ('', 'root-id', 'directory', '')),
+    ...     ('add', ('filename', 'f-id', 'file', 'content\n'))])
+    'rev-id'
+    >>> builder.build_snapshot('rev2-id', ['rev-id'],
+    ...     [('modify', ('f-id', 'new-content\n'))])
+    'rev2-id'
+    >>> builder.finish_series()
+    >>> branch = builder.get_branch()
 
     :ivar _tree: This is a private member which is not meant to be modified by
         users of this class. While a 'series' is in progress, it should hold a
@@ -71,9 +81,17 @@ class BranchBuilder(object):
         tree.lock_write()
         try:
             tree.add('')
-            return tree.commit('commit %d' % (self._branch.revno() + 1))
+            return self._do_commit(tree)
         finally:
             tree.unlock()
+
+    def _do_commit(self, tree, message=None, **kwargs):
+        reporter = commit.NullCommitReporter()
+        if message is None:
+            message = u'commit %d' % (self._branch.revno() + 1,)
+        return tree.commit(message,
+            reporter=reporter,
+            **kwargs)
 
     def _move_branch_pointer(self, new_revision_id):
         """Point self._branch to a different revision id."""
@@ -192,10 +210,7 @@ class BranchBuilder(object):
             tree.add(to_add_files, to_add_file_ids, to_add_kinds)
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
-
-            if message is None:
-                message = u'commit %d' % (self._branch.revno() + 1,)
-            return tree.commit(message, rev_id=revision_id)
+            return self._do_commit(tree, message=message, rev_id=revision_id) 
         finally:
             tree.unlock()
 

@@ -261,3 +261,20 @@ Called with a LockResult object when a lock has been successfully released.
 Runs on the client.
 
 (New in 1.8.)
+
+commit_message_template (msgeditor)
+-----------------------------------
+
+Invoked by commit to generate a commit message template.
+Each hook can modify the commit message template.
+The hook signature is (commit, start_message), where:
+
+  commit
+    A commit object, for the commit in progress
+
+  start_message
+    The original commit message, None initially.
+
+The hook should return a new commit message template.
+
+(New in 1.10.)
