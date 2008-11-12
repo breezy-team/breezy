@@ -75,6 +75,12 @@ diff_bzr()
 	return $?
 }
 
+diff_hg()
+{
+	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' -Naur $1.hg $1
+	return $?
+}
+
 die()
 {
 	echo "fatal: $@"
