@@ -20,8 +20,6 @@ from bzrlib.chk_map import (
     CHKMap,
     InternalNode,
     LeafNode,
-    RootNode,
-    ValueNode,
     _deserialise,
     )
 from bzrlib.tests import TestCaseWithTransport
@@ -56,32 +54,30 @@ class TestCaseWithStore(TestCaseWithTransport):
 class TestMap(TestCaseWithStore):
 
     def assertHasABMap(self, chk_bytes):
-        root_key = ('sha1:29f1da33ce2323d754485fd308abc5ff17f3856e',)
+        root_key = ('sha1:f14dd34def95036bc06bb5c0ed95437d7383a04a',)
         self.assertEqual(
-            "chkroot:\n0\n1\na\x00sha1:cb29f32e561a1b7f862c38ccfd6bc7c7d892f04b\n",
+            'chkleaf:\n0\n1\n1\na\x00b\n',
             self.read_bytes(chk_bytes, root_key))
-        self.assertEqual(
-            "chkvalue:\nb",
-            self.read_bytes(chk_bytes,
-                ("sha1:cb29f32e561a1b7f862c38ccfd6bc7c7d892f04b",)))
+        return root_key
 
     def assertHasEmptyMap(self, chk_bytes):
-        root_key = ('sha1:d0826cf765ff45bd602f602ecb0efbe375ea3b50',)
-        self.assertEqual("chkroot:\n0\n0\n", self.read_bytes(chk_bytes, root_key))
+        root_key = ('sha1:4e6482a3a5cb2d61699971ac77befe11a0ec5779',)
+        self.assertEqual("chkleaf:\n0\n1\n0\n", self.read_bytes(chk_bytes, root_key))
+        return root_key
 
     def test_from_dict_empty(self):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {})
-        self.assertEqual(('sha1:d0826cf765ff45bd602f602ecb0efbe375ea3b50',),
-            root_key)
-        self.assertHasEmptyMap(chk_bytes)
+        # Check the data was saved and inserted correctly.
+        expected_root_key = self.assertHasEmptyMap(chk_bytes)
+        self.assertEqual(expected_root_key, root_key)
 
     def test_from_dict_ab(self):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {"a":"b"})
-        self.assertEqual(('sha1:29f1da33ce2323d754485fd308abc5ff17f3856e',),
-            root_key)
-        self.assertHasABMap(chk_bytes)
+        # Check the data was saved and inserted correctly.
+        expected_root_key = self.assertHasABMap(chk_bytes)
+        self.assertEqual(expected_root_key, root_key)
 
     def test_apply_empty_ab(self):
         # applying a delta (None, "a", "b") to an empty chkmap generates the
@@ -90,9 +86,9 @@ class TestMap(TestCaseWithStore):
         root_key = CHKMap.from_dict(chk_bytes, {})
         chkmap = CHKMap(chk_bytes, root_key)
         new_root = chkmap.apply_delta([(None, "a", "b")])
-        self.assertEqual(('sha1:29f1da33ce2323d754485fd308abc5ff17f3856e',),
-            new_root)
-        self.assertHasABMap(chk_bytes)
+        # Check the data was saved and inserted correctly.
+        expected_root_key = self.assertHasABMap(chk_bytes)
+        self.assertEqual(expected_root_key, new_root)
         # The update should have left us with an in memory root node, with an
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
@@ -101,12 +97,12 @@ class TestMap(TestCaseWithStore):
         # applying a delta ("a", None, None) to an empty chkmap generates the
         # same map as from_dict_ab.
         chk_bytes = self.get_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes, {"a":"b"})
+        root_key = CHKMap.from_dict(chk_bytes, {("a",):"b"})
         chkmap = CHKMap(chk_bytes, root_key)
-        new_root = chkmap.apply_delta([("a", None, None)])
-        self.assertEqual(('sha1:d0826cf765ff45bd602f602ecb0efbe375ea3b50',),
-            new_root)
-        self.assertHasEmptyMap(chk_bytes)
+        new_root = chkmap.apply_delta([(("a",), None, None)])
+        # Check the data was saved and inserted correctly.
+        expected_root_key = self.assertHasEmptyMap(chk_bytes)
+        self.assertEqual(expected_root_key, new_root)
         # The update should have left us with an in memory root node, with an
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
@@ -122,13 +118,13 @@ class TestMap(TestCaseWithStore):
         root_key = CHKMap.from_dict(chk_bytes,
             {"a":"content here", "b":"more content"})
         chkmap = CHKMap(chk_bytes, root_key)
-        self.assertEqual([("a", "content here"), ("b", "more content")],
+        self.assertEqual([(("a",), "content here"), (("b",), "more content")],
             sorted(list(chkmap.iteritems())))
 
     def test_iteritems_selected_one_of_two_items(self):
-        chkmap = self._get_map( {"a":"content here", "b":"more content"})
-        self.assertEqual([("a", "content here")],
-            sorted(list(chkmap.iteritems(["a"]))))
+        chkmap = self._get_map( {("a",):"content here", ("b",):"more content"})
+        self.assertEqual({("a",): "content here"},
+            self.to_dict(chkmap, [("a",)]))
 
     def test___len__empty(self):
         chkmap = self._get_map({})
@@ -212,118 +208,6 @@ class TestMap(TestCaseWithStore):
         self.assertEqual([key], leaf_node.serialise(chkmap._store))
 
 
-class TestRootNode(TestCaseWithTransport):
-
-    def test__current_size(self):
-        node = RootNode()
-        self.assertEqual(15, node._current_size())
-        node.add_child("cd", ("sha1:12345",))
-        self.assertEqual(29, node._current_size())
-        self.assertEqual(29, len(node.serialise()))
-        node.add_child("cd", ("sha1:123456",))
-        self.assertEqual(30, node._current_size())
-        self.assertEqual(30, len(node.serialise()))
-        node.remove_child("cd")
-        self.assertEqual(15, node._current_size())
-        self.assertEqual(15, len(node.serialise()))
-        node.set_maximum_size(100)
-        self.assertEqual(17, node._current_size())
-
-    def test_serialise_empty(self):
-        node = RootNode()
-        bytes = node.serialise()
-        self.assertEqual("chkroot:\n0\n0\n0\n", bytes)
-
-    def test_add_child_over_limit(self):
-        node = RootNode()
-        node.set_maximum_size(20)
-        node.add_child("abcdef", ("sha1:12345",))
-        size = node._current_size()
-        self.assertTrue(20 < size)
-        self.assertEqual(False, node.add_child("12345", ("sha1:34",)))
-        # Nothing should have changed
-        self.assertEqual(size, node._current_size())
-        self.assertEqual(1, len(node))
-
-    def test_add_child_resets_key(self):
-        node = RootNode()
-        node._key = ("something",)
-        node.add_child("c", ("sha1:1234",))
-        self.assertEqual(None, node._key)
-
-    def test_add_child_returns_True(self):
-        node = RootNode()
-        node._key = ("something",)
-        self.assertEqual(True, node.add_child("c", ("sha1:1234",)))
-
-    def test_add_child_increases_len(self):
-        node = RootNode()
-        node._key = ("something",)
-        node.add_child("c", ("sha1:1234",))
-        self.assertEqual(1, len(node))
-
-    def test_remove_child_decreases_len(self):
-        node = RootNode()
-        node.add_child("c", ("sha1:1234",))
-        node._key = ("something",)
-        node.remove_child("c")
-        self.assertEqual(0, len(node))
-
-    def test_remove_child_removes_child(self):
-        node = RootNode()
-        node.add_child("a", ("sha1:4321",))
-        node.add_child("c", ("sha1:1234",))
-        node._key = ("something",)
-        node.remove_child("a")
-        self.assertEqual({"c":("sha1:1234",)}, node._nodes)
-
-    def test_remove_child_resets_key(self):
-        node = RootNode()
-        node.add_child("c", ("sha1:1234",))
-        node._key = ("something",)
-        node.remove_child("c")
-        self.assertEqual(None, node._key)
-
-    def test_deserialise(self):
-        # deserialising from a bytestring & key sets the nodes and the known
-        # key.
-        node = RootNode()
-        node.deserialise("chkroot:\n0\n0\n1\nc\x00sha1:1234\n", ("foo",))
-        self.assertEqual({"c": ("sha1:1234",)}, node._nodes)
-        self.assertEqual(("foo",), node._key)
-        self.assertEqual(1, len(node))
-        self.assertEqual(0, node.maximum_size)
-
-    def test_serialise_with_child(self):
-        node = RootNode()
-        node.add_child("c", ("sha1:1234",))
-        bytes = node.serialise()
-        # type 0-max-length 1-value key\x00CHK
-        self.assertEqual("chkroot:\n0\n0\n1\nc\x00sha1:1234\n", bytes)
-
-    def test_deserialise_max_size(self):
-        node = RootNode()
-        node.deserialise("chkroot:\n100\n0\n1\nc\x00sha1:1234\n", ("foo",))
-        self.assertEqual(100, node.maximum_size)
-
-    def test_deserialise_key_prefix(self):
-        node = RootNode()
-        node.deserialise("chkroot:\n100\n10\n1\nc\x00sha1:1234\n", ("foo",))
-        self.assertEqual(10, node.prefix_width)
-
-
-class TestValueNode(TestCaseWithTransport):
-
-    def test_deserialise(self):
-        node = ValueNode.deserialise("chkvalue:\nfoo bar baz\n")
-        self.assertEqual("foo bar baz\n", node.value)
-
-    def test_serialise(self):
-        node = ValueNode("b")
-        bytes = node.serialise()
-        self.assertEqual("chkvalue:\nb", bytes)
-
-
 class TestLeafNode(TestCaseWithStore):
 
     def test_current_size_empty(self):
@@ -343,7 +227,7 @@ class TestLeafNode(TestCaseWithStore):
     def test_current_size_items(self):
         node = LeafNode()
         base_size = node._current_size()
-        node = node.map(("foo bar",), "baz")
+        node.map(None, ("foo bar",), "baz")
         self.assertEqual(base_size + 12, node._current_size())
 
     def test_deserialise_empty(self):
@@ -357,14 +241,14 @@ class TestLeafNode(TestCaseWithStore):
             "chkleaf:\n0\n1\n2\nfoo bar\x00baz\nquux\x00blarh\n", ("sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo bar",), "baz"), (("quux",), "blarh")],
-            sorted(node.iteritems()))
+            sorted(node.iteritems(None)))
 
     def test_iteritems_selected_one_of_two_items(self):
         node = LeafNode.deserialise(
             "chkleaf:\n0\n1\n2\nfoo bar\x00baz\nquux\x00blarh\n", ("sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([(("quux",), "blarh")],
-            sorted(node.iteritems([("quux",), ("qaz",)])))
+            sorted(node.iteritems(None, [("quux",), ("qaz",)])))
 
     def test_key_new(self):
         node = LeafNode()
@@ -372,13 +256,13 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_key_after_map(self):
         node = LeafNode.deserialise("chkleaf:\n10\n1\n0\n", ("sha1:1234",))
-        node = node.map(("foo bar",), "baz quux")
+        node.map(None, ("foo bar",), "baz quux")
         self.assertEqual(None, node.key())
 
     def test_key_after_unmap(self):
         node = LeafNode.deserialise(
             "chkleaf:\n0\n1\n2\nfoo bar\x00baz\nquux\x00blarh\n", ("sha1:1234",))
-        node = node.unmap(("foo bar",))
+        node.unmap(None, ("foo bar",))
         self.assertEqual(None, node.key())
 
     def test_map_exceeding_max_size_only_entry_new(self):
@@ -407,42 +291,29 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual(10, node.maximum_size)
         self.assertEqual(1, node._key_width)
 
-    def test_map_exceeding_max_size_second_entry_last_octect_changed(self):
-        node = LeafNode()
-        node.set_maximum_size(10)
-        node = node.map(None, ("foo bar",), "baz quux")
-        result = node.map(None, ("foo baz",), "red")
-        self.assertIsInstance(result, InternalNode)
-        # should have copied the data in:
-        self.assertEqual(2, len(result))
-        self.assertEqual({('foo baz',): 'red', ('foo bar',): 'baz quux'},
-            self.to_dict(result))
-        self.assertEqual(10, result.maximum_size)
-        self.assertEqual(1, result._key_width)
-
     def test_map_first(self):
         node = LeafNode()
-        result = node.map(("foo bar",), "baz quux")
-        self.assertEqual(result, node)
-        self.assertEqual({("foo bar",):"baz quux"}, self.to_dict(node))
+        result = node.map(None, ("foo bar",), "baz quux")
+        self.assertEqual(("foo bar", [("", node)]), result)
+        self.assertEqual({("foo bar",):"baz quux"}, self.to_dict(node, None))
         self.assertEqual(1, len(node))
 
     def test_map_second(self):
         node = LeafNode()
-        node = node.map(("foo bar",), "baz quux")
-        result = node.map(("bingo",), "bango")
-        self.assertEqual(result, node)
+        node.map(None, ("foo bar",), "baz quux")
+        result = node.map(None, ("bingo",), "bango")
+        self.assertEqual(("", [("", node)]), result)
         self.assertEqual({("foo bar",):"baz quux", ("bingo",):"bango"},
-            self.to_dict(node))
+            self.to_dict(node, None))
         self.assertEqual(2, len(node))
 
     def test_map_replacement(self):
         node = LeafNode()
-        node = node.map(("foo bar",), "baz quux")
-        result = node.map(("foo bar",), "bango")
-        self.assertEqual(result, node)
+        node.map(None, ("foo bar",), "baz quux")
+        result = node.map(None, ("foo bar",), "bango")
+        self.assertEqual(("foo bar", [("", node)]), result)
         self.assertEqual({("foo bar",): "bango"},
-            self.to_dict(node))
+            self.to_dict(node, None))
         self.assertEqual(1, len(node))
 
     def test_serialise_empty(self):
@@ -459,7 +330,7 @@ class TestLeafNode(TestCaseWithStore):
         store = self.get_chk_bytes()
         node = LeafNode()
         node.set_maximum_size(10)
-        node = node.map(("foo bar",), "baz quux")
+        node.map(None, ("foo bar",), "baz quux")
         expected_key = ("sha1:d44cb6f0299b7e047da7f9e98f810e98f1dce1a7",)
         self.assertEqual([expected_key],
             list(node.serialise(store)))
@@ -470,23 +341,22 @@ class TestLeafNode(TestCaseWithStore):
     def test_unique_serialised_prefix_empty_new(self):
         node = LeafNode()
         self.assertEqual("", node.unique_serialised_prefix())
-        return
 
     def test_unique_serialised_prefix_one_item_new(self):
         node = LeafNode()
-        result = node.map(None, ("foo bar", "baz"), "baz quux")
+        node.map(None, ("foo bar", "baz"), "baz quux")
         self.assertEqual("foo bar\x00baz", node.unique_serialised_prefix())
 
     def test_unmap_missing(self):
         node = LeafNode()
-        self.assertRaises(KeyError, node.unmap, ("foo bar",))
+        self.assertRaises(KeyError, node.unmap, None, ("foo bar",))
 
     def test_unmap_present(self):
         node = LeafNode()
-        node = node.map(None, ("foo bar",), "baz quux")
-        result = node.unmap(("foo bar",))
-        self.assertEqual(result, node)
-        self.assertEqual({}, self.to_dict(node))
+        node.map(None, ("foo bar",), "baz quux")
+        result = node.unmap(None, ("foo bar",))
+        self.assertEqual(node, result)
+        self.assertEqual({}, self.to_dict(node, None))
         self.assertEqual(0, len(node))
 
 
@@ -537,33 +407,6 @@ class TestInternalNode(TestCaseWithStore):
 #    def test_add_node_two_oversized_third_kept_minimum_fan(self):
 #    def test_add_node_one_oversized_second_splits_errors(self):
 
-    def test_add_node_empty_oversized_no_common_sets_prefix(self):
-        # adding a node with two children that is oversized will generate two
-        # new leaf nodes, and a prefix width that cuts one byte off the longest
-        # key (because that is sufficient to guarantee a split
-        overpacked = LeafNode()
-        overpacked.set_maximum_size(10)
-        overpacked.map(None, ("foo bar",), "baz")
-        overpacked.map(None, ("strange thing",), "it is")
-        # at this point, map returned a new internal node that is already
-        # packed, but that should have preserved the old node due to the 
-        # functional idioms.. check to be sure:
-        self.assertTrue(overpacked.maximum_size < overpacked._current_size())
-        node = InternalNode()
-        # We're not testing that the internal node rebalances yet
-        node.set_maximum_size(0)
-        node._add_node(overpacked)
-        # 13 is the length of strange_thing serialised; as there is no node size
-        # set, we pack the internal node as densely as possible.
-        self.assertEqual(13, node._node_width)
-        self.assertEqual(set(["strange thing", "foo bar\x00\x00\x00\x00\x00\x00"]),
-            set(node._items.keys()))
-        self.assertEqual(2, len(node))
-        self.assertEqual({('strange thing',): 'it is'},
-            self.to_dict(node._items["strange thing"]))
-        self.assertEqual({('foo bar',): 'baz'},
-            self.to_dict(node._items["foo bar\x00\x00\x00\x00\x00\x00"]))
-
     def test_iteritems_empty_new(self):
         node = InternalNode()
         self.assertEqual([], sorted(node.iteritems(None)))
@@ -573,79 +416,29 @@ class TestInternalNode(TestCaseWithStore):
         leaf1 = LeafNode()
         leaf1.map(None, ('foo bar',), 'quux')
         leaf2 = LeafNode()
-        leaf2 = LeafNode()
         leaf2.map(None, ('strange',), 'beast')
-        node._items['foo ba'] = leaf1
-        node._items['strang'] = leaf2
+        node.add_node("f", leaf1)
+        node.add_node("s", leaf2)
         self.assertEqual([(('foo bar',), 'quux'), (('strange',), 'beast')],
-            sorted(node.iteritems()))
+            sorted(node.iteritems(None)))
 
     def test_iteritems_two_children_partial(self):
         node = InternalNode()
-        leaf2 = LeafNode()
+        leaf1 = LeafNode()
+        leaf1.map(None, ('foo bar',), 'quux')
         leaf2 = LeafNode()
         leaf2.map(None, ('strange',), 'beast')
+        node.add_node("f", leaf1)
         # This sets up a path that should not be followed - it will error if
         # the code tries to.
-        node._items['foo ba'] = None
-        node._items['strang'] = leaf2
-        node._node_width = 6
+        node._items['f'] = None
+        node.add_node("s", leaf2)
         self.assertEqual([(('strange',), 'beast')],
-            sorted(node.iteritems([('strange',), ('weird',)])))
+            sorted(node.iteritems(None, [('strange',), ('weird',)])))
 
     def test_iteritems_partial_empty(self):
         node = InternalNode()
         self.assertEqual([], sorted(node.iteritems([('missing',)])))
-
-    def test_map_to_existing_child(self):
-        # mapping a new key which is in a child of an internal node maps
-        # recursively.
-        overpacked = LeafNode()
-        overpacked.set_maximum_size(10)
-        overpacked.map(None, ("foo bar",), "baz")
-        node = overpacked.map(None, ("foo baz",), "it is")
-        self.assertIsInstance(node, InternalNode)
-        # Now, increase the maximum size limit on the subnode for foo bar
-        child = node._items[node._serialised_key(("foo bar",))]
-        child.set_maximum_size(200)
-        # And map a new key into node, which will land in the same child node
-        result = node.map(None, ("foo bar baz",), "new value")
-        self.assertTrue(result is node)
-        self.assertEqual(3, len(result))
-        self.assertEqual(2, len(child))
-        self.assertEqual({('foo bar',): 'baz',
-            ('foo bar baz',): 'new value', ('foo baz',): 'it is'},
-            self.to_dict(node))
-
-    def test_map_to_existing_child_exceed_child_size_not_internal_size(self):
-        # mapping a new key which is in a child of an internal node maps
-        # recursively, and when the child splits that is accomodated within the
-        # internal node if there is room for another child pointer.
-        overpacked = LeafNode()
-        # 3 pointers, 7 bytes offset, 45 byte pointers, + prelude.
-        overpacked.set_maximum_size(180)
-        overpacked.map(None, ("foo bar",), "baz " * 40)
-        node = overpacked.map(None, ("foo baz",), "itis" * 40)
-        self.assertIsInstance(node, InternalNode)
-        # And map a new key into node, which will land in the same child path
-        # within node, but trigger a spill event on the child, and should end
-        # up with 3 pointers in node (as the pointers can fit in the node
-        # space.
-        result = node.map(None, ("foo bar baz",), "new " * 60)
-        self.assertTrue(result is node)
-        self.assertEqual(3, len(result))
-        # We should have one child for foo bar
-        child = node._items[node._serialised_key(("foo bar\x00",))]
-        self.assertIsInstance(child, LeafNode)
-        self.assertEqual(1, len(child))
-        # And one for 'foo bar '
-        child = node._items[node._serialised_key(("foo bar ",))]
-        self.assertIsInstance(child, LeafNode)
-        self.assertEqual(1, len(child))
-        self.assertEqual({('foo bar',): 'baz ' * 60,
-            ('foo bar baz',): 'new ' * 60,
-            ('foo baz',): 'itis' * 60},
-            self.to_dict(node))
 
     def test_map_to_new_child_new(self):
         chkmap = self._get_map({('k1',):'foo', ('k2',):'bar'}, maximum_size=10)
@@ -762,18 +555,6 @@ class TestInternalNode(TestCaseWithStore):
         # children, and should not have needed to page in the subtree.
         result = node.unmap(chkmap._store, ('k1',))
         self.assertEqual(k2_ptr, result)
-
-    def test_unmap_second_last_shrinks_to_other_branch(self):
-        # unmapping the second last child of an internal node downgrades it to
-        # a leaf node.
-        overpacked = LeafNode()
-        overpacked.set_maximum_size(10)
-        overpacked.map(None, ("foo bar",), "baz")
-        node = overpacked.map(None, ("strange thing",), "it is")
-        self.assertIsInstance(node, InternalNode)
-        result = node.unmap(("foo bar",))
-        self.assertIsInstance(result, LeafNode)
-        self.assertEqual({("strange thing",): "it is"}, self.to_dict(result))
 
 
 # leaf:

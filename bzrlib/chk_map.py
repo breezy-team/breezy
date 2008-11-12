@@ -382,45 +382,6 @@ class InternalNode(Node):
         self._items[prefix] = node
         self._key = None
 
-    def _add_node(self, node):
-        """Add a node to the InternalNode.
-
-        :param node: An existing node to add. The node will be examined to see
-            if it is over or undersized and rebalanced if needed across this
-            nodes children.
-        """
-        if self._len == 0:
-            # new tree level, we're being populated by upspill from a overfull
-            # tree.
-            # Cheap-to-code-but-slow?
-            elements = {}
-            max_width = 0
-            # suck in all the values
-            for key, value in node.iteritems():
-                # We work on the serialised keys
-                serialised_key = '\x00'.join(key)
-                elements[serialised_key] = (key, value)
-                max_width = max(len(serialised_key), max_width)
-            # Determine the maximum common key width we will internally handle.
-            # Start with the full key width; if that exceeds our node size
-            # shrink it until we are within the node limit.
-            self._node_width = max_width
-            width = self._node_width
-            # Populate all the resulting keys:
-            items = self._items
-            for serialised_key, key_value in elements.iteritems():
-                actual_key = self._serialised_key(key_value[0])
-                child = items.get(actual_key, None)
-                if not child:
-                    child = LeafNode()
-                    child.set_maximum_size(self._maximum_size)
-                    child._key_width = self._key_width
-                    items[actual_key] = child
-                child.map(store, key_value[0], key_value[1])
-                self._len += 1
-        else:
-            raise NotImplementedError(self._add_node)
-
     def _current_size(self):
         """Answer the current serialised size of this node."""
         return (self._size + len(str(self._len)) + len(str(self._key_width)) +
@@ -724,47 +685,9 @@ class RootNode(Node):
         return "".join(lines)
 
 
-class ValueNode(object):
-    """A value in a CHKMap."""
-
-    def __init__(self, value):
-        """Create a ValueNode.
-
-        :param value: The value of this node, must be a bytestring.
-        """
-        self.value = value
-
-    @classmethod
-    def deserialise(klass, bytes):
-        """Get a ValueNode from a serialised bytestring.
-        
-        :param bytes: The bytes returned by an earlier serialisation.
-        """
-        if not bytes.startswith("chkvalue:\n"):
-            raise ValueError("not a chkvalue %r" % bytes)
-        return ValueNode(bytes[10:])
-
-    def serialise(self):
-        """Flatten the value to a bytestring.
-
-        :return: A bytestring.
-        """
-        return "chkvalue:\n" + self.value
-
-    def refs(self):
-        """ValueNodes have no refs within the dict."""
-        return []
-
-
 def _deserialise(bytes, key):
     """Helper for repositorydetails - convert bytes to a node."""
-    if bytes.startswith("chkvalue:\n"):
-        return ValueNode.deserialise(bytes)
-    elif bytes.startswith("chkroot:\n"):
-        result = RootNode()
-        result.deserialise(bytes, key)
-        return result
-    elif bytes.startswith("chkleaf:\n"):
+    if bytes.startswith("chkleaf:\n"):
         return LeafNode.deserialise(bytes, key)
     elif bytes.startswith("chknode:\n"):
         return InternalNode.deserialise(bytes, key)
