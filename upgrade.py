@@ -17,7 +17,6 @@
 
 from bzrlib import ui
 from bzrlib.errors import BzrError, InvalidRevisionId, DependencyNotPresent
-from bzrlib.revision import Revision
 from bzrlib.trace import info
 
 import itertools
