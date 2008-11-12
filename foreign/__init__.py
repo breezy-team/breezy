@@ -19,15 +19,22 @@
 from bzrlib import errors, registry
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
+from bzrlib.errors import InvalidRevisionId
+from bzrlib.revision import Revision
 from bzrlib.trace import info
-
 
 class VcsMapping(object):
     """Describes the mapping between the semantics of Bazaar and a foreign vcs.
 
     """
+    # Whether this is an experimental mapping that is still open to changes.
     experimental = False
+
+    # Whether this mapping supports exporting and importing all bzr semantics.
     roundtripping = False
+
+    # Prefix used when importing native foreign revisions (not roundtripped) 
+    # using this mapping.
     revid_prefix = None
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
@@ -45,6 +52,14 @@ class VcsMapping(object):
         :return: A bzr revision id.
         """
         raise NotImplementedError(self.revision_id_foreign_to_bzr)
+
+    def show_foreign_revid(self, foreign_revid):
+        """Prepare a foreign revision id for formatting using bzr log.
+        
+        :param foreign_revid: Foreign revision id.
+        :return: Dictionary mapping string keys to string values.
+        """
+        return { }
 
 
 class VcsMappingRegistry(registry.Registry):
@@ -74,12 +89,21 @@ class VcsMappingRegistry(registry.Registry):
 
 
 class ForeignBranch(Branch):
+    """Branch that exists in a foreign version control system."""
 
     def __init__(self, mapping):
         super(ForeignBranch, self).__init__()
         self.mapping = mapping
 
     def dpull(self, source, stop_revision=None):
+        """Pull deltas from another branch.
+
+        :note: This does not, like pull, retain the revision ids from 
+        the source branch.
+
+        :param source: Source branch
+        :param stop_revision: Revision to pull, defaults to last revision.
+        """
         raise NotImplementedError(self.pull)
 
 
@@ -119,7 +143,6 @@ class cmd_dpush(Command):
             no_rebase=False):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
-        from bzrlib.branch import Branch
         from bzrlib.errors import BzrCommandError, NoWorkingTree
         from bzrlib.workingtree import WorkingTree
 
@@ -168,10 +191,10 @@ def test_suite():
     from bzrlib.tests import TestUtil
     loader = TestUtil.TestLoader()
     suite = TestSuite()
-    import test_versionedfiles
-    testmod_names = ['test_versionedfiles',]
+    testmod_names = ['test_versionedfiles', ]
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     return suite
+
 
 def escape_commit_message(message):
     """Replace xml-incompatible control characters."""
@@ -193,5 +216,34 @@ def escape_commit_message(message):
         message)
     return message
 
+
+class ForeignRevision(Revision):
+    """A Revision from a Foreign repository. Remembers 
+    information about foreign revision id and mapping.
+
+    """
+
+    def __init__(self, foreign_revid, mapping, *args, **kwargs):
+        super(ForeignRevision, self).__init__(*args, **kwargs)
+        self.foreign_revid = foreign_revid
+        self.mapping = mapping
+
+
+def show_foreign_properties(mapping_registry, rev):
+    """Custom log displayer for foreign revision identifiers.
+
+    :param rev: Revision object.
+    """
+    # Revision comes directly from a foreign repository
+    if isinstance(rev, ForeignRevision):
+        return rev.mapping.show_foreign_revid(rev.foreign_revid)
+
+    # Revision was once imported from a foreign repository
+    try:
+        foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+    except InvalidRevisionId:
+        return {}
+
+    return mapping.show_foreign_revid(foreign_revid)
 
 
