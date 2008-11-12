@@ -29,14 +29,14 @@ bzrdir.format_registry.register(
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
 
-def show_git_properties(rev):
-    from bzrlib.plugins.git.foreign import show_foreign_properties
-    from bzrlib.plugins.git.mapping import mapping_registry
-    return show_foreign_properties(mapping_registry, rev)
+from bzrlib.plugins.git import foreign
 
-log.properties_handler_registry.register_lazy("git",
-                                              "bzrlib.plugins.git",
-                                              "show_git_properties")
+class ForeignGit(foreign.ForeignVcs):
+
+    pass
+
+foreign.foreign_vcs_registry.register("git", ForeignGit(None), 
+                                      "Stupid content tracker")
 
 def test_suite():
     from bzrlib.plugins.git import tests
