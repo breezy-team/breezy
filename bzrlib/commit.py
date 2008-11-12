@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ from bzrlib.osutils import (get_user_encoding,
                             )
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
-from bzrlib.inventory import InventoryEntry, make_entry
+from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -698,8 +698,18 @@ class Commit(object):
     def _report_and_accumulate_deletes(self):
         # XXX: Could the list of deleted paths and ids be instead taken from
         # _populate_from_inventory?
-        deleted_ids = set(self.basis_inv._byid.keys()) - \
-            set(self.builder.new_inventory._byid.keys())
+        if (isinstance(self.basis_inv, Inventory)
+            and isinstance(self.builder.new_inventory, Inventory)):
+            # Performance with commit was profiled extensively, and it found that
+            # using the keys (rather than eg building a set from the dict, or
+            # from the key iterator) of the Inventory._byid was faster at the
+            # time. We want to move away from doing this, but until careful
+            # profiling is done, we're preserving the old behaviour.
+            # <lifeless, poolie>
+            deleted_ids = set(self.basis_inv._byid.keys()) - \
+               set(self.builder.new_inventory._byid.keys())
+        else:
+            deleted_ids = set(self.basis_inv) - set(self.builder.new_inventory)
         if deleted_ids:
             self.any_entries_deleted = True
             deleted = [(self.basis_tree.id2path(file_id), file_id)
