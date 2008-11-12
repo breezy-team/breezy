@@ -559,6 +559,11 @@ class TestRepository(TestCaseWithRepository):
         tree.add('foo', 'file1')
         tree.commit('message', rev_id='rev_id')
         repo = tree.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('rev_id', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         repo.lock_read()
         self.addCleanup(repo.unlock)
 
@@ -571,7 +576,7 @@ class TestRepository(TestCaseWithRepository):
         expected_item_keys = [
             ('file', 'file1', ['rev_id']),
             ('inventory', None, ['rev_id']),
-            ('signatures', None, []),
+            ('signatures', None, ['rev_id']),
             ('revisions', None, ['rev_id'])]
         item_keys = list(repo.item_keys_introduced_by(['rev_id']))
         item_keys = [
