@@ -324,6 +324,26 @@ class NewPack(Pack):
         else:
             raise AssertionError(self._state)
 
+    def _check_references(self):
+        """Make sure our external references are present.
+        
+        Packs are allowed to have deltas whose base is not in the pack, but it
+        must be present somewhere in this collection.  It is not allowed to
+        have deltas based on a fallback repository. 
+        (See <https://bugs.launchpad.net/bzr/+bug/288751>)
+        """
+        external_refs = self._external_compression_parents_of_texts()
+        if external_refs:
+            index = self._pack_collection.text_index.combined_index
+            found_items = list(index.iter_entries(external_refs))
+            if len(found_items) != len(external_refs):
+                found_keys = set(k for idx, k, refs, value in found_items)
+                missing_items = external_refs - found_keys
+                raise errors.BzrCheckError(
+                    "Newly created pack file %r has delta references to items not "
+                    "in its repository:\n%r"
+                    % (self, missing_items))
+
     def data_inserted(self):
         """True if data has been added to this pack."""
         return bool(self.get_revision_count() or
@@ -346,6 +366,7 @@ class NewPack(Pack):
         if self._buffer[1]:
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
+        self._check_references()
         # write indices
         # XXX: It'd be better to write them all to temporary names, then
         # rename them all into place, so that the window when only some are
@@ -690,19 +711,6 @@ class Packer(object):
             self.new_pack.text_index, readv_group_iter, total_items))
         self._log_copied_texts()
 
-    def _check_references(self):
-        """Make sure our external references are present."""
-        external_refs = self.new_pack._external_compression_parents_of_texts()
-        if external_refs:
-            index = self._pack_collection.text_index.combined_index
-            found_items = list(index.iter_entries(external_refs))
-            if len(found_items) != len(external_refs):
-                found_keys = set(k for idx, k, refs, value in found_items)
-                missing_items = external_refs - found_keys
-                missing_file_id, missing_revision_id = missing_items.pop()
-                raise errors.RevisionNotPresent(missing_revision_id,
-                                                missing_file_id)
-
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
         self.new_pack = self.open_pack()
@@ -739,7 +747,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
-        self._check_references()
+        new_pack._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
             return None
