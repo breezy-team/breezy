@@ -77,7 +77,7 @@ class RepoFetcher(object):
     """
 
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None,
-        find_ghosts=True):
+        find_ghosts=True, _write_group_acquired_callable=None):
         """Create a repo fetcher.
 
         :param find_ghosts: If True search the entire history for ghosts.
@@ -95,6 +95,7 @@ class RepoFetcher(object):
         # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
         self.find_ghosts = find_ghosts
+        self._write_group_acquired_callable = _write_group_acquired_callable
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
             self.nested_pb = self.pb
@@ -107,6 +108,8 @@ class RepoFetcher(object):
             try:
                 self.to_repository.start_write_group()
                 try:
+                    if self._write_group_acquired_callable is not None:
+                        self._write_group_acquired_callable()
                     self.__fetch()
                 except:
                     self.to_repository.abort_write_group(suppress_errors=True)
