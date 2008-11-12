@@ -240,7 +240,7 @@ class LeafNode(Node):
         width = int(lines[2])
         length = int(lines[3])
         for line in lines[4:]:
-            elements = line.split('\x00')
+            elements = line.split('\x00', width)
             items[tuple(elements[:-1])] = elements[-1]
         if len(items) != length:
             raise AssertionError("item count mismatch")
@@ -389,7 +389,7 @@ class InternalNode(Node):
 
     @classmethod
     def deserialise(klass, bytes, key):
-        """Deseriaise bytes to an InternalNode, with key key.
+        """Deserialise bytes to an InternalNode, with key key.
 
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.

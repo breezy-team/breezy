@@ -219,7 +219,7 @@ class TestCHKInventory(TestCaseWithTransport):
             'chkinventory:\n',
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
-            'id_to_entry: sha1:3c84f56e89a6089ee0c6cc25becdcaa368e83632\n'
+            'id_to_entry: sha1:36219af8518a9bed1e52db58e99131db2a00b329\n',
             ],
             chk_inv.to_lines())
 

@@ -243,6 +243,22 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual([(("foo bar",), "baz"), (("quux",), "blarh")],
             sorted(node.iteritems(None)))
 
+    def test_deserialise_item_with_null_width_1(self):
+        node = LeafNode.deserialise(
+            "chkleaf:\n0\n1\n2\nfoo\x00bar\x00baz\nquux\x00blarh\n",
+            ("sha1:1234",))
+        self.assertEqual(2, len(node))
+        self.assertEqual([(("foo",), "bar\x00baz"), (("quux",), "blarh")],
+            sorted(node.iteritems(None)))
+
+    def test_deserialise_item_with_null_width_2(self):
+        node = LeafNode.deserialise(
+            "chkleaf:\n0\n2\n2\nfoo\x001\x00bar\x00baz\nquux\x00\x00blarh\n",
+            ("sha1:1234",))
+        self.assertEqual(2, len(node))
+        self.assertEqual([(("foo", "1"), "bar\x00baz"), (("quux", ""), "blarh")],
+            sorted(node.iteritems(None)))
+
     def test_iteritems_selected_one_of_two_items(self):
         node = LeafNode.deserialise(
             "chkleaf:\n0\n1\n2\nfoo bar\x00baz\nquux\x00blarh\n", ("sha1:1234",))

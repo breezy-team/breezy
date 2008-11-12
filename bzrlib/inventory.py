@@ -1396,12 +1396,12 @@ class CHKInventory(CommonInventory):
                 new_key = None
                 new_value = None
             else:
-                new_key = file_id
+                new_key = (file_id,)
                 new_value = result._entry_to_bytes(entry)
             if old_path is None:
                 old_key = None
             else:
-                old_key = file_id
+                old_key = (file_id,)
             id_to_entry_delta.append((old_key, new_key, new_value))
         result.id_to_entry.apply_delta(id_to_entry_delta)
         return result
@@ -1444,7 +1444,7 @@ class CHKInventory(CommonInventory):
         result.id_to_entry = chk_map.CHKMap(chk_store, None)
         delta = []
         for path, entry in inventory.iter_entries():
-            delta.append((None, entry.file_id, result._entry_to_bytes(entry)))
+            delta.append((None, (entry.file_id,), result._entry_to_bytes(entry)))
         result.id_to_entry.apply_delta(delta)
         result.id_to_entry._save()
         return result
@@ -1453,13 +1453,13 @@ class CHKInventory(CommonInventory):
         """map a single file_id -> InventoryEntry."""
         try:
             return self._bytes_to_entry(
-                self.id_to_entry.iteritems([file_id]).next()[1])
+                self.id_to_entry.iteritems([(file_id,)]).next()[1])
         except StopIteration:
             raise KeyError(file_id)
 
     def has_id(self, file_id):
         # Perhaps have an explicit 'contains' method on CHKMap ?
-        return len(list(self.id_to_entry.iteritems([file_id]))) == 1
+        return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
 
     def _iter_file_id_parents(self, file_id):
         """Yield the parents of file_id up to the root."""
@@ -1473,8 +1473,8 @@ class CHKInventory(CommonInventory):
 
     def __iter__(self):
         """Iterate over the entire inventory contents; size-of-tree - beware!."""
-        for file_id, _ in self.id_to_entry.iteritems():
-            yield file_id
+        for key, _ in self.id_to_entry.iteritems():
+            yield key[-1]
 
     def __len__(self):
         """Return the number of entries in the inventory."""
