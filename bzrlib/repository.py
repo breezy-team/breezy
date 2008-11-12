@@ -38,6 +38,7 @@ from bzrlib import (
     symbol_versioning,
     tsort,
     ui,
+    versionedfile,
     )
 from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
@@ -3054,15 +3055,19 @@ class InterDifferingSerializer(InterKnitRepo):
         revision_ids = tsort.topo_sort(
             self.source.get_graph().get_parent_map(revision_ids))
         def revisions_iterator():
-            for current_revision_id in revision_ids:
-                revision = self.source.get_revision(current_revision_id)
-                tree = self.source.revision_tree(current_revision_id)
-                try:
-                    signature = self.source.get_signature_text(
-                        current_revision_id)
-                except errors.NoSuchRevision:
-                    signature = None
-                yield revision, tree, signature
+            rev_ids = list(revision_ids)
+            for offset in xrange(0, len(rev_ids), 100):
+                current_revids = rev_ids[offset:offset+100]
+                revisions = self.source.get_revisions(current_revids)
+                trees = self.source.revision_trees(current_revids)
+                keys = [(r,) for r in current_revids]
+                sig_stream = self.source.signatures.get_record_stream(
+                    keys, 'unordered', True)
+                sigs = {}
+                for record in versionedfile.filter_absent(sig_stream):
+                    sigs[record.key[0]] = record.get_bytes_as('fulltext')
+                for rev, tree in zip(revisions, trees):
+                    yield rev, tree, sigs.get(rev.revision_id, None)
         if pb is None:
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
