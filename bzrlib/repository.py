@@ -3263,7 +3263,12 @@ class InterDifferingSerializer(InterKnitRepo):
                         delta = _make_inv_delta(basis_tree.inventory,
                             tree.inventory)
                         for old_path, new_path, file_id, entry in delta:
-                            if new_path:
+                            if new_path is not None:
+                                if not (new_path or self.target.supports_rich_root()):
+                                    # We leave the inventory delta in, because that
+                                    # will have the deserialised inventory root
+                                    # pointer.
+                                    continue
                                 text_keys.add((file_id, entry.revision))
                         revision = self.source.get_revision(current_revision_id)
                         pending_deltas.append((basis_id, delta,

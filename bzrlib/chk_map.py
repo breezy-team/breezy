@@ -461,6 +461,7 @@ class InternalNode(Node):
             # child may have shrunk, or might be the same.
             self._len = self._len - old_len + len(child)
             self._items[serialised_key] = child
+            self._key = None
             return self.unique_serialised_prefix(), [("", self)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
@@ -470,6 +471,7 @@ class InternalNode(Node):
         for split, node in node_details:
             child.add_node(split, node)
         self._len = self._len - old_len + len(child)
+        self._key = None
         return self.unique_serialised_prefix(), [("", self)]
 
     def _new_child(self, serialised_key, klass):
@@ -583,6 +585,7 @@ class InternalNode(Node):
         if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
+        self._key = None
         return self
 
 

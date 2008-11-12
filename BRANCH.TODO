@@ -3,3 +3,7 @@
 # 
 #
 
+Make sure that dev3 handles the rich root correctly. That is that upgrades set
+the new value correctly and that commits to a non-rich-root followed by
+deserialisation show the root as having changed, diffs between non rich root
+revisions should not? show the root as changing?
