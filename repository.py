@@ -35,7 +35,8 @@ from bzrlib import (
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.git.foreign import (
-    versionedfiles
+    versionedfiles,
+    ForeignRevision,
     )
 from bzrlib.plugins.git.mapping import default_mapping
 
@@ -139,7 +140,7 @@ class GitRepository(repository.Repository):
 
         :return: a `bzrlib.revision.Revision` object.
         """
-        rev = revision.Revision(default_mapping.revision_id_foreign_to_bzr(commit.id))
+        rev = ForeignRevision(commit.id, default_mapping, default_mapping.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([default_mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         rev.inventory_sha1 = ""
         rev.message = commit.message.decode("utf-8", "replace")

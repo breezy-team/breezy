@@ -16,7 +16,7 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from bzrlib import errors
+from bzrlib import errors, registry
 from bzrlib.plugins.git import foreign
 
 class BzrGitMapping(foreign.VcsMapping):
@@ -33,6 +33,9 @@ class BzrGitMapping(foreign.VcsMapping):
             raise errors.InvalidRevisionId(bzr_rev_id, self)
         return bzr_rev_id[len(self.revid_prefix)+1:]
 
+    def show_foreign_revid(self, foreign_revid):
+        return { "git commit": foreign_revid }
+
 
 class BzrGitMappingExperimental(BzrGitMapping):
     revid_prefix = 'git-experimental'
@@ -40,3 +43,6 @@ class BzrGitMappingExperimental(BzrGitMapping):
 
 
 default_mapping = BzrGitMappingExperimental()
+mapping_registry = registry.Registry()
+mapping_registry.register('git-experimental', BzrGitMappingExperimental,
+                          "Experimental Git format")

@@ -18,7 +18,7 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
-from bzrlib import bzrdir
+from bzrlib import bzrdir, log
 from bzrlib.plugins.git.dir import GitBzrDirFormat
 
 bzrdir.format_registry.register(
@@ -28,6 +28,15 @@ bzrdir.format_registry.register(
     )
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
+
+def show_git_properties(rev):
+    from bzrlib.plugins.git.foreign import show_foreign_properties
+    from bzrlib.plugins.git.mapping import mapping_registry
+    return show_foreign_properties(mapping_registry, rev)
+
+log.properties_handler_registry.register_lazy("git",
+                                              "bzrlib.plugins.git",
+                                              "show_git_properties")
 
 def test_suite():
     from bzrlib.plugins.git import tests
