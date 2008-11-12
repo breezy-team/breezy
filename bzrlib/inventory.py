@@ -1429,7 +1429,7 @@ class CHKInventory(CommonInventory):
         return result
 
     @classmethod
-    def from_inventory(klass, chk_store, inventory):
+    def from_inventory(klass, chk_store, inventory, maximum_size=0):
         """Create a CHKInventory from an existing inventory.
 
         The content of inventory is copied into the chk_store, and a
@@ -1442,6 +1442,7 @@ class CHKInventory(CommonInventory):
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
         result.id_to_entry = chk_map.CHKMap(chk_store, None)
+        result.id_to_entry._root_node.set_maximum_size(maximum_size)
         delta = []
         for path, entry in inventory.iter_entries():
             delta.append((None, (entry.file_id,), result._entry_to_bytes(entry)))

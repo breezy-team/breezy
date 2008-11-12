@@ -683,8 +683,11 @@ class TestDevelopment3(TestCaseWithTransport):
         repo.add_inventory(revid, inv, [])
         self.assertEqual(set([(revid,)]), repo.inventories.keys())
         self.assertEqual(
-            set([('sha1:daaf97ebc784b6b6ef029d1710cc812d0ff200ff',)]),
+            set([('sha1:6210160e6bc65e395d08bb63cc0aa2f47434631a',)]),
             repo.chk_bytes.keys())
+        inv = repo.get_inventory(revid)
+        inv.id_to_entry._ensure_root()
+        self.assertEqual(4096, inv.id_to_entry._root_node.maximum_size)
 
 
 class TestDevelopment3FindRevisionOutsideSet(TestCaseWithTransport):

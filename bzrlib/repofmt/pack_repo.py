@@ -2100,7 +2100,8 @@ class CHKInventoryRepository(KnitPackRepository):
         :seealso: add_inventory, for the contract.
         """
         # make inventory
-        result = CHKInventory.from_inventory(self.chk_bytes, inv)
+        result = CHKInventory.from_inventory(self.chk_bytes, inv,
+            maximum_size=self._format._serializer.maximum_size)
         inv_lines = result.to_lines()
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)

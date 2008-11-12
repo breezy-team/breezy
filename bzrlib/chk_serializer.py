@@ -46,6 +46,9 @@ class CHKSerializerSubtree(xml6.Serializer_v6):
         else:
             return xml6.Serializer_v6._unpack_entry(self, elt)
 
+    def __init__(self, node_size):
+        self.maximum_size = node_size
+
 
 class CHKSerializer(xml5.Serializer_v5):
     """A CHKInventory based serializer with 'plain' behaviour."""
@@ -54,6 +57,9 @@ class CHKSerializer(xml5.Serializer_v5):
     revision_format_num = None
     support_altered_by_hack = False
 
+    def __init__(self, node_size):
+        self.maximum_size = node_size
 
-chk_serializer_subtree = CHKSerializerSubtree()
-chk_serializer = CHKSerializer()
+
+chk_serializer_subtree = CHKSerializerSubtree(4096)
+chk_serializer = CHKSerializer(4096)

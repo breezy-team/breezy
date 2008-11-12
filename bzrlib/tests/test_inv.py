@@ -250,6 +250,15 @@ class TestCHKInventory(TestCaseWithTransport):
         self.assertEqual(file_direct.text_size, file_found.text_size)
         self.assertEqual(file_direct.executable, file_found.executable)
 
+    def test_from_inventory_maximum_size(self):
+        # from_inventory supports the maximum_size parameter.
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv, 120)
+        self.assertEqual(120, chk_inv.id_to_entry._root_node.maximum_size)
+
     def test___iter__(self):
         inv = Inventory()
         inv.revision_id = "revid"
