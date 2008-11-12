@@ -66,6 +66,15 @@ diff_git()
 	return $?
 }
 
+diff_bzr()
+{
+	cd $1.bzr/master
+	bzr update
+	cd - >/dev/null
+	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Naur $1.bzr/master $1
+	return $?
+}
+
 die()
 {
 	echo "fatal: $@"
