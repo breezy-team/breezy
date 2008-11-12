@@ -144,8 +144,8 @@ class GitRepository(repository.Repository):
         rev.parent_ids = tuple([default_mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         rev.inventory_sha1 = ""
         rev.message = commit.message.decode("utf-8", "replace")
-        rev.committer = str(commit.committer)
-        rev.properties['author'] = str(commit.author)
+        rev.committer = str(commit.committer).decode("utf-8", "replace")
+        rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
         rev.timestamp = time.mktime(commit.committed_date)
         rev.timezone = 0
         return rev
