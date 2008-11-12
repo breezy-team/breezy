@@ -21,7 +21,7 @@ Bzr versions:
 
 ----
 $ bzr version
-Bazaar (bzr) 1.7.1
+Bazaar (bzr) 1.9
 $ ls /usr/lib/python*/site-packages/fastimport*
 /usr/lib/python2.5/site-packages/fastimport-0.6.0final0-py2.5.egg-info
 ----
