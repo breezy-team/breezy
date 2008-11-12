@@ -634,26 +634,10 @@ class InternalNode(Node):
         else:
             # Stash the returned node
             self._items[serialised_key] = unmapped
-        if len(self) == 1:
+        if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
         return self
-        prefix, node_details = child.map(store, key, value)
-        if len(node_details) == 1:
-            # child may have shrunk, or might be the same.
-            self._len = self._len - old_len + len(child)
-            self._items[serialised_key] = child
-            return self.unique_serialised_prefix(), [("", self)]
-        # child has overflown - create a new intermediate node.
-        # XXX: This is where we might want to try and expand our depth
-        # to refer to more bytes of every child (which would give us
-        # multiple pointers to child nodes, but less intermediate nodes)
-        child = self._new_child(serialised_key, InternalNode)
-        for split, node in node_details:
-            child.add_node(split, node)
-        self._len = self._len - old_len + len(child)
-        return self.unique_serialised_prefix(), [("", self)]
-
 
 
 class RootNode(Node):

@@ -749,6 +749,20 @@ class TestInternalNode(TestCaseWithStore):
         self.assertEqual([keys[-1]], keys)
         self.assertEqual(('sha1:d3f06fc03d8f50845894d8d04cc5a3f47e62948d',), keys[-1])
 
+    def test_unmap_k1_from_k1_k22_k23_gives_k22_k23_tree_new(self):
+        chkmap = self._get_map(
+            {('k1',):'foo', ('k22',):'bar', ('k23',): 'quux'}, maximum_size=10)
+        # Check we have the expected tree.
+        self.assertEqual(('sha1:d68cd97c95e847d3dc58c05537aa5fdcdf2cf5da',),
+            chkmap._root_node)
+        chkmap._ensure_root()
+        node = chkmap._root_node
+        k2_ptr = node._items['k2']
+        # unmapping k21 should give us a root, with k22 and k23 as direct
+        # children, and should not have needed to page in the subtree.
+        result = node.unmap(chkmap._store, ('k1',))
+        self.assertEqual(k2_ptr, result)
+
     def test_unmap_second_last_shrinks_to_other_branch(self):
         # unmapping the second last child of an internal node downgrades it to
         # a leaf node.
