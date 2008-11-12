@@ -31,6 +31,9 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * Constructor parameters for NewPack (internal to pack repositories)
+      have changed incompatibly.
+
     * Transport implementations must provide copy_tree_to_transport.  A default
       implementation is provided for Transport subclasses.
 

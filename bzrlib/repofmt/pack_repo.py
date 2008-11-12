@@ -222,28 +222,17 @@ class NewPack(Pack):
         'signature': ('.six', 3),
         }
 
-    def __init__(self, upload_transport, index_transport, pack_transport,
-        upload_suffix='', file_mode=None, index_builder_class=None,
-        index_class=None):
+    def __init__(self, pack_collection, upload_suffix='', file_mode=None):
         """Create a NewPack instance.
 
-        :param upload_transport: A writable transport for the pack to be
-            incrementally uploaded to.
-        :param index_transport: A writable transport for the pack's indices to
-            be written to when the pack is finished.
-        :param pack_transport: A writable transport for the pack to be renamed
-            to when the upload is complete. This *must* be the same as
-            upload_transport.clone('../packs').
+        :param pack_collection: A PackCollection into which this is being inserted.
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
-        :param file_mode: An optional file mode to create the new files with.
-        :param index_builder_class: Required keyword parameter - the class of
-            index builder to use.
-        :param index_class: Required keyword parameter - the class of index
-            object to use.
+        :param file_mode: Unix permissions for newly created file.
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
+        index_builder_class = pack_collection._index_builder_class
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             index_builder_class(reference_lists=1),
@@ -259,14 +248,15 @@ class NewPack(Pack):
             # listing.
             index_builder_class(reference_lists=0),
             )
+        self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
-        self.index_class = index_class
+        self.index_class = pack_collection._index_class
         # where should the new pack be opened
-        self.upload_transport = upload_transport
+        self.upload_transport = pack_collection._upload_transport
         # where are indices written out to
-        self.index_transport = index_transport
+        self.index_transport = pack_collection._index_transport
         # where is the pack renamed to when it is finished?
-        self.pack_transport = pack_transport
+        self.pack_transport = pack_collection._pack_transport
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
@@ -609,12 +599,8 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection._upload_transport,
-            self._pack_collection._index_transport,
-            self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.bzrdir._get_file_mode(),
-            index_builder_class=self._pack_collection._index_builder_class,
-            index_class=self._pack_collection._index_class)
+        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+                file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -705,7 +691,7 @@ class Packer(object):
         self._log_copied_texts()
 
     def _check_references(self):
-        """Make sure our external refereneces are present."""
+        """Make sure our external references are present."""
         external_refs = self.new_pack._external_compression_parents_of_texts()
         if external_refs:
             index = self._pack_collection.text_index.combined_index
@@ -1708,11 +1694,8 @@ class RepositoryPackCollection(object):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = NewPack(self._upload_transport, self._index_transport,
-            self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.bzrdir._get_file_mode(),
-            index_builder_class=self._index_builder_class,
-            index_class=self._index_class)
+        self._new_pack = NewPack(self, upload_suffix='.pack',
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
