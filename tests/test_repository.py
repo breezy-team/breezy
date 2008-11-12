@@ -1305,7 +1305,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEquals([
             ('file', mapping.generate_file_id(b.repository.uuid, 1, "", u"foo"), set([revid])),
             ('inventory', None, [revid]),
-            ('signatures', None, set([])),
+            ('signatures', None, set([revid])),
             ('revisions', None, [revid])], ch)
 
 
