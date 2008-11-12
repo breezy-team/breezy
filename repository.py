@@ -268,7 +268,7 @@ class SvnRepository(Repository):
     def start_write_group(self):
         pass
 
-    def abort_write_group(self):
+    def abort_write_group(self, suppress_errors=False):
         pass
 
     def commit_write_group(self):
