@@ -27,8 +27,13 @@ class VcsMapping(object):
 
     """
     experimental = False
+    """Whether this is an experimental mapping that is still open to changes."""
+
     roundtripping = False
+    """Whether this mapping supports exporting and importing all bzr semantics."""
+
     revid_prefix = None
+    """Prefix used when importing native foreign revisions (not roundtripped) using this mapping."""
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
         """Parse a bzr revision id and convert it to a foreign revid.
@@ -74,12 +79,21 @@ class VcsMappingRegistry(registry.Registry):
 
 
 class ForeignBranch(Branch):
+    """Branch that exists in a foreign version control system."""
 
     def __init__(self, mapping):
         super(ForeignBranch, self).__init__()
         self.mapping = mapping
 
     def dpull(self, source, stop_revision=None):
+        """Pull deltas from another branch.
+
+        :note: This does not, like pull, retain the revision ids from 
+        the source branch.
+
+        :param source: Source branch
+        :param stop_revision: Revision to pull, defaults to last revision.
+        """
         raise NotImplementedError(self.pull)
 
 
@@ -173,6 +187,7 @@ def test_suite():
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     return suite
 
+
 def escape_commit_message(message):
     """Replace xml-incompatible control characters."""
     if message is None:
@@ -192,6 +207,4 @@ def escape_commit_message(message):
         lambda match: match.group(0).encode('unicode_escape'),
         message)
     return message
-
-
 
