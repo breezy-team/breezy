@@ -585,3 +585,21 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
     def test_last_modified_file_link(self):
         self._check_kind_change(self.make_file, self.make_link)
+
+    def test_get_commit_builder_with_invalid_revprops(self):
+        branch = self.make_branch('.')
+        branch.repository.lock_write()
+        self.addCleanup(branch.repository.unlock)
+        self.assertRaises(ValueError, branch.repository.get_commit_builder,
+            branch, [], branch.get_config(),
+            revprops={'invalid': u'property\rwith\r\ninvalid chars'})
+
+    def test_commit_builder_commit_with_invalid_message(self):
+        branch = self.make_branch('.')
+        branch.repository.lock_write()
+        self.addCleanup(branch.repository.unlock)
+        builder = branch.repository.get_commit_builder(branch, [],
+            branch.get_config())
+        self.addCleanup(branch.repository.abort_write_group)
+        self.assertRaises(ValueError, builder.commit,
+            u'Invalid\r\ncommit message\r\n')

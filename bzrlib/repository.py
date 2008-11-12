@@ -102,6 +102,7 @@ class CommitBuilder(object):
 
         self._revprops = {}
         if revprops is not None:
+            self._validate_revprops(revprops)
             self._revprops.update(revprops)
 
         if timestamp is None:
@@ -117,11 +118,24 @@ class CommitBuilder(object):
         self._generate_revision_if_needed()
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
 
+    def _validate_unicode_text(self, text, context):
+        """Verify things like commit messages don't have bogus characters."""
+        if '\r' in text:
+            raise ValueError('Invalid value for %s: %r' % (context, text))
+
+    def _validate_revprops(self, revprops):
+        for key, value in revprops.iteritems():
+            # We know that the XML serializers do not round trip '\r'
+            # correctly, so refuse to accept them
+            self._validate_unicode_text(value,
+                                        'revision property (%s)' % (key,))
+
     def commit(self, message):
         """Make the actual commit.
 
         :return: The revision id of the recorded revision.
         """
+        self._validate_unicode_text(message, 'commit message')
         rev = _mod_revision.Revision(
                        timestamp=self._timestamp,
                        timezone=self._timezone,

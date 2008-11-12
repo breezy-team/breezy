@@ -34,6 +34,11 @@ IN DEVELOPMENT
     * Transport implementations must provide copy_tree_to_transport.  A default
       implementation is provided for Transport subclasses.
 
+    * ``CommitBuilder`` now validates the strings it will be committing,
+      to ensure that they do not have characters that will not be properly
+      round-tripped. For now, it just checks for characters that are
+      invalid in the XML form. (John Arbash Meinel)
+
   TESTING:
 
     * ``bzr selftest`` now fails if no doctests are found in a module
