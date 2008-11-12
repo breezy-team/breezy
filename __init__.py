@@ -16,7 +16,7 @@
 
 """Foreign branch utilities."""
 
-from bzrlib import errors, registry
+from bzrlib import errors, log, registry
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
 from bzrlib.errors import InvalidRevisionId
@@ -74,6 +74,8 @@ class VcsMappingRegistry(registry.Registry):
         The factory must be a callable that takes one parameter: the key.
         It must produce an instance of VcsMapping when called.
         """
+        if ":" in key:
+            raise ValueError("mapping name can not contain colon (:)")
         registry.Registry.register(self, key, factory, help)
 
     def set_default(self, key):
@@ -86,6 +88,40 @@ class VcsMappingRegistry(registry.Registry):
     def get_default(self):
         """Convenience function for obtaining the default mapping to use."""
         return self.get(self._get_default_key())
+
+    def revision_id_bzr_to_foreign(self, revid):
+        """Convert a bzr revision id to a foreign revid."""
+        raise NotImplementedError(self.revision_id_bzr_to_foreign)
+
+
+class ForeignVcs(object):
+    """A foreign version control system."""
+
+    def __init__(self, mapping_registry):
+        self.mapping_registry = mapping_registry
+
+
+class ForeignVcsRegistry(registry.Registry):
+    """Registry for Foreign VCSes.
+    
+    """
+
+    def register(self, key, foreign_vcs, help):
+        """Register a foreign VCS.
+
+        """
+        if ":" in key or "-" in key:
+            raise ValueError("vcs name can not contain : or -")
+        registry.Registry.register(self, key, foreign_vcs, help)
+
+    def parse_revision_id(self, revid):
+        if not "-" in revid:
+            raise InvalidRevisionId(revid, None)
+        try:
+            foreign_vcs = self.get(revid.split("-")[0])
+        except KeyError:
+            raise InvalidRevisionId(revid, None)
+        return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
 
 
 class ForeignBranch(Branch):
@@ -229,7 +265,7 @@ class ForeignRevision(Revision):
         self.mapping = mapping
 
 
-def show_foreign_properties(mapping_registry, rev):
+def show_foreign_properties(rev):
     """Custom log displayer for foreign revision identifiers.
 
     :param rev: Revision object.
@@ -240,10 +276,14 @@ def show_foreign_properties(mapping_registry, rev):
 
     # Revision was once imported from a foreign repository
     try:
-        foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+        foreign_revid, mapping = foreign_vcs_registry.parse_revision_id(rev.revision_id)
     except InvalidRevisionId:
         return {}
 
     return mapping.show_foreign_revid(foreign_revid)
 
+log.properties_handler_registry.register("foreign",
+                                         show_foreign_properties,
+                                         "Show foreign VCS properties")
 
+foreign_vcs_registry = ForeignVcsRegistry()
