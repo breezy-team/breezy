@@ -17,6 +17,7 @@
 """Tests for repository write groups."""
 
 from bzrlib import errors
+from bzrlib.transport import memory
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
@@ -99,6 +100,7 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.unlock()
 
     def test_abort_write_group_does_not_raise_when_suppressed(self):
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -110,4 +112,4 @@ class TestWriteGroup(TestCaseWithRepository):
         # suppressed.  See also test_pack_repository's test of the same name.
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
         if token is not None:
-        repo.leave_lock_in_place()
+            repo.leave_lock_in_place()

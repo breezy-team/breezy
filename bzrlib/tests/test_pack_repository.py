@@ -49,8 +49,10 @@ from bzrlib.tests import (
     )
 from bzrlib.transport import (
     fakenfs,
+    memory,
     get_transport,
     )
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -512,6 +514,7 @@ class TestPackRepository(TestCaseWithTransport):
 
         Also requires that the exception is logged.
         """
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -528,6 +531,7 @@ class TestPackRepository(TestCaseWithTransport):
             repo.leave_lock_in_place()
         
     def test_abort_write_group_does_raise_when_not_suppressed(self):
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
         token = repo.lock_write()
         self.addCleanup(repo.unlock)

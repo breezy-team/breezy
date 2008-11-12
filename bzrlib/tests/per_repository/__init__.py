@@ -88,7 +88,7 @@ def all_repository_format_scenarios():
     # formats plus RemoteRepository.
     format_scenarios = formats_to_scenarios(
         [('', format) for format in all_formats],
-        default_transport,
+        None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None)
