@@ -17,7 +17,7 @@
 """Tests for repository write groups."""
 
 from bzrlib import errors
-from bzrlib.transport import memory
+from bzrlib.transport import local, memory
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
@@ -100,6 +100,8 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.unlock()
 
     def test_abort_write_group_does_not_raise_when_suppressed(self):
+        if self.transport_server is local.LocalURLServer:
+            self.transport_server = None
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
         token = repo.lock_write()
