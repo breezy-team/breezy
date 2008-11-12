@@ -340,7 +340,7 @@ class RemoteRepository(_RpcHelper):
 
     __repr__ = __str__
 
-    def abort_write_group(self):
+    def abort_write_group(self, suppress_errors=False):
         """Complete a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
@@ -349,7 +349,8 @@ class RemoteRepository(_RpcHelper):
         facility.
         """
         self._ensure_real()
-        return self._real_repository.abort_write_group()
+        return self._real_repository.abort_write_group(
+            suppress_errors=suppress_errors)
 
     def commit_write_group(self):
         """Complete a write group on the decorated repository.

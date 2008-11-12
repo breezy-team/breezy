@@ -1732,9 +1732,11 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            self._new_pack.abort()
-            self._remove_pack_indices(self._new_pack)
-            self._new_pack = None
+            try:
+                self._new_pack.abort()
+            finally:
+                self._remove_pack_indices(self._new_pack)
+                self._new_pack = None
         self.repo._text_knit = None
 
     def _commit_write_group(self):

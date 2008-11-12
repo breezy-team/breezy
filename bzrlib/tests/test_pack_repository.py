@@ -507,6 +507,38 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(self.format_supports_external_lookups,
             repo._format.supports_external_lookups)
 
+    def test_abort_write_group_does_not_raise_when_suppressed(self):
+        """Similar to per_repository.test_write_group's test of the same name.
+
+        Also requires that the exception is logged.
+        """
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Damage the repository on the filesystem
+        self.get_transport('').rename('repo', 'foo')
+        # abort_write_group will not raise an error
+        self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
+        # But it does log an error
+        log_file = self._get_log(keep_log_file=True)
+        self.assertContainsRe(log_file, 'abort_write_group failed')
+        self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
+        if token is not None:
+            repo.leave_lock_in_place()
+        
+    def test_abort_write_group_does_raise_when_not_suppressed(self):
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Damage the repository on the filesystem
+        self.get_transport('').rename('repo', 'foo')
+        # abort_write_group will not raise an error
+        self.assertRaises(Exception, repo.abort_write_group)
+        if token is not None:
+            repo.leave_lock_in_place()
+        
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
 
