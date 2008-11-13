@@ -136,7 +136,7 @@ def get_standard_plugins_path():
     return path
 
 
-def load_plugins():
+def load_plugins(path=None):
     """Load bzrlib plugins.
 
     The environment variable BZR_PLUGIN_PATH is considered a delimited
@@ -146,6 +146,10 @@ def load_plugins():
 
     load_from_dirs() provides the underlying mechanism and is called with
     the default directory list to provide the normal behaviour.
+
+    :param path: The list of paths to search for plugins.  By default,
+        path will be determined using get_standard_plugins_path.
+        if path is [], no plugins can be loaded.
     """
     global _loaded
     if _loaded:
@@ -154,7 +158,7 @@ def load_plugins():
     _loaded = True
 
     # scan for all plugins in the path.
-    load_from_path(set_plugins_path())
+    load_from_path(set_plugins_path(path))
 
 
 def load_from_path(dirs):
