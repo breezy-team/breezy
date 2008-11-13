@@ -347,6 +347,8 @@ class RemoteRepository(_RpcHelper):
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
+
+        :param suppress_errors: see Repository.abort_write_group.
         """
         self._ensure_real()
         return self._real_repository.abort_write_group(
