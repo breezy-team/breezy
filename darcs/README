@@ -10,29 +10,29 @@ http://www.kernel.org/pub/software/scm/git/docs/git-fast-import.html[fast-import
 It exhibits the following _features:_
 
 Fast::
-  darcs-fast-export provides a fast darcs backend for fast-import.
-  Converting a huge repo (26094 patches, repo size 210M) took about 10
-  hours for me.
+	darcs-fast-export provides a fast darcs backend for fast-import.
+	Converting a huge repo (26094 patches, repo size 210M) took about 10
+	hours.
 
 Independent::
-  Ideally it should work with any fast importer, but actually I tested it
-  with git fast-import, bzr fast-import and hg fastimport. (AFAIK these
-  are the tree fast-import implementations available ATM.)
-  +
-  hg fastimport needs two patches. While they are not in the upstream, you
-  can get it from my repository using
+	Ideally it should work with any fast importer, but actually it has been
+	tested with git fast-import, bzr fast-import and hg fastimport. (These
+	are the three fast-import implementations available ATM.)
+	+
+	hg fastimport needs two patches. While they are not in the upstream, you
+	can get it from my repository using
 +
 ----
 $ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
 ----
 
 Formats::
-  It supports the 'darcs-2', 'hashed', and 'old-fashioned-inventory'
-  darcs repository formats.
+	It supports the 'darcs-2', 'hashed', and 'old-fashioned-inventory' darcs
+	repository formats.
 
 Incremental conversions::
-  It supports the usual `--export-marks` / `--import-marks` switches to
-  allow incremental conversion.
+	It supports the usual `--export-marks` / `--import-marks` switches to
+	allow incremental conversion.
 
 == Usage
 
