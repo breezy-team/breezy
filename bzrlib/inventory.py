@@ -1468,7 +1468,7 @@ class CHKInventory(CommonInventory):
             try:
                 ie = self[file_id]
             except KeyError:
-                raise errors.NoSuchId(tree=None, file_id=file_id)
+                raise errors.NoSuchId(tree=self, file_id=file_id)
             yield ie
             file_id = ie.parent_id
 
@@ -1490,39 +1490,56 @@ class CHKInventory(CommonInventory):
         for key, basis_value, self_value in \
             self.id_to_entry.iter_changes(basis.id_to_entry):
             file_id = key[0]
-            path_in_source = basis.id2path(file_id)
-            path_in_target = self.id2path(file_id)
             if basis_value is not None:
                 basis_entry = basis._bytes_to_entry(basis_value)
+                path_in_source = basis.id2path(file_id)
+                basis_parent = basis_entry.parent_id
+                basis_name = basis_entry.name
+                basis_executable = basis_entry.executable
+            else:
+                path_in_source = None
+                basis_parent = None
+                basis_name = None
+                basis_executable = None
             if self_value is not None:
                 self_entry = self._bytes_to_entry(self_value)
+                path_in_target = self.id2path(file_id)
+                self_parent = self_entry.parent_id
+                self_name = self_entry.name
+                self_executable = self_entry.executable
+            else:
+                path_in_target = None
+                self_parent = None
+                self_name = None
+                self_executable = None
             if basis_value is None:
                 # add
                 kind = (None, self_entry.kind)
                 versioned = (False, True)
-            if self_value is None:
+            elif self_value is None:
                 # delete
                 kind = (basis_entry.kind, None)
                 versioned = (True, False)
             else:
                 kind = (basis_entry.kind, self_entry.kind)
                 versioned = (True, True)
+            changed_content = False
             if kind[0] != kind[1]:
                 changed_content = True
             elif kind[0] == 'file':
                 if (self_entry.text_size != basis_entry.text_size or
                     self_entry.text_sha1 != basis_entry.text_sha1):
                     changed_content = True
-            elif kind[1] == 'symlink':
+            elif kind[0] == 'symlink':
                 if self_entry.symlink_target != basis_entry.symlink_target:
                     changed_content = True
-            elif kind[2] == 'tree-reference':
+            elif kind[0] == 'tree-reference':
                 if (self_entry.reference_revision !=
                     basis_entry.reference_revision):
                     changed_content = True
-            parent = (basis_entry.parent_id, self_entry.parent_id)
-            name = (basis_entry.name, self_entry.name)
-            executable = (basis_entry.executable, self_entry.executable)
+            parent = (basis_parent, self_parent)
+            name = (basis_name, self_name)
+            executable = (basis_executable, self_executable)
             yield (file_id, (path_in_source, path_in_target), changed_content,
                 versioned, parent, name, kind, executable)
 

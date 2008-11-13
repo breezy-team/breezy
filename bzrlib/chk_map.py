@@ -213,7 +213,6 @@ class CHKMap(object):
                     if check_excluded(path):
                         continue
                     node = self._get_node(node)
-                    excluded_keys.add(node._key)
                     if type(node) == str:
                         # a value
                         yield (tuple(prefix.split('\x00')), None, node)

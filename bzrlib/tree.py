@@ -860,6 +860,17 @@ class InterTree(InterObject):
             all_unversioned = deque(all_unversioned)
         else:
             all_unversioned = deque()
+        # XXX: Ugly hack - testing only, really want a separate inter? or
+        # perhaps helpers and split this function up?
+        try:
+            self.source.inventory.id_to_entry
+            self.target.inventory.id_to_entry
+        except:
+            pass
+        else:
+            for result in self.target.inventory.iter_changes(self.source.inventory):
+                yield result
+            return
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
