@@ -131,8 +131,12 @@ sys.stdout.flush()
 os.mkdir(working)
 cwd = os.getcwd()
 os.chdir(working)
-darcs2 = 'darcs-2' in [x.strip() for x in
-	open(os.path.join(origin, "_darcs", "format"))]
+if not os.path.exists(os.path.join(origin, "_darcs", "format")):
+	darcs2 = False
+else:
+	sock = open(os.path.join(origin, "_darcs", "format"))
+	darcs2 = 'darcs-2' in [x.strip() for x in sock]
+	sock.close()
 if darcs2:
 	os.system("darcs init --darcs-2")
 else:
