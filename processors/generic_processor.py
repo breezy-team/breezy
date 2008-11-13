@@ -809,7 +809,10 @@ class GenericCommitHandler(processor.CommitHandler):
         self.cache_mgr._rename_path(old_path, new_path)
 
     def deleteall_handler(self, filecmd):
-        raise NotImplementedError(self.deleteall_handler)
+        self.debug("deleting all files (and also all directories)")
+        for path, fileid in self.cache_mgr.file_ids.items():
+            del self.inventory[fileid]
+            self.cache_mgr._delete_path(path)
 
     def bzr_file_id_and_new(self, path):
         """Get a Bazaar file identifier and new flag for a path.

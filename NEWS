@@ -11,6 +11,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Add support for the deleteall command.
+      (Miklos Vajna, #284941)
+
   BUG FIXES:
 
     * bzr-fast-export now exports rm+mv correctly.
