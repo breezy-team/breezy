@@ -1,5 +1,6 @@
 VERSION         DESCRIPTION
 -----------------------------------------------------------------------------
+              - new --help, --encoding and --authors-file options
 0.4           - add incremental conversion support
 0.3           - add darcs2 support
 0.2           - add bzr and hg support
