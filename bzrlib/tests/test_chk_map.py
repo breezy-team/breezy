@@ -111,12 +111,126 @@ class TestMap(TestCaseWithStore):
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
         # all the keys.
-        basis = self._get_map({})
+        basis = self._get_map({}, maximum_size=10)
         target = self._get_map(
             {('a',): 'content here', ('b',): 'more content'},
-            chk_bytes=basis._store)
+            chk_bytes=basis._store, maximum_size=10)
         self.assertEqual([(('a',), None, 'content here'),
-            (('b',), None, 'more content')], list(target.iter_changes(basis)))
+            (('b',), None, 'more content')],
+            sorted(list(target.iter_changes(basis))))
+
+    def test_iter_changes_ab_empty(self):
+        # Asking for changes between a dict with keys to an empty dict returns
+        # all the keys.
+        basis = self._get_map({('a',): 'content here', ('b',): 'more content'},
+            maximum_size=10)
+        target = self._get_map({}, chk_bytes=basis._store, maximum_size=10)
+        self.assertEqual([(('a',), 'content here', None),
+            (('b',), 'more content', None)],
+            sorted(list(target.iter_changes(basis))))
+
+    def test_iter_changes_empty_empty_is_empty(self):
+        basis = self._get_map({}, maximum_size=10)
+        target = self._get_map({}, chk_bytes=basis._store, maximum_size=10)
+        self.assertEqual([], sorted(list(target.iter_changes(basis))))
+
+    def test_iter_changes_ab_ab_is_empty(self):
+        basis = self._get_map({('a',): 'content here', ('b',): 'more content'},
+            maximum_size=10)
+        target = self._get_map(
+            {('a',): 'content here', ('b',): 'more content'},
+            chk_bytes=basis._store, maximum_size=10)
+        self.assertEqual([], sorted(list(target.iter_changes(basis))))
+
+    def test_iter_changes_ab_ab_nodes_not_loaded(self):
+        basis = self._get_map({('a',): 'content here', ('b',): 'more content'},
+            maximum_size=10)
+        target = self._get_map(
+            {('a',): 'content here', ('b',): 'more content'},
+            chk_bytes=basis._store, maximum_size=10)
+        list(target.iter_changes(basis))
+        self.assertIsInstance(target._root_node, tuple)
+        self.assertIsInstance(basis._root_node, tuple)
+
+    def test_iter_changes_ab_ab_changed_values_shown(self):
+        basis = self._get_map({('a',): 'content here', ('b',): 'more content'},
+            maximum_size=10)
+        target = self._get_map(
+            {('a',): 'content here', ('b',): 'different content'},
+            chk_bytes=basis._store, maximum_size=10)
+        result = sorted(list(target.iter_changes(basis)))
+        self.assertEqual([(('b',), 'more content', 'different content')],
+            result)
+
+    def test_iter_changes_mixed_node_length(self):
+        # When one side has different node lengths than the other, common
+        # but different keys still need to be show, and new-and-old included
+        # appropriately.
+        # aaa - common unaltered
+        # aab - common altered
+        # b - basis only
+        # at - target only
+        # we expect: 
+        # aaa to be not loaded (later test)
+        # aab, b, at to be returned.
+        # basis splits at byte 0,1,2, aaa is commonb is basis only
+        basis_dict = {('aaa',): 'foo bar',
+            ('aab',): 'common altered a', ('b',): 'foo bar b'}
+        # target splits at byte 1,2, at is target only
+        target_dict = {('aaa',): 'foo bar',
+            ('aab',): 'common altered b', ('at',): 'foo bar t'}
+        changes = [
+            (('aab',), 'common altered a', 'common altered b'),
+            (('at',), None, 'foo bar t'),
+            (('b',), 'foo bar b', None),
+            ]
+        basis = self._get_map(basis_dict, maximum_size=10)
+        target = self._get_map(target_dict, maximum_size=10,
+            chk_bytes=basis._store)
+        self.assertEqual(changes, sorted(list(target.iter_changes(basis))))
+
+    def test_iter_changes_common_pages_not_loaded(self):
+        # aaa - common unaltered
+        # aab - common altered
+        # b - basis only
+        # at - target only
+        # we expect: 
+        # aaa to be not loaded
+        # aaa not to be in result.
+        basis_dict = {('aaa',): 'foo bar',
+            ('aab',): 'common altered a', ('b',): 'foo bar b'}
+        # target splits at byte 1, at is target only
+        target_dict = {('aaa',): 'foo bar',
+            ('aab',): 'common altered b', ('at',): 'foo bar t'}
+        basis = self._get_map(basis_dict, maximum_size=10)
+        target = self._get_map(target_dict, maximum_size=10,
+            chk_bytes=basis._store)
+        result = sorted(list(target.iter_changes(basis)))
+        for change in result:
+            if change[0] == ('aaa',):
+                self.fail("Found unexpected change: %s" % change)
+        return
+        # check both target and basis did not load the aaa pointer
+        self.assertIsInstance(target._root_node._items['aa']._items['aaa'],
+            tuple)
+        self.assertIsInstance(basis._root_node._items['a']._items['aaa'],
+            tuple)
+
+    def test_iter_changes_unchanged_keys_in_multi_key_leafs_ignored(self):
+        # Within a leaf there are no hash's to exclude keys, make sure multi
+        # value leaf nodes are handled well.
+        basis_dict = {('aaa',): 'foo bar',
+            ('aab',): 'common altered a', ('b',): 'foo bar b'}
+        target_dict = {('aaa',): 'foo bar',
+            ('aab',): 'common altered b', ('at',): 'foo bar t'}
+        changes = [
+            (('aab',), 'common altered a', 'common altered b'),
+            (('at',), None, 'foo bar t'),
+            (('b',), 'foo bar b', None),
+            ]
+        basis = self._get_map(basis_dict)
+        target = self._get_map(target_dict, chk_bytes=basis._store)
+        self.assertEqual(changes, sorted(list(target.iter_changes(basis))))
 
     def test_iteritems_empty(self):
         chk_bytes = self.get_chk_bytes()

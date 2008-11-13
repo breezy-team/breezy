@@ -37,6 +37,7 @@ Densely packed upper nodes.
 
 """
 
+import heapq
 import osutils
 
 
@@ -78,9 +79,23 @@ class CHKMap(object):
         """Ensure that the root node is an object not a key."""
         if type(self._root_node) == tuple:
             # Demand-load the root
-            bytes = self._read_bytes(self._root_node)
-            root_key = self._root_node
-            self._root_node = _deserialise(bytes, root_key)
+            self._root_node = self._get_node(self._root_node)
+
+    def _get_node(self, node):
+        """Get a node.
+
+        Node that this does not update the _items dict in objects containing a
+        reference to this node. As such it does not prevent subsequent IO being
+        performed.
+        
+        :param node: A tuple key or node object.
+        :return: A node object.
+        """
+        if type(node) == tuple:
+            bytes = self._read_bytes(node)
+            return _deserialise(bytes, node)
+        else:
+            return node
 
     def _read_bytes(self, key):
         stream = self._store.get_record_stream([key], 'unordered', True)
@@ -113,20 +128,156 @@ class CHKMap(object):
             is None for keys only in self; new_value is None for keys only in
             basis.
         """
-        # Cheap but let tests pass
-        new = dict(self.iteritems())
-        old = dict(basis.iteritems())
-        new_keys = set(new)
-        old_keys = set(old)
-        result = []
-        for key in new_keys - old_keys:
-            result.append((key, None, new[key]))
-        for key in old_keys - new_keys:
-            result.append((key, old[key], None))
-        for key in old_keys.intersection(new_keys):
-            if new[key] != old[key]:
-                result.append((key, old[key], new[key]))
-        return result
+        # Overview:
+        # Read both trees in lexographic, highest-first order.
+        # Any identical nodes we skip
+        # Any unique prefixes we output immediately.
+        # values in a leaf node are treated as single-value nodes in the tree
+        # which allows them to be not-special-cased. We know to output them
+        # because their value is a string, not a key(tuple) or node.
+        #
+        # corner cases to beware of when considering this function:
+        # *) common references are at different heights.
+        #    consider two trees:
+        #    {'a': LeafNode={'aaa':'foo', 'aab':'bar'}, 'b': LeafNode={'b'}}
+        #    {'a': InternalNode={'aa':LeafNode={'aaa':'foo', 'aab':'bar'}, 'ab':LeafNode={'ab':'bar'}}
+        #     'b': LeafNode={'b'}}
+        #    the node with aaa/aab will only be encountered in the second tree
+        #    after reading the 'a' subtree, but it is encountered in the first
+        #    tree immediately. Variations on this may have read internal nodes like this.
+        #    we want to cut the entire pending subtree when we realise we have a common node.
+        #    For this we use a list of keys - the path to a node - and check the entire path is 
+        #    clean as we process each item.
+        if self._node_key(self._root_node) == self._node_key(basis._root_node):
+            return
+        self._ensure_root()
+        basis._ensure_root()
+        excluded_keys = set()
+        self_node = self._root_node
+        basis_node = basis._root_node
+        # A heap, each element is prefix, node(tuple/NodeObject/string),
+        # key_path (a list of tuples, tail-sharing down the tree.)
+        self_pending = []
+        basis_pending = []
+        def process_node(prefix, node, path, a_map, pending):
+            # take a node and expand it
+            node = a_map._get_node(node)
+            if type(node) == LeafNode:
+                path = (node._key, path)
+                for key, value in node._items.items():
+                    heapq.heappush(pending, ('\x00'.join(key), value, path))
+            else:
+                # type(node) == InternalNode
+                path = (node._key, path)
+                for prefix, child in node._items.items():
+                    heapq.heappush(pending, (prefix, child, path))
+        process_node(None, self_node, None, self, self_pending)
+        process_node(None, basis_node, None, basis, basis_pending)
+        self_seen = set()
+        basis_seen = set()
+        excluded_keys = set()
+        def check_excluded(key_path):
+            # Note that this is N^2, it depends on us trimming trees
+            # aggressively to not become slow.
+            # A better implementation would probably have a reverse map
+            # back to the children of a node, and jump straight to it when 
+            # a common node is detected, the proceed to remove the already
+            # pending children. bzrlib.graph has a searcher module with a
+            # similar problem.
+            while key_path is not None:
+                key, key_path = key_path
+                if key in excluded_keys:
+                    return True
+            return False
+
+        while self_pending or basis_pending:
+            if not self_pending:
+                # self is exhausted: output remainder of basis
+                for prefix, node, path in basis_pending:
+                    if check_excluded(path):
+                        continue
+                    node = basis._get_node(node)
+                    if type(node) == str:
+                        # a value
+                        yield (tuple(prefix.split('\x00')), node, None)
+                    else:
+                        # subtree - fastpath the entire thing.
+                        for key, value in node.iteritems(basis._store):
+                            yield (key, value, None)
+                return
+            elif not basis_pending:
+                # basis is exhausted: output remainder of self.
+                for prefix, node, path in self_pending:
+                    if check_excluded(path):
+                        continue
+                    node = self._get_node(node)
+                    excluded_keys.add(node._key)
+                    if type(node) == str:
+                        # a value
+                        yield (tuple(prefix.split('\x00')), None, node)
+                    else:
+                        # subtree - fastpath the entire thing.
+                        for key, value in node.iteritems(self._store):
+                            yield (key, None, value)
+                return
+            else:
+                # XXX: future optimisation - yield the smaller items
+                # immediately rather than pushing everything on/off the
+                # heaps. Applies to both internal nodes and leafnodes.
+                if self_pending[0][0] < basis_pending[0][0]:
+                    # expand self
+                    prefix, node, path = heapq.heappop(self_pending)
+                    if check_excluded(path):
+                        continue
+                    if type(node) == str:
+                        # a value
+                        yield (tuple(prefix.split('\x00')), None, node)
+                    else:
+                        process_node(prefix, node, path, self, self_pending)
+                        continue
+                elif self_pending[0][0] > basis_pending[0][0]:
+                    # expand basis
+                    prefix, node, path = heapq.heappop(basis_pending)
+                    if check_excluded(path):
+                        continue
+                    if type(node) == str:
+                        # a value
+                        yield (tuple(prefix.split('\x00')), node, None)
+                    else:
+                        process_node(prefix, node, path, basis, basis_pending)
+                        continue
+                else:
+                    # common prefix: possibly expand both
+                    if type(self_pending[0][1]) != str:
+                        # process next self
+                        read_self = True
+                    else:
+                        read_self = False
+                    if type(basis_pending[0][1]) != str:
+                        # process next basis
+                        read_basis = True
+                    else:
+                        read_basis = False
+                    if not read_self and not read_basis:
+                        # compare a common value
+                        self_details = heapq.heappop(self_pending)
+                        basis_details = heapq.heappop(basis_pending)
+                        if self_details[1] != basis_details[1]:
+                            yield (tuple(self_details[0].split('\x00')),
+                                basis_details[1], self_details[1])
+                        continue
+                    # At least one side wasn't a string, we need to expand it
+                    # before we can continue
+                    if read_self:
+                        prefix, node, path = heapq.heappop(self_pending)
+                        if check_excluded(path):
+                            continue
+                        process_node(prefix, node, path, self, self_pending)
+                    if read_basis:
+                        prefix, node, path = heapq.heappop(basis_pending)
+                        if check_excluded(path):
+                            continue
+                        process_node(prefix, node, path, basis, basis_pending)
 
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
@@ -158,30 +309,17 @@ class CHKMap(object):
             for split, node in node_details:
                 self._root_node.add_node(split, node)
 
-    def _map(self, key, value):
-        """Map key to value."""
-        # Ne
-        self._ensure_root()
-        # Store the value
-        bytes = ValueNode(value).serialise()
-        # Experimental code to probe for keys rather than just adding; its not
-        # clear if it is an improvement.
-        #chk = ("sha1:%s" % osutils.sha_string(bytes),)
-        #if not self._store.get_parent_map([key]):
-        sha1, _, _ = self._store.add_lines((None,), (), osutils.split_lines(bytes))
-        chk = ("sha1:" + sha1,)
-        # And link into the root
-        self._root_node.add_child(key, chk)
+    def _node_key(self, node):
+        """Get the key for a node whether its a tuple o r node."""
+        if type(node) == tuple:
+            return node
+        else:
+            return node._key
 
     def unmap(self, key):
         """remove key from the map."""
         self._ensure_root()
         self._root_node.unmap(self._store, key)
-
-    def _unmap(self, key):
-        """remove key from the map."""
-        self._ensure_root()
-        self._root_node.remove_child(key)
 
     def _save(self):
         """Save the map completely.
@@ -442,11 +580,11 @@ class InternalNode(Node):
         :return: An iterable of nodes.
         """
         nodes = []
-        keys = set()
+        keys = {}
         if key_filter is None:
-            for node in self._items.itervalues():
+            for prefix, node in self._items.iteritems():
                 if type(node) == tuple:
-                    keys.add(node)
+                    keys[node] = prefix
                 else:
                     nodes.append(node)
         else:
@@ -455,7 +593,7 @@ class InternalNode(Node):
             for prefix, node in self._items.iteritems():
                 if prefix in serialised_filter:
                     if type(node) == tuple:
-                        keys.add(node)
+                        keys[node] = prefix
                     else:
                         nodes.append(node)
         if keys:
@@ -464,6 +602,7 @@ class InternalNode(Node):
             for record in stream:
                 node = _deserialise(record.get_bytes_as('fulltext'), record.key)
                 nodes.append(node)
+                self._items[keys[record.key]] = node
         return nodes
 
     def map(self, store, key, value):
