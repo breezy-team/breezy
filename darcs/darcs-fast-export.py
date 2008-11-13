@@ -5,6 +5,7 @@
     darcs-fast-export.py - darcs backend for fast data importers
 
     Copyright (c) 2008 Miklos Vajna <vmiklos@frugalware.org>
+    Copyright (c) 2008 Matthias Andree <matthias.andree@gmx.de>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -112,7 +113,7 @@ sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
 buf = sock.read()
 # this is hackish. we need to escape some bad chars, otherwise the xml
 # will not be valid
-buf = buf.replace('\x1b', '^]')
+buf = buf.replace('\x1b', '^[')
 sock.close()
 try:
 	xmldoc = xml.dom.minidom.parseString(buf)
