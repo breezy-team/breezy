@@ -151,6 +151,7 @@ patches = xmldoc.getElementsByTagName('patch')
 # this may be huge and we need it many times
 patchnum = len(patches)
 
+progress("starting export")
 count = 1
 paths = []
 for i in patches:
@@ -213,7 +214,7 @@ for i in patches:
 		print "from :%s" % count
 		print "tagger %s %s %s" % (get_author(i), date, get_zone_str())
 		print "data %d\n%s" % (len(message[4:]), message[4:])
-	if count % 1000 == 0:
+	if count % 100 == 0:
 		progress("%d/%d patches" % (count, patchnum))
 	count += 1
 
@@ -223,6 +224,9 @@ shutil.rmtree(working)
 logsock.close()
 
 if options.export_marks:
+	progress("writing export marks")
 	sock = open(options.export_marks, 'w')
 	sock.write("\n".join(export_marks))
 	sock.close()
+
+progress("finished")
