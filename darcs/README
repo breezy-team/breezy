@@ -1,81 +1,61 @@
 = darcs backend for fast data importers
 Miklos Vajna <vmiklos-at-frugalware-dot-org>
 
-== Status
+== Purpose and Features
 
-Darcs version I tested:
+darcs-fast-export is a tool to dump a http://darcs.net/[darcs]
+repository in a format understood by "fast-importers" such as
+http://git.or.cz/[git]
+http://www.kernel.org/pub/software/scm/git/docs/git-fast-import.html[fast-import].
+It exhibits the following _features:_
 
-----
-$ darcs --version
-2.1.0 (release)
-----
+Fast::
+  darcs-fast-export provides a fast darcs backend for fast-import.
+  Converting a huge repo (26094 patches, repo size 210M) took about 10
+  hours for me.
 
-Git version:
-
-----
-$ git --version
-git version 1.6.0.2
-----
-
-Bzr versions:
-
-----
-$ bzr version
-Bazaar (bzr) 1.9
-$ ls /usr/lib/python*/site-packages/fastimport*
-/usr/lib/python2.5/site-packages/fastimport-0.6.0final0-py2.5.egg-info
-----
-
-Hg version:
-
-----
-$ hg version
-Mercurial Distributed SCM (version 1.0.2)
-----
-
-== Features
-
-=== Fast
-
-darcs-fast-export provides a fast darcs backend for fast-import.
-Converting a huge repo (26094 patches, repo size 210M) took about 10
-hours for me.
-
-=== Independent
-
-Ideally it should work with any fast importer, but actually I tested it
-with git fast-import, bzr fast-import and hg fastimport. (AFAIK these
-are the tree fast-import implementations available ATM.)
-
-hg fastimport needs two patches, till they are not in upstream, you can
-get my repo using
-
+Independent::
+  Ideally it should work with any fast importer, but actually I tested it
+  with git fast-import, bzr fast-import and hg fastimport. (AFAIK these
+  are the tree fast-import implementations available ATM.)
+  +
+  hg fastimport needs two patches. While they are not in the upstream, you
+  can get it from my repository using
++
 ----
 $ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
 ----
 
-=== Formats
+Formats::
+  It supports both the 'darcs-2' and the 'old-fashioned-inventory' darcs
+  repository formats.
 
-It supports both the 'darcs-2' and the 'old-fashioned-inventory' darcs
-repository formats.
-
-=== Incremental conversions
-
-It supports the usual `--export-marks` / `--import-marks` switches to
-allow incremental conversion.
+Incremental conversions::
+  It supports the usual `--export-marks` / `--import-marks` switches to
+  allow incremental conversion.
 
 == Usage
 
-Typical usage (given that `test/` is a darcs repo):
+darcs-fast-export expects one argument, the path to the source darcs
+repository. It will print the git fast-import format on standard output
+(stdout).
 
+There are some command line options, which will be explained if you
+type:
+----
+$ darcs-fast-export.py --help
+----
+
+=== Example
+
+Assuming that `test/` is a darcs repo, you could do this:
 ----
 $ mkdir test.git
 $ git --bare init
 $ darcs-fast-export.py test |(cd test.git; git fast-import)
 ----
 
-To verify the results:
-
+To verify the results, you could compare them:
 ----
 $ git clone -q test.git test.git.nonbare
 $ diff --exclude .git -Naur test.git.nonbare test/_darcs/pristine
@@ -84,15 +64,43 @@ $ rm -rf test.git.nonbare
 
 If you get no output, then the conversion was successful.
 
-For more examples (especially for bzr and hg ones) see the `t/`
-directory.
+For more examples (especially for bzr and hg), see the `t/` directory.
 
 == Download
 
 Using git:
-
 ----
 $ git clone git://vmiklos.hu/darcs-fast-export
+----
+
+== Status
+
+darcs-fast-export has been tested with the following versions:
+
+Darcs version:
+----
+$ darcs --version
+2.1.0 (release)
+----
+
+Git version:
+----
+$ git --version
+git version 1.6.0.2
+----
+
+Bzr versions:
+----
+$ bzr version
+Bazaar (bzr) 1.9
+$ ls /usr/lib/python*/site-packages/fastimport*
+/usr/lib/python2.5/site-packages/fastimport-0.6.0final0-py2.5.egg-info
+----
+
+Mercurial (Hg) version:
+----
+$ hg version
+Mercurial Distributed SCM (version 1.0.2)
 ----
 
 == Alternatives
@@ -119,3 +127,4 @@ $ git clone git://vmiklos.hu/darcs-fast-export
   / `git-fast-export`
 - Ian Clatworthy for writing bzr fast-import
 - Paul Crowley for writing hg fast-import
+- Matthias Andree for assorted improvements
