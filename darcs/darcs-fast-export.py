@@ -139,10 +139,14 @@ cwd = os.getcwd()
 os.chdir(working)
 if not os.path.exists(os.path.join(origin, "_darcs", "format")):
 	darcs2 = False
+	directpatch = True
 else:
 	sock = open(os.path.join(origin, "_darcs", "format"))
-	darcs2 = 'darcs-2' in [x.strip() for x in sock]
+	format = [x.strip() for x in sock]
 	sock.close()
+	darcs2 = 'darcs-2' in format
+	directpatch = not 'hashed' in format
+
 if darcs2:
 	os.system("darcs init --darcs-2")
 else:
@@ -161,7 +165,7 @@ for i in patches:
 	if hash in import_marks:
 		count += 1
 		continue
-	if not darcs2:
+	if directpatch:
 		buf = ["\nNew patches:\n"]
 		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
 		buf.append(sock.read())

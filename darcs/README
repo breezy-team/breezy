@@ -27,8 +27,8 @@ $ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
 ----
 
 Formats::
-  It supports both the 'darcs-2' and the 'old-fashioned-inventory' darcs
-  repository formats.
+  It supports the 'darcs-2', 'hashed', and 'old-fashioned-inventory'
+  darcs repository formats.
 
 Incremental conversions::
   It supports the usual `--export-marks` / `--import-marks` switches to
