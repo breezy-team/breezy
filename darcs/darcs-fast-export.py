@@ -84,6 +84,7 @@ def progress(s):
 
 def log(s):
 	logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
+	logsock.flush()
 
 # Option Parser
 usage="%prog [options] darcsrepo"
@@ -151,7 +152,7 @@ patches = xmldoc.getElementsByTagName('patch')
 # this may be huge and we need it many times
 patchnum = len(patches)
 
-progress("starting export")
+progress("starting export, repo has %d patches" % patchnum)
 count = 1
 paths = []
 for i in patches:
