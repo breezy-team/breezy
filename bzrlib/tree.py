@@ -860,6 +860,17 @@ class InterTree(InterObject):
             all_unversioned = deque(all_unversioned)
         else:
             all_unversioned = deque()
+        # XXX: Ugly hack - testing only, really want a separate inter? or
+        # perhaps helpers and split this function up?
+        try:
+            self.source.inventory.id_to_entry
+            self.target.inventory.id_to_entry
+        except:
+            pass
+        else:
+            for result in self.target.inventory.iter_changes(self.source.inventory):
+                yield result
+            return
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
@@ -919,10 +930,10 @@ class InterTree(InterObject):
                 if (self.source.get_symlink_target(file_id) !=
                     self.target.get_symlink_target(file_id)):
                     changed_content = True
-                elif from_kind == 'tree-reference':
-                    if (self.source.get_reference_revision(file_id, from_path)
-                        != self.target.get_reference_revision(file_id, to_path)):
-                        changed_content = True 
+            elif from_kind == 'tree-reference':
+                if (self.source.get_reference_revision(file_id, from_path)
+                    != self.target.get_reference_revision(file_id, to_path)):
+                    changed_content = True 
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)
             executable = (from_executable, to_executable)

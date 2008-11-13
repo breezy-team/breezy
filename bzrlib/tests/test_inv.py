@@ -403,3 +403,35 @@ class TestCHKInventory(TestCaseWithTransport):
         self.assertEqual(reference_inv.root_id, new_inv.root_id)
         self.assertEqual(reference_inv.id_to_entry._root_node._key,
             new_inv.id_to_entry._root_node._key)
+
+    def test_iter_changes(self):
+        # Low level bootstrapping smoke test; comprehensive generic tests via
+        # InterTree are coming.
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv2 = Inventory()
+        inv2.revision_id = "revid2"
+        inv2.root.revision = "rootrev"
+        inv2.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv2["fileid"].revision = "filerev2"
+        inv2["fileid"].executable = False
+        inv2["fileid"].text_sha1 = "bbbb"
+        inv2["fileid"].text_size = 2
+        # get fresh objects.
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        inv_1 = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        chk_inv2 = CHKInventory.from_inventory(chk_bytes, inv2)
+        bytes = ''.join(chk_inv2.to_lines())
+        inv_2 = CHKInventory.deserialise(chk_bytes, bytes, ("revid2",))
+        self.assertEqual([('fileid', (u'file', u'file'), True, (True, True),
+            ('TREE_ROOT', 'TREE_ROOT'), (u'file', u'file'), ('file', 'file'),
+            (False, True))],
+            list(inv_1.iter_changes(inv_2)))
