@@ -42,6 +42,7 @@ from bzrlib.tree import InterTree
 from bzrlib.workingtree import (
     WorkingTreeFormat3,
     )
+from bzrlib.workingtree_4 import WorkingTreeFormat4
 
 
 def return_provided_trees(test_case, source, target):
@@ -53,7 +54,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
 
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
-        made_control = self.make_bzrdir(relpath, 
+        made_control = self.make_bzrdir(relpath,
             format=self.workingtree_format_to._matchingbzrdir)
         made_control.create_repository()
         made_control.create_branch()
@@ -98,6 +99,13 @@ def mutable_trees_to_preview_trees(test_case, source, target):
     preview = TransformPreview(target)
     test_case.addCleanup(preview.finalize)
     return source, preview.get_preview_tree()
+
+
+def mutable_trees_to_revision_trees(test_case, source, target):
+    """Convert both trees to repository based revision trees."""
+    return (revision_tree_from_workingtree(test_case, source),
+        revision_tree_from_workingtree(test_case, target))
+
 
 def load_tests(basic_tests, module, loader):
     result = loader.suiteClass()
@@ -144,6 +152,16 @@ def load_tests(basic_tests, module, loader):
          default_tree_format,
          default_tree_format,
          mutable_trees_to_preview_trees))
+    # CHKInventory does not have an InterTree optimiser class (yet).
+    chk_tree_format = WorkingTreeFormat4()
+    chk_tree_format._get_matchingbzrdir = \
+        lambda:bzrlib.bzrdir.format_registry.make_bzrdir('development3')
+    test_intertree_permutations.append(
+        (InterTree.__name__ + "(CHKInventory)",
+         InterTree,
+         chk_tree_format,
+         chk_tree_format,
+         mutable_trees_to_revision_trees))
     adapter = InterTreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
