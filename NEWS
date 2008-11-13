@@ -16,6 +16,9 @@ IN DEVELOPMENT
     * bzr-fast-export now exports rm+mv correctly.
       (Jonas)
 
+    * Fix recursive rename handling in bzr-fast-export.
+      (Pieter de Bie, #287785)
+
     * hg-fast-export should use binary mode on Windows.
       (Alexey Stukalov)
 
