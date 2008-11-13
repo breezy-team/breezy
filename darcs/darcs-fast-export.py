@@ -31,6 +31,7 @@ import gzip
 import time
 import shutil
 import popen2
+import optparse
 
 sys = reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -84,21 +85,21 @@ def progress(s):
 def log(s):
 	logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
 
-# our stupid option parser
-args = sys.argv[1:]
-export_marks = []
-export_marks_file = None
-if args[0].startswith("--export-marks="):
-	export_marks_file = args[0].split('=')[1]
-	args = args[1:]
-import_marks = []
-import_marks_file = None
-if args[0].startswith("--import-marks="):
-	import_marks_file = args[0].split('=')[1]
-	args = args[1:]
+# Option Parser
+usage="%prog [options] darcsrepo"
+opp = optparse.OptionParser(usage=usage)
+opp.add_option("--import-marks", metavar="IFILE",
+    help="read state for incremental imports from IFILE")
+opp.add_option("--export-marks", metavar="OFILE",
+    help="write state for incremental imports from OFILE")
+(options, args) = opp.parse_args()
+if len(args) < 1:
+	opp.error("darcsrepo required")
 
-if import_marks_file:
-	sock = open(import_marks_file)
+export_marks = []
+import_marks = []
+if options.import_marks:
+	sock = open(options.import_marks)
 	for i in sock.readlines():
 		import_marks.append(i.strip().split(' ')[1])
 
@@ -174,7 +175,7 @@ for i in patches:
 	# export the commit
 	print "commit refs/heads/master"
 	print "mark :%s" % count
-	if export_marks_file:
+	if options.export_marks:
 		export_marks.append(":%s %s" % (count, hash))
 	date = int(time.mktime(time.strptime(i.attributes['date'].value, "%Y%m%d%H%M%S"))) + get_zone_int()
 	print "committer %s %s %s" % (get_author(i), date, get_zone_str())
@@ -209,7 +210,7 @@ for i in patches:
 shutil.rmtree(working)
 logsock.close()
 
-if export_marks_file:
-	sock = open(export_marks_file, 'w')
+if options.export_marks:
+	sock = open(options.export_marks, 'w')
 	sock.write("\n".join(export_marks))
 	sock.close()
