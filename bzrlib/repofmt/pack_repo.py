@@ -327,10 +327,10 @@ class NewPack(Pack):
         missing_items = {}
         for (index_name, external_refs, index) in [
             ('texts',
-                self.text_index._external_compression_parents(),
+                self.text_index._external_references(),
                 self._pack_collection.text_index.combined_index),
             ('inventories',
-                self.inventory_index._external_compression_parents(),
+                self.inventory_index._external_references(),
                 self._pack_collection.inventory_index.combined_index),
             ]:
             missing = external_refs.difference(
@@ -1104,7 +1104,7 @@ class ReconcilePacker(Packer):
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.
-        missing_text_keys = self.new_pack.text_index._external_compression_parents()
+        missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
             raise errors.BzrCheckError('Reference to missing compression parents %r'
                 % (missing_text_keys,))
