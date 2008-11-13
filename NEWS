@@ -22,7 +22,13 @@ IN DEVELOPMENT
     * hg-fast-export should use binary mode on Windows.
       (Alexey Stukalov)
 
+    * setup.py support fixed.
+      (Jelmer Vernooij)
+
   COMPATIBILITY BREAKS:
+
+    * bzr-fast-export.py renamed to bzr-fast-export.
+      (Jelmer Vernooij)
 
   API BREAKS:
 
