@@ -190,7 +190,9 @@ class CHKMap(object):
                     return True
             return False
 
+        loop_counter = 0
         while self_pending or basis_pending:
+            loop_counter += 1
             if not self_pending:
                 # self is exhausted: output remainder of basis
                 for prefix, node, path in basis_pending:
@@ -266,8 +268,15 @@ class CHKMap(object):
                             yield (tuple(self_details[0].split('\x00')),
                                 basis_details[1], self_details[1])
                         continue
-                    # At least one side wasn't a string, we need to expand it
-                    # before we can continue
+                    # At least one side wasn't a string.
+                    if (self._node_key(self_pending[0][1]) ==
+                        self._node_key(basis_pending[0][1])):
+                        # Identical pointers, skip (and don't bother adding to
+                        # excluded, it won't turn up again.
+                        heapq.heappop(self_pending)
+                        heapq.heappop(basis_pending)
+                        continue
+                    # Now we need to expand this node before we can continue
                     if read_self:
                         prefix, node, path = heapq.heappop(self_pending)
                         if check_excluded(path):
@@ -278,6 +287,7 @@ class CHKMap(object):
                         if check_excluded(path):
                             continue
                         process_node(prefix, node, path, basis, basis_pending)
+        # print loop_counter
 
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
