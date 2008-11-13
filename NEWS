@@ -22,6 +22,9 @@ IN DEVELOPMENT
     * hg-fast-export should use binary mode on Windows.
       (Alexey Stukalov)
 
+    * setup.py no longer assumes python2.4.
+      (schickb@gmail.com)
+
     * setup.py support fixed.
       (Jelmer Vernooij)
 
