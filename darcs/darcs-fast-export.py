@@ -211,10 +211,11 @@ for i in patches:
 			print "M 644 inline %s" % j
 			print "data %s\n%s" % (len(buf), buf)
 	if message[:4] == "TAG ":
-		print "tag %s" % message[4:]
+	        tag = message[4:].strip().replace(' ','_')
+		print "tag %s" % tag
 		print "from :%s" % count
 		print "tagger %s %s %s" % (get_author(i), date, get_zone_str())
-		print "data %d\n%s" % (len(message[4:]), message[4:])
+		print "data %d\n%s" % (len(tag), tag)
 	if count % 100 == 0:
 		progress("%d/%d patches" % (count, patchnum))
 	count += 1
