@@ -4749,9 +4749,6 @@ class cmd_shelve(Command):
 
     You can put multiple items on the shelf, and by default, 'unshelve' will
     restore the most recently shelved changes.
-
-    While you have patches on the shelf you can view and manipulate them with
-    the 'shelf' command. Run 'bzr shelf -h' for more info.
     """
 
     takes_args = ['file*']
