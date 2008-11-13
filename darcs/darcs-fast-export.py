@@ -212,6 +212,8 @@ for i in patches:
 		progress("%d/%d patches" % (count, patchnum))
 	count += 1
 
+os.chdir(cwd)
+
 shutil.rmtree(working)
 logsock.close()
 
