@@ -89,9 +89,11 @@ def log(s):
 usage="%prog [options] darcsrepo"
 opp = optparse.OptionParser(usage=usage)
 opp.add_option("--import-marks", metavar="IFILE",
-    help="read state for incremental imports from IFILE")
+	help="read state for incremental imports from IFILE")
 opp.add_option("--export-marks", metavar="OFILE",
-    help="write state for incremental imports from OFILE")
+	help="write state for incremental imports from OFILE")
+opp.add_option("--encoding",
+	help="encoding of log [default: %default], if unspecified and input isn't utf-8, guess")
 (options, args) = opp.parse_args()
 if len(args) < 1:
 	opp.error("darcsrepo required")
@@ -117,14 +119,17 @@ sock.close()
 # this is hackish. we need to escape some bad chars, otherwise the xml
 # will not be valid
 buf = buf.replace('\x1b', '^[')
-try:
-	xmldoc = xml.dom.minidom.parseString(buf)
-except xml.parsers.expat.ExpatError:
-	import chardet
-	progress("encoding is not utf8, guessing charset")
-	encoding = chardet.detect(buf)['encoding']
-	progress("detected encoding is %s" % encoding)
-	xmldoc = xml.dom.minidom.parseString(unicode(buf, encoding).encode('utf-8'))
+if options.encoding:
+	xmldoc = xml.dom.minidom.parseString(unicode(buf, options.encoding).encode('utf-8'))
+else:
+	try:
+		xmldoc = xml.dom.minidom.parseString(buf)
+	except xml.parsers.expat.ExpatError:
+		import chardet
+		progress("encoding is not utf8, guessing charset")
+		encoding = chardet.detect(buf)['encoding']
+		progress("detected encoding is %s" % encoding)
+		xmldoc = xml.dom.minidom.parseString(unicode(buf, encoding).encode('utf-8'))
 sys.stdout.flush()
 
 # init the tmp darcs repo
