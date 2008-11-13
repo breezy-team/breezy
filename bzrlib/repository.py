@@ -517,6 +517,10 @@ class Repository(object):
     def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
 
+        :param suppress_errors: if true, abort_write_group will catch and log
+            unexpected errors that happen during the abort, rather than
+            allowing them to propagate.  Defaults to False.
+
         :seealso: start_write_group.
         """
         if self._write_group is not self.get_transaction():
