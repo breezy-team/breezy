@@ -76,14 +76,28 @@ def disable_plugins():
     #       load_from_dirs()
     global _loaded
     _loaded = True
+    set_plugins_path([])
 
 
 def _strip_trailing_sep(path):
     return path.rstrip("\\/")
 
 
-def set_plugins_path():
-    """Set the path for plugins to be loaded from."""
+def set_plugins_path(path=None):
+    """Set the path for plugins to be loaded from.
+
+    :param path: The list of paths to search for plugins.  By default,
+        path will be determined using get_standard_plugins_path.
+        if path is [], no plugins can be loaded.
+    """
+    if path is None:
+        path = get_standard_plugins_path()
+    _mod_plugins.__path__ = path
+    return path
+
+
+def get_standard_plugins_path():
+    """Determine a plugin path suitable for general use."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
     bzr_exe = bool(getattr(sys, 'frozen', None))
@@ -119,7 +133,6 @@ def set_plugins_path():
                     'plugins')
             if archless_path not in path:
                 path.append(archless_path)
-    _mod_plugins.__path__ = path
     return path
 
 
