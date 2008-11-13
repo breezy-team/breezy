@@ -1291,8 +1291,9 @@ class RepositoryPackCollection(object):
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Auto-packing repository %s, which has %d pack files, '
-            'containing %d revisions into %d packs.', self, total_packs,
-            total_revisions, self._max_pack_count(total_revisions))
+            'containing %d revisions into no more than %d packs.', self,
+            total_packs, total_revisions,
+            self._max_pack_count(total_revisions))
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1314,6 +1315,7 @@ class RepositoryPackCollection(object):
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
+        mutter('Auto-packing repository %s completed')
         return True
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer):
