@@ -72,11 +72,7 @@ def disable_plugins():
 
     Future calls to load_plugins() will be ignored.
     """
-    # TODO: jam 20060131 This should probably also disable
-    #       load_from_dirs()
-    global _loaded
-    _loaded = True
-    set_plugins_path([])
+    load_plugins([])
 
 
 def _strip_trailing_sep(path):
