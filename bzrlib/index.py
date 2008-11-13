@@ -97,6 +97,20 @@ class GraphIndexBuilder(object):
             if not element or _whitespace_re.search(element) is not None:
                 raise errors.BadIndexKey(element)
 
+    def _external_compression_parents(self):
+        """Return the external compression parents of this index.
+
+        (These keys should be present within another pack in the same
+        repository.)
+        """
+        # see <https://bugs.launchpad.net/bzr/+bug/165290>
+        keys = set()
+        refs = set()
+        for node in self.iter_all_entries():
+            keys.add(node[1])
+            refs.update(node[3][1])
+        return refs - keys
+
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
             nodes_by_key = {}

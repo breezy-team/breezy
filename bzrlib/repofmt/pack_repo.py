@@ -172,14 +172,6 @@ class Pack(object):
         """The text index is the name + .tix."""
         return self.index_name('text', name)
 
-    def _external_compression_parents_of_texts(self):
-        keys = set()
-        refs = set()
-        for node in self.text_index.iter_all_entries():
-            keys.add(node[1])
-            refs.update(node[3][1])
-        return refs - keys
-
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
@@ -332,17 +324,26 @@ class NewPack(Pack):
         have deltas based on a fallback repository. 
         (See <https://bugs.launchpad.net/bzr/+bug/288751>)
         """
-        external_refs = self._external_compression_parents_of_texts()
-        if external_refs:
-            index = self._pack_collection.text_index.combined_index
-            found_items = list(index.iter_entries(external_refs))
-            if len(found_items) != len(external_refs):
-                found_keys = set(k for idx, k, refs, value in found_items)
-                missing_items = external_refs - found_keys
-                raise errors.BzrCheckError(
-                    "Newly created pack file %r has delta references to items not "
-                    "in its repository:\n%r"
-                    % (self, missing_items))
+        missing_items = {}
+        for (index_name, external_refs, index) in [
+            ('texts',
+                self.text_index._external_compression_parents(),
+                self._pack_collection.text_index.combined_index),
+            ('inventories',
+                self.inventory_index._external_compression_parents(),
+                self._pack_collection.inventory_index.combined_index),
+            ]:
+            missing = external_refs.difference(
+                k for (idx, k, v, r) in 
+                index.iter_entries(external_refs))
+            if missing:
+                missing_items[index_name] = sorted(list(missing))
+        if missing_items:
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "Newly created pack file %r has delta references to "
+                "items not in its repository:\n%s"
+                % (self, pformat(missing_items)))
 
     def data_inserted(self):
         """True if data has been added to this pack."""
@@ -1103,9 +1104,9 @@ class ReconcilePacker(Packer):
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.
-        missing_text_keys = self.new_pack._external_compression_parents_of_texts()
+        missing_text_keys = self.new_pack.text_index._external_compression_parents()
         if missing_text_keys:
-            raise errors.BzrError('Reference to missing compression parents %r'
+            raise errors.BzrCheckError('Reference to missing compression parents %r'
                 % (missing_text_keys,))
         self._log_copied_texts()
 
@@ -1724,6 +1725,10 @@ class RepositoryPackCollection(object):
         # forget what names there are
         if self._new_pack is not None:
             self._new_pack.abort()
+            # XXX: If we aborted while in the middle of finishing the write
+            # group, _remove_pack_indices can fail because the indexes are
+            # already gone.  If they're not there we shouldn't fail in this
+            # case.  -- mbp 20081113
             self._remove_pack_indices(self._new_pack)
             self._new_pack = None
         self.repo._text_knit = None
