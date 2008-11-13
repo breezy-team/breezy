@@ -1315,7 +1315,7 @@ class RepositoryPackCollection(object):
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
-        mutter('Auto-packing repository %s completed')
+        mutter('Auto-packing repository %s completed', self)
         return True
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer):
