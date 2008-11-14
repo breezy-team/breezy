@@ -767,3 +767,72 @@ def _deserialise(bytes, key):
         return InternalNode.deserialise(bytes, key)
     else:
         raise AssertionError("Unknown node type.")
+
+
+def iter_interesting_nodes(store, interesting_root_keys,
+                           uninteresting_root_keys):
+    """Given root keys, find interesting nodes.
+
+    Evaluate nodes referenced by interesting_root_keys. Ones that are also
+    referenced from uninteresting_root_keys are not considered interesting.
+
+    :param interesting_root_keys: keys which should be part of the
+        "interesting" nodes (which will be yielded)
+    :param uninteresting_root_keys: keys which should be filtered out of the
+        result set.
+    :return: Yield
+        (interesting records, interesting chk's, interesting key:values)
+    """
+    uninteresting_keys = set(uninteresting_root_keys)
+    interesting_keys = set(interesting_root_keys)
+    # What about duplicates with uninteresting_root_keys?
+    interesting_chks = set(interesting_keys)
+    # TODO: consider that it may be more memory efficient to use the 20-byte
+    #       sha1 string, rather than tuples of hexidecimal sha1 strings.
+    uninteresting_chks = set(uninteresting_keys)
+    uninteresting_key_values = set()
+
+    # XXX: First attempt, UGLY, UGLY, UGLY
+    # First, find the full set of uninteresting bits reachable by the
+    # uninteresting roots
+    chks_to_read = uninteresting_keys
+    while chks_to_read:
+        next_chks = set()
+        for record in store.get_record_stream(chks_to_read, 'unordered', True):
+            # TODO: Handle 'absent'
+            node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+            if isinstance(node, InternalNode):
+                # uninteresting_prefix_chks.update(node._items.iteritems())
+                chks = node._items.values()
+                # TODO: We remove the entries that are already in
+                #       uninteresting_chks ?
+                next_chks.update(chks)
+                uninteresting_chks.update(chks)
+            else:
+                uninteresting_key_values.update(node._items.iteritems())
+        chks_to_read = next_chks
+
+    # Is it possible that we would need to filter out the references we know to
+    # be uninteresting, eg: interesting_keys.difference(uninteresting_chks)
+    chks_to_read = interesting_keys
+    while chks_to_read:
+        next_chks = set()
+        records = {}
+        interesting_items = []
+        interesting_chks = set()
+        for record in store.get_record_stream(chks_to_read, 'unordered', True):
+            records[record.key] = record
+            # TODO: Handle 'absent'
+            node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+            if isinstance(node, InternalNode):
+                chks = [chk for chk in node._items.itervalues()
+                             if chk not in uninteresting_chks]
+                next_chks.update(chks)
+                # These are now uninteresting everywhere else
+                uninteresting_chks.update(chks)
+            else:
+                interesting_items = [item for item in node._items.iteritems()
+                                     if item not in uninteresting_key_values]
+                uninteresting_key_values.update(interesting_items)
+        yield records, chks_to_read, interesting_items
+        chks_to_read = next_chks

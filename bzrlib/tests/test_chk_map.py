@@ -16,6 +16,9 @@
 
 """Tests for maps built on a CHK versionedfiles facility."""
 
+from itertools import izip
+
+from bzrlib import chk_map
 from bzrlib.chk_map import (
     CHKMap,
     InternalNode,
@@ -738,3 +741,115 @@ class TestInternalNode(TestCaseWithStore):
 # BA
 # AB - split, but we want to end up with AB, BA, in one node, with 
 # 1-4K get0
+
+
+class TestIterInterestingNodes(TestCaseWithStore):
+
+    def get_chk_bytes(self):
+        if getattr(self, '_chk_bytes', None) is None:
+            self._chk_bytes = super(TestIterInterestingNodes,
+                                    self).get_chk_bytes()
+        return self._chk_bytes
+
+    def get_map_key(self, a_dict):
+        c_map = self._get_map(a_dict, maximum_size=10,
+                              chk_bytes=self.get_chk_bytes())
+        return c_map.key()
+
+    def assertIterInteresting(self, expected, interesting_keys,
+                              uninteresting_keys):
+        """Check the result of iter_interesting_nodes.
+
+        :param expected: A list of (record_keys, interesting_chk_pages,
+                                    interesting key value pairs)
+        """
+        store = self.get_chk_bytes()
+        iter_nodes = chk_map.iter_interesting_nodes(store, interesting_keys,
+                                                    uninteresting_keys)
+        for count, (exp, act) in enumerate(izip(expected, iter_nodes)):
+            exp_record_keys, exp_chks, exp_items = exp
+            records, chks, items = act
+            exp_tuple = (sorted(exp_record_keys), sorted(exp_chks), items)
+            act_tuple = (sorted(records.keys()), sorted(chks), items)
+            self.assertEqual(exp_tuple, act_tuple)
+        self.assertEqual(len(expected), count + 1)
+
+    def test_none_to_one_key(self):
+        basis = self.get_map_key({})
+        target = self.get_map_key({('a',): 'content'})
+        self.assertIterInteresting(
+            [([target], [target], [(('a',), 'content')])],
+            [target], [basis])
+
+    def test_one_to_none_key(self):
+        basis = self.get_map_key({('a',): 'content'})
+        target = self.get_map_key({})
+        self.assertIterInteresting(
+            [([target], [target], [])],
+            [target], [basis])
+
+    def test_common_pages(self):
+        basis = self.get_map_key({('a',): 'content',
+                                  ('b',): 'content',
+                                  ('c',): 'content',
+                                 })
+        target = self.get_map_key({('a',): 'content',
+                                   ('b',): 'other content',
+                                   ('c',): 'content',
+                                  })
+        # Is there a way to get this more directly?
+        b_key = ('sha1:1d7a45ded01ab77c069350c0e290ae34db5b549b',)
+        # This should return the root node, and the node for the 'b' key
+        self.assertIterInteresting(
+            [([target], [target], []),
+             ([b_key], [b_key], [(('b',), 'other content')])],
+            [target], [basis])
+
+    def test_common_sub_page(self):
+        basis = self.get_map_key({('aaa',): 'common',
+                                  ('c',): 'common',
+                                 })
+        target = self.get_map_key({('aaa',): 'common',
+                                   ('aab',): 'new',
+                                   ('c',): 'common',
+                                  })
+        # The key for the internal aa node
+        aa_key = ('sha1:2ce01860338a614b93883a5bbeb89920137ac7ef',)
+        # The key for the leaf aab node
+        aab_key = ('sha1:10567a3bfcc764fb8d8d9edaa28c0934ada366c5',)
+        self.assertIterInteresting(
+            [([target], [target], []),
+             ([aa_key], [aa_key], []),
+             ([aab_key], [aab_key], [(('aab',), 'new')])],
+            [target], [basis])
+
+    def test_multiple_maps(self):
+        basis1 = self.get_map_key({('aaa',): 'common',
+                                   ('aab',): 'basis1',
+                                  })
+        basis2 = self.get_map_key({('bbb',): 'common',
+                                   ('bbc',): 'basis2',
+                                  })
+        target1 = self.get_map_key({('aaa',): 'common',
+                                    ('aac',): 'target1',
+                                    ('bbb',): 'common',
+                                   })
+        target2 = self.get_map_key({('aaa',): 'common',
+                                    ('bba',): 'target2',
+                                    ('bbb',): 'common',
+                                   })
+        # The key for the target1 internal aa node
+        aa_key = ('sha1:4c6b1e3e6ecb68fe039d2b00c9091bc037ebf203',)
+        # The key for the leaf aac node
+        aac_key = ('sha1:8089f6b4f3bd2a058c41be199ef5af0c5b9a0c4f',)
+        # The key for the target2 internal bb node
+        bb_key = ('sha1:5ce6a69a21060222bb0a5b48fdbfcca586cc9183',)
+        # The key for the leaf bba node
+        bba_key = ()
+        import pdb; pdb.set_trace()
+        self.assertIterInteresting(
+            [([target1, target2], [target1, target2], []),
+             ([aa_key, bb_key], [aa_key, bb_key], []),
+             ([aac_key, bba_key], [aac_key, bba_key],
+              [(('aac',), 'target1'), (('bba',), 'target2')]),
+            ], [target1, target2], [basis1, basis2])
