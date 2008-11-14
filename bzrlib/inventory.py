@@ -1545,7 +1545,8 @@ class CHKInventory(CommonInventory):
             return self._bytes_to_entry(
                 self.id_to_entry.iteritems([(file_id,)]).next()[1])
         except StopIteration:
-            raise KeyError(file_id)
+            # really we're passing an inventory, not a tree...
+            raise errors.NoSuchId(self, file_id)
 
     def has_id(self, file_id):
         # Perhaps have an explicit 'contains' method on CHKMap ?
