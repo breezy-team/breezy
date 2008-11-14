@@ -969,7 +969,11 @@ class Inventory(CommonInventory):
                 # Pop the child which to allow detection of children whose
                 # parents were deleted and which were not reattached to a new
                 # parent.
-                new_entry.children = children.pop(new_entry.file_id, {})
+                replacement = InventoryDirectory(new_entry.file_id,
+                    new_entry.name, new_entry.parent_id)
+                replacement.revision = new_entry.revision
+                replacement.children = children.pop(replacement.file_id, {})
+                new_entry = replacement
             self.add(new_entry)
         if len(children):
             # Get the parent id that was deleted
@@ -1683,17 +1687,36 @@ class CHKInventoryDirectory(InventoryDirectory):
     def children(self):
         """Access the list of children of this inventory.
 
-        Currently causes a full-load of all the children; a more sophisticated
-        proxy object is planned.
+        With a parent_id_basename_to_file_id index, loads all the children,
+        without loads the entire index. Without is bad. A more sophisticated
+        proxy object might be nice, to allow partial loading of children as
+        well when specific names are accessed. (So path traversal can be
+        written in the obvious way but not examine siblings.).
         """
         if self._children is not None:
             return self._children
+        if self._chk_inventory.parent_id_basename_to_file_id is None:
+            # Slow path - read the entire inventory looking for kids.
+            result = {}
+            for file_id, bytes in self._chk_inventory.id_to_entry.iteritems():
+                entry = self._chk_inventory._bytes_to_entry(bytes)
+                if entry.parent_id == self.file_id:
+                    result[entry.name] = entry
+            self._children = result
+            return result
         result = {}
+        # XXX: Todo - use proxy objects for the children rather than loading
+        # all when the attribute is referenced.
+        parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
+        child_ids = set()
+        for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
+            key_filter=[(self.file_id,)]):
+            child_ids.add((file_id,))
         # populate; todo: do by name
-        for file_id, bytes in self._chk_inventory.id_to_entry.iteritems():
+        id_to_entry = self._chk_inventory.id_to_entry
+        for file_id, bytes in id_to_entry.iteritems(child_ids):
             entry = self._chk_inventory._bytes_to_entry(bytes)
-            if entry.parent_id == self.file_id:
-                result[entry.name] = entry
+            result[entry.name] = entry
         self._children = result
         return result
 
