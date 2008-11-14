@@ -969,7 +969,11 @@ class Inventory(CommonInventory):
                 # Pop the child which to allow detection of children whose
                 # parents were deleted and which were not reattached to a new
                 # parent.
-                new_entry.children = children.pop(new_entry.file_id, {})
+                replacement = InventoryDirectory(new_entry.file_id,
+                    new_entry.name, new_entry.parent_id)
+                replacement.revision = new_entry.revision
+                replacement.children = children.pop(replacement.file_id, {})
+                new_entry = replacement
             self.add(new_entry)
         if len(children):
             # Get the parent id that was deleted
