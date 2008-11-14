@@ -95,10 +95,8 @@ class LaunchpadDirectory(object):
                 if _lp_login is None:
                     if not _warned_login:
                         trace.warning(
-    'You have not informed bzr of your Launchpad ID, and you must do this to\n'
-    'write to Launchpad or access private data.  After creating an account on\n'
-    'Launchpad, run "bzr launchpad-login YOUR_ID", where YOUR_ID is your\n'
-    'one-word username (not your email address.)')
+'You have not informed bzr of your Launchpad ID, and you must do this to\n'
+'write to Launchpad or access private data.  See "bzr help launchpad-login".')
                         _warned_login = True
             else:
                 # Use the URL if we can create a transport for it.
