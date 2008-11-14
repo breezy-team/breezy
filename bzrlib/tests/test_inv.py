@@ -404,6 +404,32 @@ class TestCHKInventory(TestCaseWithTransport):
         self.assertEqual(reference_inv.id_to_entry._root_node._key,
             new_inv.id_to_entry._root_node._key)
 
+    def test_create_by_apply_delta_empty_add_child_updates_parent_id(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        base_inv = CHKInventory.from_inventory(chk_bytes, inv,
+            parent_id_basename_index=True)
+        a_entry = InventoryFile("A-id", "A", inv.root.file_id)
+        a_entry.revision = "filerev"
+        a_entry.executable = True
+        a_entry.text_sha1 = "ffff"
+        a_entry.text_size = 1
+        inv.add(a_entry)
+        inv.revision_id = "expectedid"
+        reference_inv = CHKInventory.from_inventory(chk_bytes, inv,
+            parent_id_basename_index=True)
+        delta = [(None, "A",  "A-id", a_entry)]
+        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        # new_inv should be the same as reference_inv.
+        self.assertEqual(reference_inv.revision_id, new_inv.revision_id)
+        self.assertEqual(reference_inv.root_id, new_inv.root_id)
+        self.assertEqual(reference_inv.id_to_entry._root_node._key,
+            new_inv.id_to_entry._root_node._key)
+        self.assertEqual(reference_inv.parent_id_basename_to_file_id._root_node._key,
+            new_inv.parent_id_basename_to_file_id._root_node._key)
+
     def test_iter_changes(self):
         # Low level bootstrapping smoke test; comprehensive generic tests via
         # InterTree are coming.
@@ -436,15 +462,15 @@ class TestCHKInventory(TestCaseWithTransport):
             (False, True))],
             list(inv_1.iter_changes(inv_2)))
 
-    def test_parent_id_to_basename_index_off_by_default(self):
+    def test_parent_id_basename_to_file_id_index_off_by_default(self):
         inv = Inventory()
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        self.assertEqual(None, chk_inv.parent_id_to_basename)
+        self.assertEqual(None, chk_inv.parent_id_basename_to_file_id)
 
-    def test_parent_id_to_basename_index_enabled(self):
+    def test_parent_id_basename_to_file_id_index_enabled(self):
         inv = Inventory()
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
@@ -459,7 +485,7 @@ class TestCHKInventory(TestCaseWithTransport):
             parent_id_basename_index=True)
         bytes = ''.join(tmp_inv.to_lines())
         chk_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
-        self.assertIsInstance(chk_inv.parent_id_to_basename, chk_map.CHKMap)
+        self.assertIsInstance(chk_inv.parent_id_basename_to_file_id, chk_map.CHKMap)
         self.assertEqual(
             {('', ''): 'TREE_ROOT', ('TREE_ROOT', 'file'): 'fileid'},
-            dict(chk_inv.parent_id_to_basename.iteritems()))
+            dict(chk_inv.parent_id_basename_to_file_id.iteritems()))

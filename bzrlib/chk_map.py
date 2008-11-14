@@ -55,7 +55,7 @@ class CHKMap(object):
         if root_key is None:
             self._root_node = LeafNode()
         else:
-            self._root_node = root_key
+            self._root_node = self._node_key(root_key)
 
     def apply_delta(self, delta):
         """Apply a delta to the map.
