@@ -2102,8 +2102,10 @@ class CHKInventoryRepository(KnitPackRepository):
         :seealso: add_inventory, for the contract.
         """
         # make inventory
+        serializer = self._format._serializer
         result = CHKInventory.from_inventory(self.chk_bytes, inv,
-            maximum_size=self._format._serializer.maximum_size)
+            maximum_size=serializer.maximum_size,
+            parent_id_basename_index=serializer.parent_id_basename_index)
         inv_lines = result.to_lines()
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
@@ -2859,7 +2861,7 @@ class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format, currently the same as "
-            "1.6.1 with B+Trees and chk support.\n")
+            "1.9 with B+Trees and chk support.\n")
 
     def check_conversion_target(self, target_format):
         pass
@@ -2910,4 +2912,91 @@ class RepositoryFormatPackDevelopment3Subtree(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format, currently the same as "
-            "1.6.1-subtree with B+Tree and chk support.\n")
+            "1.9-subtree with B+Tree and chk support.\n")
+
+
+class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
+    """A no-subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.11.
+
+    This is pack-1.9 with CHKMap based inventories.
+    """
+
+    repository_class = CHKInventoryRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = chk_serializer.chk_serializer_parent_id
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+    supports_chks = True
+    _commit_inv_deltas = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development4')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar development format 4 (needs bzr.dev from before 1.10)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "1.9 with B+Trees and chk support.\n")
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
+    """A subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.11.
+
+    1.9-subtree[as it might have been] with CHKMap based inventories.
+    """
+
+    repository_class = CHKInventoryRepository
+    _commit_builder_class = PackRootCommitBuilder
+    rich_root_data = True
+    supports_tree_reference = True
+    _serializer = chk_serializer.chk_serializer_subtree_parent_id
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+    supports_chks = True
+    _commit_inv_deltas = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir(
+            'development4-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ("Bazaar development format 4 with subtree support "
+            "(needs bzr.dev from before 1.10)\n")
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "1.9-subtree with B+Tree and chk support.\n")

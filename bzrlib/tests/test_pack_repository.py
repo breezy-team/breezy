@@ -729,6 +729,16 @@ def load_tests(basic_tests, module, test_loader):
                   "with subtree support (needs bzr.dev from before 1.10)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
+         dict(format_name='development4',
+              format_string="Bazaar development format 4 "
+                  "(needs bzr.dev from before 1.10)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='development4-subtree',
+              format_string="Bazaar development format 4 "
+                  "with subtree support (needs bzr.dev from before 1.10)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
          ]
     adapter = tests.TestScenarioApplier()
     # name of the scenario is the format name

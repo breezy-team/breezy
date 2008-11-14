@@ -690,6 +690,22 @@ class TestDevelopment3(TestCaseWithTransport):
         self.assertEqual(4096, inv.id_to_entry._root_node.maximum_size)
 
 
+class TestDevelopment4(TestCaseWithTransport):
+
+    def test_inventories_use_chk_map_with_parent_base_dict(self):
+        tree = self.make_branch_and_tree('repo', format="development4")
+        revid = tree.commit("foo")
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        inv = tree.branch.repository.get_inventory(revid)
+        self.assertNotEqual(None, inv.parent_id_to_basename)
+        inv.parent_id_to_basename._ensure_root()
+        inv.id_to_entry._ensure_root()
+        self.assertEqual(4096, inv.id_to_entry._root_node.maximum_size)
+        self.assertEqual(4096,
+            inv.parent_id_to_basename._root_node.maximum_size)
+
+
 class TestDevelopment3FindRevisionOutsideSet(TestCaseWithTransport):
     """Tests for _find_revision_outside_set."""
 

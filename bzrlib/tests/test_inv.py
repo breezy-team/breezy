@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib import errors, inventory, osutils
+from bzrlib import errors, chk_map, inventory, osutils
 from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry, TreeReference)
 from bzrlib.tests import TestCase, TestCaseWithTransport
@@ -435,3 +435,31 @@ class TestCHKInventory(TestCaseWithTransport):
             ('TREE_ROOT', 'TREE_ROOT'), (u'file', u'file'), ('file', 'file'),
             (False, True))],
             list(inv_1.iter_changes(inv_2)))
+
+    def test_parent_id_to_basename_index_off_by_default(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertEqual(None, chk_inv.parent_id_to_basename)
+
+    def test_parent_id_to_basename_index_enabled(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        # get fresh objects.
+        chk_bytes = self.get_chk_bytes()
+        tmp_inv = CHKInventory.from_inventory(chk_bytes, inv,
+            parent_id_basename_index=True)
+        bytes = ''.join(tmp_inv.to_lines())
+        chk_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertIsInstance(chk_inv.parent_id_to_basename, chk_map.CHKMap)
+        self.assertEqual(
+            {('', ''): 'TREE_ROOT', ('TREE_ROOT', 'file'): 'fileid'},
+            dict(chk_inv.parent_id_to_basename.iteritems()))
