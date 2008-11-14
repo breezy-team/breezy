@@ -17,6 +17,7 @@
 """Tests for Branch.sprout()"""
 
 from bzrlib import (
+    branch as _mod_branch,
     remote,
     revision as _mod_revision,
     tests,
@@ -35,17 +36,17 @@ class TestSprout(TestCaseWithBranch):
         target = source.bzrdir.sprout(self.get_url('target')).open_branch()
         self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
 
-    def test_sprout_preserves_kind(self):
-        branch1 = self.make_branch('branch1')
-        target_repo = self.make_repository('branch2')
-        target_repo.fetch(branch1.repository)
-        branch2 = branch1.sprout(target_repo.bzrdir)
-        if isinstance(branch1, remote.RemoteBranch):
-            branch1._ensure_real()
-            target_class = branch1._real_branch.__class__
-        else:
-            target_class = branch1.__class__
-        self.assertIsInstance(branch2, target_class)
+    def test_sprout_preserves_target_kind(self):
+        if isinstance(self.branch_format, _mod_branch.BranchReferenceFormat):
+            raise tests.TestNotApplicable('cannot sprout to a reference')
+        # Start with a format that is unlikely to be the target format
+        source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
+                                                         format='metaweave')
+        target_repo = self.make_repository('target', format=self.bzrdir_format)
+        target_bzrdir = target_repo.bzrdir
+        target = source.sprout(target_bzrdir)
+
+        self.assertIs(self.branch_format.__class__, target._format.__class__)
 
     def test_sprout_partial(self):
         # test sprouting with a prefix of the revision-history.
