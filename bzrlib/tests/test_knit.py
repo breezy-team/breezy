@@ -1435,7 +1435,9 @@ class TestStacking(KnitTests):
         basis.calls = []
         test.add_lines(key_cross_border, (key_basis,), ['foo\n'])
         self.assertEqual('fulltext', test._index.get_method(key_cross_border))
-        self.assertEqual([("get_parent_map", set([key_basis]))], basis.calls)
+        # we don't even need to look at the basis to see that this should be
+        # stored as a fulltext
+        self.assertEqual([], basis.calls)
         # Subsequent adds do delta.
         basis.calls = []
         test.add_lines(key_delta, (key_cross_border,), ['foo\n'])
@@ -1700,8 +1702,7 @@ class TestStacking(KnitTests):
         # has to recreate the full text.
         self.assertEqual([("get_parent_map", set([key_basis])),
              ('get_parent_map', set([key_basis])),
-             ('get_record_stream', [key_basis], 'unordered', True),
-             ('get_parent_map', set([key_basis]))],
+             ('get_record_stream', [key_basis], 'unordered', True)],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
@@ -1768,8 +1769,7 @@ class TestStacking(KnitTests):
         test.add_mpdiffs([(key_delta, (key_basis,),
             source.get_sha1s([key_delta])[key_delta], diffs[0])])
         self.assertEqual([("get_parent_map", set([key_basis])),
-            ('get_record_stream', [key_basis], 'unordered', True),
-            ('get_parent_map', set([key_basis]))],
+            ('get_record_stream', [key_basis], 'unordered', True),],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
@@ -1794,14 +1794,13 @@ class TestStacking(KnitTests):
                 multiparent.NewText(['foo\n']),
                 multiparent.ParentText(1, 0, 2, 1)])],
             diffs)
-        self.assertEqual(4, len(basis.calls))
+        self.assertEqual(3, len(basis.calls))
         self.assertEqual([
             ("get_parent_map", set([key_left, key_right])),
             ("get_parent_map", set([key_left, key_right])),
-            ("get_parent_map", set([key_left, key_right])),
             ],
-            basis.calls[:3])
-        last_call = basis.calls[3]
+            basis.calls[:-1])
+        last_call = basis.calls[-1]
         self.assertEqual('get_record_stream', last_call[0])
         self.assertEqual(set([key_left, key_right]), set(last_call[1]))
         self.assertEqual('unordered', last_call[2])
