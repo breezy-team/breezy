@@ -19,7 +19,12 @@
 import os
 import shutil
 
-from bzrlib import errors, tests, workingtree_4
+from bzrlib import (
+    errors,
+    revisiontree,
+    tests,
+    workingtree_4,
+    )
 from bzrlib.osutils import file_kind, has_symlinks
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
@@ -507,7 +512,16 @@ class TestIterChanges(TestCaseWithTwoTrees):
             # file status. This is normal (e.g. InterDirstateTree falls back
             # to InterTree if the basis is not a DirstateRevisionTree, and
             # revision trees cannot have missing files. 
-            raise TestNotApplicable()
+            raise TestNotApplicable('cannot represent missing files')
+
+    def not_applicable_if_cannot_represent_unversioned(self, tree):
+        if isinstance(tree, revisiontree.RevisionTree):
+            # The locked test trees conversion could not preserve the
+            # unversioned file status. This is normal (e.g. InterDirstateTree
+            # falls back to InterTree if the basis is not a
+            # DirstateRevisionTree, and revision trees cannot have unversioned
+            # files.
+            raise TestNotApplicable('cannot represent unversioned files')
 
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
@@ -849,6 +863,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         else:
             links_supported = False
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
         expected = [
             self.unversioned(tree2, 'file'),
             self.unversioned(tree2, 'dir'),
@@ -869,6 +884,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         else:
             links_supported = False
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
         expected = [
             self.unversioned(tree2, 'file'),
             self.unversioned(tree2, 'dir'),
@@ -909,6 +925,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree1.add(['link'], ['link-id'])
             tree2.add(['movedlink'], ['link-id'])
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
         root_id = tree1.path2id('')
         expected = [
             self.renamed(tree1, tree2, 'dir-id', False),
@@ -958,6 +975,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                   ['a-id', 'b-id', 'c-id', 'd-id', 'a-c-id', 'e-id'])
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
 
         self.assertEqual([], self.do_iter_changes(tree1, tree2,
                                                   want_unversioned=True))
@@ -982,6 +1000,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.set_root_id(tree1.get_root_id())
         self.build_tree(['tree2/dir/', 'tree2/dir/file'])
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
         expected = [
             self.unversioned(tree2, 'dir'),
             ]
@@ -1031,6 +1050,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
     def test_versioned_symlinks(self):
         self.requireFeature(tests.SymlinkFeature)
         tree1, tree2 = self.make_trees_with_symlinks()
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
         root_id = tree1.path2id('')
         expected = [
             self.unchanged(tree1, tree1.path2id('')),
@@ -1290,6 +1310,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add([u'\u03b1'], [a_id])
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
 
         expected = sorted([
             self.unversioned(tree2, u'\u03b1/unknown_dir'),
@@ -1340,6 +1361,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.build_tree(['tree2/a/file', 'tree2/a/dir/', 'tree2/a/dir/subfile'])
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
 
         expected = sorted([
             self.unversioned(tree2, u'a/file'),
@@ -1407,6 +1429,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(['a', 'c'], ['a-id', 'c-id'])
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
 
         expected = sorted([
             self.deleted(tree1, 'b-id'),
