@@ -78,6 +78,13 @@ def get_author(patch):
 		author = "%s <%s>" % (author.split('@')[0], author)
 	return author.encode('utf-8')
 
+def get_date(patch):
+	try:
+		date = time.strptime(patch, "%Y%m%d%H%M%S")
+	except ValueError:
+		date = time.strptime(patch[:19] + patch[-5:], '%a %b %d %H:%M:%S %Y')
+	return int(time.mktime(date)) + get_zone_int()
+
 def progress(s):
 	print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
 	sys.stdout.flush()
@@ -193,7 +200,7 @@ for i in patches:
 	print "mark :%s" % count
 	if options.export_marks:
 		export_marks.append(":%s %s" % (count, hash))
-	date = int(time.mktime(time.strptime(i.attributes['date'].value, "%Y%m%d%H%M%S"))) + get_zone_int()
+	date = get_date(i.attributes['date'].value)
 	print "committer %s %s %s" % (get_author(i), date, get_zone_str())
 	print "data %d\n%s" % (len(message), message)
 	if count > 1:
