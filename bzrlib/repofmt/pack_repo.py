@@ -2215,7 +2215,7 @@ class CHKInventoryRepository(KnitPackRepository):
                     uninteresting_chk_refs.add(node.key())
                     if not isinstance(node, chk_map.InternalNode):
                         # Leaf node: pull out its contents:
-                        for name, bytes in node.iteritems(self):
+                        for name, bytes in node.iteritems(inv_chk_map._store):
                             entry = inv._bytes_to_entry(bytes)
                             if entry.name == '' and not rich_root:
                                 continue

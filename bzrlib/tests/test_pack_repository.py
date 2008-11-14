@@ -721,12 +721,12 @@ def load_tests(basic_tests, module, test_loader):
               index_class=BTreeGraphIndex),
          dict(format_name='development3',
               format_string="Bazaar development format 3 "
-                  "(needs bzr.dev from before 1.8)\n",
+                  "(needs bzr.dev from before 1.10)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          dict(format_name='development3-subtree',
               format_string="Bazaar development format 3 "
-                  "with subtree support (needs bzr.dev from before 1.8)\n",
+                  "with subtree support (needs bzr.dev from before 1.10)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]

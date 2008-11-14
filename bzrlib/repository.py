@@ -2142,8 +2142,8 @@ def _install_revision(repository, rev, revision_tree, signature,
 
 def _make_inv_delta(old, new):
     """Make an inventory delta from two inventories."""
-    old_ids = set(old._byid.iterkeys())
-    new_ids = set(new._byid.iterkeys())
+    old_ids = set(old)
+    new_ids = set(new)
     adds = new_ids - old_ids
     deletes = old_ids - new_ids
     common = old_ids.intersection(new_ids)
