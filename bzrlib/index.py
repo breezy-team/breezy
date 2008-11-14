@@ -1177,6 +1177,14 @@ class CombinedGraphIndex(object):
             found_parents[key] = parents
         return found_parents
 
+    def has_key(self, key):
+        """Check if this index has one key.
+
+        If it's possible to check for multiple keys at once through 
+        calling get_parent_map that should be faster.
+        """
+        return (key in self.get_parent_map([key]))
+
     def insert_index(self, pos, index):
         """Insert a new index in the list of indices to query.
 

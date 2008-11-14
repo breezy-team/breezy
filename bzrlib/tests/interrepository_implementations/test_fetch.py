@@ -101,6 +101,11 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
+        except errors.BzrCheckError, e:
+            # Can also just raise a generic check errors; stream insertion
+            # does this to include all the missing data
+            self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
+                              to_repo.revision_tree, 'rev-two')
         except errors.RevisionNotPresent, e:
             # If an exception is raised, the revision should not be in the
             # target.

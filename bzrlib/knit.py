@@ -770,8 +770,9 @@ class KnitVersionedFiles(VersionedFiles):
         present_parents = []
         if parent_texts is None:
             parent_texts = {}
-        # Do a single query to ascertain parent presence.
-        present_parent_map = self.get_parent_map(parents)
+        # Do a single query to ascertain parent presence; we only compress
+        # against parents in the same kvf.
+        present_parent_map = self._index.get_parent_map(parents)
         for parent in parents:
             if parent in present_parent_map:
                 present_parents.append(parent)
@@ -1285,6 +1286,14 @@ class KnitVersionedFiles(VersionedFiles):
             missing.difference_update(set(new_result))
         return result
 
+    def has_key(self, key):
+        """Check if one key is present.
+
+        If you have multiple keys to check at once, it's better to use
+        get_parent_map.
+        """
+        return key in self.get_parent_map([key])
+
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
@@ -1330,32 +1339,17 @@ class KnitVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
-            # if the parents are present in the fallback kvfs, but not in
-            # this one, then we need to expand this text to a fulltext and
-            # store it from there.  however, if the parents aren't present
-            # at all, we'll just store it as a delta and hope the parents
-            # turn up later in the unsorted record stream.
-            if len(parents):
-                basis_parent = parents[0]
-                basis_parent_in_self = (
-                    basis_parent in self._index.get_parent_map([basis_parent]))
-                basis_parent_only_in_fallbacks = (
-                    not basis_parent_in_self
-                    and (basis_parent in self.get_parent_map([basis_parent])))
-            else:
-                basis_parent = None
-                basis_parent_in_self = None
-                basis_parent_only_in_fallbacks = None
-            if record.storage_kind == 'fulltext':
-                self.add_lines(record.key, parents,
-                    split_lines(record.get_bytes_as('fulltext')))
-            elif ((record.storage_kind in knit_types) and not 
-                    basis_parent_only_in_fallbacks):
-                # we can insert the knit record literally if either we already
-                # have its basis OR the basis is not present even in the
-                # fallbacks.  In the latter case it will either turn up later
-                # in the stream and all will be well, or it won't turn up at
-                # all and we'll raise an error at the end.
+            elif ((record.storage_kind in knit_types) 
+                  and (not parents
+                       or self._index.has_key(parents[0])
+                       or not self._fallback_vfs
+                       or not self.has_key(parents[0]))):
+                # we can insert the knit record literally if either it has no
+                # compression parent OR we already have its basis in this kvf
+                # OR the basis is not present even in the fallbacks.  In the
+                # last case it will either turn up later in the stream and all
+                # will be well, or it won't turn up at all and we'll raise an
+                # error at the end.
                 if record.storage_kind not in native_types:
                     try:
                         adapter_key = (record.storage_kind, "knit-delta-gz")
@@ -1393,14 +1387,20 @@ class KnitVersionedFiles(VersionedFiles):
                     # 
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    if not basis_parent_in_self:
+                    if not self.has_key(parents[0]):
                         pending = buffered_index_entries.setdefault(
-                            basis_parent, [])
+                            parents[0], [])
                         pending.append(index_entry)
                         buffered = True
                 if not buffered:
                     self._index.add_records([index_entry])
+            elif record.storage_kind == 'fulltext':
+                self.add_lines(record.key, parents,
+                    split_lines(record.get_bytes_as('fulltext')))
             else:
+                # Not a fulltext, and not suitable for direct insertion as a
+                # delta, either because it's not the right format, or because
+                # it depends on a base only present in the fallback kvfs.
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
@@ -1958,6 +1958,14 @@ class _KndxIndex(object):
         entry = self._kndx_cache[prefix][0][suffix]
         return key, entry[2], entry[3]
 
+    def has_key(self, key):
+        """Check if one key is present.
+
+        If you have multiple keys to check at once, it's better to use
+        get_parent_map.
+        """
+        return key in self.get_parent_map([key])
+
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
         sio = StringIO()
@@ -2308,6 +2316,14 @@ class _KnitGraphIndex(object):
         """
         node = self._get_node(key)
         return self._node_to_position(node)
+
+    def has_key(self, key):
+        """Check if one key is present.
+
+        If you have multiple keys to check at once, it's better to use
+        get_parent_map.
+        """
+        return key in self.get_parent_map([key])
 
     def keys(self):
         """Get all the keys in the collection.

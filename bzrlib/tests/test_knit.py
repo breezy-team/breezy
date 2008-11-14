@@ -1696,7 +1696,12 @@ class TestStacking(KnitTests):
         source.add_lines(key_delta, (key_basis,), ['bar\n'])
         stream = source.get_record_stream([key_delta], 'unordered', False)
         test.insert_record_stream(stream)
-        self.assertEqual([("get_parent_map", set([key_basis]))],
+        # XXX: this does somewhat too many calls in making sure of whether it
+        # has to recreate the full text.
+        self.assertEqual([("get_parent_map", set([key_basis])),
+             ('get_parent_map', set([key_basis])),
+             ('get_record_stream', [key_basis], 'unordered', True),
+             ('get_parent_map', set([key_basis]))],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
