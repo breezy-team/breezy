@@ -46,8 +46,9 @@ class CHKSerializerSubtree(xml6.Serializer_v6):
         else:
             return xml6.Serializer_v6._unpack_entry(self, elt)
 
-    def __init__(self, node_size):
+    def __init__(self, node_size, parent_id_basename_index):
         self.maximum_size = node_size
+        self.parent_id_basename_index = parent_id_basename_index
 
 
 class CHKSerializer(xml5.Serializer_v5):
@@ -57,9 +58,12 @@ class CHKSerializer(xml5.Serializer_v5):
     revision_format_num = None
     support_altered_by_hack = False
 
-    def __init__(self, node_size):
+    def __init__(self, node_size, parent_id_basename_index):
         self.maximum_size = node_size
+        self.parent_id_basename_index = parent_id_basename_index
 
 
-chk_serializer_subtree = CHKSerializerSubtree(4096)
-chk_serializer = CHKSerializer(4096)
+chk_serializer_subtree = CHKSerializerSubtree(4096, False)
+chk_serializer = CHKSerializer(4096, False)
+chk_serializer_subtree_parent_id = CHKSerializerSubtree(4096, True)
+chk_serializer_parent_id = CHKSerializer(4096, True)

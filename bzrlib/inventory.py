@@ -1422,14 +1422,22 @@ class CHKInventory(CommonInventory):
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
         result.revision_id = lines[1][13:]
         result.root_id = lines[2][9:]
-        result.id_to_entry = chk_map.CHKMap(chk_store, (lines[3][13:],))
+        if lines[3].startswith('parent_id_to_basename:'):
+            next = 4
+            result.parent_id_to_basename = chk_map.CHKMap(
+                chk_store, (lines[3][23:],))
+        else:
+            next = 3
+            result.parent_id_to_basename = None
+        result.id_to_entry = chk_map.CHKMap(chk_store, (lines[next][13:],))
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
                 (result.revision_id, expected_revision_id))
         return result
 
     @classmethod
-    def from_inventory(klass, chk_store, inventory, maximum_size=0):
+    def from_inventory(klass, chk_store, inventory, maximum_size=0,
+        parent_id_basename_index=False):
         """Create a CHKInventory from an existing inventory.
 
         The content of inventory is copied into the chk_store, and a
@@ -1437,16 +1445,37 @@ class CHKInventory(CommonInventory):
 
         :param chk_store: A CHK capable VersionedFiles instance.
         :param inventory: The inventory to copy.
+        :param maximum_size: The CHKMap node size limit.
+        :param parent_id_basename_index: If True create and use a
+            parent_id,basename->file_id index.
         """
         result = CHKInventory()
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
         result.id_to_entry = chk_map.CHKMap(chk_store, None)
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
-        delta = []
+        file_id_delta = []
+        if parent_id_basename_index:
+            result.parent_id_to_basename = chk_map.CHKMap(chk_store, None)
+            result.parent_id_to_basename._root_node.set_maximum_size(
+                maximum_size)
+            result.parent_id_to_basename._root_node._key_width = 2
+            parent_id_delta = []
+        else:
+            result.parent_id_to_basename = None
         for path, entry in inventory.iter_entries():
-            delta.append((None, (entry.file_id,), result._entry_to_bytes(entry)))
-        result.id_to_entry.apply_delta(delta)
+            file_id_delta.append((None, (entry.file_id,),
+                result._entry_to_bytes(entry)))
+            if parent_id_basename_index:
+                if entry.parent_id is not None:
+                    parent_id = entry.parent_id
+                else:
+                    parent_id = ''
+                parent_id_delta.append((None,
+                    (parent_id, entry.name.encode('utf8')), entry.file_id))
+        result.id_to_entry.apply_delta(file_id_delta)
+        if parent_id_basename_index:
+            result.parent_id_to_basename.apply_delta(parent_id_delta)
         result.id_to_entry._save()
         return result
 
@@ -1590,6 +1619,9 @@ class CHKInventory(CommonInventory):
         lines = ["chkinventory:\n"]
         lines.append("revision_id: %s\n" % self.revision_id)
         lines.append("root_id: %s\n" % self.root_id)
+        if self.parent_id_to_basename is not None:
+            lines.append('parent_id_to_basename: %s\n' %
+                self.parent_id_to_basename.key())
         lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
         return lines
 
