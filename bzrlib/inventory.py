@@ -1384,11 +1384,20 @@ class CHKInventory(CommonInventory):
         """
         result = CHKInventory()
         result.revision_id = new_revision_id
-        result.id_to_entry = chk_map.CHKMap(self.id_to_entry._store,
+        result.id_to_entry = chk_map.CHKMap(
+            self.id_to_entry._store,
             self.id_to_entry._root_node)
+        if self.parent_id_basename_to_file_id is not None:
+            result.parent_id_basename_to_file_id = chk_map.CHKMap(
+                self.parent_id_basename_to_file_id._store,
+                self.parent_id_basename_to_file_id._root_node)
+            parent_id_basename_delta = []
+        else:
+            result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
         id_to_entry_delta = []
         for old_path, new_path, file_id, entry in inventory_delta:
+            # file id changes
             if new_path == '':
                 result.root_id = file_id
             if new_path is None:
@@ -1403,7 +1412,26 @@ class CHKInventory(CommonInventory):
             else:
                 old_key = (file_id,)
             id_to_entry_delta.append((old_key, new_key, new_value))
+            if result.parent_id_basename_to_file_id is not None:
+                # parent_id, basename changes
+                if old_path is None:
+                    old_key = None
+                else:
+                    old_entry = self[file_id]
+                    old_key = self._parent_id_basename_key(old_entry)
+                if new_path is None:
+                    new_key = None
+                    new_value = None
+                else:
+                    new_key = self._parent_id_basename_key(entry)
+                    new_value = file_id
+                if old_key != new_key:
+                    # If the two keys are the same, the value will be unchanged
+                    # as its always the file id.
+                    parent_id_basename_delta.append((old_key, new_key, new_value))
         result.id_to_entry.apply_delta(id_to_entry_delta)
+        if result.parent_id_basename_to_file_id is not None:
+            result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
         return result
 
     @classmethod
@@ -1422,13 +1450,13 @@ class CHKInventory(CommonInventory):
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
         result.revision_id = lines[1][13:]
         result.root_id = lines[2][9:]
-        if lines[3].startswith('parent_id_to_basename:'):
+        if lines[3].startswith('parent_id_basename_to_file_id:'):
             next = 4
-            result.parent_id_to_basename = chk_map.CHKMap(
-                chk_store, (lines[3][23:],))
+            result.parent_id_basename_to_file_id = chk_map.CHKMap(
+                chk_store, (lines[3][31:],))
         else:
             next = 3
-            result.parent_id_to_basename = None
+            result.parent_id_basename_to_file_id = None
         result.id_to_entry = chk_map.CHKMap(chk_store, (lines[next][13:],))
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
@@ -1456,28 +1484,32 @@ class CHKInventory(CommonInventory):
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
         file_id_delta = []
         if parent_id_basename_index:
-            result.parent_id_to_basename = chk_map.CHKMap(chk_store, None)
-            result.parent_id_to_basename._root_node.set_maximum_size(
+            result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store, None)
+            result.parent_id_basename_to_file_id._root_node.set_maximum_size(
                 maximum_size)
-            result.parent_id_to_basename._root_node._key_width = 2
+            result.parent_id_basename_to_file_id._root_node._key_width = 2
             parent_id_delta = []
         else:
-            result.parent_id_to_basename = None
+            result.parent_id_basename_to_file_id = None
         for path, entry in inventory.iter_entries():
             file_id_delta.append((None, (entry.file_id,),
                 result._entry_to_bytes(entry)))
             if parent_id_basename_index:
-                if entry.parent_id is not None:
-                    parent_id = entry.parent_id
-                else:
-                    parent_id = ''
-                parent_id_delta.append((None,
-                    (parent_id, entry.name.encode('utf8')), entry.file_id))
+                parent_id_delta.append(
+                    (None, result._parent_id_basename_key(entry),
+                     entry.file_id))
         result.id_to_entry.apply_delta(file_id_delta)
         if parent_id_basename_index:
-            result.parent_id_to_basename.apply_delta(parent_id_delta)
-        result.id_to_entry._save()
+            result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
         return result
+
+    def _parent_id_basename_key(self, entry):
+        """Create a key for a entry in a parent_id_basename_to_file_id index."""
+        if entry.parent_id is not None:
+            parent_id = entry.parent_id
+        else:
+            parent_id = ''
+        return parent_id, entry.name.encode('utf8')
 
     def __getitem__(self, file_id):
         """map a single file_id -> InventoryEntry."""
@@ -1619,9 +1651,9 @@ class CHKInventory(CommonInventory):
         lines = ["chkinventory:\n"]
         lines.append("revision_id: %s\n" % self.revision_id)
         lines.append("root_id: %s\n" % self.root_id)
-        if self.parent_id_to_basename is not None:
-            lines.append('parent_id_to_basename: %s\n' %
-                self.parent_id_to_basename.key())
+        if self.parent_id_basename_to_file_id is not None:
+            lines.append('parent_id_basename_to_file_id: %s\n' %
+                self.parent_id_basename_to_file_id.key())
         lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
         return lines
 

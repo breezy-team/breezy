@@ -698,12 +698,12 @@ class TestDevelopment4(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         inv = tree.branch.repository.get_inventory(revid)
-        self.assertNotEqual(None, inv.parent_id_to_basename)
-        inv.parent_id_to_basename._ensure_root()
+        self.assertNotEqual(None, inv.parent_id_basename_to_file_id)
+        inv.parent_id_basename_to_file_id._ensure_root()
         inv.id_to_entry._ensure_root()
         self.assertEqual(4096, inv.id_to_entry._root_node.maximum_size)
         self.assertEqual(4096,
-            inv.parent_id_to_basename._root_node.maximum_size)
+            inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
 
 class TestDevelopment3FindRevisionOutsideSet(TestCaseWithTransport):
