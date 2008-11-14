@@ -1545,7 +1545,7 @@ class CHKInventory(CommonInventory):
                 and name[0] == name[1]
                 and executable[0] == executable[1]):
                 # Could happen when only the revision changed for a directory
-                # foir instance.
+                # for instance.
                 continue
             yield (file_id, (path_in_source, path_in_target), changed_content,
                 versioned, parent, name, kind, executable)
