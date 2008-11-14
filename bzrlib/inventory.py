@@ -845,6 +845,24 @@ class CommonInventory(object):
                         child_dirs.append((child_relpath+'/', child_ie))
             stack.extend(reversed(child_dirs))
 
+    def _make_delta(self, old):
+        """Make an inventory delta from two inventories."""
+        old_ids = set(old)
+        new_ids = set(self)
+        adds = new_ids - old_ids
+        deletes = old_ids - new_ids
+        common = old_ids.intersection(new_ids)
+        delta = []
+        for file_id in deletes:
+            delta.append((old.id2path(file_id), None, file_id, None))
+        for file_id in adds:
+            delta.append((None, self.id2path(file_id), file_id, self[file_id]))
+        for file_id in common:
+            if old[file_id] != self[file_id]:
+                delta.append((old.id2path(file_id), self.id2path(file_id),
+                    file_id, self[file_id]))
+        return delta
+
 
 class Inventory(CommonInventory):
     """Inventory of versioned files in a tree.
@@ -1624,6 +1642,27 @@ class CHKInventory(CommonInventory):
     def __len__(self):
         """Return the number of entries in the inventory."""
         return len(self.id_to_entry)
+
+    def _make_delta(self, old):
+        """Make an inventory delta from two inventories."""
+        if type(old) != CHKInventory:
+            return CommonInventory._make_delta(self, old)
+        delta = []
+        for key, old_value, self_value in \
+            self.id_to_entry.iter_changes(old.id_to_entry):
+            file_id = key[0]
+            if old_value is not None:
+                old_path = old.id2path(file_id)
+            else:
+                old_path = None
+            if self_value is not None:
+                entry = self._bytes_to_entry(self_value)
+                new_path = self.id2path(file_id)
+            else:
+                entry = None
+                new_path = None
+            delta.append((old_path, new_path, file_id, entry))
+        return delta
 
     def path2id(self, name):
         """Walk down through directories to return entry of last component.
