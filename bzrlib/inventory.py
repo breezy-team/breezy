@@ -1394,6 +1394,7 @@ class CHKInventory(CommonInventory):
         result.revision = sections[3]
         if result.parent_id == '':
             result.parent_id = None
+        self._entry_cache[result.file_id] = result
         return result
 
     def create_by_apply_delta(self, inventory_delta, new_revision_id):
@@ -1483,6 +1484,7 @@ class CHKInventory(CommonInventory):
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
                 (result.revision_id, expected_revision_id))
+        result._entry_cache = {}
         return result
 
     @classmethod
@@ -1523,6 +1525,7 @@ class CHKInventory(CommonInventory):
         result.id_to_entry.apply_delta(file_id_delta)
         if parent_id_basename_index:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+        result._entry_cache = {}
         return result
 
     def _parent_id_basename_key(self, entry):
@@ -1535,6 +1538,9 @@ class CHKInventory(CommonInventory):
 
     def __getitem__(self, file_id):
         """map a single file_id -> InventoryEntry."""
+        result = self._entry_cache.get(file_id, None)
+        if result is not None:
+            return result
         try:
             return self._bytes_to_entry(
                 self.id_to_entry.iteritems([(file_id,)]).next()[1])
@@ -1660,6 +1666,7 @@ class CHKInventory(CommonInventory):
                 old_path = None
             if self_value is not None:
                 entry = self._bytes_to_entry(self_value)
+                self._entry_cache[file_id] = entry
                 new_path = self.id2path(file_id)
             else:
                 entry = None
@@ -1760,11 +1767,19 @@ class CHKInventoryDirectory(InventoryDirectory):
         for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
             key_filter=[(self.file_id,)]):
             child_ids.add((file_id,))
+        cached = set()
+        for file_id in child_ids:
+            entry = self._chk_inventory._entry_cache.get(file_id, None)
+            if entry is not None:
+                result[entry.name] = entry
+                cached.add(file_id)
+        child_ids.difference_update(cached)
         # populate; todo: do by name
         id_to_entry = self._chk_inventory.id_to_entry
         for file_id, bytes in id_to_entry.iteritems(child_ids):
             entry = self._chk_inventory._bytes_to_entry(bytes)
             result[entry.name] = entry
+            self._chk_inventory._entry_cache[file_id] = entry
         self._children = result
         return result
 
