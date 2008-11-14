@@ -1330,7 +1330,32 @@ class KnitVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
-            if record.storage_kind in knit_types:
+            # if the parents are present in the fallback kvfs, but not in
+            # this one, then we need to expand this text to a fulltext and
+            # store it from there.  however, if the parents aren't present
+            # at all, we'll just store it as a delta and hope the parents
+            # turn up later in the unsorted record stream.
+            if len(parents):
+                basis_parent = parents[0]
+                basis_parent_in_self = (
+                    basis_parent in self._index.get_parent_map([basis_parent]))
+                basis_parent_only_in_fallbacks = (
+                    not basis_parent_in_self
+                    and (basis_parent in self.get_parent_map([basis_parent])))
+            else:
+                basis_parent = None
+                basis_parent_in_self = None
+                basis_parent_only_in_fallbacks = None
+            if record.storage_kind == 'fulltext':
+                self.add_lines(record.key, parents,
+                    split_lines(record.get_bytes_as('fulltext')))
+            elif ((record.storage_kind in knit_types) and not 
+                    basis_parent_only_in_fallbacks):
+                # we can insert the knit record literally if either we already
+                # have its basis OR the basis is not present even in the
+                # fallbacks.  In the latter case it will either turn up later
+                # in the stream and all will be well, or it won't turn up at
+                # all and we'll raise an error at the end.
                 if record.storage_kind not in native_types:
                     try:
                         adapter_key = (record.storage_kind, "knit-delta-gz")
@@ -1360,7 +1385,6 @@ class KnitVersionedFiles(VersionedFiles):
                 if 'fulltext' not in options:
                     # Not a fulltext, so we need to make sure the parent
                     # versions will also be present.  
-                    basis_parent = parents[0]
                     # Note that pack backed knits don't need to buffer here
                     # because they buffer all writes to the transaction level,
                     # but we don't expose that difference at the index level. If
@@ -1369,16 +1393,13 @@ class KnitVersionedFiles(VersionedFiles):
                     # 
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    if basis_parent not in self._index.get_parent_map([basis_parent]):
+                    if not basis_parent_in_self:
                         pending = buffered_index_entries.setdefault(
                             basis_parent, [])
                         pending.append(index_entry)
                         buffered = True
                 if not buffered:
                     self._index.add_records([index_entry])
-            elif record.storage_kind == 'fulltext':
-                self.add_lines(record.key, parents,
-                    split_lines(record.get_bytes_as('fulltext')))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
