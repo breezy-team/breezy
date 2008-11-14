@@ -27,6 +27,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Don't create text deltas spanning stacked repositories; this could
+      cause "Revision X not present in Y" when later accessing them.
+      (Martin Pool, #288751)
+
   DOCUMENTATION:
 
   API CHANGES:
