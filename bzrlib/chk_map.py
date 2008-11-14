@@ -360,6 +360,9 @@ class Node(object):
         # The pointers/values this node has - meaning defined by child classes.
         self._items = {}
 
+    def key(self):
+        return self._key
+
     def __len__(self):
         return self._len
 
@@ -429,9 +432,6 @@ class LeafNode(Node):
         else:
             for item in self._items.iteritems():
                 yield item
-
-    def key(self):
-        return self._key
 
     def map(self, store, key, value):
         """Map key to value."""

@@ -1291,8 +1291,9 @@ class RepositoryPackCollection(object):
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Auto-packing repository %s, which has %d pack files, '
-            'containing %d revisions into %d packs.', self, total_packs,
-            total_revisions, self._max_pack_count(total_revisions))
+            'containing %d revisions into no more than %d packs.', self,
+            total_packs, total_revisions,
+            self._max_pack_count(total_revisions))
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1314,6 +1315,7 @@ class RepositoryPackCollection(object):
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
         self._execute_pack_operations(pack_operations)
+        mutter('Auto-packing repository %s completed', self)
         return True
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer):
@@ -2200,7 +2202,8 @@ class CHKInventoryRepository(KnitPackRepository):
         # pointers pruned, common trees with different pointers examined
         # further.
         for idx, inv in enumerate(self.iter_inventories(revision_ids)):
-            pb.update('fetch', idx, len(revision_ids))
+            if pb is not None:
+                pb.update('fetch', idx, len(revision_ids))
             inv_chk_map = inv.id_to_entry
             inv_chk_map._ensure_root()
             pending_nodes = set([inv_chk_map._root_node])
@@ -2222,7 +2225,7 @@ class CHKInventoryRepository(KnitPackRepository):
                     # Recurse deeper
                     # Two-pass; api fixup needed to allow exclusion
                     wanted_keys = set()
-                    for key, value in node._items.iteritems:
+                    for key, value in node._items.iteritems():
                         if key in uninteresting_chk_refs:
                             continue
                         wanted_keys.add((key,))
