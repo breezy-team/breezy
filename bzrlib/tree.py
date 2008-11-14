@@ -869,6 +869,8 @@ class InterTree(InterObject):
         except:
             pass
         else:
+            if include_unchanged:
+                changed_file_ids = []
             for result in self.target.inventory.iter_changes(
                 self.source.inventory):
                 if (specific_file_ids is not None
@@ -877,6 +879,35 @@ class InterTree(InterObject):
                     # the specific files *after* it did its job.
                     continue
                 yield result
+                if include_unchanged:
+                    # Keep track of yielded results (cheaper than building the
+                    # whole inventory).
+                    changed_file_ids.append(result[0])
+            if include_unchanged:
+                # CHKMap avoid being O(tree), so we go to O(tree) only if
+                # required to.
+                # Now walk the whole inventory, excluding the already yielded
+                # file ids
+                def not_a_change(file_id, relpath, parent, kind, executable):
+                    return (file_id,
+                            (relpath, relpath), # Not renamed
+                            False, # Not modified
+                            (True, True), # Still  versioned
+                            (executable, executable))
+                changed_file_ids = set(changed_file_ids)
+                for relpath, entry in self.target.inventory.iter_entries():
+                    if (specific_file_ids is not None
+                        and not entry.file_id in specific_file_ids):
+                        continue
+                    if not entry.file_id in changed_file_ids:
+                        yield (entry.file_id,
+                               (relpath, relpath),
+                               False,
+                               (True, True),
+                               (entry.parent_id, entry.parent_id),
+                               (entry.name, entry.name),
+                               (entry.kind, entry.kind),
+                               (entry.executable, entry.executable))
             return
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
