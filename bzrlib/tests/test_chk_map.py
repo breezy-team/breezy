@@ -111,6 +111,23 @@ class TestMap(TestCaseWithStore):
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
 
+    def test_apply_delta_is_deterministic(self):
+        chk_bytes = self.get_chk_bytes()
+        chkmap1 = CHKMap(chk_bytes, None)
+        chkmap1._root_node.set_maximum_size(10)
+        chkmap1.apply_delta([(None, ('aaa',), 'common'),
+                             (None, ('bba',), 'target2'),
+                             (None, ('bbb',), 'common')])
+        root_key1 = chkmap1._save()
+        chkmap2 = CHKMap(chk_bytes, None)
+        chkmap2._root_node.set_maximum_size(10)
+        chkmap2.apply_delta([(None, ('bbb',), 'common'),
+                             (None, ('bba',), 'target2'),
+                             (None, ('aaa',), 'common')])
+        root_key2 = chkmap2._save()
+        self.assertEqualDiff(chkmap1._dump_tree(), chkmap2._dump_tree())
+        self.assertEqual(root_key1, root_key2)
+
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
         # all the keys.
@@ -347,7 +364,7 @@ class TestMap(TestCaseWithStore):
             "    'aab' LeafNode sha1:8fca5400dc99ef1b464e60ca25da53b57406ed38\n"
             "      ('aab',) 'value2'\n"
             "  'b' LeafNode sha1:67f15d1dfa451d388ed08ff17b4f9578ba010d01\n"
-            "    ('bbb',) 'value3'\n",
+            "      ('bbb',) 'value3'\n",
             chkmap._dump_tree())
 
 

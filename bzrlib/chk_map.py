@@ -119,7 +119,7 @@ class CHKMap(object):
                 result.extend(self._dump_tree_node(sub, prefix, indent + '  '))
         else:
             for key, value in node._items.iteritems():
-                result.append("%s  %r %r\n" % (indent, key, value))
+                result.append("      %r %r\n" % (key, value))
         return result
 
     @classmethod
