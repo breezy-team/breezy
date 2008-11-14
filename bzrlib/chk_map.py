@@ -102,7 +102,7 @@ class CHKMap(object):
         return stream.next().get_bytes_as('fulltext')
 
     @classmethod
-    def from_dict(klass, store, initial_value, maximum_size=0):
+    def from_dict(klass, store, initial_value, maximum_size=0, key_width=1):
         """Create a CHKMap in store with initial_value as the content.
         
         :param store: The store to record initial_value in, a VersionedFiles
@@ -111,10 +111,13 @@ class CHKMap(object):
             must be bytestrings.
         :param maximum_size: The maximum_size rule to apply to nodes. This
             determines the size at which no new data is added to a single node.
+        :param key_width: The number of elements in each key_tuple being stored
+            in this map.
         :return: The root chk of te resulting CHKMap.
         """
         result = CHKMap(store, None)
         result._root_node.set_maximum_size(maximum_size)
+        result._root_node._key_width = key_width
         delta = []
         for key, value in initial_value.items():
             delta.append((None, key, value))
@@ -425,10 +428,25 @@ class LeafNode(Node):
         return result
 
     def iteritems(self, store, key_filter=None):
+        """Iterate over items in the node.
+
+        :param key_filter: A filter to apply to the node. It should be a
+            list/set/dict or similar repeatedly iterable container.
+        """
         if key_filter is not None:
+            # Adjust the filter - short elements go to a prefix filter. Would this
+            # be cleaner explicitly? That would be no harder for InternalNode..
+            # XXX: perhaps defaultdict? Profiling<rinse and repeat>
+            filters = {}
+            for key in key_filter:
+                length_filter = filters.setdefault(len(key), set())
+                length_filter.add(key)
+            filters = filters.items()
             for item in self._items.iteritems():
-                if item[0] in key_filter:
-                    yield item
+                for length, length_filter in filters:
+                    if item[0][:length] in length_filter:
+                        yield item
+                        break
         else:
             for item in self._items.iteritems():
                 yield item
@@ -597,14 +615,22 @@ class InternalNode(Node):
                 else:
                     nodes.append(node)
         else:
-            serialised_filter = set([self._serialised_key(key) for key in
-                key_filter])
+            # XXX defaultdict ?
+            length_filters = {}
+            for key in key_filter:
+                serialised_key = self._serialised_prefix_filter(key)
+                length_filter = length_filters.setdefault(len(serialised_key),
+                    set())
+                length_filter.add(serialised_key)
+            length_filters = length_filters.items()
             for prefix, node in self._items.iteritems():
-                if prefix in serialised_filter:
-                    if type(node) == tuple:
-                        keys[node] = prefix
-                    else:
-                        nodes.append(node)
+                for length, length_filter in length_filters:
+                    if prefix[:length] in length_filter:
+                        if type(node) == tuple:
+                            keys[node] = prefix
+                        else:
+                            nodes.append(node)
+                        break
         if keys:
             # demand load some pages.
             stream = store.get_record_stream(keys, 'unordered', True)
@@ -684,6 +710,12 @@ class InternalNode(Node):
     def _serialised_key(self, key):
         """Return the serialised key for key in this node."""
         return ('\x00'.join(key) + '\x00'*self._node_width)[:self._node_width]
+
+    def _serialised_prefix_filter(self, key):
+        """Serialise key for use as a prefix filter in iteritems."""
+        if len(key) == self._key_width:
+            return self._serialised_key(key)
+        return '\x00'.join(key)[:self._node_width]
 
     def _split(self, offset):
         """Split this node into smaller nodes starting at offset.

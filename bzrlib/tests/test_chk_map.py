@@ -37,10 +37,11 @@ class TestCaseWithStore(TestCaseWithTransport):
         self.addCleanup(repo.abort_write_group)
         return repo.chk_bytes
 
-    def _get_map(self, a_dict, maximum_size=0, chk_bytes=None):
+    def _get_map(self, a_dict, maximum_size=0, chk_bytes=None, key_width=1):
         if chk_bytes is None:
             chk_bytes = self.get_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes, a_dict, maximum_size=maximum_size)
+        root_key = CHKMap.from_dict(chk_bytes, a_dict,
+            maximum_size=maximum_size, key_width=key_width)
         chkmap = CHKMap(chk_bytes, root_key)
         return chkmap
 
@@ -249,6 +250,23 @@ class TestMap(TestCaseWithStore):
     def test_iteritems_selected_one_of_two_items(self):
         chkmap = self._get_map( {("a",):"content here", ("b",):"more content"})
         self.assertEqual({("a",): "content here"},
+            self.to_dict(chkmap, [("a",)]))
+
+    def test_iteritems_keys_prefixed_by_2_width_nodes(self):
+        chkmap = self._get_map(
+            {("a","a"):"content here", ("a", "b",):"more content",
+             ("b", ""): 'boring content'},
+            maximum_size=10, key_width=2)
+        self.assertEqual(
+            {("a", "a"): "content here", ("a", "b"): 'more content'},
+            self.to_dict(chkmap, [("a",)]))
+
+    def test_iteritems_keys_prefixed_by_2_width_one_leaf(self):
+        chkmap = self._get_map(
+            {("a","a"):"content here", ("a", "b",):"more content",
+             ("b", ""): 'boring content'}, key_width=2)
+        self.assertEqual(
+            {("a", "a"): "content here", ("a", "b"): 'more content'},
             self.to_dict(chkmap, [("a",)]))
 
     def test___len__empty(self):
