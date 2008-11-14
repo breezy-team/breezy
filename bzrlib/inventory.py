@@ -1545,6 +1545,9 @@ class CHKInventory(CommonInventory):
         # Perhaps have an explicit 'contains' method on CHKMap ?
         return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
 
+    def is_root(self, file_id):
+        return file_id == self.root_id
+
     def _iter_file_id_parents(self, file_id):
         """Yield the parents of file_id up to the root."""
         while file_id is not None:
