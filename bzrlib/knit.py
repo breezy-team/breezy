@@ -1358,13 +1358,18 @@ class KnitVersionedFiles(VersionedFiles):
                 index_entry = (record.key, options, access_memo, parents)
                 buffered = False
                 if 'fulltext' not in options:
+                    # Not a fulltext, so we need to make sure the parent
+                    # versions will also be present.  
                     basis_parent = parents[0]
                     # Note that pack backed knits don't need to buffer here
                     # because they buffer all writes to the transaction level,
                     # but we don't expose that difference at the index level. If
                     # the query here has sufficient cost to show up in
                     # profiling we should do that.
-                    if basis_parent not in self.get_parent_map([basis_parent]):
+                    # 
+                    # They're required to be physically in this
+                    # KnitVersionedFiles, not in a fallback.
+                    if basis_parent not in self._index.get_parent_map([basis_parent]):
                         pending = buffered_index_entries.setdefault(
                             basis_parent, [])
                         pending.append(index_entry)
@@ -1395,8 +1400,10 @@ class KnitVersionedFiles(VersionedFiles):
                     del buffered_index_entries[key]
         # If there were any deltas which had a missing basis parent, error.
         if buffered_index_entries:
-            raise errors.RevisionNotPresent(buffered_index_entries.keys()[0],
-                self)
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "record_stream refers to compression parents not in %r:\n%s"
+                % (self, pformat(sorted(buffered_index_entries.keys()))))
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
