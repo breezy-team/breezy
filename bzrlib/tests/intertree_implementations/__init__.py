@@ -23,7 +23,11 @@ Specific tests for individual variations are in other places such as:
 """
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    revisiontree,
+    tests,
+    )
 from bzrlib.transport import get_transport
 from bzrlib.transform import TransformPreview
 from bzrlib.tests import (
@@ -51,6 +55,23 @@ def return_provided_trees(test_case, source, target):
 
 
 class TestCaseWithTwoTrees(TestCaseWithTree):
+
+    def not_applicable_if_cannot_represent_unversioned(self, tree):
+        if isinstance(tree, revisiontree.RevisionTree):
+            # The locked test trees conversion could not preserve the
+            # unversioned file status. This is normal (e.g. InterDirstateTree
+            # falls back to InterTree if the basis is not a
+            # DirstateRevisionTree, and revision trees cannot have unversioned
+            # files.
+            raise tests.TestNotApplicable('cannot represent unversioned files')
+
+    def not_applicable_if_missing_in(self, relpath, tree):
+        if not tree.path2id(relpath):
+            # The locked test trees conversion could not preserve the missing
+            # file status. This is normal (e.g. InterDirstateTree falls back
+            # to InterTree if the basis is not a DirstateRevisionTree, and
+            # revision trees cannot have missing files. 
+            raise tests.TestNotApplicable('cannot represent missing files')
 
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
