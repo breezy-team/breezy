@@ -680,6 +680,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         shutil.rmtree('2/b')
         # TODO ? have a symlink here?
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        self.not_applicable_if_missing_in('a', tree2)
+        self.not_applicable_if_missing_in('b', tree2)
         root_id = tree1.path2id('')
         expected = sorted([
             self.missing('a-id', 'a', 'a', root_id, 'file'),
@@ -1478,6 +1480,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         os.rename('tree2/a', 'tree2/a2')
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_missing_in('a', tree2)
 
         expected = sorted([
             self.missing('a-id', 'a', 'a', tree2.get_root_id(), 'file'),
