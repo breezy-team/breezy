@@ -335,6 +335,21 @@ class TestMap(TestCaseWithStore):
         leaf_node = LeafNode()
         self.assertEqual([key], leaf_node.serialise(chkmap._store))
 
+    def test__dump_tree(self):
+        chkmap = self._get_map({("aaa",): "value1", ("aab",): "value2",
+                                ("bbb",): "value3",},
+                               maximum_size=10)
+        self.assertEqualDiff(
+            "'' InternalNode sha1:cd9b68f18c9754a79065b06379fba543f9031742\n"
+            "  'a' InternalNode sha1:ed0ceb5aeb87c56df007a17997134328ff4d0b8d\n"
+            "    'aaa' LeafNode sha1:16fa5a38b80d29b529afc45f7a4f894650fc067f\n"
+            "      ('aaa',) 'value1'\n"
+            "    'aab' LeafNode sha1:8fca5400dc99ef1b464e60ca25da53b57406ed38\n"
+            "      ('aab',) 'value2'\n"
+            "  'b' LeafNode sha1:67f15d1dfa451d388ed08ff17b4f9578ba010d01\n"
+            "    ('bbb',) 'value3'\n",
+            chkmap._dump_tree())
+
 
 class TestLeafNode(TestCaseWithStore):
 

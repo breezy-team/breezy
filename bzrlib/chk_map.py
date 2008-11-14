@@ -101,6 +101,27 @@ class CHKMap(object):
         stream = self._store.get_record_stream([key], 'unordered', True)
         return stream.next().get_bytes_as('fulltext')
 
+    def _dump_tree(self):
+        """Return the tree in a string representation."""
+        self._ensure_root()
+        res = self._dump_tree_node(self._root_node, prefix='', indent='')
+        return ''.join(res)
+
+    def _dump_tree_node(self, node, prefix, indent):
+        """For this node and all children, generate a string representation."""
+        result = []
+        result.append('%s%r %s %s\n' % (indent, prefix, node.__class__.__name__,
+                                        node.key()[0]))
+        if isinstance(node, InternalNode):
+            # Trigger all child nodes to get loaded
+            list(node._iter_nodes(self._store))
+            for prefix, sub in node._items.iteritems():
+                result.extend(self._dump_tree_node(sub, prefix, indent + '  '))
+        else:
+            for key, value in node._items.iteritems():
+                result.append("%s  %r %r\n" % (indent, key, value))
+        return result
+
     @classmethod
     def from_dict(klass, store, initial_value, maximum_size=0):
         """Create a CHKMap in store with initial_value as the content.
