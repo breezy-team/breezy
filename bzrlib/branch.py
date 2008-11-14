@@ -1598,6 +1598,31 @@ class BzrBranch(Branch):
         if Branch.hooks['post_change_branch_tip']:
             self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
+    def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+
+        This version is most efficient when the destination is also a
+        BzrBranch5, but works for BzrBranch6 as long as the revision
+        history is the true lefthand parent history, and all of the revisions
+        are in the destination's repository.  If not, set_revision_history
+        will fail.
+
+        :param destination: The branch to copy the history into
+        :param revision_id: The revision-id to truncate history at.  May
+          be None to copy complete history.
+        """
+        if revision_id == _mod_revision.NULL_REVISION:
+            new_history = []
+        else:
+            new_history = self.revision_history()
+        if revision_id is not None and new_history != []:
+            try:
+                new_history = new_history[:new_history.index(revision_id) + 1]
+            except ValueError:
+                rev = self.repository.get_revision(revision_id)
+                new_history = rev.get_history(self.repository)[1:]
+        destination.set_revision_history(new_history)
+
     def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
         """Run the pre_change_branch_tip hooks."""
         hooks = Branch.hooks['pre_change_branch_tip']
@@ -2101,6 +2126,18 @@ class BzrBranch7(BzrBranch5):
         self._clear_cached_state()
         self._last_revision_info_cache = revno, revision_id
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+
+    def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+        
+        :see: Branch._synchronize_history
+        """
+        # XXX: The base Branch has a fast implementation of this method based
+        # on set_last_revision_info, but BzrBranch/BzrBranch5 have a slower one
+        # that uses set_revision_history.  This class inherits from BzrBranch5,
+        # but wants the fast implementation, so it calls
+        # Branch._synchronize_history directly.
+        Branch._synchronize_history(self, destination, revision_id)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
