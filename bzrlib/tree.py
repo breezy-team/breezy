@@ -869,7 +869,8 @@ class InterTree(InterObject):
         except:
             pass
         else:
-            for result in self.target.inventory.iter_changes(self.source.inventory):
+            for result in self.target.inventory.iter_changes(
+                self.source.inventory, specific_file_ids=specific_file_ids):
                 yield result
             return
         to_paths = {}
