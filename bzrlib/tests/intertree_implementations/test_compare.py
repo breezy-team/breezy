@@ -501,6 +501,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 (None, basename), (None, kind),
                 (None, False))
 
+    def not_applicable_if_missing_in(self, relpath, tree):
+        if not tree.path2id(relpath):
+            # The locked test trees conversion could not preserve the missing
+            # file status. This is normal (e.g. InterDirstateTree falls back
+            # to InterTree if the basis is not a DirstateRevisionTree, and
+            # revision trees cannot have missing files. 
+            raise TestNotApplicable()
+
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
@@ -690,6 +698,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(['directory'], ['file-id'])
         os.rmdir('tree2/directory')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_missing_in('directory', tree2)
 
         root_id = tree1.path2id('')
         expected = sorted([
@@ -705,13 +714,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1.add(['file'], ['file-id'])
         os.unlink('tree1/file')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_missing_in('file', tree1)
         root_id = tree1.path2id('')
-        if not tree1.path2id('file'):
-            # The locked test trees conversion could not preserve the missing
-            # file status. This is normal (e.g. InterDirstateTree falls back
-            # to InterTree if the basis is not a DirstateRevisionTree, and
-            # revision trees cannot have missing files. 
-            raise TestNotApplicable()
         expected = [('file-id', ('file', None), False, (True, False),
             (root_id, None), ('file', None), (None, None), (False, None))]
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
@@ -724,6 +728,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.add(['file'], ['file-id'])
         os.unlink('tree2/file')
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_missing_in('file', tree2)
         root_id = tree1.path2id('')
         expected = [('file-id', (None, 'file'), False, (False, True),
             (None, root_id), (None, 'file'), (None, None), (None, False))]
