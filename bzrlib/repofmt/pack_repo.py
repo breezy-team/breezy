@@ -2202,7 +2202,8 @@ class CHKInventoryRepository(KnitPackRepository):
         # pointers pruned, common trees with different pointers examined
         # further.
         for idx, inv in enumerate(self.iter_inventories(revision_ids)):
-            pb.update('fetch', idx, len(revision_ids))
+            if pb is not None:
+                pb.update('fetch', idx, len(revision_ids))
             inv_chk_map = inv.id_to_entry
             inv_chk_map._ensure_root()
             pending_nodes = set([inv_chk_map._root_node])
@@ -2214,7 +2215,7 @@ class CHKInventoryRepository(KnitPackRepository):
                     uninteresting_chk_refs.add(node.key())
                     if not isinstance(node, chk_map.InternalNode):
                         # Leaf node: pull out its contents:
-                        for name, bytes in node.iteritems():
+                        for name, bytes in node.iteritems(self):
                             entry = inv._bytes_to_entry(bytes)
                             if entry.name == '' and not rich_root:
                                 continue
@@ -2224,7 +2225,7 @@ class CHKInventoryRepository(KnitPackRepository):
                     # Recurse deeper
                     # Two-pass; api fixup needed to allow exclusion
                     wanted_keys = set()
-                    for key, value in node._items.iteritems:
+                    for key, value in node._items.iteritems():
                         if key in uninteresting_chk_refs:
                             continue
                         wanted_keys.add((key,))
