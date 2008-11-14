@@ -863,6 +863,7 @@ class InterTree(InterObject):
         # XXX: Ugly hack - testing only, really want a separate inter? or
         # perhaps helpers and split this function up?
         try:
+            # Only CHK inventories have id_to_entry attribute 
             self.source.inventory.id_to_entry
             self.target.inventory.id_to_entry
         except:

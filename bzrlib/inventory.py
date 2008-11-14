@@ -1601,6 +1601,13 @@ class CHKInventory(CommonInventory):
             parent = (basis_parent, self_parent)
             name = (basis_name, self_name)
             executable = (basis_executable, self_executable)
+            if (not changed_content
+                and parent[0] == parent[1]
+                and name[0] == name[1]
+                and executable[0] == executable[1]):
+                # Could happen when only the revision changed for a directory
+                # for instance.
+                continue
             yield (file_id, (path_in_source, path_in_target), changed_content,
                 versioned, parent, name, kind, executable)
 
