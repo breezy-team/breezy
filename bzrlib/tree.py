@@ -870,7 +870,12 @@ class InterTree(InterObject):
             pass
         else:
             for result in self.target.inventory.iter_changes(
-                self.source.inventory, specific_file_ids=specific_file_ids):
+                self.source.inventory):
+                if (specific_file_ids is not None
+                    and not result[0] in specific_file_ids):
+                    # CHKMap.iter_changes is clean and fast. Better filter out
+                    # the specific files *after* it did its job.
+                    continue
                 yield result
             return
         to_paths = {}
