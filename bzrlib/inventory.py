@@ -1542,7 +1542,8 @@ class CHKInventory(CommonInventory):
         for key, _ in self.id_to_entry.iteritems():
             yield key[-1]
 
-    def iter_changes(self, basis):
+    def iter_changes(self, basis,
+                     specific_file_ids=None):
         """Generate a Tree.iter_changes change list between this and basis.
 
         :param basis: Another CHKInventory.
@@ -1555,6 +1556,11 @@ class CHKInventory(CommonInventory):
         for key, basis_value, self_value in \
             self.id_to_entry.iter_changes(basis.id_to_entry):
             file_id = key[0]
+            if (specific_file_ids is not None
+                and not file_id in specific_file_ids):
+                # CHKMap.iter_changes is clean and fast. Better filter out
+                # the specific files *after* it did its job.
+                continue
             if basis_value is not None:
                 basis_entry = basis._bytes_to_entry(basis_value)
                 path_in_source = basis.id2path(file_id)
