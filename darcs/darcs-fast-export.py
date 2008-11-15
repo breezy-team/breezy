@@ -106,6 +106,8 @@ opp.add_option("--encoding",
 	help="encoding of log [default: %default], if unspecified and input isn't utf-8, guess")
 opp.add_option("--authors-file", metavar="F",
 	help="read author transformations in old=new format from F")
+opp.add_option("--working", metavar="W",
+	help="working directory which is removed at the end of non-incremental conversions")
 (options, args) = opp.parse_args()
 if len(args) < 1:
 	opp.error("darcsrepo required")
@@ -127,7 +129,10 @@ if options.authors_file:
 	sock.close()
 
 origin = os.path.abspath(args[0])
-working = "%s.darcs" % origin
+if options.working:
+	working = options.working
+else:
+	working = "%s.darcs" % origin
 patchfile = "%s.patch" % origin
 logfile = "%s.log" % origin
 logsock = open(logfile, "w")
