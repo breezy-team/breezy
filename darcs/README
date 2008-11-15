@@ -107,6 +107,15 @@ $ hg version
 Mercurial Distributed SCM (version 1.0.2)
 ----
 
+== Additional resources
+
+You can reach the Changelog link:Changelog[here], and a gitweb interface
+http://vmiklos.hu/gitweb/?p=darcs-fast-export.git[here].
+
+The fast-import API documentation is
+http://www.kernel.org/pub/software/scm/git/docs/git-fast-import.html[here]
+if you're interested.
+
 == Alternatives
 
 - http://repo.or.cz/w/darcs2git.git[darcs2git] tries to find conflict
