@@ -96,6 +96,9 @@ def get_standard_plugins_path():
     """Determine a plugin path suitable for general use."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
+    # Get rid of trailing slashes, since Python can't handle them when
+    # it tries to import modules.
+    path = map(_strip_trailing_sep, path)
     bzr_exe = bool(getattr(sys, 'frozen', None))
     if bzr_exe:    # expand path for bzr.exe
         # We need to use relative path to system-wide plugin
@@ -110,9 +113,6 @@ def get_standard_plugins_path():
         # so relative path is ../../../plugins
         path.append(osutils.abspath(osutils.pathjoin(
             osutils.dirname(__file__), '../../../plugins')))
-    # Get rid of trailing slashes, since Python can't handle them when
-    # it tries to import modules.
-    path = map(_strip_trailing_sep, path)
     if not bzr_exe:     # don't look inside library.zip
         # search the plugin path before the bzrlib installed dir
         path.append(os.path.dirname(_mod_plugins.__file__))

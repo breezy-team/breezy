@@ -629,3 +629,66 @@ class TestModuleHelpTopic(tests.TestCase):
         mod = FakeModule('two lines of help\nand more', 'bzrlib.plugins.foo_bar')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual('foo_bar', topic.get_help_topic())
+
+
+def clear_plugins(test_case):
+    old_plugins_path = bzrlib.plugins.__path__
+    bzrlib.plugins.__path__ = []
+    plugin._loaded = False
+    def restore_plugins():
+        bzrlib.plugins.__path__ = old_plugins_path
+        plugin._loaded = False
+    test_case.addCleanup(restore_plugins)
+
+
+class TestPluginPaths(tests.TestCase):
+
+    def test_set_plugins_path_with_args(self):
+        clear_plugins(self)
+        plugin.set_plugins_path(['a', 'b'])
+        self.assertEqual(['a', 'b'], bzrlib.plugins.__path__)
+
+    def test_set_plugins_path_defaults(self):
+        clear_plugins(self)
+        plugin.set_plugins_path()
+        self.assertEqual(plugin.get_standard_plugins_path(),
+                         bzrlib.plugins.__path__)
+
+    def test_get_standard_plugins_path(self):
+        path = plugin.get_standard_plugins_path()
+        self.assertEqual(plugin.get_default_plugin_path(), path[0])
+        for directory in path:
+            self.assertNotContainsRe(r'\\/$', directory)
+        try:
+            from distutils.sysconfig import get_python_lib
+        except ImportError:
+            pass
+        else:
+            if sys.platform != 'win32':
+                python_lib = get_python_lib()
+                for directory in path:
+                    if directory.startswith(python_lib):
+                        break
+                else:
+                    self.fail('No path to global plugins')
+
+    def test_get_standard_plugins_path_env(self):
+        os.environ['BZR_PLUGIN_PATH'] = 'foo/'
+        self.assertEqual('foo', plugin.get_standard_plugins_path()[0])
+
+
+class TestLoadPlugins(tests.TestCaseInTempDir):
+
+    def test_load_plugins(self):
+        clear_plugins(self)
+        plugin.load_plugins(['.'])
+        self.assertEqual(bzrlib.plugins.__path__, ['.'])
+        # subsequent loads are no-ops
+        plugin.load_plugins(['foo'])
+        self.assertEqual(bzrlib.plugins.__path__, ['.'])
+
+    def test_load_plugins_default(self):
+        clear_plugins(self)
+        plugin.load_plugins()
+        path = plugin.get_standard_plugins_path()
+        self.assertEqual(path, bzrlib.plugins.__path__)
