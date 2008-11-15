@@ -34,6 +34,10 @@ Incremental conversions::
 	It supports the usual `--export-marks` / `--import-marks` switches to
 	allow incremental conversion.
 
+Author mappings::
+	Supports `--authors-file` option like Git's SVN adaptor, for DARCS
+	repositories that originated in CVS or SVN.
+
 == Usage
 
 darcs-fast-export expects one argument, the path to the source darcs

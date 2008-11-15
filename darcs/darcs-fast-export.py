@@ -72,6 +72,8 @@ def get_patchname(patch):
 
 def get_author(patch):
 	author = patch.attributes['author'].value
+	if author in authormap:
+		author = authormap[author]
 	if not len(author):
 		author = "darcs-fast-export <darcs-fast-export>"
 	elif not ">" in author:
@@ -102,6 +104,8 @@ opp.add_option("--export-marks", metavar="OFILE",
 	help="write state for incremental imports from OFILE")
 opp.add_option("--encoding",
 	help="encoding of log [default: %default], if unspecified and input isn't utf-8, guess")
+opp.add_option("--authors-file", metavar="F",
+	help="read author transformations in old=new format from F")
 (options, args) = opp.parse_args()
 if len(args) < 1:
 	opp.error("darcsrepo required")
@@ -112,6 +116,14 @@ if options.import_marks:
 	sock = open(options.import_marks)
 	for i in sock.readlines():
 		import_marks.append(i.strip().split(' ')[1])
+	sock.close()
+
+# read author mapping file in gitauthors format,
+# i. e. in=out (one per # line)
+authormap = {}
+if options.authors_file:
+	sock = open(options.authors_file)
+	authormap = dict([i.strip().split('=',1) for i in sock])
 	sock.close()
 
 origin = os.path.abspath(args[0])
