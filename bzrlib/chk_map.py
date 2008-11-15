@@ -854,9 +854,35 @@ def iter_interesting_nodes(store, interesting_root_keys,
     uninteresting_key_values = set()
 
     # XXX: First attempt, UGLY, UGLY, UGLY
-    # First, find the full set of uninteresting bits reachable by the
+    # First, read all the root nodes, and filter out anything that matches
+    # exactly.
+    chks_to_read = uninteresting_keys.union(interesting_keys)
+    next_uninteresting = set()
+    next_interesting = set()
+    interesting_key_values = set()
+    interesting_records = []
+    for record in store.get_record_stream(chks_to_read, 'unordered', True):
+        node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+        if record.key in uninteresting_keys:
+            if isinstance(node, InternalNode):
+                # uninteresting_prefix_chks.update(node._items.iteritems())
+                chks = node._items.values()
+                next_uninteresting.update(chks)
+            else:
+                uninteresting_key_values.update(node._items.iteritems())
+        else:
+            interesting_records.append(record)
+            if isinstance(node, InternalNode):
+                # uninteresting_prefix_chks.update(node._items.iteritems())
+                chks = node._items.values()
+                next_interesting.update(chks)
+            else:
+                interesting_key_values.update(node._items.iteritems())
+    uninteresting_chks.update(next_uninteresting)
+    next_uninteresting.difference_update(next_interesting)
+    # Second, find the full set of uninteresting bits reachable by the
     # uninteresting roots
-    chks_to_read = uninteresting_keys
+    chks_to_read = next_uninteresting
     while chks_to_read:
         next_chks = set()
         for record in store.get_record_stream(chks_to_read, 'unordered', True):
@@ -872,10 +898,17 @@ def iter_interesting_nodes(store, interesting_root_keys,
             else:
                 uninteresting_key_values.update(node._items.iteritems())
         chks_to_read = next_chks
+    interesting_key_values.difference_update(uninteresting_key_values)
+    records = {}
+    for record in interesting_records:
+        if record.key not in uninteresting_chks:
+            records[record.key] = record
+    yield records, records.keys(), interesting_key_values
+    next_interesting.difference_update(uninteresting_chks)
 
     # Is it possible that we would need to filter out the references we know to
     # be uninteresting, eg: interesting_keys.difference(uninteresting_chks)
-    chks_to_read = interesting_keys
+    chks_to_read = next_interesting
     while chks_to_read:
         next_chks = set()
         records = {}

@@ -900,6 +900,16 @@ class TestIterInterestingNodes(TestCaseWithStore):
                                    ('aab',): 'new',
                                    ('c',): 'common',
                                   })
+        self.assertEqualDiff(
+            "'' InternalNode sha1:f88b38806015efe27013260d7402219b7b4d4332\n"
+            "  'a' InternalNode sha1:2ce01860338a614b93883a5bbeb89920137ac7ef\n"
+            "    'aaa' LeafNode sha1:0b38f800c49ff9ffae346ca6f7e80a4626a5eaca\n"
+            "      ('aaa',) 'common'\n"
+            "    'aab' LeafNode sha1:10567a3bfcc764fb8d8d9edaa28c0934ada366c5\n"
+            "      ('aab',) 'new'\n"
+            "  'c' LeafNode sha1:263208de2fce0a8f9db614c1ca39e8f6de8b3802\n"
+            "      ('c',) 'common'",
+            CHKMap(self.get_chk_bytes(), target)._dump_tree())
         # The key for the internal aa node
         aa_key = ('sha1:2ce01860338a614b93883a5bbeb89920137ac7ef',)
         # The key for the leaf aab node
