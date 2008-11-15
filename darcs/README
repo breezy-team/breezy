@@ -142,4 +142,7 @@ if you're interested.
   / `git-fast-export`
 - Ian Clatworthy for writing bzr fast-import
 - Paul Crowley for writing hg fast-import
-- Matthias Andree for assorted improvements
+- Matthias Andree for assorted improvements, among them the --help,
+  --encoding and --authors-file features (using Python's optparse), support
+  for hashed repositories, _darcs/format interpretation, and mangling
+  whitespace in tags to cope with repos imported into DARCS from CVS.
