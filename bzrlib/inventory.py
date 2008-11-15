@@ -1480,10 +1480,16 @@ class CHKInventory(CommonInventory):
         result = CHKInventory()
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
-        if False and isinstance(inventory, CHKInventory):
+        if isinstance(inventory, CHKInventory):
             inventory.id_to_entry.copy_to(chk_store)
             result.id_to_entry = chk_map.CHKMap(chk_store,
                                                 inventory.id_to_entry.key())
+            if parent_id_basename_index:
+                inventory.parent_id_basename_to_file_id.copy_to(chk_store)
+                result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+                                inventory.parent_id_basename_to_file_id.key())
+            else:
+                result.parent_id_basename_to_file_id = None
         else:
             result.id_to_entry = chk_map.CHKMap(chk_store, None)
             result.id_to_entry._root_node.set_maximum_size(maximum_size)

@@ -87,7 +87,7 @@ class CHKMap(object):
         missing_keys = [key for key in keys if key not in present_keys]
         missing_keys.append(root_key)
         store.insert_record_stream(self._store.get_record_stream(
-            missing_keys, 'unordered', False))
+            missing_keys, 'unordered', True))
 
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
