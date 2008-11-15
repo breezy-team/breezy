@@ -1,0 +1,97 @@
+#!/bin/sh
+#
+#   d2x - convert darcs repos to git or hg using fast-import
+#
+#   Copyright (c) 2008 by Miklos Vajna <vmiklos@frugalware.org>
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+#   USA.
+#
+
+usage()
+{
+	echo "Usage: darcs2any -f format darcsrepo"
+}
+
+die()
+{
+	echo "$@"
+	usage
+	exit 1
+}
+
+case $1 in
+	-h|--help)
+		usage
+		exit 0
+		;;
+	-f)
+		format="$2"
+		shift 2
+		;;
+esac
+
+[ -n "$format" ] || die "Target format is not given!"
+
+case $format in
+	git|bzr)
+		;;
+	*)
+		die "The requested target format is not yet supported!"
+		;;
+esac
+
+origin="$1"
+shift 1
+
+[ -d "$origin" ] || die "Source repo does not exist!"
+
+# convert to abspath
+cd $origin
+origin=$(pwd)
+
+dmark="$origin.$format/darcs/dfe-marks"
+fmark="$origin.$format/darcs/ffi-marks"
+
+mkdir -p $origin.$format/darcs
+cd $origin.$format
+
+if [ ! -f $dmark ]; then
+	case $format in
+		git)
+			git --bare init
+			darcs-fast-export --export-marks=$dmark --working $origin.$format/darcs/repo $origin | \
+				git fast-import --export-marks=$fmark
+			;;
+		bzr)
+			bzr init-repo .
+			darcs-fast-export --export-marks=$dmark --working $origin.$format/darcs/repo $origin | \
+				bzr fast-import --export-marks=$fmark -
+			;;
+	esac
+else
+	case $format in
+		git)
+			darcs-fast-export --export-marks=$dmark --import-marks=$dmark \
+				--working $origin.$format/darcs/repo $origin | \
+				git fast-import --export-marks=$fmark --import-marks=$fmark
+			;;
+		bzr)
+			darcs-fast-export --export-marks=$dmark --import-marks=$dmark \
+				--working $origin.$format/darcs/repo $origin | \
+				bzr fast-import --export-marks=$fmark --import-marks=$fmark -
+			;;
+	esac
+fi
