@@ -130,7 +130,7 @@ if options.authors_file:
 
 origin = os.path.abspath(args[0])
 if options.working:
-	working = options.working
+	working = os.path.abspath(options.working)
 else:
 	working = "%s.darcs" % origin
 patchfile = "%s.patch" % origin
