@@ -12,23 +12,52 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * New ``commit_message_template`` hook that is called by the commit 
+      code to generate a template commit message. (Jelmer Vernooij)
+
     * New `shelve` and `unshelve` commands allow undoing and redoing changes.
       (Aaron Bentley)
 
   IMPROVEMENTS:
 
+    * When making a large readv() request over ``bzr+ssh``, break up the
+      request into more manageable chunks. Because the RPC is not yet able
+      to stream, this helps keep us from buffering too much information at
+      once. (John Arbash Meinel)
+
   BUG FIXES:
+
+    * Better message when the user needs to set their Launchpad ID.
+      (Martin Pool, #289148)
+
+    * TooManyConcurrentRequests no longer occur when a fetch fails and
+      tries to abort a write group.  This allows the root cause (e.g. a
+      network interruption) to be reported.  (Andrew Bennetts, #297014)
 
   DOCUMENTATION:
 
   API CHANGES:
 
+    * ``Repository.abort_write_group`` now accepts an optional
+      ``suppress_errors`` flag.  Repository implementations that override
+      ``abort_write_group`` will need to be updated to accept the new
+      argument.  Subclasses that only override ``_abort_write_group``
+      don't need to change.
+
+    * Transport implementations must provide copy_tree_to_transport.  A default
+      implementation is provided for Transport subclasses.
+
   TESTING:
+
+    * ``bzr selftest`` now fails if no doctests are found in a module
+      that's expected to have them.  (Martin Pool)
+      
+    * Doctests now only report the first failure.  (Martin Pool)
 
   INTERNALS:
 
 
-Bzr 1.9 2008-10-31
+bzr 1.9 2008-11-07
 ------------------
 
 This release of Bazaar adds a new repository format, ``1.9``, with smaller
@@ -38,6 +67,20 @@ repository.  bzr 1.9 also speeds most operations over the smart server
 protocol, makes annotate faster, and uses less memory when making
 checkouts or pulling large amounts of data.
 
+  BUG FIXES:
+
+   * Fix "invalid property value 'branch-nick' for None" regression with
+     branches bound to svn branches.  (Martin Pool, #293440)
+
+   * Fix SSL/https on Python2.6.  (Vincent Ladeuil, #293054)
+
+   * ``SFTPTransport.readv()`` had a bug when requests were out-of-order.
+     This only triggers some-of-the-time on Knit format repositories.
+     (John Arbash Meinel, #293746)
+
+
+bzr 1.9rc1 2008-10-31
+---------------------
 
   NEW FEATURES:
 

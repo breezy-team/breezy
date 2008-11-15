@@ -848,17 +848,21 @@ class BTreeGraphIndex(object):
         """
         return self._get_nodes(self._internal_node_cache, node_indexes)
 
-    def _get_leaf_nodes(self, node_indexes):
-        """Get a bunch of nodes, from cache or disk."""
-        found = self._get_nodes(self._leaf_node_cache, node_indexes)
+    def _cache_leaf_values(self, nodes):
+        """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in found.itervalues():
+            for node in nodes.itervalues():
                 for key, value in node.keys.iteritems():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node
                         # before.
                         break
                     self._leaf_value_cache[key] = value
+
+    def _get_leaf_nodes(self, node_indexes):
+        """Get a bunch of nodes, from cache or disk."""
+        found = self._get_nodes(self._leaf_node_cache, node_indexes)
+        self._cache_leaf_values(found)
         return found
 
     def iter_all_entries(self):
@@ -877,15 +881,21 @@ class BTreeGraphIndex(object):
             return
         start_of_leaves = self._row_offsets[-2]
         end_of_leaves = self._row_offsets[-1]
-        needed_nodes = range(start_of_leaves, end_of_leaves)
+        needed_offsets = range(start_of_leaves, end_of_leaves)
+        if needed_offsets == [0]:
+            # Special case when we only have a root node, as we have already
+            # read everything
+            nodes = [(0, self._root_node)]
+        else:
+            nodes = self._read_nodes(needed_offsets)
         # We iterate strictly in-order so that we can use this function
         # for spilling index builds to disk.
         if self.node_ref_lists:
-            for _, node in self._read_nodes(needed_nodes):
+            for _, node in nodes:
                 for key, (value, refs) in sorted(node.keys.items()):
                     yield (self, key, value, refs)
         else:
-            for _, node in self._read_nodes(needed_nodes):
+            for _, node in nodes:
                 for key, (value, refs) in sorted(node.keys.items()):
                     yield (self, key, value)
 
@@ -1242,6 +1252,7 @@ class BTreeGraphIndex(object):
         :param nodes: The nodes to read. 0 - first node, 1 - second node etc.
         :return: None
         """
+        bytes = None
         ranges = []
         for index in nodes:
             offset = index * _PAGE_SIZE
@@ -1251,11 +1262,12 @@ class BTreeGraphIndex(object):
                 if self._size:
                     size = min(_PAGE_SIZE, self._size)
                 else:
-                    stream = self._transport.get(self._name)
-                    start = stream.read(_PAGE_SIZE)
-                    # Avoid doing this again
-                    self._size = len(start)
-                    size = min(_PAGE_SIZE, self._size)
+                    # The only case where we don't know the size, is for very
+                    # small indexes. So we read the whole thing
+                    bytes = self._transport.get_bytes(self._name)
+                    self._size = len(bytes)
+                    ranges.append((0, len(bytes)))
+                    break
             else:
                 if offset > self._size:
                     raise AssertionError('tried to read past the end'
@@ -1265,7 +1277,10 @@ class BTreeGraphIndex(object):
             ranges.append((offset, size))
         if not ranges:
             return
-        if self._file is None:
+        if bytes:
+            data_ranges = [(offset, bytes[offset:offset+_PAGE_SIZE])
+                           for offset in xrange(0, len(bytes), _PAGE_SIZE)]
+        elif self._file is None:
             data_ranges = self._transport.readv(self._name, ranges)
         else:
             data_ranges = []

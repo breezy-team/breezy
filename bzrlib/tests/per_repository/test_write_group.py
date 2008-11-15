@@ -17,6 +17,8 @@
 """Tests for repository write groups."""
 
 from bzrlib import errors
+from bzrlib.transport import local, memory
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -96,3 +98,20 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.start_write_group()
         self.assertEqual(None, repo.abort_write_group())
         repo.unlock()
+
+    def test_abort_write_group_does_not_raise_when_suppressed(self):
+        if self.transport_server is local.LocalURLServer:
+            self.transport_server = None
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Damage the repository on the filesystem
+        self.get_transport('').rename('repo', 'foo')
+        # abort_write_group will not raise an error, because either an
+        # exception was not generated, or the exception was caught and
+        # suppressed.  See also test_pack_repository's test of the same name.
+        self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
+        if token is not None:
+            repo.leave_lock_in_place()

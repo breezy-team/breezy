@@ -340,16 +340,19 @@ class RemoteRepository(_RpcHelper):
 
     __repr__ = __str__
 
-    def abort_write_group(self):
+    def abort_write_group(self, suppress_errors=False):
         """Complete a write group on the decorated repository.
         
         Smart methods peform operations in a single step so this api
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
+
+        :param suppress_errors: see Repository.abort_write_group.
         """
         self._ensure_real()
-        return self._real_repository.abort_write_group()
+        return self._real_repository.abort_write_group(
+            suppress_errors=suppress_errors)
 
     def commit_write_group(self):
         """Complete a write group on the decorated repository.
@@ -1346,9 +1349,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         transports = [self.bzrdir.root_transport]
         if self._real_branch is not None:
             transports.append(self._real_branch._transport)
-        fallback_bzrdir = BzrDir.open(fallback_url, transports)
-        fallback_repo = fallback_bzrdir.open_repository()
-        self.repository.add_fallback_repository(fallback_repo)
+        stacked_on = branch.Branch.open(fallback_url,
+                                        possible_transports=transports)
+        self.repository.add_fallback_repository(stacked_on.repository)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport

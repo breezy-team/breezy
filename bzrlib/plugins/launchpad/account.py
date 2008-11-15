@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,8 @@ class UnknownLaunchpadUsername(errors.BzrError):
 
 
 class NoRegisteredSSHKeys(errors.BzrError):
-    _fmt = "The user %(user)s has not registered any SSH keys with Launchpad."
+    _fmt = "The user %(user)s has not registered any SSH keys with Launchpad.\n" \
+        "See <https://launchpad.net/people/+me>"
 
 
 class MismatchedUsernames(errors.BzrError):
