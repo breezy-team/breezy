@@ -152,24 +152,26 @@ else:
 		xmldoc = xml.dom.minidom.parseString(unicode(buf, encoding).encode('utf-8'))
 sys.stdout.flush()
 
-# init the tmp darcs repo
-os.mkdir(working)
+darcs2 = False
+directpatch = True
 cwd = os.getcwd()
-os.chdir(working)
-if not os.path.exists(os.path.join(origin, "_darcs", "format")):
-	darcs2 = False
-	directpatch = True
-else:
-	sock = open(os.path.join(origin, "_darcs", "format"))
-	format = [x.strip() for x in sock]
-	sock.close()
-	darcs2 = 'darcs-2' in format
-	directpatch = not 'hashed' in format
+if not options.import_marks:
+# init the tmp darcs repo
+	os.mkdir(working)
+	os.chdir(working)
+	if os.path.exists(os.path.join(origin, "_darcs", "format")):
+		sock = open(os.path.join(origin, "_darcs", "format"))
+		format = [x.strip() for x in sock]
+		sock.close()
+		darcs2 = 'darcs-2' in format
+		directpatch = not 'hashed' in format
 
-if darcs2:
-	os.system("darcs init --darcs-2")
+	if darcs2:
+		os.system("darcs init --darcs-2")
+	else:
+		os.system("darcs init --old-fashioned-inventory")
 else:
-	os.system("darcs init --old-fashioned-inventory")
+	os.chdir(working)
 
 patches = xmldoc.getElementsByTagName('patch')
 # this may be huge and we need it many times
@@ -245,7 +247,8 @@ for i in patches:
 
 os.chdir(cwd)
 
-shutil.rmtree(working)
+if not options.export_marks:
+	shutil.rmtree(working)
 logsock.close()
 
 if options.export_marks:
