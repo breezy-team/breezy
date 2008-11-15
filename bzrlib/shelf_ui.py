@@ -33,10 +33,10 @@ from bzrlib import (
     ui,
     workingtree,
 )
-
-
-# Plugins may want to override the following
-diff_writer_factory = None
+try:
+    from bzrlib.plugins.bzrtools import colordiff
+except ImportError:
+    colordiff = None
 
 
 class Shelver(object):
@@ -56,9 +56,8 @@ class Shelver(object):
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
-        if diff_writer_factory is not None:
-            self.diff_writer = diff_writer_factory(target=sys.stdout,
-                                                   check_style=False)
+        if colordiff is not None:
+            self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
         else:
             self.diff_writer = sys.stdout
         self.manager = work_tree.get_shelf_manager()
