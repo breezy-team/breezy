@@ -3,6 +3,7 @@ VERSION         DESCRIPTION
               - new --help, --encoding, --authors-file and --working options
               - add "hashed" support (see darcs init -h)
               - add incremental conversion support for darcs1 as well
+              - add d2x wrapper script
 0.4           - add incremental conversion support
 0.3           - add darcs2 support
 0.2           - add bzr and hg support

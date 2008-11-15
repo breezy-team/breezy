@@ -32,7 +32,9 @@ Formats::
 
 Incremental conversions::
 	It supports the usual `--export-marks` / `--import-marks` switches to
-	allow incremental conversion.
+	allow incremental conversion. A wrapper script called `d2x` is also
+	available if you find typing `--export-marks` / `--import-marks` all the
+	time boring. :-)
 
 Author mappings::
 	Supports `--authors-file` option like Git's SVN adaptor, for DARCS
