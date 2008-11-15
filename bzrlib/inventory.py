@@ -1480,27 +1480,33 @@ class CHKInventory(CommonInventory):
         result = CHKInventory()
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
-        result.id_to_entry = chk_map.CHKMap(chk_store, None)
-        result.id_to_entry._root_node.set_maximum_size(maximum_size)
-        file_id_delta = []
-        if parent_id_basename_index:
-            result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store, None)
-            result.parent_id_basename_to_file_id._root_node.set_maximum_size(
-                maximum_size)
-            result.parent_id_basename_to_file_id._root_node._key_width = 2
-            parent_id_delta = []
+        if False and isinstance(inventory, CHKInventory):
+            inventory.id_to_entry.copy_to(chk_store)
+            result.id_to_entry = chk_map.CHKMap(chk_store,
+                                                inventory.id_to_entry.key())
         else:
-            result.parent_id_basename_to_file_id = None
-        for path, entry in inventory.iter_entries():
-            file_id_delta.append((None, (entry.file_id,),
-                result._entry_to_bytes(entry)))
+            result.id_to_entry = chk_map.CHKMap(chk_store, None)
+            result.id_to_entry._root_node.set_maximum_size(maximum_size)
+            file_id_delta = []
             if parent_id_basename_index:
-                parent_id_delta.append(
-                    (None, result._parent_id_basename_key(entry),
-                     entry.file_id))
-        result.id_to_entry.apply_delta(file_id_delta)
-        if parent_id_basename_index:
-            result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+                result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store, None)
+                result.parent_id_basename_to_file_id._root_node.set_maximum_size(
+                    maximum_size)
+                result.parent_id_basename_to_file_id._root_node._key_width = 2
+                parent_id_delta = []
+            else:
+                result.parent_id_basename_to_file_id = None
+            for path, entry in inventory.iter_entries():
+                file_id_delta.append((None, (entry.file_id,),
+                    result._entry_to_bytes(entry)))
+                if parent_id_basename_index:
+                    parent_id_delta.append(
+                        (None, result._parent_id_basename_key(entry),
+                         entry.file_id))
+            result.id_to_entry.apply_delta(file_id_delta)
+            if parent_id_basename_index:
+                result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+            result.id_to_entry._save()
         return result
 
     def _parent_id_basename_key(self, entry):
