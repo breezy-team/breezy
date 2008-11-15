@@ -1,4 +1,5 @@
 export DARCS_EMAIL="user@example.com"
+export PATH="$(pwd)/..:$PATH"
 
 _drrec()
 {
