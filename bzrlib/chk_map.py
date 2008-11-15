@@ -336,7 +336,7 @@ class CHKMap(object):
         if len(node_details) == 1:
             self._root_node = node_details[0][1]
         else:
-            self._root_node = InternalNode()
+            self._root_node = InternalNode(prefix)
             self._root_node.set_maximum_size(node_details[0][1].maximum_size)
             self._root_node._key_width = node_details[0][1]._key_width
             for split, node in node_details:
@@ -560,12 +560,21 @@ class InternalNode(Node):
     nodes. It is greedy - it will defer splitting itself as long as possible.
     """
 
-    def __init__(self):
+    def __init__(self, prefix=''):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
         # self._size = 12
         # How many octets key prefixes within this node are.
         self._node_width = 0
+        self._prefix = prefix
+
+    def __repr__(self):
+        items_str = sorted(self._items)
+        if len(items_str) > 20:
+            items_str = items_str[16] + '...]'
+        return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
+            self.__class__.__name__, self._key, self._len, self._size,
+            self._maximum_size, self._prefix, items_str)
 
     def add_node(self, prefix, node):
         """Add a child node with prefix prefix, and node node.
@@ -573,6 +582,9 @@ class InternalNode(Node):
         :param prefix: The serialised key prefix for node.
         :param node: The node being added.
         """
+        assert self._prefix is not None
+        assert prefix.startswith(self._prefix)
+        assert len(prefix) == len(self._prefix) + 1
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
@@ -610,6 +622,7 @@ class InternalNode(Node):
         result._key_width = width
         result._size = len(bytes)
         result._node_width = len(prefix)
+        result._prefix = result.unique_serialised_prefix()
         return result
 
     def iteritems(self, store, key_filter=None):
@@ -655,8 +668,15 @@ class InternalNode(Node):
         """Map key to value."""
         if not len(self._items):
             raise AssertionError("cant map in an empty InternalNode.")
-        children = self._iter_nodes(store, key_filter=[key])
         serialised_key = self._serialised_key(key)
+        if not serialised_key.startswith(self._prefix):
+            new_prefix = self.unique_serialised_prefix(serialised_key)
+            new_parent = InternalNode(new_prefix)
+            new_parent.set_maximum_size(self._maximum_size)
+            new_parent._key_width = self._key_width
+            new_parent.add_node(self._prefix[:len(new_prefix)+1], self)
+            return new_parent.map(store, key, value)
+        children = self._iter_nodes(store, key_filter=[key])
         if children:
             child = children[0]
         else:
@@ -674,7 +694,9 @@ class InternalNode(Node):
         # XXX: This is where we might want to try and expand our depth
         # to refer to more bytes of every child (which would give us
         # multiple pointers to child nodes, but less intermediate nodes)
+        # TODO: Is this mapped as serialised_key or as prefix?
         child = self._new_child(serialised_key, InternalNode)
+        child._prefix = prefix
         for split, node in node_details:
             child.add_node(split, node)
         self._len = self._len - old_len + len(child)
@@ -749,7 +771,7 @@ class InternalNode(Node):
                 refs.append(value.key())
         return refs
 
-    def unique_serialised_prefix(self):
+    def unique_serialised_prefix(self, extra_key=None):
         """Return the unique key prefix for this node.
 
         :return: A bytestring of the longest serialised key prefix that is
@@ -758,6 +780,8 @@ class InternalNode(Node):
         # may want to cache this eventually :- but wait for enough
         # functionality to profile.
         keys = list(self._items.keys())
+        if extra_key is not None:
+            keys.append(extra_key)
         if not keys:
             return ""
         current_prefix = keys.pop(-1)

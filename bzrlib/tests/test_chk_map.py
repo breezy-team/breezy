@@ -128,6 +128,44 @@ class TestMap(TestCaseWithStore):
         self.assertEqualDiff(chkmap1._dump_tree(), chkmap2._dump_tree())
         self.assertEqual(root_key1, root_key2)
 
+    def test_stable_splitting(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'",
+                             chkmap._dump_tree())
+        chkmap.map(('aab',), 'v')
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'",
+                             chkmap._dump_tree())
+        # Creates a new internal node, and splits the others into leaves
+        chkmap.map(('aac',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "  'aac' LeafNode None\n"
+                             "      ('aac',) 'v'",
+                             chkmap._dump_tree())
+        # Splits again, because it can't fit in the current structure
+        chkmap.map(('bbb',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'a' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "    'aac' LeafNode None\n"
+                             "      ('aac',) 'v'\n"
+                             "  'b' LeafNode None\n"
+                             "      ('bbb',) 'v'",
+                             chkmap._dump_tree())
+
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
         # all the keys.
@@ -375,11 +413,12 @@ class TestMap(TestCaseWithStore):
         #      test__dump_tree, even though they have the same values
         self.assertEqualDiff('\n'.join([
             "'' InternalNode None",
-            "  'aaa' LeafNode sha1:16fa5a38b80d29b529afc45f7a4f894650fc067f",
+            "  'a' InternalNode sha1:ed0ceb5aeb87c56df007a17997134328ff4d0b8d",
+            "    'aaa' LeafNode sha1:16fa5a38b80d29b529afc45f7a4f894650fc067f",
             "      ('aaa',) 'value1'",
-            "  'aab' LeafNode sha1:8fca5400dc99ef1b464e60ca25da53b57406ed38",
+            "    'aab' LeafNode sha1:8fca5400dc99ef1b464e60ca25da53b57406ed38",
             "      ('aab',) 'value2'",
-            "  'bbb' LeafNode None",
+            "  'b' LeafNode None",
             "      ('bbb',) 'value3'",
             ]), chkmap._dump_tree())
 
@@ -555,7 +594,7 @@ class TestLeafNode(TestCaseWithStore):
 class TestInternalNode(TestCaseWithStore):
 
     def test_add_node_empty_new(self):
-        node = InternalNode()
+        node = InternalNode('fo')
         child = LeafNode()
         child.set_maximum_size(100)
         child.map(None, ("foo",), "bar")
@@ -583,7 +622,7 @@ class TestInternalNode(TestCaseWithStore):
         self.assertEqual(3, node._node_width)
 
     def test_add_node_resets_key_new(self):
-        node = InternalNode()
+        node = InternalNode('fo')
         child = LeafNode()
         child.set_maximum_size(100)
         child.map(None, ("foo",), "bar")
@@ -891,10 +930,9 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the leaf aac node
         aac_key = ('sha1:8089f6b4f3bd2a058c41be199ef5af0c5b9a0c4f',)
         # The key for the target2 internal bb node
-        bb_key = ('sha1:5ce6a69a21060222bb0a5b48fdbfcca586cc9183',)
+        bb_key = ('sha1:bcc229e6bd1d606ef4630073dc15756e60508365',)
         # The key for the leaf bba node
-        bba_key = ()
-        import pdb; pdb.set_trace()
+        bba_key = ('sha1:5ce6a69a21060222bb0a5b48fdbfcca586cc9183',)
         self.assertIterInteresting(
             [([target1, target2], [target1, target2], []),
              ([aa_key, bb_key], [aa_key, bb_key], []),
