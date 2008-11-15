@@ -2,7 +2,7 @@
 
 """
 
-    darcs-fast-export.py - darcs backend for fast data importers
+    darcs-fast-export - darcs backend for fast data importers
 
     Copyright (c) 2008 Miklos Vajna <vmiklos@frugalware.org>
     Copyright (c) 2008 Matthias Andree <matthias.andree@gmx.de>

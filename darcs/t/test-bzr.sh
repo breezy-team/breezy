@@ -8,9 +8,9 @@ cd test.bzr
 bzr init-repo .
 cd ..
 if [ "$1" != "--stdout" ]; then
-	../darcs-fast-export.py test |(cd test.bzr; bzr fast-import -)
+	../darcs-fast-export test |(cd test.bzr; bzr fast-import -)
 	diff_bzr test
 	exit $?
 else
-	../darcs-fast-export.py test
+	../darcs-fast-export test
 fi

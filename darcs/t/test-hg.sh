@@ -8,9 +8,9 @@ cd test.hg
 hg init
 cd ..
 if [ "$1" != "--stdout" ]; then
-	../darcs-fast-export.py test |(cd test.hg; hg fastimport /dev/stdin)
+	../darcs-fast-export test |(cd test.hg; hg fastimport /dev/stdin)
 	diff_hg test
 	exit $?
 else
-	../darcs-fast-export.py test
+	../darcs-fast-export test
 fi

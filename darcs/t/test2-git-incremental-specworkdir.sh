@@ -12,11 +12,11 @@ if [ "$1" != "--stdout" ]; then
 	dmark="$(pwd)/test2.git/darcs/test2.dfe-marks"
 	gmark="$(pwd)/test2.git/darcs/test2.gfi-marks"
 	rm -f $mark $gmark
-	../darcs-fast-export.py --export-marks=$dmark test2 --working test2.git/darcs/repo |(cd test2.git; git fast-import --export-marks=$gmark)
+	../darcs-fast-export --export-marks=$dmark test2 --working test2.git/darcs/repo |(cd test2.git; git fast-import --export-marks=$gmark)
 	diff_git test2 || die "initial conversion differs"
 	upd_file_darcs test2 file2 upd_contents
-	../darcs-fast-export.py --export-marks=$dmark --import-marks=$dmark test2 --working test2.git/darcs/repo |(cd test2.git; git fast-import --export-marks=$gmark --import-marks=$gmark)
+	../darcs-fast-export --export-marks=$dmark --import-marks=$dmark test2 --working test2.git/darcs/repo |(cd test2.git; git fast-import --export-marks=$gmark --import-marks=$gmark)
 	diff_git test2 || die "update differs"
 else
-	../darcs-fast-export.py test2
+	../darcs-fast-export test2
 fi

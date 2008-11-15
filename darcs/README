@@ -47,7 +47,7 @@ repository. It will print the git fast-import format on standard output
 There are some command line options, which will be explained if you
 type:
 ----
-$ darcs-fast-export.py --help
+$ darcs-fast-export --help
 ----
 
 === Example
@@ -56,7 +56,7 @@ Assuming that `test/` is a darcs repo, you could do this:
 ----
 $ mkdir test.git
 $ git --bare init
-$ darcs-fast-export.py test |(cd test.git; git fast-import)
+$ darcs-fast-export test |(cd test.git; git fast-import)
 ----
 
 To verify the results, you could compare them:

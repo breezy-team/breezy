@@ -11,11 +11,11 @@ if [ "$1" != "--stdout" ]; then
 	dmark="$(pwd)/test2.dfe-marks"
 	bmark="$(pwd)/test2.bfi-marks"
 	rm -f $mark $gmark
-	../darcs-fast-export.py --export-marks=$dmark test2 |(cd test2.bzr; bzr fast-import --export-marks=$bmark -)
+	../darcs-fast-export --export-marks=$dmark test2 |(cd test2.bzr; bzr fast-import --export-marks=$bmark -)
 	diff_bzr test2 || die "initial conversion differs"
 	upd_file_darcs test2 file2 upd_contents
-	../darcs-fast-export.py --export-marks=$dmark --import-marks=$dmark test2 |(cd test2.bzr; bzr fast-import --export-marks=$bmark --import-marks=$bmark -)
+	../darcs-fast-export --export-marks=$dmark --import-marks=$dmark test2 |(cd test2.bzr; bzr fast-import --export-marks=$bmark --import-marks=$bmark -)
 	diff_bzr test2 || die "update differs"
 else
-	../darcs-fast-export.py test2
+	../darcs-fast-export test2
 fi

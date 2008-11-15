@@ -8,11 +8,11 @@ cd test2.git
 git --bare init
 cd ..
 if [ "$1" != "--stdout" ]; then
-	../darcs-fast-export.py test2 |(cd test2.git; git fast-import)
+	../darcs-fast-export test2 |(cd test2.git; git fast-import)
 	if [ $? = 0 ]; then
 		diff_git test2
 		exit $?
 	fi
 else
-	../darcs-fast-export.py test2
+	../darcs-fast-export test2
 fi
