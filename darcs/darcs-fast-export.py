@@ -155,17 +155,16 @@ sys.stdout.flush()
 darcs2 = False
 directpatch = True
 cwd = os.getcwd()
+if os.path.exists(os.path.join(origin, "_darcs", "format")):
+	sock = open(os.path.join(origin, "_darcs", "format"))
+	format = [x.strip() for x in sock]
+	sock.close()
+	darcs2 = 'darcs-2' in format
+	directpatch = not 'hashed' in format
 if not options.import_marks:
-# init the tmp darcs repo
+	# init the tmp darcs repo
 	os.mkdir(working)
 	os.chdir(working)
-	if os.path.exists(os.path.join(origin, "_darcs", "format")):
-		sock = open(os.path.join(origin, "_darcs", "format"))
-		format = [x.strip() for x in sock]
-		sock.close()
-		darcs2 = 'darcs-2' in format
-		directpatch = not 'hashed' in format
-
 	if darcs2:
 		os.system("darcs init --darcs-2")
 	else:
