@@ -854,10 +854,10 @@ class TestIterInterestingNodes(TestCaseWithStore):
         iter_nodes = chk_map.iter_interesting_nodes(store, interesting_keys,
                                                     uninteresting_keys)
         for count, (exp, act) in enumerate(izip(expected, iter_nodes)):
-            exp_record_keys, exp_chks, exp_items = exp
-            records, chks, items = act
-            exp_tuple = (sorted(exp_record_keys), sorted(exp_chks), items)
-            act_tuple = (sorted(records.keys()), sorted(chks), items)
+            exp_record_keys, exp_items = exp
+            records, items = act
+            exp_tuple = (sorted(exp_record_keys), items)
+            act_tuple = (sorted(records.keys()), items)
             self.assertEqual(exp_tuple, act_tuple)
         self.assertEqual(len(expected), count + 1)
 
@@ -865,14 +865,14 @@ class TestIterInterestingNodes(TestCaseWithStore):
         basis = self.get_map_key({})
         target = self.get_map_key({('a',): 'content'})
         self.assertIterInteresting(
-            [([target], [target], [(('a',), 'content')])],
+            [([target], [(('a',), 'content')])],
             [target], [basis])
 
     def test_one_to_none_key(self):
         basis = self.get_map_key({('a',): 'content'})
         target = self.get_map_key({})
         self.assertIterInteresting(
-            [([target], [target], [])],
+            [([target], [])],
             [target], [basis])
 
     def test_common_pages(self):
@@ -888,8 +888,8 @@ class TestIterInterestingNodes(TestCaseWithStore):
         b_key = ('sha1:1d7a45ded01ab77c069350c0e290ae34db5b549b',)
         # This should return the root node, and the node for the 'b' key
         self.assertIterInteresting(
-            [([target], [target], []),
-             ([b_key], [b_key], [(('b',), 'other content')])],
+            [([target], []),
+             ([b_key], [(('b',), 'other content')])],
             [target], [basis])
 
     def test_common_sub_page(self):
@@ -915,9 +915,9 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the leaf aab node
         aab_key = ('sha1:10567a3bfcc764fb8d8d9edaa28c0934ada366c5',)
         self.assertIterInteresting(
-            [([target], [target], []),
-             ([aa_key], [aa_key], []),
-             ([aab_key], [aab_key], [(('aab',), 'new')])],
+            [([target], []),
+             ([aa_key], []),
+             ([aab_key], [(('aab',), 'new')])],
             [target], [basis])
 
     def test_multiple_maps(self):
@@ -944,8 +944,8 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the leaf bba node
         bba_key = ('sha1:5ce6a69a21060222bb0a5b48fdbfcca586cc9183',)
         self.assertIterInteresting(
-            [([target1, target2], [target1, target2], []),
-             ([aa_key, bb_key], [aa_key, bb_key], []),
-             ([aac_key, bba_key], [aac_key, bba_key],
+            [([target1, target2], []),
+             ([aa_key, bb_key], []),
+             ([aac_key, bba_key],
               [(('aac',), 'target1'), (('bba',), 'target2')]),
             ], [target1, target2], [basis1, basis2])

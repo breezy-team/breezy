@@ -918,7 +918,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
     interesting_items.difference_update(all_uninteresting_items)
     records = dict((record.key, record) for record in interesting_records
                     if record.key not in all_uninteresting_chks)
-    yield records, records.keys(), interesting_items
+    yield records, interesting_items
     interesting_keys.difference_update(all_uninteresting_chks)
 
     chks_to_read = interesting_keys
@@ -943,5 +943,5 @@ def iter_interesting_nodes(store, interesting_root_keys,
                 #       it is? It implies duplicated key,value pairs on
                 #       different pages
                 # all_uninteresting_items.update(interesting_items)
-        yield records, chks_to_read, interesting_items
+        yield records, interesting_items
         chks_to_read = next_chks
