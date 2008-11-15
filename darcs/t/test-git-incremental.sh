@@ -16,6 +16,9 @@ if [ "$1" != "--stdout" ]; then
 	upd_file_darcs test file2 upd_contents
 	../darcs-fast-export --export-marks=$dmark --import-marks=$dmark test |(cd test.git; git fast-import --export-marks=$gmark --import-marks=$gmark)
 	diff_git test || die "update differs"
+	upd_file_darcs test hungarian.gif "binary to text"
+	../darcs-fast-export --export-marks=$dmark --import-marks=$dmark test |(cd test.git; git fast-import --export-marks=$gmark --import-marks=$gmark)
+	diff_git test || die "update2 differs"
 else
 	../darcs-fast-export test
 fi

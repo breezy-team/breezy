@@ -117,7 +117,9 @@ import_marks = []
 if options.import_marks:
 	sock = open(options.import_marks)
 	for i in sock.readlines():
-		import_marks.append(i.strip().split(' ')[1])
+		line = i.strip()
+		import_marks.append(line.split(' ')[1])
+		export_marks.append(line)
 	sock.close()
 
 # read author mapping file in gitauthors format,
