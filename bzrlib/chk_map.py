@@ -105,21 +105,24 @@ class CHKMap(object):
         """Return the tree in a string representation."""
         self._ensure_root()
         res = self._dump_tree_node(self._root_node, prefix='', indent='')
-        return ''.join(res)
+        return '\n'.join(res)
 
     def _dump_tree_node(self, node, prefix, indent):
         """For this node and all children, generate a string representation."""
         result = []
-        result.append('%s%r %s %s\n' % (indent, prefix, node.__class__.__name__,
-                                        node.key()[0]))
+        node_key = node.key()
+        if node_key is not None:
+            node_key = node_key[0]
+        result.append('%s%r %s %s' % (indent, prefix, node.__class__.__name__,
+                                        node_key))
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
-            for prefix, sub in node._items.iteritems():
+            for prefix, sub in sorted(node._items.iteritems()):
                 result.extend(self._dump_tree_node(sub, prefix, indent + '  '))
         else:
-            for key, value in node._items.iteritems():
-                result.append("      %r %r\n" % (key, value))
+            for key, value in sorted(node._items.iteritems()):
+                result.append('      %r %r' % (key, value))
         return result
 
     @classmethod
@@ -381,6 +384,14 @@ class Node(object):
         # The pointers/values this node has - meaning defined by child classes.
         self._items = {}
 
+    def __repr__(self):
+        items_str = sorted(self._items)
+        if len(items_str) > 20:
+            items_str = items_str[16] + '...]'
+        return '%s(key:%s len:%s size:%s max:%s items:%s)' % (
+            self.__class__.__name__, self._key, self._len, self._size,
+            self._maximum_size, items_str)
+
     def key(self):
         return self._key
 
@@ -454,13 +465,18 @@ class LeafNode(Node):
             for item in self._items.iteritems():
                 yield item
 
+    def _key_value_len(self, key, value):
+        # TODO: Should probably be done without actually joining the key, but
+        #       then that can be done via the C extension
+        return 2 + len('\x00'.join(key)) + len(value)
+
     def map(self, store, key, value):
         """Map key to value."""
         if key in self._items:
-            self._size -= 2 + len('\x00'.join(key)) + len(self._items[key])
+            self._size -= self._key_value_len(key, self._items[key])
             self._len -= 1
         self._items[key] = value
-        self._size += 2 + len('\x00'.join(key)) + len(value)
+        self._size += self._key_value_len(key, value)
         self._len += 1
         self._key = None
         if (self._maximum_size and self._current_size() > self._maximum_size and
