@@ -155,7 +155,7 @@ class Branch(object):
                 master = self.get_master_branch(possible_transports)
                 if master is not None:
                     # return the master branch value
-                    config = master.get_config()
+                    return master.nick
             except errors.BzrError, e:
                 # Silently fall back to local implicit nick if the master is
                 # unavailable
