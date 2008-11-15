@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-#   d2x - convert darcs repos to git or hg using fast-import
+#   d2x - convert darcs repos to git, bzr or hg using fast-import
 #
 #   Copyright (c) 2008 by Miklos Vajna <vmiklos@frugalware.org>
 #
@@ -46,7 +46,7 @@ esac
 [ -n "$format" ] || die "Target format is not given!"
 
 case $format in
-	git|bzr)
+	git|bzr|hg)
 		;;
 	*)
 		die "The requested target format is not yet supported!"
@@ -80,6 +80,10 @@ if [ ! -f $dmark ]; then
 			darcs-fast-export --export-marks=$dmark --working $origin.$format/darcs/repo $origin | \
 				bzr fast-import --export-marks=$fmark -
 			;;
+		hg)
+			hg init
+			darcs-fast-export $origin | \
+				hg fastimport /dev/stdin
 	esac
 else
 	case $format in
@@ -92,6 +96,9 @@ else
 			darcs-fast-export --export-marks=$dmark --import-marks=$dmark \
 				--working $origin.$format/darcs/repo $origin | \
 				bzr fast-import --export-marks=$fmark --import-marks=$fmark -
+			;;
+		hg)
+			die "Incremental conversion to hg is not yet supported by hg fastimport."
 			;;
 	esac
 fi
