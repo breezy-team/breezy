@@ -564,3 +564,7 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
+
+diff_writer_registry = _mod_registry.Registry()
+diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
+diff_writer_registry.default_key = 'plain'

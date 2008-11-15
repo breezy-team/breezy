@@ -4757,13 +4757,20 @@ class cmd_shelve(Command):
         'revision',
         Option('all', help='Shelve all changes.'),
         'message',
+        RegistryOption('writer', 'Method to use for writing diffs.',
+                       bzrlib.option.diff_writer_registry,
+                       value_switches=True, enum_switch=False)
     ]
     _see_also = ['unshelve']
 
-    def run(self, revision=None, all=False, file_list=None, message=None):
+    def run(self, revision=None, all=False, file_list=None, message=None,
+            writer=None):
         from bzrlib.shelf_ui import Shelver
+        if writer is None:
+            writer = bzrlib.option.diff_writer_registry.get()
         try:
-            Shelver.from_args(revision, all, file_list, message).run()
+            Shelver.from_args(writer(sys.stdout), revision, all, file_list,
+                              message).run()
         except errors.UserAbort:
             return 0
 
