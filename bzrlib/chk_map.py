@@ -830,6 +830,36 @@ def _deserialise(bytes, key):
         raise AssertionError("Unknown node type.")
 
 
+def _find_children_info(store, interesting_keys, uninteresting_keys):
+    """Read the associated records, and determine what is interesting."""
+    uninteresting_keys = set(uninteresting_keys)
+    chks_to_read = uninteresting_keys.union(interesting_keys)
+    next_uninteresting = set()
+    next_interesting = set()
+    uninteresting_items = set()
+    interesting_items = set()
+    interesting_records = []
+    for record in store.get_record_stream(chks_to_read, 'unordered', True):
+        node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+        if record.key in uninteresting_keys:
+            if isinstance(node, InternalNode):
+                # uninteresting_prefix_chks.update(node._items.iteritems())
+                chks = node._items.values()
+                next_uninteresting.update(chks)
+            else:
+                uninteresting_items.update(node._items.iteritems())
+        else:
+            interesting_records.append(record)
+            if isinstance(node, InternalNode):
+                # uninteresting_prefix_chks.update(node._items.iteritems())
+                chks = node._items.values()
+                next_interesting.update(chks)
+            else:
+                interesting_items.update(node._items.iteritems())
+    return (next_uninteresting, uninteresting_items,
+            next_interesting, interesting_records, interesting_items)
+
+
 def iter_interesting_nodes(store, interesting_root_keys,
                            uninteresting_root_keys):
     """Given root keys, find interesting nodes.
@@ -844,45 +874,29 @@ def iter_interesting_nodes(store, interesting_root_keys,
     :return: Yield
         (interesting records, interesting chk's, interesting key:values)
     """
-    uninteresting_keys = set(uninteresting_root_keys)
-    interesting_keys = set(interesting_root_keys)
     # What about duplicates with uninteresting_root_keys?
-    interesting_chks = set(interesting_keys)
     # TODO: consider that it may be more memory efficient to use the 20-byte
     #       sha1 string, rather than tuples of hexidecimal sha1 strings.
-    uninteresting_chks = set(uninteresting_keys)
-    uninteresting_key_values = set()
+    all_uninteresting_chks = set(uninteresting_root_keys)
+    all_uninteresting_items = set()
 
-    # XXX: First attempt, UGLY, UGLY, UGLY
-    # First, read all the root nodes, and filter out anything that matches
-    # exactly.
-    chks_to_read = uninteresting_keys.union(interesting_keys)
-    next_uninteresting = set()
-    next_interesting = set()
-    interesting_key_values = set()
-    interesting_records = []
-    for record in store.get_record_stream(chks_to_read, 'unordered', True):
-        node = _deserialise(record.get_bytes_as('fulltext'), record.key)
-        if record.key in uninteresting_keys:
-            if isinstance(node, InternalNode):
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                next_uninteresting.update(chks)
-            else:
-                uninteresting_key_values.update(node._items.iteritems())
-        else:
-            interesting_records.append(record)
-            if isinstance(node, InternalNode):
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                next_interesting.update(chks)
-            else:
-                interesting_key_values.update(node._items.iteritems())
-    uninteresting_chks.update(next_uninteresting)
-    next_uninteresting.difference_update(next_interesting)
+    # First step, find the direct children of both the interesting and
+    # uninteresting set
+    (uninteresting_keys, uninteresting_items,
+     interesting_keys, interesting_records,
+     interesting_items) = _find_children_info(store, interesting_root_keys,
+                                              uninteresting_root_keys)
+    all_uninteresting_chks.update(uninteresting_keys)
+    all_uninteresting_items.update(uninteresting_items)
+    del uninteresting_items
+    # Note: Exact matches between interesting and uninteresting do not need
+    #       to be search further. Non-exact matches need to be searched in case
+    #       there is a future exact-match
+    uninteresting_keys.difference_update(interesting_keys)
+
     # Second, find the full set of uninteresting bits reachable by the
     # uninteresting roots
-    chks_to_read = next_uninteresting
+    chks_to_read = uninteresting_keys
     while chks_to_read:
         next_chks = set()
         for record in store.get_record_stream(chks_to_read, 'unordered', True):
@@ -894,39 +908,40 @@ def iter_interesting_nodes(store, interesting_root_keys,
                 # TODO: We remove the entries that are already in
                 #       uninteresting_chks ?
                 next_chks.update(chks)
-                uninteresting_chks.update(chks)
+                all_uninteresting_chks.update(chks)
             else:
-                uninteresting_key_values.update(node._items.iteritems())
+                all_uninteresting_items.update(node._items.iteritems())
         chks_to_read = next_chks
-    interesting_key_values.difference_update(uninteresting_key_values)
-    records = {}
-    for record in interesting_records:
-        if record.key not in uninteresting_chks:
-            records[record.key] = record
-    yield records, records.keys(), interesting_key_values
-    next_interesting.difference_update(uninteresting_chks)
 
-    # Is it possible that we would need to filter out the references we know to
-    # be uninteresting, eg: interesting_keys.difference(uninteresting_chks)
-    chks_to_read = next_interesting
+    # Now that we know everything uninteresting, we can yield information from
+    # our first request
+    interesting_items.difference_update(all_uninteresting_items)
+    records = dict((record.key, record) for record in interesting_records
+                    if record.key not in all_uninteresting_chks)
+    yield records, records.keys(), interesting_items
+    interesting_keys.difference_update(all_uninteresting_chks)
+
+    chks_to_read = interesting_keys
     while chks_to_read:
         next_chks = set()
         records = {}
         interesting_items = []
-        interesting_chks = set()
         for record in store.get_record_stream(chks_to_read, 'unordered', True):
             records[record.key] = record
-            # TODO: Handle 'absent'
+            # TODO: Handle 'absent'?
             node = _deserialise(record.get_bytes_as('fulltext'), record.key)
             if isinstance(node, InternalNode):
                 chks = [chk for chk in node._items.itervalues()
-                             if chk not in uninteresting_chks]
+                             if chk not in all_uninteresting_chks]
                 next_chks.update(chks)
                 # These are now uninteresting everywhere else
-                uninteresting_chks.update(chks)
+                all_uninteresting_chks.update(chks)
             else:
                 interesting_items = [item for item in node._items.iteritems()
-                                     if item not in uninteresting_key_values]
-                uninteresting_key_values.update(interesting_items)
+                                     if item not in all_uninteresting_items]
+                # TODO: This shouldn't be necessary, can we find a case where
+                #       it is? It implies duplicated key,value pairs on
+                #       different pages
+                # all_uninteresting_items.update(interesting_items)
         yield records, chks_to_read, interesting_items
         chks_to_read = next_chks
