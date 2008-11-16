@@ -77,16 +77,17 @@ fmark="$origin.$format/darcs/ffi-marks"
 mkdir -p $origin.$format/darcs
 cd $origin.$format
 
+common_opts="--working $origin.$format/darcs/repo $origin"
 if [ ! -f $dmark ]; then
 	case $format in
 		git)
 			git --bare init
-			darcs-fast-export --export-marks=$dmark --working $origin.$format/darcs/repo $origin | \
+			darcs-fast-export --export-marks=$dmark $common_opts | \
 				git fast-import --export-marks=$fmark
 			;;
 		bzr)
 			bzr init-repo .
-			darcs-fast-export --export-marks=$dmark --working $origin.$format/darcs/repo $origin | \
+			darcs-fast-export --export-marks=$dmark $common_opts | \
 				bzr fast-import --export-marks=$fmark -
 			;;
 		hg)
@@ -98,14 +99,12 @@ else
 	case $format in
 		git)
 			check_up_to_date "git rev-list HEAD |wc -l"
-			darcs-fast-export --export-marks=$dmark --import-marks=$dmark \
-				--working $origin.$format/darcs/repo $origin | \
+			darcs-fast-export --export-marks=$dmark --import-marks=$dmark $common_opts | \
 				git fast-import --export-marks=$fmark --import-marks=$fmark
 			;;
 		bzr)
 			check_up_to_date "cd master; bzr revno"
-			darcs-fast-export --export-marks=$dmark --import-marks=$dmark \
-				--working $origin.$format/darcs/repo $origin | \
+			darcs-fast-export --export-marks=$dmark --import-marks=$dmark $common_opts | \
 				bzr fast-import --export-marks=$fmark --import-marks=$fmark -
 			;;
 		hg)
