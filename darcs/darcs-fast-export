@@ -78,6 +78,9 @@ def get_author(patch):
 		author = "darcs-fast-export <darcs-fast-export>"
 	elif not ">" in author:
 		author = "%s <%s>" % (author.split('@')[0], author)
+	# avoid double quoting
+	elif author[0] == '"' and author[-1] == '"':
+		author = author[1:-1]
 	return author.encode('utf-8')
 
 def get_date(patch):
