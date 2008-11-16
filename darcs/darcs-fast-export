@@ -118,6 +118,8 @@ if options.import_marks:
 	sock = open(options.import_marks)
 	for i in sock.readlines():
 		line = i.strip()
+		if not len(line):
+			continue
 		import_marks.append(line.split(' ')[1])
 		export_marks.append(line)
 	sock.close()
@@ -261,6 +263,7 @@ if options.export_marks:
 	progress("writing export marks")
 	sock = open(options.export_marks, 'w')
 	sock.write("\n".join(export_marks))
+	sock.write("\n")
 	sock.close()
 
 progress("finished")
