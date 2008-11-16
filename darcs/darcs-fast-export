@@ -142,7 +142,10 @@ logfile = "%s.log" % origin
 logsock = open(logfile, "w")
 
 progress("getting list of patches")
-sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
+if not len(import_marks):
+	sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
+else:
+	sock = os.popen("darcs changes --xml --reverse  --repo %s --from-match 'hash %s'" % (origin, import_marks[-1]))
 buf = sock.read()
 sock.close()
 # this is hackish. we need to escape some bad chars, otherwise the xml
@@ -181,19 +184,22 @@ if not options.import_marks:
 else:
 	os.chdir(working)
 
+count = 1
 patches = xmldoc.getElementsByTagName('patch')
+if len(import_marks):
+	patches = patches[1:]
+	count = len(import_marks) + 1
 # this may be huge and we need it many times
 patchnum = len(patches)
 
-progress("starting export, repo has %d patches" % patchnum)
-count = 1
+if not len(import_marks):
+	progress("starting export, repo has %d patches" % patchnum)
+else:
+	progress("continuing export, %d patches to convert" % patchnum)
 paths = []
 for i in patches:
 	# apply the patch
 	hash = i.attributes['hash'].value
-	if hash in import_marks:
-		count += 1
-		continue
 	if directpatch:
 		buf = ["\nNew patches:\n"]
 		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
