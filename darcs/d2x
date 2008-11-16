@@ -77,7 +77,7 @@ fmark="$origin.$format/darcs/ffi-marks"
 mkdir -p $origin.$format/darcs
 cd $origin.$format
 
-common_opts="--working $origin.$format/darcs/repo $origin"
+common_opts="--working $origin.$format/darcs/repo --logfile $origin.$format/darcs/log $origin"
 if [ ! -f $dmark ]; then
 	case $format in
 		git)

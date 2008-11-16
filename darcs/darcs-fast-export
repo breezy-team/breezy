@@ -108,6 +108,8 @@ opp.add_option("--authors-file", metavar="F",
 	help="read author transformations in old=new format from F")
 opp.add_option("--working", metavar="W",
 	help="working directory which is removed at the end of non-incremental conversions")
+opp.add_option("--logfile", metavar="L",
+	help="log file which contains the output of external programs invoked during the conversion")
 (options, args) = opp.parse_args()
 if len(args) < 1:
 	opp.error("darcsrepo required")
@@ -138,8 +140,11 @@ if options.working:
 else:
 	working = "%s.darcs" % origin
 patchfile = "%s.patch" % origin
-logfile = "%s.log" % origin
-logsock = open(logfile, "w")
+if options.logfile:
+	logfile = os.path.abspath(options.logfile)
+else:
+	logfile = "%s.log" % origin
+logsock = open(logfile, "a")
 
 progress("getting list of patches")
 if not len(import_marks):
