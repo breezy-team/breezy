@@ -166,6 +166,91 @@ class TestMap(TestCaseWithStore):
                              "      ('bbb',) 'v'",
                              chkmap._dump_tree())
 
+    def test_deep_splitting(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(40)
+        chkmap.map(('aaaaaaaa',), 'v')
+        chkmap.map(('aaaaabaa',), 'v')
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaaaaaaa',) 'v'\n"
+                             "      ('aaaaabaa',) 'v'",
+                             chkmap._dump_tree())
+        chkmap.map(('aaabaaaa',), 'v')
+        chkmap.map(('aaababaa',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaaa' LeafNode None\n"
+                             "      ('aaaaaaaa',) 'v'\n"
+                             "      ('aaaaabaa',) 'v'\n"
+                             "  'aaab' LeafNode None\n"
+                             "      ('aaabaaaa',) 'v'\n"
+                             "      ('aaababaa',) 'v'",
+                             chkmap._dump_tree())
+        chkmap.map(('aaabacaa',), 'v')
+        chkmap.map(('aaabadaa',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaaa' LeafNode None\n"
+                             "      ('aaaaaaaa',) 'v'\n"
+                             "      ('aaaaabaa',) 'v'\n"
+                             "  'aaab' InternalNode None\n"
+                             "    'aaabaa' LeafNode None\n"
+                             "      ('aaabaaaa',) 'v'\n"
+                             "    'aaabab' LeafNode None\n"
+                             "      ('aaababaa',) 'v'\n"
+                             "    'aaabac' LeafNode None\n"
+                             "      ('aaabacaa',) 'v'\n"
+                             "    'aaabad' LeafNode None\n"
+                             "      ('aaabadaa',) 'v'",
+                             chkmap._dump_tree())
+        chkmap.map(('aaababba',), 'v')
+        chkmap.map(('aaababca',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaaa' LeafNode None\n"
+                             "      ('aaaaaaaa',) 'v'\n"
+                             "      ('aaaaabaa',) 'v'\n"
+                             "  'aaab' InternalNode None\n"
+                             "    'aaabaa' LeafNode None\n"
+                             "      ('aaabaaaa',) 'v'\n"
+                             "    'aaabab' InternalNode None\n"
+                             "      'aaababa' LeafNode None\n"
+                             "      ('aaababaa',) 'v'\n"
+                             "      'aaababb' LeafNode None\n"
+                             "      ('aaababba',) 'v'\n"
+                             "      'aaababc' LeafNode None\n"
+                             "      ('aaababca',) 'v'\n"
+                             "    'aaabac' LeafNode None\n"
+                             "      ('aaabacaa',) 'v'\n"
+                             "    'aaabad' LeafNode None\n"
+                             "      ('aaabadaa',) 'v'",
+                             chkmap._dump_tree())
+        # Now we add a node that should fit around an existing InternalNode,
+        # but has a slightly different key prefix, which causes a new
+        # InternalNode split
+        chkmap.map(('aaabDaaa',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaaa' LeafNode None\n"
+                             "      ('aaaaaaaa',) 'v'\n"
+                             "      ('aaaaabaa',) 'v'\n"
+                             "  'aaab' InternalNode None\n"
+                             "    'aaabD' LeafNode None\n"
+                             "      ('aaabDaaa',) 'v'\n"
+                             "    'aaaba' InternalNode None\n"
+                             "      'aaabaa' LeafNode None\n"
+                             "      ('aaabaaaa',) 'v'\n"
+                             "      'aaabab' InternalNode None\n"
+                             "        'aaababa' LeafNode None\n"
+                             "      ('aaababaa',) 'v'\n"
+                             "        'aaababb' LeafNode None\n"
+                             "      ('aaababba',) 'v'\n"
+                             "        'aaababc' LeafNode None\n"
+                             "      ('aaababca',) 'v'\n"
+                             "      'aaabac' LeafNode None\n"
+                             "      ('aaabacaa',) 'v'\n"
+                             "      'aaabad' LeafNode None\n"
+                             "      ('aaabadaa',) 'v'",
+                             chkmap._dump_tree())
+
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
         # all the keys.

@@ -602,6 +602,7 @@ class InternalNode(Node):
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
+        assert self._node_width == len(self._prefix) + 1
         self._items[prefix] = node
         self._key = None
 
@@ -683,23 +684,34 @@ class InternalNode(Node):
         if not len(self._items):
             raise AssertionError("cant map in an empty InternalNode.")
         serialised_key = self._serialised_key(key)
+        assert self._node_width == len(self._prefix) + 1
         if not serialised_key.startswith(self._prefix):
+            # This key doesn't fit in this index, so we need to split at the
+            # point where it would fit.
+            # XXX: Do we need the serialised_key in its maximum length?
             new_prefix = self.unique_serialised_prefix(serialised_key)
             new_parent = InternalNode(new_prefix)
             new_parent.set_maximum_size(self._maximum_size)
             new_parent._key_width = self._key_width
             new_parent.add_node(self._prefix[:len(new_prefix)+1], self)
+            assert new_parent._node_width == len(new_parent._prefix) + 1
             return new_parent.map(store, key, value)
         children = self._iter_nodes(store, key_filter=[key])
         if children:
             child = children[0]
+            # if isinstance(child, InternalNode):
+            #     child_prefix = child._prefix
+            #     child_ser_key = child._serialised_key(key)
+            #     if not child_ser_key.startswith(child_prefix):
+            #         import pdb; pdb.set_trace()
         else:
             # new child needed:
             child = self._new_child(serialised_key, LeafNode)
         old_len = len(child)
         prefix, node_details = child.map(store, key, value)
         if len(node_details) == 1:
-            # child may have shrunk, or might be the same.
+            # child may have shrunk, or might be a new node
+            child = node_details[0][1]
             self._len = self._len - old_len + len(child)
             self._items[serialised_key] = child
             self._key = None
