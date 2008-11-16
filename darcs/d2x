@@ -32,6 +32,15 @@ die()
 	exit 1
 }
 
+check_up_to_date()
+{
+	upstreamnum=$(cd $origin; darcs show repo|grep 'Num Patches'|sed 's/.*: //')
+	if [ "$upstreamnum" = "$(eval $*)" ]; then
+		echo "No remote changes to pull!"
+		exit 0
+	fi
+}
+
 case $1 in
 	-h|--help)
 		usage
@@ -88,11 +97,13 @@ if [ ! -f $dmark ]; then
 else
 	case $format in
 		git)
+			check_up_to_date "git rev-list HEAD |wc -l"
 			darcs-fast-export --export-marks=$dmark --import-marks=$dmark \
 				--working $origin.$format/darcs/repo $origin | \
 				git fast-import --export-marks=$fmark --import-marks=$fmark
 			;;
 		bzr)
+			check_up_to_date "cd master; bzr revno"
 			darcs-fast-export --export-marks=$dmark --import-marks=$dmark \
 				--working $origin.$format/darcs/repo $origin | \
 				bzr fast-import --export-marks=$fmark --import-marks=$fmark -

@@ -12,6 +12,8 @@ if [ "$1" != "--stdout" ]; then
 	upd_file_darcs test2 hungarian.gif "binary to text"
 	d2x -f bzr test2
 	diff_bzr test2 || die "update2 differs"
+	d2x -f bzr test2
+	diff_bzr test2 || die "update3 (noop) differs"
 else
 	darcs-fast-export test2
 fi
