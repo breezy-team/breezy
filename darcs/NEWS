@@ -1,6 +1,7 @@
 VERSION         DESCRIPTION
 -----------------------------------------------------------------------------
-              - new --help, --encoding, --authors-file and --working options
+              - new --help, --encoding, --authors-file, --working and
+                --logfile options
               - add "hashed" support (see darcs init -h)
               - add incremental conversion support for darcs1 as well
               - add d2x wrapper script
