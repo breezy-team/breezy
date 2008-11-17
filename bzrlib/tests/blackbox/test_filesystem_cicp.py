@@ -163,3 +163,7 @@ class TestIncorrectUserCase(ExternalBase):
         # up the chain from WorkingTree into MutableTree.
         raise KnownFailure('case_sensitive attr needs to move to MutableTree?')
         self.check_output('\n', 'add mixedcase')
+
+    # The following commands need tests and/or cicp lovin':
+    # update, remove, file_id, file_path, diff, log, touching_revisions, ls,
+    # ignore, cat, revert.
