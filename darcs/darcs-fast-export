@@ -71,16 +71,23 @@ def get_patchname(patch):
 	return "".join(ret).encode('utf-8')
 
 def get_author(patch):
+	"""darcs allows any freeform string, but fast-import has a more
+	strict format, so fix up broken author names here."""
+
 	author = patch.attributes['author'].value
 	if author in authormap:
 		author = authormap[author]
 	if not len(author):
 		author = "darcs-fast-export <darcs-fast-export>"
+	# add missing name
 	elif not ">" in author:
 		author = "%s <%s>" % (author.split('@')[0], author)
 	# avoid double quoting
 	elif author[0] == '"' and author[-1] == '"':
 		author = author[1:-1]
+	# name after email
+	elif author[-1] != '>':
+		author = author[author.index('>')+2:] + ' ' + author[:author.index('>')+1]
 	return author.encode('utf-8')
 
 def get_date(patch):
