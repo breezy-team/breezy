@@ -322,14 +322,14 @@ class Tree(object):
         raise NotImplementedError(self.get_symlink_target)
 
     def get_canonical_path(self, path):
-        """Returns the first entry that case-insensitively matches the input.
+        """Returns the first path that case-insensitively matches the input.
 
-        If the path matches exactly, it is returned. If no path matches exactly
+        If a path matches exactly, it is returned. If no path matches exactly
         but more than one path matches case-insensitively, it is implementation
         defined which is returned.
 
         If no path matches case-insensitively, the input path is returned, but
-        with as many entries that do exist changed to their canonical form.
+        with as many path entries that do exist changed to their canonical form.
 
         :param path: A path, relative to the root of the tree.
         :return: The input path adjusted to account for existing elements that
