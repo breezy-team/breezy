@@ -705,12 +705,11 @@ class cmd_mv(Command):
                     # pathjoin with an empty tail adds a slash, which breaks
                     # relpath :(
                     dest_parent_fq = tree.basedir
-           
+
                 dest_tail = osutils.canonical_relpath(
                                 dest_parent_fq,
                                 osutils.pathjoin(dest_parent_fq, dest_tail))
-            dest = osutils.pathjoin(dest_parent, dest_tail)    
-            note("Renaming %s -> %s", src, dest)
+            dest = osutils.pathjoin(dest_parent, dest_tail)
             tree.rename_one(src, dest, after=after)
             self.outf.write("%s => %s\n" % (src, dest))
 
