@@ -355,6 +355,12 @@ class Tree(object):
         If no path matches case-insensitively, the input path is returned, but
         with as many path entries that do exist changed to their canonical form.
 
+        NOTE: There is a risk that this will cause O(N) behaviour if called
+        for every path in a working tree. However, it is expected this should
+        only be used on path specified by the users. A cache with lifetime
+        controlled by the caller would probably resolve this if it becomes a
+        problem.
+
         :param path: A path, relative to the root of the tree.
         :return: The input path adjusted to account for existing elements that
         match case insensitively.
