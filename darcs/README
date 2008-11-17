@@ -83,10 +83,11 @@ $ git clone git://vmiklos.hu/darcs-fast-export
 
 darcs-fast-export has been tested with the following versions:
 
-Darcs version:
+Darcs version (see http://bugs.darcs.net/issue844[this bug] on why do
+you need a snapshot):
 ----
 $ darcs --version
-2.1.0 (release)
+2.1.2 (+ 266 patches)
 ----
 
 Git version:
