@@ -20,7 +20,7 @@
 import os
 
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import CaseInsCasePresFilenameFeature
+from bzrlib.tests import CaseInsCasePresFilenameFeature, KnownFailure
 
 class TestIncorrectUserCase(ExternalBase):
     """Tests for when the filename has the 'correct' case on disk, but the user
@@ -36,6 +36,7 @@ class TestIncorrectUserCase(ExternalBase):
         self.build_tree(['CamelCaseParent/', 'lowercaseparent/'])
         self.build_tree_contents([('CamelCaseParent/CamelCase', 'camel case'),
                                   ('lowercaseparent/lowercase', 'lower case'),
+                                  ('lowercaseparent/mixedCase', 'mixedCasecase'),
                                  ])
         return wt
 
@@ -98,6 +99,36 @@ class TestIncorrectUserCase(ExternalBase):
         self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase\n',
                           'mv camelcaseparent/camelcase camelcaseparent/NewCamelCase')
 
+    def test_mv_newname_after(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+        self.run_bzr('ci -m message')
+        os.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/NewCamelCase')
+
+        # In this case we can specify the incorrect case for the destination,
+        # as we use --after, so the file-system is sniffed.
+        self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase\n',
+                          'mv --after camelcaseparent/camelcase camelcaseparent/newcamelcase')
+
+    def test_mv_newname_root(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+        self.run_bzr('ci -m message')
+
+        self.check_output('CamelCaseParent => NewCamelCaseParent\n',
+                          'mv camelcaseparent NewCamelCaseParent')
+
+    def test_mv_newname_root_after(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+        self.run_bzr('ci -m message')
+        os.rename('CamelCaseParent', 'NewCamelCaseParent')
+
+        # In this case we can specify the incorrect case for the destination,
+        # as we use --after, so the file-system is sniffed.
+        self.check_output('CamelCaseParent => NewCamelCaseParent\n',
+                          'mv --after camelcaseparent newcamelcaseparent')
+
     def test_mv_newcase(self):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
@@ -109,6 +140,14 @@ class TestIncorrectUserCase(ExternalBase):
         self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/camelCase\n',
                           'mv camelcaseparent/camelcase camelcaseparent/camelCase')
 
+    def test_mv_multiple(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+        self.run_bzr('ci -m message')
+        self.check_output('lowercaseparent/lowercase => CamelCaseParent/lowercase\n'
+                          'lowercaseparent/mixedCase => CamelCaseParent/mixedCase\n',
+                          'mv LOWercaseparent/LOWercase LOWercaseparent/MIXEDCase camelcaseparent')
+
     def test_re_add(self):
         """Test than when a file has 'unintentioally' changed case, we can't
         add a new entry using the new case."""
@@ -119,6 +158,8 @@ class TestIncorrectUserCase(ExternalBase):
         # 'accidently' rename the file on disk
         os.rename('MixedCase', 'mixedcase')
         # XXX - test fails: bzr adds a new entry with name differing only by
-        # case, but it shouldn't.
-        # not sure what output we expect from bzr here!
-        self.check_output('oops\n', 'add mixedcase')
+        # case, but it shouldn't - it should act as if the correct case was
+        # given.  This would seem to mean the case_sensitive attribute moves
+        # up the chain from WorkingTree into MutableTree.
+        raise KnownFailure('case_sensitive attr needs to move to MutableTree?')
+        self.check_output('\n', 'add mixedcase')
