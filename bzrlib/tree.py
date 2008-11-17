@@ -321,6 +321,42 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
+    def get_canonical_path(self, path):
+        """Returns the first entry that case-insensitively matches the input.
+
+        If the path matches exactly, it is returned. If no path matches exactly
+        but more than one path matches case-insensitively, it is implementation
+        defined which is returned.
+
+        If no path matches case-insensitively, the input path is returned, but
+        with as many entries that do exist changed to their canonical form.
+
+        :param path: A path, relative to the root of the tree.
+        :return: The input path adjusted to account for existing elements that
+        match case insensitively.
+        """
+        # First, if the path as specified exists exactly, just use it.
+        if self.path2id(path) is not None:
+            return path
+        # go walkin...
+        cur_id = self.get_root_id()
+        cur_path = ''
+        bit_iter = iter(path.split("/"))
+        for elt in bit_iter:
+            lelt = elt.lower()
+            for child in self.iter_children(cur_id):
+                child_base = os.path.basename(self.id2path(child))
+                if child_base.lower() == lelt:
+                    cur_id = child
+                    cur_path = osutils.pathjoin(cur_path, child_base)
+                    break
+            else:
+                # got to the end of this directory and no entries matched.
+                # Return what matched so far, plus the rest as specified.
+                cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
+                break
+        return cur_path
+
     def get_root_id(self):
         """Return the file_id for the root of this tree."""
         raise NotImplementedError(self.get_root_id)

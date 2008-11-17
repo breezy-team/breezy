@@ -124,3 +124,32 @@ class TestInventory(TestCaseWithTree):
         self.addCleanup(tree.unlock)
         self.assertEqual(set([]), tree.paths2ids(['file'],
                          require_versioned=False))
+
+    def test_canonical_path(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        work_tree.commit('commit 1')
+        self.assertEqual(work_tree.get_canonical_path('Dir/File'), 'dir/file')
+
+    def test_canonical_path_root(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        work_tree.commit('commit 1')
+        self.assertEqual(work_tree.get_canonical_path(''), '')
+        self.assertEqual(work_tree.get_canonical_path('/'), '/')
+
+    def test_canonical_path_invalid_all(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        work_tree.commit('commit 1')
+        self.assertEqual(work_tree.get_canonical_path('foo/bar'), 'foo/bar')
+
+    def test_canonical_invalid_child(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        work_tree.commit('commit 1')
+        self.assertEqual(work_tree.get_canonical_path('Dir/None'), 'dir/None')
