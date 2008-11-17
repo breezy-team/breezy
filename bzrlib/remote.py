@@ -462,10 +462,10 @@ class RemoteRepository(_RpcHelper):
     def has_same_location(self, other):
         return (self.__class__ == other.__class__ and
                 self.bzrdir.transport.base == other.bzrdir.transport.base)
-        
+
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
-        parents_provider = self
+        parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             other_repository.bzrdir.transport.base !=
             self.bzrdir.transport.base):
@@ -882,7 +882,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository._fetch_reconcile
 
-    def get_parent_map(self, keys):
+    def get_parent_map(self, revision_ids):
+        return self._make_parents_provider.get_parent_map(revision_ids)
+
+    def _get_parent_map(self, keys):
         """See bzrlib.Graph.get_parent_map()."""
         # Hack to build up the caching logic.
         ancestry = self._parents_map
@@ -893,7 +896,7 @@ class RemoteRepository(_RpcHelper):
         else:
             missing_revisions = set(key for key in keys if key not in ancestry)
         if missing_revisions:
-            parent_map = self._get_parent_map(missing_revisions)
+            parent_map = self._get_parent_map_rpc(missing_revisions)
             if 'hpss' in debug.debug_flags:
                 mutter('retransmitted revisions: %d of %d',
                         len(set(ancestry).intersection(parent_map)),
@@ -907,7 +910,7 @@ class RemoteRepository(_RpcHelper):
                     100.0 * len(self._requested_parents) / len(ancestry))
         return dict((k, ancestry[k]) for k in present_keys)
 
-    def _get_parent_map(self, keys):
+    def _get_parent_map_rpc(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         medium = self._client._medium
         if medium._is_remote_before((1, 2)):
@@ -1208,7 +1211,15 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository._check_for_inconsistent_revision_parents()
 
     def _make_parents_provider(self):
-        return self
+
+        class ParentsProvider(object):
+
+            def get_parent_map(instance, revision_ids):
+                return self._get_parent_map(revision_ids)
+
+        providers = [r._make_parents_provider() for r in
+                     self._fallback_repositories]
+        return graph._StackedParentsProvider([ParentsProvider()] + providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
