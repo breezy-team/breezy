@@ -324,6 +324,7 @@ class cmd_replay(Command):
     
     takes_options = ['revision', 'merge-type']
     takes_args = ['location']
+    hidden = True
 
     def run(self, location, revision=None, merge_type=None):
         from bzrlib.branch import Branch
