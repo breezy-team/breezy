@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,10 @@ called.
 import os
 import sys
 
+from bzrlib import osutils
+
 from bzrlib.lazy_import import lazy_import
+
 lazy_import(globals(), """
 import imp
 import re
@@ -41,10 +44,10 @@ import types
 import zipfile
 
 from bzrlib import (
+    _format_version_tuple,
     config,
     debug,
     errors,
-    osutils,
     trace,
     )
 from bzrlib import plugins as _mod_plugins
@@ -203,7 +206,9 @@ def load_from_dir(d):
                     break
             else:
                 continue
-        if getattr(_mod_plugins, f, None):
+        if f == '__init__':
+            continue # We don't load __init__.py again in the plugin dir
+        elif getattr(_mod_plugins, f, None):
             trace.mutter('Plugin name %s already loaded', f)
         else:
             # trace.mutter('add plugin name %s', f)
@@ -451,18 +456,29 @@ class PlugIn(object):
     def version_info(self):
         """Return the plugin's version_tuple or None if unknown."""
         version_info = getattr(self.module, 'version_info', None)
-        if version_info is not None and len(version_info) == 3:
-            version_info = tuple(version_info) + ('final', 0)
+        if version_info is not None:
+            try:
+                if isinstance(version_info, types.StringType):
+                    version_info = version_info.split('.')
+                elif len(version_info) == 3:
+                    version_info = tuple(version_info) + ('final', 0)
+            except TypeError, e:
+                # The given version_info isn't even iteratible
+                trace.log_exception_quietly()
+                version_info = (version_info,)
         return version_info
 
     def _get__version__(self):
         version_info = self.version_info()
-        if version_info is None:
+        if version_info is None or len(version_info) == 0:
             return "unknown"
-        if version_info[3] == 'final':
-            version_string = '%d.%d.%d' % version_info[:3]
-        else:
-            version_string = '%d.%d.%d%s%d' % version_info
+        try:
+            version_string = _format_version_tuple(version_info)
+        except (ValueError, TypeError, IndexError), e:
+            trace.log_exception_quietly()
+            # try to return something usefull for bad plugins, in stead of
+            # stack tracing.
+            version_string = '.'.join(map(str, version_info))
         return version_string
 
     __version__ = property(_get__version__)

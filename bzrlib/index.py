@@ -27,6 +27,7 @@ __all__ = [
 from bisect import bisect_right
 from cStringIO import StringIO
 import re
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1118,12 +1119,16 @@ class CombinedGraphIndex(object):
     in the index list.
     """
 
-    def __init__(self, indices):
+    def __init__(self, indices, reload_func=None):
         """Create a CombinedGraphIndex backed by indices.
 
         :param indices: An ordered list of indices to query for data.
+        :param reload_func: A function to call if we find we are missing an
+            index. Should have the form reload_func() => True/False to indicate
+            if reloading actually changed anything.
         """
         self._indices = indices
+        self._reload_func = reload_func
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -1181,11 +1186,16 @@ class CombinedGraphIndex(object):
             the most efficient order for the index.
         """
         seen_keys = set()
-        for index in self._indices:
-            for node in index.iter_all_entries():
-                if node[1] not in seen_keys:
-                    yield node
-                    seen_keys.add(node[1])
+        while True:
+            try:
+                for index in self._indices:
+                    for node in index.iter_all_entries():
+                        if node[1] not in seen_keys:
+                            yield node
+                            seen_keys.add(node[1])
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -1199,12 +1209,17 @@ class CombinedGraphIndex(object):
             efficient order for the index.
         """
         keys = set(keys)
-        for index in self._indices:
-            if not keys:
+        while True:
+            try:
+                for index in self._indices:
+                    if not keys:
+                        return
+                    for node in index.iter_entries(keys):
+                        keys.remove(node[1])
+                        yield node
                 return
-            for node in index.iter_entries(keys):
-                keys.remove(node[1])
-                yield node
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -1230,27 +1245,58 @@ class CombinedGraphIndex(object):
         if not keys:
             return
         seen_keys = set()
-        for index in self._indices:
-            for node in index.iter_entries_prefix(keys):
-                if node[1] in seen_keys:
-                    continue
-                seen_keys.add(node[1])
-                yield node
+        while True:
+            try:
+                for index in self._indices:
+                    for node in index.iter_entries_prefix(keys):
+                        if node[1] in seen_keys:
+                            continue
+                        seen_keys.add(node[1])
+                        yield node
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
-        
+
         For CombinedGraphIndex this is approximated by the sum of the keys of
         the child indices. As child indices may have duplicate keys this can
         have a maximum error of the number of child indices * largest number of
         keys in any index.
         """
-        return sum((index.key_count() for index in self._indices), 0)
+        while True:
+            try:
+                return sum((index.key_count() for index in self._indices), 0)
+            except errors.NoSuchFile:
+                self._reload_or_raise()
+
+    def _reload_or_raise(self):
+        """We just got a NoSuchFile exception.
+
+        Try to reload the indices, if it fails, just raise the current
+        exception.
+        """
+        if self._reload_func is None:
+            raise
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        trace.mutter('Trying to reload after getting exception: %s',
+                     exc_value)
+        if not self._reload_func():
+            # We tried to reload, but nothing changed, so we fail anyway
+            trace.mutter('_reload_func indicated nothing has changed.'
+                         ' Raising original exception.')
+            raise exc_type, exc_value, exc_traceback
 
     def validate(self):
         """Validate that everything in the index can be accessed."""
-        for index in self._indices:
-            index.validate()
+        while True:
+            try:
+                for index in self._indices:
+                    index.validate()
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
 
 class InMemoryGraphIndex(GraphIndexBuilder):

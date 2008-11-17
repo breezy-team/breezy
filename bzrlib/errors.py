@@ -134,6 +134,9 @@ class BzrError(StandardError):
             s = str(s)
         return s
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, str(self))
+
     def _get_format_string(self):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
@@ -2905,3 +2908,20 @@ class TipChangeRejected(BzrError):
     def __init__(self, msg):
         self.msg = msg
 
+
+class ShelfCorrupt(BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
+class NoSuchShelfId(BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class UserAbort(BzrError):
+
+    _fmt = 'The user aborted the operation.'

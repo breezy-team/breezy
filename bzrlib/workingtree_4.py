@@ -1625,14 +1625,11 @@ class DirStateRevisionTree(Tree):
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
-    def get_file_lines(self, file_id):
-        return osutils.split_lines(self.get_file_text(file_id))
-
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         return self.inventory[file_id].text_size
 
-    def get_file_text(self, file_id):
+    def get_file_text(self, file_id, path=None):
         return list(self.iter_files_bytes([(file_id, None)]))[0][1]
 
     def get_reference_revision(self, file_id, path=None):

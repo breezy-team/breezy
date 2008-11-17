@@ -303,8 +303,9 @@ class SmartServerRequestHandler(object):
             # with a plain string
             str_or_unicode = e.object
             if isinstance(str_or_unicode, unicode):
-                # XXX: UTF-8 might have \x01 (our seperator byte) in it.  We
-                # should escape it somehow.
+                # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
+                # byte) in it, so this encoding could cause broken responses.
+                # Newer clients use protocol v3, so will be fine.
                 val = 'u:' + str_or_unicode.encode('utf-8')
             else:
                 val = 's:' + str_or_unicode.encode('base64')
@@ -316,6 +317,12 @@ class SmartServerRequestHandler(object):
                 return FailedSmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
+        except errors.ReadError, e:
+            # cannot read the file
+            return FailedSmartServerResponse(('ReadError', e.path))
+        except errors.PermissionDenied, e:
+            return FailedSmartServerResponse(
+                ('PermissionDenied', e.path, e.extra))
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
@@ -436,6 +443,9 @@ request_handlers.register_lazy(
     'readv', 'bzrlib.smart.vfs', 'ReadvRequest')
 request_handlers.register_lazy(
     'rename', 'bzrlib.smart.vfs', 'RenameRequest')
+request_handlers.register_lazy(
+    'PackRepository.autopack', 'bzrlib.smart.packrepository',
+    'SmartServerPackRepositoryAutopack')
 request_handlers.register_lazy('Repository.gather_stats',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGatherStats')

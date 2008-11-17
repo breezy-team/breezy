@@ -282,6 +282,7 @@ class BundleWriteOperation(object):
 
     def do_write(self):
         """Write all data to the bundle"""
+        trace.note('Bundling %d revision(s).', len(self.revision_ids))
         self.repository.lock_read()
         try:
             self.bundle.begin()
