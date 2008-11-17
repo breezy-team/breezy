@@ -941,16 +941,22 @@ def relpath(base, path):
         return ''
 
 
-def _win32_canonical_relpath(base, path):
+def cicp_canonical_relpath(base, path):
     """Return the canonical path relative to base.
 
     Like relpath, but on case-insensitive-case-preserving file-systems, this
-    will return the relpath as stored on the file-system rather than in the case
-    specified in the input string, for all existing portions of the path.
+    will return the relpath as stored on the file-system rather than in the
+    case specified in the input string, for all existing portions of the path.
 
-    TODO: it should be possible to optimize this by using the win32 API
-    FindFiles function to look for the specified name - but using os.listdir()
-    still gives us the correct semantics in the short term.
+    NOTE: There is a risk that this will cause O(N) behaviour if called
+    for every path in a tree.  However, it is expected this should only be
+    used on path specified by the users.  A cache with lifetime controlled
+    by the caller would probably resolve this if it becomes a problem.
+
+    TODO: it should be possible to optimize this for Windows by using the
+    win32 API FindFiles function to look for the specified name - but using
+    os.listdir() still gives us the correct, platform agnostic semantics in
+    the short term.
     """
     rel = relpath(base, path)
     # '.' will have been turned into ''
@@ -962,7 +968,7 @@ def _win32_canonical_relpath(base, path):
     _listdir = os.listdir
 
     # use an explicit iterator so we can easily consume the rest on early exit.
-    bit_iter = iter(rel.replace('\\', '/').split('/'))
+    bit_iter = rel.split('/')
     for bit in bit_iter:
         lbit = bit.lower()
         for look in _listdir(current):
@@ -977,8 +983,12 @@ def _win32_canonical_relpath(base, path):
             break
     return current[len(abs_base)+1:]
 
+# XXX - TODO - we need better detection/integration of case-insensitive
+# file-systems; Linux often sees FAT32 devices, for example, so could
+# probably benefit from the same basic support there.  For now though, only
+# Windows gets that support, and it gets it for *all* file-systems!
 if sys.platform == "win32":
-    canonical_relpath = _win32_canonical_relpath
+    canonical_relpath = cicp_canonical_relpath
 else:
     canonical_relpath = relpath
 
