@@ -883,7 +883,7 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository._fetch_reconcile
 
     def get_parent_map(self, revision_ids):
-        return self._make_parents_provider.get_parent_map(revision_ids)
+        return self._make_parents_provider().get_parent_map(revision_ids)
 
     def _get_parent_map(self, keys):
         """See bzrlib.Graph.get_parent_map()."""
