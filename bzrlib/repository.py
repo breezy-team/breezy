@@ -2128,7 +2128,7 @@ def _install_revision(repository, rev, revision_tree, signature,
             except KeyError:
                 repository.add_inventory(rev.revision_id, inv, present_parents)
             else:
-                delta = _make_inv_delta(basis_inv, inv)
+                delta = inv._make_delta(basis_inv)
                 repository.add_inventory_delta(rev.parent_ids[0], delta,
                     rev.revision_id, present_parents)
         else:
@@ -2138,25 +2138,6 @@ def _install_revision(repository, rev, revision_tree, signature,
     if signature is not None:
         repository.add_signature_text(rev.revision_id, signature)
     repository.add_revision(rev.revision_id, rev, inv)
-
-
-def _make_inv_delta(old, new):
-    """Make an inventory delta from two inventories."""
-    old_ids = set(old)
-    new_ids = set(new)
-    adds = new_ids - old_ids
-    deletes = old_ids - new_ids
-    common = old_ids.intersection(new_ids)
-    delta = []
-    for file_id in deletes:
-        delta.append((old.id2path(file_id), None, file_id, None))
-    for file_id in adds:
-        delta.append((None, new.id2path(file_id), file_id, new[file_id]))
-    for file_id in common:
-        if old[file_id] != new[file_id]:
-            delta.append((old.id2path(file_id), new.id2path(file_id),
-                file_id, new[file_id]))
-    return delta
 
 
 class MetaDirRepository(Repository):
@@ -3271,8 +3252,7 @@ class InterDifferingSerializer(InterKnitRepo):
                     pending_revisions = []
                     for tree in self.source.revision_trees(batch):
                         current_revision_id = tree.get_revision_id()
-                        delta = _make_inv_delta(basis_tree.inventory,
-                            tree.inventory)
+                        delta = tree.inventory._make_delta(basis_tree.inventory)
                         for old_path, new_path, file_id, entry in delta:
                             if new_path is not None:
                                 if not (new_path or self.target.supports_rich_root()):
