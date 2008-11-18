@@ -98,6 +98,23 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
+    def test_abort_record_iter_changes(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            try:
+                builder.record_iter_changes(tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree()))
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
+            builder.finish_inventory()
+            builder.abort()
+        finally:
+            tree.unlock()
+
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
