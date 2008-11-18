@@ -1750,7 +1750,7 @@ class TestStacking(tests.TestCaseWithTransport):
         finally:
             remote_repo.unlock()
 
-    def test_stacked_get_parent_map(self):
+    def prepare_stacked_remote_branch(self):
         smart_server = server.SmartTCPServer_for_testing()
         smart_server.setUp()
         self.addCleanup(smart_server.tearDown)
@@ -1761,5 +1761,16 @@ class TestStacking(tests.TestCaseWithTransport):
         branch2 = Branch.open(smart_server.get_url() + '/tree2')
         branch2.lock_read()
         self.addCleanup(branch2.unlock)
-        repo = branch2.repository
+        return branch2
+
+    def test_stacked_get_parent_map(self):
+        # the public implementation of get_parent_map obeys stacking
+        branch = self.prepare_stacked_remote_branch()
+        repo = branch.repository
         self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
+
+    def test_stacked__get_parent_map(self):
+        # the private variant of _get_parent_map ignores stacking
+        branch = self.prepare_stacked_remote_branch()
+        repo = branch.repository
+        self.assertEqual([], repo._get_parent_map(['rev1']).keys())

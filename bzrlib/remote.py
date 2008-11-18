@@ -345,7 +345,6 @@ class RemoteRepository(_RpcHelper):
         self.base = self.bzrdir.transport.base
         # Additional places to query for data.
         self._fallback_repositories = []
-        self._parents_provider = None
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -1224,12 +1223,10 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository._check_for_inconsistent_revision_parents()
 
     def _make_parents_provider(self):
-        if self._parents_provider is None:
-            providers = [_UnstackedParentsProvider(self)]
-            providers.extend(r._make_parents_provider() for r in
-                             self._fallback_repositories)
-            self._parents_provider = graph._StackedParentsProvider(providers)
-        return self._parents_provider
+        providers = [_UnstackedParentsProvider(self)]
+        providers.extend(r._make_parents_provider() for r in
+                         self._fallback_repositories)
+        return graph._StackedParentsProvider(providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.

@@ -35,7 +35,7 @@ IN DEVELOPMENT
       network interruption) to be reported.  (Andrew Bennetts, #297014)
 
     * RemoteRepository.get_parent_map now uses fallback repositories.
-      (Aaron Bentley)
+      (Aaron Bentley, #297991?, #293679?)
 
   DOCUMENTATION:
 
