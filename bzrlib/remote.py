@@ -287,6 +287,17 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
                 'Does not support nested trees', target_format)
 
 
+class _UnstackedParentsProvider(object):
+    """ParentsProvider for RemoteRepository that ignores stacking."""
+
+    def __init__(self, remote_repository):
+        self._remote_repository = remote_repository
+
+    def get_parent_map(self, revision_ids):
+        """See RemoteRepository.get_parent_map."""
+        return self._remote_repository._get_parent_map(revision_ids)
+
+
 class RemoteRepository(_RpcHelper):
     """Repository accessed over rpc.
 
@@ -334,6 +345,7 @@ class RemoteRepository(_RpcHelper):
         self.base = self.bzrdir.transport.base
         # Additional places to query for data.
         self._fallback_repositories = []
+        self._parents_provider = None
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -883,10 +895,11 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository._fetch_reconcile
 
     def get_parent_map(self, revision_ids):
+        """See bzrlib.Graph.get_parent_map()."""
         return self._make_parents_provider().get_parent_map(revision_ids)
 
     def _get_parent_map(self, keys):
-        """See bzrlib.Graph.get_parent_map()."""
+        """Implementation of get_parent_map() that ignores fallbacks."""
         # Hack to build up the caching logic.
         ancestry = self._parents_map
         if ancestry is None:
@@ -1211,15 +1224,12 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository._check_for_inconsistent_revision_parents()
 
     def _make_parents_provider(self):
-
-        class ParentsProvider(object):
-
-            def get_parent_map(instance, revision_ids):
-                return self._get_parent_map(revision_ids)
-
-        providers = [r._make_parents_provider() for r in
-                     self._fallback_repositories]
-        return graph._StackedParentsProvider([ParentsProvider()] + providers)
+        if self._parents_provider is None:
+            providers = [_UnstackedParentsProvider(self)]
+            providers.extend(r._make_parents_provider() for r in
+                             self._fallback_repositories)
+            self._parents_provider = graph._StackedParentsProvider(providers)
+        return self._parents_provider
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
