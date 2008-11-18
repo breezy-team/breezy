@@ -123,6 +123,18 @@ class CommitBuilder(object):
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
         self.basis_delta = []
         self._recording_deletes = False
+        # memo'd check for no-op commits.
+        self._any_entries_changed = False
+
+    def any_entries_changed(self):
+        """Return True if any entries were changed.
+        
+        This includes merge-only changes. It is the core for the --unchanged
+        detection in commit.
+
+        :return: True if any changes have occured.
+        """
+        return self._any_entries_changed
 
     def commit(self, message):
         """Make the actual commit.
@@ -170,12 +182,12 @@ class CommitBuilder(object):
             # an inventory delta was accumulated without creating a new
             # inventory.
             try:
-                basis_id = self.parents[0]
+                basis_id = self.parents[0].revision_id
             except IndexError:
                 basis_id = _mod_revision.NULL_REVISION
             self.inv_sha1 = self.repository.add_inventory_delta(
                 basis_id, self.basis_delta, self._new_revision_id,
-                self.parents)
+                [parent.revision_id for parent in self.parents])
         else:
             if self.new_inventory.root is None:
                 raise AssertionError('Root entry should be supplied to'
@@ -229,6 +241,19 @@ class CommitBuilder(object):
         # serializing out to disk and back in root.revision is always
         # _new_revision_id
         ie.revision = self._new_revision_id
+
+    def _require_root_change(self):
+        """Enforce an appropriate root object change.
+
+        This is called once when record_iter_changes is called, if and only if
+        the root was not in the delta calculated by record_iter_changes.
+        """
+        # NB: if there are no parents then this method is not called, so no
+        # need to guard on parents having length.
+        entry = entry_factory['directory'](self.parents[0].root.file_id, '',
+            None)
+        entry.revision = self._new_revision_id
+        self.basis_delta.append(('', '', entry.file_id, entry))
 
     def _get_delta(self, ie, basis_inv, path):
         """Get a delta against the basis inventory for ie."""
@@ -477,6 +502,7 @@ class CommitBuilder(object):
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
+        self._any_entries_changed = True
         return self._get_delta(ie, basis_inv, path), True, fingerprint
 
     def record_iter_changes(self, basis_revision_id, iter_changes,
@@ -501,17 +527,26 @@ class CommitBuilder(object):
             changes[change[0]] = change
         # inv delta is:
         # old_path, new_path, file_id, new_inventory_entry
+        seen_root = False # Is the root in the basis delta?
         inv_delta = self.basis_delta
         modified_rev = self._new_revision_id
         for change in changes.values():
             if change[3][1]: # versioned in target.
-                entry = entry_factory[change[6][1]](
+                entry = _entry_factory[change[6][1]](
                     change[0], change[5][1], change[4][1])
                 entry.revision = modified_rev
             else:
                 entry = None
-            inv_delta.append((change[1][0], change[1][1], change[0], entry))
+            new_path = change[1][1]
+            inv_delta.append((change[1][0], new_path, change[0], entry))
+            if new_path == '':
+                seen_root = True
         self.new_inventory = None
+        if len(inv_delta):
+            self._any_entries_changed = True
+        if not seen_root:
+            # housekeeping root entry changes do not affect no-change commits.
+            self._require_root_change()
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
@@ -540,6 +575,14 @@ class RootCommitBuilder(CommitBuilder):
             commit.
         :param tree: The tree that is being committed.
         """
+
+    def _require_root_change(self):
+        """Enforce an appropriate root object change.
+
+        This is called once when record_iter_changes is called, if and only if
+        the root was not in the delta calculated by record_iter_changes.
+        """
+        # versioned roots do not change unless the tree found a change.
 
 
 ######################################################################

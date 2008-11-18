@@ -198,7 +198,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
 
-    def test_commit_without_root_errors(self):
+    def test_commit_without_root_or_record_iter_changes_errors(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
@@ -227,6 +227,9 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             delta, version_recorded, fs_hash = builder.record_entry_contents(
                 ie, [parent_tree.inventory], '', tree,
                 tree.path_content_summary(''))
+            # Regardless of repository root behaviour we should consider this a
+            # pointless commit.
+            self.assertFalse(builder.any_entries_changed())
             self.assertFalse(version_recorded)
             # if the repository format recorded a new root revision, that
             # should be in the delta
@@ -246,6 +249,33 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             tree.unlock()
             raise
         else:
+            tree.unlock()
+
+    def test_commit_unchanged_root_record_iter_changes(self):
+        tree = self.make_branch_and_tree(".")
+        old_revision_id = tree.commit('')
+        tree.lock_write()
+        parent_tree = tree.basis_tree()
+        parent_tree.lock_read()
+        self.addCleanup(parent_tree.unlock)
+        builder = tree.branch.get_commit_builder([parent_tree.inventory])
+        try:
+            builder.record_iter_changes(old_revision_id,
+                tree.iter_changes(parent_tree))
+            # Regardless of repository root behaviour we should consider this a
+            # pointless commit.
+            self.assertFalse(builder.any_entries_changed())
+            builder.finish_inventory()
+            new_root = tree.branch.repository.get_inventory(
+                builder._new_revision_id).root
+            if tree.branch.repository.supports_rich_root():
+                # We should not have seen a new root revision
+                self.assertEqual(old_revision_id, new_root.revision)
+            else:
+                # We should see a new root revision
+                self.assertNotEqual(old_revision_id, new_root.revision)
+        finally:
+            builder.abort()
             tree.unlock()
 
     def test_commit(self):
