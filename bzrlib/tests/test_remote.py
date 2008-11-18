@@ -1750,3 +1750,17 @@ class TestStacking(tests.TestCaseWithTransport):
                 'message')
         finally:
             remote_repo.unlock()
+
+    def test_stacked_get_parent_map(self):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        self.addCleanup(smart_server.tearDown)
+        tree1 = self.make_branch_and_tree('tree1')
+        tree1.commit('rev1', rev_id='rev1')
+        tree2 = self.make_branch_and_tree('tree2', format='1.6')
+        tree2.branch.set_stacked_on_url(tree1.branch.base)
+        branch2 = Branch.open(smart_server.get_url() + '/tree2')
+        branch2.lock_read()
+        self.addCleanup(branch2.unlock)
+        repo = branch2.repository
+        self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
