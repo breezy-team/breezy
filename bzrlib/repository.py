@@ -510,11 +510,13 @@ class CommitBuilder(object):
         self._any_changes = True
         return self._get_delta(ie, basis_inv, path), True, fingerprint
 
-    def record_iter_changes(self, tree, basis_revision_id, iter_changes,
-        _entry_factory=entry_factory):
+    def record_iter_changes(self, tree, basis_tree, basis_revision_id,
+        iter_changes, _entry_factory=entry_factory):
         """Record a new tree via iter_changes.
 
         :param tree: The tree to obtain text contents from for changed objects.
+        :param basis_tree: The basis tree this commit is being performed
+            against.
         :param basis_revision_id: The revision id of the tree the iter_changes
             has been generated against.
         :param iter_changes: An iter_changes iterator.
@@ -526,20 +528,76 @@ class CommitBuilder(object):
         # deltas between all the parent inventories. We use inventory delta's 
         # between the inventory objects because iter_changes masks
         # last-changed-field only changes.
+        basis_inv = basis_tree.inventory
         # file_id -> change map, change is fileid, paths, changed, versioneds,
         # parents, names, kinds, executables
+        merged_ids = {}
+        if len(self.parents) > 1:
+            revtrees = list(self.repository.revision_trees(self.parents))
+            repo_basis = revtrees[0]
+            for revtree in revtrees[1:]:
+                for change in _make_delta(basis_tree, revtree):
+                    if change[1] is None:
+                        # Deleted
+                        continue
+                    if change[2] not in merged_ids:
+                        if change[0] is not None:
+                            merged_ids[change[2]] = set([change[3].revision,
+                                repo_basis[change[2]].revision])
+                        else:
+                            merged_ids[change[2]] = set([change[3].revision])
+                    else:
+                        merged_ids[change[2]].add(change[3].revision)
+        else:
+            merged_ids = {}
         changes= {}
         for change in iter_changes:
-            changes[change[0]] = change
+            changes[change[0]] = change, merged_ids.get(
+                change[0], set([basis_inv[change[0]].revision]))
+        unchanged_merged = set(merged_ids) - set(changes)
+        # changes contains tuples with the change and a set of inventory
+        # candidates for the file.
         # inv delta is:
         # old_path, new_path, file_id, new_inventory_entry
         seen_root = False # Is the root in the basis delta?
         inv_delta = self.basis_delta
         modified_rev = self._new_revision_id
-        for change in changes.values():
+        for change, head_candidates in changes.values():
             if change[3][1]: # versioned in target.
+                kind = change[6][1]
+                heads = self._heads(change[0], head_candidates)
+                # Populate the entry
+                if change[2]:
+                    # From disk.
+                    if kind == 'file':
+                        import pdb;pdb.set_trace()
+                    elif kind == 'symlink':
+                        import pdb;pdb.set_trace()
+                    elif kind == 'directory':
+                        # Nothing to set.
+                        import pdb;pdb.set_trace()
+                        pass
+                    elif kind == 'tree-reference':
+                        import pdb;pdb.set_trace()
+                    else:
+                        raise AssertionError('unknown kind %r' % kind)
+                else:
+                    # From basis.
+                    if kind == 'file':
+                        import pdb;pdb.set_trace()
+                    elif kind == 'symlink':
+                        import pdb;pdb.set_trace()
+                    elif kind == 'directory':
+                        # Nothing to set.
+                        self._add_text_to_weave(change[0], [], heads, None)
+                        pass
+                    elif kind == 'tree-reference':
+                        import pdb;pdb.set_trace()
+                    else:
+                        raise AssertionError('unknown kind %r' % kind)
                 entry = _entry_factory[change[6][1]](
                     change[0], change[5][1], change[4][1])
+                
                 entry.revision = modified_rev
             else:
                 entry = None
