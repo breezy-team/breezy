@@ -160,6 +160,44 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
 
+    def test_commit_with_revision_id_record_iter_changes(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            # use a unicode revision id to test more corner cases.
+            # The repository layer is meant to handle this.
+            revision_id = u'\xc8abc'.encode('utf8')
+            try:
+                try:
+                    builder = tree.branch.get_commit_builder([],
+                        revision_id=revision_id)
+                except errors.NonAsciiRevisionId:
+                    revision_id = 'abc'
+                    builder = tree.branch.get_commit_builder([],
+                        revision_id=revision_id)
+            except errors.CannotSetRevisionId:
+                # This format doesn't support supplied revision ids
+                return
+            self.assertFalse(builder.random_revid)
+            try:
+                builder.record_iter_changes(tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree()))
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
+            builder.finish_inventory()
+            self.assertEqual(revision_id, builder.commit('foo bar'))
+        finally:
+            tree.unlock()
+        self.assertTrue(tree.branch.repository.has_revision(revision_id))
+        # the revision id must be set on the inventory when saving it. This
+        # does not precisely test that - a repository that wants to can add it
+        # on deserialisation, but thats all the current contract guarantees
+        # anyway.
+        self.assertEqual(revision_id,
+            tree.branch.repository.get_inventory(revision_id).revision_id)
+
     def test_commit_without_root_errors(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
