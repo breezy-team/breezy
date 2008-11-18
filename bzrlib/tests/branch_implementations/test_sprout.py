@@ -42,11 +42,7 @@ class TestSprout(TestCaseWithBranch):
         # Start with a format that is unlikely to be the target format
         source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
                                                          format='metaweave')
-        self.assertIs(self.branch_format.__class__,
-                      self.bzrdir_format.get_branch_format().__class__)
         target_bzrdir = self.make_bzrdir('target')
-        self.assertIs(self.branch_format.__class__,
-                      target_bzrdir._format.get_branch_format().__class__)
         target_bzrdir.create_repository()
         target = source.sprout(target_bzrdir)
 
