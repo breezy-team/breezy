@@ -542,40 +542,6 @@ class TestCaseWithTwoStores(TestCaseWithTransport):
         return chk_bytes1, chk_bytes2
 
 
-class TestChkMapCopyTo(TestCaseWithTwoStores):
-
-    def disable_insert(self, store):
-        def add_lines_fail(*args, **kwargs):
-            self.fail('We should not need to add any content')
-        def insert_record_stream_fail(*args, **kwargs):
-            self.fail('We should not need to insert any content')
-        store.add_lines = add_lines_fail
-        store.insert_record_stream = insert_record_stream_fail
-
-    def test_to_self(self):
-        chk_bytes1, chk_bytes2 = self.make_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes1, {'key': 'value'})
-        chkmap = CHKMap(chk_bytes1, root_key)
-        self.disable_insert(chk_bytes1)
-
-    def test_simple(self):
-        chk_bytes1, chk_bytes2 = self.make_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes1, {('key',): 'value'})
-        chkmap = CHKMap(chk_bytes1, root_key)
-        chkmap.copy_to(chk_bytes2)
-        newmap = CHKMap(chk_bytes2, root_key)
-        self.assertEqual(chkmap.key(), newmap.key())
-        self.assertEqual({('key',): 'value'}, dict(newmap.iteritems()))
-
-    def test_target_has_root(self):
-        chk_bytes1, chk_bytes2 = self.make_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes1, {'key': 'value'})
-        chkmap = CHKMap(chk_bytes1, root_key)
-        CHKMap.from_dict(chk_bytes2, {'key': 'value'})
-        self.disable_insert(chk_bytes2)
-        chkmap.copy_to(chk_bytes2)
-
-
 class TestLeafNode(TestCaseWithStore):
 
     def test_current_size_empty(self):
