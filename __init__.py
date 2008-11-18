@@ -28,7 +28,7 @@ from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile,
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
 
-version_info = (0, 4, 2, 'final', 0)
+version_info = (0, 4, 3, 'dev', 0)
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
 else:
