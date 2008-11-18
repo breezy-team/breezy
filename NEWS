@@ -1,4 +1,4 @@
-0.4.2	UNRELEASED
+0.4.2	2008-11-18
 
  FEATURES
 
@@ -6,6 +6,8 @@
     (#240204)
 
   * Use parent location as default rather than push location.
+
+  * Hide "replay" command.
 
 0.4.1	2008-09-01
 
