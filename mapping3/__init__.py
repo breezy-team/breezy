@@ -310,6 +310,13 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
     def is_tag(self, tag_path):
         return self.scheme.is_tag(tag_path)
 
+    def supports_tags(self):
+        try:
+            self.scheme.get_tag_path("foo")
+            return True
+        except NotImplementedError:
+            return False
+
     @classmethod
     def _generate_revision_id(cls, uuid, revnum, path, scheme):
         assert isinstance(revnum, int)
