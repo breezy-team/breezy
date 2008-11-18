@@ -34,6 +34,9 @@ IN DEVELOPMENT
       tries to abort a write group.  This allows the root cause (e.g. a
       network interruption) to be reported.  (Andrew Bennetts, #297014)
 
+    * RemoteRepository.get_parent_map now uses fallback repositories.
+      (Aaron Bentley, #297991?, #293679?)
+
   DOCUMENTATION:
 
   API CHANGES:
