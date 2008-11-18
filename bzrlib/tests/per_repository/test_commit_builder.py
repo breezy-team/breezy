@@ -58,14 +58,32 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             builder.record_entry_contents(ie, parent_invs, '', tree,
                 tree.path_content_summary(''))
 
-    def test_finish_inventory(self):
+    def test_finish_inventory_with_record_root(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([])
+            repo = tree.branch.repository
             self.record_root(builder, tree)
             builder.finish_inventory()
-            tree.branch.repository.commit_write_group()
+            repo.commit_write_group()
+        finally:
+            tree.unlock()
+
+    def test_finish_inventory_record_iter_changes(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            try:
+                builder.record_iter_changes(tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree()))
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
+            repo = tree.branch.repository
+            repo.commit_write_group()
         finally:
             tree.unlock()
 

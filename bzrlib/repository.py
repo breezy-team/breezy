@@ -48,7 +48,12 @@ from bzrlib.testament import Testament
 from bzrlib import registry
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inter import InterObject
-from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
+from bzrlib.inventory import (
+    Inventory,
+    InventoryDirectory,
+    ROOT_ID,
+    entry_factory,
+    )
 from bzrlib.symbol_versioning import (
         deprecated_method,
         one_one,
@@ -156,17 +161,33 @@ class CommitBuilder(object):
                             self._new_revision_id)
 
     def finish_inventory(self):
-        """Tell the builder that the inventory is finished."""
-        if self.new_inventory.root is None:
-            raise AssertionError('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.')
-            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
-        self.new_inventory.revision_id = self._new_revision_id
-        self.inv_sha1 = self.repository.add_inventory(
-            self._new_revision_id,
-            self.new_inventory,
-            self.parents
-            )
+        """Tell the builder that the inventory is finished.
+        
+        :return: The inventory id in the repository, which can be used with
+            repository.get_inventory.
+        """
+        if self.new_inventory is None:
+            # an inventory delta was accumulated without creating a new
+            # inventory.
+            try:
+                basis_id = self.parents[0]
+            except IndexError:
+                basis_id = _mod_revision.NULL_REVISION
+            self.inv_sha1 = self.repository.add_inventory_delta(
+                basis_id, self.basis_delta, self._new_revision_id,
+                self.parents)
+        else:
+            if self.new_inventory.root is None:
+                raise AssertionError('Root entry should be supplied to'
+                    ' record_entry_contents, as of bzr 0.10.')
+                self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
+            self.new_inventory.revision_id = self._new_revision_id
+            self.inv_sha1 = self.repository.add_inventory(
+                self._new_revision_id,
+                self.new_inventory,
+                self.parents
+                )
+        return self._new_revision_id
 
     def _gen_revision_id(self):
         """Return new revision-id."""
@@ -457,6 +478,40 @@ class CommitBuilder(object):
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
         return self._get_delta(ie, basis_inv, path), True, fingerprint
+
+    def record_iter_changes(self, basis_revision_id, iter_changes,
+        _entry_factory=entry_factory):
+        """Record a new tree via iter_changes.
+
+        :param basis_revision_id: The revision id of the tree the iter_changes
+            has been generated against.
+        :param iter_changes: An iter_changes iterator.
+        :param _entry_factory: Private method to bind entry_factory locally for
+            performance.
+        :return: None
+        """
+        # Create an inventory delta based on deltas between all the parents and
+        # deltas between all the parent inventories. We use inventory delta's 
+        # between the inventory objects because iter_changes masks
+        # last-changed-field only changes.
+        # file_id -> change map, change is fileid, paths, changed, versioneds,
+        # parents, names, kinds, executables
+        changes= {}
+        for change in iter_changes:
+            changes[change[0]] = change
+        # inv delta is:
+        # old_path, new_path, file_id, new_inventory_entry
+        inv_delta = self.basis_delta
+        modified_rev = self._new_revision_id
+        for change in changes.values():
+            if change[3][1]: # versioned in target.
+                entry = entry_factory[change[6][1]](
+                    change[0], change[5][1], change[4][1])
+                entry.revision = modified_rev
+            else:
+                entry = None
+            inv_delta.append((change[1][0], change[1][1], change[0], entry))
+        self.new_inventory = None
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
