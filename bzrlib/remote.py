@@ -1259,6 +1259,11 @@ class RemoteBranchLockableFiles(LockableFiles):
 
 class RemoteBranchFormat(branch.BranchFormat):
 
+    def __init__(self):
+        super(RemoteBranchFormat, self).__init__()
+        self._matchingbzrdir = RemoteBzrDirFormat()
+        self._matchingbzrdir.set_branch_format(self)
+
     def __eq__(self, other):
         return (isinstance(other, RemoteBranchFormat) and 
             self.__dict__ == other.__dict__)

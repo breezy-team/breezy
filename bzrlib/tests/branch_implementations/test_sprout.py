@@ -36,14 +36,18 @@ class TestSprout(TestCaseWithBranch):
         target = source.bzrdir.sprout(self.get_url('target')).open_branch()
         self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
 
-    def test_sprout_preserves_target_kind(self):
+    def test_sprout_uses_bzrdir_branch_format(self):
         if isinstance(self.branch_format, _mod_branch.BranchReferenceFormat):
             raise tests.TestNotApplicable('cannot sprout to a reference')
         # Start with a format that is unlikely to be the target format
         source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
                                                          format='metaweave')
-        target_repo = self.make_repository('target', format=self.bzrdir_format)
-        target_bzrdir = target_repo.bzrdir
+        self.assertIs(self.branch_format.__class__,
+                      self.bzrdir_format.get_branch_format().__class__)
+        target_bzrdir = self.make_bzrdir('target')
+        self.assertIs(self.branch_format.__class__,
+                      target_bzrdir._format.get_branch_format().__class__)
+        target_bzrdir.create_repository()
         target = source.sprout(target_bzrdir)
 
         self.assertIs(self.branch_format.__class__, target._format.__class__)

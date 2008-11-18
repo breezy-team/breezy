@@ -1264,6 +1264,7 @@ class BranchFormatMetadir(BranchFormat):
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+        self._matchingbzrdir.set_branch_format(self)
 
     def supports_tags(self):
         return True
@@ -1419,6 +1420,7 @@ class BranchReferenceFormat(BranchFormat):
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+        self._matchingbzrdir.set_branch_format(self)
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
