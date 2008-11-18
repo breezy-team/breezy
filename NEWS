@@ -27,6 +27,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Better message when the user needs to set their Launchpad ID.
+      (Martin Pool, #289148)
+
     * TooManyConcurrentRequests no longer occur when a fetch fails and
       tries to abort a write group.  This allows the root cause (e.g. a
       network interruption) to be reported.  (Andrew Bennetts, #297014)
