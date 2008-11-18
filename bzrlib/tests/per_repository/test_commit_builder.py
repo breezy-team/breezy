@@ -76,7 +76,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree.last_revision(),
+                builder.record_iter_changes(tree, tree.last_revision(),
                     tree.iter_changes(tree.basis_tree()))
                 builder.finish_inventory()
             except:
@@ -104,7 +104,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree.last_revision(),
+                builder.record_iter_changes(tree, tree.last_revision(),
                     tree.iter_changes(tree.basis_tree()))
                 builder.finish_inventory()
             except:
@@ -180,7 +180,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 return
             self.assertFalse(builder.random_revid)
             try:
-                builder.record_iter_changes(tree.last_revision(),
+                builder.record_iter_changes(tree, tree.last_revision(),
                     tree.iter_changes(tree.basis_tree()))
                 builder.finish_inventory()
             except:
@@ -220,7 +220,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         parent_tree = tree.basis_tree()
         parent_tree.lock_read()
         self.addCleanup(parent_tree.unlock)
-        builder = tree.branch.get_commit_builder([parent_tree.inventory])
+        builder = tree.branch.get_commit_builder([old_revision_id])
         try:
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
@@ -229,7 +229,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 tree.path_content_summary(''))
             # Regardless of repository root behaviour we should consider this a
             # pointless commit.
-            self.assertFalse(builder.any_entries_changed())
+            self.assertFalse(builder.any_changes())
             self.assertFalse(version_recorded)
             # if the repository format recorded a new root revision, that
             # should be in the delta
@@ -258,13 +258,12 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         parent_tree = tree.basis_tree()
         parent_tree.lock_read()
         self.addCleanup(parent_tree.unlock)
-        builder = tree.branch.get_commit_builder([parent_tree.inventory])
+        builder = tree.branch.get_commit_builder([old_revision_id])
         try:
-            builder.record_iter_changes(old_revision_id,
-                tree.iter_changes(parent_tree))
+            builder.record_iter_changes(tree, old_revision_id, [])
             # Regardless of repository root behaviour we should consider this a
             # pointless commit.
-            self.assertFalse(builder.any_entries_changed())
+            self.assertFalse(builder.any_changes())
             builder.finish_inventory()
             new_root = tree.branch.repository.get_inventory(
                 builder._new_revision_id).root
@@ -321,6 +320,34 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 rev_id2 = builder.commit('delete foo')
             except:
                 tree.branch.repository.abort_write_group()
+                raise
+        finally:
+            tree.unlock()
+        rev_tree = builder.revision_tree()
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertFalse(rev_tree.path2id('foo'))
+
+    def test_record_delete_record_iter_changes(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["foo"])
+        tree.add(["foo"], ["foo-id"])
+        rev_id = tree.commit("added foo")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([rev_id])
+            try:
+                delete_change = ('foo-id', ('foo', None), True, (True, False),
+                    (tree.path2id(''), None), ('foo', None), ('file', None),
+                    (False, None))
+                builder.record_iter_changes(tree, rev_id, [delete_change])
+                self.assertEqual(("foo", None, "foo-id", None),
+                    builder.basis_delta[0])
+                self.assertTrue(builder.any_changes())
+                builder.finish_inventory()
+                rev_id2 = builder.commit('delete foo')
+            except:
+                builder.abort()
                 raise
         finally:
             tree.unlock()

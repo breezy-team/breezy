@@ -437,7 +437,7 @@ class Commit(object):
         # unless deletes occured, in which case the length is irrelevant.
         if (self.any_entries_deleted or 
             (len(self.builder.new_inventory) != 1 and
-             self.builder.any_entries_changed())):
+             self.builder.any_changes())):
             return
         raise PointlessCommit()
 
