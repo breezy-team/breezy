@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1286,14 +1286,6 @@ class KnitVersionedFiles(VersionedFiles):
             missing.difference_update(set(new_result))
         return result
 
-    def has_key(self, key):
-        """Check if one key is present.
-
-        If you have multiple keys to check at once, it's better to use
-        get_parent_map.
-        """
-        return key in self.get_parent_map([key])
-
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
@@ -1958,14 +1950,8 @@ class _KndxIndex(object):
         entry = self._kndx_cache[prefix][0][suffix]
         return key, entry[2], entry[3]
 
-    def has_key(self, key):
-        """Check if one key is present.
-
-        If you have multiple keys to check at once, it's better to use
-        get_parent_map.
-        """
-        return key in self.get_parent_map([key])
-
+    has_key = _mod_index._has_key_from_parent_map
+    
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
         sio = StringIO()
@@ -2030,6 +2016,8 @@ class _KndxIndex(object):
                     del self._cache
                     del self._filename
                     del self._history
+
+    missing_keys = _mod_index._missing_keys_from_parent_map
 
     def _partition_keys(self, keys):
         """Turn keys into a dict of prefix:suffix_list."""
@@ -2317,13 +2305,7 @@ class _KnitGraphIndex(object):
         node = self._get_node(key)
         return self._node_to_position(node)
 
-    def has_key(self, key):
-        """Check if one key is present.
-
-        If you have multiple keys to check at once, it's better to use
-        get_parent_map.
-        """
-        return key in self.get_parent_map([key])
+    has_key = _mod_index._has_key_from_parent_map
 
     def keys(self):
         """Get all the keys in the collection.
@@ -2333,6 +2315,8 @@ class _KnitGraphIndex(object):
         self._check_read()
         return [node[1] for node in self._graph_index.iter_all_entries()]
     
+    missing_keys = _mod_index._missing_keys_from_parent_map
+
     def _node_to_position(self, node):
         """Convert an index value to position details."""
         bits = node[2][1:].split(' ')

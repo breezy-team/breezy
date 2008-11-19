@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -30,6 +30,7 @@ import urllib
 
 from bzrlib import (
     errors,
+    index,
     osutils,
     multiparent,
     tsort,
@@ -846,6 +847,8 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.get_sha1s)
 
+    has_key = index._has_key_from_parent_map
+
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
@@ -921,6 +924,8 @@ class VersionedFiles(object):
             diffs.append(multiparent.MultiParent.from_lines(target,
                 parent_lines, left_parent_blocks))
         return diffs
+
+    missing_keys = index._missing_keys_from_parent_map
 
     def _extract_blocks(self, version_id, source, target):
         return None

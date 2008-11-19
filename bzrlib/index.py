@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,18 @@ _SIGNATURE = "Bazaar Graph Index 1\n"
 
 _whitespace_re = re.compile('[\t\n\x0b\x0c\r\x00 ]')
 _newline_null_re = re.compile('[\n\0]')
+
+
+def _has_key_from_parent_map(self, key):
+    """Check if this index has one key.
+
+    If it's possible to check for multiple keys at once through 
+    calling get_parent_map that should be faster.
+    """
+    return (key in self.get_parent_map([key]))
+
+def _missing_keys_from_parent_map(self, keys):
+    return set(keys) - set(self.get_parent_map(keys))
 
 
 class GraphIndexBuilder(object):
@@ -1177,13 +1189,7 @@ class CombinedGraphIndex(object):
             found_parents[key] = parents
         return found_parents
 
-    def has_key(self, key):
-        """Check if this index has one key.
-
-        If it's possible to check for multiple keys at once through 
-        calling get_parent_map that should be faster.
-        """
-        return (key in self.get_parent_map([key]))
+    has_key = _has_key_from_parent_map
 
     def insert_index(self, pos, index):
         """Insert a new index in the list of indices to query.
@@ -1288,6 +1294,8 @@ class CombinedGraphIndex(object):
                 return sum((index.key_count() for index in self._indices), 0)
             except errors.NoSuchFile:
                 self._reload_or_raise()
+
+    missing_keys = _missing_keys_from_parent_map
 
     def _reload_or_raise(self):
         """We just got a NoSuchFile exception.
