@@ -125,8 +125,7 @@ class KnitRepository(MetaDirRepository):
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
         self._fetch_order = 'topological'
-
-    _fetch_uses_deltas = True
+        _fetch_uses_deltas = True
 
     @needs_read_lock
     def _all_revision_ids(self):

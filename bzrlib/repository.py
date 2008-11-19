@@ -708,16 +708,14 @@ class Repository(object):
         # The default is unordered as that is the cheapest for an origin to
         # provide.
         self._fetch_order = 'unordered'
+        # Does this repository use deltas that can be fetched as-deltas ?
+        # (E.g. knits, where the knit deltas can be transplanted intact.
+        # We default to False, which will ensure that enough data to get
+        # a full text out of any fetch stream will be grabbed.
+        self._fetch_uses_deltas = False
         # Should fetch trigger a reconcile after the fetch? Only needed for
         # some repository formats that can suffer internal inconsistencies.
         self._fetch_reconcile = False
-
-    # Does this repository use deltas that can be fetched as-deltas?
-    # (E.g. knits, where the knit deltas can be transplanted intact.)
-    # If the repository wants to get records as full texts before inserting
-    # them (by record.get_bytes_as('fulltext')) then it should set this to
-    # false and there will be enough data in the stream to regenerate it.
-    _fetch_uses_deltas = False
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
