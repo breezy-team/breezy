@@ -283,7 +283,8 @@ cdef _read_dir(path):
     global errno
 
     cwd = getcwd(NULL, 0)
-    if -1 == chdir(path):
+    # Avoid chdir('') because it causes problems on Sun OS
+    if path and -1 == chdir(path):
         raise OSError(errno, strerror(errno))
     the_dir = opendir(".")
     if NULL == the_dir:
