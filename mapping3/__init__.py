@@ -312,7 +312,7 @@ class BzrSvnMappingv3(mapping.BzrSvnMapping):
 
     def supports_tags(self):
         try:
-            self.scheme.get_tag_path("foo")
+            self.scheme.get_tag_path(u"foo")
             return True
         except NotImplementedError:
             return False
