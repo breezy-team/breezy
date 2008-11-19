@@ -21,6 +21,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (NoSuchFile, DivergedBranches, NoSuchRevision, 
                            NotBranchError, UnstackableBranchFormat)
 from bzrlib.revision import is_null, ensure_null
+from bzrlib.tag import DisabledTags
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.svn import core, wc
@@ -62,13 +63,13 @@ class SvnBranch(Branch):
             look at; none for latest.
         """
         self.repository = repository
+        self._format = SvnBranchFormat()
+        self.mapping = self.repository.get_mapping()
         super(SvnBranch, self).__init__()
         assert isinstance(self.repository, SvnRepository)
         self.control_files = FakeControlFiles()
-        self._format = SvnBranchFormat()
         self._lock_mode = None
         self._lock_count = 0
-        self.mapping = self.repository.get_mapping()
         self.layout = self.repository.get_layout()
         self._branch_path = branch_path.strip("/")
         self.base = urlutils.join(self.repository.base, 
@@ -91,7 +92,10 @@ class SvnBranch(Branch):
             raise NotSvnBranchPath(branch_path, mapping=self.mapping)
 
     def _make_tags(self):
-        return SubversionTags(self)
+        if self.supports_tags():
+            return SubversionTags(self)
+        else:
+            return DisabledTags(self)
 
     def set_branch_path(self, branch_path):
         """Change the branch path for this branch.
@@ -506,7 +510,7 @@ class SvnBranch(Branch):
         return '%s(%r)' % (self.__class__.__name__, self.base)
 
     def supports_tags(self):
-        return self._format.supports_tags()
+        return self._format.supports_tags() and self.mapping.supports_tags()
 
     __repr__ = __str__
 

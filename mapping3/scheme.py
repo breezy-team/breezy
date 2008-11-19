@@ -44,14 +44,14 @@ class BranchingScheme(object):
         """
         raise NotImplementedError
 
-    def get_tag_path(self, name):
+    def get_tag_path(self, name, project=""):
         """Find the path for a tag.
 
         :param name: Tag name.
         """
         raise NotImplementedError
 
-    def get_branch_path(self, name):
+    def get_branch_path(self, name, project=""):
         """Find the path for a named branch.
 
         :param name: Branch name.

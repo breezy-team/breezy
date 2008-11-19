@@ -419,6 +419,9 @@ class BzrSvnMapping(object):
     def unprefix(self, branch_path, repos_path):
         raise NotImplementedError(self.unprefix)
 
+    def supports_tags(self):
+        raise NotImplementedError(self.supports_tags)
+
 
 class BzrSvnMappingv1(BzrSvnMapping):
     """This was the initial version of the mappings as used by bzr-svn
@@ -446,6 +449,9 @@ class BzrSvnMappingv1(BzrSvnMapping):
     def __eq__(self, other):
         return type(self) == type(other)
 
+    def supports_tags(self):
+        return False
+
 
 class BzrSvnMappingv2(BzrSvnMapping):
     """The second version of the mappings as used in the 0.3.x series.
@@ -469,6 +475,9 @@ class BzrSvnMappingv2(BzrSvnMapping):
 
     def __eq__(self, other):
         return type(self) == type(other)
+
+    def supports_tags(self):
+        return False
 
 
 def parse_fileid_property(text):
