@@ -108,11 +108,6 @@ __version__ = _format_version_tuple(version_info)
 version_string = __version__
 
 
-# allow bzrlib plugins to be imported.
-import bzrlib.plugin
-bzrlib.plugin.set_plugins_path()
-
-
 def test_suite():
     import tests
     return tests.test_suite()

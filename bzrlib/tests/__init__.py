@@ -1235,6 +1235,7 @@ class TestCase(unittest.TestCase):
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
+            'BZR_PLUGIN_PATH': None,
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
