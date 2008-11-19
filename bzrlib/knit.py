@@ -1333,8 +1333,8 @@ class KnitVersionedFiles(VersionedFiles):
                 raise RevisionNotPresent([record.key], self)
             elif ((record.storage_kind in knit_types) 
                   and (not parents
-                       or self._index.has_key(parents[0])
                        or not self._fallback_vfs
+                       or self._index.has_key(parents[0])
                        or not self.has_key(parents[0]))):
                 # we can insert the knit record literally if either it has no
                 # compression parent OR we already have its basis in this kvf
@@ -1342,6 +1342,10 @@ class KnitVersionedFiles(VersionedFiles):
                 # last case it will either turn up later in the stream and all
                 # will be well, or it won't turn up at all and we'll raise an
                 # error at the end.
+                #
+                # TODO: self.has_key is somewhat redundant with
+                # self._index.has_key; we really want something that directly
+                # asks if it's only present in the fallbacks. -- mbp 20081119
                 if record.storage_kind not in native_types:
                     try:
                         adapter_key = (record.storage_kind, "knit-delta-gz")
