@@ -88,6 +88,11 @@ def check_subversion_version():
     mutter("bzr-svn: using Subversion %d.%d.%d (%s)" % ra_version)
 
 
+def get_client_string():
+    """Return a string that can be send as part of the User Agent string."""
+    return "bzr%s+bzr-svn%s" % (bzrlib.__version__, __version__)
+
+
 def check_rebase_version(min_version):
     """Check what version of bzr-rebase is installed.
 

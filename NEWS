@@ -9,6 +9,9 @@ bzr-svn 0.4.16	UNRELEASED
 
    * Give proper error when tags can't be pushed. (#299490)
 
+   * Set bzr:user-agent revision property, e.g. to allow blacklisting 
+     in the future.
+
 bzr-svn 0.4.15	2008-11-10
 
   BUG FIXES

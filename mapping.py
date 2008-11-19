@@ -19,7 +19,7 @@ from bzrlib import osutils, registry
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.trace import mutter
 
-from bzrlib.plugins.svn import errors, properties, version_info
+from bzrlib.plugins.svn import errors, properties, version_info, get_client_string
 import calendar
 import time
 import urllib
@@ -39,6 +39,7 @@ SVN_PROP_BZR_LOG = 'bzr:log'
 SVN_REVPROP_BZR_COMMITTER = 'bzr:committer'
 SVN_REVPROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_REVPROP_BZR_MAPPING_VERSION = 'bzr:mapping-version'
+SVN_REVPROP_BZR_USER_AGENT = 'bzr:user-agent'
 SVN_REVPROP_BZR_MERGE = 'bzr:merge'
 SVN_REVPROP_BZR_REVISION_ID = 'bzr:revision-id'
 SVN_REVPROP_BZR_REVNO = 'bzr:revno'
@@ -721,6 +722,7 @@ class BzrSvnMappingRevProps(object):
         if merges != []:
             svn_revprops[SVN_REVPROP_BZR_MERGE] = "".join([x+"\n" for x in merges])
         svn_revprops[SVN_REVPROP_BZR_REVNO] = str(revno)
+        svn_revprops[SVN_REVPROP_BZR_USER_AGENT] = get_client_string()
 
         return (svn_revprops, {})
 
