@@ -975,8 +975,8 @@ class TestIterInterestingNodes(TestCaseWithStore):
         for count, (exp, act) in enumerate(izip(expected, iter_nodes)):
             exp_record_keys, exp_items = exp
             records, items = act
-            exp_tuple = (sorted(exp_record_keys), items)
-            act_tuple = (sorted(records.keys()), items)
+            exp_tuple = (sorted(exp_record_keys), sorted(exp_items))
+            act_tuple = (sorted(records.keys()), sorted(items))
             self.assertEqual(exp_tuple, act_tuple)
         self.assertEqual(len(expected), count + 1)
 

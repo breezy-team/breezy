@@ -978,17 +978,22 @@ def iter_interesting_nodes(store, interesting_root_keys,
             # TODO: Handle 'absent'?
             node = _deserialise(record.get_bytes_as('fulltext'), record.key)
             if isinstance(node, InternalNode):
-                chks = [chk for chk in node._items.itervalues()
-                             if chk not in all_uninteresting_chks]
+                chks = set(node.refs())
+                chks.difference_update(all_uninteresting_chks)
+                # Is set() and .difference_update better than:
+                # chks = [chk for chk in node.refs()
+                #              if chk not in all_uninteresting_chks]
                 next_chks.update(chks)
                 # These are now uninteresting everywhere else
                 all_uninteresting_chks.update(chks)
             else:
-                interesting_items = [item for item in node._items.iteritems()
-                                     if item not in all_uninteresting_items]
-                # TODO: This shouldn't be necessary, can we find a case where
-                #       it is? It implies duplicated key,value pairs on
-                #       different pages
+                interesting_items.extend(
+                    [item for item in node._items.iteritems()
+                           if item not in all_uninteresting_items])
+                # TODO: Do we need to filter out items that we have already
+                #       seen on other pages? We don't really want to buffer the
+                #       whole thing, but it does mean that callers need to
+                #       understand they may get duplicate values.
                 # all_uninteresting_items.update(interesting_items)
         yield records, interesting_items
         chks_to_read = next_chks
