@@ -328,7 +328,7 @@ class RepoFetcher(object):
         # all of the interesting pages and insert them
         interesting = chk_map.iter_interesting_nodes(
             self.from_repository.chk_bytes, interesting_chk_roots,
-            uninteresting_chk_roots)
+            uninteresting_chk_roots, pb=pb)
         for records, items in interesting:
             # XXX: We could instead call get_record_stream(records.keys())
             #      ATM, this will always insert the records as fulltexts, and

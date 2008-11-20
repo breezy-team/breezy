@@ -874,7 +874,10 @@ def _deserialise(bytes, key):
         raise AssertionError("Unknown node type.")
 
 
-def _find_children_info(store, interesting_keys, uninteresting_keys):
+from bzrlib import versionedfile
+
+def _find_children_info(store, interesting_keys, uninteresting_keys,
+                        adapter, pb=None):
     """Read the associated records, and determine what is interesting."""
     uninteresting_keys = set(uninteresting_keys)
     chks_to_read = uninteresting_keys.union(interesting_keys)
@@ -886,7 +889,14 @@ def _find_children_info(store, interesting_keys, uninteresting_keys):
     # records_read = set()
     for record in store.get_record_stream(chks_to_read, 'unordered', True):
         # records_read.add(record.key())
-        node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+        if pb is not None:
+            pb.tick()
+        if record.storage_kind != 'fulltext':
+            bytes = adapter.get_bytes(record,
+                        record.get_bytes_as(record.storage_kind))
+        else:
+            bytes = record.get_bytes_as('fulltext')
+        node = _deserialise(bytes, record.key)
         if record.key in uninteresting_keys:
             if isinstance(node, InternalNode):
                 next_uninteresting.update(node.refs())
@@ -908,7 +918,7 @@ def _find_children_info(store, interesting_keys, uninteresting_keys):
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
-                           uninteresting_root_keys):
+                           uninteresting_root_keys, pb=None):
     """Given root keys, find interesting nodes.
 
     Evaluate nodes referenced by interesting_root_keys. Ones that are also
@@ -927,12 +937,17 @@ def iter_interesting_nodes(store, interesting_root_keys,
     all_uninteresting_chks = set(uninteresting_root_keys)
     all_uninteresting_items = set()
 
+    # A way to adapt from the compressed texts back into fulltexts
+    adapter_class = versionedfile.adapter_registry.get(
+        ('knit-ft-gz', 'fulltext'))
+    adapter = adapter_class(store)
     # First step, find the direct children of both the interesting and
     # uninteresting set
     (uninteresting_keys, uninteresting_items,
      interesting_keys, interesting_records,
      interesting_items) = _find_children_info(store, interesting_root_keys,
-                                              uninteresting_root_keys)
+                                              uninteresting_root_keys,
+                                              adapter=adapter, pb=pb)
     all_uninteresting_chks.update(uninteresting_keys)
     all_uninteresting_items.update(uninteresting_items)
     del uninteresting_items
@@ -946,9 +961,16 @@ def iter_interesting_nodes(store, interesting_root_keys,
     chks_to_read = uninteresting_keys
     while chks_to_read:
         next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', True):
+        for record in store.get_record_stream(chks_to_read, 'unordered', False):
             # TODO: Handle 'absent'
-            node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+            if pb is not None:
+                pb.tick()
+            if record.storage_kind != 'fulltext':
+                bytes = adapter.get_bytes(record,
+                            record.get_bytes_as(record.storage_kind))
+            else:
+                bytes = record.get_bytes_as('fulltext')
+            node = _deserialise(bytes, record.key)
             if isinstance(node, InternalNode):
                 # uninteresting_prefix_chks.update(node._items.iteritems())
                 chks = node._items.values()
@@ -973,10 +995,17 @@ def iter_interesting_nodes(store, interesting_root_keys,
         next_chks = set()
         records = {}
         interesting_items = []
-        for record in store.get_record_stream(chks_to_read, 'unordered', True):
+        for record in store.get_record_stream(chks_to_read, 'unordered', False):
+            if pb is not None:
+                pb.tick()
             records[record.key] = record
             # TODO: Handle 'absent'?
-            node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+            if record.storage_kind != 'fulltext':
+                bytes = adapter.get_bytes(record,
+                            record.get_bytes_as(record.storage_kind))
+            else:
+                bytes = record.get_bytes_as('fulltext')
+            node = _deserialise(bytes, record.key)
             if isinstance(node, InternalNode):
                 chks = set(node.refs())
                 chks.difference_update(all_uninteresting_chks)
