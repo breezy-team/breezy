@@ -473,3 +473,6 @@ request_handlers.register_lazy(
     'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly')
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
+request_handlers.register_lazy('VersionedFiles.get_parent_map',
+                               'bzrlib.smart.versionedfiles',
+                               'SmartServerVersionedFilesGetParentMap')

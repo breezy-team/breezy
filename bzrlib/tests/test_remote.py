@@ -1168,7 +1168,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
     def test_get_parent_map_reconnects_if_unknown_method(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_unknown_method_response('Repository,get_parent_map')
+        client.add_unknown_method_response('Repository.get_parent_map')
         client.add_success_response_with_body('', 'ok')
         self.assertFalse(client._medium._is_remote_before((1, 2)))
         rev_id = 'revision-id'
@@ -1507,6 +1507,72 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
              ('_ensure_real',),
              ('pack collection autopack',)],
             client._calls)
+
+
+class TestVersionedFilesGetParentMap(tests.TestCaseWithTransport):
+
+    def test_backwards_compat(self):
+        """If the server does not recognise the VersionedFiles.get_parent_map
+        then the client will fallback to calling get_parent_map on the 'real'
+        versioned files object.
+        """
+        self.transport_server = server.SmartTCPServer_for_testing
+        self.make_repository('branch')
+        repo = repository.Repository.open(self.get_url('branch'))
+        repo._ensure_real()
+        repo.lock_read()
+        # Sabotage the real smart medium so that the test will fail if
+        # something tries to use it after this point.
+        repo._client._medium._socket = None
+        # Replace the _real_repository with a test double so that we can
+        # observe the fallback to using the 'real' object.
+        class FakeRealVf(object):
+            def get_parent_map(self, keys):
+                client._calls.append(('real vf get_parent_map', keys))
+                return {}
+        class FakeRealRepo(object):
+            def __init__(self):
+                self.revisions = FakeRealVf()
+            def unlock(self):
+                pass
+        repo._real_repository = FakeRealRepo()
+        # Inject a test double client.
+        client = FakeClient(repo.bzrdir.root_transport.base)
+        repo._client = client
+        # Configure the fake client.
+        client.add_unknown_method_response('VersionedFiles.get_parent_map')
+        client.add_success_response_with_body('', 'ok')
+        # Call get_parent_map.
+        rev_id = 'revision-id'
+        repo.revisions.get_parent_map([('rev-id',)])
+        repo.unlock()
+        self.assertEqual(
+            [('call_with_body_bytes_expecting_body',
+              'VersionedFiles.get_parent_map',
+              ('extra/branch/', 'revisions', ('rev-id',)),
+              '\n\n0'),
+             ('real vf get_parent_map', [('rev-id',)]),
+             ],
+            client._calls)
+        # The medium is now marked as being connected to an older server
+        self.assertTrue(client._medium._is_remote_before((1, 8)))
+
+
+class TestVersionedFilesGetParentMapSerialisation(tests.TestCase):
+
+    def test_serialise_search_recipe_empty(self):
+        recipe = ([], [], 0)
+        bytes = remote._serialise_search_tuple_key_recipe(recipe)
+        self.assertEqual('\n\n0', bytes)
+
+    def test_serialise_search_recipe(self):
+        start = [('start', 'key', 'one'), ('start', 'key', 'two')]
+        stop = [('stop', 'key', 'one'), ('stop', 'key', 'two')]
+        recipe = (start, stop, 123)
+        bytes = remote._serialise_search_tuple_key_recipe(recipe)
+        self.assertEqual(
+            'start key one\x00start key two\nstop key one\x00stop key two\n123',
+            bytes)
 
 
 class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):

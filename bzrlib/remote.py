@@ -18,6 +18,7 @@
 # across to run on the server.
 
 import bz2
+from cStringIO import StringIO
 
 from bzrlib import (
     branch,
@@ -41,6 +42,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
+from bzrlib.versionedfile import VersionedFiles
 
 
 class _RpcHelper(object):
@@ -345,6 +347,12 @@ class RemoteRepository(_RpcHelper):
         self.base = self.bzrdir.transport.base
         # Additional places to query for data.
         self._fallback_repositories = []
+        self.texts = RemoteVersionedFiles(self, 'texts')
+        self.inventories = RemoteVersionedFiles(self, 'inventories')
+        self.signatures = RemoteVersionedFiles(self, 'signatures')
+        self.revisions = RemoteVersionedFiles(self, 'revisions')
+        self._vf_objs = [
+            self.texts, self.inventories, self.signatures, self.revisions]
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -555,6 +563,8 @@ class RemoteRepository(_RpcHelper):
             self._lock_mode = 'r'
             self._lock_count = 1
             self._parents_map = {}
+            for vf in self._vf_objs:
+                vf._parents_map = {}
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
             if self._real_repository is not None:
@@ -597,6 +607,8 @@ class RemoteRepository(_RpcHelper):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._parents_map = {}
+            for vf in self._vf_objs:
+                vf._parents_map = {}
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
         elif self._lock_mode == 'r':
@@ -664,6 +676,8 @@ class RemoteRepository(_RpcHelper):
         if self._lock_count > 0:
             return
         self._parents_map = None
+        for vf in self._vf_objs:
+            vf._parents_map = None
         if 'hpss' in debug.debug_flags:
             self._requested_parents = None
         old_mode = self._lock_mode
@@ -982,7 +996,6 @@ class RemoteRepository(_RpcHelper):
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
         recipe = (start_set, stop_keys, len(parents_map))
-        body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
             if type(key) is not str:
@@ -992,7 +1005,7 @@ class RemoteRepository(_RpcHelper):
         args = (path,) + tuple(keys)
         try:
             response = self._call_with_body_bytes_expecting_body(
-                verb, args, body)
+                verb, args, _serialise_search_recipe(recipe))
         except errors.UnknownSmartMethod:
             # Server does not support this method, so get the whole graph.
             # Worse, we have to force a disconnection, because the server now
@@ -1113,16 +1126,6 @@ class RemoteRepository(_RpcHelper):
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
 
-    @property
-    def inventories(self):
-        """Decorate the real repository for now.
-
-        In the long term a full blown network facility is needed to
-        avoid creating a real repository object locally.
-        """
-        self._ensure_real()
-        return self._real_repository.inventories
-
     @needs_write_lock
     def pack(self):
         """Compress the data within the repository.
@@ -1132,46 +1135,14 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.pack()
 
-    @property
-    def revisions(self):
-        """Decorate the real repository for now.
-
-        In the short term this should become a real object to intercept graph
-        lookups.
-
-        In the long term a full blown network facility is needed.
-        """
-        self._ensure_real()
-        return self._real_repository.revisions
-
     def set_make_working_trees(self, new_value):
         self._ensure_real()
         self._real_repository.set_make_working_trees(new_value)
-
-    @property
-    def signatures(self):
-        """Decorate the real repository for now.
-
-        In the long term a full blown network facility is needed to avoid
-        creating a real repository object locally.
-        """
-        self._ensure_real()
-        return self._real_repository.signatures
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
         self._ensure_real()
         return self._real_repository.sign_revision(revision_id, gpg_strategy)
-
-    @property
-    def texts(self):
-        """Decorate the real repository for now.
-
-        In the long term a full blown network facility is needed to avoid
-        creating a real repository object locally.
-        """
-        self._ensure_real()
-        return self._real_repository.texts
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
@@ -1228,16 +1199,207 @@ class RemoteRepository(_RpcHelper):
                          self._fallback_repositories)
         return graph._StackedParentsProvider(providers)
 
-    def _serialise_search_recipe(self, recipe):
-        """Serialise a graph search recipe.
+def _serialise_search_recipe(recipe):
+    """Serialise a graph search recipe.
 
-        :param recipe: A search recipe (start, stop, count).
-        :return: Serialised bytes.
-        """
-        start_keys = ' '.join(recipe[0])
-        stop_keys = ' '.join(recipe[1])
-        count = str(recipe[2])
-        return '\n'.join((start_keys, stop_keys, count))
+    :param recipe: A search recipe (start, stop, count).
+    :return: Serialised bytes.
+    """
+    start_keys = ' '.join(recipe[0])
+    stop_keys = ' '.join(recipe[1])
+    count = str(recipe[2])
+    return '\n'.join((start_keys, stop_keys, count))
+
+def _serialise_search_tuple_key_recipe((start, stop, count)):
+    """Serialise a graph search recipe.
+
+    :param recipe: A search recipe (start, stop, count).
+    :return: Serialised bytes.
+    """
+    # Format:
+    #  recipe = keys NEWLINE keys NEWLINE count
+    #  count = INTEGER
+    #  keys = key 0x00 key 0x00 key ...
+    #  key = key_elem SPACE key_elem SPACE key_elem ...
+    buf = StringIO()
+    start_keys = (' '.join(key) for key in start)
+    buf.write('\0'.join(start_keys))
+    buf.write('\n')
+    stop_keys = (' '.join(key) for key in stop)
+    buf.write('\0'.join(stop_keys))
+    buf.write('\n')
+    buf.write(str(count))
+    return buf.getvalue()
+
+
+def _deserialise_search_result(bytes):
+    graph_dict = {}
+    for line in bytes.split('\n'):
+        keys_bytes = line.split('\0')
+        keys = [tuple(key_bytes.split(' ')) for key_bytes in keys_bytes]
+        parents = tuple(keys[1:])
+        if parents == (('',),):
+            parents = ()
+        graph_dict[keys[0]] = parents
+    return graph_dict
+
+
+class RemoteVersionedFiles(VersionedFiles):
+
+    def __init__(self, remote_repo, vf_name):
+        self.remote_repo = remote_repo
+        self.vf_name = vf_name
+        self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
+
+    def _get_real_vf(self):
+        self.remote_repo._ensure_real()
+        return getattr(self.remote_repo._real_repository, self.vf_name)
+
+    def add_lines(self, version_id, parents, lines, parent_texts=None,
+            left_matching_blocks=None, nostore_sha=None, random_id=False,
+            check_content=True):
+        real_vf = self._get_real_vf()
+        return real_vf.add_lines(version_id, parents, lines,
+            parent_texts=parent_texts,
+            left_matching_blocks=left_matching_blocks,
+            nostore_sha=nostore_sha, random_id=random_id,
+            check_content=check_content)
+
+    def add_mpdiffs(self, records):
+        real_vf = self._get_real_vf()
+        return real_vf.add_mpdiffs(records)
+
+    def annotate(self, key):
+        real_vf = self._get_real_vf()
+        return real_vf.annotate(key)
+
+    def check(self, progress_bar=None):
+        real_vf = self._get_real_vf()
+        return real_vf.check(progress_bar=progress_bar)
+
+    def get_parent_map(self, keys):
+        # XXX: lots of duplication with RemoteRepository.get_parent_map.
+        client = self.remote_repo._client
+        medium = client._medium
+        if medium._is_remote_before((1, 8)):
+            real_vf = self._get_real_vf()
+            return real_vf.get_parent_map(keys)
+        # Hack to build up the caching logic.
+        ancestry = self._parents_map
+        if ancestry is None:
+            # Repository is not locked, so there's no cache.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            try:
+                parent_map = self._get_parent_map(missing_revisions)
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before((1, 8))
+                real_vf = self._get_real_vf()
+                return real_vf.get_parent_map(keys)
+            if 'hpss' in debug.debug_flags:
+                mutter('retransmitted revisions: %d of %d',
+                        len(set(ancestry).intersection(parent_map)),
+                        len(parent_map))
+            ancestry.update(parent_map)
+        present_keys = [k for k in keys if k in ancestry]
+        if 'hpss' in debug.debug_flags:
+            if self._requested_parents is not None and len(ancestry) != 0:
+                self._requested_parents.update(present_keys)
+                mutter('Current RemoteRepository graph hit rate: %d%%',
+                    100.0 * len(self._requested_parents) / len(ancestry))
+        return dict((k, ancestry[k]) for k in present_keys)
+        
+    def _get_parent_map(self, keys):
+        # XXX: lots of duplication with RemoteRepository._get_parent_map.
+        if None in keys:
+            raise ValueError('get_parent_map(None) is not valid')
+        if NULL_REVISION in keys:
+            keys.discard(NULL_REVISION)
+            found_parents = {NULL_REVISION:()}
+            if not keys:
+                return found_parents
+        else:
+            found_parents = {}
+        # TODO(Needs analysis): We could assume that the keys being requested
+        # from get_parent_map are in a breadth first search, so typically they
+        # will all be depth N from some common parent, and we don't have to
+        # have the server iterate from the root parent, but rather from the
+        # keys we're searching; and just tell the server the keyspace we
+        # already have; but this may be more traffic again.
+
+        # Transform self._parents_map into a search request recipe.
+        # TODO: Manage this incrementally to avoid covering the same path
+        # repeatedly. (The server will have to on each request, but the less
+        # work done the better).
+        parents_map = self._parents_map
+        if parents_map is None:
+            # Repository is not locked, so there's no cache.
+            parents_map = {}
+        start_set = set(parents_map)
+        result_parents = set()
+        for parents in parents_map.itervalues():
+            result_parents.update(parents)
+        stop_keys = result_parents.difference(start_set)
+        included_keys = start_set.intersection(result_parents)
+        start_set.difference_update(included_keys)
+        recipe = (start_set, stop_keys, len(parents_map))
+        client = self.remote_repo._client
+        path = self.remote_repo.bzrdir._path_for_remote_call(client)
+        for key in keys:
+            if type(key) is not tuple:
+                raise ValueError(
+                    "key %r not a tuple of strs" % (key,))
+            for key_elem in key:
+                if type(key_elem) is not str:
+                    raise ValueError(
+                        "key %r not a tuple of strs" % (key,))
+        verb = 'VersionedFiles.get_parent_map'
+        args = (path, self.vf_name) + tuple(keys)
+        response = client.call_with_body_bytes_expecting_body(
+            verb, args, _serialise_search_tuple_key_recipe(recipe))
+        response_tuple, response_handler = response
+        if response_tuple[0] not in ['ok']:
+            response_handler.cancel_read_body()
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        if response_tuple[0] == 'ok':
+            coded = bz2.decompress(response_handler.read_body_bytes())
+            revision_graph = _deserialise_search_result(coded)
+            # The server doesn't return explicit results for keys it doesn't
+            # have, so add empty entries for the missing keys to the result
+            # dict.
+            missing = keys.difference(revision_graph)
+            for missing_key in missing:
+                revision_graph[missing_key] = ()
+            return revision_graph
+
+    def get_record_stream(self, keys, ordering, include_delta_closure):
+        real_vf = self._get_real_vf()
+        return real_vf.get_record_stream(keys, ordering, include_delta_closure)
+
+    def get_sha1s(self, keys):
+        real_vf = self._get_real_vf()
+        return real_vf.get_sha1s(keys)
+
+    def insert_record_stream(self, stream):
+        real_vf = self._get_real_vf()
+        return real_vf.insert_record_stream(stream)
+
+    def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        real_vf = self._get_real_vf()
+        return real_vf.iter_lines_added_or_present_in_keys(keys, pb=pb)
+
+    def keys(self):
+        real_vf = self._get_real_vf()
+        return real_vf.keys()
+
+    def make_mpdiffs(self, keys):
+        real_vf = self._get_real_vf()
+        return real_vf.make_mpdiffs(keys)
 
     def autopack(self):
         path = self.bzrdir._path_for_remote_call(self._client)
