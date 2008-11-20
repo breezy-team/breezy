@@ -284,6 +284,7 @@ cdef _read_dir(path):
 
     cwd = getcwd(NULL, 0)
     if path != "":
+        # Avoid chdir('') because it causes problems on Sun OS
         if -1 == chdir(path):
             raise OSError(errno, strerror(errno))
     try:
