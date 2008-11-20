@@ -1324,6 +1324,11 @@ class KnitVersionedFiles(VersionedFiles):
         # can't generate annotations from new deltas until their basis parent
         # is present anyway, so we get away with not needing an index that
         # includes the new keys.
+        #
+        # See <http://launchpad.net/bugs/300177> about ordering of compression
+        # parents in the records - to be conservative, we insist that all
+        # parents must be present to avoid expanding to a fulltext.
+        #
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
@@ -1331,11 +1336,11 @@ class KnitVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
-            elif ((record.storage_kind in knit_types) 
+            elif ((record.storage_kind in knit_types)
                   and (not parents
+                       or not self._index.missing_keys(parents)
                        or not self._fallback_vfs
-                       or self._index.has_key(parents[0])
-                       or not self.has_key(parents[0]))):
+                       or self.missing_keys(parents))):
                 # we can insert the knit record literally if either it has no
                 # compression parent OR we already have its basis in this kvf
                 # OR the basis is not present even in the fallbacks.  In the
@@ -1383,7 +1388,7 @@ class KnitVersionedFiles(VersionedFiles):
                     # 
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    if not self.has_key(parents[0]):
+                    if self.missing_keys(parents):
                         pending = buffered_index_entries.setdefault(
                             parents[0], [])
                         pending.append(index_entry)
