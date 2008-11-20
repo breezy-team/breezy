@@ -883,23 +883,26 @@ def _find_children_info(store, interesting_keys, uninteresting_keys):
     uninteresting_items = set()
     interesting_items = set()
     interesting_records = []
+    # records_read = set()
     for record in store.get_record_stream(chks_to_read, 'unordered', True):
+        # records_read.add(record.key())
         node = _deserialise(record.get_bytes_as('fulltext'), record.key)
         if record.key in uninteresting_keys:
             if isinstance(node, InternalNode):
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                next_uninteresting.update(chks)
+                next_uninteresting.update(node.refs())
             else:
-                uninteresting_items.update(node._items.iteritems())
+                # We know we are at a LeafNode, so we can pass None for the
+                # store
+                uninteresting_items.update(node.iteritems(None))
         else:
             interesting_records.append(record)
             if isinstance(node, InternalNode):
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                next_interesting.update(chks)
+                next_interesting.update(node.refs())
             else:
-                interesting_items.update(node._items.iteritems())
+                interesting_items.update(node.iteritems(None))
+    # TODO: Filter out records that have already been read, as node splitting
+    #       can cause us to reference the same nodes via shorter and longer
+    #       paths
     return (next_uninteresting, uninteresting_items,
             next_interesting, interesting_records, interesting_items)
 
