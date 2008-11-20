@@ -2189,6 +2189,8 @@ class CHKInventoryRepository(KnitPackRepository):
         interesting_root_keys = set()
         for idx, inv in enumerate(self.iter_inventories(revision_ids)):
             interesting_root_keys.add(inv.id_to_entry.key())
+        revision_ids = frozenset(revision_ids)
+        file_id_revisions = {}
         for records, items in chk_map.iter_interesting_nodes(self.chk_bytes,
                     interesting_root_keys, uninteresting_root_keys):
             # This is cheating a bit to use the last grabbed 'inv', but it
@@ -2197,8 +2199,13 @@ class CHKInventoryRepository(KnitPackRepository):
                 entry = inv._bytes_to_entry(bytes)
                 if entry.name == '' and not rich_root:
                     continue
-                if entry.revision == inv.revision_id:
-                    yield ("file", entry.file_id, [entry.revision])
+                if entry.revision in revision_ids:
+                    # Would we rather build this up into file_id => revision
+                    # maps?
+                    s = file_id_revisions.setdefault(entry.file_id, set())
+                    s.add(entry.revision)
+        for file_id, revisions in file_id_revisions.iteritems():
+            yield ('file', file_id, revisions)
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.

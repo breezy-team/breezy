@@ -333,7 +333,9 @@ class RepoFetcher(object):
             # XXX: We could instead call get_record_stream(records.keys())
             #      ATM, this will always insert the records as fulltexts, and
             #      requires that you can hang on to records once you have gone
-            #      on to the next one.
+            #      on to the next one. Further, it causes the target to
+            #      recompress the data. Testing shows it to be faster than
+            #      requesting the records again, though.
             self.to_repository.chk_bytes.insert_record_stream(records.values())
             # XXX: We also have the list of text references at this point,
             #      rather than going through item_keys_introduced_by
