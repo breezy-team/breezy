@@ -1442,9 +1442,11 @@ class KnitVersionedFiles(VersionedFiles):
         is an iterator).
 
         NOTES:
-         * Lines are normalised by the underlying store: they will all have \n
+         * Lines are normalised by the underlying store: they will all have \\n
            terminators.
          * Lines are returned in arbitrary order.
+         * If a requested key did not change any lines (or didn't have any
+           lines), it may not be mentioned at all in the result.
 
         :return: An iterator over (line, key).
         """
@@ -1476,6 +1478,14 @@ class KnitVersionedFiles(VersionedFiles):
             # change to integrate into the rest of the codebase. RBC 20071110
             for line in line_iterator:
                 yield line, key
+        # If there are still keys we've not yet found, we look in the fallback
+        # vfs, and hope to find them there.  Note that if the keys are found
+        # but had no changes or no content, the fallback may not return
+        # anything.  
+        if keys and not self._fallback_vfs:
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         for source in self._fallback_vfs:
             if not keys:
                 break
@@ -1484,10 +1494,6 @@ class KnitVersionedFiles(VersionedFiles):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        if keys:
-            # XXX: strictly the second parameter is meant to be the file id
-            # but it's not easily accessible here.
-            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
