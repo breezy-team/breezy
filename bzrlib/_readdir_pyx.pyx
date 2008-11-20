@@ -285,61 +285,63 @@ cdef _read_dir(path):
     cwd = getcwd(NULL, 0)
     if -1 == chdir(path):
         raise OSError(errno, strerror(errno))
-    the_dir = opendir(".")
-    if NULL == the_dir:
-        raise OSError(errno, strerror(errno))
-    result = []
     try:
-        entry = &sentinel
-        while entry != NULL:
-            # Unlike most libc functions, readdir needs errno set to 0
-            # beforehand so that eof can be distinguished from errors.  See
-            # <https://bugs.launchpad.net/bzr/+bug/279381>
-            while True:
-                errno = 0;
-                entry = readdir(the_dir)
-                if entry == NULL and (errno == EAGAIN or errno == EINTR):
-                    # try again
-                    continue
-                else:
-                    break
-            if entry == NULL:
-                if errno == ENOTDIR or errno == 0:
-                    # We see ENOTDIR at the end of a normal directory.
-                    # As ENOTDIR for read_dir(file) is triggered on opendir,
-                    # we consider ENOTDIR to be 'no error'.
-                    continue
-                else:
-                    raise OSError(errno, strerror(errno))
-            name = entry.d_name
-            if not (name[0] == c"." and (
-                (name[1] == 0) or 
-                (name[1] == c"." and name[2] == 0))
-                ):
-                statvalue = _Stat()
-                stat_result = lstat(entry.d_name, &statvalue._st)
-                if stat_result != 0:
-                    if errno != ENOENT:
-                        raise OSError(errno, strerror(errno))
+        the_dir = opendir(".")
+        if NULL == the_dir:
+            raise OSError(errno, strerror(errno))
+        try:
+            result = []
+            entry = &sentinel
+            while entry != NULL:
+                # Unlike most libc functions, readdir needs errno set to 0
+                # beforehand so that eof can be distinguished from errors.  See
+                # <https://bugs.launchpad.net/bzr/+bug/279381>
+                while True:
+                    errno = 0;
+                    entry = readdir(the_dir)
+                    if entry == NULL and (errno == EAGAIN or errno == EINTR):
+                        # try again
+                        continue
                     else:
-                        kind = _missing
-                        statvalue = None
-                # We append a 5-tuple that can be modified in-place by the C
-                # api:
-                # inode to sort on (to replace with top_path)
-                # name (to keep)
-                # kind (None, to set)
-                # statvalue (to keep)
-                # abspath (None, to set)
-                PyList_Append(result, (entry.d_ino, entry.d_name, None,
-                    statvalue, None))
+                        break
+                if entry == NULL:
+                    if errno == ENOTDIR or errno == 0:
+                        # We see ENOTDIR at the end of a normal directory.
+                        # As ENOTDIR for read_dir(file) is triggered on opendir,
+                        # we consider ENOTDIR to be 'no error'.
+                        continue
+                    else:
+                        raise OSError(errno, strerror(errno))
+                name = entry.d_name
+                if not (name[0] == c"." and (
+                    (name[1] == 0) or 
+                    (name[1] == c"." and name[2] == 0))
+                    ):
+                    statvalue = _Stat()
+                    stat_result = lstat(entry.d_name, &statvalue._st)
+                    if stat_result != 0:
+                        if errno != ENOENT:
+                            raise OSError(errno, strerror(errno))
+                        else:
+                            kind = _missing
+                            statvalue = None
+                    # We append a 5-tuple that can be modified in-place by the C
+                    # api:
+                    # inode to sort on (to replace with top_path)
+                    # name (to keep)
+                    # kind (None, to set)
+                    # statvalue (to keep)
+                    # abspath (None, to set)
+                    PyList_Append(result, (entry.d_ino, entry.d_name, None,
+                        statvalue, None))
+        finally:
+            if -1 == closedir(the_dir):
+                raise OSError(errno, strerror(errno))
     finally:
         if -1 == chdir(cwd):
             free(cwd)
             raise OSError(errno, strerror(errno))
         free(cwd)
-        if -1 == closedir(the_dir):
-            raise OSError(errno, strerror(errno))
     return result
 
 
