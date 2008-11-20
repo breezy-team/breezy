@@ -38,7 +38,10 @@ Densely packed upper nodes.
 """
 
 import heapq
-import osutils
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
+from bzrlib import versionedfile
+""")
 
 
 class CHKMap(object):
@@ -874,8 +877,6 @@ def _deserialise(bytes, key):
         raise AssertionError("Unknown node type.")
 
 
-from bzrlib import versionedfile
-
 def _find_children_info(store, interesting_keys, uninteresting_keys,
                         adapter, pb=None):
     """Read the associated records, and determine what is interesting."""
@@ -938,6 +939,8 @@ def iter_interesting_nodes(store, interesting_root_keys,
     all_uninteresting_items = set()
 
     # A way to adapt from the compressed texts back into fulltexts
+    # In a way, this seems like a layering inversion to have CHKMap know the
+    # details of versionedfile
     adapter_class = versionedfile.adapter_registry.get(
         ('knit-ft-gz', 'fulltext'))
     adapter = adapter_class(store)
