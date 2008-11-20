@@ -283,8 +283,9 @@ cdef _read_dir(path):
     global errno
 
     cwd = getcwd(NULL, 0)
-    if -1 == chdir(path):
-        raise OSError(errno, strerror(errno))
+    if path != "":
+        if -1 == chdir(path):
+            raise OSError(errno, strerror(errno))
     try:
         the_dir = opendir(".")
         if NULL == the_dir:
