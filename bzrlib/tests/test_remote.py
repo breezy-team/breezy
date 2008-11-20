@@ -1012,6 +1012,19 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
 
+class TestTransportMkdir(tests.TestCase):
+
+    def test_permissiondenied(self):
+        client = FakeClient()
+        client.add_error_response('PermissionDenied', 'remote path', 'extra')
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        exc = self.assertRaises(
+            errors.PermissionDenied, transport.mkdir, 'client path')
+        expected_error = errors.PermissionDenied('/client path', 'extra')
+        self.assertEqual(expected_error, exc)
+
+
 class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
 
     def test_defaults_to_none(self):

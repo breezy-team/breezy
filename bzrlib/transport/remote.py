@@ -172,7 +172,12 @@ class RemoteTransport(transport.ConnectedTransport):
         try:
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err)
+            # The first argument, if present, is always a path.
+            if args:
+                context = {'orig_path': args[0]}
+            else:
+                context = {}
+            self._translate_error(err, **context)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
