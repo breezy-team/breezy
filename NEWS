@@ -31,7 +31,9 @@ IN DEVELOPMENT
       (Martin Pool, #289148)
 
     * Don't call the system ``chdir()`` with an empty path. Sun OS seems
-      to give an error in that case. (John Arbash Meinel, #297831)
+      to give an error in that case.  Also, don't count on ``getcwd()`` 
+      being able to allocate a new buffer, which is a gnu extension.  
+      (John Arbash Meinel, Martin Pool, Harry Hirsch, #297831)
 
     * TooManyConcurrentRequests no longer occur when a fetch fails and
       tries to abort a write group.  This allows the root cause (e.g. a
