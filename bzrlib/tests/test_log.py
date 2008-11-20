@@ -796,9 +796,10 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
-            revisions)
-        revisions2 = list(log.get_view_revisions(mainline_revs, rev_nos, wt.branch,
-                                             'forward', include_merges=False))
+                         revisions)
+        revisions2 = list(log.get_view_revisions(
+                mainline_revs, rev_nos, wt.branch, 'forward',
+                include_merges=False))
         self.assertEqual(revisions, revisions2)
 
     def test_get_view_revisions_reverse(self):
@@ -809,7 +810,7 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse'))
         self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
-            revisions)
+                         revisions)
         revisions2 = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse',
                 include_merges=False))
@@ -823,14 +824,14 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
-            ('4b', '4', 0), ('4a', '3.1.1', 1)],
-            revisions)
+                          ('4b', '4', 0), ('4a', '3.1.1', 1)],
+                         revisions)
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward',
                 include_merges=False))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
-            ('4b', '4', 0)],
-            revisions)
+                          ('4b', '4', 0)],
+                         revisions)
 
     def test_get_view_revisions_merge_reverse(self):
         """Test get_view_revisions in reverse when there are merges"""
@@ -840,14 +841,14 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse'))
         self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
-            ('3', '3', 0), ('2', '2', 0), ('1', '1', 0)],
-            revisions)
+                          ('3', '3', 0), ('2', '2', 0), ('1', '1', 0)],
+                         revisions)
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse',
                 include_merges=False))
         self.assertEqual([('4b', '4', 0), ('3', '3', 0), ('2', '2', 0),
-            ('1', '1', 0)],
-            revisions)
+                          ('1', '1', 0)],
+                         revisions)
 
     def test_get_view_revisions_merge2(self):
         """Test get_view_revisions when there are merges"""
@@ -857,15 +858,15 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-            ('3a', '2.1.1', 1), ('3b', '2.2.1', 1), ('4b', '4', 0),
-            ('4a', '2.2.2', 1)]
+                    ('3a', '2.1.1', 1), ('3b', '2.2.1', 1), ('4b', '4', 0),
+                    ('4a', '2.2.2', 1)]
         self.assertEqual(expected, revisions)
         revisions = list(log.get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward',
                 include_merges=False))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-            ('4b', '4', 0)],
-            revisions)
+                          ('4b', '4', 0)],
+                         revisions)
 
 
 class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
@@ -1062,3 +1063,44 @@ class TestLogFormatter(tests.TestCase):
         self.assertEqual('jsmith@example.com', lf.short_author(rev))
         rev.properties['author'] = 'John Smith jsmith@example.com'
         self.assertEqual('John Smith', lf.short_author(rev))
+
+
+class TestReverseByDepth(tests.TestCase):
+    """Test reverse_by_depth behavior.
+
+    This is used to present revisions in forward (oldest first) order in a nice
+    layout.
+
+    The tests use lighter revision description to ease reading.
+    """
+
+    def assertReversed(self, forward, backward):
+        # Transform the descriptions to suit the API: tests use (revno, depth),
+        # while the API expects (revid, revno, depth)
+        def complete_revisions(l):
+            """Transform the description to suit the API.
+
+            Tests use (revno, depth) whil the API expects (revid, revno, depth).
+            Since the revid is arbitrary, we just duplicate revno
+            """
+            return [ (r, r, d) for r, d in l]
+        forward = complete_revisions(forward)
+        backward= complete_revisions(backward)
+        self.assertEqual(forward, log.reverse_by_depth(backward))
+
+
+    def test_mainline_revisions(self):
+        self.assertReversed([( '1', 0), ('2', 0)],
+                            [('2', 0), ('1', 0)])
+
+    def test_merged_revisions(self):
+        self.assertReversed([('1', 0), ('2', 0), ('1.1', 1), ('1.2', 1),],
+                            [('2', 0), ('1.2', 1), ('1.1', 1), ('1', 0),])
+
+    def test_shifted_merged_revisions(self):
+        """Test irregular layout.
+
+        Requesting revisions touching a file can produce "holes" in the depths.
+        """
+        self.assertReversed([('1', 0), ('2', 0), ('1.1', 2), ('1.2', 2),],
+                            [('2', 0), ('1.2', 2), ('1.1', 2), ('1', 0),])
