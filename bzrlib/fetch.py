@@ -329,16 +329,23 @@ class RepoFetcher(object):
         interesting = chk_map.iter_interesting_nodes(
             self.from_repository.chk_bytes, interesting_chk_roots,
             uninteresting_chk_roots, pb=pb)
-        for records, items in interesting:
-            # XXX: We could instead call get_record_stream(records.keys())
-            #      ATM, this will always insert the records as fulltexts, and
-            #      requires that you can hang on to records once you have gone
-            #      on to the next one. Further, it causes the target to
-            #      recompress the data. Testing shows it to be faster than
-            #      requesting the records again, though.
-            self.to_repository.chk_bytes.insert_record_stream(records.values())
-            # XXX: We also have the list of text references at this point,
-            #      rather than going through item_keys_introduced_by
+        def to_stream_adapter():
+            """Adapt the iter_interesting_nodes result to a single stream.
+
+            iter_interesting_nodes returns records as it processes them, which
+            can be in batches. But we only want a single stream to be inserted.
+            """
+            for record, items in interesting:
+                for value in record.itervalues():
+                    yield value
+        # XXX: We could instead call get_record_stream(records.keys())
+        #      ATM, this will always insert the records as fulltexts, and
+        #      requires that you can hang on to records once you have gone
+        #      on to the next one. Further, it causes the target to
+        #      recompress the data. Testing shows it to be faster than
+        #      requesting the records again, though.
+        self.to_repository.chk_bytes.insert_record_stream(
+            to_stream_adapter())
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and

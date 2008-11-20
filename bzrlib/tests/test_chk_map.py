@@ -980,6 +980,12 @@ class TestIterInterestingNodes(TestCaseWithStore):
             self.assertEqual(exp_tuple, act_tuple)
         self.assertEqual(len(expected), count + 1)
 
+    def test_empty_to_one_keys(self):
+        target = self.get_map_key({('a',): 'content'})
+        self.assertIterInteresting(
+            [([target], [(('a',), 'content')])],
+            [target], [])
+
     def test_none_to_one_key(self):
         basis = self.get_map_key({})
         target = self.get_map_key({('a',): 'content'})
@@ -1064,7 +1070,8 @@ class TestIterInterestingNodes(TestCaseWithStore):
         bba_key = ('sha1:5ce6a69a21060222bb0a5b48fdbfcca586cc9183',)
         self.assertIterInteresting(
             [([target1, target2], []),
-             ([aa_key, bb_key], []),
-             ([aac_key, bba_key],
-              [(('aac',), 'target1'), (('bba',), 'target2')]),
+             ([aa_key], []),
+             ([bb_key], []),
+             ([aac_key], [(('aac',), 'target1')]),
+             ([bba_key], [(('bba',), 'target2')]),
             ], [target1, target2], [basis1, basis2])

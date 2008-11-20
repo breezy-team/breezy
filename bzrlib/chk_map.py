@@ -878,7 +878,7 @@ def _deserialise(bytes, key):
 
 
 def _find_children_info(store, interesting_keys, uninteresting_keys,
-                        adapter, pb=None):
+                        adapter, pb):
     """Read the associated records, and determine what is interesting."""
     uninteresting_keys = set(uninteresting_keys)
     chks_to_read = uninteresting_keys.union(interesting_keys)
@@ -918,32 +918,20 @@ def _find_children_info(store, interesting_keys, uninteresting_keys,
             next_interesting, interesting_records, interesting_items)
 
 
-def iter_interesting_nodes(store, interesting_root_keys,
-                           uninteresting_root_keys, pb=None):
-    """Given root keys, find interesting nodes.
-
-    Evaluate nodes referenced by interesting_root_keys. Ones that are also
-    referenced from uninteresting_root_keys are not considered interesting.
-
-    :param interesting_root_keys: keys which should be part of the
-        "interesting" nodes (which will be yielded)
-    :param uninteresting_root_keys: keys which should be filtered out of the
-        result set.
-    :return: Yield
-        (interesting records, interesting chk's, interesting key:values)
-    """
-    # What about duplicates with uninteresting_root_keys?
-    # TODO: consider that it may be more memory efficient to use the 20-byte
-    #       sha1 string, rather than tuples of hexidecimal sha1 strings.
+def _find_all_uninteresting(store, interesting_root_keys,
+                            uninteresting_root_keys, adapter, pb):
+    """Determine the full set of uninteresting keys."""
+    # What about duplicates between interesting_root_keys and
+    # uninteresting_root_keys?
+    if not uninteresting_root_keys:
+        # Shortcut case. We know there is nothing uninteresting to filter out
+        # So we just let the rest of the algorithm do the work
+        # We know there is nothing uninteresting, and we didn't have to read
+        # any interesting records yet.
+        return (set(), set(), set(interesting_root_keys), [], set())
     all_uninteresting_chks = set(uninteresting_root_keys)
     all_uninteresting_items = set()
 
-    # A way to adapt from the compressed texts back into fulltexts
-    # In a way, this seems like a layering inversion to have CHKMap know the
-    # details of versionedfile
-    adapter_class = versionedfile.adapter_registry.get(
-        ('knit-ft-gz', 'fulltext'))
-    adapter = adapter_class(store)
     # First step, find the direct children of both the interesting and
     # uninteresting set
     (uninteresting_keys, uninteresting_items,
@@ -984,24 +972,53 @@ def iter_interesting_nodes(store, interesting_root_keys,
             else:
                 all_uninteresting_items.update(node._items.iteritems())
         chks_to_read = next_chks
+    return (all_uninteresting_chks, all_uninteresting_items,
+            interesting_keys, interesting_records, interesting_items)
+
+
+def iter_interesting_nodes(store, interesting_root_keys,
+                           uninteresting_root_keys, pb=None):
+    """Given root keys, find interesting nodes.
+
+    Evaluate nodes referenced by interesting_root_keys. Ones that are also
+    referenced from uninteresting_root_keys are not considered interesting.
+
+    :param interesting_root_keys: keys which should be part of the
+        "interesting" nodes (which will be yielded)
+    :param uninteresting_root_keys: keys which should be filtered out of the
+        result set.
+    :return: Yield
+        (interesting records, interesting chk's, interesting key:values)
+    """
+    # TODO: consider that it may be more memory efficient to use the 20-byte
+    #       sha1 string, rather than tuples of hexidecimal sha1 strings.
+
+    # A way to adapt from the compressed texts back into fulltexts
+    # In a way, this seems like a layering inversion to have CHKMap know the
+    # details of versionedfile
+    adapter_class = versionedfile.adapter_registry.get(
+        ('knit-ft-gz', 'fulltext'))
+    adapter = adapter_class(store)
+
+    (all_uninteresting_chks, all_uninteresting_items, interesting_keys,
+     interesting_records, interesting_items) = _find_all_uninteresting(store,
+        interesting_root_keys, uninteresting_root_keys, adapter, pb)
 
     # Now that we know everything uninteresting, we can yield information from
     # our first request
     interesting_items.difference_update(all_uninteresting_items)
     records = dict((record.key, record) for record in interesting_records
                     if record.key not in all_uninteresting_chks)
-    yield records, interesting_items
+    if records or interesting_items:
+        yield records, interesting_items
     interesting_keys.difference_update(all_uninteresting_chks)
 
     chks_to_read = interesting_keys
     while chks_to_read:
         next_chks = set()
-        records = {}
-        interesting_items = []
         for record in store.get_record_stream(chks_to_read, 'unordered', False):
             if pb is not None:
                 pb.tick()
-            records[record.key] = record
             # TODO: Handle 'absent'?
             if record.storage_kind != 'fulltext':
                 bytes = adapter.get_bytes(record,
@@ -1018,14 +1035,14 @@ def iter_interesting_nodes(store, interesting_root_keys,
                 next_chks.update(chks)
                 # These are now uninteresting everywhere else
                 all_uninteresting_chks.update(chks)
+                interesting_items = []
             else:
-                interesting_items.extend(
-                    [item for item in node._items.iteritems()
-                           if item not in all_uninteresting_items])
+                interesting_items = [item for item in node._items.iteritems()
+                                     if item not in all_uninteresting_items]
                 # TODO: Do we need to filter out items that we have already
                 #       seen on other pages? We don't really want to buffer the
                 #       whole thing, but it does mean that callers need to
                 #       understand they may get duplicate values.
                 # all_uninteresting_items.update(interesting_items)
-        yield records, interesting_items
+            yield {record.key: record}, interesting_items
         chks_to_read = next_chks
