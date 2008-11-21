@@ -32,16 +32,14 @@ class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestCaseWithoutPropsHandler, self).setUp()
         # keep a reference to the "current" custom prop. handler registry
-        self.properties_handler_registry = \
-            log.properties_handler_registry
+        self.properties_handler_registry = log.properties_handler_registry
         # clean up the registry in log
         log.properties_handler_registry = registry.Registry()
 
     def _cleanup(self):
         super(TestCaseWithoutPropsHandler, self)._cleanup()
         # restore the custom properties handler registry
-        log.properties_handler_registry = \
-            self.properties_handler_registry
+        log.properties_handler_registry = self.properties_handler_registry
 
 
 class LogCatcher(log.LogFormatter):
@@ -67,8 +65,13 @@ class LogCatcher(log.LogFormatter):
 class TestShowLog(tests.TestCaseWithTransport):
 
     def checkDelta(self, delta, **kw):
-        """Check the filenames touched by a delta are as expected."""
+        """Check the filenames touched by a delta are as expected.
+
+        Caller only have to pass in the list of files for each part, all
+        unspecified parts are considered empty (and checked as such).
+        """
         for n in 'added', 'removed', 'renamed', 'modified', 'unchanged':
+            # By default we expect an empty list
             expected = kw.get(n, [])
             # strip out only the path components
             got = [x[0] for x in getattr(delta, n)]
@@ -81,92 +84,78 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         wt.commit('empty commit')
         log.show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
-        self.assertRaises(errors.InvalidRevisionNumber, log.show_log, b, lf,
-                          start_revision=2, end_revision=1)
-        self.assertRaises(errors.InvalidRevisionNumber, log.show_log, b, lf,
-                          start_revision=1, end_revision=2)
-        self.assertRaises(errors.InvalidRevisionNumber, log.show_log, b, lf,
-                          start_revision=0, end_revision=2)
-        self.assertRaises(errors.InvalidRevisionNumber, log.show_log, b, lf,
-                          start_revision=1, end_revision=0)
-        self.assertRaises(errors.InvalidRevisionNumber, log.show_log, b, lf,
-                          start_revision=-1, end_revision=1)
-        self.assertRaises(errors.InvalidRevisionNumber, log.show_log, b, lf,
-                          start_revision=1, end_revision=-1)
 
-    def test_simple_log(self):
-        eq = self.assertEquals
+        def assertInvalidRev(start, end):
+            self.assertRaises(errors.InvalidRevisionNumber,
+                              log.show_log, b, lf,
+                              start_revision=start, end_revision=end)
 
+        # Since there is a single revision in the branch all the combinations
+        # below should fail.
+        assertInvalidRev(2, 1)
+        assertInvalidRev(1, 2)
+        assertInvalidRev(0, 2)
+        assertInvalidRev(1, 0)
+        assertInvalidRev(-1, 1)
+        assertInvalidRev(1, -1)
+
+    def test_empty_branch(self):
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
 
         lf = LogCatcher()
-        log.show_log(b, lf)
+        log.show_log(wt.branch, lf)
         # no entries yet
-        eq(lf.logs, [])
+        self.assertEquals(lf.logs, [])
+
+    def test_empty_commit(self):
+        wt = self.make_branch_and_tree('.')
 
         wt.commit('empty commit')
         lf = LogCatcher()
-        log.show_log(b, lf, verbose=True)
-        eq(len(lf.logs), 1)
-        eq(lf.logs[0].revno, '1')
-        eq(lf.logs[0].rev.message, 'empty commit')
-        d = lf.logs[0].delta
-        self.log('log delta: %r' % d)
-        self.checkDelta(d)
+        log.show_log(wt.branch, lf, verbose=True)
+        self.assertEquals(len(lf.logs), 1)
+        self.assertEquals(lf.logs[0].revno, '1')
+        self.assertEquals(lf.logs[0].rev.message, 'empty commit')
+        self.checkDelta(lf.logs[0].delta)
 
+    def test_simple_commit(self):
+        wt = self.make_branch_and_tree('.')
+        wt.commit('empty commit')
         self.build_tree(['hello'])
         wt.add('hello')
         wt.commit('add one file',
                   committer=u'\u013d\xf3r\xe9m \xcdp\u0161\xfam '
                             u'<test@example.com>')
-
-        lf = self.make_utf8_encoded_stringio()
-        # log using regular thing
-        log.show_log(b, log.LongLogFormatter(lf))
-        lf.seek(0)
-        for l in lf.readlines():
-            self.log(l)
-
-        # get log as data structure
         lf = LogCatcher()
-        log.show_log(b, lf, verbose=True)
-        eq(len(lf.logs), 2)
-        self.log('log entries:')
-        for logentry in lf.logs:
-            self.log('%4s %s' % (logentry.revno, logentry.rev.message))
-
+        log.show_log(wt.branch, lf, verbose=True)
+        self.assertEquals(len(lf.logs), 2)
         # first one is most recent
-        logentry = lf.logs[0]
-        eq(logentry.revno, '2')
-        eq(logentry.rev.message, 'add one file')
-        d = logentry.delta
-        self.log('log 2 delta: %r' % d)
-        self.checkDelta(d, added=['hello'])
+        log_entry = lf.logs[0]
+        self.assertEquals(log_entry.revno, '2')
+        self.assertEquals(log_entry.rev.message, 'add one file')
+        self.checkDelta(log_entry.delta, added=['hello'])
 
-        # commit a log message with control characters
+    def test_commit_message_with_control_chars(self):
+        wt = self.make_branch_and_tree('.')
         msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
-        self.log("original commit message: %r", msg)
         wt.commit(msg)
         lf = LogCatcher()
-        log.show_log(b, lf, verbose=True)
+        log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
-        self.log("escaped commit message: %r", committed_msg)
         self.assert_(msg != committed_msg)
         self.assert_(len(committed_msg) > len(msg))
 
-        # Check that log message with only XML-valid characters isn't
+    def test_commit_message_without_control_chars(self):
+        wt = self.make_branch_and_tree('.')
         # escaped.  As ElementTree apparently does some kind of
         # newline conversion, neither LF (\x0A) nor CR (\x0D) are
         # included in the test commit message, even though they are
         # valid XML 1.0 characters.
         msg = "\x09" + ''.join([unichr(x) for x in range(0x20, 256)])
-        self.log("original commit message: %r", msg)
         wt.commit(msg)
         lf = LogCatcher()
-        log.show_log(b, lf, verbose=True)
+        log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
-        self.log("escaped commit message: %r", committed_msg)
         self.assert_(msg == committed_msg)
 
     def test_deltas_in_merge_revisions(self):
@@ -190,20 +179,20 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         lf.supports_merge_revisions = True
         log.show_log(b, lf, verbose=True)
-        eq(len(lf.logs),3)
+        self.assertEquals(len(lf.logs),3)
         logentry = lf.logs[0]
-        eq(logentry.revno, '2')
-        eq(logentry.rev.message, 'merge child branch')
+        self.assertEquals(logentry.revno, '2')
+        self.assertEquals(logentry.rev.message, 'merge child branch')
         d = logentry.delta
         self.checkDelta(d, removed=['file1'], modified=['file2'])
         logentry = lf.logs[1]
-        eq(logentry.revno, '1.1.1')
-        eq(logentry.rev.message, 'remove file1 and modify file2')
+        self.assertEquals(logentry.revno, '1.1.1')
+        self.assertEquals(logentry.rev.message, 'remove file1 and modify file2')
         d = logentry.delta
         self.checkDelta(d, removed=['file1'], modified=['file2'])
         logentry = lf.logs[2]
-        eq(logentry.revno, '1')
-        eq(logentry.rev.message, 'add file1 and file2')
+        self.assertEquals(logentry.revno, '1')
+        self.assertEquals(logentry.rev.message, 'add file1 and file2')
         d = logentry.delta
         self.checkDelta(d, added=['file1', 'file2'])
 
@@ -212,29 +201,27 @@ class TestShowLog(tests.TestCaseWithTransport):
         support merge revisions."""
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
-        try:
-            wt.add('')
-            wt.commit('rev-1', rev_id='rev-1',
-                      timestamp=1132586655, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.commit('rev-merged', rev_id='rev-2a',
-                      timestamp=1132586700, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.set_parent_ids(['rev-1', 'rev-2a'])
-            wt.branch.set_last_revision_info(1, 'rev-1')
-            wt.commit('rev-2', rev_id='rev-2b',
-                      timestamp=1132586800, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            logfile = self.make_utf8_encoded_stringio()
-            formatter = log.ShortLogFormatter(to_file=logfile)
-            wtb = wt.branch
-            lf = LogCatcher()
-            revspec = revisionspec.RevisionSpec.from_string('1.1.1')
-            rev = revspec.in_history(wtb)
-            self.assertRaises(errors.BzrCommandError, log.show_log, wtb, lf,
-                              start_revision=rev, end_revision=rev)
-        finally:
-            wt.unlock()
+        self.addCleanup(wt.unlock)
+        wt.add('')
+        wt.commit('rev-1', rev_id='rev-1',
+                  timestamp=1132586655, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.commit('rev-merged', rev_id='rev-2a',
+                  timestamp=1132586700, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.set_parent_ids(['rev-1', 'rev-2a'])
+        wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.commit('rev-2', rev_id='rev-2b',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile)
+        wtb = wt.branch
+        lf = LogCatcher()
+        revspec = revisionspec.RevisionSpec.from_string('1.1.1')
+        rev = revspec.in_history(wtb)
+        self.assertRaises(errors.BzrCommandError, log.show_log, wtb, lf,
+                          start_revision=rev, end_revision=rev)
 
 
 def make_commits_with_trailing_newlines(wt):
@@ -303,23 +290,23 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
     def test_short_log_with_merges(self):
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
-        try:
-            wt.add('')
-            wt.commit('rev-1', rev_id='rev-1',
-                      timestamp=1132586655, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.commit('rev-merged', rev_id='rev-2a',
-                      timestamp=1132586700, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.set_parent_ids(['rev-1', 'rev-2a'])
-            wt.branch.set_last_revision_info(1, 'rev-1')
-            wt.commit('rev-2', rev_id='rev-2b',
-                      timestamp=1132586800, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            logfile = self.make_utf8_encoded_stringio()
-            formatter = log.ShortLogFormatter(to_file=logfile)
-            log.show_log(wt.branch, formatter)
-            self.assertEqualDiff(logfile.getvalue(), """\
+        self.addCleanup(wt.unlock)
+        wt.add('')
+        wt.commit('rev-1', rev_id='rev-1',
+                  timestamp=1132586655, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.commit('rev-merged', rev_id='rev-2a',
+                  timestamp=1132586700, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.set_parent_ids(['rev-1', 'rev-2a'])
+        wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.commit('rev-2', rev_id='rev-2b',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile)
+        log.show_log(wt.branch, formatter)
+        self.assertEqualDiff(logfile.getvalue(), """\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
@@ -327,38 +314,34 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
       rev-1
 
 """)
-        finally:
-            wt.unlock()
 
     def test_short_log_single_merge_revision(self):
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
-        try:
-            wt.add('')
-            wt.commit('rev-1', rev_id='rev-1',
-                      timestamp=1132586655, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.commit('rev-merged', rev_id='rev-2a',
-                      timestamp=1132586700, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.set_parent_ids(['rev-1', 'rev-2a'])
-            wt.branch.set_last_revision_info(1, 'rev-1')
-            wt.commit('rev-2', rev_id='rev-2b',
-                      timestamp=1132586800, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            logfile = self.make_utf8_encoded_stringio()
-            formatter = log.ShortLogFormatter(to_file=logfile)
-            revspec = revisionspec.RevisionSpec.from_string('1.1.1')
-            wtb = wt.branch
-            rev = revspec.in_history(wtb)
-            log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
-            self.assertEqualDiff(logfile.getvalue(), """\
+        self.addCleanup(wt.unlock)
+        wt.add('')
+        wt.commit('rev-1', rev_id='rev-1',
+                  timestamp=1132586655, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.commit('rev-merged', rev_id='rev-2a',
+                  timestamp=1132586700, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.set_parent_ids(['rev-1', 'rev-2a'])
+        wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.commit('rev-2', rev_id='rev-2b',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile)
+        revspec = revisionspec.RevisionSpec.from_string('1.1.1')
+        wtb = wt.branch
+        rev = revspec.in_history(wtb)
+        log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
+        self.assertEqualDiff(logfile.getvalue(), """\
 1.1.1 Joe Foo\t2005-11-22
       rev-merged
 
 """)
-        finally:
-            wt.unlock()
 
 
 class TestLongLogFormatter(TestCaseWithoutPropsHandler):
@@ -709,30 +692,28 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
     def test_line_log_single_merge_revision(self):
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
-        try:
-            wt.add('')
-            wt.commit('rev-1', rev_id='rev-1',
-                      timestamp=1132586655, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.commit('rev-merged', rev_id='rev-2a',
-                      timestamp=1132586700, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            wt.set_parent_ids(['rev-1', 'rev-2a'])
-            wt.branch.set_last_revision_info(1, 'rev-1')
-            wt.commit('rev-2', rev_id='rev-2b',
-                      timestamp=1132586800, timezone=36000,
-                      committer='Joe Foo <joe@foo.com>')
-            logfile = self.make_utf8_encoded_stringio()
-            formatter = log.LineLogFormatter(to_file=logfile)
-            revspec = revisionspec.RevisionSpec.from_string('1.1.1')
-            wtb = wt.branch
-            rev = revspec.in_history(wtb)
-            log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
-            self.assertEqualDiff(logfile.getvalue(), """\
+        self.addCleanup(wt.unlock)
+        wt.add('')
+        wt.commit('rev-1', rev_id='rev-1',
+                  timestamp=1132586655, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.commit('rev-merged', rev_id='rev-2a',
+                  timestamp=1132586700, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.set_parent_ids(['rev-1', 'rev-2a'])
+        wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.commit('rev-2', rev_id='rev-2b',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.LineLogFormatter(to_file=logfile)
+        revspec = revisionspec.RevisionSpec.from_string('1.1.1')
+        wtb = wt.branch
+        rev = revspec.in_history(wtb)
+        log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
+        self.assertEqualDiff(logfile.getvalue(), """\
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """)
-        finally:
-            wt.unlock()
 
 
 
@@ -925,46 +906,43 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         tree.commit('D', rev_id='D')
 
         # Switch to a read lock for this tree.
-        # We still have addCleanup(unlock)
+        # We still have an addCleanup(unlock) pending
         tree.unlock()
         tree.lock_read()
         return tree
+
+    def check_delta(self, delta, **kw):
+        """Check the filenames touched by a delta are as expected.
+
+        Caller only have to pass in the list of files for each part, all
+        unspecified parts are considered empty (and checked as such).
+        """
+        for n in 'added', 'removed', 'renamed', 'modified', 'unchanged':
+            # By default we expect an empty list
+            expected = kw.get(n, [])
+            # strip out only the path components
+            got = [x[0] for x in getattr(delta, n)]
+            self.assertEquals(expected, got)
 
     def test_tree_with_single_merge(self):
         """Make sure the tree layout is correct."""
         tree = self.create_tree_with_single_merge()
         rev_A_tree = tree.branch.repository.revision_tree('A')
         rev_B_tree = tree.branch.repository.revision_tree('B')
-
-        f1_changed = (u'f1', 'f1-id', 'file', True, False)
-        f2_changed = (u'f2', 'f2-id', 'file', True, False)
-        f3_changed = (u'f3', 'f3-id', 'file', True, False)
-
-        delta = rev_B_tree.changes_from(rev_A_tree)
-        self.assertEqual([f1_changed, f3_changed], delta.modified)
-        self.assertEqual([], delta.renamed)
-        self.assertEqual([], delta.added)
-        self.assertEqual([], delta.removed)
-
         rev_C_tree = tree.branch.repository.revision_tree('C')
-        delta = rev_C_tree.changes_from(rev_A_tree)
-        self.assertEqual([f2_changed, f3_changed], delta.modified)
-        self.assertEqual([], delta.renamed)
-        self.assertEqual([], delta.added)
-        self.assertEqual([], delta.removed)
-
         rev_D_tree = tree.branch.repository.revision_tree('D')
-        delta = rev_D_tree.changes_from(rev_B_tree)
-        self.assertEqual([f2_changed, f3_changed], delta.modified)
-        self.assertEqual([], delta.renamed)
-        self.assertEqual([], delta.added)
-        self.assertEqual([], delta.removed)
 
-        delta = rev_D_tree.changes_from(rev_C_tree)
-        self.assertEqual([f1_changed, f3_changed], delta.modified)
-        self.assertEqual([], delta.renamed)
-        self.assertEqual([], delta.added)
-        self.assertEqual([], delta.removed)
+        self.check_delta(rev_B_tree.changes_from(rev_A_tree),
+                         modified=['f1', 'f3'])
+
+        self.check_delta(rev_C_tree.changes_from(rev_A_tree),
+                         modified=['f2', 'f3'])
+
+        self.check_delta(rev_D_tree.changes_from(rev_B_tree),
+                         modified=['f2', 'f3'])
+
+        self.check_delta(rev_D_tree.changes_from(rev_C_tree),
+                         modified=['f1', 'f3'])
 
     def assertAllRevisionsForFileID(self, tree, file_id, revisions):
         """Ensure _filter_revisions_touching_file_id returns the right values.
@@ -972,7 +950,7 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         Get the return value from _filter_revisions_touching_file_id and make
         sure they are correct.
         """
-        # The api for _get_revisions_touching_file_id is a little crazy,
+        # The api for _filter_revisions_touching_file_id is a little crazy.
         # So we do the setup here.
         mainline = tree.branch.revision_history()
         mainline.insert(0, None)
@@ -1000,13 +978,14 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
     def test_file_id_f3(self):
         tree = self.create_tree_with_single_merge()
         # f3 should be marked as modified by revisions A, B, C, and D
-        self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+        self.assertAllRevisionsForFileID(tree, 'f3-id', ['D', 'C', 'B', 'A'])
 
     def test_file_id_with_ghosts(self):
         # This is testing bug #209948, where having a ghost would cause
         # _filter_revisions_touching_file_id() to fail.
         tree = self.create_tree_with_single_merge()
         # We need to add a revision, so switch back to a write-locked tree
+        # (still a single addCleanup(tree.unlock) pending).
         tree.unlock()
         tree.lock_write()
         first_parent = tree.last_revision()
@@ -1094,9 +1073,8 @@ class TestReverseByDepth(tests.TestCase):
                             [('2', 0), ('1', 0)])
 
     def test_merged_revisions(self):
-        self.assertReversed([('1', 0), ('2', 0), ('1.1', 1), ('1.2', 1),],
-                            [('2', 0), ('1.2', 1), ('1.1', 1), ('1', 0),])
-
+        self.assertReversed([('1', 0), ('2', 0), ('2.2', 1), ('2.1', 1),],
+                            [('2', 0), ('2.1', 1), ('2.2', 1), ('1', 0),])
     def test_shifted_merged_revisions(self):
         """Test irregular layout.
 
@@ -1104,3 +1082,17 @@ class TestReverseByDepth(tests.TestCase):
         """
         self.assertReversed([('1', 0), ('2', 0), ('1.1', 2), ('1.2', 2),],
                             [('2', 0), ('1.2', 2), ('1.1', 2), ('1', 0),])
+
+    def test_merged_without_child_revisions(self):
+        """Test irregular layout.
+
+        Revision ranges can produce "holes" in the depths.
+        """
+        # When a revision of higher depth doesn't follow one of lower depth, we
+        # assume a lower depth one is virtually there
+        self.assertReversed([('1', 2), ('2', 2), ('3', 3), ('4', 4)],
+                            [('4', 4), ('3', 3), ('2', 2), ('1', 2),])
+        # So we get the same order after reversing below even if the original
+        # revisions are not in the same order.
+        self.assertReversed([('1', 2), ('2', 2), ('3', 3), ('4', 4)],
+                            [('3', 3), ('4', 4), ('2', 2), ('1', 2),])
