@@ -1378,19 +1378,20 @@ class KnitVersionedFiles(VersionedFiles):
                 index_entry = (record.key, options, access_memo, parents)
                 buffered = False
                 if 'fulltext' not in options:
-                    # Not a fulltext, so we need to make sure the parent
-                    # versions will also be present.  
+                    # Not a fulltext, so we need to make sure the compression
+                    # parent will also be present.
                     # Note that pack backed knits don't need to buffer here
                     # because they buffer all writes to the transaction level,
                     # but we don't expose that difference at the index level. If
                     # the query here has sufficient cost to show up in
                     # profiling we should do that.
-                    # 
+                    #
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    if self.missing_keys(parents):
+                    compression_parent = parents[0]
+                    if self.missing_keys([compression_parent]):
                         pending = buffered_index_entries.setdefault(
-                            parents[0], [])
+                            compression_parent, [])
                         pending.append(index_entry)
                         buffered = True
                 if not buffered:
