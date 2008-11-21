@@ -316,7 +316,7 @@ cdef _read_dir(path):
                 # beforehand so that eof can be distinguished from errors.  See
                 # <https://bugs.launchpad.net/bzr/+bug/279381>
                 while True:
-                    errno = 0;
+                    errno = 0
                     entry = readdir(the_dir)
                     if entry == NULL and (errno == EAGAIN or errno == EINTR):
                         # try again
@@ -358,9 +358,11 @@ cdef _read_dir(path):
                 raise OSError(errno, strerror(errno))
     finally:
         if -1 != orig_dir_fd:
+            failed = False
             if -1 == fchdir(orig_dir_fd):
-                raise OSError(errno, strerror(errno))
-            if -1 == close(orig_dir_fd):
+                # try to close the original directory anyhow
+                failed = True
+            if -1 == close(orig_dir_fd) or failed:
                 raise OSError(errno, strerror(errno))
 
     return result
