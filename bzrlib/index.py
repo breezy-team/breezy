@@ -61,6 +61,7 @@ def _has_key_from_parent_map(self, key):
     """
     return (key in self.get_parent_map([key]))
 
+
 def _missing_keys_from_parent_map(self, keys):
     return set(keys) - set(self.get_parent_map(keys))
 
