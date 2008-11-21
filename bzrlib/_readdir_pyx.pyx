@@ -36,6 +36,8 @@ cdef extern from 'errno.h':
 
 cdef extern from 'unistd.h':
     int chdir(char *path)
+    int close(int fd)
+    int fchdir(int fd)
     char *getcwd(char *, int size)
 
 cdef extern from 'stdlib.h':
@@ -49,6 +51,7 @@ cdef extern from 'sys/types.h':
     ctypedef long time_t
     ctypedef unsigned long ino_t
     ctypedef unsigned long long off_t
+    ctypedef int mode_t
 
 
 cdef extern from 'sys/stat.h':
@@ -67,6 +70,11 @@ cdef extern from 'sys/stat.h':
     int S_ISFIFO(int mode)
     int S_ISLNK(int mode)
     int S_ISSOCK(int mode)
+
+
+cdef extern from 'fcntl.h':
+    int O_RDONLY
+    int open(char *pathname, int flags, mode_t mode)
 
 
 cdef extern from 'Python.h':
@@ -279,14 +287,23 @@ cdef _read_dir(path):
     cdef char *name
     cdef int stat_result
     cdef _Stat statvalue
-    cdef char *cwd
     global errno
+    cdef int orig_dir_fd
 
-    cwd = getcwd(NULL, 0)
-    if path != "":
-        # Avoid chdir('') because it causes problems on Sun OS
+    # Avoid chdir('') because it causes problems on Sun OS, and avoid this if
+    # staying in .
+    if path != "" and path != '.':
+        # we change into the requested directory before reading, and back at the
+        # end, because that turns out to make the stat calls measurably faster than
+        # passing full paths every time.
+        orig_dir_fd = open(".", O_RDONLY, 0)
+        if orig_dir_fd == -1:
+            raise OSError(errno, strerror(errno))
         if -1 == chdir(path):
             raise OSError(errno, strerror(errno))
+    else:
+        orig_dir_fd = -1
+
     try:
         the_dir = opendir(".")
         if NULL == the_dir:
@@ -299,7 +316,7 @@ cdef _read_dir(path):
                 # beforehand so that eof can be distinguished from errors.  See
                 # <https://bugs.launchpad.net/bzr/+bug/279381>
                 while True:
-                    errno = 0;
+                    errno = 0
                     entry = readdir(the_dir)
                     if entry == NULL and (errno == EAGAIN or errno == EINTR):
                         # try again
@@ -340,10 +357,14 @@ cdef _read_dir(path):
             if -1 == closedir(the_dir):
                 raise OSError(errno, strerror(errno))
     finally:
-        if -1 == chdir(cwd):
-            free(cwd)
-            raise OSError(errno, strerror(errno))
-        free(cwd)
+        if -1 != orig_dir_fd:
+            failed = False
+            if -1 == fchdir(orig_dir_fd):
+                # try to close the original directory anyhow
+                failed = True
+            if -1 == close(orig_dir_fd) or failed:
+                raise OSError(errno, strerror(errno))
+
     return result
 
 
