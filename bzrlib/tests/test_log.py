@@ -744,18 +744,26 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
     def make_tree_with_many_merges(self):
         """Create a tree with well-known revision ids"""
         wt = self.make_branch_and_tree('tree1')
+        self.build_tree_contents([('tree1/f', '1\n')])
+        wt.add(['f'], ['f-id'])
         wt.commit('commit one', rev_id='1')
         wt.commit('commit two', rev_id='2')
+
         tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
+        self.build_tree_contents([('tree3/f', '1\n2\n3a\n')])
         tree3.commit('commit three a', rev_id='3a')
+
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
         tree2.merge_from_branch(tree3.branch)
         tree2.commit('commit three b', rev_id='3b')
+
         wt.merge_from_branch(tree2.branch)
         wt.commit('commit three c', rev_id='3c')
         tree2.commit('four-a', rev_id='4a')
+
         wt.merge_from_branch(tree2.branch)
         wt.commit('four-b', rev_id='4b')
+
         mainline_revs = [None, '1', '2', '3c', '4b']
         rev_nos = {'1':1, '2':2, '3c': 3, '4b':4}
         full_rev_nos_for_reference = {
@@ -850,6 +858,39 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
                          revisions)
 
 
+    def test_file_id_for_range(self):
+        mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+
+        def rev_from_rev_id(revid, branch):
+            revspec = revisionspec.RevisionSpec.from_string('revid:%s' % revid)
+            return revspec.in_history(branch)
+
+        def view_revs(start_rev, end_rev, file_id, direction):
+            revs = log.calculate_view_revisions(
+                wt.branch,
+                start_rev, # start_revision
+                end_rev, # end_revision
+                direction, # direction
+                file_id, # specific_fileid
+                True, # generate_merge_revisions
+                True, # allow_single_merge_revision
+                )
+            return revs
+
+        rev_3a = rev_from_rev_id('3a', wt.branch)
+        rev_4b = rev_from_rev_id('4b', wt.branch)
+        self.assertEquals([('3c', '3', 0), ('3a', '2.1.1', 1)],
+                          view_revs(rev_3a, rev_4b, 'f-id', 'reverse'))
+        # Note that the depth is 0 for 3a because depths are normalized, but
+        # there is still a bug somewhere... most probably in
+        # _filter_revision_range and/or get_view_revisions still around a bad
+        # use of reverse_by_depth
+        self.assertEquals([('3a', '2.1.1', 0)],
+                          view_revs(rev_3a, rev_4b, 'f-id', 'forward'))
+
+
 class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
 
     def create_tree_with_single_merge(self):
@@ -906,7 +947,7 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         tree.commit('D', rev_id='D')
 
         # Switch to a read lock for this tree.
-        # We still have an addCleanup(unlock) pending
+        # We still have an addCleanup(tree.unlock) pending
         tree.unlock()
         tree.lock_read()
         return tree
@@ -960,8 +1001,7 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         actual_revs = log._filter_revisions_touching_file_id(
                             tree.branch,
                             file_id,
-                            list(view_revs_iter),
-                            'reverse')
+                            list(view_revs_iter))
         self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
 
     def test_file_id_f1(self):

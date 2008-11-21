@@ -242,13 +242,10 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         and specific_fileid is None):
         return _linear_view_revisions(branch)
 
-    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
-        _get_mainline_revs(branch, start_revision, end_revision)
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = _get_mainline_revs(
+        branch, start_revision, end_revision)
     if not mainline_revs:
         return []
-
-    if direction == 'reverse':
-        start_rev_id, end_rev_id = end_rev_id, start_rev_id
 
     generate_single_revision = False
     if ((not generate_merge_revisions)
@@ -262,6 +259,9 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         generate_merge_revisions = generate_single_revision
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
+
+    if direction == 'reverse':
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
     view_revisions = _filter_revision_range(list(view_revs_iter),
                                             start_rev_id,
                                             end_rev_id)
@@ -269,9 +269,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = view_revisions[0:1]
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
-                                                         specific_fileid,
-                                                         view_revisions,
-                                                         direction)
+                                                            specific_fileid,
+                                                            view_revisions)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -538,8 +537,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
-                                       direction):
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
     r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
@@ -564,13 +562,14 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     This will also be restricted based on a subset of the mainline.
 
     :param branch: The branch where we can get text revision information.
+
     :param file_id: Filter out revisions that do not touch file_id.
+
     :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
         tuples. This is the list of revisions which will be filtered. It is
-        assumed that view_revisions is in merge_sort order (either forward or
-        reverse).
-    :param direction: The direction of view_revisions.  See also
-        reverse_by_depth, and get_view_revisions
+        assumed that view_revisions is in merge_sort order (i.e. newest
+        revision first ).
+
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
     # Lookup all possible text keys to determine which ones actually modified
@@ -594,11 +593,6 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     del text_keys, next_keys
 
     result = []
-    if direction == 'forward':
-        # TODO: The algorithm for finding 'merges' of file changes expects
-        #       'reverse' order (the default from 'merge_sort()'). Instead of
-        #       forcing this, we could just use the reverse_by_depth order.
-        view_revisions = reverse_by_depth(view_revisions)
     # Track what revisions will merge the current revision, replace entries
     # with 'None' when they have been added to result
     current_merge_stack = [None]
@@ -617,8 +611,6 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
                 if node is not None:
                     result.append(node)
                     current_merge_stack[idx] = None
-    if direction == 'forward':
-        result = reverse_by_depth(result)
     return result
 
 
