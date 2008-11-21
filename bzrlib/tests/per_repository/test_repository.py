@@ -291,6 +291,12 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(self.repository_format,
                          repository.RepositoryFormat.find_format(opened_control))
 
+    def test_format_matchingbzrdir(self):
+        self.assertEqual(self.repository_format,
+            self.repository_format._matchingbzrdir.repository_format)
+        self.assertEqual(self.repository_format,
+            self.bzrdir_format.repository_format)
+
     def test_create_repository(self):
         # bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():
