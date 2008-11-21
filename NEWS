@@ -30,6 +30,9 @@ IN DEVELOPMENT
     * Better message when the user needs to set their Launchpad ID.
       (Martin Pool, #289148)
 
+    * Don't call the system ``chdir()`` with an empty path. Sun OS seems
+      to give an error in that case. (John Arbash Meinel, #297831)
+
     * PermissionDenied errors from smart servers no longer cause
       “PermissionDenied: "None"” on the client.
       (Andrew Bennetts, #299254)
