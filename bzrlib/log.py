@@ -236,8 +236,10 @@ def _show_log(branch,
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision):
-    if (not generate_merge_revisions and start_revision is end_revision is
-        None and direction == 'reverse' and specific_fileid is None):
+    if (    not generate_merge_revisions
+        and start_revision is end_revision is None
+        and direction == 'reverse'
+        and specific_fileid is None):
         return _linear_view_revisions(branch)
 
     mainline_revs, rev_nos, start_rev_id, end_rev_id = \
@@ -438,7 +440,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     # filtered later.
     # Also map the revisions to rev_ids, to be used in the later filtering
     # stage.
-    start_rev_id = None 
+    start_rev_id = None
     if start_revision is None:
         start_revno = 1
     else:
@@ -448,7 +450,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         else:
             branch.check_real_revno(start_revision)
             start_revno = start_revision
-    
+
     end_rev_id = None
     if end_revision is None:
         end_revno = branch_revno
@@ -507,7 +509,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    if start_rev_id or end_rev_id: 
+    if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
             start_index = revision_ids.index(start_rev_id)
@@ -666,19 +668,27 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
     revision of that depth.  There may be no topological justification for this,
     but it looks much nicer.
     """
+    # Add a fake revision at start so that we can always attached sub revisions
+    merge_sorted_revisions = [(None, None, _depth)] + merge_sorted_revisions
     zd_revisions = []
     for val in merge_sorted_revisions:
         if val[2] == _depth:
+            # Each revision at the current depth becomes a chunk grouping all
+            # higher depth revisions.
             zd_revisions.append([val])
         else:
             zd_revisions[-1].append(val)
     for revisions in zd_revisions:
         if len(revisions) > 1:
+            # We have higher depth revisions, let reverse them locally
             revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
     zd_revisions.reverse()
     result = []
     for chunk in zd_revisions:
         result.extend(chunk)
+    if _depth == 0:
+        # Top level call, get rid of the fake revisions that have been added
+        result = [r for r in result if r[0] is not None and r[1] is not None]
     return result
 
 
@@ -861,7 +871,7 @@ class LineLogFormatter(LogFormatter):
         return str[:max_len-3]+'...'
 
     def date_string(self, rev):
-        return format_date(rev.timestamp, rev.timezone or 0, 
+        return format_date(rev.timestamp, rev.timezone or 0,
                            self.show_timezone, date_fmt="%Y-%m-%d",
                            show_offset=False)
 
