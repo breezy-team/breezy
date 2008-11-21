@@ -1012,6 +1012,19 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
 
+class TestTransportMkdir(tests.TestCase):
+
+    def test_permissiondenied(self):
+        client = FakeClient()
+        client.add_error_response('PermissionDenied', 'remote path', 'extra')
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        exc = self.assertRaises(
+            errors.PermissionDenied, transport.mkdir, 'client path')
+        expected_error = errors.PermissionDenied('/client path', 'extra')
+        self.assertEqual(expected_error, exc)
+
+
 class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
 
     def test_defaults_to_none(self):
@@ -1116,12 +1129,11 @@ class TestRepositoryGatherStats(TestRemoteRepository):
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):
-        # get_graph returns a graph with the repository as the
-        # parents_provider.
+        # get_graph returns a graph with a custom parents provider.
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
-        self.assertEqual(graph._parents_provider, repo)
+        self.assertNotEqual(graph._parents_provider, repo)
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):
@@ -1750,3 +1762,28 @@ class TestStacking(tests.TestCaseWithTransport):
                 'message')
         finally:
             remote_repo.unlock()
+
+    def prepare_stacked_remote_branch(self):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        self.addCleanup(smart_server.tearDown)
+        tree1 = self.make_branch_and_tree('tree1')
+        tree1.commit('rev1', rev_id='rev1')
+        tree2 = self.make_branch_and_tree('tree2', format='1.6')
+        tree2.branch.set_stacked_on_url(tree1.branch.base)
+        branch2 = Branch.open(smart_server.get_url() + '/tree2')
+        branch2.lock_read()
+        self.addCleanup(branch2.unlock)
+        return branch2
+
+    def test_stacked_get_parent_map(self):
+        # the public implementation of get_parent_map obeys stacking
+        branch = self.prepare_stacked_remote_branch()
+        repo = branch.repository
+        self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
+
+    def test_stacked__get_parent_map(self):
+        # the private variant of _get_parent_map ignores stacking
+        branch = self.prepare_stacked_remote_branch()
+        repo = branch.repository
+        self.assertEqual([], repo._get_parent_map(['rev1']).keys())

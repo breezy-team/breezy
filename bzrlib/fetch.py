@@ -109,7 +109,7 @@ class RepoFetcher(object):
                 try:
                     self.__fetch()
                 except:
-                    self.to_repository.abort_write_group()
+                    self.to_repository.abort_write_group(suppress_errors=True)
                     raise
                 else:
                     self.to_repository.commit_write_group()

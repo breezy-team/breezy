@@ -1724,13 +1724,15 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            self._new_pack.abort()
-            # XXX: If we aborted while in the middle of finishing the write
-            # group, _remove_pack_indices can fail because the indexes are
-            # already gone.  If they're not there we shouldn't fail in this
-            # case.  -- mbp 20081113
-            self._remove_pack_indices(self._new_pack)
-            self._new_pack = None
+            try:
+                self._new_pack.abort()
+            finally:
+                # XXX: If we aborted while in the middle of finishing the write
+                # group, _remove_pack_indices can fail because the indexes are
+                # already gone.  If they're not there we shouldn't fail in this
+                # case.  -- mbp 20081113
+                self._remove_pack_indices(self._new_pack)
+                self._new_pack = None
         self.repo._text_knit = None
 
     def _commit_write_group(self):
@@ -2353,9 +2355,7 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
 class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     """A repository with rich roots, no subtrees, stacking and btree indexes.
 
-    This format should be retained until the second release after bzr 1.7.
-
-    1.6.1-subtree[as it might have been] with B+Tree indices.
+    1.6-rich-root with B+Tree indices.
     """
 
     repository_class = KnitPackRepository
