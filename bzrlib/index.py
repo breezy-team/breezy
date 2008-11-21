@@ -114,10 +114,22 @@ class GraphIndexBuilder(object):
         """
         keys = set()
         refs = set()
-        for node in self.iter_all_entries():
-            keys.add(node[1])
-            refs.update(node[3][1])
-        return refs - keys
+        # TODO: JAM 2008-11-21 This makes an assumption about how the reference
+        #       lists are used. It is currently correct for pack-0.92 through
+        #       1.9, which use the node references (3rd column) second
+        #       reference list as the compression parent. Perhaps this should
+        #       be moved into something higher up the stack, since it
+        #       makes assumptions about how the index is used.
+        if self.reference_lists > 1:
+            for node in self.iter_all_entries():
+                keys.add(node[1])
+                refs.update(node[3][1])
+            return refs - keys
+        else:
+            # If reference_lists == 0 there can be no external references, and
+            # if reference_lists == 1, then there isn't a place to store the
+            # compression parent
+            return set()
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
