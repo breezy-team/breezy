@@ -248,6 +248,7 @@ class RepoFetcher(object):
             child_pb.finished()
 
     def _fetch_revision_texts(self, revs, pb):
+        # fetch signatures first and then the revision texts
         # may need to be a InterRevisionStore call here.
         to_sf = self.to_repository.signatures
         from_sf = self.from_repository.signatures

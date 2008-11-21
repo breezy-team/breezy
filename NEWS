@@ -35,8 +35,12 @@ IN DEVELOPMENT
       being able to allocate a new buffer, which is a gnu extension.  
       (John Arbash Meinel, Martin Pool, Harry Hirsch, #297831)
 
+    * Don't create text deltas spanning stacked repositories; this could
+      cause "Revision X not present in Y" when later accessing them.
+      (Martin Pool, #288751)
+
     * PermissionDenied errors from smart servers no longer cause
-      “PermissionDenied: "None"” on the client.
+      "PermissionDenied: "None"" on the client.
       (Andrew Bennetts, #299254)
       
     * TooManyConcurrentRequests no longer occur when a fetch fails and
@@ -49,6 +53,9 @@ IN DEVELOPMENT
   DOCUMENTATION:
 
   API CHANGES:
+
+    * Constructor parameters for NewPack (internal to pack repositories)
+      have changed incompatibly.
 
     * ``Repository.abort_write_group`` now accepts an optional
       ``suppress_errors`` flag.  Repository implementations that override

@@ -2819,6 +2819,9 @@ class InterPackRepo(InterSameDataRepository):
             # fetching from a stacked repository or into a stacked repository
             # we use the generic fetch logic which uses the VersionedFiles
             # attributes on repository.
+            #
+            # XXX: Andrew suggests removing the check on the target
+            # repository.
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
