@@ -31,14 +31,16 @@ class Handler:
 		self.marks = {}
 		self.files = []
 		self.ch = None
+		self.line = None
 
-	def readline(self):
-		buf = ""
+	def read_next_line(self, strip=True):
+		self.line = ""
 		if self.ch:
-			buf += self.ch
+			self.line += self.ch
 			self.ch = None
-		buf += sys.stdin.readline()
-		return buf
+		self.line += sys.stdin.readline()
+		if strip:
+			self.line = self.line.strip()
 
 	def read(self, length):
 		buf = ""
@@ -63,11 +65,11 @@ class Handler:
 
 	def handle_blob(self):
 		while True:
-			line = self.readline().strip()
-			if line.startswith("mark :"):
-				num = int(line[6:])
-			elif line.startswith("data "):
-				length = int(line[5:])
+			self.read_next_line()
+			if self.line.startswith("mark :"):
+				num = int(self.line[6:])
+			elif self.line.startswith("data "):
+				length = int(self.line[5:])
 				self.marks[num] = self.read(length)
 				return
 			else:
@@ -77,28 +79,28 @@ class Handler:
 		adds = []
 		author = None
 		while True:
-			line = self.readline().strip()
-			if line.startswith("mark :"):
+			self.read_next_line()
+			if self.line.startswith("mark :"):
 				pass
-			elif line.startswith("author "):
-				items = line[7:].split(' ')
+			elif self.line.startswith("author "):
+				items = self.line[7:].split(' ')
 				author = " ".join(items[:-2])
 				date = self.get_date(items[-2], items[-1])
-			elif line.startswith("committer "):
+			elif self.line.startswith("committer "):
 				if author:
 					continue
-				items = line[10:].split(' ')
+				items = self.line[10:].split(' ')
 				author = " ".join(items[:-2])
 				date = self.get_date(items[-2], items[-1])
-			elif line.startswith("data "):
-				length = int(line[5:])
+			elif self.line.startswith("data "):
+				length = int(self.line[5:])
 				msg = self.read(length)
 				self.skip_optional_lf()
 				items = msg.split('\n')
 				short = items[0]
 				long = "\n".join(items[1:])
-			elif line.startswith("M "):
-				items = line.split(' ')
+			elif self.line.startswith("M "):
+				items = self.line.split(' ')
 				idx = int(items[2][1:])
 				path = items[3]
 				sock = open(path, "w")
@@ -108,15 +110,15 @@ class Handler:
 					adds.append(path)
 					self.files.append(path)
 				del self.marks[idx]
-			elif line.startswith("D "):
-				path = line[2:]
+			elif self.line.startswith("D "):
+				path = self.line[2:]
 				os.unlink(path)
 				self.files.remove(path)
-			elif line.startswith("from "):
+			elif self.line.startswith("from "):
 				pass
-			elif line.startswith("merge "):
+			elif self.line.startswith("merge "):
 				pass
-			elif not len(line):
+			elif not len(self.line):
 				for i in adds:
 					os.system("darcs add %s" % i)
 				sock = os.popen("darcs record --ignore-times -a --pipe", "w")
@@ -125,7 +127,7 @@ class Handler:
 				sock.close()
 				return
 			else:
-				self.bug("'%s': invalid commit subcommand" % line)
+				self.bug("'%s': invalid commit subcommand" % self.line)
 
 	def handle_progress(self, s):
 		print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
@@ -133,22 +135,22 @@ class Handler:
 
 	def handle(self):
 		while True:
-			line = self.readline()
-			if not line:
+			self.read_next_line(False)
+			if not self.line:
 				break
-			line = line.strip()
-			if not len(line):
+			self.line = self.line.strip()
+			if not len(self.line):
 				continue
-			if line == "blob":
+			if self.line == "blob":
 				self.handle_blob()
-			elif line.startswith("reset"):
+			elif self.line.startswith("reset"):
 				pass
-			elif line.startswith("commit"):
+			elif self.line.startswith("commit"):
 				self.handle_commit()
-			elif line.startswith("progress"):
-				self.handle_progress(line[9:])
+			elif self.line.startswith("progress"):
+				self.handle_progress(self.line[9:])
 			else:
-				self.bug("'%s': invalid command" % line)
+				self.bug("'%s': invalid command" % self.line)
 
 if __name__ == "__main__":
 	h = Handler()
