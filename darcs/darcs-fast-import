@@ -26,129 +26,130 @@ import sys
 import os
 import time
 
-marks = {}
-files = []
-ch = None
+class Handler:
+	def __init__(self):
+		self.marks = {}
+		self.files = []
+		self.ch = None
 
-def readline():
-	global ch
+	def readline(self):
+		buf = ""
+		if self.ch:
+			buf += self.ch
+			self.ch = None
+		buf += sys.stdin.readline()
+		return buf
 
-	buf = ""
-	if ch:
-		buf += ch
-		ch = None
-	buf += sys.stdin.readline()
-	return buf
+	def read(self, length):
+		buf = ""
+		if self.ch:
+			buf += self.ch
+			self.ch = None
+		buf += sys.stdin.read(length)
+		return buf
 
-def read(length):
-	global ch
+	def skip_optional_lf(self):
+		self.ch = sys.stdin.read(1)
+		if self.ch == "\n":
+			self.ch = None
 
-	buf = ""
-	if ch:
-		buf += ch
-		ch = None
-	buf += sys.stdin.read(length)
-	return buf
+	def bug(self, s):
+		raise Exception(s)
 
-def skip_optional_lf():
-	global ch
+	def get_date(self, ts, tz):
+		s = time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(int(ts)))
+		items = s.split(' ')
+		return " ".join(items[:-1]) + " " + tz + " " + items[-1]
 
-	ch = sys.stdin.read(1)
-	if ch == "\n":
-		ch = None
+	def handle_blob(self):
+		while True:
+			line = self.readline().strip()
+			if line.startswith("mark :"):
+				num = int(line[6:])
+			elif line.startswith("data "):
+				length = int(line[5:])
+				self.marks[num] = self.read(length)
+				return
+			else:
+				self.bug("'%s': invalid blob subcommand" % line)
 
-def bug(s):
-	raise Exception(s)
+	def handle_commit(self):
+		adds = []
+		author = None
+		while True:
+			line = self.readline().strip()
+			if line.startswith("mark :"):
+				pass
+			elif line.startswith("author "):
+				items = line[7:].split(' ')
+				author = " ".join(items[:-2])
+				date = self.get_date(items[-2], items[-1])
+			elif line.startswith("committer "):
+				if author:
+					continue
+				items = line[10:].split(' ')
+				author = " ".join(items[:-2])
+				date = self.get_date(items[-2], items[-1])
+			elif line.startswith("data "):
+				length = int(line[5:])
+				msg = self.read(length)
+				self.skip_optional_lf()
+				items = msg.split('\n')
+				short = items[0]
+				long = "\n".join(items[1:])
+			elif line.startswith("M "):
+				items = line.split(' ')
+				idx = int(items[2][1:])
+				path = items[3]
+				sock = open(path, "w")
+				sock.write(self.marks[idx])
+				sock.close()
+				if path not in self.files:
+					adds.append(path)
+					self.files.append(path)
+				del self.marks[idx]
+			elif line.startswith("D "):
+				path = line[2:]
+				os.unlink(path)
+				self.files.remove(path)
+			elif line.startswith("from "):
+				pass
+			elif line.startswith("merge "):
+				pass
+			elif not len(line):
+				for i in adds:
+					os.system("darcs add %s" % i)
+				sock = os.popen("darcs record --ignore-times -a --pipe", "w")
+				buf = [date, author, short, long]
+				sock.write("\n".join(buf))
+				sock.close()
+				return
+			else:
+				self.bug("'%s': invalid commit subcommand" % line)
 
-def get_date(ts, tz):
-	s = time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(int(ts)))
-	items = s.split(' ')
-	return " ".join(items[:-1]) + " " + tz + " " + items[-1]
+	def handle_progress(self, s):
+		print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
+		sys.stdout.flush()
 
-def handle_blob():
-	while True:
-		line = readline().strip()
-		if line.startswith("mark :"):
-			num = int(line[6:])
-		elif line.startswith("data "):
-			length = int(line[5:])
-			marks[num] = read(length)
-			return
-		else:
-			bug("'%s': invalid blob subcommand" % line)
-
-def handle_commit():
-	adds = []
-	author = None
-	while True:
-		line = readline().strip()
-		if line.startswith("mark :"):
-			pass
-		elif line.startswith("author "):
-			items = line[7:].split(' ')
-			author = " ".join(items[:-2])
-			date = get_date(items[-2], items[-1])
-		elif line.startswith("committer "):
-			if author:
+	def handle(self):
+		while True:
+			line = self.readline()
+			if not line:
+				break
+			line = line.strip()
+			if not len(line):
 				continue
-			items = line[10:].split(' ')
-			author = " ".join(items[:-2])
-			date = get_date(items[-2], items[-1])
-		elif line.startswith("data "):
-			length = int(line[5:])
-			msg = read(length)
-			skip_optional_lf()
-			items = msg.split('\n')
-			short = items[0]
-			long = "\n".join(items[1:])
-		elif line.startswith("M "):
-			items = line.split(' ')
-			idx = int(items[2][1:])
-			path = items[3]
-			sock = open(path, "w")
-			sock.write(marks[idx])
-			sock.close()
-			if path not in files:
-				adds.append(path)
-				files.append(path)
-			del marks[idx]
-		elif line.startswith("D "):
-			path = line[2:]
-			os.unlink(path)
-			files.remove(path)
-		elif line.startswith("from "):
-			pass
-		elif line.startswith("merge "):
-			pass
-		elif not len(line):
-			for i in adds:
-				os.system("darcs add %s" % i)
-			sock = os.popen("darcs record --ignore-times -a --pipe", "w")
-			buf = [date, author, short, long]
-			sock.write("\n".join(buf))
-			sock.close()
-			return
-		else:
-			bug("'%s': invalid commit subcommand" % line)
+			if line == "blob":
+				self.handle_blob()
+			elif line.startswith("reset"):
+				pass
+			elif line.startswith("commit"):
+				self.handle_commit()
+			elif line.startswith("progress"):
+				self.handle_progress(line[9:])
+			else:
+				self.bug("'%s': invalid command" % line)
 
-def handle_progress(s):
-	print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
-	sys.stdout.flush()
-
-while True:
-	line = readline()
-	if not line:
-		break
-	line = line.strip()
-	if not len(line):
-		continue
-	if line == "blob":
-		handle_blob()
-	elif line.startswith("reset"):
-		pass
-	elif line.startswith("commit"):
-		handle_commit()
-	elif line.startswith("progress"):
-		handle_progress(line[9:])
-	else:
-		bug("'%s': invalid subcommand" % line)
+if __name__ == "__main__":
+	h = Handler()
+	h.handle()
