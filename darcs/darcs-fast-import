@@ -5,6 +5,7 @@
     darcs-fast-export - darcs backend for fast data exporters
 
     Copyright (c) 2008 Miklos Vajna <vmiklos@frugalware.org>
+    Copyright (c) 2008 Matthias Andree <matthias.andree@gmx.de>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +27,7 @@ import sys
 import os
 import time
 import shutil
+import optparse
 
 class Handler:
 	def __init__(self):
@@ -36,6 +38,7 @@ class Handler:
 		self.unread_line = False
 		self.eof = False
 		self.debug = False
+		self.export_marks = []
 
 	def read_next_line(self):
 		if self.unread_line:
@@ -190,11 +193,38 @@ class Handler:
 		sock.write("\n".join(buf))
 		sock.close()
 
+		if self.options.export_marks:
+			# yeah, an xml parser would be better, but
+			# should we mess with encodings just because of
+			# this? i hope not
+			sock = os.popen("darcs changes --last=1 --xml", "r")
+			buf = sock.read()
+			sock.close()
+			hash = buf.split('\n')[1].split("'")[-2]
+			self.export_marks.append(":%s %s" % (self.mark_num, hash))
+
 	def handle_progress(self, s):
 		print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s.strip())
 		sys.stdout.flush()
 
+	def handle_opts(self):
+		# Option Parser
+		usage="%prog [options] darcsrepo"
+		opp = optparse.OptionParser(usage=usage)
+		opp.add_option("--export-marks", metavar="OFILE",
+			help="write state for incremental imports to OFILE")
+		(self.options, args) = opp.parse_args()
+
+	def handle_export_marks(self):
+		if self.options.export_marks:
+			sock = open(self.options.export_marks, 'w')
+			sock.write("\n".join(self.export_marks))
+			sock.write("\n")
+			sock.close()
+
 	def handle(self):
+		self.handle_opts()
+
 		while not self.eof:
 			self.read_next_line()
 			if not len(self.line[:-1]):
@@ -213,6 +243,8 @@ class Handler:
 				self.handle_progress(self.line[9:])
 			else:
 				self.bug("'%s': invalid command" % self.line[:-1])
+
+		self.handle_export_marks()
 
 if __name__ == "__main__":
 	h = Handler()
