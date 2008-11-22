@@ -137,6 +137,62 @@ class CachingParentsProvider(object):
         return parent_map
 
 
+class CachingExtraParentsProvider(object):
+    """ParentsProvider that allows extra parents.
+
+    This class takes a callback that acts like get_parent_map, except that it
+    may return un-asked-for parents.  These extras are cached, but filtered
+    out of get_parent_map.
+    """
+    def __init__(self, get_parent_map, debug=False):
+        self._get_parent_map = get_parent_map
+        self._parents_map = None
+        self._debug = debug
+        if self._debug:
+            self._requested_parents = None
+
+    def enable_cache(self):
+        """Enable cache."""
+        self._parents_map = {}
+        if self._debug:
+            self._requested_parents = set()
+
+    def disable_cache(self):
+        """Disable cache."""
+        self._parents_map = None
+        if self._debug:
+            self._requested_parents = None
+
+    def get_cached_map(self):
+        """Return any cached get_parent_map values."""
+        return self._parents_map
+
+    def get_parent_map(self, keys):
+        """See RemoteRepository.get_parent_map."""
+        # Hack to build up the caching logic.
+        ancestry = self._parents_map
+        if ancestry is None:
+            # Caching is disabled.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            parent_map = self._get_parent_map(missing_revisions)
+            if self._debug:
+                mutter('re-retrieved revisions: %d of %d',
+                        len(set(ancestry).intersection(parent_map)),
+                        len(parent_map))
+            ancestry.update(parent_map)
+        present_keys = [k for k in keys if k in ancestry]
+        if self._debug:
+            if self._requested_parents is not None and len(ancestry) != 0:
+                self._requested_parents.update(present_keys)
+                mutter('Current hit rate: %d%%',
+                    100.0 * len(self._requested_parents) / len(ancestry))
+        return dict((k, ancestry[k]) for k in present_keys)
+
+
 class Graph(object):
     """Provide incremental access to revision graphs.
 

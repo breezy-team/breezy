@@ -1413,6 +1413,47 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
 
 
+class TestCachingExtraParentsProvider(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCachingExtraParentsProvider, self).setUp()
+        class FakeParentsProvider(object):
+
+            def get_parent_map(self, keys):
+                return {'rev1': [], 'rev2': ['rev1',]}
+
+        self.inst_pp = InstrumentedParentsProvider(FakeParentsProvider())
+        self.caching_pp = _mod_graph.CachingExtraParentsProvider(
+            self.inst_pp.get_parent_map)
+
+    def test_uncached(self):
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertIs(None, self.caching_pp.get_cached_map())
+
+    def test_cached(self):
+        self.caching_pp.enable_cache()
+        self.assertEqual({}, self.caching_pp.get_cached_map())
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertEqual({'rev1': [], 'rev2': ['rev1']},
+                         self.caching_pp.get_cached_map())
+        self.assertEqual({'rev1': []},
+                          self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.caching_pp.disable_cache()
+        self.assertIs(None, self.caching_pp.get_cached_map())
+
+    def test_cache_extras(self):
+        self.caching_pp.enable_cache()
+        self.assertEqual({}, self.caching_pp.get_parent_map(['rev3']))
+        self.assertEqual({'rev2': ['rev1']},
+                         self.caching_pp.get_parent_map(['rev2']))
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+
 class TestCollapseLinearRegions(tests.TestCase):
 
     def assertCollapsed(self, collapsed, original):
