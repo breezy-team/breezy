@@ -1,0 +1,120 @@
+#!/usr/bin/env python
+
+"""
+
+    darcs-fast-export - darcs backend for fast data exporters
+
+    Copyright (c) 2008 Miklos Vajna <vmiklos@frugalware.org>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2, or (at your option)
+    any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+"""
+
+import sys
+import os
+import time
+
+marks = {}
+files = []
+
+def readline():
+	return sys.stdin.readline()
+
+def read(length):
+	return sys.stdin.read(length)
+
+def bug(s):
+	raise Exception(s)
+
+def get_date(ts, tz):
+	s = time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(int(ts)))
+	items = s.split(' ')
+	return " ".join(items[:-1]) + " " + tz + " " + items[-1]
+
+def handle_blob():
+	while True:
+		line = readline().strip()
+		if line.startswith("mark :"):
+			num = int(line[6:])
+		elif line.startswith("data "):
+			length = int(line[5:])
+			marks[num] = read(length)
+			return
+		else:
+			bug("'%s': invalid blob subcommand" % line)
+
+def handle_commit():
+	adds = []
+	while True:
+		line = readline().strip()
+		if line.startswith("mark :"):
+			pass
+		elif line.startswith("author "):
+			items = line[7:].split(' ')
+			author = " ".join(items[:-2])
+			date = get_date(items[-2], items[-1])
+		elif line.startswith("committer "):
+			pass
+		elif line.startswith("data "):
+			length = int(line[5:])
+			msg = read(length)
+			items = msg.split('\n')
+			short = items[0]
+			long = "\n".join(items[1:])
+		elif line.startswith("M "):
+			items = line.split(' ')
+			idx = int(items[2][1:])
+			path = items[3]
+			sock = open(path, "w")
+			sock.write(marks[idx])
+			sock.close()
+			if path not in files:
+				adds.append(path)
+				files.append(path)
+			del marks[idx]
+		elif line.startswith("D "):
+			path = line[2:]
+			os.unlink(path)
+			files.remove(path)
+		elif line.startswith("from "):
+			pass
+		elif line.startswith("merge "):
+			pass
+		elif not len(line):
+			for i in adds:
+				os.system("darcs add %s" % i)
+			sock = os.popen("darcs record --ignore-times -a --pipe", "w")
+			buf = [date, author, short, long]
+			sock.write("\n".join(buf))
+			sock.close()
+			return
+		else:
+			bug("'%s': invalid commit subcommand" % line)
+
+while True:
+	line = readline()
+	if not line:
+		break
+	line = line.strip()
+	if not len(line):
+		continue
+	if line == "blob":
+		handle_blob()
+	elif line.startswith("reset"):
+		pass
+	elif line.startswith("commit"):
+		handle_commit()
+	else:
+		bug("'%s': invalid subcommand" % line)
