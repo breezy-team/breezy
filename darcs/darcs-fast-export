@@ -67,11 +67,10 @@ def get_patchname(patch):
 	ret.append(patch.getElementsByTagName("name")[0].childNodes[0].data)
 	lines = patch.getElementsByTagName("comment")
 	if lines:
-		ret.append("\n")
 		for i in lines[0].childNodes[0].data.split('\n'):
 			if not i.startswith("Ignore-this: "):
 				ret.append(i)
-	return "".join(ret).encode('utf-8')
+	return "\n".join(ret).encode('utf-8')
 
 def get_author(patch):
 	"""darcs allows any freeform string, but fast-import has a more
