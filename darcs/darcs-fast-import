@@ -39,6 +39,7 @@ class Handler:
 		self.eof = False
 		self.debug = False
 		self.export_marks = []
+		self.import_marks = []
 
 	def read_next_line(self):
 		if self.unread_line:
@@ -211,6 +212,8 @@ class Handler:
 		# Option Parser
 		usage="%prog [options] darcsrepo"
 		opp = optparse.OptionParser(usage=usage)
+		opp.add_option("--import-marks", metavar="IFILE",
+			help="read state for incremental imports from IFILE")
 		opp.add_option("--export-marks", metavar="OFILE",
 			help="write state for incremental imports to OFILE")
 		(self.options, args) = opp.parse_args()
@@ -222,8 +225,20 @@ class Handler:
 			sock.write("\n")
 			sock.close()
 
+	def handle_import_marks(self):
+		if self.options.import_marks:
+			sock = open(self.options.import_marks)
+			for i in sock.readlines():
+				line = i.strip()
+				if not len(line):
+					continue
+				self.import_marks.append(line.split(' ')[1])
+				self.export_marks.append(line)
+			sock.close()
+
 	def handle(self):
 		self.handle_opts()
+		self.handle_import_marks()
 
 		while not self.eof:
 			self.read_next_line()
