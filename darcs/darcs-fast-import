@@ -34,6 +34,7 @@ class Handler:
 		self.line = None
 		self.unread_line = False
 		self.eof = False
+		self.debug = False
 
 	def read_next_line(self):
 		if self.unread_line:
@@ -48,7 +49,8 @@ class Handler:
 		buf = sys.stdin.readline()
 		if not len(buf):
 			self.eof = True
-		self.line += buf
+		else:
+			self.line += buf
 		if self.debug:
 			print "read_next_line: '%s'" % self.line
 
@@ -63,7 +65,7 @@ class Handler:
 		return buf
 
 	def skip_optional_lf(self):
-		self.ch = sys.stdin.read(1)
+		self.ch = self.read(1)
 		if self.ch == "\n":
 			self.ch = None
 
@@ -85,7 +87,7 @@ class Handler:
 			self.bug("Expected 'data n' command, found: '%s'" % self.line[:-1])
 		length = int(self.line[5:-1])
 		self.buf = self.read(length)
-		#self.skip_optional_lf()
+		self.skip_optional_lf()
 
 	def handle_blob(self):
 		self.read_next_line()
@@ -157,10 +159,8 @@ class Handler:
 		sys.stdout.flush()
 
 	def handle(self):
-		while True:
+		while not self.eof:
 			self.read_next_line()
-			if self.eof:
-				break
 			if not len(self.line[:-1]):
 				pass
 			elif self.line.startswith("blob"):
@@ -176,5 +176,4 @@ class Handler:
 
 if __name__ == "__main__":
 	h = Handler()
-	h.debug = 0
 	h.handle()
