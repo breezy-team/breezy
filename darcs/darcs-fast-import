@@ -105,6 +105,21 @@ class Handler:
 		self.short = items[0]
 		self.long = "\n".join(items[1:])
 
+	def handle_tag(self):
+		version = self.line[:-1].split(' ')[1]
+		self.read_next_line()
+		if self.line.startswith("from "):
+			self.read_next_line()
+		if self.line.startswith("tagger "):
+			self.handle_ident(self.line[7:-1])
+			self.read_next_line()
+		self.handle_data()
+		self.skip_optional_lf()
+		sock = os.popen("darcs tag --pipe", "w")
+		buf = [self.date, self.ident, version]
+		sock.write("\n".join(buf))
+		sock.close()
+
 	def handle_commit(self):
 		self.prevfiles = self.files[:]
 		adds = []
@@ -177,6 +192,8 @@ class Handler:
 				pass
 			elif self.line.startswith("commit"):
 				self.handle_commit()
+			elif self.line.startswith("tag"):
+				self.handle_tag()
 			elif self.line.startswith("progress"):
 				self.handle_progress(self.line[9:])
 			else:
