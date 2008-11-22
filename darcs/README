@@ -115,8 +115,8 @@ Mercurial Distributed SCM (version 1.0.2)
 You can reach the Changelog link:Changelog[here], and a gitweb interface
 http://vmiklos.hu/gitweb/?p=darcs-fast-export.git[here].
 
-The fast-import API documentation is
-http://www.kernel.org/pub/software/scm/git/docs/git-fast-import.html[here]
+The fast-import stream format documentation is
+http://git.kernel.org/?p=git/git.git;a=blob;f=fast-import.c;hb=HEAD[here]
 if you're interested.
 
 == Alternatives
