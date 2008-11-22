@@ -33,6 +33,7 @@ class Handler:
 	def __init__(self):
 		self.marks = {}
 		self.files = []
+		self.prevfiles = None
 		self.ch = None
 		self.line = None
 		self.unread_line = False
@@ -126,6 +127,15 @@ class Handler:
 		sock.close()
 
 	def handle_commit(self):
+		if not self.prevfiles and self.options.import_marks:
+			# first commit in an incremental continued
+			# import
+			for (root, dirs, files) in os.walk("."):
+				for i in files:
+					path = os.path.normpath(os.path.join(root, i))
+					if path.startswith("_darcs") or "-darcs-backup" in path:
+						continue
+					self.files.append(path)
 		self.prevfiles = self.files[:]
 		adds = []
 
