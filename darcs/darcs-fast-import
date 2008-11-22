@@ -128,19 +128,26 @@ class Handler:
 		while len(self.line) > 0:
 			if self.line.startswith("M "):
 				items = self.line.split(' ')
-				idx = int(items[2][1:])
 				path = items[3][:-1]
 				sock = open(path, "w")
-				sock.write(self.marks[idx])
+				if items[2] != "inline":
+					idx = int(items[2][1:])
+					sock.write(self.marks[idx])
+					del self.marks[idx]
+				else:
+					self.read_next_line()
+					self.handle_data()
+					sock.write(self.buf)
 				sock.close()
 				if path not in self.prevfiles:
 					adds.append(path)
+				if path not in self.files:
 					self.files.append(path)
-				del self.marks[idx]
 			elif self.line.startswith("D "):
 				path = self.line[2:-1]
 				os.unlink(path)
-				self.files.remove(path)
+				if path in self.files:
+					self.files.remove(path)
 			else:
 				self.unread_line = True
 				break
