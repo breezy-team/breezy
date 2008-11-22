@@ -188,12 +188,14 @@ class Handler:
 				pass
 			elif self.line.startswith("blob"):
 				self.handle_blob()
-			elif self.line.startswith("reset"):
-				pass
 			elif self.line.startswith("commit"):
 				self.handle_commit()
 			elif self.line.startswith("tag"):
 				self.handle_tag()
+			elif self.line.startswith("reset"):
+				pass
+			elif self.line.startswith("checkpoint"):
+				pass
 			elif self.line.startswith("progress"):
 				self.handle_progress(self.line[9:])
 			else:
