@@ -149,3 +149,11 @@ upd_file_darcs()
 	_drrec -a -m "updated '$2' to '$3'"
 	cd ..
 }
+
+upd_file_git()
+{
+	cd $1
+	echo $3 > $2
+	git commit -a -m "updated '$2' to '$3'"
+	cd ..
+}
