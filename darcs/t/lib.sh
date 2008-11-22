@@ -170,7 +170,7 @@ diff_importdarcs()
 
 diff_importbzr()
 {
-	diff --exclude .bzr --exclude '*-darcs-backup*' -Naur $1 $2
+	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Naur $1 $1.darcs
 	return $?
 }
 
