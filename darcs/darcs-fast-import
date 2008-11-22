@@ -106,6 +106,7 @@ class Handler:
 		self.long = "\n".join(items[1:])
 
 	def handle_commit(self):
+		self.prevfiles = self.files[:]
 		adds = []
 
 		self.read_next_line()
@@ -132,7 +133,7 @@ class Handler:
 				sock = open(path, "w")
 				sock.write(self.marks[idx])
 				sock.close()
-				if path not in self.files:
+				if path not in self.prevfiles:
 					adds.append(path)
 					self.files.append(path)
 				del self.marks[idx]
