@@ -1770,7 +1770,8 @@ class TestStacking(tests.TestCaseWithTransport):
         self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
 
     def test_stacked__get_parent_map(self):
-        # the private variant of _get_parent_map ignores stacking
+        # _UnstackedParentsProvider.get_parent_map ignores stacking
         branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
-        self.assertEqual([], repo._get_parent_map(['rev1']).keys())
+        provider = remote._UnstackedParentsProvider(repo)
+        self.assertEqual([], provider.get_parent_map(['rev1']).keys())

@@ -292,10 +292,45 @@ class _UnstackedParentsProvider(object):
 
     def __init__(self, remote_repository):
         self._remote_repository = remote_repository
+        self._parents_map = None
 
-    def get_parent_map(self, revision_ids):
+    def enable_cache(self):
+        """Enable cache."""
+        self._parents_map = {}
+
+    def disable_cache(self):
+        """Disable cache."""
+        self._parents_map = None
+
+    def get_cached_map(self):
+        """Return any cached get_parent_map values."""
+        return self._parents_map
+
+    def get_parent_map(self, keys):
         """See RemoteRepository.get_parent_map."""
-        return self._remote_repository._get_parent_map(revision_ids)
+        # Hack to build up the caching logic.
+        repo = self._remote_repository
+        ancestry = self._parents_map
+        if ancestry is None:
+            # Repository is not locked, so there's no cache.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            parent_map = repo._get_parent_map_rpc(missing_revisions)
+            if 'hpss' in debug.debug_flags:
+                mutter('retransmitted revisions: %d of %d',
+                        len(set(ancestry).intersection(parent_map)),
+                        len(parent_map))
+            ancestry.update(parent_map)
+        present_keys = [k for k in keys if k in ancestry]
+        if 'hpss' in debug.debug_flags:
+            if repo._requested_parents is not None and len(ancestry) != 0:
+                repo._requested_parents.update(present_keys)
+                mutter('Current RemoteRepository graph hit rate: %d%%',
+                    100.0 * len(repo._requested_parents) / len(ancestry))
+        return dict((k, ancestry[k]) for k in present_keys)
 
 
 class RemoteRepository(_RpcHelper):
@@ -330,8 +365,7 @@ class RemoteRepository(_RpcHelper):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
-        # A cache of looked up revision parent data; reset at unlock time.
-        self._parents_map = None
+        self._unstacked_provider = _UnstackedParentsProvider(self)
         if 'hpss' in debug.debug_flags:
             self._requested_parents = None
         # For tests:
@@ -481,7 +515,8 @@ class RemoteRepository(_RpcHelper):
             other_repository.bzrdir.transport.base !=
             self.bzrdir.transport.base):
             parents_provider = graph._StackedParentsProvider(
-                [parents_provider, other_repository._make_parents_provider()])
+                [self._unstacked_provider,
+                 other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
     def gather_stats(self, revid=None, committers=None):
@@ -554,7 +589,7 @@ class RemoteRepository(_RpcHelper):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
-            self._parents_map = {}
+            self._unstacked_provider.enable_cache()
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
             if self._real_repository is not None:
@@ -596,7 +631,7 @@ class RemoteRepository(_RpcHelper):
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
-            self._parents_map = {}
+            self._unstacked_provider.enable_cache()
             if 'hpss' in debug.debug_flags:
                 self._requested_parents = set()
         elif self._lock_mode == 'r':
@@ -663,7 +698,7 @@ class RemoteRepository(_RpcHelper):
         self._lock_count -= 1
         if self._lock_count > 0:
             return
-        self._parents_map = None
+        self._unstacked_provider.disable_cache()
         if 'hpss' in debug.debug_flags:
             self._requested_parents = None
         old_mode = self._lock_mode
@@ -897,31 +932,6 @@ class RemoteRepository(_RpcHelper):
         """See bzrlib.Graph.get_parent_map()."""
         return self._make_parents_provider().get_parent_map(revision_ids)
 
-    def _get_parent_map(self, keys):
-        """Implementation of get_parent_map() that ignores fallbacks."""
-        # Hack to build up the caching logic.
-        ancestry = self._parents_map
-        if ancestry is None:
-            # Repository is not locked, so there's no cache.
-            missing_revisions = set(keys)
-            ancestry = {}
-        else:
-            missing_revisions = set(key for key in keys if key not in ancestry)
-        if missing_revisions:
-            parent_map = self._get_parent_map_rpc(missing_revisions)
-            if 'hpss' in debug.debug_flags:
-                mutter('retransmitted revisions: %d of %d',
-                        len(set(ancestry).intersection(parent_map)),
-                        len(parent_map))
-            ancestry.update(parent_map)
-        present_keys = [k for k in keys if k in ancestry]
-        if 'hpss' in debug.debug_flags:
-            if self._requested_parents is not None and len(ancestry) != 0:
-                self._requested_parents.update(present_keys)
-                mutter('Current RemoteRepository graph hit rate: %d%%',
-                    100.0 * len(self._requested_parents) / len(ancestry))
-        return dict((k, ancestry[k]) for k in present_keys)
-
     def _get_parent_map_rpc(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         medium = self._client._medium
@@ -970,7 +980,7 @@ class RemoteRepository(_RpcHelper):
         # TODO: Manage this incrementally to avoid covering the same path
         # repeatedly. (The server will have to on each request, but the less
         # work done the better).
-        parents_map = self._parents_map
+        parents_map = self._unstacked_provider.get_cached_map()
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
@@ -1223,7 +1233,7 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository._check_for_inconsistent_revision_parents()
 
     def _make_parents_provider(self):
-        providers = [_UnstackedParentsProvider(self)]
+        providers = [self._unstacked_provider]
         providers.extend(r._make_parents_provider() for r in
                          self._fallback_repositories)
         return graph._StackedParentsProvider(providers)
