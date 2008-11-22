@@ -28,12 +28,34 @@ import time
 
 marks = {}
 files = []
+ch = None
 
 def readline():
-	return sys.stdin.readline()
+	global ch
+
+	buf = ""
+	if ch:
+		buf += ch
+		ch = None
+	buf += sys.stdin.readline()
+	return buf
 
 def read(length):
-	return sys.stdin.read(length)
+	global ch
+
+	buf = ""
+	if ch:
+		buf += ch
+		ch = None
+	buf += sys.stdin.read(length)
+	return buf
+
+def skip_optional_lf():
+	global ch
+
+	ch = sys.stdin.read(1)
+	if ch == "\n":
+		ch = None
 
 def bug(s):
 	raise Exception(s)
@@ -75,6 +97,7 @@ def handle_commit():
 		elif line.startswith("data "):
 			length = int(line[5:])
 			msg = read(length)
+			skip_optional_lf()
 			items = msg.split('\n')
 			short = items[0]
 			long = "\n".join(items[1:])
