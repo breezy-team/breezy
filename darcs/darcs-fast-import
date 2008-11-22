@@ -160,7 +160,8 @@ class Handler:
 					self.files.append(path)
 			elif self.line.startswith("D "):
 				path = self.line[2:-1]
-				os.unlink(path)
+				if os.path.exists(path):
+					os.unlink(path)
 				if path in self.files:
 					self.files.remove(path)
 			else:
