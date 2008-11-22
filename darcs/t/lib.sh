@@ -79,6 +79,7 @@ create_git()
 	echo "first line
 second line
 third line" | git commit -a -F -
+	git branch -d tmp
 	git tag 1.0
 	echo e > file
 	git commit -a -m e
