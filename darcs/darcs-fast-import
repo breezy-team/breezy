@@ -57,6 +57,7 @@ def handle_blob():
 
 def handle_commit():
 	adds = []
+	author = None
 	while True:
 		line = readline().strip()
 		if line.startswith("mark :"):
@@ -66,7 +67,11 @@ def handle_commit():
 			author = " ".join(items[:-2])
 			date = get_date(items[-2], items[-1])
 		elif line.startswith("committer "):
-			pass
+			if author:
+				continue
+			items = line[10:].split(' ')
+			author = " ".join(items[:-2])
+			date = get_date(items[-2], items[-1])
 		elif line.startswith("data "):
 			length = int(line[5:])
 			msg = read(length)
