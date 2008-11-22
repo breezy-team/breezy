@@ -1,2 +1,6 @@
-fast-export:
-- add options from fast-export (import-marks, export-marks, etc)
+darcs-fast-import:
+- test with hg/bzr
+- test two-way sync
+- options from d-f-e (logging, etc)
+
+two-way sync wrapper
