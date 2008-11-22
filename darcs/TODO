@@ -1,3 +1,2 @@
 fast-export:
-- accept all valid stream commands
 - add options from fast-export (import-marks, export-marks, etc)
