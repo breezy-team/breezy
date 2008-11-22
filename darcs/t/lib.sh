@@ -59,6 +59,53 @@ third line"
 	cd ..
 }
 
+create_bzr()
+{
+	rm -rf $1
+	mkdir -p $1
+	cd $1
+	bzr init $2
+	echo A > file
+	bzr add file
+	bzr commit -m A
+	cd ..
+	rm -rf $1.tmp
+	bzr branch $1 $1.tmp
+	cd $1
+	echo B > file
+	bzr commit -m B
+	cd ../$1.tmp
+	echo C > file
+	bzr commit -m C
+	cd ../$1
+	bzr merge ../$1.tmp
+	echo D > file
+	bzr resolve file
+	echo "first line
+second line
+third line" | bzr commit -F /dev/stdin
+	bzr tag 1.0
+	echo e > file
+	bzr commit -m e
+	#echo f > file
+	#bzr commit --author="ιαυϋ <$DARCS_EMAIL>" -m f
+	#echo g > file
+	#_drrec --author="" -a -m g
+	cp ../data/hungarian.gif .
+	bzr add hungarian.gif
+	bzr commit -m "add a binary file"
+	rm file
+	echo test > file2
+	bzr add file2
+	bzr commit -m "replace file with file2"
+	touch file3
+	bzr add file3
+	bzr commit -m "add empty file"
+	rm file3
+	bzr commit -m "remove file"
+	cd ..
+}
+
 create_git()
 {
 	rm -rf $1
@@ -118,6 +165,12 @@ diff_importgit()
 diff_importdarcs()
 {
 	diff --exclude _darcs --exclude '*-darcs-backup*' -Naur $1 $2
+	return $?
+}
+
+diff_importbzr()
+{
+	diff --exclude .bzr --exclude '*-darcs-backup*' -Naur $1 $2
 	return $?
 }
 
