@@ -103,6 +103,10 @@ def handle_commit():
 		else:
 			bug("'%s': invalid commit subcommand" % line)
 
+def handle_progress(s):
+	print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
+	sys.stdout.flush()
+
 while True:
 	line = readline()
 	if not line:
@@ -116,5 +120,7 @@ while True:
 		pass
 	elif line.startswith("commit"):
 		handle_commit()
+	elif line.startswith("progress"):
+		handle_progress(line[9:])
 	else:
 		bug("'%s': invalid subcommand" % line)
