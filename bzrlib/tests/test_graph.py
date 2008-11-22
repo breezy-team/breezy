@@ -1417,12 +1417,12 @@ class TestCachingExtraParentsProvider(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestCachingExtraParentsProvider, self).setUp()
-        class FakeParentsProvider(object):
+        class ExtraParentsProvider(object):
 
             def get_parent_map(self, keys):
                 return {'rev1': [], 'rev2': ['rev1',]}
 
-        self.inst_pp = InstrumentedParentsProvider(FakeParentsProvider())
+        self.inst_pp = InstrumentedParentsProvider(ExtraParentsProvider())
         self.caching_pp = _mod_graph.CachingExtraParentsProvider(
             self.inst_pp.get_parent_map)
 
