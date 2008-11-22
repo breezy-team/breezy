@@ -68,16 +68,18 @@ class Handler:
 			self.mark_num = int(self.line[6:])
 			self.read_next_line()
 
+	def handle_data(self):
+		if not self.line.startswith("data "):
+			self.bug("Expected 'data n' command, found: %s" % self.line)
+		length = int(self.line[5:])
+		self.buf = self.read(length)
+		self.skip_optional_lf()
+
 	def handle_blob(self):
 		self.read_next_line()
 		self.handle_mark()
-		while True:
-			if self.line.startswith("data "):
-				length = int(self.line[5:])
-				self.marks[self.mark_num] = self.read(length)
-				return
-			else:
-				self.bug("'%s': invalid blob subcommand" % self.line)
+		self.handle_data()
+		self.marks[self.mark_num] = self.buf
 
 	def handle_commit(self):
 		adds = []
