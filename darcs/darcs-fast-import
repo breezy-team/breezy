@@ -63,17 +63,21 @@ class Handler:
 		items = s.split(' ')
 		return " ".join(items[:-1]) + " " + tz + " " + items[-1]
 
-	def handle_blob(self):
-		while True:
+	def handle_mark(self):
+		if self.line.startswith("mark :"):
+			self.mark_num = int(self.line[6:])
 			self.read_next_line()
-			if self.line.startswith("mark :"):
-				num = int(self.line[6:])
-			elif self.line.startswith("data "):
+
+	def handle_blob(self):
+		self.read_next_line()
+		self.handle_mark()
+		while True:
+			if self.line.startswith("data "):
 				length = int(self.line[5:])
-				self.marks[num] = self.read(length)
+				self.marks[self.mark_num] = self.read(length)
 				return
 			else:
-				self.bug("'%s': invalid blob subcommand" % line)
+				self.bug("'%s': invalid blob subcommand" % self.line)
 
 	def handle_commit(self):
 		adds = []
