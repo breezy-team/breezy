@@ -152,6 +152,8 @@ class Handler:
 					os.unlink(path)
 				if path in self.files:
 					self.files.remove(path)
+			elif self.line.startswith("R "):
+				os.system("darcs mv %s" % self.line[2:])
 			elif self.line.startswith("M "):
 				items = self.line.split(' ')
 				path = items[3][:-1]
