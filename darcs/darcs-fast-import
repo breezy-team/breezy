@@ -261,7 +261,7 @@ class Handler:
 			elif self.line.startswith("tag"):
 				self.handle_tag()
 			elif self.line.startswith("reset"):
-				pass
+				self.read_next_line()
 			elif self.line.startswith("checkpoint"):
 				pass
 			elif self.line.startswith("progress"):
