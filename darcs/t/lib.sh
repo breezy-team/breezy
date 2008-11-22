@@ -115,6 +115,12 @@ diff_importgit()
 	return $?
 }
 
+diff_importdarcs()
+{
+	diff --exclude _darcs --exclude '*-darcs-backup*' -Naur $1 $2
+	return $?
+}
+
 diff_bzr()
 {
 	cd $1.bzr/master
