@@ -290,17 +290,23 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 class _UnstackedParentsProvider(object):
     """ParentsProvider for RemoteRepository that ignores stacking."""
 
-    def __init__(self, remote_repository):
-        self._remote_repository = remote_repository
+    def __init__(self, get_parent_map):
+        self._get_parent_map = get_parent_map
         self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
 
     def enable_cache(self):
         """Enable cache."""
         self._parents_map = {}
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = set()
 
     def disable_cache(self):
         """Disable cache."""
         self._parents_map = None
+        if 'hpss' in debug.debug_flags:
+            self._requested_parents = None
 
     def get_cached_map(self):
         """Return any cached get_parent_map values."""
@@ -309,7 +315,6 @@ class _UnstackedParentsProvider(object):
     def get_parent_map(self, keys):
         """See RemoteRepository.get_parent_map."""
         # Hack to build up the caching logic.
-        repo = self._remote_repository
         ancestry = self._parents_map
         if ancestry is None:
             # Repository is not locked, so there's no cache.
@@ -318,7 +323,7 @@ class _UnstackedParentsProvider(object):
         else:
             missing_revisions = set(key for key in keys if key not in ancestry)
         if missing_revisions:
-            parent_map = repo._get_parent_map_rpc(missing_revisions)
+            parent_map = self._get_parent_map(missing_revisions)
             if 'hpss' in debug.debug_flags:
                 mutter('retransmitted revisions: %d of %d',
                         len(set(ancestry).intersection(parent_map)),
@@ -326,10 +331,10 @@ class _UnstackedParentsProvider(object):
             ancestry.update(parent_map)
         present_keys = [k for k in keys if k in ancestry]
         if 'hpss' in debug.debug_flags:
-            if repo._requested_parents is not None and len(ancestry) != 0:
-                repo._requested_parents.update(present_keys)
+            if self._requested_parents is not None and len(ancestry) != 0:
+                self._requested_parents.update(present_keys)
                 mutter('Current RemoteRepository graph hit rate: %d%%',
-                    100.0 * len(repo._requested_parents) / len(ancestry))
+                    100.0 * len(self._requested_parents) / len(ancestry))
         return dict((k, ancestry[k]) for k in present_keys)
 
 
@@ -365,9 +370,8 @@ class RemoteRepository(_RpcHelper):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
-        self._unstacked_provider = _UnstackedParentsProvider(self)
-        if 'hpss' in debug.debug_flags:
-            self._requested_parents = None
+        self._unstacked_provider = _UnstackedParentsProvider(
+            self._get_parent_map_rpc)
         # For tests:
         # These depend on the actual remote format, so force them off for
         # maximum compatibility. XXX: In future these should depend on the
@@ -590,8 +594,6 @@ class RemoteRepository(_RpcHelper):
             self._lock_mode = 'r'
             self._lock_count = 1
             self._unstacked_provider.enable_cache()
-            if 'hpss' in debug.debug_flags:
-                self._requested_parents = set()
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:
@@ -632,8 +634,6 @@ class RemoteRepository(_RpcHelper):
             self._lock_mode = 'w'
             self._lock_count = 1
             self._unstacked_provider.enable_cache()
-            if 'hpss' in debug.debug_flags:
-                self._requested_parents = set()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -699,8 +699,6 @@ class RemoteRepository(_RpcHelper):
         if self._lock_count > 0:
             return
         self._unstacked_provider.disable_cache()
-        if 'hpss' in debug.debug_flags:
-            self._requested_parents = None
         old_mode = self._lock_mode
         self._lock_mode = None
         try:

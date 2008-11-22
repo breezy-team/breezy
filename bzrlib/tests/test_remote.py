@@ -1773,5 +1773,5 @@ class TestStacking(tests.TestCaseWithTransport):
         # _UnstackedParentsProvider.get_parent_map ignores stacking
         branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
-        provider = remote._UnstackedParentsProvider(repo)
+        provider = remote._UnstackedParentsProvider(repo._get_parent_map_rpc)
         self.assertEqual([], provider.get_parent_map(['rev1']).keys())
