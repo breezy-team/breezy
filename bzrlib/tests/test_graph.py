@@ -1379,13 +1379,13 @@ class TestCachingParentsProvider(tests.TestCase):
 
     def test_get_parent_map(self):
         """Requesting the same revision should be returned from cache"""
-        self.assertEqual({}, self.caching_pp._cache)
+        self.assertEqual({}, self.caching_pp.get_cached_map())
         self.assertEqual({'a':('b',)}, self.caching_pp.get_parent_map(['a']))
         self.assertEqual(['a'], self.inst_pp.calls)
         self.assertEqual({'a':('b',)}, self.caching_pp.get_parent_map(['a']))
         # No new call, as it should have been returned from the cache
         self.assertEqual(['a'], self.inst_pp.calls)
-        self.assertEqual({'a':('b',)}, self.caching_pp._cache)
+        self.assertEqual({'a':('b',)}, self.caching_pp.get_cached_map())
 
     def test_get_parent_map_not_present(self):
         """The cache should also track when a revision doesn't exist"""
@@ -1394,7 +1394,7 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         # No new calls
         self.assertEqual(['b'], self.inst_pp.calls)
-        self.assertEqual({'b':None}, self.caching_pp._cache)
+        self.assertEqual({'b':None}, self.caching_pp._parents_map)
 
     def test_get_parent_map_mixed(self):
         """Anything that can be returned from cache, should be"""
@@ -1413,27 +1413,27 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
 
 
-class TestCachingExtraParentsProvider(tests.TestCaseWithTransport):
+class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestCachingExtraParentsProvider, self).setUp()
+        super(TestCachingParentsProviderExtras, self).setUp()
         class ExtraParentsProvider(object):
 
             def get_parent_map(self, keys):
                 return {'rev1': [], 'rev2': ['rev1',]}
 
         self.inst_pp = InstrumentedParentsProvider(ExtraParentsProvider())
-        self.caching_pp = _mod_graph.CachingExtraParentsProvider(
-            self.inst_pp.get_parent_map)
+        self.caching_pp = _mod_graph.CachingParentsProvider(
+            get_parent_map=self.inst_pp.get_parent_map)
 
     def test_uncached(self):
+        self.caching_pp.disable_cache()
         self.assertEqual({'rev1': []},
                          self.caching_pp.get_parent_map(['rev1']))
         self.assertEqual(['rev1'], self.inst_pp.calls)
         self.assertIs(None, self.caching_pp.get_cached_map())
 
     def test_cached(self):
-        self.caching_pp.enable_cache()
         self.assertEqual({}, self.caching_pp.get_cached_map())
         self.assertEqual({'rev1': []},
                          self.caching_pp.get_parent_map(['rev1']))
@@ -1447,7 +1447,6 @@ class TestCachingExtraParentsProvider(tests.TestCaseWithTransport):
         self.assertIs(None, self.caching_pp.get_cached_map())
 
     def test_cache_extras(self):
-        self.caching_pp.enable_cache()
         self.assertEqual({}, self.caching_pp.get_parent_map(['rev3']))
         self.assertEqual({'rev2': ['rev1']},
                          self.caching_pp.get_parent_map(['rev2']))

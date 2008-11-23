@@ -99,57 +99,25 @@ class _StackedParentsProvider(object):
 
 
 class CachingParentsProvider(object):
-    """A parents provider which will cache the revision => parents in a dict.
-
-    This is useful for providers that have an expensive lookup.
-    """
-
-    def __init__(self, parent_provider):
-        self._real_provider = parent_provider
-        # Theoretically we could use an LRUCache here
-        self._cache = {}
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self._real_provider)
-
-    def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
-        needed = set()
-        # If the _real_provider doesn't have a key, we cache a value of None,
-        # which we then later use to realize we cannot provide a value for that
-        # key.
-        parent_map = {}
-        cache = self._cache
-        for key in keys:
-            if key in cache:
-                value = cache[key]
-                if value is not None:
-                    parent_map[key] = value
-            else:
-                needed.add(key)
-
-        if needed:
-            new_parents = self._real_provider.get_parent_map(needed)
-            cache.update(new_parents)
-            parent_map.update(new_parents)
-            needed.difference_update(new_parents)
-            cache.update(dict.fromkeys(needed, None))
-        return parent_map
-
-
-class CachingExtraParentsProvider(object):
     """ParentsProvider that allows extra parents.
 
     This class takes a callback that acts like get_parent_map, except that it
     may return un-asked-for parents.  These extras are cached, but filtered
     out of get_parent_map.
     """
-    def __init__(self, get_parent_map, debug=False):
-        self._get_parent_map = get_parent_map
-        self._parents_map = None
+    def __init__(self, parent_provider=None, get_parent_map=None, debug=False):
+        self._real_provider = parent_provider
+        if get_parent_map is None:
+            self._get_parent_map = self._real_provider.get_parent_map
+        else:
+            self._get_parent_map = get_parent_map
+        self._parents_map = {}
         self._debug = debug
         if self._debug:
             self._requested_parents = None
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
     def enable_cache(self):
         """Enable cache."""
@@ -165,7 +133,10 @@ class CachingExtraParentsProvider(object):
 
     def get_cached_map(self):
         """Return any cached get_parent_map values."""
-        return self._parents_map
+        if self._parents_map is None:
+            return None
+        return dict((k, v) for k, v in self._parents_map.items()
+                    if v is not None)
 
     def get_parent_map(self, keys):
         """See RemoteRepository.get_parent_map."""
@@ -184,7 +155,9 @@ class CachingExtraParentsProvider(object):
                         len(set(ancestry).intersection(parent_map)),
                         len(parent_map))
             ancestry.update(parent_map)
-        present_keys = [k for k in keys if k in ancestry]
+            ancestry.update(dict((k, None) for k in missing_revisions
+                                 if k not in parent_map))
+        present_keys = [k for k in keys if ancestry.get(k) is not None]
         if self._debug:
             if self._requested_parents is not None and len(ancestry) != 0:
                 self._requested_parents.update(present_keys)
