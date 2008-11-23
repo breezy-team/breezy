@@ -1,0 +1,53 @@
+= darcs-fast-export(1)
+
+== NAME
+
+darcs-fast-export - darcs frontend to git fast-import
+
+== SYNOPSIS
+
+darcs-fast-export [<options>] <darcsrepo>
+
+== DESCRIPTION
+
+darcs-fast-export can produce the fast-import stream format from a darcs
+repository. It supports incremental conversion as well, via the
+--import-marks / --export-marks switches.
+
+== OPTIONS
+
+-h, --help::
+	Display usage.
+
+--import-marks::
+	Import marks from a given file. This is read at the beginning of the
+	conversion at once. Use it if you want to continue an incremental
+	conversion.
+
+--export-marks::
+	Export marks to a given file at the end of the conversion. It can be the
+	same as the one for --import-marks as it is written only once at the
+	end. Use it if you want to be able to incrementally update the target
+	repository later.
+
+--encoding::
+	The encoding of the author names and commit messages in the repository.
+	The default is utf-8. If it is not the default, it will be guessed.
+	Given that it takes some time, you can explicitly specify it as an
+	option to make the conversion faster. Content in the output will encoded
+	as utf-8 and will be written that way to the target repository, unless
+	the importer re-encodes it again to some other character set.
+
+--working::
+	The conversion is done by applying the patches one by one and recording
+	the state of the working directory. You can specify the path of this
+	directory using this option.
+
+--logfile::
+	The output of external commands are redirected to a log file. You can
+	specify the path of that file with this parameter.
+
+--git-branch::
+	There is only one branch in one darcs repository, but the fast-import
+	stream format allows multiple branches, thus the exporter has to name
+	darcs's branch. The default value is 'refs/heads/master'.

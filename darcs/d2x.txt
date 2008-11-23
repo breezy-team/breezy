@@ -19,7 +19,7 @@ standard input.
 == OPTIONS
 
 --help::
-	Display this manpage.
+	Display usage.
 
 -f <format>::
 	Specify the format of the target repo. Currently supported targets are
