@@ -32,13 +32,26 @@ Formats::
 
 Incremental conversions::
 	It supports the usual `--export-marks` / `--import-marks` switches to
-	allow incremental conversion. A wrapper script called `d2x` is also
-	available if you find typing `--export-marks` / `--import-marks` all the
-	time boring. :-)
+	allow incremental conversion.
+
+Wrapper script::
+	A wrapper script called `d2x` is also available if you find typing
+	`--export-marks` / `--import-marks` all the time boring. :-)
 
 Author mappings::
 	Supports `--authors-file` option like Git's SVN adaptor, for DARCS
 	repositories that originated in CVS or SVN.
+
+Import script::
+	The pair of `darcs-fast-export`, `darcs-fast-import` is also included in
+	this repo. It has been tested with the fast-expoters of Git, Hg, Bzr and
+	- of course - Darcs itself.
+
+Two-way sync::
+	Using `darcs-fast-export` / `darcs-fast-import`, it is possible to
+	convert a darcs repo to an other VCS, work there, then convert your work
+	back to Darcs (or vica versa). This has been tested with "darcs -> git;
+	hack hack; git -> darcs".
 
 == Usage
 
@@ -57,18 +70,11 @@ $ darcs-fast-export --help
 Assuming that `test/` is a darcs repo, you could do this:
 ----
 $ mkdir test.git
+$ cd test.git
 $ git --bare init
+$ cd ..
 $ darcs-fast-export test |(cd test.git; git fast-import)
 ----
-
-To verify the results, you could compare them:
-----
-$ git clone -q test.git test.git.nonbare
-$ diff --exclude .git -Naur test.git.nonbare test/_darcs/pristine
-$ rm -rf test.git.nonbare
-----
-
-If you get no output, then the conversion was successful.
 
 For more examples (especially for bzr and hg), see the `t/` directory.
 

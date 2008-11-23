@@ -1,5 +1,6 @@
 VERSION         DESCRIPTION
 -----------------------------------------------------------------------------
+              - add a new darcs-fast-import script, allowing two-way sync
 0.5           - new --help, --encoding, --authors-file, --working and
                 --logfile options
               - add "hashed" support (see darcs init -h)
