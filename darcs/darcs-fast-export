@@ -203,11 +203,17 @@ if not options.import_marks or not os.path.exists(working):
 else:
 	os.chdir(working)
 
+# this is the number of the NEXT patch
 count = 1
 patches = xmldoc.getElementsByTagName('patch')
 if len(import_marks):
 	patches = patches[1:]
 	count = len(import_marks) + 1
+if len(export_marks):
+	# this is the mark number of the NEXT patch
+	markcount = int(export_marks[-1].split(' ')[0][1:]) + 1
+else:
+	markcount = count
 # this may be huge and we need it many times
 patchnum = len(patches)
 
@@ -244,14 +250,14 @@ for i in patches:
 	message = get_patchname(i)
 	# export the commit
 	print "commit refs/heads/master"
-	print "mark :%s" % count
+	print "mark :%s" % markcount
 	if options.export_marks:
-		export_marks.append(":%s %s" % (count, hash))
+		export_marks.append(":%s %s" % (markcount, hash))
 	date = get_date(i.attributes['date'].value)
 	print "committer %s %s %s" % (get_author(i), date, get_zone_str())
 	print "data %d\n%s" % (len(message), message)
-	if count > 1:
-		print "from :%s" % (count-1)
+	if markcount > 1:
+		print "from :%s" % (markcount-1)
 	# export the files
 	for j in paths:
 		print "D %s" % j
@@ -271,12 +277,13 @@ for i in patches:
 	if message[:4] == "TAG ":
 	        tag = message[4:].strip().split('\n')[0].replace(' ','_')
 		print "tag %s" % tag
-		print "from :%s" % count
+		print "from :%s" % markcount
 		print "tagger %s %s %s" % (get_author(i), date, get_zone_str())
 		print "data %d\n%s" % (len(message), message)
 	if count % 100 == 0:
 		progress("%d/%d patches" % (count, patchnum))
 	count += 1
+	markcount += 1
 
 os.chdir(cwd)
 
