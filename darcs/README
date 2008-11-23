@@ -58,15 +58,13 @@ Two-way sync::
 
 == Usage
 
-darcs-fast-export expects one argument, the path to the source darcs
-repository. It will print the git fast-import format on standard output
-(stdout).
+See the manpages:
 
-There are some command line options, which will be explained if you
-type:
-----
-$ darcs-fast-export --help
-----
+* link:darcs-fast-export.html[darcs-fast-export]
+* link:darcs-fast-import.html[darcs-fast-import]
+* link:d2x.html[d2x]
+* link:x2d.html[x2d]
+* link:git-darcs.html[git-darcs]
 
 === Example
 
