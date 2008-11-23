@@ -1,1 +1,3 @@
-two-way sync wrapper
+wrappers:
+- x2d + tests
+- git-darcs + tests
