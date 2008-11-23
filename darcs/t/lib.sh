@@ -1,5 +1,6 @@
 export DARCS_EMAIL="user@example.com"
 export PATH="$(pwd)/..:$PATH"
+pypath="/$(python -c 'from distutils import sysconfig; print sysconfig.get_python_lib()[1:]')/"
 
 _drrec()
 {
