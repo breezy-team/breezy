@@ -27,7 +27,7 @@ HEADER.html: README Makefile
 	asciidoc -a toc -a numbered -a sectids -o HEADER.html README
 
 Changelog: .git/refs/heads/master
-	git log --no-merges |git name-rev --tags --stdin >Changelog
+	git log >Changelog
 
 %.html: %.txt
 	asciidoc $^
@@ -39,3 +39,17 @@ Changelog: .git/refs/heads/master
 man: $(MAN)
 
 html: $(MAN_HTML)
+
+dist:
+	git archive --format=tar --prefix=darcs-fast-export-$(VERSION)/ $(VERSION) > darcs-fast-export-$(VERSION).tar
+	mkdir -p darcs-fast-export-$(VERSION)
+	git log > darcs-fast-export-$(VERSION)/Changelog
+	tar rf darcs-fast-export-$(VERSION).tar darcs-fast-export-$(VERSION)/Changelog
+	rm -rf darcs-fast-export-$(VERSION)
+	gzip -f -9 darcs-fast-export-$(VERSION).tar
+
+release:
+	git tag -l |grep -q $(VERSION) || dg tag $(VERSION)
+	$(MAKE) dist
+	gpg --comment "See http://vmiklos.hu/gpg/ for info" \
+		-ba darcs-fast-export-$(VERSION).tar.gz
