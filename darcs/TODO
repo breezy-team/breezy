@@ -1,5 +1,4 @@
 darcs-fast-import:
 - test two-way sync
-- options from d-f-e (logging, etc)
 
 two-way sync wrapper

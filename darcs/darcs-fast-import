@@ -28,6 +28,7 @@ import os
 import time
 import shutil
 import optparse
+import popen2
 
 class Handler:
 	def __init__(self):
@@ -121,10 +122,12 @@ class Handler:
 			self.read_next_line()
 		self.handle_data()
 		self.skip_optional_lf()
-		sock = os.popen("darcs tag --pipe", "w")
+		pout, pin = popen2.popen2("darcs tag --pipe")
 		buf = [self.date, self.ident, version]
-		sock.write("\n".join(buf))
-		sock.close()
+		pin.write("\n".join(buf))
+		pin.close()
+		self.log("Tagging %s:\n%s" % (version, pout.read()))
+		pout.close()
 
 	def handle_commit(self):
 		if not self.prevfiles and self.options.import_marks:
@@ -199,10 +202,12 @@ class Handler:
 
 		for i in adds:
 			os.system("darcs add %s" % i)
-		sock = os.popen("darcs record --ignore-times -a --pipe", "w")
+		pout, pin = popen2.popen2("darcs record --ignore-times -a --pipe")
 		buf = [self.date, self.ident, self.short, self.long]
-		sock.write("\n".join(buf))
-		sock.close()
+		pin.write("\n".join(buf))
+		pin.close()
+		self.log("Recording :%s:\n%s" % (self.mark_num, pout.read()))
+		pout.close()
 
 		if self.options.export_marks:
 			# yeah, an xml parser would be better, but
@@ -226,7 +231,19 @@ class Handler:
 			help="read state for incremental imports from IFILE")
 		opp.add_option("--export-marks", metavar="OFILE",
 			help="write state for incremental imports to OFILE")
+		opp.add_option("--logfile", metavar="L",
+			help="log file which contains the output of external programs invoked during the conversion")
 		(self.options, args) = opp.parse_args()
+
+		if self.options.logfile:
+			logfile = self.options.logfile
+		else:
+			logfile = "_darcs/import.log"
+		self.logsock = open(os.path.abspath(logfile), "a")
+	
+	def log(self, s):
+		self.logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
+		self.logsock.flush()
 
 	def handle_export_marks(self):
 		if self.options.export_marks:
