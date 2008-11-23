@@ -1,5 +1,4 @@
 darcs-fast-import:
-- test with hg/bzr
 - test two-way sync
 - options from d-f-e (logging, etc)
 
