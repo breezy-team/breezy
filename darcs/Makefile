@@ -1,11 +1,27 @@
 VERSION = 0.5
 DATE := $(shell date +%Y-%m-%d)
 
+INSTALL = /usr/bin/install -c
+DESTDIR =
+prefix = /usr
+bindir = $(prefix)/bin
+mandir = $(prefix)/share/man/man1
+
 MAN_TXT = $(wildcard *.txt)
 MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
 MAN=$(patsubst %.txt,%.1,$(MAN_TXT))
 
-doc: HEADER.html Changelog
+PROGRAMS = darcs-fast-export darcs-fast-import d2x x2d git-darcs
+
+all: man
+
+install: all
+	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL) -d $(DESTDIR)$(mandir)
+	$(INSTALL) -m755 $(PROGRAMS) $(DESTDIR)$(bindir)
+	$(INSTALL) -m644 *.1 $(DESTDIR)$(mandir)
+
+doc: HEADER.html Changelog html
 
 HEADER.html: README Makefile
 	asciidoc -a toc -a numbered -a sectids -o HEADER.html README
