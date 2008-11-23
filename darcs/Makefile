@@ -35,6 +35,7 @@ Changelog: .git/refs/heads/master
 %.1: %.txt asciidoc.conf
 	a2x --asciidoc-opts="-f asciidoc.conf" \
 		-a dfe_version=$(VERSION) -a dfe_date=$(DATE) -f manpage $<
+	if echo $@ |grep -q -- -; then mv $(shell echo $@ |tr - _) $@; fi
 
 man: $(MAN)
 
