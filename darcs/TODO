@@ -1,5 +1,5 @@
 wrappers:
-- git-darcs + tests
+- git-darcs tests
 
 maybe later try to avoid a working dir in the exporter and use 'darcs
 show contents --match "hash foo" path' + 'darcs chan --xml -s' output
