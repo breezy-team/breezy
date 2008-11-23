@@ -117,6 +117,22 @@ $ hg version
 Mercurial Distributed SCM (version 1.0.2)
 ----
 
+Strictly speaking this document is a wrong place to talk about enabling
+hg plugins. However...
+
+----
+$ cat ~/.hgrc
+[extensions]
+hgext.fastimport=
+----
+
+and once you installed the plugin correctly, you should have something like:
+
+----
+$ ls /usr/lib/python*/site-packages/hgext/fastimport/__init__.py
+/usr/lib/python2.5/site-packages/hgext/fastimport/__init__.py
+----
+
 == Additional resources
 
 You can reach the Changelog link:Changelog[here], and a gitweb interface
