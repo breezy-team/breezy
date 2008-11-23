@@ -263,3 +263,11 @@ upd_file_git()
 	git commit -a -m "updated '$2' to '$3'"
 	cd ..
 }
+
+upd_file_bzr()
+{
+	cd $1
+	echo $3 > $2
+	bzr commit -m "updated '$2' to '$3'"
+	cd ..
+}

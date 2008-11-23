@@ -104,7 +104,10 @@ else
 				darcs-fast-import --export-marks=$dmark --import-marks=$dmark $common_opts
 			;;
 		bzr)
-			check_up_to_date "bzr revno"
+			# bzr revno is not good here, because at merges
+			# it produces less revision than the number we
+			# have in darcs
+			check_up_to_date "bzr log|grep -c revno:"
 			(cd $origin; $pypath/bzrlib/plugins/fastimport/exporters/bzr-fast-export \
 				--export-marks=$fmark --import-marks=$fmark . ) | \
 				darcs-fast-import --export-marks=$dmark --import-marks=$dmark $common_opts
