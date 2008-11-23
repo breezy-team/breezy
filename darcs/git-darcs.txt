@@ -1,0 +1,51 @@
+= git-darcs(1)
+
+== NAME
+
+git darcs - a bidirectional git - darcs gateway
+
+== SYNOPSIS
+
+git darcs <command> <options>
+
+== DESCRIPTION
+
+git darcs can convert a darcs repo to a git one, can update such an
+existing git repo later, and finally can push back your changes from the
+git repo to the darcs one.
+
+A typical workflow is:
+
+$ git darcs add upstream ../darcs-repo
+$ git darcs pull upstream
+
+<hack, hack, hack>
+
+$ git darcs push upstream
+
+== GLOBAL OPTIONS
+
+-h, --help::
+	Display usage.
+
+== COMMANDS
+
+The supported commands are the followings:
+
+add::
+	This can register a new darcs repo in the git one, so that you
+	can fetch from it. The syntax is `add nick path`.
+
+push::
+	Transfers your changes created in the current branch back the
+	darcs one. The syntax is `push nick`.
+
+fetch::
+	Downloads changes from the darcs repo and updates the
+	`darcs/<nick>` branch. None of your local branches are updated.
+
+pull::
+	Calls `fetch` then `git merge` or `git rebase` based on the
+	`branch.<branchname>.rebase` configuration setting, where `<branchname>`
+	is the current branch. The default is - just like with `git pull` - is
+	to `git merge`.
