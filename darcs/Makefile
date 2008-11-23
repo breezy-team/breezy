@@ -1,3 +1,6 @@
+VERSION = 0.5
+DATE := $(shell date +%Y-%m-%d)
+
 MAN_TXT = $(wildcard *.txt)
 MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
 MAN=$(patsubst %.txt,%.1,$(MAN_TXT))
@@ -13,8 +16,9 @@ Changelog: .git/refs/heads/master
 %.html: %.txt
 	asciidoc $^
 
-%.1: %.txt
-	a2x -f manpage $<
+%.1: %.txt asciidoc.conf
+	a2x --asciidoc-opts="-f asciidoc.conf" \
+		-a dfe_version=$(VERSION) -a dfe_date=$(DATE) -f manpage $<
 
 man: $(MAN)
 
