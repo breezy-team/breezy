@@ -106,6 +106,52 @@ third line" | bzr commit -F /dev/stdin
 	cd ..
 }
 
+create_hg()
+{
+	rm -rf $1
+	mkdir -p $1
+	cd $1
+	hg init $2
+	echo A > file
+	hg add file
+	hg commit -m A
+	cd ..
+	rm -rf $1.tmp
+	hg clone $1 $1.tmp
+	cd $1
+	echo B > file
+	hg commit -m B
+	cd ../$1.tmp
+	echo C > file
+	hg commit -m C
+	cd ../$1
+	hg pull ../$1.tmp
+	hg merge
+	echo D > file
+	echo "first line
+second line
+third line" | hg commit -l /dev/stdin
+	hg tag 1.0
+	echo e > file
+	hg commit -m e
+	#echo f > file
+	#bzr commit --author="ιαυϋ <$DARCS_EMAIL>" -m f
+	#echo g > file
+	#_drrec --author="" -a -m g
+	cp ../data/hungarian.gif .
+	hg add hungarian.gif
+	hg commit -m "add a binary file"
+	hg rm file
+	echo test > file2
+	hg add file2
+	hg commit -m "replace file with file2"
+	touch file3
+	hg add file3
+	hg commit -m "add empty file"
+	hg rm file3
+	hg commit -m "remove file"
+	cd ..
+}
 create_git()
 {
 	rm -rf $1
@@ -159,6 +205,12 @@ diff_git()
 diff_importgit()
 {
 	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur $1 $1.darcs
+	return $?
+}
+
+diff_importhg()
+{
+	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' -Naur $1 $1.darcs
 	return $?
 }
 
