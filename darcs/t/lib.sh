@@ -211,7 +211,8 @@ diff_importgit()
 
 diff_importhg()
 {
-	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' -Naur $1 $1.darcs
+	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' --exclude hg-export.status \
+		--exclude '*.orig' -Naur $1 $1.darcs
 	return $?
 }
 
@@ -269,5 +270,13 @@ upd_file_bzr()
 	cd $1
 	echo $3 > $2
 	bzr commit -m "updated '$2' to '$3'"
+	cd ..
+}
+
+upd_file_hg()
+{
+	cd $1
+	echo $3 > $2
+	hg commit -m "updated '$2' to '$3'"
 	cd ..
 }
