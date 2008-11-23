@@ -99,13 +99,23 @@ class _StackedParentsProvider(object):
 
 
 class CachingParentsProvider(object):
-    """ParentsProvider that allows extra parents.
+    """A parents provider which will cache the revision => parents as a dict.
 
-    This class takes a callback that acts like get_parent_map, except that it
-    may return un-asked-for parents.  These extras are cached, but filtered
-    out of get_parent_map.
+    This is useful for providers which have an expensive look up.
+
+    Either a ParentsProvider or a get_parent_map-like callback may be
+    supplied.  If it provides extra un-asked-for parents, they will be cached,
+    but filtered out of get_parent_map.
     """
     def __init__(self, parent_provider=None, get_parent_map=None, debug=False):
+        """Constructor.
+
+        :param parent_provider: The ParentProvider to use.  It or
+            get_parent_map must be supplied.
+        :param get_parent_map: The get_parent_map callback to use.  It or
+            parent_provider must be supplied.
+        :param debug: If true, mutter debugging messages.
+        """
         self._real_provider = parent_provider
         if get_parent_map is None:
             self._get_parent_map = self._real_provider.get_parent_map
