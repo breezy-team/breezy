@@ -34,10 +34,12 @@ Incremental conversions::
 	It supports the usual `--export-marks` / `--import-marks` switches to
 	allow incremental conversion.
 
-Wrapper script::
-	A wrapper script called `d2x` is also available if you find typing
-	`--export-marks` / `--import-marks` all the time boring. :-) (And a
-	similar one for the other direction, called `x2d`.)
+Wrapper scripts::
+	A wrapper script called `d2x` is available if you find typing
+	`--export-marks` / `--import-marks` all the time boring. A similar one
+	is also provided for the other direction, called `x2d`.  Finally, if you
+	want to work on darcs repos with git, you can use the `git-darcs`
+	wrapper.
 
 Author mappings::
 	Supports `--authors-file` option like Git's SVN adaptor, for DARCS
