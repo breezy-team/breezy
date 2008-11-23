@@ -122,6 +122,8 @@ opp.add_option("--working", metavar="W",
 	help="working directory which is removed at the end of non-incremental conversions")
 opp.add_option("--logfile", metavar="L",
 	help="log file which contains the output of external programs invoked during the conversion")
+opp.add_option("--git-branch", metavar="B",
+	help="git branch [default: refs/heads/master]")
 (options, args) = opp.parse_args()
 if len(args) < 1:
 	opp.error("darcsrepo required")
@@ -157,6 +159,10 @@ if options.logfile:
 else:
 	logfile = "%s.log" % origin
 logsock = open(logfile, "a")
+if options.git_branch:
+	git_branch = options.git_branch
+else:
+	git_branch = "refs/heads/master"
 
 progress("getting list of patches")
 if not len(import_marks):
@@ -249,7 +255,7 @@ for i in patches:
 		sock.close()
 	message = get_patchname(i)
 	# export the commit
-	print "commit refs/heads/master"
+	print "commit %s" % git_branch
 	print "mark :%s" % markcount
 	if options.export_marks:
 		export_marks.append(":%s %s" % (markcount, hash))
