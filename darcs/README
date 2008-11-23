@@ -43,9 +43,9 @@ Author mappings::
 	repositories that originated in CVS or SVN.
 
 Import script::
-	The pair of `darcs-fast-export`, `darcs-fast-import` is also included in
-	this repo. It has been tested with the fast-expoters of Git, Hg, Bzr and
-	- of course - Darcs itself.
+	The pair of `darcs-fast-export`, `darcs-fast-import` is also
+	included in this repo. It has been tested with the fast-expoters of Git,
+	Hg, Bzr and - of course - Darcs itself.
 
 Two-way sync::
 	Using `darcs-fast-export` / `darcs-fast-import`, it is possible to
