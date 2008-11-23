@@ -190,7 +190,7 @@ if os.path.exists(os.path.join(origin, "_darcs", "format")):
 	sock.close()
 	darcs2 = 'darcs-2' in format
 	directpatch = not 'hashed' in format
-if not options.import_marks:
+if not options.import_marks or not os.path.exists(working):
 	# init the tmp darcs repo
 	os.mkdir(working)
 	os.chdir(working)
@@ -198,6 +198,8 @@ if not options.import_marks:
 		os.system("darcs init --darcs-2")
 	else:
 		os.system("darcs init --old-fashioned-inventory")
+	if not os.path.exists(working):
+		os.system("darcs pull --match 'hash %s'" % import_marks[-1])
 else:
 	os.chdir(working)
 
