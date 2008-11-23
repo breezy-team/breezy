@@ -2,11 +2,11 @@
 
 == NAME
 
-git darcs - a bidirectional git - darcs gateway
+git-darcs - a bidirectional git - darcs gateway
 
 == SYNOPSIS
 
-git darcs <command> <options>
+git-darcs <command> <options>
 
 == DESCRIPTION
 
