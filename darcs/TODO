@@ -1,6 +1,7 @@
 wrappers:
-- x2d + tests
 - git-darcs + tests
+
+twoway test: bzr
 
 maybe later try to avoid a working dir in the exporter and use 'darcs
 show contents --match "hash foo" path' + 'darcs chan --xml -s' output
