@@ -16,12 +16,14 @@ git repo to the darcs one.
 
 A typical workflow is:
 
+----
 $ git darcs add upstream ../darcs-repo
 $ git darcs pull upstream
 
-<hack, hack, hack>
+... hack, hack, hack ...
 
 $ git darcs push upstream
+----
 
 == GLOBAL OPTIONS
 
