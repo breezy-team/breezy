@@ -89,9 +89,29 @@ fetch()
 			git shortlog $old_rev..$new_rev
 		else
 			echo "Nothing fetched."
+			exit
 		fi
 	else
 		echo "One of the mapfiles is missing! Something went wrong!"
+		exit
+	fi
+}
+
+pull()
+{
+	remote="$1"
+	shift
+	if ! [ -n "$remote" -a -z "$*" ]; then
+		echo "Usage: git darcs pull reponame"
+		exit
+	fi
+	fetch $remote
+	# see if we need to merge or rebase
+	branch=$(git symbolic-ref HEAD|sed 's|.*/||')
+	if [ "$(git config branch.$branch.rebase)" = "true" ]; then
+		git rebase darcs/$remote
+	else
+		git merge darcs/$remote
 	fi
 }
 
@@ -143,11 +163,11 @@ command="$1"
 shift
 
 case $command in
-	add|push|fetch)
+	add|push|fetch|pull)
 		;;
 	*)
 		echo "Usage: git darcs [COMMAND] [OPTIONS]"
-		echo "Commands: add, push, fetch"
+		echo "Commands: add, push, fetch, pull"
 		exit
 		;;
 esac
