@@ -84,7 +84,7 @@ fetch()
 		darcs-fast-export --import-marks=$darcs_map --export-marks=$darcs_map $common_opts $location | \
 			git fast-import --quiet --import-marks=$git_map --export-marks=$git_map
 		new_rev=$(git rev-parse darcs/$remote)
-		echo "Changes since last update:"
+		echo "Fetched the following updates:"
 		git shortlog $old_rev..$new_rev
 	else
 		echo "One of the mapfiles is missing! Something went wrong!"
@@ -114,6 +114,8 @@ push()
 		echo "We do not have refmapping yet. Then how can I push?"
 		exit
 	fi
+	echo "Pushing the following updates:"
+	git shortlog darcs/$remote..
 	git fast-export --import-marks=$git_map --export-marks=$git_map HEAD | \
 		(cd $location; darcs-fast-import --import-marks=$darcs_map --export-marks=$darcs_map \
 		--logfile $git_dir/darcs-git/push.log)
