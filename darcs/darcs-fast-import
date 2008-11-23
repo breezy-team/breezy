@@ -225,7 +225,7 @@ class Handler:
 
 	def handle_opts(self):
 		# Option Parser
-		usage="%prog [options] darcsrepo"
+		usage="%prog [options]"
 		opp = optparse.OptionParser(usage=usage)
 		opp.add_option("--import-marks", metavar="IFILE",
 			help="read state for incremental imports from IFILE")
