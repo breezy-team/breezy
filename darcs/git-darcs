@@ -84,8 +84,12 @@ fetch()
 		darcs-fast-export --import-marks=$darcs_map --export-marks=$darcs_map $common_opts $location | \
 			git fast-import --quiet --import-marks=$git_map --export-marks=$git_map
 		new_rev=$(git rev-parse darcs/$remote)
-		echo "Fetched the following updates:"
-		git shortlog $old_rev..$new_rev
+		if [ "$old_rev" != "$new_rev" ]; then
+			echo "Fetched the following updates:"
+			git shortlog $old_rev..$new_rev
+		else
+			echo "Nothing fetched."
+		fi
 	else
 		echo "One of the mapfiles is missing! Something went wrong!"
 	fi
