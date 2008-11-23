@@ -119,6 +119,9 @@ push()
 	git fast-export --import-marks=$git_map --export-marks=$git_map HEAD | \
 		(cd $location; darcs-fast-import --import-marks=$darcs_map --export-marks=$darcs_map \
 		--logfile $git_dir/darcs-git/push.log)
+	if [ $? == 0 ]; then
+		git update-ref darcs/$remote HEAD
+	fi
 }
 
 git rev-parse 2> /dev/null
