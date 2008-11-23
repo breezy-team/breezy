@@ -36,7 +36,8 @@ Incremental conversions::
 
 Wrapper script::
 	A wrapper script called `d2x` is also available if you find typing
-	`--export-marks` / `--import-marks` all the time boring. :-)
+	`--export-marks` / `--import-marks` all the time boring. :-) (And a
+	similar one for the other direction, called `x2d`.)
 
 Author mappings::
 	Supports `--authors-file` option like Git's SVN adaptor, for DARCS
