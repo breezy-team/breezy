@@ -22,7 +22,7 @@
 
 usage()
 {
-	echo "Usage: darcs2any -f format darcsrepo"
+	echo "Usage: d2x -f format darcsrepo"
 }
 
 die()
