@@ -439,6 +439,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
             for key in keys.intersection(self._keys):
                 node = self._nodes[key]
                 yield self, key, node[1]
+        if not self._backing_indices:
+            return
+        # Find things that are in backing indices that have not been handled
+        # yet.
+        # It turns out this difference_update can be a significant portion of
+        # time when branching from a stacked branch to a standalone one.
         keys.difference_update(self._keys)
         for backing in self._backing_indices:
             if backing is None:
