@@ -517,6 +517,10 @@ class Repository(object):
     def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
 
+        :param suppress_errors: if true, abort_write_group will catch and log
+            unexpected errors that happen during the abort, rather than
+            allowing them to propagate.  Defaults to False.
+
         :seealso: start_write_group.
         """
         if self._write_group is not self.get_transaction():
@@ -2815,6 +2819,9 @@ class InterPackRepo(InterSameDataRepository):
             # fetching from a stacked repository or into a stacked repository
             # we use the generic fetch logic which uses the VersionedFiles
             # attributes on repository.
+            #
+            # XXX: Andrew suggests removing the check on the target
+            # repository.
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)

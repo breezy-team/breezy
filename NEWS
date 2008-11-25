@@ -31,13 +31,35 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Better message when the user needs to set their Launchpad ID.
+      (Martin Pool, #289148)
+
+    * Don't call the system ``chdir()`` with an empty path. Sun OS seems
+      to give an error in that case.  Also, don't count on ``getcwd()`` 
+      being able to allocate a new buffer, which is a gnu extension.  
+      (John Arbash Meinel, Martin Pool, Harry Hirsch, #297831)
+
+    * Don't create text deltas spanning stacked repositories; this could
+      cause "Revision X not present in Y" when later accessing them.
+      (Martin Pool, #288751)
+
+    * PermissionDenied errors from smart servers no longer cause
+      "PermissionDenied: "None"" on the client.
+      (Andrew Bennetts, #299254)
+      
     * TooManyConcurrentRequests no longer occur when a fetch fails and
       tries to abort a write group.  This allows the root cause (e.g. a
       network interruption) to be reported.  (Andrew Bennetts, #297014)
 
+    * RemoteRepository.get_parent_map now uses fallback repositories.
+      (Aaron Bentley, #297991?, #293679?)
+
   DOCUMENTATION:
 
   API CHANGES:
+
+    * Constructor parameters for NewPack (internal to pack repositories)
+      have changed incompatibly.
 
     * ``Repository.abort_write_group`` now accepts an optional
       ``suppress_errors`` flag.  Repository implementations that override
