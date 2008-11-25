@@ -172,14 +172,6 @@ class Pack(object):
         """The text index is the name + .tix."""
         return self.index_name('text', name)
 
-    def _external_compression_parents_of_texts(self):
-        keys = set()
-        refs = set()
-        for node in self.text_index.iter_all_entries():
-            keys.add(node[1])
-            refs.update(node[3][1])
-        return refs - keys
-
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
@@ -222,28 +214,17 @@ class NewPack(Pack):
         'signature': ('.six', 3),
         }
 
-    def __init__(self, upload_transport, index_transport, pack_transport,
-        upload_suffix='', file_mode=None, index_builder_class=None,
-        index_class=None):
+    def __init__(self, pack_collection, upload_suffix='', file_mode=None):
         """Create a NewPack instance.
 
-        :param upload_transport: A writable transport for the pack to be
-            incrementally uploaded to.
-        :param index_transport: A writable transport for the pack's indices to
-            be written to when the pack is finished.
-        :param pack_transport: A writable transport for the pack to be renamed
-            to when the upload is complete. This *must* be the same as
-            upload_transport.clone('../packs').
+        :param pack_collection: A PackCollection into which this is being inserted.
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
-        :param file_mode: An optional file mode to create the new files with.
-        :param index_builder_class: Required keyword parameter - the class of
-            index builder to use.
-        :param index_class: Required keyword parameter - the class of index
-            object to use.
+        :param file_mode: Unix permissions for newly created file.
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
+        index_builder_class = pack_collection._index_builder_class
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             index_builder_class(reference_lists=1),
@@ -259,14 +240,15 @@ class NewPack(Pack):
             # listing.
             index_builder_class(reference_lists=0),
             )
+        self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
-        self.index_class = index_class
+        self.index_class = pack_collection._index_class
         # where should the new pack be opened
-        self.upload_transport = upload_transport
+        self.upload_transport = pack_collection._upload_transport
         # where are indices written out to
-        self.index_transport = index_transport
+        self.index_transport = pack_collection._index_transport
         # where is the pack renamed to when it is finished?
-        self.pack_transport = pack_transport
+        self.pack_transport = pack_collection._pack_transport
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
@@ -334,6 +316,35 @@ class NewPack(Pack):
         else:
             raise AssertionError(self._state)
 
+    def _check_references(self):
+        """Make sure our external references are present.
+        
+        Packs are allowed to have deltas whose base is not in the pack, but it
+        must be present somewhere in this collection.  It is not allowed to
+        have deltas based on a fallback repository. 
+        (See <https://bugs.launchpad.net/bzr/+bug/288751>)
+        """
+        missing_items = {}
+        for (index_name, external_refs, index) in [
+            ('texts',
+                self.text_index._external_references(),
+                self._pack_collection.text_index.combined_index),
+            ('inventories',
+                self.inventory_index._external_references(),
+                self._pack_collection.inventory_index.combined_index),
+            ]:
+            missing = external_refs.difference(
+                k for (idx, k, v, r) in 
+                index.iter_entries(external_refs))
+            if missing:
+                missing_items[index_name] = sorted(list(missing))
+        if missing_items:
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "Newly created pack file %r has delta references to "
+                "items not in its repository:\n%s"
+                % (self, pformat(missing_items)))
+
     def data_inserted(self):
         """True if data has been added to this pack."""
         return bool(self.get_revision_count() or
@@ -356,6 +367,7 @@ class NewPack(Pack):
         if self._buffer[1]:
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
+        self._check_references()
         # write indices
         # XXX: It'd be better to write them all to temporary names, then
         # rename them all into place, so that the window when only some are
@@ -609,12 +621,8 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection._upload_transport,
-            self._pack_collection._index_transport,
-            self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.bzrdir._get_file_mode(),
-            index_builder_class=self._pack_collection._index_builder_class,
-            index_class=self._pack_collection._index_class)
+        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+                file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -704,19 +712,6 @@ class Packer(object):
             self.new_pack.text_index, readv_group_iter, total_items))
         self._log_copied_texts()
 
-    def _check_references(self):
-        """Make sure our external refereneces are present."""
-        external_refs = self.new_pack._external_compression_parents_of_texts()
-        if external_refs:
-            index = self._pack_collection.text_index.combined_index
-            found_items = list(index.iter_entries(external_refs))
-            if len(found_items) != len(external_refs):
-                found_keys = set(k for idx, k, refs, value in found_items)
-                missing_items = external_refs - found_keys
-                missing_file_id, missing_revision_id = missing_items.pop()
-                raise errors.RevisionNotPresent(missing_revision_id,
-                                                missing_file_id)
-
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
         self.new_pack = self.open_pack()
@@ -753,7 +748,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
-        self._check_references()
+        new_pack._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
             return None
@@ -1109,9 +1104,9 @@ class ReconcilePacker(Packer):
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.
-        missing_text_keys = self.new_pack._external_compression_parents_of_texts()
+        missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
-            raise errors.BzrError('Reference to missing compression parents %r'
+            raise errors.BzrCheckError('Reference to missing compression parents %r'
                 % (missing_text_keys,))
         self._log_copied_texts()
 
@@ -1708,11 +1703,8 @@ class RepositoryPackCollection(object):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = NewPack(self._upload_transport, self._index_transport,
-            self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.bzrdir._get_file_mode(),
-            index_builder_class=self._index_builder_class,
-            index_class=self._index_class)
+        self._new_pack = NewPack(self, upload_suffix='.pack',
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1732,9 +1724,15 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            self._new_pack.abort()
-            self._remove_pack_indices(self._new_pack)
-            self._new_pack = None
+            try:
+                self._new_pack.abort()
+            finally:
+                # XXX: If we aborted while in the middle of finishing the write
+                # group, _remove_pack_indices can fail because the indexes are
+                # already gone.  If they're not there we shouldn't fail in this
+                # case.  -- mbp 20081113
+                self._remove_pack_indices(self._new_pack)
+                self._new_pack = None
         self.repo._text_knit = None
 
     def _commit_write_group(self):
@@ -2357,9 +2355,7 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
 class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     """A repository with rich roots, no subtrees, stacking and btree indexes.
 
-    This format should be retained until the second release after bzr 1.7.
-
-    1.6.1-subtree[as it might have been] with B+Tree indices.
+    1.6-rich-root with B+Tree indices.
     """
 
     repository_class = KnitPackRepository
