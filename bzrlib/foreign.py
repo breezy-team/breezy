@@ -102,8 +102,8 @@ class ForeignBranch(Branch):
     """Branch that exists in a foreign version control system."""
 
     def __init__(self, mapping):
-        super(ForeignBranch, self).__init__()
         self.mapping = mapping
+        super(ForeignBranch, self).__init__()
 
     def dpull(self, source, stop_revision=None):
         """Pull deltas from another branch.
