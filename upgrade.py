@@ -228,7 +228,7 @@ def create_upgrade_plan(repository, foreign_repository, new_mapping,
             repository.fetch(foreign_repository, revid)
 
     if not allow_changes:
-        for oldrevid, newrevid in upgrade_map.items():
+        for oldrevid, newrevid in upgrade_map.iteritems():
             oldrev = repository.get_revision(oldrevid)
             newrev = repository.get_revision(newrevid)
             check_revision_changed(oldrev, newrev)
@@ -242,7 +242,7 @@ def create_upgrade_plan(repository, foreign_repository, new_mapping,
       graph, lambda revid: create_upgraded_revid(revid, new_mapping.upgrade_suffix))
     def remove_parents((oldrevid, (newrevid, parents))):
         return (oldrevid, newrevid)
-    upgrade_map.update(dict(map(remove_parents, plan.items())))
+    upgrade_map.update(dict(map(remove_parents, plan.iteritems())))
 
     return (plan, upgrade_map)
 
