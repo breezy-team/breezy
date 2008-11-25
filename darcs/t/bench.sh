@@ -17,6 +17,7 @@ cd big-zoo
 #for i in *_play.tar.gz
 for i in small-repo_play.tar.gz
 do
+	echo "benchmarking $i"
 	rm -rf _playground
 	tar xf $i
 	cd _playground
