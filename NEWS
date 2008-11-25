@@ -20,6 +20,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``(Remote)Branch.copy_content_into`` no longer generates the full revision
+      history just to set the last revision info.
+      (Andrew Bennetts, John Arbash Meinel)
+
     * When making a large readv() request over ``bzr+ssh``, break up the
       request into more manageable chunks. Because the RPC is not yet able
       to stream, this helps keep us from buffering too much information at
