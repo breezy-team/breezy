@@ -24,7 +24,6 @@ import bzrlib
 from bzrlib import (
     deprecated_graph,
     errors,
-    foreign,
     inventory,
     osutils,
     repository,
@@ -33,15 +32,19 @@ from bzrlib import (
     urlutils,
     versionedfile,
     )
+from bzrlib.foreign import (
+        ForeignRevision,
+        )
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.git.foreign import (
+    ForeignRepository,
     versionedfiles,
     )
 from bzrlib.plugins.git.mapping import default_mapping
 
 
-class GitRepository(repository.Repository):
+class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
     _serializer = None
@@ -120,7 +123,7 @@ class GitRepository(repository.Repository):
         git_commit_id = self.lookup_git_revid(revision_id, default_mapping)
         commit = self._git.commit(git_commit_id)
         # print "fetched revision:", git_commit_id
-        revision = self._parse_rev(commit)
+        revision = self._parse_rev(commit, default_mapping)
         return revision
 
     def has_revision(self, revision_id):
@@ -135,14 +138,13 @@ class GitRepository(repository.Repository):
         return [self.get_revision(r) for r in revisions]
 
     @classmethod
-    def _parse_rev(klass, commit):
+    def _parse_rev(klass, commit, mapping):
         """Convert a git commit to a bzr revision.
 
         :return: a `bzrlib.revision.Revision` object.
         """
-        rev = foreign.ForeignRevision(commit.id, default_mapping, default_mapping.revision_id_foreign_to_bzr(commit.id))
-        rev.parent_ids = tuple([default_mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
-        rev.inventory_sha1 = ""
+        rev = ForeignRevision(commit.id, mapping, mapping.revision_id_foreign_to_bzr(commit.id))
+        rev.parent_ids = tuple([mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         rev.message = commit.message.decode("utf-8", "replace")
         rev.committer = str(commit.committer).decode("utf-8", "replace")
         rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
@@ -201,8 +203,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _build_inventory(self, tree, ie, path):
         assert isinstance(path, str)
-        for key in tree:
-            b = tree.get(key)
+        for b in tree.contents:
             basename = b.name.decode("utf-8")
             if path == "":
                 child_path = b.name
