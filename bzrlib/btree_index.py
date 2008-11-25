@@ -442,6 +442,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 yield self, key, node[1]
         # Find things that are in backing indices that have not been handled
         # yet.
+        if not self._backing_indices:
+            return # We won't find anything there either
         # Remove all of the keys that we found locally
         keys.difference_update(local_keys)
         for backing in self._backing_indices:
