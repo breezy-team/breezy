@@ -1,4 +1,12 @@
-# Convert a pack-0.92 repository into a 1.9 (btree) repository
+#!/usr/bin/env python
+"""Convert a pack-0.92 repository into a 1.9 (btree) repository.
+
+This works directly on the indices, rather than using the generic conversion
+logic. After conversion, it will have backed up your old indices to
+.bzr/repository/indices-gi. This is significantly faster than the generic 'bzr
+upgrade' but it does not work for all repository formats (only pack format
+repositories are supported).
+"""
 
 
 steps_to_revert = []
@@ -13,7 +21,7 @@ def do_revert():
 
 def main(args):
     import optparse
-    p = optparse.OptionParser()
+    p = optparse.OptionParser(usage='%prog [options]\n' + __doc__)
 
     opts, args = p.parse_args(args)
 
