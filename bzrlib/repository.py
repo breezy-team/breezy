@@ -128,6 +128,9 @@ class CommitBuilder(object):
         for key, value in revprops.iteritems():
             # We know that the XML serializers do not round trip '\r'
             # correctly, so refuse to accept them
+            if not isinstance(value, basestring):
+                raise ValueError('revision property (%s) is not a valid'
+                                 ' (unicode) string: %r' % (key, value))
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 

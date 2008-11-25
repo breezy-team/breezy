@@ -31,14 +31,14 @@ class TestRevProps(TestCaseWithRepository):
                      condiment='orange\n  mint\n\tcandy',
                      empty='',
                      non_ascii=u'\xb5')
-        wt.commit(message='initial null commit', 
+        wt.commit(message='initial null commit',
                  revprops=props,
                  allow_pointless=True,
                  rev_id='test@user-1')
         rev = b.repository.get_revision('test@user-1')
         self.assertTrue('flavor' in rev.properties)
         self.assertEquals(rev.properties['flavor'], 'choc-mint')
-        self.assertEquals([('branch-nick', 'Nicholas'), 
+        self.assertEquals([('branch-nick', 'Nicholas'),
                            ('condiment', 'orange\n  mint\n\tcandy'),
                            ('empty', ''),
                            ('flavor', 'choc-mint'),
@@ -50,11 +50,11 @@ class TestRevProps(TestCaseWithRepository):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         self.assertRaises(ValueError,
-                          wt.commit, 
+                          wt.commit,
                           message='invalid',
                           revprops={'what a silly property': 'fine'})
         self.assertRaises(ValueError,
-                          wt.commit, 
+                          wt.commit,
                           message='invalid',
                           revprops=dict(number=13))
 
@@ -63,7 +63,7 @@ class TestRevisionAttributes(TestCaseWithRepository):
     """Test that revision attributes are correct."""
 
     def test_revision_accessors(self):
-        """Make sure the values that come out of a revision are the 
+        """Make sure the values that come out of a revision are the
         same as the ones that go in.
         """
         tree1 = self.make_branch_and_tree("br1")
@@ -91,7 +91,7 @@ class TestRevisionAttributes(TestCaseWithRepository):
                      verbose=True)
         rev_b = tree2.branch.repository.get_revision(
                             tree2.branch.last_revision())
-        
+
         self.assertEqual(rev_a.message, rev_b.message)
         self.assertEqual(rev_a.timestamp, rev_b.timestamp)
         self.assertEqual(rev_a.timezone, rev_b.timezone)
