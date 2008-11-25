@@ -660,7 +660,7 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
     revision of that depth.  There may be no topological justification for this,
     but it looks much nicer.
     """
-    # Add a fake revision at start so that we can always attached sub revisions
+    # Add a fake revision at start so that we can always attach sub revisions
     merge_sorted_revisions = [(None, None, _depth)] + merge_sorted_revisions
     zd_revisions = []
     for val in merge_sorted_revisions:
