@@ -49,7 +49,7 @@ class ForeignBranch(Branch):
         :param source: Source branch
         :param stop_revision: Revision to pull, defaults to last revision.
         """
-        raise NotImplementedError(self.pull)
+        raise NotImplementedError(self.dpull)
 
 
 class ForeignRepository(Repository):
@@ -57,11 +57,11 @@ class ForeignRepository(Repository):
     def has_foreign_revision(self, foreign_revid):
         raise NotImplementedError(self.has_foreign_revision)
 
-    def all_revision_ids(self, mapping=None):
-        raise NotImplementedError(self.all_revision_ids)
+    def _all_revision_ids(self, mapping=None):
+        raise NotImplementedError(self._all_revision_ids)
 
     def get_mapping(self):
-        raise NotImplementedError(self.get_default_mapping)
+        raise NotImplementedError(self.get_mapping)
 
     def get_inventory_xml(self, revision_id):
         """See Repository.get_inventory_xml()."""
