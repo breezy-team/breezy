@@ -16,71 +16,75 @@
 
 """Foreign branch utilities."""
 
-from bzrlib import errors, registry
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
-from bzrlib.trace import info
-
-
-class VcsMapping(object):
-    """Describes the mapping between the semantics of Bazaar and a foreign vcs.
-
-    """
-    experimental = False
-    roundtripping = False
-    revid_prefix = None
-
-    def revision_id_bzr_to_foreign(self, bzr_revid):
-        """Parse a bzr revision id and convert it to a foreign revid.
-
-        :param bzr_revid: The bzr revision id (a string).
-        :return: A foreign revision id, can be any sort of object.
-        """
-        raise NotImplementedError(self.revision_id_bzr_to_foreign)
-
-    def revision_id_foreign_to_bzr(self, foreign_revid):
-        """Parse a foreign revision id and convert it to a bzr revid.
-
-        :param foreign_revid: Foreign revision id, can be any sort of object.
-        :return: A bzr revision id.
-        """
-        raise NotImplementedError(self.revision_id_foreign_to_bzr)
-
-
-class VcsMappingRegistry(registry.Registry):
-    """Registry for Bazaar<->foreign VCS mappings.
-    
-    There should be one instance of this registry for every foreign VCS.
-    """
-
-    def register(self, key, factory, help):
-        """Register a mapping between Bazaar and foreign VCS semantics.
-
-        The factory must be a callable that takes one parameter: the key.
-        It must produce an instance of VcsMapping when called.
-        """
-        registry.Registry.register(self, key, factory, help)
-
-    def set_default(self, key):
-        """Set the 'default' key to be a clone of the supplied key.
-
-        This method must be called once and only once.
-        """
-        self._set_default_key(key)
-
-    def get_default(self):
-        """Convenience function for obtaining the default mapping to use."""
-        return self.get(self._get_default_key())
+from bzrlib.repository import Repository
+from bzrlib.revision import Revision
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    log,
+    osutils,
+    registry,
+    )
+""")
 
 
 class ForeignBranch(Branch):
+    """Branch that exists in a foreign version control system."""
 
     def __init__(self, mapping):
-        super(ForeignBranch, self).__init__()
         self.mapping = mapping
+        super(ForeignBranch, self).__init__()
 
     def dpull(self, source, stop_revision=None):
+        """Pull deltas from another branch.
+
+        :note: This does not, like pull, retain the revision ids from 
+        the source branch and will, rather than adding bzr-specific metadata,
+        push only those semantics of the revision that can be natively 
+        represented in this branch.
+
+        :param source: Source branch
+        :param stop_revision: Revision to pull, defaults to last revision.
+        """
         raise NotImplementedError(self.pull)
+
+
+class ForeignRepository(Repository):
+
+    def has_foreign_revision(self, foreign_revid):
+        raise NotImplementedError(self.has_foreign_revision)
+
+    def all_revision_ids(self, mapping=None):
+        raise NotImplementedError(self.all_revision_ids)
+
+    def get_mapping(self):
+        raise NotImplementedError(self.get_default_mapping)
+
+    def get_inventory_xml(self, revision_id):
+        """See Repository.get_inventory_xml()."""
+        return self.serialise_inventory(self.get_inventory(revision_id))
+
+    def get_inventory_sha1(self, revision_id):
+        """Get the sha1 for the XML representation of an inventory.
+
+        :param revision_id: Revision id of the inventory for which to return 
+         the SHA1.
+        :return: XML string
+        """
+
+        return osutils.sha_string(self.get_inventory_xml(revision_id))
+
+    def get_revision_xml(self, revision_id):
+        """Return the XML representation of a revision.
+
+        :param revision_id: Revision for which to return the XML.
+        :return: XML string
+        """
+        return self._serializer.write_revision_to_string(self.get_revision(revision_id))
+
 
 
 class FakeControlFiles(object):
@@ -119,8 +123,8 @@ class cmd_dpush(Command):
             no_rebase=False):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
-        from bzrlib.branch import Branch
         from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
 
         if directory is None:
@@ -168,10 +172,10 @@ def test_suite():
     from bzrlib.tests import TestUtil
     loader = TestUtil.TestLoader()
     suite = TestSuite()
-    import test_versionedfiles
-    testmod_names = ['test_versionedfiles',]
+    testmod_names = ['test_versionedfiles', ]
     suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     return suite
+
 
 def escape_commit_message(message):
     """Replace xml-incompatible control characters."""
@@ -192,6 +196,5 @@ def escape_commit_message(message):
         lambda match: match.group(0).encode('unicode_escape'),
         message)
     return message
-
 
 

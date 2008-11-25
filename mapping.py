@@ -16,8 +16,7 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from bzrlib import errors
-from bzrlib.plugins.git import foreign
+from bzrlib import errors, foreign
 
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
