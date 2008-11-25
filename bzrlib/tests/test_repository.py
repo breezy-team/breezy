@@ -744,7 +744,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        self.assertRaises(errors.RevisionNotPresent, empty_repo.fetch, broken_repo)
+        self.assertRaises((errors.RevisionNotPresent, errors.BzrCheckError),
+                          empty_repo.fetch, broken_repo)
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1031,9 +1032,14 @@ class TestNewPack(TestCaseWithTransport):
         pack_transport = self.get_transport('pack')
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
-        pack = pack_repo.NewPack(upload_transport, index_transport,
-            pack_transport, index_builder_class=BTreeBuilder,
+        collection = pack_repo.RepositoryPackCollection(repo=None,
+            transport=self.get_transport('.'),
+            index_transport=index_transport,
+            upload_transport=upload_transport,
+            pack_transport=pack_transport,
+            index_builder_class=BTreeBuilder,
             index_class=BTreeGraphIndex)
+        pack = pack_repo.NewPack(collection)
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
