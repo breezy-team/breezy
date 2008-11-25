@@ -16,13 +16,20 @@
 
 """Foreign branch utilities."""
 
-from bzrlib import errors, log, osutils, registry
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
-from bzrlib.errors import InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.revision import Revision
-from bzrlib.trace import info
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    log,
+    osutils,
+    registry,
+    )
+""")
+
 
 class VcsMapping(object):
     """Describes the mapping between the semantics of Bazaar and a foreign vcs.
@@ -60,6 +67,7 @@ class VcsMapping(object):
         :param foreign_revid: Foreign revision id.
         :return: Dictionary mapping string keys to string values.
         """
+        # TODO: This could be on ForeignVcs instead
         return { }
 
 
@@ -95,36 +103,6 @@ class VcsMappingRegistry(registry.Registry):
         raise NotImplementedError(self.revision_id_bzr_to_foreign)
 
 
-class ForeignVcs(object):
-    """A foreign version control system."""
-
-    def __init__(self, mapping_registry):
-        self.mapping_registry = mapping_registry
-
-
-class ForeignVcsRegistry(registry.Registry):
-    """Registry for Foreign VCSes.
-    
-    """
-
-    def register(self, key, foreign_vcs, help):
-        """Register a foreign VCS.
-
-        """
-        if ":" in key or "-" in key:
-            raise ValueError("vcs name can not contain : or -")
-        registry.Registry.register(self, key, foreign_vcs, help)
-
-    def parse_revision_id(self, revid):
-        if not "-" in revid:
-            raise InvalidRevisionId(revid, None)
-        try:
-            foreign_vcs = self.get(revid.split("-")[0])
-        except KeyError:
-            raise InvalidRevisionId(revid, None)
-        return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
-
-
 class ForeignBranch(Branch):
     """Branch that exists in a foreign version control system."""
 
@@ -136,7 +114,9 @@ class ForeignBranch(Branch):
         """Pull deltas from another branch.
 
         :note: This does not, like pull, retain the revision ids from 
-        the source branch.
+        the source branch and will, rather than adding bzr-specific metadata,
+        push only those semantics of the revision that can be natively 
+        represented in this branch.
 
         :param source: Source branch
         :param stop_revision: Revision to pull, defaults to last revision.
@@ -144,7 +124,7 @@ class ForeignBranch(Branch):
         raise NotImplementedError(self.pull)
 
 
-class ForeignRepository(Repository):
+class ForeignRepository(repository.Repository):
 
     def has_foreign_revision(self, foreign_revid):
         raise NotImplementedError(self.has_foreign_revision)
@@ -216,6 +196,7 @@ class cmd_dpush(Command):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
 
         if directory is None:
@@ -314,11 +295,55 @@ def show_foreign_properties(rev):
 
     # Revision was once imported from a foreign repository
     try:
-        foreign_revid, mapping = foreign_vcs_registry.parse_revision_id(rev.revision_id)
-    except InvalidRevisionId:
+        foreign_revid, mapping = \
+            foreign_vcs_registry.parse_revision_id(rev.revision_id)
+    except errors.InvalidRevisionId:
         return {}
 
     return mapping.show_foreign_revid(foreign_revid)
+
+
+class ForeignVcs(object):
+    """A foreign version control system."""
+
+    def __init__(self, mapping_registry):
+        self.mapping_registry = mapping_registry
+
+
+class ForeignVcsRegistry(registry.Registry):
+    """Registry for Foreign VCSes.
+
+    There should be one entry per foreign VCS. Example entries would be 
+    "git", "svn", "hg", "darcs", etc.
+
+    """
+
+    def register(self, key, foreign_vcs, help):
+        """Register a foreign VCS.
+
+        :param key: Prefix of the foreign VCS in revision ids
+        :param foreign_vcs: ForeignVCS instance
+        :param help: Description of the foreign VCS
+        """
+        if ":" in key or "-" in key:
+            raise ValueError("vcs name can not contain : or -")
+        registry.Registry.register(self, key, foreign_vcs, help)
+
+    def parse_revision_id(self, revid):
+        """Parse a bzr revision and return the matching mapping and foreign 
+        revid.
+        
+        :param revid: The bzr revision id
+        :return: tuple with foreign revid and vcs mapping
+        """
+        if not "-" in revid:
+            raise errors.InvalidRevisionId(revid, None)
+        try:
+            foreign_vcs = self.get(revid.split("-")[0])
+        except KeyError:
+            raise errors.InvalidRevisionId(revid, None)
+        return foreign_vcs.mapping_registry.revision_id_bzr_to_foreign(revid)
+
 
 if not "foreign" in log.properties_handler_registry:
     log.properties_handler_registry.register("foreign",
