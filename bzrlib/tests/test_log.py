@@ -146,7 +146,7 @@ class TestShowLog(TestCaseWithTransport):
         self.log('log entries:')
         for logentry in lf.logs:
             self.log('%4s %s' % (logentry.revno, logentry.rev.message))
-        
+
         # first one is most recent
         logentry = lf.logs[0]
         eq(logentry.revno, '2')
@@ -154,9 +154,10 @@ class TestShowLog(TestCaseWithTransport):
         d = logentry.delta
         self.log('log 2 delta: %r' % d)
         self.checkDelta(d, added=['hello'])
-        
+
         # commit a log message with control characters
-        msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
+        msg = u"All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
+        msg = msg.replace(u'\r', u'\n')
         self.log("original commit message: %r", msg)
         wt.commit(msg)
         lf = LogCatcher()
