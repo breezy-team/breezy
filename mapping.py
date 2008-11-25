@@ -18,6 +18,7 @@
 
 from bzrlib import errors, foreign
 
+
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
@@ -31,6 +32,9 @@ class BzrGitMapping(foreign.VcsMapping):
         if not bzr_rev_id.startswith("%s:" % self.revid_prefix):
             raise errors.InvalidRevisionId(bzr_rev_id, self)
         return bzr_rev_id[len(self.revid_prefix)+1:]
+
+    def show_foreign_revid(self, foreign_revid):
+        return { "git commit": foreign_revid }
 
 
 class BzrGitMappingExperimental(BzrGitMapping):

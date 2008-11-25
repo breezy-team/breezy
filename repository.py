@@ -24,6 +24,7 @@ import bzrlib
 from bzrlib import (
     deprecated_graph,
     errors,
+    foreign,
     inventory,
     osutils,
     repository,
@@ -35,7 +36,7 @@ from bzrlib import (
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.git.foreign import (
-    versionedfiles
+    versionedfiles,
     )
 from bzrlib.plugins.git.mapping import default_mapping
 
@@ -139,12 +140,12 @@ class GitRepository(repository.Repository):
 
         :return: a `bzrlib.revision.Revision` object.
         """
-        rev = revision.Revision(default_mapping.revision_id_foreign_to_bzr(commit.id))
+        rev = foreign.ForeignRevision(commit.id, default_mapping, default_mapping.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([default_mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         rev.inventory_sha1 = ""
         rev.message = commit.message.decode("utf-8", "replace")
-        rev.committer = str(commit.committer)
-        rev.properties['author'] = str(commit.author)
+        rev.committer = str(commit.committer).decode("utf-8", "replace")
+        rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
         rev.timestamp = time.mktime(commit.committed_date)
         rev.timezone = 0
         return rev
@@ -200,7 +201,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _build_inventory(self, tree, ie, path):
         assert isinstance(path, str)
-        for b in tree.contents:
+        for key in tree:
+            b = tree.get(key)
             basename = b.name.decode("utf-8")
             if path == "":
                 child_path = b.name

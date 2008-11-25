@@ -19,6 +19,7 @@
 """A GIT branch and repository format implementation for bzr."""
 
 from bzrlib import bzrdir
+from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
 from bzrlib.plugins.git.dir import GitBzrDirFormat
 
 bzrdir.format_registry.register(
@@ -28,6 +29,18 @@ bzrdir.format_registry.register(
     )
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
+
+
+class ForeignGit(ForeignVcs):
+    """Foreign Git."""
+
+
+git_mapping_registry = VcsMappingRegistry()
+git_mapping_registry.register_lazy('git-experimental', "bzrlib.plugins.git.mapping",
+                                   "BzrGitMappingExperimental")
+foreign_vcs_registry.register("git", ForeignGit(git_mapping_registry), 
+                                      "Stupid content tracker")
+
 
 def test_suite():
     from bzrlib.plugins.git import tests
