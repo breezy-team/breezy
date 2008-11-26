@@ -26,6 +26,7 @@ do
 		echo "ok, the result is correct" >> ../$i.d-f-e.log
 	else
 		echo "ouch, the result is corrupted" >> ../$i.d-f-e.log
+		exit 1
 	fi
 	cd ..
 done
