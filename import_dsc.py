@@ -37,7 +37,7 @@ import tarfile
 import tempfile
 
 from debian_bundle import deb822
-from debian_bundle.changelog import Version, Changelog
+from debian_bundle.changelog import Version, Changelog, VersionError
 
 from bzrlib import (bzrdir,
                     generate_ids,
@@ -1024,9 +1024,16 @@ class DistributionBranch(object):
 
     def _has_version(self, branch, tag_name, md5=None):
         if branch.tags.has_tag(tag_name):
+            revid = branch.tags.lookup_tag(tag_name)
+            branch.lock_read()
+            try:
+                graph = branch.repository.get_graph()
+                if not graph.is_ancestor(revid, branch.last_revision()):
+                    return False
+            finally:
+                branch.unlock()
             if md5 is None:
                 return True
-            revid = branch.tags.lookup_tag(tag_name)
             rev = branch.repository.get_revision(revid)
             try:
                 return rev.properties['deb-md5'] == md5
@@ -1070,6 +1077,10 @@ class DistributionBranch(object):
         """
         tag_name = self.upstream_tag_name(version)
         return self._has_version(self.upstream_branch, tag_name, md5=md5)
+
+    def _has_upstream_version_in_packaging_branch(self, version, md5=None):
+        tag_name = self.upstream_tag_name(version)
+        return self._has_version(self.branch, tag_name, md5=md5)
 
     def contained_versions(self, versions):
         """Splits a list of versions depending on presence in the branch.
@@ -1487,6 +1498,31 @@ class DistributionBranch(object):
                 real_parents = [parent_revid]
         return real_parents
 
+    def _fetch_upstream_to_branch(self, revid):
+        """Fetch the revision from the upstream branch in to the pacakging one.
+
+        This will unlock self.tree, then re-lock it and fetch. This is
+        necessary as if the two branches share a repository the branch
+        won't see any revisions added by the upstream branch since self.tree
+        was locked.
+
+        It will check that the last revision is the same before and after,
+        and that there are no working tree changes, to prevent unexpected
+        things happening if say a commit was done in this time.
+        """
+        if self.tree.is_locked():
+            last_revision = self.branch.last_revision()
+            # Unlock the tree and lock it again
+            self.tree.unlock()
+            self.tree.lock_write()
+            assert self.branch.last_revision() == last_revision, \
+                    "Branch committed to while refreshing it. Not proceeding."
+            assert not self.tree.changes_from(
+                    self.tree.basis_tree()).has_changed(), \
+                    "Treee altered while refreshing it. Not proceeding."
+        self.branch.fetch(self.upstream_branch, last_revision=revid)
+        self.upstream_branch.tags.merge_to(self.branch.tags)
+
     def import_upstream(self, upstream_part, version, md5, upstream_parents):
         """Import an upstream part on to the upstream branch.
 
@@ -1526,7 +1562,7 @@ class DistributionBranch(object):
                 % (str(version.upstream_version),),
                 revprops={"deb-md5":md5})
         self.tag_upstream_version(version)
-        self.branch.fetch(self.upstream_branch, last_revision=revid)
+        return revid
 
     def _get_commit_message_from_changelog(self):
         """Retrieves the messages from the last section of debian/changelog.
@@ -1782,8 +1818,9 @@ class DistributionBranch(object):
                     # Check whether we should pull first if this initialises
                     # from another branch:
                     upstream_parents = self.upstream_parents(versions)
-                    self.import_upstream(upstream_part, version,
+                    new_revid = self.import_upstream(upstream_part, version,
                             upstream_md5, upstream_parents)
+                    self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
             parents = self.get_parents_with_upstream(version, versions,
@@ -1806,6 +1843,15 @@ class DistributionBranch(object):
             parents = self.get_native_parents(version, versions)
             self.import_debian(debian_part, version, parents, md5,
                     native=True)
+
+    def _get_safe_versions_from_changelog(self, cl):
+        versions = []
+        for block in cl._blocks:
+            try:
+                versions.append(block.version)
+            except VersionError:
+                break
+        return versions
 
     def import_package(self, dsc_filename):
         """Import a source package.
@@ -1833,7 +1879,7 @@ class DistributionBranch(object):
                 (_, upstream_md5) = self.get_upstream_part(dsc)
                 (_, md5) = self.get_diff_part(dsc)
             cl = self.get_changelog_from_source(debian_part)
-            versions = cl.versions
+            versions = self._get_safe_versions_from_changelog(cl)
             assert not self.has_version(version), \
                 "Trying to import version %s again" % str(version)
             #TODO: check that the versions list is correctly ordered,
@@ -1854,29 +1900,11 @@ class DistributionBranch(object):
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
         to_location = os.path.join(basedir, self.name + "-upstream")
-        to_transport = transport.get_transport(to_location)
-        br_to = dir_to = repository_to = None
-        try:
-            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
-        except NotBranchError:
-            pass
-        else:
-            try:
-                repository_to = dir_to.find_repository()
-            except NoRepositoryPresent:
-                pass
-        if dir_to is None:
-            dir_to = self.branch.bzrdir.clone_on_transport(to_transport,
-                    revision_id=upstream_tip)
-            br_to = dir_to.open_branch()
-        elif repository_to is None:
-            assert False, "Strange situation to be in"
-        else:
-            repository_to.fetch(self.branch.repository,
-                    revision_id=upstream_tip)
-            br_to = br_from.clone(dir_to, revision_id=revision_id)
+        dir_to = self.branch.bzrdir.sprout(to_location,
+                revision_id=upstream_tip,
+                accelerator_tree=self.tree)
         self.upstream_tree = dir_to.open_workingtree()
-        self.upstream_branch = br_to
+        self.upstream_branch = self.upstream_tree.branch
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir,
@@ -1927,7 +1955,7 @@ class DistributionBranch(object):
                 self._extract_upstream_tree(upstream_tip, tempdir)
             else:
                 self._create_empty_upstream_tree(tempdir)
-            if self.has_upstream_version(version):
+            if self._has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
             m = md5.new()
             m.update(open(tarball_filename).read())
@@ -1938,13 +1966,16 @@ class DistributionBranch(object):
                 parents = []
                 if self.upstream_branch.last_revision() != NULL_REVISION:
                     parents = [self.upstream_branch.last_revision()]
-                self.import_upstream(tarball_dir, version, md5sum,
-                        parents)
+                new_revid = self.import_upstream(tarball_dir, version,
+                        md5sum, parents)
+                self._fetch_upstream_to_branch(new_revid)
             finally:
                 shutil.rmtree(tarball_dir)
             if self.branch.last_revision() != NULL_REVISION:
                 conflicts = self.tree.merge_from_branch(self.upstream_branch)
             else:
+                # Pull so that merge-upstream allows you to start a branch
+                # from upstream tarball.
                 conflicts = 0
                 self.tree.pull(self.upstream_branch)
             self.upstream_branch.tags.merge_to(self.branch.tags)

@@ -17,13 +17,14 @@ information than this file.
 Installation
 ------------
 
-This plugin requires `python-debian`_ (at least version 0.1.4),
-and a version of bzr at least 0.18. The two python modules 
-are available in Debian (though maybe not at the required versions for a
-development version of builddeb), the former in experimental at the moment.
+This plugin requires `python-debian`_ (at least version 0.1.11),
+and a version of bzr at least 1.2. It also requires the
+`bzrtools`_ plugin to be installed. These are available in Debian
+(though maybe not at the required versions for a development version
+ of builddeb).
 
 .. _python-debian: http://bzr.debian.org/pkg-python-debian/trunk/
-.. _python-deb822: http://free.linux.hp.com/~jswright/deb822/
+.. _bzrtools: https://launchpad.net/bzrtools
 
 This plugin can be installed in two ways. As you are probably using a Debian
 system you can probably just use the debian packages. The other way is to 
