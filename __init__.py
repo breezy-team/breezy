@@ -415,10 +415,10 @@ class cmd_merge_upstream(Command):
                            short_name='d', type=unicode)
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,
-            distribution_opt, directory_opt]
+            distribution_opt, directory_opt, 'revision']
 
     def run(self, location=None, version=None, distribution=None, package=None,
-            no_user_config=None, directory="."):
+            no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import merge_upstream_branch
@@ -471,6 +471,8 @@ class cmd_merge_upstream(Command):
                 if distribution is None:
                     raise BzrCommandError("You must specify the target distribution "
                             "using --distribution.")
+                if revision is not None:
+                    raise BzrCommandError("--revision is not allowed when merging a tarball")
 
                 orig_dir = config.orig_dir or default_orig_dir
                 orig_dir = os.path.join(tree.basedir, orig_dir)
@@ -500,7 +502,14 @@ class cmd_merge_upstream(Command):
                 conflicts = db.merge_upstream(tarball_filename, version,
                         current_version)
             else:
-                version = merge_upstream_branch(tree, upstream_branch, package, version)
+                if revision is not None:
+                  if len(revision) > 1:
+                    raise BzrCommandError("merge-upstream takes only a single --revision")
+                  upstream_revspec = revision[0]
+                else:
+                  upstream_revspec = None
+                version = merge_upstream_branch(tree, upstream_branch, package, 
+                                                upstream_revspec, version)
                 info("Using version string %s for upstream branch." % (version))
         finally:
             tree.unlock()
