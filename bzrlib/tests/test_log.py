@@ -75,7 +75,13 @@ class TestShowLog(tests.TestCaseWithTransport):
             expected = kw.get(n, [])
             # strip out only the path components
             got = [x[0] for x in getattr(delta, n)]
-            self.assertEquals(expected, got)
+            self.assertEqual(expected, got)
+
+    def assertInvalidRevisonNumber(self, br, start, end):
+        lf = LogCatcher()
+        self.assertRaises(errors.InvalidRevisionNumber,
+                          log.show_log, br, lf,
+                          start_revision=start, end_revision=end)
 
     def test_cur_revno(self):
         wt = self.make_branch_and_tree('.')
@@ -85,19 +91,14 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit('empty commit')
         log.show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
 
-        def assertInvalidRev(start, end):
-            self.assertRaises(errors.InvalidRevisionNumber,
-                              log.show_log, b, lf,
-                              start_revision=start, end_revision=end)
-
         # Since there is a single revision in the branch all the combinations
         # below should fail.
-        assertInvalidRev(2, 1)
-        assertInvalidRev(1, 2)
-        assertInvalidRev(0, 2)
-        assertInvalidRev(1, 0)
-        assertInvalidRev(-1, 1)
-        assertInvalidRev(1, -1)
+        self.assertInvalidRevisonNumber(b, 2, 1)
+        self.assertInvalidRevisonNumber(b, 1, 2)
+        self.assertInvalidRevisonNumber(b, 0, 2)
+        self.assertInvalidRevisonNumber(b, 1, 0)
+        self.assertInvalidRevisonNumber(b, -1, 1)
+        self.assertInvalidRevisonNumber(b, 1, -1)
 
     def test_empty_branch(self):
         wt = self.make_branch_and_tree('.')
@@ -105,7 +106,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf)
         # no entries yet
-        self.assertEquals(lf.logs, [])
+        self.assertEqual([], lf.logs)
 
     def test_empty_commit(self):
         wt = self.make_branch_and_tree('.')
@@ -113,9 +114,9 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit('empty commit')
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        self.assertEquals(len(lf.logs), 1)
-        self.assertEquals(lf.logs[0].revno, '1')
-        self.assertEquals(lf.logs[0].rev.message, 'empty commit')
+        self.assertEqual(1, len(lf.logs))
+        self.assertEqual('1', lf.logs[0].revno)
+        self.assertEqual('empty commit', lf.logs[0].rev.message)
         self.checkDelta(lf.logs[0].delta)
 
     def test_simple_commit(self):
@@ -128,11 +129,11 @@ class TestShowLog(tests.TestCaseWithTransport):
                             u'<test@example.com>')
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        self.assertEquals(len(lf.logs), 2)
+        self.assertEqual(2, len(lf.logs))
         # first one is most recent
         log_entry = lf.logs[0]
-        self.assertEquals(log_entry.revno, '2')
-        self.assertEquals(log_entry.rev.message, 'add one file')
+        self.assertEqual('2', log_entry.revno)
+        self.assertEqual('add one file', log_entry.rev.message)
         self.checkDelta(log_entry.delta, added=['hello'])
 
     def test_commit_message_with_control_chars(self):
@@ -142,8 +143,8 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
-        self.assert_(msg != committed_msg)
-        self.assert_(len(committed_msg) > len(msg))
+        self.assertNotEqual(msg, committed_msg)
+        self.assertTrue(len(committed_msg) > len(msg))
 
     def test_commit_message_without_control_chars(self):
         wt = self.make_branch_and_tree('.')
@@ -156,11 +157,10 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
-        self.assert_(msg == committed_msg)
+        self.assertEqual(msg, committed_msg)
 
     def test_deltas_in_merge_revisions(self):
         """Check deltas created for both mainline and merge revisions"""
-        eq = self.assertEquals
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
         wt.add('file1')
@@ -179,22 +179,23 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         lf.supports_merge_revisions = True
         log.show_log(b, lf, verbose=True)
-        self.assertEquals(len(lf.logs),3)
+
+        self.assertEqual(3, len(lf.logs))
+
         logentry = lf.logs[0]
-        self.assertEquals(logentry.revno, '2')
-        self.assertEquals(logentry.rev.message, 'merge child branch')
-        d = logentry.delta
-        self.checkDelta(d, removed=['file1'], modified=['file2'])
+        self.assertEqual('2', logentry.revno)
+        self.assertEqual('merge child branch', logentry.rev.message)
+        self.checkDelta(logentry.delta, removed=['file1'], modified=['file2'])
+
         logentry = lf.logs[1]
-        self.assertEquals(logentry.revno, '1.1.1')
-        self.assertEquals(logentry.rev.message, 'remove file1 and modify file2')
-        d = logentry.delta
-        self.checkDelta(d, removed=['file1'], modified=['file2'])
+        self.assertEqual('1.1.1', logentry.revno)
+        self.assertEqual('remove file1 and modify file2', logentry.rev.message)
+        self.checkDelta(logentry.delta, removed=['file1'], modified=['file2'])
+
         logentry = lf.logs[2]
-        self.assertEquals(logentry.revno, '1')
-        self.assertEquals(logentry.rev.message, 'add file1 and file2')
-        d = logentry.delta
-        self.checkDelta(d, added=['file1', 'file2'])
+        self.assertEqual('1', logentry.revno)
+        self.assertEqual('add file1 and file2', logentry.rev.message)
+        self.checkDelta(logentry.delta, added=['file1', 'file2'])
 
     def test_merges_nonsupporting_formatter(self):
         """Tests that show_log will raise if the formatter doesn't
@@ -273,7 +274,7 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
         sio = self.make_utf8_encoded_stringio()
         lf = log.ShortLogFormatter(to_file=sio)
         log.show_log(b, lf)
-        self.assertEqualDiff(sio.getvalue(), """\
+        self.assertEqualDiff("""\
     3 Joe Foo\t2005-11-21
       single line with trailing newline
 
@@ -285,7 +286,8 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
     1 Joe Foo\t2005-11-21
       simple log message
 
-""")
+""",
+                             sio.getvalue())
 
     def test_short_log_with_merges(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -306,14 +308,15 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
         logfile = self.make_utf8_encoded_stringio()
         formatter = log.ShortLogFormatter(to_file=logfile)
         log.show_log(wt.branch, formatter)
-        self.assertEqualDiff(logfile.getvalue(), """\
+        self.assertEqualDiff("""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
     1 Joe Foo\t2005-11-22
       rev-1
 
-""")
+""",
+                             logfile.getvalue())
 
     def test_short_log_single_merge_revision(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -337,11 +340,12 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
         wtb = wt.branch
         rev = revspec.in_history(wtb)
         log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
-        self.assertEqualDiff(logfile.getvalue(), """\
+        self.assertEqualDiff("""\
 1.1.1 Joe Foo\t2005-11-22
       rev-merged
 
-""")
+""",
+                             logfile.getvalue())
 
 
 class TestLongLogFormatter(TestCaseWithoutPropsHandler):
@@ -367,7 +371,7 @@ class TestLongLogFormatter(TestCaseWithoutPropsHandler):
         logfile.flush()
         logfile.seek(0)
         log_contents = logfile.read()
-        self.assertEqualDiff(log_contents, '''\
+        self.assertEqualDiff('''\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -377,7 +381,8 @@ message:
   add a
 added:
   a
-''')
+''',
+                             log_contents)
 
     def test_merges_are_indented_by_level(self):
         wt = self.make_branch_and_tree('parent')
@@ -398,7 +403,7 @@ added:
         lf = log.LongLogFormatter(to_file=sio)
         log.show_log(b, lf, verbose=True)
         the_log = normalize_log(sio.getvalue())
-        self.assertEqualDiff(the_log, """\
+        self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -434,7 +439,8 @@ branch nick: parent
 timestamp: Just now
 message:
   first post
-""")
+""",
+                             the_log)
 
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
@@ -454,7 +460,7 @@ message:
         lf = log.LongLogFormatter(to_file=sio)
         log.show_log(b, lf, verbose=True)
         the_log = normalize_log(sio.getvalue())
-        self.assertEqualDiff(the_log, """\
+        self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 2
 committer: Lorem Ipsum <test@example.com>
@@ -487,7 +493,8 @@ message:
 added:
   f1
   f2
-""")
+""",
+                             the_log)
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -495,7 +502,7 @@ added:
         sio = self.make_utf8_encoded_stringio()
         lf = log.LongLogFormatter(to_file=sio)
         log.show_log(b, lf)
-        self.assertEqualDiff(sio.getvalue(), """\
+        self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 3
 committer: Joe Foo <joe@foo.com>
@@ -520,7 +527,8 @@ branch nick: test
 timestamp: Mon 2005-11-21 09:24:15 -0600
 message:
   simple log message
-""")
+""",
+                             sio.getvalue())
 
     def test_author_in_log(self):
         """Log includes the author name if it's set in
@@ -539,7 +547,7 @@ message:
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio)
         log.show_log(b, formatter)
-        self.assertEqualDiff(sio.getvalue(), '''\
+        self.assertEqualDiff('''\
 ------------------------------------------------------------
 revno: 1
 author: John Doe <jdoe@example.com>
@@ -548,7 +556,8 @@ branch nick: test_author_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
   add a
-''')
+''',
+                             sio.getvalue())
 
     def test_properties_in_log(self):
         """Log includes the custom properties returned by the registered 
@@ -577,7 +586,7 @@ message:
         finally:
             log.properties_handler_registry.remove(
                 'trivial_custom_prop_handler')
-            self.assertEqualDiff(sio.getvalue(), '''\
+            self.assertEqualDiff('''\
 ------------------------------------------------------------
 revno: 1
 test_prop: test_value
@@ -587,7 +596,8 @@ branch nick: test_properties_in_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
   add a
-''')
+''',
+                                 sio.getvalue())
 
     def test_error_in_properties_handler(self):
         """Log includes the custom properties returned by the registered 
@@ -641,12 +651,12 @@ message:
                 bad_argument_prop_handler)
 
             self.assertRaises(AttributeError, formatter.show_properties,
-                'a revision', '')
+                              'a revision', '')
 
             revision = b.repository.get_revision(b.last_revision())
             formatter.show_properties(revision, '')
-            self.assertEqualDiff(sio.getvalue(),
-                '''custom_prop_name: test_value\n''')
+            self.assertEqualDiff('''custom_prop_name: test_value\n''',
+                                 sio.getvalue())
         finally:
             log.properties_handler_registry.remove(
                 'bad_argument_prop_handler')
@@ -674,8 +684,8 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
         logfile.flush()
         logfile.seek(0)
         log_contents = logfile.read()
-        self.assertEqualDiff(log_contents,
-            '1: Line-Log-Formatte... 2005-11-23 add a\n')
+        self.assertEqualDiff('1: Line-Log-Formatte... 2005-11-23 add a\n',
+                             log_contents)
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -683,11 +693,12 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
         sio = self.make_utf8_encoded_stringio()
         lf = log.LineLogFormatter(to_file=sio)
         log.show_log(b, lf)
-        self.assertEqualDiff(sio.getvalue(), """\
+        self.assertEqualDiff("""\
 3: Joe Foo 2005-11-21 single line with trailing newline
 2: Joe Bar 2005-11-21 multiline
 1: Joe Foo 2005-11-21 simple log message
-""")
+""",
+                             sio.getvalue())
 
     def test_line_log_single_merge_revision(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -711,9 +722,10 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
         wtb = wt.branch
         rev = revspec.in_history(wtb)
         log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
-        self.assertEqualDiff(logfile.getvalue(), """\
+        self.assertEqualDiff("""\
 1.1.1: Joe Foo 2005-11-22 rev-merged
-""")
+""",
+                             logfile.getvalue())
 
 
 
@@ -881,13 +893,13 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
 
         rev_3a = rev_from_rev_id('3a', wt.branch)
         rev_4b = rev_from_rev_id('4b', wt.branch)
-        self.assertEquals([('3c', '3', 0), ('3a', '2.1.1', 1)],
+        self.assertEqual([('3c', '3', 0), ('3a', '2.1.1', 1)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'reverse'))
         # Note that the depth is 0 for 3a because depths are normalized, but
         # there is still a bug somewhere... most probably in
         # _filter_revision_range and/or get_view_revisions still around a bad
         # use of reverse_by_depth
-        self.assertEquals([('3a', '2.1.1', 0)],
+        self.assertEqual([('3a', '2.1.1', 0)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'forward'))
 
 
@@ -963,7 +975,7 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
             expected = kw.get(n, [])
             # strip out only the path components
             got = [x[0] for x in getattr(delta, n)]
-            self.assertEquals(expected, got)
+            self.assertEqual(expected, got)
 
     def test_tree_with_single_merge(self):
         """Make sure the tree layout is correct."""
