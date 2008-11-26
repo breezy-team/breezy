@@ -96,8 +96,10 @@ def strip_changelog_message(changes):
 
 def tarball_name(package, version):
   """Return the name of the .orig.tar.gz for the given package and version."""
-
-  return "%s_%s.orig.tar.gz" % (package, str(version))
+  version_str = str(version.upstream_version)
+  if version.debian_version is not None:
+      version_str += "-%s" % str(version.debian_version)
+  return "%s_%s.orig.tar.gz" % (package, version_str)
 
 def get_snapshot_revision(upstream_version):
   """Return the upstream revision specifier if specified in the upstream version or None. """

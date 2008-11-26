@@ -465,6 +465,7 @@ class cmd_merge_upstream(Command):
                 if version is None:
                     raise BzrCommandError("You must specify the version number using "
                                           "--version.")
+                version = Version(version)
                 if distribution is None:
                     raise BzrCommandError("You must specify the target distribution "
                             "using --distribution.")
@@ -494,8 +495,8 @@ class cmd_merge_upstream(Command):
                         tree=tree)
                 dbs = DistributionBranchSet()
                 dbs.add_branch(db)
-                conflicts = db.merge_upstream(tarball_filename,
-                        Version(version), current_version)
+                conflicts = db.merge_upstream(tarball_filename, version,
+                        current_version)
             else:
                 version = merge_upstream_branch(tree, upstream_branch, package, version)
                 info("Using version string %s for upstream branch." % (version))
