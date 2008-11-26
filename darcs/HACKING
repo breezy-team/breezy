@@ -1,0 +1,10 @@
+There are two branches in this repo which will be probably never merged
+to master, but they may be interesting.
+
+The 'deleteall' branch makes d-f-e use the deleteall command in the
+fast-import stream. I did it for testing purposes, using it in a
+production environment is not efficient.
+
+The 'show' branch implements a way to avoid any working directory, it
+replaces 'darcs apply' calls with 'darcs show contents' ones - which is
+quite elegant but three times slower.
