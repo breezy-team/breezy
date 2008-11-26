@@ -29,7 +29,7 @@ from bzrlib.errors import (BzrCommandError,
                            NoSuchTag,
                            TagAlreadyExists,
                            )
-from bzrlib.tests import TestCaseWithTransport, KnownFailure
+from bzrlib.tests import KnownFailure, TestCase, TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb.errors import (
@@ -39,7 +39,11 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
         )
-from bzrlib.plugins.builddeb.merge_upstream import merge_upstream
+from bzrlib.plugins.builddeb.merge_upstream import (
+        merge_upstream, 
+        upstream_branch_version,
+        upstream_tag_to_version
+        )
 
 
 def write_to_file(filename, contents):
@@ -262,6 +266,52 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     rh = wt.branch.revision_history()
     self.assertEqual(wt.branch.tags.lookup_tag('upstream-debian-0.2'),
             wt.get_parent_ids()[1])
+
+
+class TestUpstreamBranchVersion(TestCase):
+  """Test that the upstream version of a branch can be determined correctly.
+  """
+
+  def test_snapshot_none_existing(self):
+    self.assertEquals(Version("1.2+bzr1"),
+        upstream_branch_version(["somerevid"], {}, "bla", "1.2"))
+
+  def test_new_tagged_release(self):
+    """Last revision is tagged - use as upstream version."""
+    self.assertEquals(Version("1.3"), 
+        upstream_branch_version(["somerevid"], {"somerevid": ["1.3"]}, "bla", "1.2"))
+
+  def test_refresh_snapshot_pre(self):
+    self.assertEquals(Version("1.3~bzr2"), 
+        upstream_branch_version(["oldrevid", "somerevid"], {}, "bla", "1.3~bzr1"))
+
+  def test_refresh_snapshot_post(self):
+    self.assertEquals(Version("1.3+bzr2"), 
+        upstream_branch_version(["oldrevid", "somerevid"], {}, "bla", "1.3+bzr1"))
+
+  def test_new_tag_refresh_snapshot(self):
+    self.assertEquals(Version("1.3+bzr3"), 
+        upstream_branch_version(["oldrevid", "somerevid", "newrevid"], 
+                                {"somerevid": ["1.3"]}, "bla", "1.2+bzr1"))
+
+
+class TestUpstreamTagToVersion(TestCase):
+
+  def test_prefix(self):
+    self.assertEquals(Version("5.0"), upstream_tag_to_version("upstream-5.0"))
+
+  def test_gibberish(self):
+    self.assertIs(None, upstream_tag_to_version("blabla"))
+
+  def test_vprefix(self):
+    self.assertEquals(Version("2.0"), upstream_tag_to_version("v2.0"))
+
+  def test_plain(self):
+    self.assertEquals(Version("2.0"), upstream_tag_to_version("2.0"))
+
+  def test_package_prefix(self):
+    self.assertEquals(Version("42.0"), upstream_tag_to_version("bla-42.0", "bla"))
+
 
 # vim: ts=2 sts=2 sw=2
 

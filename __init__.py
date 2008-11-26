@@ -37,6 +37,7 @@ from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
 from bzrlib.directory_service import directories
 from bzrlib.errors import (BzrCommandError,
+                           NoSuchFile,
                            NoWorkingTree,
                            NotBranchError,
                            FileExists,
@@ -401,7 +402,7 @@ class cmd_merge_upstream(Command):
     will change the name of the source package then you can use this option
     to set the new name.
     """
-    takes_args = ['tarball']
+    takes_args = ['location?']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
@@ -414,18 +415,11 @@ class cmd_merge_upstream(Command):
     takes_options = [package_opt, no_user_conf_opt, version_opt,
             distribution_opt]
 
-    def run(self, tarball, version=None, distribution=None, package=None,
+    def run(self, location=None, version=None, distribution=None, package=None,
             no_user_config=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        if version is None:
-            raise BzrCommandError("You must specify the version number using "
-                    "--version.")
-        else:
-            version = Version(version)
-        if distribution is None:
-            raise BzrCommandError("You must specify the target distribution "
-                    "using --distribution.")
+        from bzrlib.plugins.builddeb.merge_upstream import merge_upstream_branch
         tree, _ = WorkingTree.open_containing('.')
         tree.lock_write()
         try:
@@ -441,12 +435,13 @@ class cmd_merge_upstream(Command):
             if config.native:
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "yet supported.")
-            if config.export_upstream:
-                raise BzrCommandError("Export upstream mode is not yet "
-                        "supported.")
+            if config.export_upstream and location is None:
+                location = config.export_upstream
             if config.split:
                 raise BzrCommandError("Split mode is not yet supported.")
 
+            if location is None:
+                raise BzrCommandError("No location specified to merge")
             try:
                 changelog = find_changelog(tree, False)[0]
                 current_version = changelog.version
@@ -461,40 +456,60 @@ class cmd_merge_upstream(Command):
                         "package name, which is needed to know the name to "
                         "give the .orig.tar.gz. Please specify --package.")
 
-            orig_dir = config.orig_dir or default_orig_dir
-            orig_dir = os.path.join(tree.basedir, orig_dir)
-            version_str = version.upstream_version
-            dest_name = tarball_name(package, version_str)
             try:
-                repack_tarball(tarball, dest_name, target_dir=orig_dir)
-            except FileExists:
-                raise BzrCommandError("The target file %s already exists, and "
-                        "is either different to the new upstream tarball, or "
-                        "they are of different formats. Either delete the "
-                        "target file, or use it as the argument to import." \
-                        % dest_name)
-            tarball_filename = os.path.join(orig_dir, dest_name)
-            distribution = distribution.lower()
-            distribution_name = lookup_distribution(distribution)
-            target_name = distribution
-            if distribution_name is None:
-                if distribution not in ("debian", "ubuntu"):
-                    raise BzrCommandError("Unknown target distribution: %s" \
-                            % target_dist)
-                else:
-                    target_name = None
-                    distribution_name = distribution
-            db = DistributionBranch(distribution_name, tree.branch, None,
-                    tree=tree)
-            dbs = DistributionBranchSet()
-            dbs.add_branch(db)
-            conflicts = db.merge_upstream(tarball_filename,
-                    Version(version), current_version)
-            info("The new upstream version has been imported. You should "
-                 "now update the changelog (try dch -v %s), resolve any "
-                 "conflicts, and then commit." % str(version))
+                upstream_branch = Branch.open(location)
+            except NotBranchError:
+                upstream_branch = None
+ 
+            if upstream_branch is None:
+                if version is None:
+                    raise BzrCommandError("You must specify the version number using "
+                                          "--version.")
+                if distribution is None:
+                    raise BzrCommandError("You must specify the target distribution "
+                            "using --distribution.")
+
+                orig_dir = config.orig_dir or default_orig_dir
+                orig_dir = os.path.join(tree.basedir, orig_dir)
+                dest_name = tarball_name(package, version)
+                try:
+                    repack_tarball(location, dest_name, target_dir=orig_dir)
+                except FileExists:
+                    raise BzrCommandError("The target file %s already exists, and is either "
+                                          "different to the new upstream tarball, or they "
+                                          "are of different formats. Either delete the target "
+                                          "file, or use it as the argument to import.")
+                tarball_filename = os.path.join(orig_dir, dest_name)
+                distribution = distribution.lower()
+                distribution_name = lookup_distribution(distribution)
+                target_name = distribution
+                if distribution_name is None:
+                    if distribution not in ("debian", "ubuntu"):
+                        raise BzrCommandError("Unknown target distribution: %s" \
+                                % target_dist)
+                    else:
+                        target_name = None
+                        distribution_name = distribution
+                db = DistributionBranch(distribution_name, tree.branch, None,
+                        tree=tree)
+                dbs = DistributionBranchSet()
+                dbs.add_branch(db)
+                conflicts = db.merge_upstream(tarball_filename,
+                        Version(version), current_version)
+            else:
+                version = merge_upstream_branch(tree, upstream_branch, package, version)
+                info("Using version string %s for upstream branch." % (version))
         finally:
             tree.unlock()
+
+        if "~bzr" in str(version) or "+bzr" in str(version):
+            entry_description = "New upstream snapshot."
+        else:
+            entry_description = "New upstream release."
+
+        info("The new upstream version has been imported. You should "
+             "now update the changelog (try dch -v %s-1 \"%s\"), resolve any "
+             "conflicts, and then commit." % (str(version), entry_description))
 
 
 register_command(cmd_merge_upstream)

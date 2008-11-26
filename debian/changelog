@@ -3,6 +3,8 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   [ Jelmer Vernooij ]
   * Add simple deb: directory service for Bazaar that uses the dpkg Vcs-* fields.
   * Fix mark-uploaded when used in merge mode. (Closes: #500851)
+  * Support merging upstream from a Bazaar branch. (Closes: #493386)
+  * Make --version option and location argument to merge-upstream optional.
 
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
