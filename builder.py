@@ -117,6 +117,13 @@ class UpstreamExporter(object):
     return True
 
 
+def move_file(src, dest):
+    base = os.path.basename(src)
+    target = os.path.join(dest, base)
+    if not (os.path.exists(target) and os.path.samefile(src, target)):
+        shutil.move(src, dest)
+
+
 class DebBuild(object):
   """The object that does the building work."""
 
@@ -187,26 +194,19 @@ class DebBuild(object):
     tmp.close()
     info("Using uscan to look for the upstream tarball")
     try:
+      tarball_dir = self._properties.tarball_dir()
+      if not os.path.exists(tarball_dir):
+          os.makedirs(tarball_dir)
       r = os.system("uscan --upstream-version %s --force-download --rename "
-                    "--package %s --watchfile %s --check-dirname-level 0" % \
+                    "--package %s --watchfile %s --check-dirname-level 0 " 
+                    "--download --repack --destdir %s" %
                     (self._properties.upstream_version(),
-                     self._properties.package(), tempfilename))
+                     self._properties.package(), tempfilename,
+                     tarball_dir))
       if r != 0:
         raise DebianError("uscan failed to retrieve the upstream tarball")
     finally:
       os.unlink(tempfilename)
-    # Tarball is now renamed in the parent dir, either as .tar.gz or .tar.bz2
-    from repack_tarball import repack_tarball
-    fetched_tarball = os.path.join('..', self._tarball_name())
-    desired_tarball = self._tarball_name()
-    if not os.path.exists(fetched_tarball):
-      fetched_tarball = fetched_tarball[:-2] + 'bz2'
-      if not os.path.exists(fetched_tarball):
-        raise DebianError("Could not find the upstream tarball after uscan "
-                          "downloaded it.")
-    repack_tarball(fetched_tarball, desired_tarball,
-                   target_dir=self._properties.tarball_dir())
-    os.unlink(fetched_tarball)
 
   def _get_upstream_from_archive(self):
     import apt_pkg
@@ -221,7 +221,7 @@ class DebBuild(object):
         tarball_dir = self._properties.tarball_dir()
         if not os.path.exists(tarball_dir):
             os.makedirs(tarball_dir)
-        command = 'apt-get source -y --tar-only %s=%s' % \
+        command = 'apt-get source -y --only-source --tar-only %s=%s' % \
             (package, sources.Version)
         proc = subprocess.Popen(command, shell=True, cwd=tarball_dir)
         proc.wait()
@@ -338,18 +338,18 @@ class DebBuild(object):
     if not os.path.exists(result):
       os.makedirs(result)
     dir, base = os.path.split(changes.filename())
-    if dir == result:
+    if os.path.abspath(dir) == os.path.abspath(result):
       mutter("Not moving result as source and destination locations "
              "are the same")
       return
     mutter("Moving %s to %s", changes.filename(), result)
-    shutil.move(changes.filename(), result)
+    move_file(changes.filename(), result)
     mutter("Moving all files given in %s", changes.filename())
     for file in files:
       filename = os.path.join(self._properties.build_dir(), file['name'])
       mutter("Moving %s to %s", filename, result)
       try:
-        shutil.move(filename, result)
+        move_file(filename, result)
       except IOError, e:
         if e.errno <> 2:
           raise

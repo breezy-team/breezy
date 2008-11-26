@@ -111,11 +111,11 @@ def get_snapshot_revision(upstream_version):
 
 
 def lookup_distribution(target_dist):
-  debian_releases = ('woody', 'sarge', 'etch', 'lenny', 'stable',
+  debian_releases = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
           'testing', 'unstable', 'experimental', 'frozen')
   debian_targets = ('', '-security', '-proposed-updates', '-backports')
   ubuntu_releases = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
-          'feisty', 'gutsy', 'hardy', 'intrepid')
+          'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty')
   ubuntu_targets = ('', '-proposed', '-updates', '-security', '-backports')
   all_debian = [r + t for r in debian_releases for t in debian_targets]
   all_ubuntu = [r + t for r in ubuntu_releases for t in ubuntu_targets]

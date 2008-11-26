@@ -8,6 +8,27 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
 
  -- James Westby <james.westby@canonical.com>  Thu, 28 Aug 2008 11:41:35 +0100
 
+bzr-builddeb (2.0.2~0ubuntu2) intrepid; urgency=low
+
+  * Use properties.tarball_dir() instead of .target_dir(), as the latter
+    doesn't exist. Thanks Laurent Bigonville (LP: #286403)
+
+ -- James Westby <james.westby@canonical.com>  Mon, 20 Oct 2008 14:35:19 +0100
+
+bzr-builddeb (2.0.2~0ubuntu1) intrepid; urgency=low
+
+  * Pass --only-source to "apt-get source" call, as this will prevent apt
+    from assuming the package name we pass is a binary package name which
+    it must look up the source for. This would cause problems when there
+    are a source package and binary package that are named the same, but
+    the binary package isn't built from the source package, e.g. firefox,
+    linux. (bug #275446)
+  * Add "squeeze" and "jaunty" to the list of known releases. (bug #275448)
+  * Make source and result dirs being the same work better.
+  * Simplify use of uscan and make it more robust.
+
+ -- James Westby <james.westby@canonical.com>  Sun, 28 Sep 2008 14:53:16 +0100
+
 bzr-builddeb (2.0.1) experimental; urgency=low
 
   * Fix retrieval of the upstream source from a watch file of the archive.
