@@ -200,32 +200,32 @@ diff_git()
 {
 	rm -rf $1.git.nonbare
 	git clone -q $1.git $1.git.nonbare
-	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur $1.git.nonbare $1
+	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Nur $1.git.nonbare $1
 	return $?
 }
 
 diff_importgit()
 {
-	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Naur $1 $1.darcs
+	diff --exclude _darcs --exclude .git --exclude '*-darcs-backup*' -Nur $1 $1.darcs
 	return $?
 }
 
 diff_importhg()
 {
 	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' --exclude hg-export.status \
-		--exclude '*.orig' -Naur $1 $1.darcs
+		--exclude '*.orig' -Nur $1 $1.darcs
 	return $?
 }
 
 diff_importdarcs()
 {
-	diff --exclude _darcs --exclude '*-darcs-backup*' -Naur $1 $2
+	diff --exclude _darcs --exclude '*-darcs-backup*' -Nur $1 $2
 	return $?
 }
 
 diff_importbzr()
 {
-	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Naur $1 $1.darcs
+	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Nur $1 $1.darcs
 	return $?
 }
 
@@ -234,13 +234,13 @@ diff_bzr()
 	cd $1.bzr/master
 	bzr update
 	cd - >/dev/null
-	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Naur $1.bzr/master $1
+	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Nur $1.bzr/master $1
 	return $?
 }
 
 diff_hg()
 {
-	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' -Naur $1.hg $1
+	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' -Nur $1.hg $1
 	return $?
 }
 

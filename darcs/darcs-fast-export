@@ -166,9 +166,9 @@ else:
 
 progress("getting list of patches")
 if not len(import_marks):
-	sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
+	sock = os.popen("darcs changes --xml -s --reverse --repo %s" % origin)
 else:
-	sock = os.popen("darcs changes --xml --reverse  --repo %s --from-match 'hash %s'" % (origin, import_marks[-1]))
+	sock = os.popen("darcs changes --xml -s --reverse  --repo %s --from-match 'hash %s'" % (origin, import_marks[-1]))
 buf = sock.read()
 sock.close()
 # this is hackish. we need to escape some bad chars, otherwise the xml
@@ -227,7 +227,6 @@ if not len(import_marks):
 	progress("starting export, repo has %d patches" % patchnum)
 else:
 	progress("continuing export, %d patches to convert" % patchnum)
-paths = []
 for i in patches:
 	# apply the patch
 	hash = i.attributes['hash'].value
@@ -265,21 +264,18 @@ for i in patches:
 	if markcount > 1:
 		print "from :%s" % (markcount-1)
 	# export the files
-	for j in paths:
-		print "D %s" % j
-	paths = []
-	for (root, dirs, files) in os.walk ("."):
-		for f in files:
-			j = os.path.normpath(os.path.join(root, f))
-			if j.startswith("_darcs") or "-darcs-backup" in j:
-				continue
-			paths.append(j)
-			sock = open(j)
-			buf = sock.read()
-			sock.close()
-			# darcs does not track the executable bit :/
-			print "M 644 inline %s" % j
-			print "data %s\n%s" % (len(buf), buf)
+	for j in i.getElementsByTagName('add_file') + i.getElementsByTagName('modify_file'):
+		path = j.firstChild.toxml().strip()
+		sock = open(path)
+		buf = sock.read()
+		sock.close()
+		# darcs does not track the executable bit :/
+		print "M 644 inline %s" % path
+		print "data %s\n%s" % (len(buf), buf)
+	for j in i.getElementsByTagName('move'):
+		print "R %s %s" % (j.attributes['from'].value, j.attributes['to'].value)
+	for j in i.getElementsByTagName('remove_file'):
+		print "D %s" % j.firstChild.toxml().strip()
 	if message[:4] == "TAG ":
 	        tag = message[4:].strip().split('\n')[0].replace(' ','_')
 		print "tag %s" % tag
