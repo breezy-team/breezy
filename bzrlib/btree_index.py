@@ -431,15 +431,21 @@ class BTreeBuilder(index.GraphIndexBuilder):
             efficient order for the index (keys iteration order in this case).
         """
         keys = set(keys)
+        local_keys = keys.intersection(self._keys)
         if self.reference_lists:
-            for key in keys.intersection(self._keys):
+            for key in local_keys:
                 node = self._nodes[key]
                 yield self, key, node[1], node[0]
         else:
-            for key in keys.intersection(self._keys):
+            for key in local_keys:
                 node = self._nodes[key]
                 yield self, key, node[1]
-        keys.difference_update(self._keys)
+        # Find things that are in backing indices that have not been handled
+        # yet.
+        if not self._backing_indices:
+            return # We won't find anything there either
+        # Remove all of the keys that we found locally
+        keys.difference_update(local_keys)
         for backing in self._backing_indices:
             if backing is None:
                 continue
