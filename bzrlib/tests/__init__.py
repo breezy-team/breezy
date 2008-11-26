@@ -1235,6 +1235,7 @@ class TestCase(unittest.TestCase):
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
+            'BZR_PLUGIN_PATH': None,
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -2866,6 +2867,8 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_shelf',
+                   'bzrlib.tests.test_shelf_ui',
                    'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_smart_transport',
@@ -2951,14 +2954,13 @@ def test_suite(keep_only=None, starting_with=None):
 
     modules_to_doctest = [
         'bzrlib',
-        'bzrlib.errors',
+        'bzrlib.branchbuilder',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
         'bzrlib.lockdir',
         'bzrlib.merge3',
         'bzrlib.option',
-        'bzrlib.store',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.timestamp',
@@ -2970,10 +2972,15 @@ def test_suite(keep_only=None, starting_with=None):
             # No tests to keep here, move along
             continue
         try:
-            doc_suite = doctest.DocTestSuite(mod)
+            # note that this really does mean "report only" -- doctest 
+            # still runs the rest of the examples
+            doc_suite = doctest.DocTestSuite(mod,
+                optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
+        if len(doc_suite._tests) == 0:
+            raise errors.BzrError("no doctests found in %s" % (mod,))
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()

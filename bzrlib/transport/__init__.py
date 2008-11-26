@@ -1035,22 +1035,31 @@ class Transport(object):
         implement it.
         """
         source = self.clone(from_relpath)
-        self.mkdir(to_relpath)
         target = self.clone(to_relpath)
+        target.mkdir('.')
+        source.copy_tree_to_transport(target)
+
+    def copy_tree_to_transport(self, to_transport):
+        """Copy a subtree from one transport to another.
+
+        self.base is used as the source tree root, and to_transport.base
+        is used as the target.  to_transport.base must exist (and be a
+        directory).
+        """
         files = []
         directories = ['.']
         while directories:
             dir = directories.pop()
             if dir != '.':
-                target.mkdir(dir)
-            for path in source.list_dir(dir):
+                to_transport.mkdir(dir)
+            for path in self.list_dir(dir):
                 path = dir + '/' + path
-                stat = source.stat(path)
+                stat = self.stat(path)
                 if S_ISDIR(stat.st_mode):
                     directories.append(path)
                 else:
                     files.append(path)
-        source.copy_to(files, target)
+        self.copy_to(files, to_transport)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory.

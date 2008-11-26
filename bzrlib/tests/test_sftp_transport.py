@@ -463,6 +463,17 @@ class TestSocketDelay(TestCase):
         self.assertAlmostEqual(t2 - t1, 100 + 7)
 
 
+class ReadvFile(object):
+    """An object that acts like Paramiko's SFTPFile.readv()"""
+
+    def __init__(self, data):
+        self._data = data
+
+    def readv(self, requests):
+        for start, length in requests:
+            yield self._data[start:start+length]
+
+
 class Test_SFTPReadvHelper(tests.TestCase):
 
     def checkGetRequests(self, expected_requests, offsets):
@@ -484,6 +495,25 @@ class Test_SFTPReadvHelper(tests.TestCase):
         self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
                               [(0, 40000), (40000, 100), (40100, 1900),
                                (42000, 24000)])
+
+    def checkRequestAndYield(self, expected, data, offsets):
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        data_f = ReadvFile(data)
+        result = list(helper.request_and_yield_offsets(data_f))
+        self.assertEqual(expected, result)
+
+    def test_request_and_yield_offsets(self):
+        data = 'abcdefghijklmnopqrstuvwxyz'
+        self.checkRequestAndYield([(0, 'a'), (5, 'f'), (10, 'klm')], data,
+                                  [(0, 1), (5, 1), (10, 3)])
+        # Should combine requests, and split them again
+        self.checkRequestAndYield([(0, 'a'), (1, 'b'), (10, 'klm')], data,
+                                  [(0, 1), (1, 1), (10, 3)])
+        # Out of order requests. The requests should get combined, but then be
+        # yielded out-of-order. We also need one that is at the end of a
+        # previous range. See bug #293746
+        self.checkRequestAndYield([(0, 'a'), (10, 'k'), (4, 'efg'), (1, 'bcd')],
+                                  data, [(0, 1), (10, 1), (4, 3), (1, 3)])
 
 
 class TestUsesAuthConfig(TestCaseWithSFTPServer):

@@ -29,7 +29,8 @@ from bzrlib.tests.test_log import (
 from bzrlib.tests import test_log
 
 
-class TestCaseWithoutPropsHandler(ExternalBase, test_log.TestCaseWithoutPropsHandler):
+class TestCaseWithoutPropsHandler(ExternalBase,
+                                  test_log.TestCaseWithoutPropsHandler):
     pass
 
 
@@ -170,8 +171,8 @@ class TestLog(ExternalBase):
         branch = tree.branch
         branch.tags.set_tag('tag1', branch.get_rev_id(1))
         branch.tags.set_tag('tag1.1', branch.get_rev_id(1))
-        branch.tags.set_tag('tag3', branch.last_revision()) 
-        
+        branch.tags.set_tag('tag3', branch.last_revision())
+
         log = self.run_bzr("log -r-1")[0]
         self.assertTrue('tags: tag3' in log)
 
@@ -302,7 +303,7 @@ message:
 
     def test_merges_partial_range(self):
         self._prepare()
-        out,err = self.run_bzr('log -r1.1.1..1.1.2')
+        out, err = self.run_bzr('log -r1.1.1..1.1.2')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
@@ -339,7 +340,7 @@ message:
         out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
         self.assertContainsRe(err, err_msg)
 
- 
+
 class TestLogEncodings(TestCaseInTempDir):
 
     _mu = u'\xb5'

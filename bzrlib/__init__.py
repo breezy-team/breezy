@@ -64,7 +64,7 @@ def _format_version_tuple(version_info):
     and the typical presentation used in Python output.
 
     This also checks that the version is reasonable: the sub-release must be
-    zero for final releases, and non-zero for alpha, beta and preview.
+    zero for final releases.
 
     >>> print _format_version_tuple((1, 0, 0, 'final', 0))
     1.0
@@ -94,9 +94,9 @@ def _format_version_tuple(version_info):
         __sub_string = ''
     elif __release_type == 'dev' and __sub == 0:
         __sub_string = 'dev'
-    elif __release_type in ('alpha', 'beta'): # why: and __sub != 0: ? --vila 081005
+    elif __release_type in ('alpha', 'beta'):
         __sub_string = __release_type[0] + str(__sub)
-    elif __release_type == 'candidate' and __sub != 0:
+    elif __release_type == 'candidate':
         __sub_string = 'rc' + str(__sub)
     else:
         raise ValueError("version_info %r not valid" % (version_info,))
@@ -106,11 +106,6 @@ def _format_version_tuple(version_info):
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
-
-
-# allow bzrlib plugins to be imported.
-import bzrlib.plugin
-bzrlib.plugin.set_plugins_path()
 
 
 def test_suite():
