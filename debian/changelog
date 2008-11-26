@@ -7,6 +7,7 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   * Make --version option and location argument to merge-upstream optional.
   * Try to retrieve upstream tarball using get-orig-source rule in
   debian/rules if everything else fails. (Closes: #498622)
+  * Add -d option to merge-upstream.
 
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
