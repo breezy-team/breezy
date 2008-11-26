@@ -39,6 +39,10 @@ IN DEVELOPMENT
       being able to allocate a new buffer, which is a gnu extension.  
       (John Arbash Meinel, Martin Pool, Harry Hirsch, #297831)
 
+    * Don't crash when requesting log --forward <file> for a revision range
+      starting with a dotted revno.
+      (Vincent Ladeuil, #300055)
+
     * Don't create text deltas spanning stacked repositories; this could
       cause "Revision X not present in Y" when later accessing them.
       (Martin Pool, #288751)
@@ -47,10 +51,6 @@ IN DEVELOPMENT
       "PermissionDenied: "None"" on the client.
       (Andrew Bennetts, #299254)
       
-    * Don't crash when requesting log --forward <file> for a revision range
-      starting with a dotted revno.
-      (Vincent Ladeuil, #300055)
-
     * TooManyConcurrentRequests no longer occur when a fetch fails and
       tries to abort a write group.  This allows the root cause (e.g. a
       network interruption) to be reported.  (Andrew Bennetts, #297014)
