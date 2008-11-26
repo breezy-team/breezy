@@ -133,9 +133,12 @@ encode_func[DictType] = encode_dict
 
 try:
     from types import BooleanType
-    encode_func[BooleanType] = encode_int
 except ImportError:
     pass
+else:
+    def encode_bool(x,r):
+        encode_int(int(x), r)
+    encode_func[BooleanType] = encode_bool
 
 def bencode(x):
     r = []

@@ -41,6 +41,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
+from bzrlib.util import bencode
 from bzrlib.versionedfile import VersionedFiles
 
 
@@ -1222,6 +1223,34 @@ def _serialise_search_recipe(recipe):
     return '\n'.join((start_keys, stop_keys, count))
 
 
+def _serialise_record_stream(stream):
+    """Takes a record stream as returned by get_record_stream and yields bytes.
+    """
+    # Yields bencode of (sha1, storage_kind, key, parents, build_details,
+    #                    record_bytes)
+    # Note that:
+    #  - if sha1 is None, sha1 is ''
+    #  - if parents is None, parents is 'nil' (to distinguish it from empty
+    # tuple).
+    #  - if record has no _build_details, build_details is ()
+    for record in stream:
+        sha1 = record.sha1
+        if sha1 is None:
+            sha1 = ''
+        parents = record.parents
+        if record.parents is None:
+            parents = 'nil'
+        if record.storage_kind.startswith('knit-'):
+            build_details = record._build_details
+        else:
+            build_details = ()
+        struct = (sha1, record.storage_kind, record.key, parents,
+                  build_details, record.get_bytes_as(record.storage_kind))
+        bencode.bdecode(bencode.bencode(struct))
+        #print struct
+        yield bencode.bencode(struct)
+
+
 class RemoteVersionedFiles(VersionedFiles):
 
     def __init__(self, remote_repo, vf_name):
@@ -1267,8 +1296,25 @@ class RemoteVersionedFiles(VersionedFiles):
         return real_vf.get_sha1s(keys)
 
     def insert_record_stream(self, stream):
-        real_vf = self._get_real_vf()
-        return real_vf.insert_record_stream(stream)
+        lock_token = self.remote_repo._lock_token
+        if lock_token is None:
+            lock_token = ''
+        from bzrlib.trace import mutter
+        stream = list(stream)
+        mutter('record stream: %r', [s.__dict__ for s in stream])
+        byte_stream = _serialise_record_stream(stream)
+        byte_stream = list(byte_stream)
+        mutter('byte stream: %r', byte_stream)
+        if byte_stream == []:
+            return
+        client = self.remote_repo._client
+        path = self.remote_repo.bzrdir._path_for_remote_call(client)
+        response = client.call_with_body_stream(
+            ('VersionedFile.insert_record_stream', path, self.vf_name,
+             lock_token), byte_stream)
+        response_tuple, response_handler = response
+#        real_vf = self._get_real_vf()
+#        return real_vf.insert_record_stream(stream)
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         real_vf = self._get_real_vf()

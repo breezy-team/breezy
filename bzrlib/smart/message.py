@@ -84,13 +84,20 @@ class ConventionalRequestHandler(MessageHandler):
     "Conventional" is used in the sense described in
     doc/developers/network-protocol.txt: a simple message with arguments and an
     optional body.
+
+    Possible states:
+     * expecting args
+     * expecting body (terminated by receiving a post-body status)
+     * finished
     """
 
     def __init__(self, request_handler, responder):
         MessageHandler.__init__(self)
         self.request_handler = request_handler
         self.responder = responder
-        self.args_received = False
+        self.expecting = 'args'
+        self._should_finish_body = False
+        self._response_sent = False
 
     def protocol_error(self, exception):
         if self.responder.response_sent:
@@ -100,30 +107,62 @@ class ConventionalRequestHandler(MessageHandler):
         self.responder.send_error(exception)
 
     def byte_part_received(self, byte):
-        raise errors.SmartProtocolError(
-            'Unexpected message part: byte(%r)' % (byte,))
+        print 'byte part:', byte
+        if self.expecting == 'body' and byte == 'C':
+            self.expecting = 'chunk'
+        elif self.expecting == 'chunk':
+            if byte != 'S':
+                raise errors.SmartProtocolError(
+                    'Non-success status byte in request body: %r' % (byte,))
+            self.expecting = 'end'
+            self._should_finish_body = True
+            self._body_finished()
+        else:
+            raise errors.SmartProtocolError(
+                'Unexpected message part: byte(%r)' % (byte,))
 
     def structure_part_received(self, structure):
-        if self.args_received:
+        print 'structure part:', structure
+        if self.expecting != 'args':
             raise errors.SmartProtocolError(
                 'Unexpected message part: structure(%r)' % (structure,))
-        self.args_received = True
+        self.expecting = 'body'
         self.request_handler.dispatch_command(structure[0], structure[1:])
         if self.request_handler.finished_reading:
+            self._response_sent = True
             self.responder.send_response(self.request_handler.response)
+            self.expecting = 'end'
 
-    def bytes_part_received(self, bytes):
-        # Note that there's no intrinsic way to distinguish a monolithic body
-        # from a chunk stream.  A request handler knows which it is expecting
-        # (once the args have been received), so it should be able to do the
-        # right thing.
-        self.request_handler.accept_body(bytes)
+    def _body_finished(self):
+        if not self._should_finish_body:
+            return
+        print 'calling end_of_body'
+        self._should_finish_body = False
         self.request_handler.end_of_body()
         if not self.request_handler.finished_reading:
             raise errors.SmartProtocolError(
-                "Conventional request body was received, but request handler "
-                "has not finished reading.")
-        self.responder.send_response(self.request_handler.response)
+                "Conventional request body was received, but request "
+                "handler has not finished reading.")
+        
+    def bytes_part_received(self, bytes):
+        print 'bytes part:', repr(bytes)
+        if self.expecting == 'body':
+            self.expecting == 'end'
+            self._should_finish_body = True
+            self.request_handler.accept_body(bytes)
+        elif self.expecting == 'chunk':
+            self.request_handler.body_chunk_received(bytes)
+        else:
+            raise errors.SmartProtocolError(
+                'Unexpected message part: bytes(%r)' % (bytes,))
+
+    def end_received(self):
+        print 'end!'
+        self.expecting = 'nothing'
+        self._body_finished()
+        self.request_handler.end_received()
+        if not self._response_sent:
+            self.responder.send_response(self.request_handler.response)
 
 
 class ResponseHandler(object):

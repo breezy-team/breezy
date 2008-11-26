@@ -281,6 +281,8 @@ class SmartServerRequestHandler(object):
         # be in SmartServerVFSRequestHandler somewhere.
         try:
             return callable(*args, **kwargs)
+        except NotImplementedError:
+            return None
         except errors.NoSuchFile, e:
             return FailedSmartServerResponse(('NoSuchFile', e.path))
         except errors.FileExists, e:
@@ -473,3 +475,6 @@ request_handlers.register_lazy(
     'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly')
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
+request_handlers.register_lazy(
+    'VersionedFile.insert_record_stream', 'bzrlib.smart.versionedfiles',
+    'SmartServerVersionedFilesInsertRecordStream')

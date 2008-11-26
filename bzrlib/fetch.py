@@ -102,25 +102,33 @@ class RepoFetcher(object):
             self.pb = pb
             self.nested_pb = None
         self.from_repository.lock_read()
-        try:
-            self.to_repository.lock_write()
-            try:
-                self.to_repository.start_write_group()
-                try:
-                    self.__fetch()
-                except:
-                    self.to_repository.abort_write_group(suppress_errors=True)
-                    raise
-                else:
-                    self.to_repository.commit_write_group()
-            finally:
-                try:
-                    if self.nested_pb is not None:
-                        self.nested_pb.finished()
-                finally:
-                    self.to_repository.unlock()
-        finally:
-            self.from_repository.unlock()
+#        try:
+#            self.to_repository.lock_write()
+#            try:
+#                self.to_repository.start_write_group()
+#                try:
+#                    self.__fetch()
+#                except:
+#                    self.to_repository.abort_write_group(suppress_errors=True)
+#                    raise
+#                else:
+#                    self.to_repository.commit_write_group()
+#            finally:
+#                try:
+#                    if self.nested_pb is not None:
+#                        self.nested_pb.finished()
+#                finally:
+#                    self.to_repository.unlock()
+#        finally:
+#            self.from_repository.unlock()
+        self.to_repository.lock_write()
+        self.to_repository.start_write_group()
+        self.__fetch()
+        self.to_repository.commit_write_group()
+        if self.nested_pb is not None:
+            self.nested_pb.finished()
+        self.to_repository.unlock()
+        self.from_repository.unlock()
 
     def __fetch(self):
         """Primary worker function.
