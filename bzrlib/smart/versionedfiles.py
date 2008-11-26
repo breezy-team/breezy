@@ -225,7 +225,7 @@ def deserialise_record(stream_chunk):
     if parents == 'nil':
         parents = None
     else:
-        parents = tuple(parents)
+        parents = tuple(tuple(parent_key) for parent_key in parents)
     if sha1 == '':
         sha1 = None
     if storage_kind.startswith('knit-'):

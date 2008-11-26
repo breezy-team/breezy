@@ -1246,8 +1246,6 @@ def _serialise_record_stream(stream):
             build_details = ()
         struct = (sha1, record.storage_kind, record.key, parents,
                   build_details, record.get_bytes_as(record.storage_kind))
-        bencode.bdecode(bencode.bencode(struct))
-        #print struct
         yield bencode.bencode(struct)
 
 
@@ -1299,12 +1297,8 @@ class RemoteVersionedFiles(VersionedFiles):
         lock_token = self.remote_repo._lock_token
         if lock_token is None:
             lock_token = ''
-        from bzrlib.trace import mutter
-        stream = list(stream)
-        mutter('record stream: %r', [s.__dict__ for s in stream])
         byte_stream = _serialise_record_stream(stream)
         byte_stream = list(byte_stream)
-        mutter('byte stream: %r', byte_stream)
         if byte_stream == []:
             return
         client = self.remote_repo._client

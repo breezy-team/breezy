@@ -107,7 +107,6 @@ class ConventionalRequestHandler(MessageHandler):
         self.responder.send_error(exception)
 
     def byte_part_received(self, byte):
-        print 'byte part:', byte
         if self.expecting == 'body' and byte == 'C':
             self.expecting = 'chunk'
         elif self.expecting == 'chunk':
@@ -122,7 +121,6 @@ class ConventionalRequestHandler(MessageHandler):
                 'Unexpected message part: byte(%r)' % (byte,))
 
     def structure_part_received(self, structure):
-        print 'structure part:', structure
         if self.expecting != 'args':
             raise errors.SmartProtocolError(
                 'Unexpected message part: structure(%r)' % (structure,))
@@ -136,7 +134,6 @@ class ConventionalRequestHandler(MessageHandler):
     def _body_finished(self):
         if not self._should_finish_body:
             return
-        print 'calling end_of_body'
         self._should_finish_body = False
         self.request_handler.end_of_body()
         if not self.request_handler.finished_reading:
@@ -145,7 +142,6 @@ class ConventionalRequestHandler(MessageHandler):
                 "handler has not finished reading.")
         
     def bytes_part_received(self, bytes):
-        print 'bytes part:', repr(bytes)
         if self.expecting == 'body':
             self.expecting == 'end'
             self._should_finish_body = True
@@ -157,7 +153,6 @@ class ConventionalRequestHandler(MessageHandler):
                 'Unexpected message part: bytes(%r)' % (bytes,))
 
     def end_received(self):
-        print 'end!'
         self.expecting = 'nothing'
         self._body_finished()
         self.request_handler.end_received()
