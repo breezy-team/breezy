@@ -109,7 +109,7 @@ class RepoFetcher(object):
                 try:
                     self.__fetch()
                 except:
-                    self.to_repository.abort_write_group()
+                    self.to_repository.abort_write_group(suppress_errors=True)
                     raise
                 else:
                     self.to_repository.commit_write_group()
@@ -248,6 +248,7 @@ class RepoFetcher(object):
             child_pb.finished()
 
     def _fetch_revision_texts(self, revs, pb):
+        # fetch signatures first and then the revision texts
         # may need to be a InterRevisionStore call here.
         to_sf = self.to_repository.signatures
         from_sf = self.from_repository.signatures

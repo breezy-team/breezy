@@ -2374,6 +2374,7 @@ class cmd_commit(Command):
         )
         from bzrlib.msgeditor import (
             edit_commit_message_encoded,
+            generate_commit_message_template,
             make_commit_message_template_encoded
         )
 
@@ -2408,7 +2409,9 @@ class cmd_commit(Command):
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
-                my_message = edit_commit_message_encoded(t)
+                start_message = generate_commit_message_template(commit_obj)
+                my_message = edit_commit_message_encoded(t, 
+                    start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
@@ -4725,6 +4728,76 @@ class cmd_hooks(Command):
                                     (branch_hooks.get_hook_name(hook),))
             else:
                 self.outf.write("  <no hooks installed>\n")
+
+
+class cmd_shelve(Command):
+    """Temporarily set aside some changes from the current tree.
+
+    Shelve allows you to temporarily put changes you've made "on the shelf",
+    ie. out of the way, until a later time when you can bring them back from
+    the shelf with the 'unshelve' command.
+
+    Shelve is intended to help separate several sets of changes that have
+    been inappropriately mingled.  If you just want to get rid of all changes
+    and you don't need to restore them later, use revert.  If you want to
+    shelve all text changes at once, use shelve --all.
+
+    If filenames are specified, only the changes to those files will be
+    shelved. Other files will be left untouched.
+
+    If a revision is specified, changes since that revision will be shelved.
+
+    You can put multiple items on the shelf, and by default, 'unshelve' will
+    restore the most recently shelved changes.
+    """
+
+    takes_args = ['file*']
+
+    takes_options = [
+        'revision',
+        Option('all', help='Shelve all changes.'),
+        'message',
+        RegistryOption('writer', 'Method to use for writing diffs.',
+                       bzrlib.option.diff_writer_registry,
+                       value_switches=True, enum_switch=False)
+    ]
+    _see_also = ['unshelve']
+
+    def run(self, revision=None, all=False, file_list=None, message=None,
+            writer=None):
+        from bzrlib.shelf_ui import Shelver
+        if writer is None:
+            writer = bzrlib.option.diff_writer_registry.get()
+        try:
+            Shelver.from_args(writer(sys.stdout), revision, all, file_list,
+                              message).run()
+        except errors.UserAbort:
+            return 0
+
+
+class cmd_unshelve(Command):
+    """Restore shelved changes.
+
+    By default, the most recently shelved changes are restored. However if you
+    specify a patch by name those changes will be restored instead.  This
+    works best when the changes don't depend on each other.
+    """
+
+    takes_args = ['shelf_id?']
+    takes_options = [
+        RegistryOption.from_kwargs(
+            'action', help="The action to perform.",
+            enum_switch=False, value_switches=True,
+            apply="Apply changes and remove from the shelf.",
+            dry_run="Show changes, but do not apply or remove them.",
+            delete_only="Delete changes without applying them."
+        )
+    ]
+    _see_also = ['shelve']
+
+    def run(self, shelf_id=None, action='apply'):
+        from bzrlib.shelf_ui import Unshelver
+        Unshelver.from_args(shelf_id, action).run()
 
 
 def _create_prefix(cur_transport):

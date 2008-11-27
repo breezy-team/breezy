@@ -42,7 +42,7 @@
     #include <windows.h>
 
     /* Needed for htonl */
-    #include "Winsock.h"
+    #include "Winsock2.h"
 
     /* sys/stat.h doesn't have any of these macro definitions for MSVC, so
      * we'll define whatever is missing that we actually use.
