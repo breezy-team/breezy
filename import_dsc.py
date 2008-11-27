@@ -1780,6 +1780,8 @@ class DistributionBranch(object):
                     self.upstream_branch.fetch(
                             pull_branch.upstream_branch,
                             last_revision=pull_revid)
+                    pull_branch.upstream_branch.tags.merge_to(
+                            self.upstream_branch.tags)
         return parents
 
     def get_changelog_from_source(self, dir):
