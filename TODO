@@ -2,19 +2,12 @@
 
 - record a version
 
-- migrate from arch-buildpackage?  use baz-import?
-
 - make --merge work with different layouts of upstream tarballs. -- Works? 
     Need some examples of strange layouts.
 
 - import of NMU diffs
 
 - WRITE SOME MORE TESTS
-
-- Add tagging packages, or at least a reminder to tag packages. Maybe with 
-    dput/dupload as well.
-
-- New changelog stanza command for after tagging.
 
 - Check whether epochs are handled sanely, especially in import-dsc and
 merge-upstream.
