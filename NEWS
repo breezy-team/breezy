@@ -20,6 +20,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``(Remote)Branch.copy_content_into`` no longer generates the full revision
+      history just to set the last revision info.
+      (Andrew Bennetts, John Arbash Meinel)
+
     * The generic fetch code can once again copy revisions and signatures
       without extracting them completely to fulltexts and then serializing
       them back down into byte strings. This is a significant performance
@@ -41,6 +45,10 @@ IN DEVELOPMENT
       being able to allocate a new buffer, which is a gnu extension.  
       (John Arbash Meinel, Martin Pool, Harry Hirsch, #297831)
 
+    * Don't crash when requesting log --forward <file> for a revision range
+      starting with a dotted revno.
+      (Vincent Ladeuil, #300055)
+
     * Don't create text deltas spanning stacked repositories; this could
       cause "Revision X not present in Y" when later accessing them.
       (Martin Pool, #288751)
@@ -59,6 +67,11 @@ IN DEVELOPMENT
   DOCUMENTATION:
 
   API CHANGES:
+
+    * ``CommitBuilder`` now validates the strings it will be committing,
+      to ensure that they do not have characters that will not be properly
+      round-tripped. For now, it just checks for characters that are
+      invalid in the XML form. (John Arbash Meinel, #295161)
 
     * Constructor parameters for NewPack (internal to pack repositories)
       have changed incompatibly.
