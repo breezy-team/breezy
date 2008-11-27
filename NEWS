@@ -24,6 +24,12 @@ IN DEVELOPMENT
       history just to set the last revision info.
       (Andrew Bennetts, John Arbash Meinel)
 
+    * Search index files corresponding to pack files we've already used
+      before searching others, because they are more likely to have the
+      keys we're looking for.  This reduces the number of iix and tix
+      files accessed when pushing 1 new revision, for instance.
+      (John Arbash Meinel)
+
     * The generic fetch code can once again copy revisions and signatures
       without extracting them completely to fulltexts and then serializing
       them back down into byte strings. This is a significant performance
