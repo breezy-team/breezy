@@ -24,6 +24,12 @@ IN DEVELOPMENT
       history just to set the last revision info.
       (Andrew Bennetts, John Arbash Meinel)
 
+    * The generic fetch code can once again copy revisions and signatures
+      without extracting them completely to fulltexts and then serializing
+      them back down into byte strings. This is a significant performance
+      improvement when fetching from a stacked branch.
+      (John Arbash Meinel, #300289)
+
     * When making a large readv() request over ``bzr+ssh``, break up the
       request into more manageable chunks. Because the RPC is not yet able
       to stream, this helps keep us from buffering too much information at
