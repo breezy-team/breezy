@@ -137,6 +137,51 @@ def inline_path(path):
 	print "M 644 inline %s" % path
 	print "data %s\n%s" % (len(buf), buf)
 
+def simplify_nodes(i):
+	nodes = {
+			'add_file': [],
+			'move': [],
+			'modify_file': [],
+			'remove_file': []
+			}
+	for j in i.getElementsByTagName('add_file'):
+		nodes['add_file'].append(j.firstChild.toxml().strip())
+	for j in i.getElementsByTagName('move'):
+		nodes['move'].append([j.attributes['from'].value, j.attributes['to'].value])
+	for j in i.getElementsByTagName('modify_file'):
+		nodes['modify_file'].append(j.firstChild.toxml().strip())
+	for j in i.getElementsByTagName('remove_file'):
+		nodes['remove_file'].append(j.firstChild.toxml().strip())
+	# add A, rename A B, modify B -> add B
+	for j in nodes['add_file']:
+		for k in nodes['move']:
+			for l in nodes['modify_file']:
+				if j == k[0] and k[1] == l:
+					nodes['add_file'].remove(j)
+					nodes['move'].remove(k)
+					nodes['modify_file'].remove(l)
+					nodes['add_file'].append(l)
+	# add A, rename A B -> add B
+	for j in nodes['add_file']:
+		for k in nodes['move']:
+			if j == k[0]:
+				nodes['add_file'].remove(j)
+				nodes['move'].remove(k)
+				nodes['add_file'].append(k[1])
+	# rename A B, remove B -> remove A
+	for j in nodes['remove_file']:
+		for k in nodes['move']:
+			if j == k[1]:
+				nodes['remove_file'].remove(j)
+				nodes['move'].remove(k)
+				nodes['remove_file'].append(k[0])
+	# rename A B, add B -> add B
+	for j in nodes['add_file']:
+		for k in nodes['move']:
+			if j == k[1]:
+				nodes['move'].remove(k)
+	return nodes
+
 # Option Parser
 usage="%prog [options] darcsrepo"
 opp = optparse.OptionParser(usage=usage)
@@ -293,14 +338,15 @@ for i in patches:
 	if markcount > 1:
 		print "from :%s" % (markcount-1)
 	# export the files
-	for j in i.getElementsByTagName('add_file'):
-		inline_path(j.firstChild.toxml().strip())
-	for j in i.getElementsByTagName('move'):
-		print "R %s %s" % (j.attributes['from'].value, j.attributes['to'].value)
-	for j in i.getElementsByTagName('modify_file'):
-		inline_path(j.firstChild.toxml().strip())
-	for j in i.getElementsByTagName('remove_file'):
-		print "D %s" % j.firstChild.toxml().strip()
+	nodes = simplify_nodes(i)
+	for j in nodes['add_file']:
+		inline_path(j)
+	for j in nodes['move']:
+		print "R %s %s" % (j[0], j[1])
+	for j in nodes['modify_file']:
+		inline_path(j)
+	for j in nodes['remove_file']:
+		print "D %s" % j
 	if message[:4] == "TAG ":
 	        tag = message[4:].strip().split('\n')[0].replace(' ','_')
 		print "tag %s" % tag
