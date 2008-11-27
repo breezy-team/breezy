@@ -192,19 +192,24 @@ class DebBuild(object):
 
   def _get_upstream_using_orig_source(self):
     info("Using get-orig-source rule to retrieve upstream tarball")
-    rules_id = self._tree.path2id(self._rulesfile_name())
-    assert rules_id is not None, "rulesfile must be in the tree"
-    fetched_tarball = self._tarball_name()
-    r = os.system("make -f %s get-orig-source" % self._rulesfile_name())
-    if r != 0:
-      raise DebianError("get-orig-source rule failed")
-    if not os.path.exists(fetched_tarball):
-      raise DebianError("get-orig-source did not create %s" % fetched_tarball)
-    desired_tarball = self._tarball_name()
-    from repack_tarball import repack_tarball
-    repack_tarball(fetched_tarball, desired_tarball,
-                   target_dir=self._properties.tarball_dir())
-    os.unlink(fetched_tarball)
+    rules_name = self._rulesfile_name()
+    if os.path.exists(rules_name):
+      rules_id = self._tree.path2id(self._rulesfile_name())
+      assert rules_id is not None, "rulesfile must be in the tree"
+      fetched_tarball = self._tarball_name()
+      r = os.system("make -f %s get-orig-source" % self._rulesfile_name())
+      if r != 0:
+        raise DebianError("get-orig-source rule failed")
+      if not os.path.exists(fetched_tarball):
+        raise DebianError("get-orig-source did not create %s" % fetched_tarball)
+      desired_tarball = self._tarball_name()
+      from repack_tarball import repack_tarball
+      repack_tarball(fetched_tarball, desired_tarball,
+                     target_dir=self._properties.tarball_dir())
+      os.unlink(fetched_tarball)
+    else:
+      raise DebianError("No debian/rules file to try and use for "
+              "a get-orig-source rule")
 
   def _get_upstream_from_watch(self):
     (tmp, tempfilename) = tempfile.mkstemp()
@@ -292,7 +297,7 @@ class DebBuild(object):
   def _tarball_name(self):
     """Returns the name that the upstream tarball should have."""
     package = self._properties.package()
-    version = self._properties.full_version()
+    version = self._properties.upstream_version()
     return tarball_name(package, version)
   
   def _export_upstream_branch(self):

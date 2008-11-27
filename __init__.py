@@ -476,7 +476,7 @@ class cmd_merge_upstream(Command):
 
                 orig_dir = config.orig_dir or default_orig_dir
                 orig_dir = os.path.join(tree.basedir, orig_dir)
-                dest_name = tarball_name(package, version)
+                dest_name = tarball_name(package, version.upstream_version)
                 try:
                     repack_tarball(location, dest_name, target_dir=orig_dir)
                 except FileExists:
