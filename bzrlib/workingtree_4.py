@@ -69,8 +69,6 @@ import bzrlib.ui
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, entry_factory
-from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (

@@ -64,7 +64,7 @@ def _format_version_tuple(version_info):
     and the typical presentation used in Python output.
 
     This also checks that the version is reasonable: the sub-release must be
-    zero for final releases, and non-zero for alpha, beta and preview.
+    zero for final releases.
 
     >>> print _format_version_tuple((1, 0, 0, 'final', 0))
     1.0
@@ -86,31 +86,26 @@ def _format_version_tuple(version_info):
     if len(version_info) <= 3:
         return main_version
 
-    __release_type = version_info[3]
-    __sub = version_info[4]
+    release_type = version_info[3]
+    sub = version_info[4]
 
     # check they're consistent
-    if __release_type == 'final' and __sub == 0:
-        __sub_string = ''
-    elif __release_type == 'dev' and __sub == 0:
-        __sub_string = 'dev'
-    elif __release_type in ('alpha', 'beta') and __sub != 0:
-        __sub_string = __release_type[0] + str(__sub)
-    elif __release_type == 'candidate' and __sub != 0:
-        __sub_string = 'rc' + str(__sub)
+    if release_type == 'final' and sub == 0:
+        sub_string = ''
+    elif release_type == 'dev' and sub == 0:
+        sub_string = 'dev'
+    elif release_type in ('alpha', 'beta'):
+        sub_string = release_type[0] + str(sub)
+    elif release_type == 'candidate':
+        sub_string = 'rc' + str(sub)
     else:
         raise ValueError("version_info %r not valid" % (version_info,))
 
     version_string = '%d.%d.%d.%s.%d' % version_info
-    return main_version + __sub_string
+    return main_version + sub_string
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
-
-
-# allow bzrlib plugins to be imported.
-import bzrlib.plugin
-bzrlib.plugin.set_plugins_path()
 
 
 def test_suite():

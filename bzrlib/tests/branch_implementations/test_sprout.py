@@ -16,11 +16,13 @@
 
 """Tests for Branch.sprout()"""
 
+import os
 from bzrlib import (
     remote,
     revision as _mod_revision,
     tests,
     )
+from bzrlib.tests import KnownFailure, SymlinkFeature, UnicodeFilenameFeature
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -97,3 +99,29 @@ class TestSprout(TestCaseWithBranch):
             revision_id='rev1a').open_workingtree()
         self.assertEqual('rev1a', wt2.last_revision())
         self.failUnlessExists('target/a')
+
+    def test_sprout_with_unicode_symlink(self):
+        # this tests bug #272444
+        # Since the trigger function seems to be set_parent_trees, there exists
+        # also a similar test, with name test_unicode_symlink, in class
+        # TestSetParents at file workingtree_implementations/test_parents.py
+        self.requireFeature(SymlinkFeature)
+        self.requireFeature(UnicodeFilenameFeature)
+
+        tree = self.make_branch_and_tree('tree1')
+
+        # The link points to a file whose name is an omega
+        # U+03A9 GREEK CAPITAL LETTER OMEGA
+        # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
+        os.symlink(u'\u03a9','tree1/link_name')
+        tree.add(['link_name'],['link-id'])
+
+        try:
+            # python 2.7a0 failed on commit:
+            revision = tree.commit('added a link to a Unicode target')
+            # python 2.5 failed on sprout:
+            tree.bzrdir.sprout('target')
+        except UnicodeEncodeError, e:
+            raise KnownFailure('there is no support for'
+                               ' symlinks to non-ASCII targets (bug #272444)')
+

@@ -374,12 +374,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         self.assertEqual(('get_record_stream', [('rev-one',)],
                           target._fetch_order, False),
                          self.find_get_record_stream(source.inventories.calls))
-        # Because of bugs in the old fetch code, revisions could accidentally
-        # have deltas present in knits. However, it was never intended, so we
-        # always for include_delta_closure=True, to make sure we get fulltexts.
-        # bug #261339
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, True),
+                          target._fetch_order, False),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
         # standard item_keys_introduced_by actually does a lookup for every
@@ -390,7 +386,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # we care about.
         signature_calls = source.signatures.calls[-1:]
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, True),
+                          target._fetch_order, False),
                          self.find_get_record_stream(signature_calls))
 
     def test_fetch_no_deltas_with_delta_closure(self):
@@ -431,6 +427,37 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         self.assertEqual(('get_record_stream', [('rev-one',)],
                           target._fetch_order, True),
                          self.find_get_record_stream(signature_calls))
+
+    def test_fetch_revisions_with_deltas_into_pack(self):
+        # See BUG #261339, dev versions of bzr could accidentally create deltas
+        # in revision texts in knit branches (when fetching from packs). So we
+        # ensure that *if* a knit repository has a delta in revisions, that it
+        # gets properly expanded back into a fulltext when stored in the pack
+        # file.
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        # Hack the KVF for revisions so that it "accidentally" allows a delta
+        tree.branch.repository.revisions._max_delta_chain = 200
+        tree.commit('two', rev_id='rev-two')
+        source = tree.branch.repository
+        # Ensure that we stored a delta
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        record = source.revisions.get_record_stream([('rev-two',)],
+            'unordered', False).next()
+        self.assertEqual('knit-delta-gz', record.storage_kind)
+        target.fetch(tree.branch.repository, revision_id='rev-two')
+        # The record should get expanded back to a fulltext
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        record = target.revisions.get_record_stream([('rev-two',)],
+            'unordered', False).next()
+        self.assertEqual('knit-ft-gz', record.storage_kind)
+
 
 
 class Test1To2Fetch(TestCaseWithTransport):
