@@ -204,7 +204,7 @@ if not options.import_marks or not os.path.exists(working):
 		os.system("darcs init --darcs-2")
 	else:
 		os.system("darcs init --old-fashioned-inventory")
-	if not os.path.exists(working):
+	if options.import_marks:
 		os.system("darcs pull --match 'hash %s'" % import_marks[-1])
 else:
 	os.chdir(working)
