@@ -26,7 +26,10 @@ import tarfile
 
 from debian_bundle.changelog import Version
 
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import (
+        NotBranchError,
+        NotADirectory,
+        )
 from bzrlib.tests import (TestCaseInTempDir,
                           )
 from bzrlib.workingtree import WorkingTree
@@ -283,12 +286,6 @@ class TestDefaultBuilder(BuilderTestCase):
     self.make_orig_tarball()
     self.failUnlessExists(tarball)
     self.assertEqual(builder._find_tarball(), tarball)
-
-  def test__find_tarball_no_orig_dir(self):
-    """Test that an exception is raised it the orig dir is not present."""
-    builder = self.get_builder()
-    self.failIfExists(self.orig_dir)
-    self.assertRaises(errors.DebianError, builder._find_tarball)
 
   def test__find_tarball_not_exists(self):
     """Test that an exception is raised if the tarball is not found."""

@@ -28,7 +28,10 @@ import os
 from debian_bundle.changelog import Version
 
 from bzrlib.branch import Branch
-from bzrlib.errors import NoWorkingTree
+from bzrlib.errors import (
+        NoWorkingTree,
+        NotADirectory,
+        )
 from bzrlib.export import export
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import info, mutter
@@ -164,7 +167,7 @@ class DebBuild(object):
         info("Not purging build dir as requested: %s", build_dir)
     else:
       if keep_source_dir:
-        raise NoSourceDirError;
+        raise NoSourceDirError
 
   def _watchfile_name(self):
     watchfile = 'debian/watch'
@@ -269,29 +272,28 @@ class DebBuild(object):
     tarball = os.path.join(tarballdir,self._tarball_name())
     info("Looking for %s to use as upstream source", tarball)
     if not os.path.exists(tarball):
-      tarballdir = os.path.join('..', 'tarballs')
+      compat_tarballdir = os.path.join('..', 'tarballs')
       found = False
-      if tarballdir != self._properties.tarball_dir():
-        compat_tarball = os.path.join(tarballdir,self._tarball_name())
+      if compat_tarballdir != self._properties.tarball_dir():
+        compat_tarball = os.path.join(compat_tarballdir,self._tarball_name())
         info("For compatibility looking for %s to use as upstream source",
                 compat_tarball)
         if os.path.exists(compat_tarball):
           found = True
           tarball = compat_tarball
       if not found:
-        if self._get_upstream_from_archive():
-          return tarball
         if not os.path.exists(tarballdir):
-          os.mkdir(tarballdir)
+          os.makedirs(tarballdir)
         else:
           if not os.path.isdir(tarballdir):
-            raise DebianError('%s is not a directory.' % tarballdir)
+            raise NotADirectory(tarballdir)
+        if self._get_upstream_from_archive():
+          return tarball
         if self._has_watch():
           self._get_upstream_from_watch()
           return tarball
         self._get_upstream_using_orig_source()
         return tarball
-        raise DebianError('Could not find upstream tarball at '+tarball)
     return tarball
 
   def _tarball_name(self):
@@ -340,7 +342,7 @@ class DebBuild(object):
     proc = subprocess.Popen(builder, shell=True, cwd=source_dir)
     proc.wait()
     if proc.returncode != 0:
-      raise BuildFailedError;
+      raise BuildFailedError
 
   def clean(self):
     """This removes the build directory."""

@@ -28,7 +28,11 @@ from bzrlib.errors import (NoSuchFile,
                            )
 from bzrlib.tests import TestCaseInTempDir
 
-from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
+from bzrlib.plugins.builddeb.repack_tarball import (
+        repack_tarball,
+        get_repacker_class,
+        )
 
 
 def touch(filename):
@@ -67,9 +71,14 @@ class TestRepackTarball(TestCaseInTempDir):
     self.failUnlessExists(self.old_tarball)
 
   def test_repack_tarball_non_extant(self):
-    self.assertRaises(NoSuchFile, repack_tarball, self.old_tarball,
-                      self.new_tarball)
-  
+    error = NoSuchFile
+    if (get_repacker_class(self.old_tarball) is None):
+        # directory, can't really be detected remotely, so we have a
+        # error that could mean two things
+        error = UnsupportedRepackFormat
+    self.assertRaises(error, repack_tarball, self.old_tarball,
+            self.new_tarball)
+
   def test_repack_tarball_result_extant(self):
     self.create_old_tarball()
     touch(self.new_tarball)
@@ -116,7 +125,8 @@ class TestRepackTarball(TestCaseInTempDir):
     self.create_old_tarball()
     target_dir = 'tarballs'
     touch(target_dir)
-    self.assertRaises(NotADirectory, repack_tarball, self.old_tarball,
+    # transport gives NoSuchFile rather than NotADirectory for this
+    self.assertRaises(NoSuchFile, repack_tarball, self.old_tarball,
                       self.new_tarball, target_dir=target_dir)
     self.failUnlessExists(self.old_tarball)
     self.failIfExists(self.new_tarball)

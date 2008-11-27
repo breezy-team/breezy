@@ -81,23 +81,23 @@ def find_changelog(t, merge):
                 changelog_file = 'changelog'
                 larstiq = True
                 if not t.has_filename(changelog_file):
-                    raise MissingChangelogError("debian/changelog or changelog")
+                    raise MissingChangelogError('"debian/changelog" or '
+                            '"changelog"')
             else:
-                raise MissingChangelogError("debian/changelog")
-        else:
-            if merge and t.has_filename('changelog'):
-                # If it is a "larstiq" pacakge and debian is a symlink to
-                # "." then it will have found debian/changelog. Try and detect
-                # this.
-                if (t.kind(t.path2id('debian')) == 'symlink' and 
-                    t.get_symlink_target(t.path2id('debian')) == '.'):
-                    changelog_file = 'changelog'
-                    larstiq = True
-            mutter("Using '%s' to get package information", changelog_file)
-            changelog_id = t.path2id(changelog_file)
-            if changelog_id is None:
-                raise AddChangelogError(changelog_file)
-            contents = t.get_file_text(changelog_id)
+                raise MissingChangelogError('"debian/changelog"')
+        elif merge and t.has_filename('changelog'):
+            # If it is a "larstiq" pacakge and debian is a symlink to
+            # "." then it will have found debian/changelog. Try and detect
+            # this.
+            if (t.kind(t.path2id('debian')) == 'symlink' and 
+                t.get_symlink_target(t.path2id('debian')) == '.'):
+                changelog_file = 'changelog'
+                larstiq = True
+        mutter("Using '%s' to get package information", changelog_file)
+        changelog_id = t.path2id(changelog_file)
+        if changelog_id is None:
+            raise AddChangelogError(changelog_file)
+        contents = t.get_file_text(changelog_id)
     finally:
        t.unlock()
     changelog = Changelog()

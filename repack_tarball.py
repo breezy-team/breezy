@@ -24,120 +24,74 @@ from StringIO import StringIO
 import tarfile
 import bz2
 import sha
+import shutil
+import time
 import zipfile
 
 from bzrlib.errors import (
                            FileExists,
-                           BzrCommandError,
-                           NotADirectory,
                            )
 from bzrlib.transport import get_transport
 from bzrlib import urlutils
 
-def _get_file_from_location(location):
-    base_dir, path = urlutils.split(location)
-    transport = get_transport(base_dir)
-    return transport.get(path)
+from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
 
-def repack_tarball(orig_name, new_name, target_dir=None):
-  """Repack the file/dir named to a .tar.gz with the chosen name.
 
-  This function takes a named file of either .tar.gz, .tar .tgz .tar.bz2 
-  or .zip type, or a directory, and creates the file named in the second
-  argument in .tar.gz format.
+class TgzRepacker(object):
+    """Repacks something to be a .tar.gz"""
 
-  If target_dir is specified then that directory will be created if it
-  doesn't exist, and the new_name will be interpreted relative to that
-  directory.
-  
-  The source must exist, and the target cannot exist.
+    def __init__(self, source_f):
+        """Create a repacker that repacks what is in source_f.
 
-  :param orig_name: the curent name of the file/dir
-  :type orig_name: string
-  :param new_name: the desired name of the tarball
-  :type new_name: string
-  :keyword target_dir: the directory to consider new_name relative to, and
-                       will be created if non-existant.
-  :type target_dir: string
-  :return: None
-  :throws NoSuchFile: if orig_name doesn't exist.
-  :throws NotADirectory: if target_dir exists and is not a directory.
-  :throws FileExists: if the target filename (after considering target_dir)
-                      exists, and is not identical to the source.
-  :throws BzrCommandError: if the source isn't supported for repacking.
-  """
-  if target_dir is not None:
-    if not os.path.exists(target_dir):
-      os.mkdir(target_dir)
-    else:
-      if not os.path.isdir(target_dir):
-        raise NotADirectory(target_dir)
-    new_name = os.path.join(target_dir, new_name)
-  old_contents = None
-  if isinstance(orig_name, unicode):
-    orig_name = orig_name.encode('utf-8')
-  if isinstance(new_name, unicode):
-    new_name = new_name.encode('utf-8')
-  if os.path.exists(new_name):
-    if not orig_name.endswith('.tar.gz'):
-      raise FileExists(new_name)
-    trans_file = _get_file_from_location(orig_name)
-    try:
-      old_contents = trans_file.read()
-    finally:
-      trans_file.close()
-    orig_sha = sha.sha(old_contents).hexdigest()
-    f = open(new_name)
-    try:
-      new_sha = sha.sha(f.read()).hexdigest()
-    finally:
-      f.close()
-    if orig_sha != new_sha:
-      raise FileExists(new_name)
-    return
-  if os.path.isdir(orig_name):
-    tar = tarfile.open(new_name, 'w:gz')
-    try:
-      tar.add(orig_name, os.path.basename(orig_name))
-    finally:
-      tar.close()
-  else:
-    if old_contents is None:
-      trans_file = _get_file_from_location(orig_name)
-      try:
-        old_contents = trans_file.read()
-      finally:
-        trans_file.close()
-    base_dir, path = urlutils.split(orig_name)
-    transport = get_transport(base_dir)
-    trans_file = transport.get(path)
-    if orig_name.endswith('.tar.gz') or orig_name.endswith('.tgz'):
-      dest = open(new_name, 'wb')
-      try:
-        dest.write(old_contents)
-      finally:
-        dest.close()
-    elif orig_name.endswith('.tar'):
-      gz = gzip.GzipFile(new_name, 'w')
-      try:
-        gz.write(old_contents)
-      finally:
-        gz.close()
-    elif orig_name.endswith('.tar.bz2'):
-      old_tar_content_decompressed = bz2.decompress(old_contents)
-      gz = gzip.GzipFile(new_name, 'w')
-      try:
-        gz.write(old_tar_content_decompressed)
-      finally:
-        gz.close()
-    elif orig_name.endswith('.zip') or zipfile.is_zipfile(orig_name):
-      import time
-      old_contents_f = StringIO(old_contents)
-      zip = zipfile.ZipFile(old_contents_f, "r")
-      try:
-        tar = tarfile.open(new_name, 'w:gz')
+        :param source_f: a file object to read the source from.
+        """
+        self.source_f = source_f
+
+    def repack(self, target_f):
+        """Repacks and writes the repacked tar.gz to target_f.
+
+        target_f should be closed after calling this method.
+
+        :param target_f: a file object to write the result to.
+        """
+        raise NotImplementedError(self.repack)
+
+
+class TgzTgzRepacker(TgzRepacker):
+    """A TgzRepacker that just copies."""
+
+    def repack(self, target_f):
+        shutil.copyfileobj(self.source_f, target_f)
+
+
+class TarTgzRepacker(TgzRepacker):
+    """A TgzRepacker that just gzips the input."""
+
+    def repack(self, target_f):
+        gz = gzip.GzipFile(mode='w', fileobj=target_f)
         try:
-          for info in zip.infolist():
+            shutil.copyfileobj(self.source_f, gz)
+        finally:
+            gz.close()
+
+
+class Tbz2TgzRepacker(TgzRepacker):
+    """A TgzRepacker that repacks from a .tar.bz2."""
+
+    def repack(self, target_f):
+        content = bz2.decompress(self.source_f.read())
+        gz = gzip.GzipFile(mode='w', fileobj=target_f)
+        try:
+            gz.write(content)
+        finally:
+            gz.close()
+
+
+class ZipTgzRepacker(TgzRepacker):
+    """A TgzRepacker that repacks from a .zip file."""
+
+    def _repack_zip_to_tar(self, zip, tar):
+        for info in zip.infolist():
             tarinfo = tarfile.TarInfo(info.filename)
             tarinfo.size = info.file_size
             tarinfo.mtime = time.mktime(info.date_time + (0, 1, -1))
@@ -149,12 +103,116 @@ def repack_tarball(orig_name, new_name, target_dir=None):
                 tarinfo.type = tarfile.REGTYPE
             contents = StringIO(zip.read(info.filename))
             tar.addfile(tarinfo, contents)
+
+    def repack(self, target_f):
+        zip = zipfile.ZipFile(self.source_f, "r")
+        try:
+            tar = tarfile.open(mode="w:gz", fileobj=target_f)
+            try:
+                self._repack_zip_to_tar(zip, tar)
+            finally:
+                tar.close()
         finally:
-          tar.close()
-      finally:
-        zip.close()
+            zip.close()
+
+
+def get_repacker_class(source_filename):
+    """Return the appropriate repacker based on the file extension."""
+    if (source_filename.endswith(".tar.gz")
+            or source_filename.endswith(".tgz")):
+        return TgzTgzRepacker
+    if (source_filename.endswith(".tar.bz2")
+            or source_filename.endswith(".tbz2")):
+        return Tbz2TgzRepacker
+    if source_filename.endswith(".tar"):
+        return TarTgzRepacker
+    if source_filename.endswith(".zip"):
+        return ZipTgzRepacker
+    return None
+
+
+def _get_file_from_location(location):
+    base_dir, path = urlutils.split(location)
+    transport = get_transport(base_dir)
+    return transport.get(path)
+
+
+def repack_tarball(source_name, new_name, target_dir=None):
+    """Repack the file/dir named to a .tar.gz with the chosen name.
+
+    This function takes a named file of either .tar.gz, .tar .tgz .tar.bz2 
+    or .zip type, or a directory, and creates the file named in the second
+    argument in .tar.gz format.
+
+    If target_dir is specified then that directory will be created if it
+    doesn't exist, and the new_name will be interpreted relative to that
+    directory.
+
+    The source must exist, and the target cannot exist, unless it is identical
+    to the source.
+
+    :param source_name: the curent name of the file/dir
+    :type source_name: string
+    :param new_name: the desired name of the tarball
+    :type new_name: string
+    :keyword target_dir: the directory to consider new_name relative to, and
+                         will be created if non-existant.
+    :type target_dir: string
+    :return: None
+    :throws NoSuchFile: if source_name doesn't exist.
+    :throws FileExists: if the target filename (after considering target_dir)
+                        exists, and is not identical to the source.
+    :throws BzrCommandError: if the source isn't supported for repacking.
+    """
+    if target_dir is None:
+        target_dir = "."
+    if isinstance(source_name, unicode):
+        source_name = source_name.encode('utf-8')
+    if isinstance(new_name, unicode):
+        new_name = new_name.encode('utf-8')
+    if isinstance(target_dir, unicode):
+        target_dir = target_dir.encode('utf-8')
+    extra, new_name = os.path.split(new_name)
+    target_transport = get_transport(os.path.join(target_dir, extra))
+    if target_transport.has(new_name):
+        if not source_name.endswith('.tar.gz'):
+            raise FileExists(new_name)
+        source_f = _get_file_from_location(source_name)
+        try:
+            source_sha = sha.sha(source_f.read()).hexdigest()
+        finally:
+            source_f.close()
+        target_f = target_transport.get(new_name)
+        try:
+            target_sha = sha.sha(target_f.read()).hexdigest()
+        finally:
+            target_f.close()
+        if source_sha != target_sha:
+            raise FileExists(new_name)
+        return
+    if os.path.isdir(source_name):
+        target_transport.ensure_base()
+        target_f = target_transport.open_write_stream(new_name)
+        try:
+            tar = tarfile.open(mode='w:gz', fileobj=target_f)
+            try:
+                tar.add(source_name, os.path.basename(source_name))
+            finally:
+                tar.close()
+        finally:
+            target_f.close()
     else:
-      raise BzrCommandError('Unsupported format for repack: %s' % orig_name)
-
-# vim: ts=2 sts=2 sw=2
-
+        repacker_cls = get_repacker_class(source_name)
+        if repacker_cls is None:
+            raise UnsupportedRepackFormat(source_name)
+        target_transport.ensure_base()
+        target_f = target_transport.open_write_stream(new_name)
+        try:
+            source_f = _get_file_from_location(source_name)
+            try:
+                repacker = repacker_cls(source_f)
+                repacker.repack(target_f)
+            finally:
+                source_f.close()
+        finally:
+            target_f.close()

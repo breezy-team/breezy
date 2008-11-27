@@ -27,6 +27,8 @@ from repack_tarball import repack_tarball
 from bzrlib.errors import BzrCommandError, FileExists
 from bzrlib.tests import TestCaseInTempDir
 
+from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
+
 
 def touch(filename):
   f = open(filename, 'w')
@@ -71,7 +73,7 @@ class TestRepackTarballExtra(TestCaseInTempDir):
     f = open(old_tarball, 'w')
     f.close()
     self.failUnlessExists(old_tarball)
-    self.assertRaises(BzrCommandError, repack_tarball, old_tarball,
+    self.assertRaises(UnsupportedRepackFormat, repack_tarball, old_tarball,
                       'package_0.2.orig.tar.gz')
 
   def test_conditional_repack_tarball_different(self):

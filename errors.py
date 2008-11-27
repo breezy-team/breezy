@@ -1,6 +1,6 @@
 #    errors.py -- Error classes
 #    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -22,99 +22,96 @@ from bzrlib.errors import BzrError
 
 
 class DebianError(BzrError):
-  _fmt = """A Debian packaging error occurred: %(message)s"""
+    _fmt = "A Debian packaging error occurred: %(asdf)s"
 
-  def __init__(self, message):
-    BzrError.__init__(self)
-    self.message = message
+    def __init__(self, cause):
+        BzrError.__init__(cause, cause=cause)
 
-class NoSourceDirError(DebianError):
-  _fmt = """There is no existing source directory to use. Use --export-only or 
-  --dont-purge to get one that can be used"""
 
-  def __init__(self):
-    DebianError.__init__(self, None)
+class NoSourceDirError(BzrError):
+    _fmt = ("There is no existing source directory to use. Use "
+            "--export-only or --dont-purge to get one that can be used")
 
-class BuildFailedError(DebianError):
-  _fmt = """The build failed."""
-  def __init__(self):
-    DebianError.__init__(self, None)
 
-class StopBuild(DebianError):
-  _fmt = """Stopping the build: %(reason)s."""
+class BuildFailedError(BzrError):
+    _fmt = "The build failed."
 
-  def __init__(self, reason):
-    BzrError.__init__(self)
-    self.reason = reason
 
-class MissingChangelogError(DebianError):
-  _fmt = """Could not find changelog at %(location)s."""
+class StopBuild(BzrError):
+    _fmt = "Stopping the build: %(reason)s."
 
-  def __init__(self, locations):
-    BzrError.__init__(self)
-    self.location = locations
+    def __init__(self, reason):
+        self.reason = reason
 
-class AddChangelogError(DebianError):
-  _fmt = """Please add %(changelog)s to the branch using bzr add."""
 
-  def __init__(self, changelog):
-    BzrError.__init__(self)
-    self.changelog = changelog
+class MissingChangelogError(BzrError):
+    _fmt = 'Could not find changelog at %(locations)s.'
 
-class ImportError(DebianError):
-  _fmt = """The files could not be imported: %(reason)s"""
+    def __init__(self, locations):
+        self.location = locations
 
-  def __init__(self, reason):
-    BzrError.__init__(self)
-    self.reason = reason
+
+class AddChangelogError(BzrError):
+    _fmt = 'Please add "%(changelog)s" to the branch using bzr add.'
+
+    def __init__(self, changelog):
+        self.changelog = changelog
+
+
+class ImportError(BzrError):
+    _fmt = "The files could not be imported: %(reason)s"
+
+    def __init__(self, reason):
+        self.reason = reason
+
 
 class HookFailedError(BzrError):
-  _fmt = """The %(hook_name)s hook failed."""
+    _fmt = 'The "%(hook_name)s" hook failed.'
 
-  def __init__(self, hook_name):
-    BzrError.__init__(self)
-    self.hook_name = hook_name
+    def __init__(self, hook_name):
+        self.hook_name = hook_name
 
 
 class OnlyImportSingleDsc(BzrError):
-  _fmt = """You are only allowed to import one version in incremental mode."""
+    _fmt = "You are only allowed to import one version in incremental mode."
+
 
 class UnknownType(BzrError):
-  _fmt = """Cannot extract "%(path)s" from archive as it is an unknown type."""
+    _fmt = 'Cannot extract "%(path)s" from archive as it is an unknown type.'
 
-  def __init__(self, path):
-    self.path = path
+    def __init__(self, path):
+        self.path = path
 
 
 class MissingChanges(BzrError):
-  _fmt = """Could not find .changes file: %(changes)s."""
+    _fmt = "Could not find .changes file: %(changes)s."
 
-  def __init__(self, changes):
-    self.changes = changes
+    def __init__(self, changes):
+        self.changes = changes
 
 
 class UpstreamAlreadyImported(BzrError):
-    _fmt = """Upstream version %(version)s has already been imported."""
+    _fmt = 'Upstream version "%(version)s" has already been imported.'
 
     def __init__(self, version):
         self.version = str(version)
 
 
 class AmbiguousPackageSpecification(BzrError):
-    _fmt = ("You didn't specify a distribution with the package "
-            "specification, and tags exists that state that the "
-            "version that you specified has been uploaded to more "
-            "than one distribution. Please specify which version "
-            "you wish to refer to by by appending ':debian' or "
-            "':ubuntu' to the revision specifier: %(specifier)s")
+    _fmt = ('You didn\'t specify a distribution with the package '
+            'specification, and tags exists that state that the '
+            'version that you specified has been uploaded to more '
+            'than one distribution. Please specify which version '
+            'you wish to refer to by by appending ":debian" or '
+            '":ubuntu" to the revision specifier: %(specifier)s')
 
     def __init__(self, specifier):
         self.specifier = specifier
 
 
 class UnknownVersion(BzrError):
-    _fmt = ("No tag exists in this branch indicating that version "
-            "'%(version)s' has been uploaded.")
+    _fmt = ('No tag exists in this branch indicating that version '
+            '"%(version)s" has been uploaded.')
 
     def __init__(self, version):
         self.version = version
@@ -131,4 +128,10 @@ class VersionNotSpecified(BzrError):
     _fmt = "You did not specify a package version."
 
 
-# vim: ts=2 sts=2 sw=2
+class UnsupportedRepackFormat(BzrError):
+    _fmt = ('Either the file extension of "%(location)s" indicates that '
+            'it is a format unsupported for repacking or it is a '
+            'remote directory.')
+
+    def __init__(self, location):
+        self.location = location

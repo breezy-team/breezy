@@ -76,11 +76,11 @@ bzr-builddeb (0.17) unstable; urgency=low
 
 class FindChangelogTests(TestCaseWithTransport):
 
-  def write_changelog(self, filename):
-      f = open(filename, 'wb')
-      try:
-          f.write(cl_block1)
-          f.write("""\
+    def write_changelog(self, filename):
+        f = open(filename, 'wb')
+        try:
+            f.write(cl_block1)
+            f.write("""\
 bzr-builddeb (0.16.2) unstable; urgency=low
 
   * loosen the dependency on bzr. bzr-builddeb seems to be not be broken
@@ -88,8 +88,8 @@ bzr-builddeb (0.16.2) unstable; urgency=low
 
  -- Reinhard Tartler <siretart@tauware.de>  Tue, 12 Jun 2007 19:45:38 +0100
 """)
-      finally:
-          f.close()
+        finally:
+            f.close()
 
     def test_find_changelog_std(self):
         tree = self.make_branch_and_tree('.')
