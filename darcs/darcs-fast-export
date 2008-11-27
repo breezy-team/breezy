@@ -129,6 +129,14 @@ def parse_inventory(sock=None):
 		sock = gzip.open(os.path.join("_darcs", "inventories", prev))
 		parse_inventory(sock)
 
+def inline_path(path):
+	sock = open(path)
+	buf = sock.read()
+	sock.close()
+	# darcs does not track the executable bit :/
+	print "M 644 inline %s" % path
+	print "data %s\n%s" % (len(buf), buf)
+
 # Option Parser
 usage="%prog [options] darcsrepo"
 opp = optparse.OptionParser(usage=usage)
@@ -285,17 +293,12 @@ for i in patches:
 	if markcount > 1:
 		print "from :%s" % (markcount-1)
 	# export the files
-	for j in i.getElementsByTagName('add_file') + i.getElementsByTagName('modify_file'):
-		path = j.firstChild.toxml().strip()
-		sock = open(path)
-		buf = sock.read()
-		sock.close()
-		# darcs does not track the executable bit :/
-		print "M 644 inline %s" % path
-		print "data %s\n%s" % (len(buf), buf)
+	for j in i.getElementsByTagName('add_file'):
+		inline_path(j.firstChild.toxml().strip())
 	for j in i.getElementsByTagName('move'):
-		if os.path.exists(j.attributes['from'].value):
-			print "R %s %s" % (j.attributes['from'].value, j.attributes['to'].value)
+		print "R %s %s" % (j.attributes['from'].value, j.attributes['to'].value)
+	for j in i.getElementsByTagName('modify_file'):
+		inline_path(j.firstChild.toxml().strip())
 	for j in i.getElementsByTagName('remove_file'):
 		print "D %s" % j.firstChild.toxml().strip()
 	if message[:4] == "TAG ":
