@@ -188,14 +188,14 @@ else:
 sys.stdout.flush()
 
 darcs2 = False
-directpatch = True
+oldfashionedpatch = True
 cwd = os.getcwd()
 if os.path.exists(os.path.join(origin, "_darcs", "format")):
 	sock = open(os.path.join(origin, "_darcs", "format"))
 	format = [x.strip() for x in sock]
 	sock.close()
 	darcs2 = 'darcs-2' in format
-	directpatch = not 'hashed' in format
+	oldfashionedpatch = not 'hashed' in format
 if not options.import_marks or not os.path.exists(working):
 	# init the tmp darcs repo
 	os.mkdir(working)
@@ -230,7 +230,7 @@ else:
 for i in patches:
 	# apply the patch
 	hash = i.attributes['hash'].value
-	if directpatch:
+	if oldfashionedpatch:
 		buf = ["\nNew patches:\n"]
 		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
 		buf.append(sock.read())
