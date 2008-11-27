@@ -107,6 +107,28 @@ def log(s):
 	logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
 	logsock.flush()
 
+hashes = []
+def parse_inventory(sock=None):
+	prev = None
+	nextprev = False
+	buf = []
+	if not sock:
+		sock = open(os.path.join("_darcs", "hashed_inventory"))
+	for i in sock.readlines():
+		if i.startswith("hash"):
+			buf.insert(0, i[6:-1])
+		if i.startswith("Starting with inventory:"):
+			nextprev = True
+		elif nextprev:
+			prev = i[:-1]
+			nextprev = False
+	sock.close()
+	for i in buf:
+		hashes.insert(0, i)
+	if prev:
+		sock = gzip.open(os.path.join("_darcs", "inventories", prev))
+		parse_inventory(sock)
+
 # Option Parser
 usage="%prog [options] darcsrepo"
 opp = optparse.OptionParser(usage=usage)
@@ -196,6 +218,10 @@ if os.path.exists(os.path.join(origin, "_darcs", "format")):
 	sock.close()
 	darcs2 = 'darcs-2' in format
 	oldfashionedpatch = not 'hashed' in format
+if not oldfashionedpatch:
+	progress("parsing the inventory")
+	os.chdir(origin)
+	parse_inventory()
 if not options.import_marks or not os.path.exists(working):
 	# init the tmp darcs repo
 	os.mkdir(working)
@@ -244,16 +270,18 @@ for i in patches:
 		log("Applying %s:\n%s" % (hash, pout.read()))
 		pout.close()
 	else:
-		os.chdir(origin)
-		log("Extracting next patch\n")
-		sock = os.popen("darcs send -a -o %s --matches='hash %s' %s" % (patchfile, hash, working))
-		log("Extracted %s:\n%s" % (hash, sock.read()))
+		buf = ["\nNew patches:\n"]
+		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hashes[count-1]))
+		buf.append(sock.read())
 		sock.close()
-		os.chdir(working)
-		log("Applying next patch\n")
-		sock = os.popen("darcs apply --allow-conflicts < %s" % patchfile)
-		log("Applied %s:\n%s" % (hash, sock.read()))
+		sock = os.popen("darcs changes --context")
+		buf.append(sock.read())
 		sock.close()
+		pout, pin = popen2.popen2("darcs apply --allow-conflicts")
+		pin.write("".join(buf))
+		pin.close()
+		log("Applying %s:\n%s" % (hash, pout.read()))
+		pout.close()
 	message = get_patchname(i)
 	# export the commit
 	print "commit %s" % git_branch
