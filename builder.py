@@ -292,8 +292,8 @@ class DebBuild(object):
   def _tarball_name(self):
     """Returns the name that the upstream tarball should have."""
     package = self._properties.package()
-    upstream = self._properties.upstream_version()
-    return tarball_name(package, upstream)
+    version = self._properties.full_version()
+    return tarball_name(package, version)
   
   def _export_upstream_branch(self):
     return False
