@@ -339,10 +339,10 @@ for i in patches:
 		print "from :%s" % (markcount-1)
 	# export the files
 	nodes = simplify_nodes(i)
-	for j in nodes['add_file']:
-		inline_path(j)
 	for j in nodes['move']:
 		print "R %s %s" % (j[0], j[1])
+	for j in nodes['add_file']:
+		inline_path(j)
 	for j in nodes['modify_file']:
 		inline_path(j)
 	for j in nodes['remove_file']:
