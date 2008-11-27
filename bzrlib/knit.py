@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -95,6 +95,7 @@ from bzrlib.errors import (
     KnitHeaderError,
     RevisionNotPresent,
     RevisionAlreadyPresent,
+    SHA1KnitCorrupt,
     )
 from bzrlib.osutils import (
     contains_whitespace,
@@ -769,8 +770,9 @@ class KnitVersionedFiles(VersionedFiles):
         present_parents = []
         if parent_texts is None:
             parent_texts = {}
-        # Do a single query to ascertain parent presence.
-        present_parent_map = self.get_parent_map(parents)
+        # Do a single query to ascertain parent presence; we only compress
+        # against parents in the same kvf.
+        present_parent_map = self._index.get_parent_map(parents)
         for parent in parents:
             if parent in present_parent_map:
                 present_parents.append(parent)
@@ -1054,12 +1056,7 @@ class KnitVersionedFiles(VersionedFiles):
             text = content.text()
             actual_sha = sha_strings(text)
             if actual_sha != digest:
-                raise KnitCorrupt(self,
-                    '\n  sha-1 %s'
-                    '\n  of reconstructed text does not match'
-                    '\n  expected %s'
-                    '\n  for version %s' %
-                    (actual_sha, digest, key))
+                raise SHA1KnitCorrupt(self, actual_sha, digest, key, text)
             text_map[key] = text
         return text_map, final_content
 
@@ -1327,6 +1324,11 @@ class KnitVersionedFiles(VersionedFiles):
         # can't generate annotations from new deltas until their basis parent
         # is present anyway, so we get away with not needing an index that
         # includes the new keys.
+        #
+        # See <http://launchpad.net/bugs/300177> about ordering of compression
+        # parents in the records - to be conservative, we insist that all
+        # parents must be present to avoid expanding to a fulltext.
+        #
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
@@ -1334,7 +1336,21 @@ class KnitVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
-            if record.storage_kind in knit_types:
+            elif ((record.storage_kind in knit_types)
+                  and (not parents
+                       or not self._fallback_vfs
+                       or not self._index.missing_keys(parents)
+                       or self.missing_keys(parents))):
+                # we can insert the knit record literally if either it has no
+                # compression parent OR we already have its basis in this kvf
+                # OR the basis is not present even in the fallbacks.  In the
+                # last case it will either turn up later in the stream and all
+                # will be well, or it won't turn up at all and we'll raise an
+                # error at the end.
+                #
+                # TODO: self.has_key is somewhat redundant with
+                # self._index.has_key; we really want something that directly
+                # asks if it's only present in the fallbacks. -- mbp 20081119
                 if record.storage_kind not in native_types:
                     try:
                         adapter_key = (record.storage_kind, "knit-delta-gz")
@@ -1362,15 +1378,20 @@ class KnitVersionedFiles(VersionedFiles):
                 index_entry = (record.key, options, access_memo, parents)
                 buffered = False
                 if 'fulltext' not in options:
-                    basis_parent = parents[0]
+                    # Not a fulltext, so we need to make sure the compression
+                    # parent will also be present.
                     # Note that pack backed knits don't need to buffer here
                     # because they buffer all writes to the transaction level,
                     # but we don't expose that difference at the index level. If
                     # the query here has sufficient cost to show up in
                     # profiling we should do that.
-                    if basis_parent not in self.get_parent_map([basis_parent]):
+                    #
+                    # They're required to be physically in this
+                    # KnitVersionedFiles, not in a fallback.
+                    compression_parent = parents[0]
+                    if self.missing_keys([compression_parent]):
                         pending = buffered_index_entries.setdefault(
-                            basis_parent, [])
+                            compression_parent, [])
                         pending.append(index_entry)
                         buffered = True
                 if not buffered:
@@ -1379,6 +1400,9 @@ class KnitVersionedFiles(VersionedFiles):
                 self.add_lines(record.key, parents,
                     split_lines(record.get_bytes_as('fulltext')))
             else:
+                # Not a fulltext, and not suitable for direct insertion as a
+                # delta, either because it's not the right format, or because
+                # it depends on a base only present in the fallback kvfs.
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
@@ -1399,8 +1423,10 @@ class KnitVersionedFiles(VersionedFiles):
                     del buffered_index_entries[key]
         # If there were any deltas which had a missing basis parent, error.
         if buffered_index_entries:
-            raise errors.RevisionNotPresent(buffered_index_entries.keys()[0],
-                self)
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "record_stream refers to compression parents not in %r:\n%s"
+                % (self, pformat(sorted(buffered_index_entries.keys()))))
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
@@ -1417,9 +1443,11 @@ class KnitVersionedFiles(VersionedFiles):
         is an iterator).
 
         NOTES:
-         * Lines are normalised by the underlying store: they will all have \n
+         * Lines are normalised by the underlying store: they will all have \\n
            terminators.
          * Lines are returned in arbitrary order.
+         * If a requested key did not change any lines (or didn't have any
+           lines), it may not be mentioned at all in the result.
 
         :return: An iterator over (line, key).
         """
@@ -1451,6 +1479,14 @@ class KnitVersionedFiles(VersionedFiles):
             # change to integrate into the rest of the codebase. RBC 20071110
             for line in line_iterator:
                 yield line, key
+        # If there are still keys we've not yet found, we look in the fallback
+        # vfs, and hope to find them there.  Note that if the keys are found
+        # but had no changes or no content, the fallback may not return
+        # anything.  
+        if keys and not self._fallback_vfs:
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         for source in self._fallback_vfs:
             if not keys:
                 break
@@ -1459,10 +1495,6 @@ class KnitVersionedFiles(VersionedFiles):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        if keys:
-            # XXX: strictly the second parameter is meant to be the file id
-            # but it's not easily accessible here.
-            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
@@ -1669,7 +1701,6 @@ class KnitVersionedFiles(VersionedFiles):
         for source in sources:
             result.update(source.keys())
         return result
-
 
 
 class _KndxIndex(object):
@@ -1935,6 +1966,8 @@ class _KndxIndex(object):
         entry = self._kndx_cache[prefix][0][suffix]
         return key, entry[2], entry[3]
 
+    has_key = _mod_index._has_key_from_parent_map
+    
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
         sio = StringIO()
@@ -1999,6 +2032,8 @@ class _KndxIndex(object):
                     del self._cache
                     del self._filename
                     del self._history
+
+    missing_keys = _mod_index._missing_keys_from_parent_map
 
     def _partition_keys(self, keys):
         """Turn keys into a dict of prefix:suffix_list."""
@@ -2286,6 +2321,8 @@ class _KnitGraphIndex(object):
         node = self._get_node(key)
         return self._node_to_position(node)
 
+    has_key = _mod_index._has_key_from_parent_map
+
     def keys(self):
         """Get all the keys in the collection.
         
@@ -2294,6 +2331,8 @@ class _KnitGraphIndex(object):
         self._check_read()
         return [node[1] for node in self._graph_index.iter_all_entries()]
     
+    missing_keys = _mod_index._missing_keys_from_parent_map
+
     def _node_to_position(self, node):
         """Convert an index value to position details."""
         bits = node[2][1:].split(' ')
@@ -2668,6 +2707,7 @@ class _KnitAnnotator(object):
                 (rev_id, parent_ids, record) = nodes_to_annotate.pop()
                 (index_memo, compression_parent, parents,
                  record_details) = self._all_build_details[rev_id]
+                blocks = None
                 if compression_parent is not None:
                     comp_children = self._compression_children[compression_parent]
                     if rev_id not in comp_children:
@@ -2694,14 +2734,16 @@ class _KnitAnnotator(object):
                         copy_base_content=(not reuse_content))
                     fulltext = self._add_fulltext_content(rev_id,
                                                           fulltext_content)
-                    blocks = KnitContent.get_line_delta_blocks(delta,
-                            parent_fulltext, fulltext)
+                    if compression_parent == parent_ids[0]:
+                        # the compression_parent is the left parent, so we can
+                        # re-use the delta
+                        blocks = KnitContent.get_line_delta_blocks(delta,
+                                parent_fulltext, fulltext)
                 else:
                     fulltext_content = self._knit._factory.parse_fulltext(
                         record, rev_id)
                     fulltext = self._add_fulltext_content(rev_id,
                         fulltext_content)
-                    blocks = None
                 nodes_to_annotate.extend(
                     self._add_annotation(rev_id, fulltext, parent_ids,
                                      left_matching_blocks=blocks))
@@ -2722,7 +2764,7 @@ class _KnitAnnotator(object):
 
         :param key: The key to annotate.
         """
-        if True or len(self._knit._fallback_vfs) > 0:
+        if len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
         records = self._get_build_graph(key)

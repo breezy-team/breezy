@@ -209,25 +209,25 @@ clean-win32: clean-docs
 
 .PHONY: dist dist-upload-escudero check-dist-tarball
 
-# build a distribution tarball.
+# build a distribution tarball and zip file.
 #
 # this method of copying the pyrex generated files is a bit ugly; it would be
 # nicer to generate it from distutils.
-#
-# these are a bit ubuntu-specific.
 dist: 
 	version=`./bzr version --short` && \
 	echo Building distribution of bzr $$version && \
 	expbasedir=`mktemp -t -d tmp_bzr_dist.XXXXXXXXXX` && \
 	expdir=$$expbasedir/bzr-$$version && \
 	tarball=$$PWD/../bzr-$$version.tar.gz && \
+	zipball=$$PWD/../bzr-$$version.zip && \
 	$(MAKE) clean && \
 	$(MAKE) && \
 	bzr export $$expdir && \
 	cp bzrlib/*.c $$expdir/bzrlib/. && \
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
+	(cd $$expbasedir && zip -r $$zipball bzr-$$version) && \
 	gpg --detach-sign $$tarball && \
-	echo $$tarball done. && \
+	gpg --detach-sign $$zipball && \
 	rm -rf $$expbasedir
 
 # run all tests in a previously built tarball
@@ -245,10 +245,15 @@ check-dist-tarball:
 dist-upload-escudero:
 	version=`./bzr version --short` && \
 	tarball=../bzr-$$version.tar.gz && \
-	scp $$tarball $$tarball.sig \
+	zipball=../bzr-$$version.zip && \
+	scp $$zipball $$zipball.sig $$tarball $$tarball.sig \
 	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
 		&& \
 	echo verifying over http... && \
+	curl http://bazaar-vcs.org/releases/src/bzr-$$version.zip \
+		| diff -s - $$zipball && \
+	curl http://bazaar-vcs.org/releases/src/bzr-$$version.zip.sig \
+		| diff -s - $$zipball.sig 
 	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
 		| diff -s - $$tarball && \
 	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \

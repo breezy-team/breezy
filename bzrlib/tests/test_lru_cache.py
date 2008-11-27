@@ -213,6 +213,18 @@ class TestLRUCache(tests.TestCase):
         obj = object()
         self.assertIs(obj, cache.get(3, obj))
 
+    def test_keys(self):
+        cache = lru_cache.LRUCache(max_cache=5)
+
+        cache[1] = 2
+        cache[2] = 3
+        cache[3] = 4
+        self.assertEqual([1, 2, 3], sorted(cache.keys()))
+        cache[4] = 5
+        cache[5] = 6
+        cache[6] = 7
+        self.assertEqual([2, 3, 4, 5, 6], sorted(cache.keys()))
+
 
 class TestLRUSizeCache(tests.TestCase):
 
@@ -312,3 +324,11 @@ class TestLRUSizeCache(tests.TestCase):
         cache.cleanup()
         # Only the most recent fits after cleaning up
         self.assertEqual(7, cache._value_size)
+
+    def test_keys(self):
+        cache = lru_cache.LRUSizeCache(max_size=10)
+
+        cache[1] = 'a'
+        cache[2] = 'b'
+        cache[3] = 'cdef'
+        self.assertEqual([1, 2, 3], sorted(cache.keys()))

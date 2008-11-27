@@ -992,12 +992,9 @@ class TestSmartTCPServer(tests.TestCase):
         smart_server.start_background_thread('-' + self.id())
         try:
             transport = remote.RemoteTCPTransport(smart_server.get_url())
-            try:
-                transport.get('something')
-            except errors.TransportError, e:
-                self.assertContainsRe(str(e), 'some random exception')
-            else:
-                self.fail("get did not raise expected error")
+            err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+                transport.get, 'something')
+            self.assertContainsRe(str(err), 'some random exception')
             transport.disconnect()
         finally:
             smart_server.stop_background_thread()
@@ -1091,12 +1088,9 @@ class WritableEndToEndTests(SmartTCPTests):
         # asked for by the client. This gives meaningful and unsurprising errors
         # for users.
         self._captureVar('BZR_NO_SMART_VFS', None)
-        try:
-            self.transport.get('not%20a%20file')
-        except errors.NoSuchFile, e:
-            self.assertEqual('not%20a%20file', e.path)
-        else:
-            self.fail("get did not raise expected error")
+        err = self.assertRaises(
+            errors.NoSuchFile, self.transport.get, 'not%20a%20file')
+        self.assertEqual('not%20a%20file', err.path)
 
     def test_simple_clone_conn(self):
         """Test that cloning reuses the same connection."""
@@ -1400,8 +1394,9 @@ class TestRemoteTransport(tests.TestCase):
         client_medium = medium.SmartSimplePipesClientMedium(None, None, 'base')
         transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
+        err = errors.ErrorFromSmartServer(("ReadOnlyError", ))
         self.assertRaises(errors.TransportNotPossible,
-            transport._translate_error, ("ReadOnlyError", ))
+            transport._translate_error, err)
 
 
 class TestSmartProtocol(tests.TestCase):

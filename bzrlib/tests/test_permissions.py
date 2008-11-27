@@ -38,7 +38,6 @@ import urllib
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport

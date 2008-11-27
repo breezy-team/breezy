@@ -688,8 +688,21 @@ class Transport(object):
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
-                yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = offset_stack.next()
+                this_offset = cur_offset_and_size[0]
+                try:
+                    cur_offset_and_size = offset_stack.next()
+                except StopIteration:
+                    # Close the file handle as there will be no more data
+                    # The handle would normally be cleaned up as this code goes
+                    # out of scope, but as we are a generator, not all code
+                    # will re-enter once we have consumed all the expected
+                    # data. For example:
+                    #   zip(range(len(requests)), readv(foo, requests))
+                    # Will stop because the range is done, and not run the
+                    # cleanup code for the readv().
+                    fp.close()
+                    cur_offset_and_size = None
+                yield this_offset, this_data
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.
@@ -1022,22 +1035,31 @@ class Transport(object):
         implement it.
         """
         source = self.clone(from_relpath)
-        self.mkdir(to_relpath)
         target = self.clone(to_relpath)
+        target.mkdir('.')
+        source.copy_tree_to_transport(target)
+
+    def copy_tree_to_transport(self, to_transport):
+        """Copy a subtree from one transport to another.
+
+        self.base is used as the source tree root, and to_transport.base
+        is used as the target.  to_transport.base must exist (and be a
+        directory).
+        """
         files = []
         directories = ['.']
         while directories:
             dir = directories.pop()
             if dir != '.':
-                target.mkdir(dir)
-            for path in source.list_dir(dir):
+                to_transport.mkdir(dir)
+            for path in self.list_dir(dir):
                 path = dir + '/' + path
-                stat = source.stat(path)
+                stat = self.stat(path)
                 if S_ISDIR(stat.st_mode):
                     directories.append(path)
                 else:
                     files.append(path)
-        source.copy_to(files, target)
+        self.copy_to(files, to_transport)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory.

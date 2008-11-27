@@ -22,6 +22,13 @@ Once you've created a command you must register the command with
 ``bzrlib.commands.register_command(cmd_foo)``.  You must register the
 command when your file is imported, otherwise bzr will not see it.
 
+Specifying a plugin version number
+----------------------------------
+Simply define ``version_info`` to be a tuple defining the current version
+number of your plugin. eg.
+``version_info = (0, 9, 0)``
+``version_info = (0, 9, 0, 'dev', 0)``
+
 Plugin searching rules
 ----------------------
 

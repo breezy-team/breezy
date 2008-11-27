@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ __all__ = [
 from bisect import bisect_right
 from cStringIO import StringIO
 import re
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -50,6 +51,19 @@ _SIGNATURE = "Bazaar Graph Index 1\n"
 
 _whitespace_re = re.compile('[\t\n\x0b\x0c\r\x00 ]')
 _newline_null_re = re.compile('[\n\0]')
+
+
+def _has_key_from_parent_map(self, key):
+    """Check if this index has one key.
+
+    If it's possible to check for multiple keys at once through 
+    calling get_parent_map that should be faster.
+    """
+    return (key in self.get_parent_map([key]))
+
+
+def _missing_keys_from_parent_map(self, keys):
+    return set(keys) - set(self.get_parent_map(keys))
 
 
 class GraphIndexBuilder(object):
@@ -84,6 +98,7 @@ class GraphIndexBuilder(object):
         self._nodes = {}
         self._nodes_by_key = None
         self._key_length = key_elements
+        self._optimize_for_size = False
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
@@ -94,6 +109,28 @@ class GraphIndexBuilder(object):
         for element in key:
             if not element or _whitespace_re.search(element) is not None:
                 raise errors.BadIndexKey(element)
+
+    def _external_references(self):
+        """Return references that are not present in this index.
+        """
+        keys = set()
+        refs = set()
+        # TODO: JAM 2008-11-21 This makes an assumption about how the reference
+        #       lists are used. It is currently correct for pack-0.92 through
+        #       1.9, which use the node references (3rd column) second
+        #       reference list as the compression parent. Perhaps this should
+        #       be moved into something higher up the stack, since it
+        #       makes assumptions about how the index is used.
+        if self.reference_lists > 1:
+            for node in self.iter_all_entries():
+                keys.add(node[1])
+                refs.update(node[3][1])
+            return refs - keys
+        else:
+            # If reference_lists == 0 there can be no external references, and
+            # if reference_lists == 1, then there isn't a place to store the
+            # compression parent
+            return set()
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
@@ -277,6 +314,17 @@ class GraphIndexBuilder(object):
                 ' mismatched output length and expected length: %d %d' %
                 (len(result.getvalue()), expected_bytes))
         return result
+
+    def set_optimize(self, for_size=True):
+        """Change how the builder tries to optimize the result.
+
+        :param for_size: Tell the builder to try and make the index as small as
+            possible.
+        :return: None
+        """
+        # GraphIndexBuilder itself doesn't pay attention to the flag yet, but
+        # other builders do.
+        self._optimize_for_size = for_size
 
 
 class GraphIndex(object):
@@ -1106,12 +1154,16 @@ class CombinedGraphIndex(object):
     in the index list.
     """
 
-    def __init__(self, indices):
+    def __init__(self, indices, reload_func=None):
         """Create a CombinedGraphIndex backed by indices.
 
         :param indices: An ordered list of indices to query for data.
+        :param reload_func: A function to call if we find we are missing an
+            index. Should have the form reload_func() => True/False to indicate
+            if reloading actually changed anything.
         """
         self._indices = indices
+        self._reload_func = reload_func
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -1150,6 +1202,8 @@ class CombinedGraphIndex(object):
             found_parents[key] = parents
         return found_parents
 
+    has_key = _has_key_from_parent_map
+
     def insert_index(self, pos, index):
         """Insert a new index in the list of indices to query.
 
@@ -1169,11 +1223,16 @@ class CombinedGraphIndex(object):
             the most efficient order for the index.
         """
         seen_keys = set()
-        for index in self._indices:
-            for node in index.iter_all_entries():
-                if node[1] not in seen_keys:
-                    yield node
-                    seen_keys.add(node[1])
+        while True:
+            try:
+                for index in self._indices:
+                    for node in index.iter_all_entries():
+                        if node[1] not in seen_keys:
+                            yield node
+                            seen_keys.add(node[1])
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -1187,12 +1246,17 @@ class CombinedGraphIndex(object):
             efficient order for the index.
         """
         keys = set(keys)
-        for index in self._indices:
-            if not keys:
+        while True:
+            try:
+                for index in self._indices:
+                    if not keys:
+                        return
+                    for node in index.iter_entries(keys):
+                        keys.remove(node[1])
+                        yield node
                 return
-            for node in index.iter_entries(keys):
-                keys.remove(node[1])
-                yield node
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -1218,27 +1282,60 @@ class CombinedGraphIndex(object):
         if not keys:
             return
         seen_keys = set()
-        for index in self._indices:
-            for node in index.iter_entries_prefix(keys):
-                if node[1] in seen_keys:
-                    continue
-                seen_keys.add(node[1])
-                yield node
+        while True:
+            try:
+                for index in self._indices:
+                    for node in index.iter_entries_prefix(keys):
+                        if node[1] in seen_keys:
+                            continue
+                        seen_keys.add(node[1])
+                        yield node
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
-        
+
         For CombinedGraphIndex this is approximated by the sum of the keys of
         the child indices. As child indices may have duplicate keys this can
         have a maximum error of the number of child indices * largest number of
         keys in any index.
         """
-        return sum((index.key_count() for index in self._indices), 0)
+        while True:
+            try:
+                return sum((index.key_count() for index in self._indices), 0)
+            except errors.NoSuchFile:
+                self._reload_or_raise()
+
+    missing_keys = _missing_keys_from_parent_map
+
+    def _reload_or_raise(self):
+        """We just got a NoSuchFile exception.
+
+        Try to reload the indices, if it fails, just raise the current
+        exception.
+        """
+        if self._reload_func is None:
+            raise
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        trace.mutter('Trying to reload after getting exception: %s',
+                     exc_value)
+        if not self._reload_func():
+            # We tried to reload, but nothing changed, so we fail anyway
+            trace.mutter('_reload_func indicated nothing has changed.'
+                         ' Raising original exception.')
+            raise exc_type, exc_value, exc_traceback
 
     def validate(self):
         """Validate that everything in the index can be accessed."""
-        for index in self._indices:
-            index.validate()
+        while True:
+            try:
+                for index in self._indices:
+                    index.validate()
+                return
+            except errors.NoSuchFile:
+                self._reload_or_raise()
 
 
 class InMemoryGraphIndex(GraphIndexBuilder):

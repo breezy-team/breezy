@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     graph,
@@ -171,14 +172,7 @@ class FakeClient(_SmartClient):
     """Lookalike for _SmartClient allowing testing."""
     
     def __init__(self, fake_medium_base='fake base'):
-        """Create a FakeClient.
-
-        :param responses: A list of response-tuple, body-data pairs to be sent
-            back to callers.  A special case is if the response-tuple is
-            'unknown verb', then a UnknownSmartMethod will be raised for that
-            call, using the second element of the tuple as the verb in the
-            exception.
-        """
+        """Create a FakeClient."""
         self.responses = []
         self._calls = []
         self.expecting_body = False
@@ -1019,6 +1013,19 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
 
+class TestTransportMkdir(tests.TestCase):
+
+    def test_permissiondenied(self):
+        client = FakeClient()
+        client.add_error_response('PermissionDenied', 'remote path', 'extra')
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        exc = self.assertRaises(
+            errors.PermissionDenied, transport.mkdir, 'client path')
+        expected_error = errors.PermissionDenied('/client path', 'extra')
+        self.assertEqual(expected_error, exc)
+
+
 class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
 
     def test_defaults_to_none(self):
@@ -1123,12 +1130,11 @@ class TestRepositoryGatherStats(TestRemoteRepository):
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):
-        # get_graph returns a graph with the repository as the
-        # parents_provider.
+        # get_graph returns a graph with a custom parents provider.
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
-        self.assertEqual(graph._parents_provider, repo)
+        self.assertNotEqual(graph._parents_provider, repo)
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):
@@ -1450,6 +1456,73 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
         src_repo.copy_content_into(dest_repo)
 
 
+class _StubRealPackRepository(object):
+
+    def __init__(self, calls):
+        self._pack_collection = _StubPackCollection(calls)
+
+
+class _StubPackCollection(object):
+
+    def __init__(self, calls):
+        self.calls = calls
+
+    def autopack(self):
+        self.calls.append(('pack collection autopack',))
+
+    def reload_pack_names(self):
+        self.calls.append(('pack collection reload_pack_names',))
+
+    
+class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
+    """Tests for RemoteRepository.autopack implementation."""
+
+    def test_ok(self):
+        """When the server returns 'ok' and there's no _real_repository, then
+        nothing else happens: the autopack method is done.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'PackRepository.autopack', ('quack/',), 'success', ('ok',))
+        repo.autopack()
+        client.finished_test()
+
+    def test_ok_with_real_repo(self):
+        """When the server returns 'ok' and there is a _real_repository, then
+        the _real_repository's reload_pack_name's method will be called.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'PackRepository.autopack', ('quack/',),
+            'success', ('ok',))
+        repo._real_repository = _StubRealPackRepository(client._calls)
+        repo.autopack()
+        self.assertEqual(
+            [('call', 'PackRepository.autopack', ('quack/',)),
+             ('pack collection reload_pack_names',)],
+            client._calls)
+        
+    def test_backwards_compatibility(self):
+        """If the server does not recognise the PackRepository.autopack verb,
+        fallback to the real_repository's implementation.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_unknown_method_response('PackRepository.autopack')
+        def stub_ensure_real():
+            client._calls.append(('_ensure_real',))
+            repo._real_repository = _StubRealPackRepository(client._calls)
+        repo._ensure_real = stub_ensure_real
+        repo.autopack()
+        self.assertEqual(
+            [('call', 'PackRepository.autopack', ('quack/',)),
+             ('_ensure_real',),
+             ('pack collection autopack',)],
+            client._calls)
+
+
 class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
     """Base class for unit tests for bzrlib.remote._translate_error."""
 
@@ -1483,7 +1556,7 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
                 **context)
         return translated_error
 
-    
+
 class TestErrorTranslationSuccess(TestErrorTranslationBase):
     """Unit tests for bzrlib.remote._translate_error.
     
@@ -1551,6 +1624,49 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.DivergedBranches(branch, other_branch)
         self.assertEqual(expected_error, translated_error)
 
+    def test_ReadError_no_args(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('ReadError',), path=path)
+        expected_error = errors.ReadError(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_ReadError(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('ReadError', path))
+        expected_error = errors.ReadError(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_no_args(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('PermissionDenied',), path=path)
+        expected_error = errors.PermissionDenied(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_one_arg(self):
+        path = 'a path'
+        translated_error = self.translateTuple(('PermissionDenied', path))
+        expected_error = errors.PermissionDenied(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_one_arg_and_context(self):
+        """Given a choice between a path from the local context and a path on
+        the wire, _translate_error prefers the path from the local context.
+        """
+        local_path = 'local path'
+        remote_path = 'remote path'
+        translated_error = self.translateTuple(
+            ('PermissionDenied', remote_path), path=local_path)
+        expected_error = errors.PermissionDenied(local_path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_PermissionDenied_two_args(self):
+        path = 'a path'
+        extra = 'a string with extra info'
+        translated_error = self.translateTuple(
+            ('PermissionDenied', path, extra))
+        expected_error = errors.PermissionDenied(path, extra)
+        self.assertEqual(expected_error, translated_error)
+
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):
     """Unit tests for bzrlib.remote._translate_error's robustness.
@@ -1589,6 +1705,20 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
             self._get_log(keep_log_file=True),
             "Missing key 'branch' in context")
         
+    def test_path_missing(self):
+        """Some translations (PermissionDenied, ReadError) can determine the
+        'path' variable from either the wire or the local context.  If neither
+        has it, then an error is raised.
+        """
+        error_tuple = ('ReadError',)
+        server_error = errors.ErrorFromSmartServer(error_tuple)
+        translated_error = self.translateErrorFromSmartServer(server_error)
+        self.assertEqual(server_error, translated_error)
+        # In addition to re-raising ErrorFromSmartServer, some debug info has
+        # been muttered to the log file for developer to look at.
+        self.assertContainsRe(
+            self._get_log(keep_log_file=True), "Missing key 'path' in context")
+
 
 class TestStacking(tests.TestCaseWithTransport):
     """Tests for operations on stacked remote repositories.
@@ -1633,3 +1763,57 @@ class TestStacking(tests.TestCaseWithTransport):
                 'message')
         finally:
             remote_repo.unlock()
+
+    def prepare_stacked_remote_branch(self):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        self.addCleanup(smart_server.tearDown)
+        tree1 = self.make_branch_and_tree('tree1')
+        tree1.commit('rev1', rev_id='rev1')
+        tree2 = self.make_branch_and_tree('tree2', format='1.6')
+        tree2.branch.set_stacked_on_url(tree1.branch.base)
+        branch2 = Branch.open(smart_server.get_url() + '/tree2')
+        branch2.lock_read()
+        self.addCleanup(branch2.unlock)
+        return branch2
+
+    def test_stacked_get_parent_map(self):
+        # the public implementation of get_parent_map obeys stacking
+        branch = self.prepare_stacked_remote_branch()
+        repo = branch.repository
+        self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
+
+    def test_stacked__get_parent_map(self):
+        # the private variant of _get_parent_map ignores stacking
+        branch = self.prepare_stacked_remote_branch()
+        repo = branch.repository
+        self.assertEqual([], repo._get_parent_map(['rev1']).keys())
+
+
+class TestRemoteBranchEffort(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestRemoteBranchEffort, self).setUp()
+        # Create a smart server that publishes whatever the backing VFS server
+        # does.
+        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server.setUp(self.get_server())
+        self.addCleanup(self.smart_server.tearDown)
+        # Log all HPSS calls into self.hpss_calls.
+        _SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
+
+    def test_copy_content_into_avoids_revision_history(self):
+        local = self.make_branch('local')
+        remote_backing_tree = self.make_branch_and_tree('remote')
+        remote_backing_tree.commit("Commit.")
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        local.repository.fetch(remote_branch.repository)
+        self.hpss_calls = []
+        remote_branch.copy_content_into(local)
+        self.assertFalse('Branch.revision_history' in self.hpss_calls)
