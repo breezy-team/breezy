@@ -1074,8 +1074,8 @@ class TestPacker(TestCaseWithTransport):
                                   revision_ids=['B', 'C'])
         # Now, when we are copying the B & C revisions, their pack files should
         # be moved to the front of the stack
-        # The new ordering moves B & C to the front, and leaves the others in
-        # the original order.
+        # The new ordering moves B & C to the front of the .packs attribute,
+        # and leaves the others in the original order.
         new_packs = [packs[1], packs[2], packs[0], packs[3]]
         new_pack = packer.pack()
         self.assertEqual(new_packs, packer.packs)

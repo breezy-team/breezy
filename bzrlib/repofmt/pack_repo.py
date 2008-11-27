@@ -568,13 +568,13 @@ class Packer(object):
     def _extra_init(self):
         """A template hook to allow extending the constructor trivially."""
 
-    def _pack_map_and_index_list(self, index_attribute, include_pack_obj=False):
+    def _pack_map_and_index_list(self, index_attribute):
         """Convert a list of packs to an index pack map and index list.
 
         :param index_attribute: The attribute that the desired index is found
             on.
         :return: A tuple (map, list) where map contains the dict from
-            index:pack_tuple, and lsit contains the indices in the preferred
+            index:pack_tuple, and list contains the indices in the preferred
             access order.
         """
         indices = []
@@ -648,9 +648,10 @@ class Packer(object):
     def _update_pack_order(self, entries, index_to_pack_map):
         """Determine how we want our packs to be ordered.
 
-        This changes the sort order of self.packs, based on the order found in
-        'entries'. This is mostly used to move unused packs to the end of the
-        list, so that future requests can avoid probing them.
+        This changes the sort order of the self.packs list so that packs unused
+        by 'entries' will be at the end of the list, so that future requests
+        can avoid probing them.  Used packs will be at the front of the
+        self.packs list, in the order of their first use in 'entries'.
 
         :param entries: A list of (index, ...) tuples
         :param index_to_pack_map: A mapping from index objects to pack objects.
@@ -1307,11 +1308,11 @@ class RepositoryPackCollection(object):
             existing_packs, pack_distribution)
         num_new_packs = len(pack_operations)
         num_old_packs = sum([len(po[1]) for po in pack_operations])
-        num_revs_effected = sum([po[0] for po in pack_operations])
+        num_revs_affected = sum([po[0] for po in pack_operations])
         mutter('Auto-packing repository %s, which has %d pack files, '
-            'containing %d revisions. Packing %d files into %d effecting %d'
+            'containing %d revisions. Packing %d files into %d affecting %d'
             ' revisions', self, total_packs, total_revisions, num_old_packs,
-            num_new_packs, num_revs_effected)
+            num_new_packs, num_revs_affected)
         self._execute_pack_operations(pack_operations)
         return True
 
