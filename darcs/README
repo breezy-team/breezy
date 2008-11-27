@@ -88,6 +88,11 @@ $ git clone git://vmiklos.hu/darcs-fast-export
 
 == Status
 
+In general, darcs-fast-export should work fine. darcs-fast-import has
+known problems with tags - other than that it should be okay. git-darcs
+should work properly as long as you are not paying too much attention to
+the imported tags (newly created tags won't be pushed back).
+
 darcs-fast-export has been tested with the following versions:
 
 Darcs version (see http://bugs.darcs.net/issue844[this bug] on why do
