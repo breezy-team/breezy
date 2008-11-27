@@ -35,5 +35,3 @@ setup(name="bzr-builddeb",
       package_dir={'bzrlib.plugins.builddeb': '.'},
       scripts=['bzr-buildpackage'],
       data_files=[('share/man/man1', ['bzr-buildpackage.1'])])
-
-# vim: ts=2 sts=2 sw=2

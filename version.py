@@ -28,5 +28,3 @@
 # Please set this to 'final' before upload.
 version_info = (2, 1, 0, 'dev', 0)
 
-# vim: ts=2 sts=2 sw=2
-
