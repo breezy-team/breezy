@@ -47,6 +47,10 @@ IN DEVELOPMENT
       cause "Revision X not present in Y" when later accessing them.
       (Martin Pool, #288751)
 
+    * Pack repositories are now able to reload the pack listing and retry
+      the current operation if another action causes the data to be
+      repacked.  (John Arbash Meinel, #153786)
+
     * PermissionDenied errors from smart servers no longer cause
       "PermissionDenied: "None"" on the client.
       (Andrew Bennetts, #299254)
