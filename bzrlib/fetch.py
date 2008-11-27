@@ -81,6 +81,9 @@ class RepoFetcher(object):
         """Create a repo fetcher.
 
         :param find_ghosts: If True search the entire history for ghosts.
+        :param _write_group_acquired_callable: Don't use; this parameter only
+            exists to facilitate a hack done in InterPackRepo.fetch.  We would
+            like to remove this parameter.
         """
         # result variables.
         self.failed_revisions = []
@@ -109,6 +112,8 @@ class RepoFetcher(object):
                 self.to_repository.start_write_group()
                 try:
                     if self._write_group_acquired_callable is not None:
+                        # Used by InterPackRepo.fetch to set_write_cache_size
+                        # on the new pack.
                         self._write_group_acquired_callable()
                     self.__fetch()
                 except:
