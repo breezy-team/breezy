@@ -24,10 +24,17 @@ IN DEVELOPMENT
       history just to set the last revision info.
       (Andrew Bennetts, John Arbash Meinel)
 
-    * Search index files corresponding to pack files we've already used,
-      because they are more likely to have the data we're looking for.
-      This reduces the number of iix and tix files accessed when pushing 1
-      new revision, for instance.  (John Arbash Meinel)
+    * Search index files corresponding to pack files we've already used
+      before searching others, because they are more likely to have the
+      keys we're looking for.  This reduces the number of iix and tix
+      files accessed when pushing 1 new revision, for instance.
+      (John Arbash Meinel)
+
+    * The generic fetch code can once again copy revisions and signatures
+      without extracting them completely to fulltexts and then serializing
+      them back down into byte strings. This is a significant performance
+      improvement when fetching from a stacked branch.
+      (John Arbash Meinel, #300289)
 
     * When making a large readv() request over ``bzr+ssh``, break up the
       request into more manageable chunks. Because the RPC is not yet able
@@ -38,6 +45,9 @@ IN DEVELOPMENT
 
     * Better message when the user needs to set their Launchpad ID.
       (Martin Pool, #289148)
+
+    * ``bzr commit --local`` doesn't access the master branch anymore.
+      This fixes a regression introduced in 1.9.  (Marius Kruger, #299313)
 
     * Don't call the system ``chdir()`` with an empty path. Sun OS seems
       to give an error in that case.  Also, don't count on ``getcwd()`` 
@@ -51,6 +61,10 @@ IN DEVELOPMENT
     * Don't create text deltas spanning stacked repositories; this could
       cause "Revision X not present in Y" when later accessing them.
       (Martin Pool, #288751)
+
+    * Pack repositories are now able to reload the pack listing and retry
+      the current operation if another action causes the data to be
+      repacked.  (John Arbash Meinel, #153786)
 
     * PermissionDenied errors from smart servers no longer cause
       "PermissionDenied: "None"" on the client.

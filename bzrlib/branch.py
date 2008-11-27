@@ -148,9 +148,10 @@ class Branch(object):
     def get_config(self):
         return BranchConfig(self)
 
-    def _get_nick(self, possible_transports=None):
+    def _get_nick(self, local=False, possible_transports=None):
         config = self.get_config()
-        if not config.has_explicit_nickname(): # explicit overrides master
+        # explicit overrides master, but don't look for master if local is True
+        if not local and not config.has_explicit_nickname():
             try:
                 master = self.get_master_branch(possible_transports)
                 if master is not None:
