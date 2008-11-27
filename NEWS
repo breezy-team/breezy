@@ -34,6 +34,9 @@ IN DEVELOPMENT
     * Better message when the user needs to set their Launchpad ID.
       (Martin Pool, #289148)
 
+    * ``bzr commit --local`` doesn't access the master branch anymore.
+      This fixes a regression introduced in 1.9.  (Marius Kruger, #299313)
+
     * Don't call the system ``chdir()`` with an empty path. Sun OS seems
       to give an error in that case.  Also, don't count on ``getcwd()`` 
       being able to allocate a new buffer, which is a gnu extension.  
