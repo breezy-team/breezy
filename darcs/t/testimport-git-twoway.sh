@@ -18,7 +18,7 @@ diff_importgit test || die "git -> darcs update #1 differs"
 upd_file_darcs test.darcs file2 upd_contents2
 darcs-fast-export --export-marks=$dmark --import-marks=$dmark --working test/.git/darcs test.darcs | (cd test; git fast-import --export-marks=$gmark --import-marks=$gmark)
 (cd test; git checkout -f)
-diff_importgit test || die "git -> darcs update #2 differs"
+diff_importgit test || die "darcs -> git update #2 differs"
 upd_file_git test file2 upd_contents3
 upd_file_git test file2 upd_contents32
 (cd test; git fast-export --export-marks=$gmark --import-marks=$gmark HEAD) | (cd test.darcs; darcs-fast-import --export-marks=$dmark --import-marks=$dmark)
@@ -27,4 +27,4 @@ upd_file_darcs test.darcs file2 upd_contents4
 upd_file_darcs test.darcs file2 upd_contents42
 darcs-fast-export --export-marks=$dmark --import-marks=$dmark --working test/.git/darcs test.darcs | (cd test; git fast-import --export-marks=$gmark --import-marks=$gmark)
 (cd test; git checkout -f)
-diff_importgit test || die "git -> darcs update #4 differs"
+diff_importgit test || die "darcs -> git update #4 differs"

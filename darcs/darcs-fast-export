@@ -230,10 +230,12 @@ if not options.import_marks or not os.path.exists(working):
 		os.system("darcs init --darcs-2")
 	else:
 		os.system("darcs init --old-fashioned-inventory")
-	if options.import_marks:
-		os.system("darcs pull --match 'hash %s'" % import_marks[-1])
 else:
 	os.chdir(working)
+if options.import_marks:
+	sock = os.popen("darcs pull -a --match 'hash %s' %s" % (import_marks[-1], origin))
+	log("Building/updating working directory:\n%s" % sock.read())
+	sock.close()
 
 # this is the number of the NEXT patch
 count = 1
