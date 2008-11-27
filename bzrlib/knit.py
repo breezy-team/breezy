@@ -1401,8 +1401,10 @@ class KnitVersionedFiles(VersionedFiles):
                     split_lines(record.get_bytes_as('fulltext')))
             else:
                 # Not a fulltext, and not suitable for direct insertion as a
-                # delta, either because it's not the right format, or because
-                # it depends on a base only present in the fallback kvfs.
+                # delta, either because it's not the right format, or this
+                # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
+                # 0) or because it depends on a base only present in the
+                # fallback kvfs.
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
