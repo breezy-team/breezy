@@ -256,32 +256,21 @@ else:
 for i in patches:
 	# apply the patch
 	hash = i.attributes['hash'].value
+	buf = ["\nNew patches:\n"]
 	if oldfashionedpatch:
-		buf = ["\nNew patches:\n"]
 		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
-		buf.append(sock.read())
-		sock.close()
-		sock = os.popen("darcs changes --context")
-		buf.append(sock.read())
-		sock.close()
-		pout, pin = popen2.popen2("darcs apply --allow-conflicts")
-		pin.write("".join(buf))
-		pin.close()
-		log("Applying %s:\n%s" % (hash, pout.read()))
-		pout.close()
 	else:
-		buf = ["\nNew patches:\n"]
 		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hashes[count-1]))
-		buf.append(sock.read())
-		sock.close()
-		sock = os.popen("darcs changes --context")
-		buf.append(sock.read())
-		sock.close()
-		pout, pin = popen2.popen2("darcs apply --allow-conflicts")
-		pin.write("".join(buf))
-		pin.close()
-		log("Applying %s:\n%s" % (hash, pout.read()))
-		pout.close()
+	buf.append(sock.read())
+	sock.close()
+	sock = os.popen("darcs changes --context")
+	buf.append(sock.read())
+	sock.close()
+	pout, pin = popen2.popen2("darcs apply --allow-conflicts")
+	pin.write("".join(buf))
+	pin.close()
+	log("Applying %s:\n%s" % (hash, pout.read()))
+	pout.close()
 	message = get_patchname(i)
 	# export the commit
 	print "commit %s" % git_branch
