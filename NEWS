@@ -70,6 +70,11 @@ IN DEVELOPMENT
       "PermissionDenied: "None"" on the client.
       (Andrew Bennetts, #299254)
       
+    * Pushing to a stacked pack repository now batches writes, the same
+      way writes are batched to ordinary pack repository.  This makes
+      pushing to a stacked branch over the network much faster.
+      (Andrew Bennetts, #294479)
+
     * TooManyConcurrentRequests no longer occur when a fetch fails and
       tries to abort a write group.  This allows the root cause (e.g. a
       network interruption) to be reported.  (Andrew Bennetts, #297014)

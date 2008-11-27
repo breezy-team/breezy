@@ -2837,6 +2837,10 @@ class InterPackRepo(InterSameDataRepository):
             # we use the generic fetch logic which uses the VersionedFiles
             # attributes on repository.
             from bzrlib.fetch import RepoFetcher
+            # Make sure the generic fetcher sets the write cache size on the
+            # new pack (just like Packer.pack does) to avoid doing many tiny
+            # writes (which can be slow over a network connection).
+            # XXX: ideally the transport layer would do this automatically.
             pack_coll = self._get_target_pack_collection()
             set_cache_size = (
                 lambda: pack_coll._new_pack.set_write_cache_size(1024*1024))
