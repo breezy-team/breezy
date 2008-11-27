@@ -6,7 +6,7 @@ d2x - convert darcs repos to git, bzr or hg using fast-import
 
 == SYNOPSIS
 
-d2x -f <format> <darcsrepo>
+d2x -f <format> <darcsrepo> [<darcs-fast-export options>]
 
 == DESCRIPTION
 
