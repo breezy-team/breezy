@@ -2374,6 +2374,7 @@ class cmd_commit(Command):
         )
         from bzrlib.msgeditor import (
             edit_commit_message_encoded,
+            generate_commit_message_template,
             make_commit_message_template_encoded
         )
 
@@ -2408,7 +2409,9 @@ class cmd_commit(Command):
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
-                my_message = edit_commit_message_encoded(t)
+                start_message = generate_commit_message_template(commit_obj)
+                my_message = edit_commit_message_encoded(t, 
+                    start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
@@ -4746,9 +4749,6 @@ class cmd_shelve(Command):
 
     You can put multiple items on the shelf, and by default, 'unshelve' will
     restore the most recently shelved changes.
-
-    While you have patches on the shelf you can view and manipulate them with
-    the 'shelf' command. Run 'bzr shelf -h' for more info.
     """
 
     takes_args = ['file*']
@@ -4757,13 +4757,20 @@ class cmd_shelve(Command):
         'revision',
         Option('all', help='Shelve all changes.'),
         'message',
+        RegistryOption('writer', 'Method to use for writing diffs.',
+                       bzrlib.option.diff_writer_registry,
+                       value_switches=True, enum_switch=False)
     ]
     _see_also = ['unshelve']
 
-    def run(self, revision=None, all=False, file_list=None, message=None):
+    def run(self, revision=None, all=False, file_list=None, message=None,
+            writer=None):
         from bzrlib.shelf_ui import Shelver
+        if writer is None:
+            writer = bzrlib.option.diff_writer_registry.get()
         try:
-            Shelver.from_args(revision, all, file_list, message).run()
+            Shelver.from_args(writer(sys.stdout), revision, all, file_list,
+                              message).run()
         except errors.UserAbort:
             return 0
 

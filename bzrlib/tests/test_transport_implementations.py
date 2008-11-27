@@ -1437,6 +1437,36 @@ class TransportTests(TestTransportImplementation):
                          'to/dir/b%2525z',
                          'to/bar',]))
 
+    def test_copy_tree_to_transport(self):
+        transport = self.get_transport()
+        if not transport.listable():
+            self.assertRaises(TransportNotPossible,
+                              transport.iter_files_recursive)
+            return
+        if transport.is_readonly():
+            return
+        self.build_tree(['from/',
+                         'from/dir/',
+                         'from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%25z', # make sure quoting is correct
+                         'from/bar'],
+                        transport=transport)
+        from_transport = transport.clone('from')
+        to_transport = transport.clone('to')
+        to_transport.ensure_base()
+        from_transport.copy_tree_to_transport(to_transport)
+        paths = set(transport.iter_files_recursive())
+        self.assertEqual(paths,
+                    set(['from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%2525z',
+                         'from/bar',
+                         'to/dir/foo',
+                         'to/dir/bar',
+                         'to/dir/b%2525z',
+                         'to/bar',]))
+
     def test_unicode_paths(self):
         """Test that we can read/write files with Unicode names."""
         t = self.get_transport()

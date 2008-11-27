@@ -17,6 +17,7 @@
 
 from cStringIO import StringIO
 import os
+import sys
 
 from bzrlib import errors, shelf_ui, tests
 
@@ -24,10 +25,10 @@ from bzrlib import errors, shelf_ui, tests
 class ExpectShelver(shelf_ui.Shelver):
     """A variant of Shelver that intercepts console activity, for testing."""
 
-    def __init__(self, work_tree, target_tree, path=None, auto=False,
-                 auto_apply=False, file_list=None, message=None):
-        shelf_ui.Shelver.__init__(self, work_tree, target_tree, auto,
-                                  auto_apply, file_list, message)
+    def __init__(self, work_tree, target_tree, diff_writer=None, path=None,
+                 auto=False, auto_apply=False, file_list=None, message=None):
+        shelf_ui.Shelver.__init__(self, work_tree, target_tree, diff_writer,
+                                  auto, auto_apply, file_list, message)
         self.expected = []
         self.diff_writer = StringIO()
 
@@ -178,7 +179,7 @@ class TestShelver(tests.TestCaseWithTransport):
 
     def test_shelve_all(self):
         tree = self.create_shelvable_tree()
-        ExpectShelver.from_args(all=True, directory='tree').run()
+        ExpectShelver.from_args(sys.stdout, all=True, directory='tree').run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_filename(self):
