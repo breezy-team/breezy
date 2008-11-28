@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ from cStringIO import StringIO
 from itertools import izip, chain
 import operator
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -707,7 +708,7 @@ class KnitVersionedFiles(VersionedFiles):
     """
 
     def __init__(self, index, data_access, max_delta_chain=200,
-        annotated=False):
+                 annotated=False, reload_func=None):
         """Create a KnitVersionedFiles with index and data_access.
 
         :param index: The index for the knit data.
@@ -717,6 +718,9 @@ class KnitVersionedFiles(VersionedFiles):
             insertion. Set to 0 to prohibit the use of deltas.
         :param annotated: Set to True to cause annotations to be calculated and
             stored during insertion.
+        :param reload_func: An function that can be called if we think we need
+            to reload the pack listing and try again. See
+            'bzrlib.repofmt.pack_repo.AggregateIndex' for the signature.
         """
         self._index = index
         self._access = data_access
@@ -726,6 +730,7 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
+        self._reload_func = reload_func
 
     def __repr__(self):
         return "%s(%r, %r)" % (
@@ -770,8 +775,9 @@ class KnitVersionedFiles(VersionedFiles):
         present_parents = []
         if parent_texts is None:
             parent_texts = {}
-        # Do a single query to ascertain parent presence.
-        present_parent_map = self.get_parent_map(parents)
+        # Do a single query to ascertain parent presence; we only compress
+        # against parents in the same kvf.
+        present_parent_map = self._index.get_parent_map(parents)
         for parent in parents:
             if parent in present_parent_map:
                 present_parents.append(parent)
@@ -1108,17 +1114,28 @@ class KnitVersionedFiles(VersionedFiles):
         :param allow_missing: If some records are missing, rather than 
             error, just return the data that could be generated.
         """
-        position_map = self._get_components_positions(keys,
-            allow_missing=allow_missing)
-        # key = component_id, r = record_details, i_m = index_memo, n = next
-        records = [(key, i_m) for key, (r, i_m, n)
-                             in position_map.iteritems()]
-        record_map = {}
-        for key, record, digest in \
-                self._read_records_iter(records):
-            (record_details, index_memo, next) = position_map[key]
-            record_map[key] = record, record_details, digest, next
-        return record_map
+        # This retries the whole request if anything fails. Potentially we
+        # could be a bit more selective. We could track the keys whose records
+        # we have successfully found, and then only request the new records
+        # from there. However, _get_components_positions grabs the whole build
+        # chain, which means we'll likely try to grab the same records again
+        # anyway. Also, can the build chains change as part of a pack
+        # operation? We wouldn't want to end up with a broken chain.
+        while True:
+            try:
+                position_map = self._get_components_positions(keys,
+                    allow_missing=allow_missing)
+                # key = component_id, r = record_details, i_m = index_memo,
+                # n = next
+                records = [(key, i_m) for key, (r, i_m, n)
+                                       in position_map.iteritems()]
+                record_map = {}
+                for key, record, digest in self._read_records_iter(records):
+                    (record_details, index_memo, next) = position_map[key]
+                    record_map[key] = record, record_details, digest, next
+                return record_map
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
 
     def _split_by_prefix(self, keys):
         """For the given keys, split them up based on their prefix.
@@ -1159,6 +1176,22 @@ class KnitVersionedFiles(VersionedFiles):
         if not self._index.has_graph:
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
+
+        remaining_keys = keys
+        while True:
+            try:
+                keys = set(remaining_keys)
+                for content_factory in self._get_remaining_record_stream(keys,
+                                            ordering, include_delta_closure):
+                    remaining_keys.discard(content_factory.key)
+                    yield content_factory
+                return
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
+
+    def _get_remaining_record_stream(self, keys, ordering,
+                                     include_delta_closure):
+        """This function is the 'retry' portion for get_record_stream."""
         if include_delta_closure:
             positions = self._get_components_positions(keys, allow_missing=True)
         else:
@@ -1323,6 +1356,11 @@ class KnitVersionedFiles(VersionedFiles):
         # can't generate annotations from new deltas until their basis parent
         # is present anyway, so we get away with not needing an index that
         # includes the new keys.
+        #
+        # See <http://launchpad.net/bugs/300177> about ordering of compression
+        # parents in the records - to be conservative, we insist that all
+        # parents must be present to avoid expanding to a fulltext.
+        #
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
@@ -1330,7 +1368,21 @@ class KnitVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
-            if record.storage_kind in knit_types:
+            elif ((record.storage_kind in knit_types)
+                  and (not parents
+                       or not self._fallback_vfs
+                       or not self._index.missing_keys(parents)
+                       or self.missing_keys(parents))):
+                # we can insert the knit record literally if either it has no
+                # compression parent OR we already have its basis in this kvf
+                # OR the basis is not present even in the fallbacks.  In the
+                # last case it will either turn up later in the stream and all
+                # will be well, or it won't turn up at all and we'll raise an
+                # error at the end.
+                #
+                # TODO: self.has_key is somewhat redundant with
+                # self._index.has_key; we really want something that directly
+                # asks if it's only present in the fallbacks. -- mbp 20081119
                 if record.storage_kind not in native_types:
                     try:
                         adapter_key = (record.storage_kind, "knit-delta-gz")
@@ -1358,15 +1410,20 @@ class KnitVersionedFiles(VersionedFiles):
                 index_entry = (record.key, options, access_memo, parents)
                 buffered = False
                 if 'fulltext' not in options:
-                    basis_parent = parents[0]
+                    # Not a fulltext, so we need to make sure the compression
+                    # parent will also be present.
                     # Note that pack backed knits don't need to buffer here
                     # because they buffer all writes to the transaction level,
                     # but we don't expose that difference at the index level. If
                     # the query here has sufficient cost to show up in
                     # profiling we should do that.
-                    if basis_parent not in self.get_parent_map([basis_parent]):
+                    #
+                    # They're required to be physically in this
+                    # KnitVersionedFiles, not in a fallback.
+                    compression_parent = parents[0]
+                    if self.missing_keys([compression_parent]):
                         pending = buffered_index_entries.setdefault(
-                            basis_parent, [])
+                            compression_parent, [])
                         pending.append(index_entry)
                         buffered = True
                 if not buffered:
@@ -1375,6 +1432,11 @@ class KnitVersionedFiles(VersionedFiles):
                 self.add_lines(record.key, parents,
                     split_lines(record.get_bytes_as('fulltext')))
             else:
+                # Not a fulltext, and not suitable for direct insertion as a
+                # delta, either because it's not the right format, or this
+                # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
+                # 0) or because it depends on a base only present in the
+                # fallback kvfs.
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
@@ -1395,8 +1457,10 @@ class KnitVersionedFiles(VersionedFiles):
                     del buffered_index_entries[key]
         # If there were any deltas which had a missing basis parent, error.
         if buffered_index_entries:
-            raise errors.RevisionNotPresent(buffered_index_entries.keys()[0],
-                self)
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "record_stream refers to compression parents not in %r:\n%s"
+                % (self, pformat(sorted(buffered_index_entries.keys()))))
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
@@ -1413,9 +1477,11 @@ class KnitVersionedFiles(VersionedFiles):
         is an iterator).
 
         NOTES:
-         * Lines are normalised by the underlying store: they will all have \n
+         * Lines are normalised by the underlying store: they will all have \\n
            terminators.
          * Lines are returned in arbitrary order.
+         * If a requested key did not change any lines (or didn't have any
+           lines), it may not be mentioned at all in the result.
 
         :return: An iterator over (line, key).
         """
@@ -1423,30 +1489,47 @@ class KnitVersionedFiles(VersionedFiles):
             pb = progress.DummyProgress()
         keys = set(keys)
         total = len(keys)
-        # we don't care about inclusions, the caller cares.
-        # but we need to setup a list of records to visit.
-        # we need key, position, length
-        key_records = []
-        build_details = self._index.get_build_details(keys)
-        for key, details in build_details.iteritems():
-            if key in keys:
-                key_records.append((key, details[0]))
-                keys.remove(key)
-        records_iter = enumerate(self._read_records_iter(key_records))
-        for (key_idx, (key, data, sha_value)) in records_iter:
-            pb.update('Walking content.', key_idx, total)
-            compression_parent = build_details[key][1]
-            if compression_parent is None:
-                # fulltext
-                line_iterator = self._factory.get_fulltext_content(data)
-            else:
-                # Delta 
-                line_iterator = self._factory.get_linedelta_content(data)
-            # XXX: It might be more efficient to yield (key,
-            # line_iterator) in the future. However for now, this is a simpler
-            # change to integrate into the rest of the codebase. RBC 20071110
-            for line in line_iterator:
-                yield line, key
+        done = False
+        while not done:
+            try:
+                # we don't care about inclusions, the caller cares.
+                # but we need to setup a list of records to visit.
+                # we need key, position, length
+                key_records = []
+                build_details = self._index.get_build_details(keys)
+                for key, details in build_details.iteritems():
+                    if key in keys:
+                        key_records.append((key, details[0]))
+                records_iter = enumerate(self._read_records_iter(key_records))
+                for (key_idx, (key, data, sha_value)) in records_iter:
+                    pb.update('Walking content.', key_idx, total)
+                    compression_parent = build_details[key][1]
+                    if compression_parent is None:
+                        # fulltext
+                        line_iterator = self._factory.get_fulltext_content(data)
+                    else:
+                        # Delta 
+                        line_iterator = self._factory.get_linedelta_content(data)
+                    # Now that we are yielding the data for this key, remove it
+                    # from the list
+                    keys.remove(key)
+                    # XXX: It might be more efficient to yield (key,
+                    # line_iterator) in the future. However for now, this is a
+                    # simpler change to integrate into the rest of the
+                    # codebase. RBC 20071110
+                    for line in line_iterator:
+                        yield line, key
+                done = True
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
+        # If there are still keys we've not yet found, we look in the fallback
+        # vfs, and hope to find them there.  Note that if the keys are found
+        # but had no changes or no content, the fallback may not return
+        # anything.  
+        if keys and not self._fallback_vfs:
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         for source in self._fallback_vfs:
             if not keys:
                 break
@@ -1455,10 +1538,6 @@ class KnitVersionedFiles(VersionedFiles):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        if keys:
-            # XXX: strictly the second parameter is meant to be the file id
-            # but it's not easily accessible here.
-            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
@@ -1855,7 +1934,6 @@ class _KndxIndex(object):
                 extra information about the content which needs to be passed to
                 Factory.parse_record
         """
-        prefixes = self._partition_keys(keys)
         parent_map = self.get_parent_map(keys)
         result = {}
         for key in keys:
@@ -1930,6 +2008,8 @@ class _KndxIndex(object):
         entry = self._kndx_cache[prefix][0][suffix]
         return key, entry[2], entry[3]
 
+    has_key = _mod_index._has_key_from_parent_map
+    
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
         sio = StringIO()
@@ -1994,6 +2074,8 @@ class _KndxIndex(object):
                     del self._cache
                     del self._filename
                     del self._history
+
+    missing_keys = _mod_index._missing_keys_from_parent_map
 
     def _partition_keys(self, keys):
         """Turn keys into a dict of prefix:suffix_list."""
@@ -2281,6 +2363,8 @@ class _KnitGraphIndex(object):
         node = self._get_node(key)
         return self._node_to_position(node)
 
+    has_key = _mod_index._has_key_from_parent_map
+
     def keys(self):
         """Get all the keys in the collection.
         
@@ -2289,6 +2373,8 @@ class _KnitGraphIndex(object):
         self._check_read()
         return [node[1] for node in self._graph_index.iter_all_entries()]
     
+    missing_keys = _mod_index._missing_keys_from_parent_map
+
     def _node_to_position(self, node):
         """Convert an index value to position details."""
         bits = node[2][1:].split(' ')
@@ -2373,15 +2459,19 @@ class _KnitKeyAccess(object):
 class _DirectPackAccess(object):
     """Access to data in one or more packs with less translation."""
 
-    def __init__(self, index_to_packs):
+    def __init__(self, index_to_packs, reload_func=None):
         """Create a _DirectPackAccess object.
 
         :param index_to_packs: A dict mapping index objects to the transport
             and file names for obtaining data.
+        :param reload_func: A function to call if we determine that the pack
+            files have moved and we need to reload our caches. See
+            bzrlib.repo_fmt.pack_repo.AggregateIndex for more details.
         """
         self._container_writer = None
         self._write_index = None
         self._indices = index_to_packs
+        self._reload_func = reload_func
 
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
@@ -2433,10 +2523,29 @@ class _DirectPackAccess(object):
         if current_index is not None:
             request_lists.append((current_index, current_list))
         for index, offsets in request_lists:
-            transport, path = self._indices[index]
-            reader = pack.make_readv_reader(transport, path, offsets)
-            for names, read_func in reader.iter_records():
-                yield read_func(None)
+            try:
+                transport, path = self._indices[index]
+            except KeyError:
+                # A KeyError here indicates that someone has triggered an index
+                # reload, and this index has gone missing, we need to start
+                # over.
+                if self._reload_func is None:
+                    # If we don't have a _reload_func there is nothing that can
+                    # be done
+                    raise
+                raise errors.RetryWithNewPacks(reload_occurred=True,
+                                               exc_info=sys.exc_info())
+            try:
+                reader = pack.make_readv_reader(transport, path, offsets)
+                for names, read_func in reader.iter_records():
+                    yield read_func(None)
+            except errors.NoSuchFile:
+                # A NoSuchFile error indicates that a pack file has gone
+                # missing on disk, we need to trigger a reload, and start over.
+                if self._reload_func is None:
+                    raise
+                raise errors.RetryWithNewPacks(reload_occurred=False,
+                                               exc_info=sys.exc_info())
 
     def set_writer(self, writer, index, transport_packname):
         """Set a writer to use for adding data."""
@@ -2444,6 +2553,35 @@ class _DirectPackAccess(object):
             self._indices[index] = transport_packname
         self._container_writer = writer
         self._write_index = index
+
+    def reload_or_raise(self, retry_exc):
+        """Try calling the reload function, or re-raise the original exception.
+
+        This should be called after _DirectPackAccess raises a
+        RetryWithNewPacks exception. This function will handle the common logic
+        of determining when the error is fatal versus being temporary.
+        It will also make sure that the original exception is raised, rather
+        than the RetryWithNewPacks exception.
+
+        If this function returns, then the calling function should retry
+        whatever operation was being performed. Otherwise an exception will
+        be raised.
+
+        :param retry_exc: A RetryWithNewPacks exception.
+        """
+        is_error = False
+        if self._reload_func is None:
+            is_error = True
+        elif not self._reload_func():
+            # The reload claimed that nothing changed
+            if not retry_exc.reload_occurred:
+                # If there wasn't an earlier reload, then we really were
+                # expecting to find changes. We didn't find them, so this is a
+                # hard error
+                is_error = True
+        if is_error:
+            exc_class, exc_value, exc_traceback = retry_exc.exc_info
+            raise exc_class, exc_value, exc_traceback
 
 
 # Deprecated, use PatienceSequenceMatcher instead
@@ -2723,11 +2861,17 @@ class _KnitAnnotator(object):
         if len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
-        records = self._get_build_graph(key)
-        if key in self._ghosts:
-            raise errors.RevisionNotPresent(key, self._knit)
-        self._annotate_records(records)
-        return self._annotated_lines[key]
+        while True:
+            try:
+                records = self._get_build_graph(key)
+                if key in self._ghosts:
+                    raise errors.RevisionNotPresent(key, self._knit)
+                self._annotate_records(records)
+                return self._annotated_lines[key]
+            except errors.RetryWithNewPacks, e:
+                self._knit._access.reload_or_raise(e)
+                # The cached build_details are no longer valid
+                self._all_build_details.clear()
 
     def _simple_annotate(self, key):
         """Return annotated fulltext, rediffing from the full texts.

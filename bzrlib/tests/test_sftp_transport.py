@@ -497,6 +497,8 @@ class Test_SFTPReadvHelper(tests.TestCase):
                                (42000, 24000)])
 
     def checkRequestAndYield(self, expected, data, offsets):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
         data_f = ReadvFile(data)
         result = list(helper.request_and_yield_offsets(data_f))
