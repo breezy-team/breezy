@@ -421,7 +421,7 @@ class cmd_merge_upstream(Command):
             no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.merge_upstream import merge_upstream_branch
+        from bzrlib.plugins.builddeb.merge_upstream import (merge_upstream_branch, package_version)
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -520,8 +520,8 @@ class cmd_merge_upstream(Command):
             entry_description = "New upstream release."
 
         info("The new upstream version has been imported. You should "
-             "now update the changelog (try dch -v %s-1 \"%s\"), resolve any "
-             "conflicts, and then commit." % (str(version), entry_description))
+             "now update the changelog (try dch -v %s \"%s\"), resolve any "
+             "conflicts, and then commit." % (package_version(version, distribution), entry_description))
 
 
 register_command(cmd_merge_upstream)
