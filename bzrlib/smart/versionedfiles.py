@@ -82,7 +82,7 @@ class SmartServerVersionedFilesGetParentMap(SmartServerVersionedFilesRequest):
         :param repository: The repository to query in.
         :param revision_ids: The utf8 encoded revision_id to answer for.
         """
-        self._keys = tuple(tuple(key) for key in keys)
+        self._keys = keys
         self._versioned_files = versioned_files
         return None # Signal that we want a body.
 
@@ -221,11 +221,8 @@ def deserialise_record(stream_chunk):
     struct = bencode.bdecode(stream_chunk)
 
     (sha1, storage_kind, key, parents, build_details, bytes) = struct
-    key = tuple(key)
     if parents == 'nil':
         parents = None
-    else:
-        parents = tuple(tuple(parent_key) for parent_key in parents)
     if sha1 == '':
         sha1 = None
     if storage_kind.startswith('knit-'):

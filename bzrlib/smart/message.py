@@ -236,10 +236,9 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._bytes_parts.append(bytes)
 
     def structure_part_received(self, structure):
-        if type(structure) is not list:
+        if type(structure) is not tuple:
             raise errors.SmartProtocolError(
                 'Args structure is not a sequence: %r' % (structure,))
-        structure = tuple(structure)
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(

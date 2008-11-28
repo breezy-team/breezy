@@ -2358,7 +2358,7 @@ class TestProtocolThree(TestSmartProtocol):
             '\0\0\0\x07' # length prefix
             'l3:ARGe' # ['ARG']
             )
-        self.assertEqual([('structure', ['ARG'])], event_log)
+        self.assertEqual([('structure', ('ARG',))], event_log)
 
     def test_decode_multiple_bytes(self):
         """The protocol can decode a multiple 'bytes' message parts."""
@@ -2529,7 +2529,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         # The message handler has been invoked with all the parts of the
         # trivial response: empty headers, status byte, no args, end.
         self.assertEqual(
-            [('headers', {}), ('byte', 'S'), ('structure', []), ('end',)],
+            [('headers', {}), ('byte', 'S'), ('structure', ()), ('end',)],
             response_handler.event_log)
 
     def test_incomplete_message(self):

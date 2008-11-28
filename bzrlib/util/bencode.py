@@ -52,7 +52,7 @@ def decode_list(x, f):
     while x[f] != 'e':
         v, f = decode_func[x[f]](x, f)
         r.append(v)
-    return (r, f + 1)
+    return (tuple(r), f + 1)
 
 def decode_dict(x, f):
     r, f = {}, f+1
