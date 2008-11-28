@@ -24,6 +24,11 @@ IN DEVELOPMENT
       history just to set the last revision info.
       (Andrew Bennetts, John Arbash Meinel)
 
+    * Fetches between formats with different serializers (such as
+      pack-0.92-subtree and 1.9-rich-root) are faster now.  This is due to
+      operating on batches of 100 revisions at time rather than
+      one-by-one.  (Andrew Bennetts, John Arbash Meinel)
+
     * Search index files corresponding to pack files we've already used
       before searching others, because they are more likely to have the
       keys we're looking for.  This reduces the number of iix and tix
