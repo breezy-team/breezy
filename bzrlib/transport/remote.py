@@ -172,14 +172,24 @@ class RemoteTransport(transport.ConnectedTransport):
         try:
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err)
+            # The first argument, if present, is always a path.
+            if args:
+                context = {'relpath': args[0]}
+            else:
+                context = {}
+            self._translate_error(err, **context)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         try:
             return self._client.call_with_body_bytes(method, args, body)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err)
+            # The first argument, if present, is always a path.
+            if args:
+                context = {'relpath': args[0]}
+            else:
+                context = {}
+            self._translate_error(err, **context)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -347,7 +357,7 @@ class RemoteTransport(transport.ConnectedTransport):
                     [(c.start, c.length) for c in cur_request])
                 resp, response_handler = result
             except errors.ErrorFromSmartServer, err:
-                self._translate_error(err)
+                self._translate_error(err, relpath)
 
             if resp[0] != 'readv':
                 # This should raise an exception
@@ -411,8 +421,8 @@ class RemoteTransport(transport.ConnectedTransport):
         if resp[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(resp)
         
-    def _translate_error(self, err, orig_path=None):
-        remote._translate_error(err, path=orig_path)
+    def _translate_error(self, err, relpath=None):
+        remote._translate_error(err, path=relpath)
 
     def disconnect(self):
         self.get_smart_medium().disconnect()

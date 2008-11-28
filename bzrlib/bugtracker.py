@@ -60,6 +60,11 @@ for each of the projects you work on.
 Note: As you provide a short name for each tracker, you can specify one or
 more bugs in one or more trackers at commit time if you wish.
 
+Launchpad
+---------
+
+Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2.
+
 bugzilla_<tracker_abbreviation>_url
 -----------------------------------
 
