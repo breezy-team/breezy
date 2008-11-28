@@ -2836,12 +2836,16 @@ class InterPackRepo(InterSameDataRepository):
             # fetching from a stacked repository or into a stacked repository
             # we use the generic fetch logic which uses the VersionedFiles
             # attributes on repository.
-            #
-            # XXX: Andrew suggests removing the check on the target
-            # repository.
             from bzrlib.fetch import RepoFetcher
+            # Make sure the generic fetcher sets the write cache size on the
+            # new pack (just like Packer.pack does) to avoid doing many tiny
+            # writes (which can be slow over a network connection).
+            # XXX: ideally the transport layer would do this automatically.
+            pack_coll = self._get_target_pack_collection()
+            set_cache_size = (
+                lambda: pack_coll._new_pack.set_write_cache_size(1024*1024))
             fetcher = RepoFetcher(self.target, self.source, revision_id,
-                                  pb, find_ghosts)
+                                  pb, find_ghosts, set_cache_size)
             return fetcher.count_copied, fetcher.failed_revisions
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
