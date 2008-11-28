@@ -55,3 +55,7 @@ repository. It supports incremental conversion as well, via the
 	There is only one branch in one darcs repository, but the fast-import
 	stream format allows multiple branches, thus the exporter has to name
 	darcs's branch. The default value is 'refs/heads/master'.
+
+--progress::
+	Insert progress statements after every <n> patches, to be shown by the
+	fast importer during import.
