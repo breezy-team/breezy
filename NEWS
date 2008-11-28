@@ -12,6 +12,30 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+  INTERNALS:
+
+
+bzr 1.10rc1 2008-11-28
+----------------------
+
+This release of Bazaar focusses on performance improvements when pushing
+and pulling revisions, both locally and to remote networks.  The popular
+``shelve`` and ``unshelve`` commands, used to interactively revert and
+restore work in progress, have been merged from bzrtools into the bzr
+core.  There are also bug fixes for portability, and for stacked branches.
+
+  NEW FEATURES:
+
     * New ``commit_message_template`` hook that is called by the commit 
       code to generate a template commit message. (Jelmer Vernooij)
 
@@ -90,8 +114,6 @@ IN DEVELOPMENT
     * RemoteRepository.get_parent_map now uses fallback repositories.
       (Aaron Bentley, #297991?, #293679?)
 
-  DOCUMENTATION:
-
   API CHANGES:
 
     * ``CommitBuilder`` now validates the strings it will be committing,
@@ -117,8 +139,6 @@ IN DEVELOPMENT
       that's expected to have them.  (Martin Pool)
       
     * Doctests now only report the first failure.  (Martin Pool)
-
-  INTERNALS:
 
 
 bzr 1.9 2008-11-07
