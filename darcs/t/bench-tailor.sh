@@ -8,10 +8,6 @@ create_config()
 	myname=$(basename $mypath)
 
 	cat > config << EOF
-[DEFAULT]
-verbose = True
-patch-name-format=%(revision)s
-
 [$myname]
 source = darcs:$myname
 target = git:$myname
@@ -25,7 +21,6 @@ encoding = latin2
 subdir = git
 repository = $mypath.git
 encoding = latin2
-overwrite-tags = True
 EOF
 }
 
