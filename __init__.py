@@ -449,6 +449,9 @@ class cmd_merge_upstream(Command):
                 current_version = changelog.version
                 if package is None:
                     package = changelog.package
+                if distribution is None:
+                    distribution = changelog.distributions
+                    info("Using distribution %s" % distribution)
             except MissingChangelogError:
                 current_version = None
 
@@ -463,14 +466,24 @@ class cmd_merge_upstream(Command):
             except NotBranchError:
                 upstream_branch = None
  
+            if distribution is None:
+                raise BzrCommandError("You must specify the target distribution "
+                        "using --distribution.")
+            distribution = distribution.lower()
+            distribution_name = lookup_distribution(distribution)
+            target_name = distribution
+            if distribution_name is None:
+                if distribution not in ("debian", "ubuntu"):
+                    raise BzrCommandError("Unknown target distribution: %s" \
+                            % target_dist)
+                target_name = None
+                distribution_name = distribution
+
             if upstream_branch is None:
                 if version is None:
                     raise BzrCommandError("You must specify the version number using "
                                           "--version.")
                 version = Version(version)
-                if distribution is None:
-                    raise BzrCommandError("You must specify the target distribution "
-                            "using --distribution.")
                 if revision is not None:
                     raise BzrCommandError("--revision is not allowed when merging a tarball")
 
@@ -485,16 +498,6 @@ class cmd_merge_upstream(Command):
                                           "are of different formats. Either delete the target "
                                           "file, or use it as the argument to import.")
                 tarball_filename = os.path.join(orig_dir, dest_name)
-                distribution = distribution.lower()
-                distribution_name = lookup_distribution(distribution)
-                target_name = distribution
-                if distribution_name is None:
-                    if distribution not in ("debian", "ubuntu"):
-                        raise BzrCommandError("Unknown target distribution: %s" \
-                                % target_dist)
-                    else:
-                        target_name = None
-                        distribution_name = distribution
                 db = DistributionBranch(distribution_name, tree.branch, None,
                         tree=tree)
                 dbs = DistributionBranchSet()
@@ -521,7 +524,7 @@ class cmd_merge_upstream(Command):
 
         info("The new upstream version has been imported. You should "
              "now update the changelog (try dch -v %s \"%s\"), resolve any "
-             "conflicts, and then commit." % (package_version(version, distribution), entry_description))
+             "conflicts, and then commit." % (package_version(version, distribution_name), entry_description))
 
 
 register_command(cmd_merge_upstream)
