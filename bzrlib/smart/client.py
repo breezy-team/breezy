@@ -69,8 +69,6 @@ class _SmartClient(object):
             
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             body_stream=None, expect_response_body=True):
-        from bzrlib.trace import mutter
-        mutter('_call_and_read_response: %s %r %r', method, args, body_stream)
         self._run_call_hooks(method, args, body, readv_body)
         if self._medium._protocol_version is not None:
             response_handler = self._send_request(
