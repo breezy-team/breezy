@@ -145,13 +145,13 @@ def simplify_nodes(i):
 			'remove_file': []
 			}
 	for j in i.getElementsByTagName('add_file'):
-		nodes['add_file'].append(j.firstChild.toxml().strip())
+		nodes['add_file'].append(j.childNodes[0].data.strip())
 	for j in i.getElementsByTagName('move'):
 		nodes['move'].append([j.attributes['from'].value, j.attributes['to'].value])
 	for j in i.getElementsByTagName('modify_file'):
-		nodes['modify_file'].append(j.firstChild.toxml().strip())
+		nodes['modify_file'].append(j.childNodes[0].data.strip())
 	for j in i.getElementsByTagName('remove_file'):
-		nodes['remove_file'].append(j.firstChild.toxml().strip())
+		nodes['remove_file'].append(j.childNodes[0].data.strip())
 	# add A, remove A -> None
 	for j in nodes['add_file']:
 		for k in nodes['remove_file']:
