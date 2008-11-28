@@ -152,6 +152,12 @@ def simplify_nodes(i):
 		nodes['modify_file'].append(j.firstChild.toxml().strip())
 	for j in i.getElementsByTagName('remove_file'):
 		nodes['remove_file'].append(j.firstChild.toxml().strip())
+	# add A, remove A -> None
+	for j in nodes['add_file']:
+		for k in nodes['remove_file']:
+			if j == k:
+				nodes['add_file'].remove(j)
+				nodes['remove_file'].remove(k)
 	# add A, rename A B, modify B -> add B
 	for j in nodes['add_file']:
 		for k in nodes['move']:
