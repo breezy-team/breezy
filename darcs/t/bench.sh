@@ -14,8 +14,12 @@ else
 fi
 sh initialise.sh
 cd big-zoo
-#for i in small-repo_play.tar.gz
-for i in *_play.tar.gz
+if [ -n "$1" ]; then
+	targets=$1
+else
+	targets=*_play.tar.gz
+fi
+for i in $targets
 do
 	echo "benchmarking $i"
 	rm -rf _playground
