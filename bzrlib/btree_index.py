@@ -885,6 +885,15 @@ class BTreeGraphIndex(object):
                 "iter_all_entries scales with size of history.")
         if not self.key_count():
             return
+        if self._row_offsets[-1] == 1:
+            # There is only the root node, and we read that via key_count()
+            if self.node_ref_lists:
+                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                    yield (self, key, value, refs)
+            else:
+                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                    yield (self, key, value)
+            return
         start_of_leaves = self._row_offsets[-2]
         end_of_leaves = self._row_offsets[-1]
         needed_offsets = range(start_of_leaves, end_of_leaves)
@@ -1251,14 +1260,17 @@ class BTreeGraphIndex(object):
         """Read some nodes from disk into the LRU cache.
 
         This performs a readv to get the node data into memory, and parses each
-        node, the yields it to the caller. The nodes are requested in the
+        node, then yields it to the caller. The nodes are requested in the
         supplied order. If possible doing sort() on the list before requesting
         a read may improve performance.
 
         :param nodes: The nodes to read. 0 - first node, 1 - second node etc.
         :return: None
         """
+        # may be the byte string of the whole file
         bytes = None
+        # list of (offset, length) regions of the file that should, evenually
+        # be read in to data_ranges, either from 'bytes' or from the transport
         ranges = []
         for index in nodes:
             offset = index * _PAGE_SIZE
@@ -1272,6 +1284,7 @@ class BTreeGraphIndex(object):
                     # small indexes. So we read the whole thing
                     bytes = self._transport.get_bytes(self._name)
                     self._size = len(bytes)
+                    # the whole thing should be parsed out of 'bytes'
                     ranges.append((0, len(bytes)))
                     break
             else:
@@ -1283,9 +1296,10 @@ class BTreeGraphIndex(object):
             ranges.append((offset, size))
         if not ranges:
             return
-        if bytes:
-            data_ranges = [(offset, bytes[offset:offset+_PAGE_SIZE])
-                           for offset in xrange(0, len(bytes), _PAGE_SIZE)]
+        elif bytes is not None:
+            # already have the whole file
+            data_ranges = [(start, bytes[start:start+_PAGE_SIZE])
+                           for start in xrange(0, len(bytes), _PAGE_SIZE)]
         elif self._file is None:
             data_ranges = self._transport.readv(self._name, ranges)
         else:
