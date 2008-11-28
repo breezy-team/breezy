@@ -30,6 +30,9 @@ IN DEVELOPMENT
       files accessed when pushing 1 new revision, for instance.
       (John Arbash Meinel)
 
+    * Signatures to transfer are calculated more efficiently in
+      ``item_keys_introduced_by``.  (Andrew Bennetts, John Arbash Meinel)
+
     * The generic fetch code can once again copy revisions and signatures
       without extracting them completely to fulltexts and then serializing
       them back down into byte strings. This is a significant performance
