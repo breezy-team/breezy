@@ -25,7 +25,7 @@ class DebianError(BzrError):
     _fmt = "A Debian packaging error occurred: %(asdf)s"
 
     def __init__(self, cause):
-        BzrError.__init__(cause, cause=cause)
+        BzrError.__init__(self, cause=cause)
 
 
 class NoSourceDirError(BzrError):
