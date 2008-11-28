@@ -137,6 +137,53 @@ def _get_file_from_location(location):
     return transport.get(path)
 
 
+def _error_if_exists(target_transport, new_name, source_name):
+    if not source_name.endswith('.tar.gz'):
+        raise FileExists(new_name)
+    source_f = _get_file_from_location(source_name)
+    try:
+        source_sha = sha.sha(source_f.read()).hexdigest()
+    finally:
+        source_f.close()
+    target_f = target_transport.get(new_name)
+    try:
+        target_sha = sha.sha(target_f.read()).hexdigest()
+    finally:
+        target_f.close()
+    if source_sha != target_sha:
+        raise FileExists(new_name)
+
+
+def _repack_directory(target_transport, new_name, source_name):
+    target_transport.ensure_base()
+    target_f = target_transport.open_write_stream(new_name)
+    try:
+        tar = tarfile.open(mode='w:gz', fileobj=target_f)
+        try:
+            tar.add(source_name, os.path.basename(source_name))
+        finally:
+            tar.close()
+    finally:
+        target_f.close()
+
+
+def _repack_other(target_transport, new_name, source_name):
+    repacker_cls = get_repacker_class(source_name)
+    if repacker_cls is None:
+        raise UnsupportedRepackFormat(source_name)
+    target_transport.ensure_base()
+    target_f = target_transport.open_write_stream(new_name)
+    try:
+        source_f = _get_file_from_location(source_name)
+        try:
+            repacker = repacker_cls(source_f)
+            repacker.repack(target_f)
+        finally:
+            source_f.close()
+    finally:
+        target_f.close()
+
+
 def repack_tarball(source_name, new_name, target_dir=None):
     """Repack the file/dir named to a .tar.gz with the chosen name.
 
@@ -175,44 +222,9 @@ def repack_tarball(source_name, new_name, target_dir=None):
     extra, new_name = os.path.split(new_name)
     target_transport = get_transport(os.path.join(target_dir, extra))
     if target_transport.has(new_name):
-        if not source_name.endswith('.tar.gz'):
-            raise FileExists(new_name)
-        source_f = _get_file_from_location(source_name)
-        try:
-            source_sha = sha.sha(source_f.read()).hexdigest()
-        finally:
-            source_f.close()
-        target_f = target_transport.get(new_name)
-        try:
-            target_sha = sha.sha(target_f.read()).hexdigest()
-        finally:
-            target_f.close()
-        if source_sha != target_sha:
-            raise FileExists(new_name)
+        _error_if_exists(target_transport, new_name, source_name)
         return
     if os.path.isdir(source_name):
-        target_transport.ensure_base()
-        target_f = target_transport.open_write_stream(new_name)
-        try:
-            tar = tarfile.open(mode='w:gz', fileobj=target_f)
-            try:
-                tar.add(source_name, os.path.basename(source_name))
-            finally:
-                tar.close()
-        finally:
-            target_f.close()
+        _repack_directory(target_transport, new_name, source_name)
     else:
-        repacker_cls = get_repacker_class(source_name)
-        if repacker_cls is None:
-            raise UnsupportedRepackFormat(source_name)
-        target_transport.ensure_base()
-        target_f = target_transport.open_write_stream(new_name)
-        try:
-            source_f = _get_file_from_location(source_name)
-            try:
-                repacker = repacker_cls(source_f)
-                repacker.repack(target_f)
-            finally:
-                source_f.close()
-        finally:
-            target_f.close()
+        _repack_other(target_transport, new_name, source_name)
