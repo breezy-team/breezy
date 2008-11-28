@@ -21,11 +21,12 @@ do
 	rm -rf _playground
 	tar xf $i
 	cd _playground
-	sh -c 'time d2x -f git sandbox' 2>&1 |tee ../$i.d-f-e.log
-	if diff_git sandbox; then
-		echo "ok, the result is correct" >> ../$i.d-f-e.log
+	log="../$i.d-f-e-$(git describe).log"
+	sh -c 'time d2x -f git sandbox' 2>&1 |tee $log
+	if diff_git sandbox >/dev/null; then
+		echo "ok, the result is correct" >> $log
 	else
-		echo "ouch, the result is corrupted" >> ../$i.d-f-e.log
+		echo "ouch, the result is corrupted" >> $log
 		exit 1
 	fi
 	cd ..
