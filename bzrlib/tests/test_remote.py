@@ -252,6 +252,14 @@ class FakeClient(_SmartClient):
         self.expecting_body = True
         return result[1], FakeProtocol(result[2], self)
 
+    def call_with_body_stream(self, args, stream):
+        # Explicitly consume the stream before checking for an error, because
+        # that's what happens a real medium.
+        stream = list(stream)
+        self._check_call(args[0], args[1:])
+        self._calls.append(('call_with_body_stream', args[0], args[1:], stream))
+        return self._get_next_response()[1]
+
 
 class FakeMedium(medium.SmartClientMedium):
 
@@ -1506,6 +1514,36 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
             [('call', 'PackRepository.autopack', ('quack/',)),
              ('_ensure_real',),
              ('pack collection autopack',)],
+            client._calls)
+
+
+class TestVersionedFilesInsertRecordStream(TestRemoteRepository):
+    """Tests for RemoteVersionedFiles.insert_record_stream implementation."""
+
+    def test_backwards_compatibility_1_10(self):
+        """1.10 and earlier servers don't have this verb, so fallback to the
+        plain VFS implementation.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        vf = repo.texts
+        client.add_unknown_method_response(
+            'VersionedFiles.insert_record_stream')
+        class StubRealVF:
+            def insert_record_stream(stub_self, stream):
+                # Listify the stream to fully consume it.
+                stream = list(stream)
+                client._calls.append(('vfs insert_record_stream', stream))
+        vf._get_real_vf = StubRealVF
+        record_list = ['fake record 1', 'fake record 2']
+        stream = (record for record in record_list)
+        vf.insert_record_stream(stream, _record_serialiser=lambda x:x)
+        self.assertEqual(
+            [('call_with_body_stream', 'VersionedFile.insert_record_stream',
+                ('quack/', 'texts', ''), record_list),
+             # Note that the fallback call needs to receive the full list,
+             # even though the original stream will have been consumed.
+             ('vfs insert_record_stream', record_list)],
             client._calls)
 
 

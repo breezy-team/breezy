@@ -18,6 +18,7 @@
 # across to run on the server.
 
 import bz2
+import itertools
 
 from bzrlib import (
     branch,
@@ -1293,15 +1294,16 @@ class RemoteVersionedFiles(VersionedFiles):
         real_vf = self._get_real_vf()
         return real_vf.get_sha1s(keys)
 
-    def insert_record_stream(self, stream):
+    def insert_record_stream(self, stream, _record_serialiser=None):
         lock_token = self.remote_repo._lock_token
         if lock_token is None:
             lock_token = ''
-        stream = list(stream)
-        byte_stream = _serialise_record_stream(stream)
-        byte_stream = list(byte_stream)
-        if byte_stream == []:
-            return
+        if _record_serialiser is None:
+            _record_serialiser = _serialise_record_stream
+        # Tee the stream, because we may need to replay it if we have to
+        # fallback to the VFS implementation.
+        stream, fallback_stream = itertools.tee(stream)
+        byte_stream = _record_serialiser(stream)
         client = self.remote_repo._client
         path = self.remote_repo.bzrdir._path_for_remote_call(client)
         try:
@@ -1310,7 +1312,7 @@ class RemoteVersionedFiles(VersionedFiles):
                  lock_token), byte_stream)
         except errors.UnknownSmartMethod:
             real_vf = self._get_real_vf()
-            return real_vf.insert_record_stream(stream)
+            return real_vf.insert_record_stream(fallback_stream)
 
         response_tuple, response_handler = response
         if response_tuple != ('ok',):
