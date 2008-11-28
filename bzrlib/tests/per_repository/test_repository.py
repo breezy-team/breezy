@@ -440,7 +440,6 @@ class TestRepository(TestCaseWithRepository):
             u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
             lambda match: match.group(0).encode('unicode_escape'),
             message)
-        escaped_message= re.sub('\r', '\n', escaped_message)
         self.assertEqual(rev.message, escaped_message)
         # insist the class is unicode no matter what came in for 
         # consistency.
@@ -452,8 +451,12 @@ class TestRepository(TestCaseWithRepository):
 
     def test_commit_unicode_control_characters(self):
         # a unicode message with control characters should roundtrip too.
+        unichars = [unichr(x) for x in range(256)]
+        # '\r' is not directly allowed anymore, as it used to be translated
+        # into '\n' anyway
+        unichars[ord('\r')] = u'\n'
         self.assertMessageRoundtrips(
-            "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)]))
+            u"All 8-bit chars: " +  ''.join(unichars))
 
     def test_check_repository(self):
         """Check a fairly simple repository's history"""

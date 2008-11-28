@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,7 +61,9 @@ class LaunchpadAccountTests(TestCaseInTempDir):
         # Test formatting of NoRegisteredSSHKeys exception
         error = account.NoRegisteredSSHKeys(user='test-user')
         self.assertEqualDiff('The user test-user has not registered any '
-                             'SSH keys with Launchpad.', str(error))
+            'SSH keys with Launchpad.\n'
+            'See <https://launchpad.net/people/+me>',
+            str(error))
 
     def test_set_lp_login_updates_authentication_conf(self):
         self.assertIs(None, account._get_auth_user())

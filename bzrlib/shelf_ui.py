@@ -33,16 +33,12 @@ from bzrlib import (
     ui,
     workingtree,
 )
-try:
-    from bzrlib.plugins.bzrtools import colordiff
-except ImportError:
-    colordiff = None
 
 
 class Shelver(object):
     """Interactively shelve the changes in a working tree."""
 
-    def __init__(self, work_tree, target_tree, auto=False,
+    def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
                  auto_apply=False, file_list=None, message=None):
         """Constructor.
 
@@ -56,9 +52,8 @@ class Shelver(object):
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
-        if colordiff is not None:
-            self.diff_writer = colordiff.DiffWriter(sys.stdout, False)
-        else:
+        self.diff_writer = diff_writer
+        if self.diff_writer is None:
             self.diff_writer = sys.stdout
         self.manager = work_tree.get_shelf_manager()
         self.auto = auto
@@ -67,7 +62,7 @@ class Shelver(object):
         self.message = message
 
     @classmethod
-    def from_args(klass, revision=None, all=False, file_list=None,
+    def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
                   message=None, directory='.'):
         """Create a shelver from commandline arguments.
 
@@ -80,7 +75,8 @@ class Shelver(object):
         tree, path = workingtree.WorkingTree.open_containing(directory)
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
-        return klass(tree, target_tree, all, all, file_list, message)
+        return klass(tree, target_tree, diff_writer, all, all, file_list,
+                     message)
 
     def run(self):
         """Interactively shelve the changes."""

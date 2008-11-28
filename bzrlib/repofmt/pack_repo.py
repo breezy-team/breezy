@@ -172,14 +172,6 @@ class Pack(object):
         """The text index is the name + .tix."""
         return self.index_name('text', name)
 
-    def _external_compression_parents_of_texts(self):
-        keys = set()
-        refs = set()
-        for node in self.text_index.iter_all_entries():
-            keys.add(node[1])
-            refs.update(node[3][1])
-        return refs - keys
-
 
 class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
@@ -222,28 +214,17 @@ class NewPack(Pack):
         'signature': ('.six', 3),
         }
 
-    def __init__(self, upload_transport, index_transport, pack_transport,
-        upload_suffix='', file_mode=None, index_builder_class=None,
-        index_class=None):
+    def __init__(self, pack_collection, upload_suffix='', file_mode=None):
         """Create a NewPack instance.
 
-        :param upload_transport: A writable transport for the pack to be
-            incrementally uploaded to.
-        :param index_transport: A writable transport for the pack's indices to
-            be written to when the pack is finished.
-        :param pack_transport: A writable transport for the pack to be renamed
-            to when the upload is complete. This *must* be the same as
-            upload_transport.clone('../packs').
+        :param pack_collection: A PackCollection into which this is being inserted.
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
-        :param file_mode: An optional file mode to create the new files with.
-        :param index_builder_class: Required keyword parameter - the class of
-            index builder to use.
-        :param index_class: Required keyword parameter - the class of index
-            object to use.
+        :param file_mode: Unix permissions for newly created file.
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
+        index_builder_class = pack_collection._index_builder_class
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             index_builder_class(reference_lists=1),
@@ -259,14 +240,15 @@ class NewPack(Pack):
             # listing.
             index_builder_class(reference_lists=0),
             )
+        self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
-        self.index_class = index_class
+        self.index_class = pack_collection._index_class
         # where should the new pack be opened
-        self.upload_transport = upload_transport
+        self.upload_transport = pack_collection._upload_transport
         # where are indices written out to
-        self.index_transport = index_transport
+        self.index_transport = pack_collection._index_transport
         # where is the pack renamed to when it is finished?
-        self.pack_transport = pack_transport
+        self.pack_transport = pack_collection._pack_transport
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
@@ -334,6 +316,35 @@ class NewPack(Pack):
         else:
             raise AssertionError(self._state)
 
+    def _check_references(self):
+        """Make sure our external references are present.
+        
+        Packs are allowed to have deltas whose base is not in the pack, but it
+        must be present somewhere in this collection.  It is not allowed to
+        have deltas based on a fallback repository. 
+        (See <https://bugs.launchpad.net/bzr/+bug/288751>)
+        """
+        missing_items = {}
+        for (index_name, external_refs, index) in [
+            ('texts',
+                self.text_index._external_references(),
+                self._pack_collection.text_index.combined_index),
+            ('inventories',
+                self.inventory_index._external_references(),
+                self._pack_collection.inventory_index.combined_index),
+            ]:
+            missing = external_refs.difference(
+                k for (idx, k, v, r) in 
+                index.iter_entries(external_refs))
+            if missing:
+                missing_items[index_name] = sorted(list(missing))
+        if missing_items:
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "Newly created pack file %r has delta references to "
+                "items not in its repository:\n%s"
+                % (self, pformat(missing_items)))
+
     def data_inserted(self):
         """True if data has been added to this pack."""
         return bool(self.get_revision_count() or
@@ -356,6 +367,7 @@ class NewPack(Pack):
         if self._buffer[1]:
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
+        self._check_references()
         # write indices
         # XXX: It'd be better to write them all to temporary names, then
         # rename them all into place, so that the window when only some are
@@ -462,7 +474,8 @@ class AggregateIndex(object):
         self._reload_func = reload_func
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
-        self.data_access = _DirectPackAccess(self.index_to_pack)
+        self.data_access = _DirectPackAccess(self.index_to_pack,
+                                             reload_func=reload_func)
         self.add_callback = None
 
     def replace_indices(self, index_to_pack, indices):
@@ -568,6 +581,35 @@ class Packer(object):
     def _extra_init(self):
         """A template hook to allow extending the constructor trivially."""
 
+    def _pack_map_and_index_list(self, index_attribute):
+        """Convert a list of packs to an index pack map and index list.
+
+        :param index_attribute: The attribute that the desired index is found
+            on.
+        :return: A tuple (map, list) where map contains the dict from
+            index:pack_tuple, and list contains the indices in the preferred
+            access order.
+        """
+        indices = []
+        pack_map = {}
+        for pack_obj in self.packs:
+            index = getattr(pack_obj, index_attribute)
+            indices.append(index)
+            pack_map[index] = pack_obj
+        return pack_map, indices
+
+    def _index_contents(self, indices, key_filter=None):
+        """Get an iterable of the index contents from a pack_map.
+
+        :param indices: The list of indices to query
+        :param key_filter: An optional filter to limit the keys returned.
+        """
+        all_index = CombinedGraphIndex(indices)
+        if key_filter is None:
+            return all_index.iter_all_entries()
+        else:
+            return all_index.iter_entries(key_filter)
+
     def pack(self, pb=None):
         """Create a new pack by reading data from other packs.
 
@@ -609,12 +651,42 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection._upload_transport,
-            self._pack_collection._index_transport,
-            self._pack_collection._pack_transport, upload_suffix=self.suffix,
-            file_mode=self._pack_collection.repo.bzrdir._get_file_mode(),
-            index_builder_class=self._pack_collection._index_builder_class,
-            index_class=self._pack_collection._index_class)
+        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+                file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
+
+    def _update_pack_order(self, entries, index_to_pack_map):
+        """Determine how we want our packs to be ordered.
+
+        This changes the sort order of the self.packs list so that packs unused
+        by 'entries' will be at the end of the list, so that future requests
+        can avoid probing them.  Used packs will be at the front of the
+        self.packs list, in the order of their first use in 'entries'.
+
+        :param entries: A list of (index, ...) tuples
+        :param index_to_pack_map: A mapping from index objects to pack objects.
+        """
+        packs = []
+        seen_indexes = set()
+        for entry in entries:
+            index = entry[0]
+            if index not in seen_indexes:
+                packs.append(index_to_pack_map[index])
+                seen_indexes.add(index)
+        if len(packs) == len(self.packs):
+            if 'pack' in debug.debug_flags:
+                mutter('Not changing pack list, all packs used.')
+            return
+        seen_packs = set(packs)
+        for pack in self.packs:
+            if pack not in seen_packs:
+                packs.append(pack)
+                seen_packs.add(pack)
+        if 'pack' in debug.debug_flags:
+            old_names = [p.access_tuple()[1] for p in self.packs]
+            new_names = [p.access_tuple()[1] for p in packs]
+            mutter('Reordering packs\nfrom: %s\n  to: %s',
+                   old_names, new_names)
+        self.packs = packs
 
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
@@ -624,9 +696,11 @@ class Packer(object):
         else:
             revision_keys = None
         # select revision keys
-        revision_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'revision_index')[0]
-        revision_nodes = self._pack_collection._index_contents(revision_index_map, revision_keys)
+        revision_index_map, revision_indices = self._pack_map_and_index_list(
+            'revision_index')
+        revision_nodes = self._index_contents(revision_indices, revision_keys)
+        revision_nodes = list(revision_nodes)
+        self._update_pack_order(revision_nodes, revision_index_map)
         # copy revision keys and adjust values
         self.pb.update("Copying revision texts", 1)
         total_items, readv_group_iter = self._revision_node_readv(revision_nodes)
@@ -652,9 +726,9 @@ class Packer(object):
         # querying for keys here could introduce a bug where an inventory item
         # is missed, so do not change it to query separately without cross
         # checking like the text key check below.
-        inventory_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'inventory_index')[0]
-        inv_nodes = self._pack_collection._index_contents(inventory_index_map, inv_keys)
+        inventory_index_map, inventory_indices = self._pack_map_and_index_list(
+            'inventory_index')
+        inv_nodes = self._index_contents(inventory_indices, inv_keys)
         # copy inventory keys and adjust values
         # XXX: Should be a helper function to allow different inv representation
         # at this point.
@@ -704,19 +778,6 @@ class Packer(object):
             self.new_pack.text_index, readv_group_iter, total_items))
         self._log_copied_texts()
 
-    def _check_references(self):
-        """Make sure our external refereneces are present."""
-        external_refs = self.new_pack._external_compression_parents_of_texts()
-        if external_refs:
-            index = self._pack_collection.text_index.combined_index
-            found_items = list(index.iter_entries(external_refs))
-            if len(found_items) != len(external_refs):
-                found_keys = set(k for idx, k, refs, value in found_items)
-                missing_items = external_refs - found_keys
-                missing_file_id, missing_revision_id = missing_items.pop()
-                raise errors.RevisionNotPresent(missing_revision_id,
-                                                missing_file_id)
-
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
         self.new_pack = self.open_pack()
@@ -740,9 +801,9 @@ class Packer(object):
         self._copy_text_texts()
         # select signature keys
         signature_filter = self._revision_keys # same keyspace
-        signature_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'signature_index')[0]
-        signature_nodes = self._pack_collection._index_contents(signature_index_map,
+        signature_index_map, signature_indices = self._pack_map_and_index_list(
+            'signature_index')
+        signature_nodes = self._index_contents(signature_indices,
             signature_filter)
         # copy signature keys and adjust values
         self.pb.update("Copying signature texts", 4)
@@ -753,7 +814,7 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
-        self._check_references()
+        new_pack._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
             return None
@@ -798,7 +859,8 @@ class Packer(object):
             # linear scan up the pack
             pack_readv_requests.sort()
             # copy the data
-            transport, path = index_map[index]
+            pack_obj = index_map[index]
+            transport, path = pack_obj.access_tuple()
             reader = pack.make_readv_reader(transport, path,
                 [offset[0:2] for offset in pack_readv_requests])
             for (names, read_func), (_1, _2, (key, eol_flag)) in \
@@ -842,7 +904,8 @@ class Packer(object):
         pb.update("Copied record", record_index, total_items)
         for index, readv_vector, node_vector in readv_group_iter:
             # copy the data
-            transport, path = index_map[index]
+            pack_obj = index_map[index]
+            transport, path = pack_obj.access_tuple()
             reader = pack.make_readv_reader(transport, path, readv_vector)
             for (names, read_func), (key, eol_flag, references) in \
                 izip(reader.iter_records(), node_vector):
@@ -866,9 +929,9 @@ class Packer(object):
                 record_index += 1
 
     def _get_text_nodes(self):
-        text_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'text_index')[0]
-        return text_index_map, self._pack_collection._index_contents(text_index_map,
+        text_index_map, text_indices = self._pack_map_and_index_list(
+            'text_index')
+        return text_index_map, self._index_contents(text_indices,
             self._text_filter)
 
     def _least_readv_node_readv(self, nodes):
@@ -1109,9 +1172,9 @@ class ReconcilePacker(Packer):
             output_texts.add_lines(key, parent_keys, text_lines,
                 random_id=True, check_content=False)
         # 5) check that nothing inserted has a reference outside the keyspace.
-        missing_text_keys = self.new_pack._external_compression_parents_of_texts()
+        missing_text_keys = self.new_pack.text_index._external_references()
         if missing_text_keys:
-            raise errors.BzrError('Reference to missing compression parents %r'
+            raise errors.BzrCheckError('Reference to missing compression parents %r'
                 % (missing_text_keys,))
         self._log_copied_texts()
 
@@ -1219,9 +1282,6 @@ class RepositoryPackCollection(object):
             return False
         # XXX: the following may want to be a class, to pack with a given
         # policy.
-        mutter('Auto-packing repository %s, which has %d pack files, '
-            'containing %d revisions into %d packs.', self, total_packs,
-            total_revisions, self._max_pack_count(total_revisions))
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1242,6 +1302,13 @@ class RepositoryPackCollection(object):
             existing_packs.append((revision_count, pack))
         pack_operations = self.plan_autopack_combinations(
             existing_packs, pack_distribution)
+        num_new_packs = len(pack_operations)
+        num_old_packs = sum([len(po[1]) for po in pack_operations])
+        num_revs_affected = sum([po[0] for po in pack_operations])
+        mutter('Auto-packing repository %s, which has %d pack files, '
+            'containing %d revisions. Packing %d files into %d affecting %d'
+            ' revisions', self, total_packs, total_revisions, num_old_packs,
+            num_new_packs, num_revs_affected)
         self._execute_pack_operations(pack_operations)
         return True
 
@@ -1515,57 +1582,6 @@ class RepositoryPackCollection(object):
         self._packs_by_name = {}
         self._packs_at_load = None
 
-    def _make_index_map(self, index_suffix):
-        """Return information on existing indices.
-
-        :param suffix: Index suffix added to pack name.
-
-        :returns: (pack_map, indices) where indices is a list of GraphIndex 
-        objects, and pack_map is a mapping from those objects to the 
-        pack tuple they describe.
-        """
-        # TODO: stop using this; it creates new indices unnecessarily.
-        self.ensure_loaded()
-        suffix_map = {'.rix': 'revision_index',
-            '.six': 'signature_index',
-            '.iix': 'inventory_index',
-            '.tix': 'text_index',
-        }
-        return self._packs_list_to_pack_map_and_index_list(self.all_packs(),
-            suffix_map[index_suffix])
-
-    def _packs_list_to_pack_map_and_index_list(self, packs, index_attribute):
-        """Convert a list of packs to an index pack map and index list.
-
-        :param packs: The packs list to process.
-        :param index_attribute: The attribute that the desired index is found
-            on.
-        :return: A tuple (map, list) where map contains the dict from
-            index:pack_tuple, and lsit contains the indices in the same order
-            as the packs list.
-        """
-        indices = []
-        pack_map = {}
-        for pack in packs:
-            index = getattr(pack, index_attribute)
-            indices.append(index)
-            pack_map[index] = (pack.pack_transport, pack.file_name())
-        return pack_map, indices
-
-    def _index_contents(self, pack_map, key_filter=None):
-        """Get an iterable of the index contents from a pack_map.
-
-        :param pack_map: A map from indices to pack details.
-        :param key_filter: An optional filter to limit the
-            keys returned.
-        """
-        indices = [index for index in pack_map.iterkeys()]
-        all_index = CombinedGraphIndex(indices)
-        if key_filter is None:
-            return all_index.iter_all_entries()
-        else:
-            return all_index.iter_entries(key_filter)
-
     def _unlock_names(self):
         """Release the mutex around the pack-names index."""
         self.repo.control_files.unlock()
@@ -1708,11 +1724,8 @@ class RepositoryPackCollection(object):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = NewPack(self._upload_transport, self._index_transport,
-            self._pack_transport, upload_suffix='.pack',
-            file_mode=self.repo.bzrdir._get_file_mode(),
-            index_builder_class=self._index_builder_class,
-            index_class=self._index_class)
+        self._new_pack = NewPack(self, upload_suffix='.pack',
+            file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
             self._new_pack)
@@ -1732,9 +1745,15 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            self._new_pack.abort()
-            self._remove_pack_indices(self._new_pack)
-            self._new_pack = None
+            try:
+                self._new_pack.abort()
+            finally:
+                # XXX: If we aborted while in the middle of finishing the write
+                # group, _remove_pack_indices can fail because the indexes are
+                # already gone.  If they're not there we shouldn't fail in this
+                # case.  -- mbp 20081113
+                self._remove_pack_indices(self._new_pack)
+                self._new_pack = None
         self.repo._text_knit = None
 
     def _commit_write_group(self):
@@ -2357,9 +2376,7 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
 class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     """A repository with rich roots, no subtrees, stacking and btree indexes.
 
-    This format should be retained until the second release after bzr 1.7.
-
-    1.6.1-subtree[as it might have been] with B+Tree indices.
+    1.6-rich-root with B+Tree indices.
     """
 
     repository_class = KnitPackRepository
