@@ -1,4 +1,4 @@
-VERSION = 0.6
+VERSION = 0.7
 DATE := $(shell date +%Y-%m-%d)
 
 INSTALL = /usr/bin/install -c

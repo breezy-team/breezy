@@ -1,6 +1,6 @@
 VERSION         DESCRIPTION
 -----------------------------------------------------------------------------
-              - new darcs-fast-export option: --progress
+0.7           - new darcs-fast-export option: --progress
               - massive speedup in darcs-fast-export due to not
 		exporting unchanged files multiple times and reading
                 patches directly
