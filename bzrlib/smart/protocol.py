@@ -660,6 +660,8 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         # Protocols v1 and v2 don't support body streams.  So it's safe to
         # assume that a v1/v2 server doesn't support whatever method we're
         # trying to call with a body stream.
+        self._request.finished_writing()
+        self._request.finished_reading()
         raise errors.UnknownSmartMethod(args[0])
 
     def cancel_read_body(self):

@@ -200,8 +200,8 @@ def _serialise_search_result(result_items):
 
 class SmartServerVersionedFilesInsertRecordStream(SmartServerVersionedFilesRequest):
 
-    def do_versioned_files_request(self, versioned_files, *args):
-        self._repository.lock_write()
+    def do_versioned_files_request(self, versioned_files, lock_token):
+        self._repository.lock_write(token=lock_token)
         self._repository.start_write_group()
         self.versioned_files = versioned_files
 

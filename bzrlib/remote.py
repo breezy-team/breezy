@@ -1297,18 +1297,24 @@ class RemoteVersionedFiles(VersionedFiles):
         lock_token = self.remote_repo._lock_token
         if lock_token is None:
             lock_token = ''
+        stream = list(stream)
         byte_stream = _serialise_record_stream(stream)
         byte_stream = list(byte_stream)
         if byte_stream == []:
             return
         client = self.remote_repo._client
         path = self.remote_repo.bzrdir._path_for_remote_call(client)
-        response = client.call_with_body_stream(
-            ('VersionedFile.insert_record_stream', path, self.vf_name,
-             lock_token), byte_stream)
+        try:
+            response = client.call_with_body_stream(
+                ('VersionedFile.insert_record_stream', path, self.vf_name,
+                 lock_token), byte_stream)
+        except errors.UnknownSmartMethod:
+            real_vf = self._get_real_vf()
+            return real_vf.insert_record_stream(stream)
+
         response_tuple, response_handler = response
-#        real_vf = self._get_real_vf()
-#        return real_vf.insert_record_stream(stream)
+        if response_tuple != ('ok',):
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         real_vf = self._get_real_vf()
