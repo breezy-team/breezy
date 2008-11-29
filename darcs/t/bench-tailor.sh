@@ -15,12 +15,11 @@ target = git:$myname
 [darcs:$myname]
 subdir = darcs
 repository = $mypath
-encoding = latin2
+encoding-errors-policy = ignore
 
 [git:$myname]
 subdir = git
 repository = $mypath.git
-encoding = latin2
 EOF
 }
 
