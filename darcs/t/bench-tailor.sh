@@ -8,6 +8,9 @@ create_config()
 	myname=$(basename $mypath)
 
 	cat > config << EOF
+[DEFAULT]
+encoding-errors-policy = replace
+
 [$myname]
 source = darcs:$myname
 target = git:$myname
@@ -15,7 +18,6 @@ target = git:$myname
 [darcs:$myname]
 subdir = darcs
 repository = $mypath
-encoding-errors-policy = ignore
 
 [git:$myname]
 subdir = git
