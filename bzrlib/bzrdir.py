@@ -516,6 +516,13 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_workingtree)
 
+    def backup_bzrdir(self, target_dir):
+        """Backup this bzr control directory.
+        
+        :param target_dir: Name of directory to copy to.
+        """
+        self.root_transport.copy_tree('.bzr', target_dir)
+
     def retire_bzrdir(self, limit=10000):
         """Permanently disable the bzrdir.
 

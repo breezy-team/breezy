@@ -15,6 +15,9 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
   BUG FIXES:
+  
+   * Allow BzrDir implementation to implement backing up of 
+     control directory. (#139691)
 
   DOCUMENTATION:
 

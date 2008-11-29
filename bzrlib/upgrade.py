@@ -75,7 +75,7 @@ class Convert(object):
 
     def _backup_control_dir(self):
         self.pb.note('making backup of tree history')
-        self.transport.copy_tree('.bzr', 'backup.bzr')
+        self.bzrdir.backup_bzrdir("backup.bzr")
         self.pb.note('%s.bzr has been backed up to %sbackup.bzr',
              self.transport.base,
              self.transport.base)
