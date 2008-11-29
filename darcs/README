@@ -11,16 +11,16 @@ It exhibits the following _features:_
 
 Fast::
 	darcs-fast-export provides a fast darcs backend for fast-import.
-	Converting a huge repo (26094 patches, repo size 210M) took about 10
-	hours.
+	Converting GHC's huge repo to git (19057 patches, repo size 145M)
+	completed in just 3-4 hours on quite modest (~ $500 USD) hardware.
 
 Independent::
 	Ideally it should work with any fast importer, but actually it has been
 	tested with git fast-import, bzr fast-import and hg fastimport. (These
 	are the three fast-import implementations available ATM.)
 	+
-	hg fastimport needs two patches. While they are not in the upstream, you
-	can get it from my repository using
+	hg fastimport needs three patches. While they are not in the upstream,
+	you can get it from my repository using
 +
 ----
 $ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
@@ -176,3 +176,4 @@ if you're interested.
   for hashed repositories, `_darcs/format` interpretation, and mangling
   whitespace in tags to cope with repos imported into DARCS from CVS.
 - Pieter de Bie for writing git-bzr, which was the base of git-darcs
+- Lele Gaifax for providing a list of darcs idiosyncrasies.
