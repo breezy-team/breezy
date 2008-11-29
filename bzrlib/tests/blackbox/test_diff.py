@@ -126,12 +126,24 @@ class TestDiff(DiffBase):
         # Get an error from a file that does not exist at all
         # (Malone #3619)
         self.make_example_branch()
-        out, err = self.run_bzr('diff does-not-exist', retcode=3)
-        self.assertContainsRe(err, 'not versioned.*does-not-exist')
+        out, err = self.run_bzr('diff does-not-exist', retcode=3,
+            error_regexes=('not versioned.*does-not-exist',))
 
     def test_diff_illegal_revision_specifiers(self):
-        out, err = self.run_bzr('diff -r 1..23..123', retcode=3)
-        self.assertContainsRe(err, 'one or two revision specifiers')
+        out, err = self.run_bzr('diff -r 1..23..123', retcode=3,
+            error_regexes=('one or two revision specifiers',))
+
+    def test_diff_nonexistent_revision(self):
+        out, err = self.run_bzr('diff -r 123', retcode=3,
+            error_regexes=("Requested revision: '123' does not "
+                "exist in branch:",))
+
+    def test_diff_nonexistent_dotted_revision(self):
+        out, err = self.run_bzr('diff -r 1.1', retcode=3)
+        print out
+        print err
+        self.assertContainsRe(err,
+            "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
