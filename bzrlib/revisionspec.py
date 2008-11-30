@@ -31,6 +31,8 @@ from bzrlib import (
     trace,
     )
 
+from revision import NULL_REVISION
+
 
 _marker = []
 
@@ -58,7 +60,7 @@ class RevisionInfo(object):
         if rev_id is _marker:
             # allow caller to be lazy
             if self.revno is None:
-                self.rev_id = None
+                self.rev_id = NULL_REVISION
             else:
                 self.rev_id = branch.get_rev_id(self.revno)
         else:
@@ -361,7 +363,7 @@ class RevisionSpec_revno(RevisionSpec):
             finally:
                 branch.unlock()
             if len(revisions) != 1:
-                return branch, None, None
+                raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
