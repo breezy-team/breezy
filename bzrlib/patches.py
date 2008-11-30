@@ -164,8 +164,6 @@ def parse_line(line):
         return InsertLine(line[1:])
     elif line.startswith("-"):
         return RemoveLine(line[1:])
-    elif line == NO_NL:
-        return NO_NL
     else:
         raise MalformedLine("Unknown line type", line)
 __pychecker__=""
@@ -240,6 +238,9 @@ class Hunk:
 def iter_hunks(iter_lines):
     hunk = None
     for line in iter_lines:
+        if line == NO_NL and hunk is not None:
+            hunk.lines.append(NO_NL)
+            continue
         if line == "\n":
             if hunk is not None:
                 yield hunk
