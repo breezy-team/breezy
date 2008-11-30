@@ -16,6 +16,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Give proper error message for diff with non-existent dotted revno.
+      (Marius Kruger, #301969)
+
   DOCUMENTATION:
 
   API CHANGES:
