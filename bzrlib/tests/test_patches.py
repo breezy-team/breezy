@@ -119,7 +119,7 @@ class PatchesTester(TestCase):
         self.makeMalformedLine("hello\n")
 
     def testMalformedLineNO_NL(self):
-        """Parse invalid 'No newline at end of file' in hunk lines"""
+        """Parse invalid '\ No newline at end of file' in hunk lines"""
         self.makeMalformedLine(NO_NL)
 
     def compare_parsed(self, patchtext):
@@ -179,6 +179,7 @@ class PatchesTester(TestCase):
             ('diff-4', 'orig-4', 'mod-4'),
             ('diff-5', 'orig-5', 'mod-5'),
             ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
         ]
         for diff, orig, mod in files:
             patch = self.datafile(diff)
@@ -201,6 +202,7 @@ class PatchesTester(TestCase):
             ('diff-4', 'orig-4', 'mod-4'),
             ('diff-5', 'orig-5', 'mod-5'),
             ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
         ]
         for diff, orig, mod in files:
             parsed = parse_patch(self.datafile(diff))
