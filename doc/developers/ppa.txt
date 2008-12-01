@@ -230,6 +230,11 @@ To build bzr-svn:
 
 #. Get a checkout of ``lp:~bzr/bzr-svn/hardy-ppa/``
 
+#. Merge from ``http://bzr.debian.org/pkg-bazaar/bzr-svn/experimental/``
+  
+   This should bring in both upstream and packaging changes for the new
+   release, and it's updated as part of the bzr-svn release process.
+
 #. ``export UPSTREAM_VERSION=bzr-svn-0.4.15`` or similar
 
 #. Run ``dch -v 0.4.15-1~bazaar1-hardy1 -D hardy`` or similar
