@@ -401,7 +401,10 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable()
         # Avoid make_branch, which produces standalone branches.
         bzrdir = self.make_bzrdir('repo/stack-on')
-        b = bzrdir.create_branch()
+        try:
+            b = bzrdir.create_branch()
+        except errors.UninitializableFormat:
+            raise TestNotApplicable()
         transport = self.get_transport('stacked')
         b.bzrdir.clone_on_transport(transport, stacked_on=b.base)
         # Ensure that opening the branch doesn't raise.
