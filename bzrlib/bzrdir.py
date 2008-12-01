@@ -2650,6 +2650,11 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             return False
         return self.get_format_description() == other.get_format_description()
 
+    @property
+    def repository_format(self):
+        # Using a property to avoid early loading of remote
+        return remote.RemoteRepositoryFormat()
+
 
 BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
 
