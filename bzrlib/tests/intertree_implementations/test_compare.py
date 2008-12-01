@@ -21,7 +21,6 @@ import shutil
 
 from bzrlib import (
     errors,
-    revisiontree,
     tests,
     workingtree_4,
     )
@@ -333,6 +332,7 @@ class TestCompare(TestCaseWithTwoTrees):
         else:
             links_supported = False
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        self.not_applicable_if_cannot_represent_unversioned(tree2)
         d = self.intertree_class(tree1, tree2).compare(want_unversioned=True)
         self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
@@ -505,23 +505,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
         return (None, (None, path), True, (False, False), (None, None),
                 (None, basename), (None, kind),
                 (None, False))
-
-    def not_applicable_if_missing_in(self, relpath, tree):
-        if not tree.path2id(relpath):
-            # The locked test trees conversion could not preserve the missing
-            # file status. This is normal (e.g. InterDirstateTree falls back
-            # to InterTree if the basis is not a DirstateRevisionTree, and
-            # revision trees cannot have missing files. 
-            raise TestNotApplicable('cannot represent missing files')
-
-    def not_applicable_if_cannot_represent_unversioned(self, tree):
-        if isinstance(tree, revisiontree.RevisionTree):
-            # The locked test trees conversion could not preserve the
-            # unversioned file status. This is normal (e.g. InterDirstateTree
-            # falls back to InterTree if the basis is not a
-            # DirstateRevisionTree, and revision trees cannot have unversioned
-            # files.
-            raise TestNotApplicable('cannot represent unversioned files')
 
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
