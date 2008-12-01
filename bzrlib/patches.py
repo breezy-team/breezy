@@ -237,10 +237,8 @@ class Hunk:
 
 def iter_hunks(iter_lines):
     hunk = None
+    iter_lines = iter_lines_handle_nl(iter_lines)
     for line in iter_lines:
-        if line == NO_NL and hunk is not None:
-            hunk.lines.append(NO_NL)
-            continue
         if line == "\n":
             if hunk is not None:
                 yield hunk
@@ -367,7 +365,6 @@ def iter_lines_handle_nl(iter_lines):
 
 
 def parse_patches(iter_lines):
-    iter_lines = iter_lines_handle_nl(iter_lines)
     return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
 
 
