@@ -714,13 +714,16 @@ def parse_url(url):
     else:
         host = netloc
 
-    if ':' in host:
-        host, port = host.rsplit(':', 1)
-        try:
-            port = int(port)
-        except ValueError:
-            raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                    (port, url))
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+            host, port = host.rsplit(':',1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        if host[0] == '[' and host[-1] == ']': #IPv6
+            host = host[1:-1]
+
     if host == '':
         raise errors.InvalidURL('Host empty in: %s' % url)
 

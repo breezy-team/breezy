@@ -20,6 +20,9 @@ IN DEVELOPMENT
       PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.
       (Andrew Bennetts, #303206)
 
+    * IPv6 literals are accepted in URLs.
+      (stlman, Martin Pool)
+
   DOCUMENTATION:
 
   API CHANGES:
