@@ -845,7 +845,7 @@ class ShortLogFormatter(LogFormatter):
         # TODO: Why not show the modified files in a shorter form as
         # well? rewrap them single lines of appropriate length
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids)
+            revision.delta.show(to_file, self.show_ids, short_status=True)
         to_file.write('\n')
 
 

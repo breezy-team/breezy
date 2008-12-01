@@ -20,6 +20,9 @@ IN DEVELOPMENT
       PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.
       (Andrew Bennetts, #303206)
 
+    * Use the short status format when the short format is used for log.
+      (Vincent Ladeuil, #87179)
+
   DOCUMENTATION:
 
   API CHANGES:

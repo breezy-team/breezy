@@ -219,6 +219,13 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
 
+    def test_log_short_verbose(self):
+        self._prepare()
+        log = self.run_bzr("log --short -v -r 1")[0]
+        # Check that we use the short status format and not the regular one
+        self.assertContainsRe(log, '(?m)^A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^added:$')
+
 
 class TestLogMerges(TestCaseWithoutPropsHandler):
 
