@@ -31,8 +31,6 @@ from bzrlib import (
     trace,
     )
 
-from revision import NULL_REVISION
-
 
 _marker = []
 
@@ -60,7 +58,7 @@ class RevisionInfo(object):
         if rev_id is _marker:
             # allow caller to be lazy
             if self.revno is None:
-                self.rev_id = NULL_REVISION
+                self.rev_id = None
             else:
                 self.rev_id = branch.get_rev_id(self.revno)
         else:
