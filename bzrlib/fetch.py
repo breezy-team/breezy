@@ -241,9 +241,12 @@ class RepoFetcher(object):
             # know for unselected inventories whether all their required
             # texts are present in the other repository - it could be
             # corrupt.
-            if (self.from_repository._format.supports_chks or
+            if (self.from_repository._format.supports_chks and
                 self.to_repository._format.supports_chks):
-                # Hack to make chk->chk fetch: copy the inventories as
+                self._fetch_chk_inventories(revs, pb)
+            elif (self.from_repository._format.supports_chks or
+                self.to_repository._format.supports_chks):
+                # Hack to make not-chk->chk fetch: copy the inventories as
                 # inventories.
                 total = len(revs)
                 for pos, inv in enumerate(
@@ -282,6 +285,67 @@ class RepoFetcher(object):
         # Bug #261339, some knit repositories accidentally had deltas in their
         # revision stream, when you weren't ever supposed to have deltas.
         # So we now *force* fulltext copying for signatures and revisions
+
+    def _fetch_chk_inventories(self, revs, pb):
+        """Fetch the inventory texts, along with the associated chk maps."""
+        from bzrlib import inventory, chk_map
+        # We want an inventory outside of the search set, so that we can filter
+        # out uninteresting chk pages. For now we use
+        # _find_revision_outside_set, but if we had a Search with cut_revs, we
+        # could use that instead.
+        start_rev_id = self.from_repository._find_revision_outside_set(revs)
+        start_rev_key = (start_rev_id,)
+        inv_keys_to_fetch = [(rev_id,) for rev_id in revs]
+        if start_rev_id != NULL_REVISION:
+            inv_keys_to_fetch.append((start_rev_id,))
+        # Any repo that supports chk_bytes must also support out-of-order
+        # insertion. At least, that is how we expect it to work
+        # We use get_record_stream instead of iter_inventories because we want
+        # to be able to insert the stream as well. We could instead fetch
+        # allowing deltas, and then iter_inventories, but we don't know whether
+        # source or target is more 'local' anway.
+        inv_stream = self.from_repository.inventories.get_record_stream(
+            inv_keys_to_fetch, 'unordered',
+            True) # We need them as full-texts so we can find their references
+        uninteresting_chk_roots = set()
+        interesting_chk_roots = set()
+        for record in inv_stream:
+            bytes = record.get_bytes_as('fulltext')
+            chk_inv = inventory.CHKInventory.deserialise(
+                self.from_repository.chk_bytes, bytes, record.key)
+            if record.key == start_rev_key:
+                uninteresting_chk_roots.add(chk_inv.id_to_entry.key())
+                p_id_map = chk_inv.parent_id_basename_to_file_id
+                if p_id_map is not None:
+                    uninteresting_chk_roots.add(p_id_map.key())
+            else:
+                self.to_repository.inventories.insert_record_stream([record])
+                interesting_chk_roots.add(chk_inv.id_to_entry.key())
+                p_id_map = chk_inv.parent_id_basename_to_file_id
+                if p_id_map is not None:
+                    interesting_chk_roots.add(p_id_map.key())
+        # Now that we have worked out all of the interesting root nodes, grab
+        # all of the interesting pages and insert them
+        interesting = chk_map.iter_interesting_nodes(
+            self.from_repository.chk_bytes, interesting_chk_roots,
+            uninteresting_chk_roots, pb=pb)
+        def to_stream_adapter():
+            """Adapt the iter_interesting_nodes result to a single stream.
+
+            iter_interesting_nodes returns records as it processes them, which
+            can be in batches. But we only want a single stream to be inserted.
+            """
+            for record, items in interesting:
+                for value in record.itervalues():
+                    yield value
+        # XXX: We could instead call get_record_stream(records.keys())
+        #      ATM, this will always insert the records as fulltexts, and
+        #      requires that you can hang on to records once you have gone
+        #      on to the next one. Further, it causes the target to
+        #      recompress the data. Testing shows it to be faster than
+        #      requesting the records again, though.
+        self.to_repository.chk_bytes.insert_record_stream(
+            to_stream_adapter())
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and

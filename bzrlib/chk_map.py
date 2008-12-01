@@ -38,7 +38,10 @@ Densely packed upper nodes.
 """
 
 import heapq
-import osutils
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
+from bzrlib import versionedfile
+""")
 
 
 class CHKMap(object):
@@ -100,6 +103,30 @@ class CHKMap(object):
     def _read_bytes(self, key):
         stream = self._store.get_record_stream([key], 'unordered', True)
         return stream.next().get_bytes_as('fulltext')
+
+    def _dump_tree(self):
+        """Return the tree in a string representation."""
+        self._ensure_root()
+        res = self._dump_tree_node(self._root_node, prefix='', indent='')
+        return '\n'.join(res)
+
+    def _dump_tree_node(self, node, prefix, indent):
+        """For this node and all children, generate a string representation."""
+        result = []
+        node_key = node.key()
+        if node_key is not None:
+            node_key = node_key[0]
+        result.append('%s%r %s %s' % (indent, prefix, node.__class__.__name__,
+                                        node_key))
+        if isinstance(node, InternalNode):
+            # Trigger all child nodes to get loaded
+            list(node._iter_nodes(self._store))
+            for prefix, sub in sorted(node._items.iteritems()):
+                result.extend(self._dump_tree_node(sub, prefix, indent + '  '))
+        else:
+            for key, value in sorted(node._items.iteritems()):
+                result.append('      %r %r' % (key, value))
+        return result
 
     @classmethod
     def from_dict(klass, store, initial_value, maximum_size=0, key_width=1):
@@ -315,7 +342,7 @@ class CHKMap(object):
         if len(node_details) == 1:
             self._root_node = node_details[0][1]
         else:
-            self._root_node = InternalNode()
+            self._root_node = InternalNode(prefix)
             self._root_node.set_maximum_size(node_details[0][1].maximum_size)
             self._root_node._key_width = node_details[0][1]._key_width
             for split, node in node_details:
@@ -362,6 +389,14 @@ class Node(object):
         self._size = 0
         # The pointers/values this node has - meaning defined by child classes.
         self._items = {}
+
+    def __repr__(self):
+        items_str = sorted(self._items)
+        if len(items_str) > 20:
+            items_str = items_str[16] + '...]'
+        return '%s(key:%s len:%s size:%s max:%s items:%s)' % (
+            self.__class__.__name__, self._key, self._len, self._size,
+            self._maximum_size, items_str)
 
     def key(self):
         return self._key
@@ -451,13 +486,18 @@ class LeafNode(Node):
             for item in self._items.iteritems():
                 yield item
 
+    def _key_value_len(self, key, value):
+        # TODO: Should probably be done without actually joining the key, but
+        #       then that can be done via the C extension
+        return 2 + len('\x00'.join(key)) + len(value)
+
     def map(self, store, key, value):
         """Map key to value."""
         if key in self._items:
-            self._size -= 2 + len('\x00'.join(key)) + len(self._items[key])
+            self._size -= self._key_value_len(key, self._items[key])
             self._len -= 1
         self._items[key] = value
-        self._size += 2 + len('\x00'.join(key)) + len(value)
+        self._size += self._key_value_len(key, value)
         self._len += 1
         self._key = None
         if (self._maximum_size and self._current_size() > self._maximum_size and
@@ -541,12 +581,21 @@ class InternalNode(Node):
     nodes. It is greedy - it will defer splitting itself as long as possible.
     """
 
-    def __init__(self):
+    def __init__(self, prefix=''):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
         # self._size = 12
         # How many octets key prefixes within this node are.
         self._node_width = 0
+        self._prefix = prefix
+
+    def __repr__(self):
+        items_str = sorted(self._items)
+        if len(items_str) > 20:
+            items_str = items_str[16] + '...]'
+        return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
+            self.__class__.__name__, self._key, self._len, self._size,
+            self._maximum_size, self._prefix, items_str)
 
     def add_node(self, prefix, node):
         """Add a child node with prefix prefix, and node node.
@@ -554,9 +603,13 @@ class InternalNode(Node):
         :param prefix: The serialised key prefix for node.
         :param node: The node being added.
         """
+        assert self._prefix is not None
+        assert prefix.startswith(self._prefix)
+        assert len(prefix) == len(self._prefix) + 1
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
+        assert self._node_width == len(self._prefix) + 1
         self._items[prefix] = node
         self._key = None
 
@@ -591,6 +644,7 @@ class InternalNode(Node):
         result._key_width = width
         result._size = len(bytes)
         result._node_width = len(prefix)
+        result._prefix = result.unique_serialised_prefix()
         return result
 
     def iteritems(self, store, key_filter=None):
@@ -644,17 +698,35 @@ class InternalNode(Node):
         """Map key to value."""
         if not len(self._items):
             raise AssertionError("cant map in an empty InternalNode.")
-        children = self._iter_nodes(store, key_filter=[key])
         serialised_key = self._serialised_key(key)
+        assert self._node_width == len(self._prefix) + 1
+        if not serialised_key.startswith(self._prefix):
+            # This key doesn't fit in this index, so we need to split at the
+            # point where it would fit.
+            # XXX: Do we need the serialised_key in its maximum length?
+            new_prefix = self.unique_serialised_prefix(serialised_key)
+            new_parent = InternalNode(new_prefix)
+            new_parent.set_maximum_size(self._maximum_size)
+            new_parent._key_width = self._key_width
+            new_parent.add_node(self._prefix[:len(new_prefix)+1], self)
+            assert new_parent._node_width == len(new_parent._prefix) + 1
+            return new_parent.map(store, key, value)
+        children = self._iter_nodes(store, key_filter=[key])
         if children:
             child = children[0]
+            # if isinstance(child, InternalNode):
+            #     child_prefix = child._prefix
+            #     child_ser_key = child._serialised_key(key)
+            #     if not child_ser_key.startswith(child_prefix):
+            #         import pdb; pdb.set_trace()
         else:
             # new child needed:
             child = self._new_child(serialised_key, LeafNode)
         old_len = len(child)
         prefix, node_details = child.map(store, key, value)
         if len(node_details) == 1:
-            # child may have shrunk, or might be the same.
+            # child may have shrunk, or might be a new node
+            child = node_details[0][1]
             self._len = self._len - old_len + len(child)
             self._items[serialised_key] = child
             self._key = None
@@ -663,7 +735,9 @@ class InternalNode(Node):
         # XXX: This is where we might want to try and expand our depth
         # to refer to more bytes of every child (which would give us
         # multiple pointers to child nodes, but less intermediate nodes)
+        # TODO: Is this mapped as serialised_key or as prefix?
         child = self._new_child(serialised_key, InternalNode)
+        child._prefix = prefix
         for split, node in node_details:
             child.add_node(split, node)
         self._len = self._len - old_len + len(child)
@@ -744,7 +818,7 @@ class InternalNode(Node):
                 refs.append(value.key())
         return refs
 
-    def unique_serialised_prefix(self):
+    def unique_serialised_prefix(self, extra_key=None):
         """Return the unique key prefix for this node.
 
         :return: A bytestring of the longest serialised key prefix that is
@@ -753,6 +827,8 @@ class InternalNode(Node):
         # may want to cache this eventually :- but wait for enough
         # functionality to profile.
         keys = list(self._items.keys())
+        if extra_key is not None:
+            keys.append(extra_key)
         if not keys:
             return ""
         current_prefix = keys.pop(-1)
@@ -799,3 +875,174 @@ def _deserialise(bytes, key):
         return InternalNode.deserialise(bytes, key)
     else:
         raise AssertionError("Unknown node type.")
+
+
+def _find_children_info(store, interesting_keys, uninteresting_keys,
+                        adapter, pb):
+    """Read the associated records, and determine what is interesting."""
+    uninteresting_keys = set(uninteresting_keys)
+    chks_to_read = uninteresting_keys.union(interesting_keys)
+    next_uninteresting = set()
+    next_interesting = set()
+    uninteresting_items = set()
+    interesting_items = set()
+    interesting_records = []
+    # records_read = set()
+    for record in store.get_record_stream(chks_to_read, 'unordered', True):
+        # records_read.add(record.key())
+        if pb is not None:
+            pb.tick()
+        if record.storage_kind != 'fulltext':
+            bytes = adapter.get_bytes(record,
+                        record.get_bytes_as(record.storage_kind))
+        else:
+            bytes = record.get_bytes_as('fulltext')
+        node = _deserialise(bytes, record.key)
+        if record.key in uninteresting_keys:
+            if isinstance(node, InternalNode):
+                next_uninteresting.update(node.refs())
+            else:
+                # We know we are at a LeafNode, so we can pass None for the
+                # store
+                uninteresting_items.update(node.iteritems(None))
+        else:
+            interesting_records.append(record)
+            if isinstance(node, InternalNode):
+                next_interesting.update(node.refs())
+            else:
+                interesting_items.update(node.iteritems(None))
+    # TODO: Filter out records that have already been read, as node splitting
+    #       can cause us to reference the same nodes via shorter and longer
+    #       paths
+    return (next_uninteresting, uninteresting_items,
+            next_interesting, interesting_records, interesting_items)
+
+
+def _find_all_uninteresting(store, interesting_root_keys,
+                            uninteresting_root_keys, adapter, pb):
+    """Determine the full set of uninteresting keys."""
+    # What about duplicates between interesting_root_keys and
+    # uninteresting_root_keys?
+    if not uninteresting_root_keys:
+        # Shortcut case. We know there is nothing uninteresting to filter out
+        # So we just let the rest of the algorithm do the work
+        # We know there is nothing uninteresting, and we didn't have to read
+        # any interesting records yet.
+        return (set(), set(), set(interesting_root_keys), [], set())
+    all_uninteresting_chks = set(uninteresting_root_keys)
+    all_uninteresting_items = set()
+
+    # First step, find the direct children of both the interesting and
+    # uninteresting set
+    (uninteresting_keys, uninteresting_items,
+     interesting_keys, interesting_records,
+     interesting_items) = _find_children_info(store, interesting_root_keys,
+                                              uninteresting_root_keys,
+                                              adapter=adapter, pb=pb)
+    all_uninteresting_chks.update(uninteresting_keys)
+    all_uninteresting_items.update(uninteresting_items)
+    del uninteresting_items
+    # Note: Exact matches between interesting and uninteresting do not need
+    #       to be search further. Non-exact matches need to be searched in case
+    #       there is a future exact-match
+    uninteresting_keys.difference_update(interesting_keys)
+
+    # Second, find the full set of uninteresting bits reachable by the
+    # uninteresting roots
+    chks_to_read = uninteresting_keys
+    while chks_to_read:
+        next_chks = set()
+        for record in store.get_record_stream(chks_to_read, 'unordered', False):
+            # TODO: Handle 'absent'
+            if pb is not None:
+                pb.tick()
+            if record.storage_kind != 'fulltext':
+                bytes = adapter.get_bytes(record,
+                            record.get_bytes_as(record.storage_kind))
+            else:
+                bytes = record.get_bytes_as('fulltext')
+            node = _deserialise(bytes, record.key)
+            if isinstance(node, InternalNode):
+                # uninteresting_prefix_chks.update(node._items.iteritems())
+                chks = node._items.values()
+                # TODO: We remove the entries that are already in
+                #       uninteresting_chks ?
+                next_chks.update(chks)
+                all_uninteresting_chks.update(chks)
+            else:
+                all_uninteresting_items.update(node._items.iteritems())
+        chks_to_read = next_chks
+    return (all_uninteresting_chks, all_uninteresting_items,
+            interesting_keys, interesting_records, interesting_items)
+
+
+def iter_interesting_nodes(store, interesting_root_keys,
+                           uninteresting_root_keys, pb=None):
+    """Given root keys, find interesting nodes.
+
+    Evaluate nodes referenced by interesting_root_keys. Ones that are also
+    referenced from uninteresting_root_keys are not considered interesting.
+
+    :param interesting_root_keys: keys which should be part of the
+        "interesting" nodes (which will be yielded)
+    :param uninteresting_root_keys: keys which should be filtered out of the
+        result set.
+    :return: Yield
+        (interesting records, interesting chk's, interesting key:values)
+    """
+    # TODO: consider that it may be more memory efficient to use the 20-byte
+    #       sha1 string, rather than tuples of hexidecimal sha1 strings.
+
+    # A way to adapt from the compressed texts back into fulltexts
+    # In a way, this seems like a layering inversion to have CHKMap know the
+    # details of versionedfile
+    adapter_class = versionedfile.adapter_registry.get(
+        ('knit-ft-gz', 'fulltext'))
+    adapter = adapter_class(store)
+
+    (all_uninteresting_chks, all_uninteresting_items, interesting_keys,
+     interesting_records, interesting_items) = _find_all_uninteresting(store,
+        interesting_root_keys, uninteresting_root_keys, adapter, pb)
+
+    # Now that we know everything uninteresting, we can yield information from
+    # our first request
+    interesting_items.difference_update(all_uninteresting_items)
+    records = dict((record.key, record) for record in interesting_records
+                    if record.key not in all_uninteresting_chks)
+    if records or interesting_items:
+        yield records, interesting_items
+    interesting_keys.difference_update(all_uninteresting_chks)
+
+    chks_to_read = interesting_keys
+    while chks_to_read:
+        next_chks = set()
+        for record in store.get_record_stream(chks_to_read, 'unordered', False):
+            if pb is not None:
+                pb.tick()
+            # TODO: Handle 'absent'?
+            if record.storage_kind != 'fulltext':
+                bytes = adapter.get_bytes(record,
+                            record.get_bytes_as(record.storage_kind))
+            else:
+                bytes = record.get_bytes_as('fulltext')
+            node = _deserialise(bytes, record.key)
+            if isinstance(node, InternalNode):
+                chks = set(node.refs())
+                chks.difference_update(all_uninteresting_chks)
+                # Is set() and .difference_update better than:
+                # chks = [chk for chk in node.refs()
+                #              if chk not in all_uninteresting_chks]
+                next_chks.update(chks)
+                # These are now uninteresting everywhere else
+                all_uninteresting_chks.update(chks)
+                interesting_items = []
+            else:
+                interesting_items = [item for item in node._items.iteritems()
+                                     if item not in all_uninteresting_items]
+                # TODO: Do we need to filter out items that we have already
+                #       seen on other pages? We don't really want to buffer the
+                #       whole thing, but it does mean that callers need to
+                #       understand they may get duplicate values.
+                # all_uninteresting_items.update(interesting_items)
+            yield {record.key: record}, interesting_items
+        chks_to_read = next_chks

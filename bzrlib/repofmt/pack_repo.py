@@ -2182,59 +2182,32 @@ class CHKInventoryRepository(KnitPackRepository):
         rich_root = self.supports_rich_root()
         revision_outside_set = self._find_revision_outside_set(revision_ids)
         if revision_outside_set == _mod_revision.NULL_REVISION:
-            uninteresting_chk_refs = set()
+            uninteresting_root_keys = set()
         else:
             uninteresting_inv = self.get_inventory(revision_outside_set)
-            uninteresting_map = uninteresting_inv.id_to_entry
-            uninteresting_map._ensure_root()
-            uninteresting_chk_refs = set(uninteresting_map._root_node.refs())
-            pending_nodes = set([uninteresting_map._root_node])
-            while pending_nodes:
-                nodes = pending_nodes
-                pending_nodes = set()
-                for node in nodes:
-                    uninteresting_chk_refs.add(node.key())
-                    if not isinstance(node, chk_map.InternalNode):
-                        continue
-                    for subnode in node._iter_nodes(uninteresting_map._store):
-                        pending_nodes.add(subnode)
-        # XXX: This currently only avoids traversing top level unchanged trees.
-        # What we need is parallel traversal with uninteresting-only trees
-        # pruned, interesting-only trees included, common trees with identical
-        # pointers pruned, common trees with different pointers examined
-        # further.
+            uninteresting_root_keys = set([uninteresting_inv.id_to_entry.key()])
+        interesting_root_keys = set()
         for idx, inv in enumerate(self.iter_inventories(revision_ids)):
-            if pb is not None:
-                pb.update('fetch', idx, len(revision_ids))
-            inv_chk_map = inv.id_to_entry
-            inv_chk_map._ensure_root()
-            pending_nodes = set([inv_chk_map._root_node])
-            while pending_nodes:
-                nodes = pending_nodes
-                pending_nodes = set()
-                for node in nodes:
-                    # Do not examine this node again
-                    uninteresting_chk_refs.add(node.key())
-                    if not isinstance(node, chk_map.InternalNode):
-                        # Leaf node: pull out its contents:
-                        for name, bytes in node.iteritems(inv_chk_map._store):
-                            entry = inv._bytes_to_entry(bytes)
-                            if entry.name == '' and not rich_root:
-                                continue
-                            if entry.revision == inv.revision_id:
-                                yield ("file", entry.file_id, [entry.revision])
-                        continue
-                    # Recurse deeper
-                    # Two-pass; api fixup needed to allow exclusion
-                    wanted_keys = set()
-                    for key, value in node._items.iteritems():
-                        if key in uninteresting_chk_refs:
-                            continue
-                        wanted_keys.add((key,))
-                    for subnode in node._iter_nodes(inv_chk_map._store,
-                        key_filter=wanted_keys):
-                        pending_nodes.add(subnode)
-        
+            interesting_root_keys.add(inv.id_to_entry.key())
+        revision_ids = frozenset(revision_ids)
+        file_id_revisions = {}
+        for records, items in chk_map.iter_interesting_nodes(self.chk_bytes,
+                    interesting_root_keys, uninteresting_root_keys,
+                    pb=pb):
+            # This is cheating a bit to use the last grabbed 'inv', but it
+            # works
+            for name, bytes in items:
+                entry = inv._bytes_to_entry(bytes)
+                if entry.name == '' and not rich_root:
+                    continue
+                if entry.revision in revision_ids:
+                    # Would we rather build this up into file_id => revision
+                    # maps?
+                    s = file_id_revisions.setdefault(entry.file_id, set())
+                    s.add(entry.revision)
+        for file_id, revisions in file_id_revisions.iteritems():
+            yield ('file', file_id, revisions)
+
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
 
