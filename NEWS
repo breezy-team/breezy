@@ -20,6 +20,9 @@ IN DEVELOPMENT
       PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.
       (Andrew Bennetts, #303206)
 
+    * Give proper error message for diff with non-existent dotted revno.
+      (Marius Kruger, #301969)
+
   DOCUMENTATION:
 
   API CHANGES:
