@@ -2258,7 +2258,12 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     rich_root_data = False
     supports_tree_reference = False
     supports_external_lookups = False
-    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    @property
+    def _matchingbzrdir(self):
+        matching = bzrdir.BzrDirMetaFormat1()
+        matching.repository_format = self
+        return matching
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()

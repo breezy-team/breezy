@@ -797,6 +797,10 @@ class Transport(object):
         cur = _CoalescedOffset(None, None, [])
         coalesced_offsets = []
 
+        if max_size <= 0:
+            # 'unlimited', but we actually take this to mean 100MB buffer limit
+            max_size = 100*1024*1024
+
         for start, size in offsets:
             end = start + size
             if (last_end is not None

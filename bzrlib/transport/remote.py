@@ -323,7 +323,8 @@ class RemoteTransport(transport.ConnectedTransport):
         sorted_offsets = sorted(offsets)
         coalesced = list(self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
-                               fudge_factor=self._bytes_to_read_before_seek))
+                               fudge_factor=self._bytes_to_read_before_seek,
+                               max_size=self._max_readv_bytes))
 
         # now that we've coallesced things, avoid making enormous requests
         requests = []
