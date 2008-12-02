@@ -948,6 +948,15 @@ class InternalNode(Node):
         # So far, everything fits. Page in the rest of the nodes, and see if it
         # holds true.
         if keys:
+            # TODO: Consider looping over a limited set of keys (like 25 or so
+            #       at a time). If we have to read more than 25 we almost
+            #       certainly won't fit them all into a single new LeafNode, so
+            #       reading the extra nodes is a waste.
+            #       This will probably matter more with hash serialised keys,
+            #       as we will get InternalNodes with more references.
+            #       The other argument is that unmap() is uncommon, so we don't
+            #       need to optimize it. But map() with a slightly shorter
+            #       value may happen a lot.
             stream = store.get_record_stream(keys, 'unordered', True)
             nodes = []
             # Fully consume the stream, even if we could determine that we
