@@ -981,6 +981,24 @@ class Inventory(object):
                         child_dirs.append((child_relpath+'/', child_ie))
             stack.extend(reversed(child_dirs))
 
+    def make_delta(self, old):
+        """Make an inventory delta from two inventories."""
+        old_ids = set(old)
+        new_ids = set(self)
+        adds = new_ids - old_ids
+        deletes = old_ids - new_ids
+        common = old_ids.intersection(new_ids)
+        delta = []
+        for file_id in deletes:
+            delta.append((old.id2path(file_id), None, file_id, None))
+        for file_id in adds:
+            delta.append((None, self.id2path(file_id), file_id, self[file_id]))
+        for file_id in common:
+            if old[file_id] != self[file_id]:
+                delta.append((old.id2path(file_id), self.id2path(file_id),
+                    file_id, self[file_id]))
+        return delta
+
     def make_entry(self, kind, name, parent_id, file_id=None):
         """Simple thunk to bzrlib.inventory.make_entry."""
         return make_entry(kind, name, parent_id, file_id)

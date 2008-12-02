@@ -837,13 +837,16 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree.rename_one(name, 'new_' + name)
         return tree.commit('')
 
-    def _commit_sprout_rename_merge(self, tree1, name, expect_fs_hash=False):
+    def _commit_sprout_rename_merge(self, tree1, name, expect_fs_hash=False,
+        mini_commit=None):
         rev1, tree2 = self._commit_sprout(tree1, name)
         # change both sides equally
         rev2 = self._rename_in_tree(tree1, name)
         rev3 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
-        rev4 = self.mini_commit(tree1, 'new_' + name, 'new_' + name,
+        if mini_commit is None:
+            mini_commit = self.mini_commit
+        rev4 = mini_commit(tree1, 'new_' + name, 'new_' + name,
             expect_fs_hash=expect_fs_hash)
         tree3, = self._get_revtrees(tree1, [rev4])
         self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
@@ -860,6 +863,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge(tree1, 'dir')
+
+    def test_last_modified_revision_after_merge_dir_changes_ric(self):
+        # merge a dir changes the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self.build_tree(['t1/dir/'])
+        self._commit_sprout_rename_merge(tree1, 'dir',
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_merge_file_changes(self):
         # merge a file changes the last modified.

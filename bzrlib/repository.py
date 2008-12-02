@@ -536,25 +536,43 @@ class CommitBuilder(object):
             revtrees = list(self.repository.revision_trees(self.parents))
             repo_basis = revtrees[0]
             for revtree in revtrees[1:]:
-                for change in _make_delta(basis_tree, revtree):
+                for change in revtree.inventory.make_delta(basis_tree.inventory):
                     if change[1] is None:
                         # Deleted
                         continue
                     if change[2] not in merged_ids:
                         if change[0] is not None:
-                            merged_ids[change[2]] = set([change[3].revision,
-                                repo_basis[change[2]].revision])
+                            merged_ids[change[2]] = [
+                                repo_basis.inventory[change[2]].revision,
+                                change[3].revision]
                         else:
-                            merged_ids[change[2]] = set([change[3].revision])
+                            merged_ids[change[2]] = [change[3].revision]
                     else:
-                        merged_ids[change[2]].add(change[3].revision)
+                        merged_ids[change[2]].append(change[3].revision)
         else:
             merged_ids = {}
         changes= {}
         for change in iter_changes:
+            # This probably looks up in basis_inv way to much.
             changes[change[0]] = change, merged_ids.get(
-                change[0], set([basis_inv[change[0]].revision]))
+                change[0], [basis_inv[change[0]].revision])
         unchanged_merged = set(merged_ids) - set(changes)
+        for file_id in unchanged_merged:
+            # Record a merged version with the current content from basis.
+            # NB:XXX: We are reconstructing path information we had, this
+            # should be preserved instead.
+            # inv delta  change: (file_id, (path_in_source, path_in_target),
+            #   changed_content, versioned, parent, name, kind,
+            #   executable)
+            basis_entry = basis_inv[file_id]
+            change = (file_id,
+                (basis_inv.id2path(file_id), tree.id2path(file_id)),
+                False, (True, True),
+                (basis_entry.parent_id, basis_entry.parent_id),
+                (basis_entry.name, basis_entry.name),
+                (basis_entry.kind, basis_entry.kind),
+                (basis_entry.executable, basis_entry.executable))
+            changes[file_id] = (change, merged_ids[file_id])
         # changes contains tuples with the change and a set of inventory
         # candidates for the file.
         # inv delta is:
@@ -568,7 +586,13 @@ class CommitBuilder(object):
                 file_id = change[0]
                 entry = _entry_factory[kind](file_id, change[5][1],
                     change[4][1])
-                heads = self._heads(change[0], head_candidates)
+                head_set = self._heads(change[0], set(head_candidates))
+                heads = []
+                # Preserve ordering.
+                for head_candidate in head_candidates:
+                    if head_candidate in head_set:
+                        heads.append(head_candidate)
+                        head_set.remove(head_candidate)
                 # Populate the entry
                 if change[2]:
                     # From disk.
@@ -615,8 +639,10 @@ class CommitBuilder(object):
                         entry.symlink_target = basis_inv[file_id].symlink_target
                         self._add_text_to_weave(change[0], [], heads, None)
                     elif kind == 'directory':
-                        # Nothing to set.
-                        self._add_text_to_weave(change[0], [], heads, None)
+                        # Nothing to set on the entry.
+                        # XXX: split into the Root and nonRoot versions.
+                        if change[1][1] != '' or self.repository.supports_rich_root():
+                            self._add_text_to_weave(change[0], [], heads, None)
                     elif kind == 'tree-reference':
                         import pdb;pdb.set_trace()
                     else:
