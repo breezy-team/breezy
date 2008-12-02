@@ -78,6 +78,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
                      'bzrlib.tests.blackbox.test_ls',
+                     'bzrlib.tests.blackbox.test_ls_shelf',
                      'bzrlib.tests.blackbox.test_lsprof',
                      'bzrlib.tests.blackbox.test_merge',
                      'bzrlib.tests.blackbox.test_merge_directive',

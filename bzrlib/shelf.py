@@ -228,17 +228,14 @@ class Unshelver(object):
         self.transform = transform
         self.message = message
 
-    @classmethod
-    def from_tree_and_shelf(klass, tree, shelf_file):
-        """Create an Unshelver from a tree and a shelf file.
-
-        :param tree: The tree to apply shelved changes to.
-        :param shelf_file: A file-like object containing shelved changes.
-        :return: The Unshelver.
-        """
+    @staticmethod
+    def iter_records(shelf_file):
         parser = pack.ContainerPushParser()
         parser.accept_bytes(shelf_file.read())
-        records = iter(parser.read_pending_records())
+        return iter(parser.read_pending_records())
+
+    @staticmethod
+    def parse_metadata(records):
         names, metadata_bytes = records.next()
         if names[0] != ('metadata',):
             raise errors.ShelfCorrupt
@@ -247,6 +244,18 @@ class Unshelver(object):
         message = metadata.get('message')
         if message is not None:
             message = message.decode('utf-8')
+        return base_revision_id, message
+
+    @classmethod
+    def from_tree_and_shelf(klass, tree, shelf_file):
+        """Create an Unshelver from a tree and a shelf file.
+
+        :param tree: The tree to apply shelved changes to.
+        :param shelf_file: A file-like object containing shelved changes.
+        :return: The Unshelver.
+        """
+        records = klass.iter_records(shelf_file)
+        base_revision_id, message = klass.parse_metadata(records)
         try:
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
@@ -254,6 +263,7 @@ class Unshelver(object):
         tt = transform.TransformPreview(base_tree)
         tt.deserialize(records)
         return klass(tree, base_tree, tt, message)
+
 
     def make_merger(self):
         """Return a merger that can unshelve the changes."""
@@ -337,6 +347,14 @@ class ShelfManager(object):
             return Unshelver.from_tree_and_shelf(self.tree, shelf_file)
         finally:
             shelf_file.close()
+
+    def load_metadata(self, shelf_id):
+        shelf_file = self.read_shelf(shelf_id)
+        try:
+            records = Unshelver.iter_records(shelf_file)
+        finally:
+            shelf_file.close()
+        return Unshelver.parse_metadata(records)
 
     def delete_shelf(self, shelf_id):
         """Delete the shelved changes for a given id.
