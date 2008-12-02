@@ -879,7 +879,6 @@ class InternalNode(Node):
         #    InternalNode, we don't have to check further.
         if isinstance(unmapped, InternalNode):
             return self
-        node = self._check_remap(store)
         return self._check_remap(store)
 
     def _check_remap(self, store):
