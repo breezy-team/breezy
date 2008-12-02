@@ -240,11 +240,10 @@ class Unshelver(object):
         if names[0] != ('metadata',):
             raise errors.ShelfCorrupt
         metadata = bencode.bdecode(metadata_bytes)
-        base_revision_id = metadata['revision_id']
         message = metadata.get('message')
         if message is not None:
-            message = message.decode('utf-8')
-        return base_revision_id, message
+            metadata['message'] = message.decode('utf-8')
+        return metadata
 
     @classmethod
     def from_tree_and_shelf(klass, tree, shelf_file):
@@ -255,14 +254,15 @@ class Unshelver(object):
         :return: The Unshelver.
         """
         records = klass.iter_records(shelf_file)
-        base_revision_id, message = klass.parse_metadata(records)
+        metadata = klass.parse_metadata(records)
+        base_revision_id = metadata['revision_id']
         try:
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
         tt = transform.TransformPreview(base_tree)
         tt.deserialize(records)
-        return klass(tree, base_tree, tt, message)
+        return klass(tree, base_tree, tt, metadata.get('message'))
 
 
     def make_merger(self):
