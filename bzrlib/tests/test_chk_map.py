@@ -368,7 +368,7 @@ class TestMap(TestCaseWithStore):
                              chkmap._dump_tree())
         self.assertCanonicalForm(chkmap)
 
-    def test_stable_unmap_double_deep(self):
+    def test_unmap_double_deep(self):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)
         # Should fit 3 keys per LeafNode
@@ -423,6 +423,111 @@ class TestMap(TestCaseWithStore):
                              "      ('aabb',) 'v'\n"
                              "      ('abc',) 'v'\n",
                              chkmap._dump_tree())
+
+    def test_unmap_with_known_internal_node_doesnt_page(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 3 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        chkmap.map(('aac',), 'v')
+        chkmap.map(('abc',), 'v')
+        chkmap.map(('acd',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aa' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "    'aac' LeafNode None\n"
+                             "      ('aac',) 'v'\n"
+                             "  'ab' LeafNode None\n"
+                             "      ('abc',) 'v'\n"
+                             "  'ac' LeafNode None\n"
+                             "      ('acd',) 'v'\n",
+                             chkmap._dump_tree())
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, chkmap._save())
+        # Mapping an 'aa' key loads the internal node, but should not map the
+        # 'ab' and 'ac' nodes
+        chkmap.map(('aad',), 'v')
+        self.assertIsInstance(chkmap._root_node._items['aa'], InternalNode)
+        self.assertIsInstance(chkmap._root_node._items['ab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['ac'], tuple)
+        # Unmapping 'acd' can notice that 'aa' is an InternalNode and not have
+        # to map in 'ab'
+        chkmap.unmap(('acd',))
+        self.assertIsInstance(chkmap._root_node._items['aa'], InternalNode)
+        self.assertIsInstance(chkmap._root_node._items['ab'], tuple)
+
+    def test_unmap_without_fitting_doesnt_page_in(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(20)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n",
+                             chkmap._dump_tree())
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, chkmap._save())
+        chkmap.map(('aac',), 'v')
+        chkmap.map(('aad',), 'v')
+        chkmap.map(('aae',), 'v')
+        chkmap.map(('aaf',), 'v')
+        # At this point, the previous nodes should not be paged in, but the
+        # newly added nodes would be
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aaf'], LeafNode)
+        # Now unmapping one of the new nodes will use only the already-paged-in
+        # nodes to determine that we don't need to do more.
+        chkmap.unmap(('aaf',))
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
+
+    def test_unmap_pages_in_if_necessary(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(20)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        chkmap.map(('aac',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "  'aac' LeafNode None\n"
+                             "      ('aac',) 'v'\n",
+                             chkmap._dump_tree())
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, chkmap._save())
+        chkmap.map(('aad',), 'v')
+        # At this point, the previous nodes should not be paged in, but the
+        # newly added node would be
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
+        # Unmapping the new node will check the existing nodes to see if they
+        # would fit, and find out that they do not
+        chkmap.unmap(('aad',))
+        self.assertIsInstance(chkmap._root_node._items['aaa'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
 
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
@@ -678,7 +783,7 @@ class TestMap(TestCaseWithStore):
             "      ('aab',) 'value2'",
             "  'b' LeafNode sha1:67f15d1dfa451d388ed08ff17b4f9578ba010d01",
             "      ('bbb',) 'value3'",
-            ]), chkmap._dump_tree())
+            ""]), chkmap._dump_tree())
 
     def test__dump_tree_in_progress(self):
         chkmap = self._get_map({("aaa",): "value1", ("aab",): "value2"},
@@ -695,7 +800,7 @@ class TestMap(TestCaseWithStore):
             "      ('aab',) 'value2'",
             "  'b' LeafNode None",
             "      ('bbb',) 'value3'",
-            ]), chkmap._dump_tree())
+            ""]), chkmap._dump_tree())
 
 
 class TestLeafNode(TestCaseWithStore):
@@ -1187,7 +1292,7 @@ class TestIterInterestingNodes(TestCaseWithStore):
             "    'aab' LeafNode sha1:10567a3bfcc764fb8d8d9edaa28c0934ada366c5\n"
             "      ('aab',) 'new'\n"
             "  'c' LeafNode sha1:263208de2fce0a8f9db614c1ca39e8f6de8b3802\n"
-            "      ('c',) 'common'",
+            "      ('c',) 'common'\n",
             CHKMap(self.get_chk_bytes(), target)._dump_tree())
         # The key for the internal aa node
         aa_key = ('sha1:2ce01860338a614b93883a5bbeb89920137ac7ef',)

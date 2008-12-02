@@ -876,7 +876,13 @@ class InternalNode(Node):
         if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
-        # Logic for how unmap determines when it needs to rebuild
+        if isinstance(unmapped, InternalNode):
+            return self
+        return self._check_remap(store)
+
+    def _check_remap(self, store):
+        """Check if all keys contained by children fit in a single LeafNode."""
+        # Logic for how we determine when we need to rebuild
         # 1) Implicitly unmap() is removing a key which means that the child
         #    nodes are going to be shrinking by some extent.
         # 2) If all children are LeafNodes, it is possible that they could be
@@ -888,21 +894,7 @@ class InternalNode(Node):
         #    have a chance of collapsing either.
         #    So a very cheap check is to just say if 'unmapped' is an
         #    InternalNode, we don't have to check further.
-        if isinstance(unmapped, InternalNode):
-            return self
-        return self._check_remap(store)
 
-    def _check_remap(self, store):
-        # Check and see if all keys contained by children could be mapped into
-        # a single LeafNode.
-
-        # TODO: If any child node is an InternalNode, we know we can stop. Is
-        #       it cheaper to load all children and see if one is an
-        #       InternalNode, or is it cheaper to start adding keys into a
-        #       LeafNode and stop when it gets full...
-        # TODO: Do a quick once-over the list of already-read children, and
-        #       check if any are an InternalNode. This will avoid any I/O some
-        #       of the time, and should be very cheap.
         # TODO: Another alternative is to check the total size of all known
         #       LeafNodes. If there is some formula we can use to determine the
         #       final size without actually having to read in any more
@@ -915,21 +907,57 @@ class InternalNode(Node):
         new_leaf = LeafNode()
         new_leaf.set_maximum_size(self._maximum_size)
         new_leaf._key_width = self._key_width
-        for node in self._iter_nodes(store):
-            if isinstance(node, InternalNode):
-                # We won't be able to collapse
-                return self
-            for key, value in node._items.iteritems():
-                # TODO: it is expensive to have it actually do the split, when
-                #       all we care about is whether it *would* split. Refactor
-                #       the code a bit so we can just check without actually
-                #       having to do all the work
-                next_prefix, new_nodes = new_leaf.map(store, key, value)
-                if len(new_nodes) > 1:
-                    # These nodes cannot fit in a single leaf, so we are done
+        keys = {}
+        # There is some overlap with _iter_nodes here, but not a lot, and it
+        # allows us to do quick evaluation without paging everything in
+        for prefix, node in self._items.iteritems():
+            if type(node) == tuple:
+                keys[node] = prefix
+            else:
+                if isinstance(node, InternalNode):
+                    # Without looking at any leaf nodes, we are sure
                     return self
-                else:
-                    assert new_leaf is new_nodes[0][1]
+                for key, value in node._items.iteritems():
+                    # TODO: it is expensive to have it actually do the split,
+                    #       when all we care about is whether it *would* split.
+                    #       Refactor the code a bit so we can just check
+                    #       without actually having to do all the work
+                    next_prefix, new_nodes = new_leaf.map(store, key, value)
+                    if len(new_nodes) > 1:
+                        # These nodes cannot fit in a single leaf, so we are
+                        # done
+                        return self
+                    else:
+                        assert new_leaf is new_nodes[0][1]
+        # So far, everything fits. Page in the rest of the nodes, and see if it
+        # holds true.
+        if keys:
+            stream = store.get_record_stream(keys, 'unordered', True)
+            nodes = []
+            # Fully consume the stream, even if we could determine that we
+            # don't need to continue. We requested the bytes, we may as well
+            # use them
+            for record in stream:
+                node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+                self._items[keys[record.key]] = node
+                nodes.append(node)
+            for node in nodes:
+                if isinstance(node, InternalNode):
+                    # We know we won't fit
+                    return self
+                for key, value in node._items.iteritems():
+                    # TODO: it is expensive to have it actually do the split,
+                    #       when all we care about is whether it *would* split.
+                    #       Refactor the code a bit so we can just check
+                    #       without actually having to do all the work
+                    next_prefix, new_nodes = new_leaf.map(store, key, value)
+                    if len(new_nodes) > 1:
+                        # These nodes cannot fit in a single leaf, so we are
+                        # done
+                        return self
+                    else:
+                        assert new_leaf is new_nodes[0][1]
+
         # We have gone to every child, and everything fits in a single leaf
         # node, we no longer need this internal node
         return new_leaf
