@@ -624,7 +624,8 @@ class CommitBuilder(object):
                         # we need to check the content against the source of the
                         # merge to determine if it was changed after the merge
                         # or carried over.
-                        if (parent_entry.parent_id != entry.parent_id or
+                        if (parent_entry.kind != entry.kind or
+                            parent_entry.parent_id != entry.parent_id or
                             parent_entry.name != entry.name):
                             # Metadata common to all entries has changed
                             # against per-file parent
@@ -638,33 +639,36 @@ class CommitBuilder(object):
                     carry_over_possible = False
                 # Populate the entry in the delta
                 if kind == 'file':
-                    if change[2]:
-                        # From disk.
-                        if change[7][0]:
-                            entry.executable = True
-                        else:
-                            entry.executable = False
-                        file_obj, stat_value = tree.get_file_with_stat(file_id,
-                            change[1][1])
-                        try:
-                            lines = file_obj.readlines()
-                        finally:
-                            file_obj.close()
-                        entry.text_sha1, entry.text_size = self._add_text_to_weave(
-                            file_id, lines, heads, None)
+                    # XXX: There is still a small race here: If someone reverts the content of a file
+                    # after iter_changes examines and decides it has changed,
+                    # we will unconditionally record a new version even if some
+                    # other process reverts it while commit is running (with
+                    # the revert happening after iter_changes did it's
+                    # examination).
+                    if change[7][1]:
+                        entry.executable = True
                     else:
-                        # From basis.
-                        if change[7][1]:
-                            entry.executable = True
-                        else:
-                            entry.executable = False
-                        basis_file = basis_tree.get_file(file_id, path=change[1][0])
-                        try:
-                            lines = basis_file.readlines()
-                        finally:
-                            basis_file.close()
+                        entry.executable = False
+                    if (carry_over_possible and 
+                        parent_entry.executable == entry.executable):
+                            # Check the file length, content hash after reading
+                            # the file.
+                            nostore_sha = parent_entry.text_sha1
+                    else:
+                        nostore_sha = None
+                    file_obj, stat_value = tree.get_file_with_stat(file_id, change[1][1])
+                    try:
+                        lines = file_obj.readlines()
+                    finally:
+                        file_obj.close()
+                    try:
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
-                            file_id, lines, heads, None)
+                            file_id, lines, heads, nostore_sha)
+                    except errors.ExistingContent:
+                        # No content change against a carry_over parent
+                        carried_over = True
+                        entry.text_size = parent_entry.text_size
+                        entry.text_sha1 = parent_entry.text_sha1
                 elif kind == 'symlink':
                     if change[2]:
                         # Wants a path hint?
@@ -676,7 +680,6 @@ class CommitBuilder(object):
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
-                        entry.revision = parent_entry.revision
                     else:
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
@@ -689,6 +692,8 @@ class CommitBuilder(object):
                         raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
                     entry.revision = modified_rev
+                else:
+                    entry.revision = parent_entry.revision
             else:
                 entry = None
             new_path = change[1][1]
