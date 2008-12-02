@@ -575,19 +575,26 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             mini_commit=self.mini_commit_record_iter_changes)
 
     def _add_commit_reparent_check_changed(self, tree, name,
-        expect_fs_hash=False):
+        expect_fs_hash=False, mini_commit=None):
         self.build_tree(['newparent/'])
         tree.add(['newparent'])
         def reparent():
             tree.rename_one(name, 'newparent/new_' + name)
         self._add_commit_change_check_changed(tree, name, reparent,
-            expect_fs_hash=expect_fs_hash)
+            expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
 
     def test_last_modified_revision_after_reparent_dir_changes(self):
         # reparenting a dir changes the last modified.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/'])
         self._add_commit_reparent_check_changed(tree, 'dir')
+
+    def test_last_modified_revision_after_reparent_dir_changes_ric(self):
+        # reparenting a dir changes the last modified.
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/'])
+        self._add_commit_reparent_check_changed(tree, 'dir',
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_reparent_file_changes(self):
         # reparenting a file changes the last modified.

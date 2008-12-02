@@ -608,7 +608,6 @@ class CommitBuilder(object):
                         import pdb;pdb.set_trace()
                     else:
                         raise AssertionError('unknown kind %r' % kind)
-                
                 entry.revision = modified_rev
             else:
                 entry = None
