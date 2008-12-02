@@ -817,6 +817,17 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             os.symlink('newtarget', 'link')
         self._add_commit_change_check_changed(tree, 'link', change_link)
 
+    def test_last_modified_revision_after_content_link_changes_ric(self):
+        # changing a link changes the last modified.
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        os.symlink('target', 'link')
+        def change_link():
+            os.unlink('link')
+            os.symlink('newtarget', 'link')
+        self._add_commit_change_check_changed(tree, 'link', change_link,
+            mini_commit=self.mini_commit_record_iter_changes)
+
     def _commit_sprout(self, tree, name):
         tree.add([name], [name + 'id'])
         rev_id = tree.commit('')
