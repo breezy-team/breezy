@@ -972,7 +972,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.requireFeature(tests.SymlinkFeature)
         os.symlink('target', name)
 
-    def _check_kind_change(self, make_before, make_after, expect_fs_hash=False):
+    def _check_kind_change(self, make_before, make_after, expect_fs_hash=False,
+        mini_commit=None):
         tree = self.make_branch_and_tree('.')
         path = 'name'
         make_before(path)
@@ -982,14 +983,23 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             make_after(path)
 
         self._add_commit_change_check_changed(tree, path, change_kind,
-            expect_fs_hash=expect_fs_hash)
+            expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
 
     def test_last_modified_dir_file(self):
         self._check_kind_change(self.make_dir, self.make_file,
             expect_fs_hash=True)
 
+    def test_last_modified_dir_file_ric(self):
+        self._check_kind_change(self.make_dir, self.make_file,
+            expect_fs_hash=True,
+            mini_commit=self.mini_commit_record_iter_changes)
+
     def test_last_modified_dir_link(self):
         self._check_kind_change(self.make_dir, self.make_link)
+
+    def test_last_modified_dir_link_ric(self):
+        self._check_kind_change(self.make_dir, self.make_link,
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_link_file(self):
         self._check_kind_change(self.make_link, self.make_file,
