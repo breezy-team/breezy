@@ -108,6 +108,7 @@ class CHKMap(object):
         """Return the tree in a string representation."""
         self._ensure_root()
         res = self._dump_tree_node(self._root_node, prefix='', indent='')
+        res.append('') # Give a trailing '\n'
         return '\n'.join(res)
 
     def _dump_tree_node(self, node, prefix, indent):
