@@ -165,14 +165,14 @@ def get_snapshot_revision(upstream_version):
     return None
 
 
-def lookup_distribution(target_dist):
+def suite_to_distribution(suite):
     """Infer the distribution from a suite.
 
     When passed the name of a suite (anything in the distributions field of
     a changelog) it will infer the distribution from that (i.e. Debian or
     Ubuntu).
 
-    :param target_dist: the string containing the suite
+    :param suite: the string containing the suite
     :return: "debian", "ubuntu", or None if the distribution couldn't be inferred.
     """
     debian_releases = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
@@ -183,8 +183,13 @@ def lookup_distribution(target_dist):
     ubuntu_targets = ('', '-proposed', '-updates', '-security', '-backports')
     all_debian = [r + t for r in debian_releases for t in debian_targets]
     all_ubuntu = [r + t for r in ubuntu_releases for t in ubuntu_targets]
-    if target_dist in all_debian:
+    if suite in all_debian:
         return "debian"
-    if target_dist in all_ubuntu:
+    if suite in all_ubuntu:
         return "ubuntu"
     return None
+
+def lookup_distribution(distribution_or_suite):
+    if distribution_or_suite in ("debian", "ubuntu"):
+        return distribution_or_suite
+    return suite_to_distribution(distribution_or_suite)

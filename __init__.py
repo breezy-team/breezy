@@ -70,6 +70,7 @@ from bzrlib.plugins.builddeb.properties import BuildProperties
 from bzrlib.plugins.builddeb import revspec
 from bzrlib.plugins.builddeb.util import (find_changelog,
         lookup_distribution,
+        suite_to_distribution,
         tarball_name,
         )
 from bzrlib.plugins.builddeb.version import version_info
@@ -487,14 +488,9 @@ class cmd_merge_upstream(Command):
                 tarball_filename = os.path.join(orig_dir, dest_name)
                 distribution = distribution.lower()
                 distribution_name = lookup_distribution(distribution)
-                target_name = distribution
                 if distribution_name is None:
-                    if distribution not in ("debian", "ubuntu"):
-                        raise BzrCommandError("Unknown target distribution: %s" \
-                                % target_dist)
-                    else:
-                        target_name = None
-                        distribution_name = distribution
+                    raise BzrCommandError("Unknown target distribution: %s" \
+                                % distribution)
                 db = DistributionBranch(distribution_name, tree.branch, None,
                         tree=tree)
                 dbs = DistributionBranchSet()
@@ -591,11 +587,8 @@ class cmd_import_dsc(Command):
         distribution = distribution.lower()
         distribution_name = lookup_distribution(distribution)
         if distribution_name is None:
-            if distribution not in ("debian", "ubuntu"):
-                raise BzrCommandError("Unknown target distribution: %s" \
-                        % target_dist)
-            else:
-                distribution_name = distribution
+            raise BzrCommandError("Unknown target distribution: %s" \
+                    % distribution)
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:
@@ -778,7 +771,7 @@ class cmd_mark_uploaded(Command):
             (changelog, larstiq) = find_changelog(t, merge)
             distributions = changelog.distributions.strip()
             target_dist = distributions.split()[0]
-            distribution_name = lookup_distribution(target_dist)
+            distribution_name = suite_to_distribution(target_dist)
             if distribution_name is None:
                 raise BzrCommandError("Unknown target distribution: %s" \
                         % target_dist)

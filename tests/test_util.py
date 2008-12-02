@@ -28,6 +28,7 @@ from bzrlib.plugins.builddeb.util import (
                   recursive_copy,
                   get_snapshot_revision,
                   lookup_distribution,
+                  suite_to_distribution,
                   )
 
 from bzrlib.tests import (TestCaseWithTransport,
@@ -185,16 +186,19 @@ class GetRevisionSnapshotTests(TestCase):
         self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
 
 
-class LookupDistributionTests(TestCase):
+class SuiteToDistributionTests(TestCase):
+
+    def _do_lookup(self, target):
+        return suite_to_distribution(target)
 
     def lookup_ubuntu(self, target):
-        self.assertEqual(lookup_distribution(target), 'ubuntu')
+        self.assertEqual(self._do_lookup(target), 'ubuntu')
 
     def lookup_debian(self, target):
-        self.assertEqual(lookup_distribution(target), 'debian')
+        self.assertEqual(self._do_lookup(target), 'debian')
 
     def lookup_other(self, target):
-        self.assertEqual(lookup_distribution(target), None)
+        self.assertEqual(self._do_lookup(target), None)
 
     def test_lookup_ubuntu(self):
         self.lookup_ubuntu('intrepid')
@@ -211,3 +215,15 @@ class LookupDistributionTests(TestCase):
 
     def test_lookup_other(self):
         self.lookup_other('not-a-target')
+        self.lookup_other("debian")
+        self.lookup_other("ubuntu")
+
+class LookupDistributionTests(SuiteToDistributionTests):
+
+    def _do_lookup(self, target):
+        return lookup_distribution(target)
+
+    def test_lookup_other(self):
+        self.lookup_other('not-a-target')
+        self.lookup_debian("debian")
+        self.lookup_ubuntu("ubuntu")
