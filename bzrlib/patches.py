@@ -236,7 +236,6 @@ class Hunk:
 
 
 def iter_hunks(iter_lines):
-    iter_lines = iter_lines_handle_nl(iter_lines)
     hunk = None
     for line in iter_lines:
         if line == "\n":
@@ -313,6 +312,7 @@ class Patch:
 
 
 def parse_patch(iter_lines):
+    iter_lines = iter_lines_handle_nl(iter_lines)
     (orig_name, mod_name) = get_patch_names(iter_lines)
     patch = Patch(orig_name, mod_name)
     for hunk in iter_hunks(iter_lines):
@@ -391,6 +391,7 @@ def iter_patched(orig_lines, patch_lines):
     """Iterate through a series of lines with a patch applied.
     This handles a single file, and does exact, not fuzzy patching.
     """
+    patch_lines = iter_lines_handle_nl(iter(patch_lines))
     get_patch_names(patch_lines)
     return iter_patched_from_hunks(orig_lines, iter_hunks(patch_lines))
 
