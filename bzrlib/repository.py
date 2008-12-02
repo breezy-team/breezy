@@ -670,12 +670,12 @@ class CommitBuilder(object):
                         entry.text_size = parent_entry.text_size
                         entry.text_sha1 = parent_entry.text_sha1
                 elif kind == 'symlink':
-                    if change[2]:
-                        # Wants a path hint?
-                        entry.symlink_target = tree.get_symlink_target(file_id)
-                        self._add_text_to_weave(change[0], [], heads, None)
+                    # Wants a path hint?
+                    entry.symlink_target = tree.get_symlink_target(file_id)
+                    if (carry_over_possible and
+                        parent_entry.symlink_target == entry.symlink_target):
+                            carried_over = True
                     else:
-                        entry.symlink_target = basis_inv[file_id].symlink_target
                         self._add_text_to_weave(change[0], [], heads, None)
                 elif kind == 'directory':
                     if carry_over_possible:
