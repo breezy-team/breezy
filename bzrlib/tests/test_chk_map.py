@@ -242,6 +242,16 @@ class TestMap(TestCaseWithStore):
                              chkmap._dump_tree())
         self.assertCanonicalForm(chkmap)
 
+    def test_map_splits_with_longer_key(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 1 key per LeafNode
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aaaa',), 'v')
+        self.assertCanonicalForm(chkmap)
+        self.assertIsInstance(chkmap._root_node, InternalNode)
+
     def test_deep_splitting(self):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)
