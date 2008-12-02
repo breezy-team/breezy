@@ -509,6 +509,13 @@ class LeafNode(Node):
             for key, value in self._items.iteritems():
                 serialised_key = self._serialised_key(key)
                 prefix = serialised_key[:split_at]
+                # TODO: Generally only 1 key can be exactly the right length,
+                #       which means we can only have 1 key in the node pointed
+                #       at by the 'prefix\0' key. We might want to consider
+                #       folding it into the containing InternalNode rather than
+                #       having a fixed length-1 node.
+                if len(prefix) < split_at:
+                    prefix += '\x00'*(split_at - len(prefix))
                 if prefix not in result:
                     node = LeafNode()
                     node.set_maximum_size(self._maximum_size)
