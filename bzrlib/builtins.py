@@ -4816,7 +4816,7 @@ class cmd_ls_shelf(Command):
                 note('No shelved changes.')
                 return 0
             for shelf_id in reversed(shelves):
-                message = manager.load_metadata(shelf_id).get('message')
+                message = manager.get_metadata(shelf_id).get('message')
                 if message is None:
                     message = '<no message>'
                 self.outf.write('%3d: %s\n' % (shelf_id, message))

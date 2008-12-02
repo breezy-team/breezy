@@ -348,7 +348,8 @@ class ShelfManager(object):
         finally:
             shelf_file.close()
 
-    def load_metadata(self, shelf_id):
+    def get_metadata(self, shelf_id):
+        """Return the metadata associated with a given shelf_id."""
         shelf_file = self.read_shelf(shelf_id)
         try:
             records = Unshelver.iter_records(shelf_file)
