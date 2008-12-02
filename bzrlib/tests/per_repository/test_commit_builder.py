@@ -603,6 +603,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self._add_commit_reparent_check_changed(tree, 'file',
             expect_fs_hash=True)
 
+    def test_last_modified_revision_after_reparent_file_changes_ric(self):
+        # reparenting a file changes the last modified.
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        self._add_commit_reparent_check_changed(tree, 'file',
+            expect_fs_hash=True, mini_commit=self.mini_commit_record_iter_changes)
+
     def test_last_modified_revision_after_reparent_link_changes(self):
         # reparenting a link changes the last modified.
         self.requireFeature(tests.SymlinkFeature)
