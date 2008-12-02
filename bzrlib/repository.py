@@ -686,10 +686,9 @@ class CommitBuilder(object):
                         if change[1][1] != '' or self.repository.supports_rich_root():
                             self._add_text_to_weave(change[0], [], heads, None)
                 elif kind == 'tree-reference':
-                    if change[2]:
-                        import pdb;pdb.set_trace()
+                    raise AssertionError('unknown kind %r' % kind)
                 else:
-                        raise AssertionError('unknown kind %r' % kind)
+                    raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
                     entry.revision = modified_rev
                 else:
