@@ -210,29 +210,22 @@ class cmd_builddeb(Command):
         export_upstream_revision_opt, source_opt, 'revision',
         no_user_conf_opt, result_compat_opt]
 
-    def run(self, branch=None, verbose=False, working_tree=False,
-            export_only=False, dont_purge=False, use_existing=False,
-            result_dir=None, builder=None, merge=False, build_dir=None,
-            orig_dir=None, ignore_changes=False, ignore_unknowns=False,
-            quick=False, reuse=False, native=False, split=False,
-            export_upstream=None, export_upstream_revision=None,
-            source=False, revision=None, no_user_config=False, result=None):
-
-        if branch is None:
-            branch = "."
-
+    def _get_tree_and_branch(self, location):
+        if location is None:
+            location = "."
         # Find out if we were passed a local or remote branch
-        is_local = urlparse.urlsplit(branch)[0] in ('', 'file')
+        is_local = urlparse.urlsplit(location)[0] in ('', 'file')
         if is_local:
-            os.chdir(branch)
-
+            os.chdir(location)
         try:
-            tree, _ = WorkingTree.open_containing(branch)
+            tree, _ = WorkingTree.open_containing(location)
             branch = tree.branch
         except NoWorkingTree:
             tree = None
-            branch, _ = Branch.open_containing(branch)
+            branch, _ = Branch.open_containing(location)
+        return tree, branch, is_local
 
+    def _get_build_tree(self, revision, tree, branch):
         if revision is None and tree is not None:
             info("Building using working tree")
             working_tree = True
@@ -247,49 +240,86 @@ class cmd_builddeb(Command):
             info("Building branch from revision %s", revid)
             tree = branch.repository.revision_tree(revid)
             working_tree = False
+        return tree, working_tree
 
+    def _build_type(self, config, merge, native, split):
+        if not merge:
+            merge = config.merge
+
+        if merge:
+            info("Running in merge mode")
+        else:
+            if not native:
+                native = config.native
+            if native:
+                info("Running in native mode")
+            else:
+                if not split:
+                    split = config.split
+                if split:
+                    info("Running in split mode")
+        return merge, native, split
+
+    def _get_builder(self, config, builder, quick, source):
+        if builder is None:
+            if quick:
+                builder = config.quick_builder
+                if builder is None:
+                    builder = "fakeroot debian/rules binary"
+            else:
+                if source:
+                    builder = config.source_builder
+                    if builder is None:
+                        builder = "dpkg-buildpackage -rfakeroot -uc -us -S"
+                else:
+                    builder = config.builder
+                    if builder is None:
+                        builder = "dpkg-buildpackage -uc -us -rfakeroot"
+        return builder
+
+    def _get_dirs(self, config, is_local, result_dir, result, build_dir, orig_dir):
+        if result_dir is None:
+            result_dir = result
+        if result_dir is None:
+            if is_local:
+                result_dir = config.result_dir
+            else:
+                result_dir = config.user_result_dir
+        if result_dir is not None:
+            result_dir = os.path.realpath(result_dir)
+        if build_dir is None:
+            if is_local:
+                build_dir = config.build_dir or default_build_dir
+            else:
+                build_dir = config.user_build_dir or 'build-area'
+        if orig_dir is None:
+            if is_local:
+                orig_dir = config.orig_dir or default_orig_dir
+            else:
+                orig_dir = config.user_orig_dir or 'build-area'
+        return result_dir, build_dir, orig_dir
+
+    def run(self, branch=None, verbose=False, working_tree=False,
+            export_only=False, dont_purge=False, use_existing=False,
+            result_dir=None, builder=None, merge=False, build_dir=None,
+            orig_dir=None, ignore_changes=False, ignore_unknowns=False,
+            quick=False, reuse=False, native=False, split=False,
+            export_upstream=None, export_upstream_revision=None,
+            source=False, revision=None, no_user_config=False, result=None):
+
+        tree, branch, is_local = self._get_tree_and_branch(branch)
+        tree, working_tree = self._get_build_tree(revision, tree, branch)
         tree.lock_read()
         try:
             config = debuild_config(tree, working_tree, no_user_config)
-
             if reuse:
                 info("Reusing existing build dir")
                 dont_purge = True
                 use_existing = True
-
-            if not merge:
-                merge = config.merge
-
-            if merge:
-                info("Running in merge mode")
-            else:
-                if not native:
-                    native = config.native
-                if native:
-                    info("Running in native mode")
-                else:
-                    if not split:
-                        split = config.split
-                    if split:
-                        info("Running in split mode")
-
-            if builder is None:
-                if quick:
-                    builder = config.quick_builder
-                    if builder is None:
-                        builder = "fakeroot debian/rules binary"
-                else:
-                    if source:
-                        builder = config.source_builder
-                        if builder is None:
-                            builder = "dpkg-buildpackage -rfakeroot -uc -us -S"
-                    else:
-                        builder = config.builder
-                        if builder is None:
-                            builder = "dpkg-buildpackage -uc -us -rfakeroot"
-
+            merge, native, split = self._build_type(config, merge, native,
+                    split)
+            builder = self._get_builder(config, builder, quick, source)
             (changelog, larstiq) = find_changelog(tree, merge)
-
             config.set_version(changelog.version)
 
             if export_upstream is None:
@@ -298,28 +328,8 @@ class cmd_builddeb(Command):
             if export_upstream_revision is None:
                 export_upstream_revision = config.export_upstream_revision
 
-            if result_dir is None:
-                result_dir = result
-
-            if result_dir is None:
-                if is_local:
-                    result_dir = config.result_dir
-                else:
-                    result_dir = config.user_result_dir
-            if result_dir is not None:
-                result_dir = os.path.realpath(result_dir)
-
-            if build_dir is None:
-                if is_local:
-                    build_dir = config.build_dir or default_build_dir
-                else:
-                    build_dir = config.user_build_dir or 'build-area'
-
-            if orig_dir is None:
-                if is_local:
-                    orig_dir = config.orig_dir or default_orig_dir
-                else:
-                    orig_dir = config.user_orig_dir or 'build-area'
+            result_dir, build_dir, orig_dir = self._get_dirs(config, is_local,
+                    result_dir, result, build_dir, orig_dir)
 
             properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
