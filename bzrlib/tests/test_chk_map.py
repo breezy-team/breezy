@@ -70,6 +70,73 @@ class TestMap(TestCaseWithStore):
         self.assertEqual("chkleaf:\n0\n1\n0\n", self.read_bytes(chk_bytes, root_key))
         return root_key
 
+    def assertMapLayoutEqual(self, map_one, map_two):
+        """Assert that the internal structure is identical between the maps."""
+        map_one._ensure_root()
+        node_one_stack = [map_one._root_node]
+        map_two._ensure_root()
+        node_two_stack = [map_two._root_node]
+        while node_one_stack:
+            node_one = node_one_stack.pop()
+            node_two = node_two_stack.pop()
+            if node_one.__class__ != node_two.__class__:
+                self.assertEqualDiff(map_one._dump_tree(),
+                                     map_two._dump_tree())
+            if isinstance(node_one, InternalNode):
+                # Internal nodes must have identical references
+                self.assertEqual(sorted(node_one._items.keys()),
+                                 sorted(node_two._items.keys()))
+                self.assertEqual(node_one._prefix, node_two._prefix)
+                node_one_stack.extend(node_one._iter_nodes(map_one._store))
+                node_two_stack.extend(node_two._iter_nodes(map_two._store))
+            else:
+                # Leaf nodes must have identical contents
+                self.assertEqual(node_one._items, node_two._items)
+
+    def assertCanonicalForm(self, chkmap):
+        """Assert that the chkmap is in 'canonical' form.
+
+        We do this by adding all of the key value pairs from scratch, both in
+        forward order and reverse order, and assert that the final tree layout
+        is identical.
+        """
+        items = list(chkmap.iteritems())
+        map_forward = chk_map.CHKMap(None, None)
+        map_forward._root_node.set_maximum_size(chkmap._root_node.maximum_size)
+        for key, value in items:
+            map_forward.map(key, value)
+        self.assertMapLayoutEqual(map_forward, chkmap)
+        map_reverse = chk_map.CHKMap(None, None)
+        map_reverse._root_node.set_maximum_size(chkmap._root_node.maximum_size)
+        for key, value in reversed(items):
+            map_reverse.map(key, value)
+        self.assertMapLayoutEqual(map_reverse, chkmap)
+
+    def test_assert_map_layout_equal(self):
+        store = self.get_chk_bytes()
+        map_one = CHKMap(store, None)
+        map_one._root_node.set_maximum_size(20)
+        map_two = CHKMap(store, None)
+        map_two._root_node.set_maximum_size(20)
+        self.assertMapLayoutEqual(map_one, map_two)
+        map_one.map('aaa', 'value')
+        self.assertRaises(AssertionError,
+            self.assertMapLayoutEqual, map_one, map_two)
+        map_two.map('aaa', 'value')
+        self.assertMapLayoutEqual(map_one, map_two)
+        # Split the tree, so we ensure that internal nodes and leaf nodes are
+        # properly checked
+        map_one.map('aab', 'value')
+        self.assertIsInstance(map_one._root_node, InternalNode)
+        self.assertRaises(AssertionError,
+            self.assertMapLayoutEqual, map_one, map_two)
+        map_two.map('aab', 'value')
+        self.assertMapLayoutEqual(map_one, map_two)
+        map_one.map('aac', 'value')
+        self.assertRaises(AssertionError,
+            self.assertMapLayoutEqual, map_one, map_two)
+        self.assertCanonicalForm(map_one)
+
     def test_from_dict_empty(self):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {})
@@ -120,6 +187,8 @@ class TestMap(TestCaseWithStore):
                              (None, ('bba',), 'target2'),
                              (None, ('bbb',), 'common')])
         root_key1 = chkmap1._save()
+        self.assertCanonicalForm(chkmap1)
+
         chkmap2 = CHKMap(chk_bytes, None)
         chkmap2._root_node.set_maximum_size(10)
         chkmap2.apply_delta([(None, ('bbb',), 'common'),
@@ -128,6 +197,7 @@ class TestMap(TestCaseWithStore):
         root_key2 = chkmap2._save()
         self.assertEqualDiff(chkmap1._dump_tree(), chkmap2._dump_tree())
         self.assertEqual(root_key1, root_key2)
+        self.assertCanonicalForm(chkmap2)
 
     def test_stable_splitting(self):
         store = self.get_chk_bytes()
