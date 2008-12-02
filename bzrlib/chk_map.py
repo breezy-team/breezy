@@ -493,17 +493,30 @@ class LeafNode(Node):
         #       then that can be done via the C extension
         return 2 + len('\x00'.join(key)) + len(value)
 
+    def _map_no_split(self, key, value):
+        """Map a key to a value.
+
+        This assumes either the key does not already exist, or you have already
+        removed its size and length from self.
+
+        :return: True if adding this node should cause us to split.
+        """
+        self._items[key] = value
+        self._size += self._key_value_len(key, value)
+        self._len += 1
+        if (self._len > 1
+            and self._maximum_size
+            and self._current_size() > self._maximum_size):
+            return True
+        return False
+
     def map(self, store, key, value):
         """Map key to value."""
         if key in self._items:
             self._size -= self._key_value_len(key, self._items[key])
             self._len -= 1
-        self._items[key] = value
-        self._size += self._key_value_len(key, value)
-        self._len += 1
         self._key = None
-        if (self._maximum_size and self._current_size() > self._maximum_size and
-            self._len > 1):
+        if self._map_no_split(key, value):
             common_prefix = self.unique_serialised_prefix()
             split_at = len(common_prefix) + 1
             result = {}
@@ -934,17 +947,10 @@ class InternalNode(Node):
                     # Without looking at any leaf nodes, we are sure
                     return self
                 for key, value in node._items.iteritems():
-                    # TODO: it is expensive to have it actually do the split,
-                    #       when all we care about is whether it *would* split.
-                    #       Refactor the code a bit so we can just check
-                    #       without actually having to do all the work
-                    next_prefix, new_nodes = new_leaf.map(store, key, value)
-                    if len(new_nodes) > 1:
-                        # These nodes cannot fit in a single leaf, so we are
-                        # done
+                    if new_leaf._map_no_split(key, value):
+                        # Adding this key would cause a split, so we know we
+                        # don't need to collapse
                         return self
-                    else:
-                        assert new_leaf is new_nodes[0][1]
         # So far, everything fits. Page in the rest of the nodes, and see if it
         # holds true.
         if keys:
@@ -971,17 +977,8 @@ class InternalNode(Node):
                     # We know we won't fit
                     return self
                 for key, value in node._items.iteritems():
-                    # TODO: it is expensive to have it actually do the split,
-                    #       when all we care about is whether it *would* split.
-                    #       Refactor the code a bit so we can just check
-                    #       without actually having to do all the work
-                    next_prefix, new_nodes = new_leaf.map(store, key, value)
-                    if len(new_nodes) > 1:
-                        # These nodes cannot fit in a single leaf, so we are
-                        # done
+                    if new_leaf._map_no_split(key, value):
                         return self
-                    else:
-                        assert new_leaf is new_nodes[0][1]
 
         # We have gone to every child, and everything fits in a single leaf
         # node, we no longer need this internal node
