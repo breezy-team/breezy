@@ -337,6 +337,53 @@ class TestMap(TestCaseWithStore):
                              "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
 
+    def test_map_collapses_if_size_changes(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'very long value that splits')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'very long value that splits'\n",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+        # Now changing the value to something small should cause a rebuild
+        chkmap.map(('aab',), 'v')
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'\n",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
+    def test_map_double_deep_collapses(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 3 small keys per LeafNode
+        chkmap._root_node.set_maximum_size(40)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'very long value that splits')
+        chkmap.map(('abc',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aa' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'very long value that splits'\n"
+                             "  'ab' LeafNode None\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+        chkmap.map(('aab',), 'v')
+        self.assertCanonicalForm(chkmap)
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+
     def test_stable_unmap(self):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)

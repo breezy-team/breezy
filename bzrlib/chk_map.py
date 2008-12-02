@@ -735,6 +735,10 @@ class InternalNode(Node):
             # new child needed:
             child = self._new_child(serialised_key, LeafNode)
         old_len = len(child)
+        if isinstance(child, LeafNode):
+            old_size = child._current_size()
+        else:
+            old_size = None
         prefix, node_details = child.map(store, key, value)
         if len(node_details) == 1:
             # child may have shrunk, or might be a new node
@@ -742,7 +746,15 @@ class InternalNode(Node):
             self._len = self._len - old_len + len(child)
             self._items[serialised_key] = child
             self._key = None
-            return self.unique_serialised_prefix(), [("", self)]
+            new_node = self
+            if (isinstance(child, LeafNode)
+                and (old_size is None or child._current_size() < old_size)):
+                # The old node was an InternalNode which means it has now
+                # collapsed, so we need to check if it will chain to a collapse
+                # at this level. Or the LeafNode has shrunk in size, so we need
+                # to check that as well.
+                new_node = self._check_remap(store)
+            return new_node.unique_serialised_prefix(), [("", new_node)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
         # to refer to more bytes of every child (which would give us
@@ -881,7 +893,11 @@ class InternalNode(Node):
         return self._check_remap(store)
 
     def _check_remap(self, store):
-        """Check if all keys contained by children fit in a single LeafNode."""
+        """Check if all keys contained by children fit in a single LeafNode.
+
+        :param store: A store to use for reading more nodes
+        :return: Either self, or a new LeafNode which should replace self.
+        """
         # Logic for how we determine when we need to rebuild
         # 1) Implicitly unmap() is removing a key which means that the child
         #    nodes are going to be shrinking by some extent.
