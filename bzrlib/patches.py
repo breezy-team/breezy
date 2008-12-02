@@ -236,14 +236,9 @@ class Hunk:
 
 
 def iter_hunks(iter_lines):
+    iter_lines = iter_lines_handle_nl(iter_lines)
     hunk = None
     for line in iter_lines:
-        if line == NO_NL:
-            last_line = hunk.lines[-1]
-            if not last_line.contents.endswith('\n'):
-                raise AssertionError()
-            last_line.contents = last_line.contents[:-1]
-            continue
         if line == "\n":
             if hunk is not None:
                 yield hunk
@@ -346,6 +341,27 @@ def iter_file_patch(iter_lines):
         saved_lines.append(line)
     if len(saved_lines) > 0:
         yield saved_lines
+
+
+def iter_lines_handle_nl(iter_lines):
+    """
+    Iterates through lines, ensuring that lines that originally had no
+    terminating \n are produced without one.  This transformation may be
+    applied at any point up until hunk line parsing, and is safe to apply
+    repeatedly.
+    """
+    last_line = None
+    for line in iter_lines:
+        if line == NO_NL:
+            if not last_line.endswith('\n'):
+                raise AssertionError()
+            last_line = last_line[:-1]
+            line = None
+        if last_line is not None:
+            yield last_line
+        last_line = line
+    if last_line is not None:
+        yield last_line
 
 
 def parse_patches(iter_lines):

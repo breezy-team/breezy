@@ -1,10 +1,7 @@
---- orig-7	2008-11-30 02:56:58.000000000 +0100
-+++ mod-7	2008-11-30 02:56:35.000000000 +0100
-@@ -1,5 +1 @@
--# This file is for listing TODOs for branches that are being worked on.
--# It should ALWAYS be empty in the mainline or in integration branches.
--# 
--#
--
-+arg
+--- orig-7	2008-12-02 01:58:43.000000000 +0100
++++ mod-7	2008-12-02 01:58:43.000000000 +0100
+@@ -1 +1 @@
+-No terminating newline
+\ No newline at end of file
++No newline either
 \ No newline at end of file
