@@ -358,6 +358,31 @@ class TestMap(TestCaseWithStore):
                              chkmap._dump_tree())
         self.assertCanonicalForm(chkmap)
 
+    def test_stable_unmap_double_deep(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'very long value')
+        chkmap.map(('abc',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aa' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'very long value'\n"
+                             "  'ab' LeafNode None\n"
+                             "      ('abc',) 'v'",
+                             chkmap._dump_tree())
+        # Removing the 'aab' key should cause everything to collapse back to a
+        # single node
+        chkmap.unmap(('aab',))
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('abc',) 'v'",
+                             chkmap._dump_tree())
+
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
         # all the keys.
