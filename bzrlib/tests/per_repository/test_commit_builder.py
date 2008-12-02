@@ -608,7 +608,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['file'])
         self._add_commit_reparent_check_changed(tree, 'file',
-            expect_fs_hash=True, mini_commit=self.mini_commit_record_iter_changes)
+            expect_fs_hash=True,
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_reparent_link_changes(self):
         # reparenting a link changes the last modified.
@@ -795,6 +796,16 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             tree.put_file_bytes_non_atomic('fileid', 'new content')
         self._add_commit_change_check_changed(tree, 'file', change_file,
             expect_fs_hash=True)
+
+    def test_last_modified_revision_after_content_file_changes_ric(self):
+        # altering a file changes the last modified.
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        def change_file():
+            tree.put_file_bytes_non_atomic('fileid', 'new content')
+        self._add_commit_change_check_changed(tree, 'file', change_file,
+            expect_fs_hash=True,
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_content_link_changes(self):
         # changing a link changes the last modified.

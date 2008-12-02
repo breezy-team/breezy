@@ -573,7 +573,18 @@ class CommitBuilder(object):
                 if change[2]:
                     # From disk.
                     if kind == 'file':
-                        import pdb;pdb.set_trace()
+                        if change[7][0]:
+                            entry.executable = True
+                        else:
+                            entry.executable = False
+                        file_obj, stat_value = tree.get_file_with_stat(file_id,
+                            change[1][1])
+                        try:
+                            lines = file_obj.readlines()
+                        finally:
+                            file_obj.close()
+                        entry.text_sha1, entry.text_size = self._add_text_to_weave(
+                            file_id, lines, heads, None)
                     elif kind == 'symlink':
                         import pdb;pdb.set_trace()
                     elif kind == 'directory':
@@ -591,11 +602,11 @@ class CommitBuilder(object):
                             entry.executable = True
                         else:
                             entry.executable = False
-                        text_revision_id = basis_inv[file_id].revision
-                        bytes = ''.join(self.repository.iter_files_bytes([(file_id,
-                            text_revision_id, None)]).next()[1])
-                        lines = osutils.split_lines(bytes)
-                        del bytes
+                        basis_file = basis_tree.get_file(file_id, path=change[1][0])
+                        try:
+                            lines = basis_file.readlines()
+                        finally:
+                            basis_file.close()
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
                             file_id, lines, heads, None)
                     elif kind == 'symlink':
