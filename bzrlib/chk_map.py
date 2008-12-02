@@ -22,7 +22,7 @@ The CHKMap class implements a dict from tuple_of_strings->string by using a trie
 with internal nodes of 8-bit fan out; The key tuples are mapped to strings by
 joining them by \x00, and \x00 padding shorter keys out to the length of the
 longest key. Leaf nodes are packed as densely as possible, and internal nodes
-are all and additional 8-bits wide leading to a sparse upper tree. 
+are all and additional 8-bits wide leading to a sparse upper tree.
 
 Updates to a CHKMap are done preferentially via the apply_delta method, to
 allow optimisation of the update operation; but individual map/unmap calls are
@@ -90,7 +90,7 @@ class CHKMap(object):
         Node that this does not update the _items dict in objects containing a
         reference to this node. As such it does not prevent subsequent IO being
         performed.
-        
+
         :param node: A tuple key or node object.
         :return: A node object.
         """
@@ -131,7 +131,7 @@ class CHKMap(object):
     @classmethod
     def from_dict(klass, store, initial_value, maximum_size=0, key_width=1):
         """Create a CHKMap in store with initial_value as the content.
-        
+
         :param store: The store to record initial_value in, a VersionedFiles
             object with 1-tuple keys supporting CHK key generation.
         :param initial_value: A dict to store in store. Its keys and values
@@ -176,7 +176,7 @@ class CHKMap(object):
         #    after reading the 'a' subtree, but it is encountered in the first
         #    tree immediately. Variations on this may have read internal nodes like this.
         #    we want to cut the entire pending subtree when we realise we have a common node.
-        #    For this we use a list of keys - the path to a node - and check the entire path is 
+        #    For this we use a list of keys - the path to a node - and check the entire path is
         #    clean as we process each item.
         if self._node_key(self._root_node) == self._node_key(basis._root_node):
             return
@@ -210,7 +210,7 @@ class CHKMap(object):
             # Note that this is N^2, it depends on us trimming trees
             # aggressively to not become slow.
             # A better implementation would probably have a reverse map
-            # back to the children of a node, and jump straight to it when 
+            # back to the children of a node, and jump straight to it when
             # a common node is detected, the proceed to remove the already
             # pending children. bzrlib.graph has a searcher module with a
             # similar problem.
@@ -420,7 +420,7 @@ class Node(object):
 
 class LeafNode(Node):
     """A node containing actual key:value pairs.
-    
+
     :ivar _items: A dict of key->value items. The key is in tuple form.
     """
 
@@ -576,7 +576,7 @@ class LeafNode(Node):
 
 class InternalNode(Node):
     """A node that contains references to other nodes.
-    
+
     An InternalNode is responsible for mapping serialised key prefixes to child
     nodes. It is greedy - it will defer splitting itself as long as possible.
     """
