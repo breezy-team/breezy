@@ -124,6 +124,7 @@ def test_suite():
             'test_merge_upstream',
             'test_repack_tarball_extra',
             'test_revspec',
+            'test_source_distiller',
             'test_util',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
