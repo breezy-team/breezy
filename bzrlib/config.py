@@ -839,7 +839,11 @@ def _auto_user_id():
     try:
         import pwd
         uid = os.getuid()
-        w = pwd.getpwuid(uid)
+        try:
+            w = pwd.getpwuid(uid)
+        except KeyError:
+            raise errors.BzrCommandError('Unable to determine your name.  '
+                'Please use "bzr whoami" to set it.')
 
         # we try utf-8 first, because on many variants (like Linux),
         # /etc/passwd "should" be in utf-8, and because it's unlikely to give

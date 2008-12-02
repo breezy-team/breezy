@@ -287,6 +287,17 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
                 'Does not support nested trees', target_format)
 
 
+class _UnstackedParentsProvider(object):
+    """ParentsProvider for RemoteRepository that ignores stacking."""
+
+    def __init__(self, remote_repository):
+        self._remote_repository = remote_repository
+
+    def get_parent_map(self, revision_ids):
+        """See RemoteRepository.get_parent_map."""
+        return self._remote_repository._get_parent_map(revision_ids)
+
+
 class RemoteRepository(_RpcHelper):
     """Repository accessed over rpc.
 
@@ -462,10 +473,10 @@ class RemoteRepository(_RpcHelper):
     def has_same_location(self, other):
         return (self.__class__ == other.__class__ and
                 self.bzrdir.transport.base == other.bzrdir.transport.base)
-        
+
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
-        parents_provider = self
+        parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             other_repository.bzrdir.transport.base !=
             self.bzrdir.transport.base):
@@ -882,8 +893,12 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository._fetch_reconcile
 
-    def get_parent_map(self, keys):
+    def get_parent_map(self, revision_ids):
         """See bzrlib.Graph.get_parent_map()."""
+        return self._make_parents_provider().get_parent_map(revision_ids)
+
+    def _get_parent_map(self, keys):
+        """Implementation of get_parent_map() that ignores fallbacks."""
         # Hack to build up the caching logic.
         ancestry = self._parents_map
         if ancestry is None:
@@ -893,7 +908,7 @@ class RemoteRepository(_RpcHelper):
         else:
             missing_revisions = set(key for key in keys if key not in ancestry)
         if missing_revisions:
-            parent_map = self._get_parent_map(missing_revisions)
+            parent_map = self._get_parent_map_rpc(missing_revisions)
             if 'hpss' in debug.debug_flags:
                 mutter('retransmitted revisions: %d of %d',
                         len(set(ancestry).intersection(parent_map)),
@@ -907,7 +922,7 @@ class RemoteRepository(_RpcHelper):
                     100.0 * len(self._requested_parents) / len(ancestry))
         return dict((k, ancestry[k]) for k in present_keys)
 
-    def _get_parent_map(self, keys):
+    def _get_parent_map_rpc(self, keys):
         """Helper for get_parent_map that performs the RPC."""
         medium = self._client._medium
         if medium._is_remote_before((1, 2)):
@@ -1208,7 +1223,10 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository._check_for_inconsistent_revision_parents()
 
     def _make_parents_provider(self):
-        return self
+        providers = [_UnstackedParentsProvider(self)]
+        providers.extend(r._make_parents_provider() for r in
+                         self._fallback_repositories)
+        return graph._StackedParentsProvider(providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
@@ -1260,6 +1278,11 @@ class RemoteBranchLockableFiles(LockableFiles):
 
 
 class RemoteBranchFormat(branch.BranchFormat):
+
+    def __init__(self):
+        super(RemoteBranchFormat, self).__init__()
+        self._matchingbzrdir = RemoteBzrDirFormat()
+        self._matchingbzrdir.set_branch_format(self)
 
     def __eq__(self, other):
         return (isinstance(other, RemoteBranchFormat) and 
