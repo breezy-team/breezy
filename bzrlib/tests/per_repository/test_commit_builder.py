@@ -1005,8 +1005,17 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self._check_kind_change(self.make_link, self.make_file,
             expect_fs_hash=True)
 
+    def test_last_modified_link_file_ric(self):
+        self._check_kind_change(self.make_link, self.make_file,
+            expect_fs_hash=True,
+            mini_commit=self.mini_commit_record_iter_changes)
+
     def test_last_modified_link_dir(self):
         self._check_kind_change(self.make_link, self.make_dir)
+
+    def test_last_modified_link_dir_ric(self):
+        self._check_kind_change(self.make_link, self.make_dir,
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_file_dir(self):
         self._check_kind_change(self.make_file, self.make_dir)
