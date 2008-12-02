@@ -565,6 +565,9 @@ class CommitBuilder(object):
         for change, head_candidates in changes.values():
             if change[3][1]: # versioned in target.
                 kind = change[6][1]
+                file_id = change[0]
+                entry = _entry_factory[kind](file_id, change[5][1],
+                    change[4][1])
                 heads = self._heads(change[0], head_candidates)
                 # Populate the entry
                 if change[2]:
@@ -584,7 +587,17 @@ class CommitBuilder(object):
                 else:
                     # From basis.
                     if kind == 'file':
-                        import pdb;pdb.set_trace()
+                        if change[7][1]:
+                            entry.executable = True
+                        else:
+                            entry.executable = False
+                        text_revision_id = basis_inv[file_id].revision
+                        bytes = ''.join(self.repository.iter_files_bytes([(file_id,
+                            text_revision_id, None)]).next()[1])
+                        lines = osutils.split_lines(bytes)
+                        del bytes
+                        entry.text_sha1, entry.text_size = self._add_text_to_weave(
+                            file_id, lines, heads, None)
                     elif kind == 'symlink':
                         import pdb;pdb.set_trace()
                     elif kind == 'directory':
@@ -595,8 +608,6 @@ class CommitBuilder(object):
                         import pdb;pdb.set_trace()
                     else:
                         raise AssertionError('unknown kind %r' % kind)
-                entry = _entry_factory[change[6][1]](
-                    change[0], change[5][1], change[4][1])
                 
                 entry.revision = modified_rev
             else:

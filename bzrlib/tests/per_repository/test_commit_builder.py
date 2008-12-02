@@ -551,6 +551,14 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self._add_commit_renamed_check_changed(tree, 'file',
             expect_fs_hash=True)
 
+    def test_last_modified_revision_after_rename_file_changes_ric(self):
+        # renaming a file changes the last modified.
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        self._add_commit_renamed_check_changed(tree, 'file',
+            expect_fs_hash=True,
+            mini_commit=self.mini_commit_record_iter_changes)
+
     def test_last_modified_revision_after_rename_link_changes(self):
         # renaming a link changes the last modified.
         self.requireFeature(tests.SymlinkFeature)
