@@ -891,6 +891,14 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge(tree1, 'link')
 
+    def test_last_modified_revision_after_merge_link_changes_ric(self):
+        # merge a link changes the last modified.
+        self.requireFeature(tests.SymlinkFeature)
+        tree1 = self.make_branch_and_tree('t1')
+        os.symlink('target', 't1/link')
+        self._commit_sprout_rename_merge(tree1, 'link',
+            mini_commit=self.mini_commit_record_iter_changes)
+
     def _commit_sprout_rename_merge_converged(self, tree1, name):
         rev1, tree2 = self._commit_sprout(tree1, name)
         # change on the other side to merge back
