@@ -227,3 +227,4 @@ class LookupDistributionTests(SuiteToDistributionTests):
         self.lookup_other('not-a-target')
         self.lookup_debian("debian")
         self.lookup_ubuntu("ubuntu")
+        self.lookup_ubuntu("Ubuntu")

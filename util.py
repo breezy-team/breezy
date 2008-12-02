@@ -189,7 +189,14 @@ def suite_to_distribution(suite):
         return "ubuntu"
     return None
 
+
 def lookup_distribution(distribution_or_suite):
-    if distribution_or_suite in ("debian", "ubuntu"):
-        return distribution_or_suite
+    """Get the distribution name based on a distribtion or suite name.
+
+    :param distribution_or_suite: a string that is either the name of
+        a distribution or a suite.
+    :return: a string with a distribution name or None.
+    """
+    if distribution_or_suite.lower() in ("debian", "ubuntu"):
+        return distribution_or_suite.lower()
     return suite_to_distribution(distribution_or_suite)
