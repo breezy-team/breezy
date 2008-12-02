@@ -237,8 +237,13 @@ class Hunk:
 
 def iter_hunks(iter_lines):
     hunk = None
-    iter_lines = iter_lines_handle_nl(iter_lines)
     for line in iter_lines:
+        if line == NO_NL:
+            last_line = hunk.lines[-1]
+            if not last_line.contents.endswith('\n'):
+                raise AssertionError()
+            last_line.contents = last_line.contents[:-1]
+            continue
         if line == "\n":
             if hunk is not None:
                 yield hunk
@@ -343,27 +348,6 @@ def iter_file_patch(iter_lines):
         yield saved_lines
 
 
-def iter_lines_handle_nl(iter_lines):
-    """
-    Iterates through lines, ensuring that lines that originally had no
-    terminating \n are produced without one.  This transformation may be
-    applied at any point up until hunk line parsing, and is safe to apply
-    repeatedly.
-    """
-    last_line = None
-    for line in iter_lines:
-        if line == NO_NL:
-            if not last_line.endswith('\n'):
-                raise AssertionError()
-            last_line = last_line[:-1]
-            line = None
-        if last_line is not None:
-            yield last_line
-        last_line = line
-    if last_line is not None:
-        yield last_line
-
-
 def parse_patches(iter_lines):
     return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
 
@@ -391,7 +375,6 @@ def iter_patched(orig_lines, patch_lines):
     """Iterate through a series of lines with a patch applied.
     This handles a single file, and does exact, not fuzzy patching.
     """
-    patch_lines = iter_lines_handle_nl(iter(patch_lines))
     get_patch_names(patch_lines)
     return iter_patched_from_hunks(orig_lines, iter_hunks(patch_lines))
 
