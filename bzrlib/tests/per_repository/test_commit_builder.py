@@ -755,14 +755,16 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 changes)
             delta = builder.basis_delta
             delta_dict = dict((change[2], change) for change in delta)
-            version_recorded = tree.path2id(new_name) in delta_dict
+            file_id = tree.path2id(new_name)
+            version_recorded = (file_id in delta_dict and
+                delta_dict[file_id][3] is not None and
+                delta_dict[file_id][3].revision == builder._new_revision_id)
             if records_version:
                 self.assertTrue(version_recorded)
             else:
                 self.assertFalse(version_recorded)
             builder.finish_inventory()
             new_inventory = builder.revision_tree().inventory
-            file_id = tree.path2id(new_name)
             new_entry = new_inventory[file_id]
             if delta_against_basis:
                 expected_delta = (name, new_name, file_id, new_entry)
@@ -899,12 +901,18 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self._commit_sprout_rename_merge(tree1, 'link',
             mini_commit=self.mini_commit_record_iter_changes)
 
-    def _commit_sprout_rename_merge_converged(self, tree1, name):
+    def _commit_sprout_rename_merge_converged(self, tree1, name,
+        mini_commit=None):
+        # Make a merge which just incorporates a change from a branch:
+        # The per-file graph is straight line, and no alteration occurs
+        # in the inventory.
         rev1, tree2 = self._commit_sprout(tree1, name)
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
-        rev3 = self.mini_commit(tree1, name, 'new_' + name, False)
+        if mini_commit is None:
+            mini_commit = self.mini_commit
+        rev3 = mini_commit(tree1, name, 'new_' + name, False)
         tree3, = self._get_revtrees(tree1, [rev2])
         self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
         file_id = name + 'id'
@@ -918,6 +926,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge_converged(tree1, 'dir')
+
+    def test_last_modified_revision_after_converged_merge_dir_changes_ric(self):
+        # merge a dir changes the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self.build_tree(['t1/dir/'])
+        self._commit_sprout_rename_merge_converged(tree1, 'dir',
+            mini_commit=self.mini_commit_record_iter_changes)
 
     def test_last_modified_revision_after_converged_merge_file_changes(self):
         # merge a file changes the last modified.

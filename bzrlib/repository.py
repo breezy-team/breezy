@@ -532,6 +532,9 @@ class CommitBuilder(object):
         # file_id -> change map, change is fileid, paths, changed, versioneds,
         # parents, names, kinds, executables
         merged_ids = {}
+        # file_id -> revision_id -> inventory entry, for entries in parent
+        # trees that are not parents[0]
+        parent_entries = {}
         if len(self.parents) > 1:
             revtrees = list(self.repository.revision_trees(self.parents))
             repo_basis = revtrees[0]
@@ -547,8 +550,10 @@ class CommitBuilder(object):
                                 change[3].revision]
                         else:
                             merged_ids[change[2]] = [change[3].revision]
+                        parent_entries[change[2]] = {change[3].revision:change[3]}
                     else:
                         merged_ids[change[2]].append(change[3].revision)
+                        parent_entries[change[2]][change[3].revision] = change[3]
         else:
             merged_ids = {}
         changes= {}
@@ -558,7 +563,11 @@ class CommitBuilder(object):
                 change[0], [basis_inv[change[0]].revision])
         unchanged_merged = set(merged_ids) - set(changes)
         for file_id in unchanged_merged:
-            # Record a merged version with the current content from basis.
+            # Record a merged version of these items that did not change vs the
+            # basis. This can be either identical parallel changes, or a revert
+            # of a specific file after a merge. The recorded content will be
+            # that of the current tree (which is the same as the basis), but
+            # the per-file graph will reflect a merge.
             # NB:XXX: We are reconstructing path information we had, this
             # should be preserved instead.
             # inv delta  change: (file_id, (path_in_source, path_in_target),
@@ -582,6 +591,13 @@ class CommitBuilder(object):
         modified_rev = self._new_revision_id
         for change, head_candidates in changes.values():
             if change[3][1]: # versioned in target.
+                # Several things may be happening here:
+                # We may have a fork in the per-file graph
+                #  - record a change with the content from tree
+                # We may have a change against < all trees  
+                #  - carry over the tree that hasn't changed
+                # We may have a change against all trees
+                #  - record the change with the content from tree
                 kind = change[6][1]
                 file_id = change[0]
                 entry = _entry_factory[kind](file_id, change[5][1],
@@ -593,10 +609,37 @@ class CommitBuilder(object):
                     if head_candidate in head_set:
                         heads.append(head_candidate)
                         head_set.remove(head_candidate)
-                # Populate the entry
-                if change[2]:
-                    # From disk.
-                    if kind == 'file':
+                carried_over = False
+                if len(heads) == 1 and len(head_candidates) > 1:
+                    # Could be a carry-over situation:
+                    parent_entry = parent_entries[file_id].get(heads[0], None)
+                    if parent_entry is None:
+                        # The parent iter_changes was called against is the one
+                        # that is the per-file head, so any change is relevant
+                        # iter_changes is valid.
+                        carry_over_possible = False
+                    else:
+                        # could be a carry over situation
+                        # A change against the basis may just indicate a merge,
+                        # we need to check the content against the source of the
+                        # merge to determine if it was changed after the merge
+                        # or carried over.
+                        if (parent_entry.parent_id != entry.parent_id or
+                            parent_entry.name != entry.name):
+                            # Metadata common to all entries has changed
+                            # against per-file parent
+                            carry_over_possible = False
+                        else:
+                            carry_over_possible = True
+                        # per-type checks for changes against the parent_entry
+                        # are done below.
+                else:
+                    # Cannot be a carry-over situation
+                    carry_over_possible = False
+                # Populate the entry in the delta
+                if kind == 'file':
+                    if change[2]:
+                        # From disk.
                         if change[7][0]:
                             entry.executable = True
                         else:
@@ -609,21 +652,8 @@ class CommitBuilder(object):
                             file_obj.close()
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
                             file_id, lines, heads, None)
-                    elif kind == 'symlink':
-                        # Wants a path hint?
-                        entry.symlink_target = tree.get_symlink_target(file_id)
-                        self._add_text_to_weave(change[0], [], heads, None)
-                    elif kind == 'directory':
-                        # Nothing to set.
-                        import pdb;pdb.set_trace()
-                        pass
-                    elif kind == 'tree-reference':
-                        import pdb;pdb.set_trace()
                     else:
-                        raise AssertionError('unknown kind %r' % kind)
-                else:
-                    # From basis.
-                    if kind == 'file':
+                        # From basis.
                         if change[7][1]:
                             entry.executable = True
                         else:
@@ -635,19 +665,30 @@ class CommitBuilder(object):
                             basis_file.close()
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
                             file_id, lines, heads, None)
-                    elif kind == 'symlink':
+                elif kind == 'symlink':
+                    if change[2]:
+                        # Wants a path hint?
+                        entry.symlink_target = tree.get_symlink_target(file_id)
+                        self._add_text_to_weave(change[0], [], heads, None)
+                    else:
                         entry.symlink_target = basis_inv[file_id].symlink_target
                         self._add_text_to_weave(change[0], [], heads, None)
-                    elif kind == 'directory':
+                elif kind == 'directory':
+                    if carry_over_possible:
+                        carried_over = True
+                        entry.revision = parent_entry.revision
+                    else:
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
                         if change[1][1] != '' or self.repository.supports_rich_root():
                             self._add_text_to_weave(change[0], [], heads, None)
-                    elif kind == 'tree-reference':
+                elif kind == 'tree-reference':
+                    if change[2]:
                         import pdb;pdb.set_trace()
-                    else:
+                else:
                         raise AssertionError('unknown kind %r' % kind)
-                entry.revision = modified_rev
+                if not carried_over:
+                    entry.revision = modified_rev
             else:
                 entry = None
             new_path = change[1][1]
