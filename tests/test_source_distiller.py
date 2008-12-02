@@ -19,17 +19,19 @@
 
 
 from bzrlib.errors import (
-        ObjectNotLocked,
         FileExists,
+        ObjectNotLocked,
+        NoSuchFile,
         )
 from bzrlib.tests import TestCaseWithTransport
 
 from bzrlib.plugins.builddeb.source_distiller import (
+        FullSourceDistiller,
         NativeSourceDistiller,
         )
 
 
-class TestNativeSourceDistiller(TestCaseWithTransport):
+class NativeSourceDistillerTests(TestCaseWithTransport):
 
     def test_distill_target_exists(self):
         wt = self.make_branch_and_tree(".")
@@ -64,6 +66,47 @@ class TestNativeSourceDistiller(TestCaseWithTransport):
         rev_tree = wt.basis_tree()
         sd = NativeSourceDistiller(rev_tree)
         sd.distill('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/a')
+        self.failIfExists('target/.bzr-builddeb')
+
+
+class FullSourceDistillerTests(TestCaseWithTransport):
+
+    def test_distill_target_exists(self):
+        wt = self.make_branch_and_tree(".")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        sd = FullSourceDistiller(wt, "tarball")
+        self.build_tree(['target/'])
+        self.assertRaises(FileExists, sd.distill, 'target')
+
+    def test_distill_no_tarball(self):
+        wt = self.make_branch_and_tree(".")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['source/'])
+        sd = FullSourceDistiller(wt, "source/tarball")
+        self.assertRaises(NoSuchFile, sd.distill, 'target')
+
+    def test_distill_tarball_exists(self):
+        wt = self.make_branch_and_tree(".")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['tarball'])
+        sd = FullSourceDistiller(wt, "tarball")
+        sd.distill('target')
+        self.failUnlessExists('tarball')
+
+    def test_distill_revision_tree(self):
+        wt = self.make_branch_and_tree(".")
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['source/', 'source/tarball', 'a', '.bzr-builddeb'])
+        wt.add(['a', '.bzr-builddeb'])
+        sd = FullSourceDistiller(wt, "source/tarball")
+        sd.distill('target')
+        self.failUnlessExists('tarball')
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
         self.failIfExists('target/.bzr-builddeb')
