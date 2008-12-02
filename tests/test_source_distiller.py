@@ -51,3 +51,19 @@ class TestNativeSourceDistiller(TestCaseWithTransport):
         sd.distill('target')
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
+
+    def test_distill_removes_builddeb_dir(self):
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['a', '.bzr-builddeb/',
+                '.bzr-builddeb/default.conf'])
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        wt.add(['a', '.bzr-builddeb/',
+                '.bzr-builddeb/default.conf'])
+        revid = wt.commit("one")
+        rev_tree = wt.basis_tree()
+        sd = NativeSourceDistiller(rev_tree)
+        sd.distill('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/a')
+        self.failIfExists('target/.bzr-builddeb')
