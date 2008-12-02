@@ -877,6 +877,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.build_tree(['t1/file'])
         self._commit_sprout_rename_merge(tree1, 'file', expect_fs_hash=True)
 
+    def test_last_modified_revision_after_merge_file_changes_ric(self):
+        # merge a file changes the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self.build_tree(['t1/file'])
+        self._commit_sprout_rename_merge(tree1, 'file', expect_fs_hash=True,
+            mini_commit=self.mini_commit_record_iter_changes)
+
     def test_last_modified_revision_after_merge_link_changes(self):
         # merge a link changes the last modified.
         self.requireFeature(tests.SymlinkFeature)
