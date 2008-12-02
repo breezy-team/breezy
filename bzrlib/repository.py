@@ -599,11 +599,11 @@ class CommitBuilder(object):
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
                             file_id, lines, heads, None)
                     elif kind == 'symlink':
-                        import pdb;pdb.set_trace()
+                        entry.symlink_target = basis_inv[file_id].symlink_target
+                        self._add_text_to_weave(change[0], [], heads, None)
                     elif kind == 'directory':
                         # Nothing to set.
                         self._add_text_to_weave(change[0], [], heads, None)
-                        pass
                     elif kind == 'tree-reference':
                         import pdb;pdb.set_trace()
                     else:

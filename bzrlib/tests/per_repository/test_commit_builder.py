@@ -566,6 +566,14 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link')
 
+    def test_last_modified_revision_after_rename_link_changes_ric(self):
+        # renaming a link changes the last modified.
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        os.symlink('target', 'link')
+        self._add_commit_renamed_check_changed(tree, 'link',
+            mini_commit=self.mini_commit_record_iter_changes)
+
     def _add_commit_reparent_check_changed(self, tree, name,
         expect_fs_hash=False):
         self.build_tree(['newparent/'])
