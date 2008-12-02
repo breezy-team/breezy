@@ -23,6 +23,11 @@ IN DEVELOPMENT
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
 
+    * ``Transport.readv()`` defaults to not reading more than 100MB in a
+      single array. Further ``RemoteTransport.readv`` sets this to 5MB to
+      work better with how it splits its requests.
+      (John Arbash Meinel, #303538)
+
   DOCUMENTATION:
 
   API CHANGES:
