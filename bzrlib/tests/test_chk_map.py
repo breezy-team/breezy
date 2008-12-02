@@ -213,6 +213,8 @@ class TestMap(TestCaseWithStore):
                              "      ('aaa',) 'v'\n"
                              "      ('aab',) 'v'",
                              chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
         # Creates a new internal node, and splits the others into leaves
         chkmap.map(('aac',), 'v')
         self.assertEqualDiff("'' InternalNode None\n"
@@ -223,6 +225,8 @@ class TestMap(TestCaseWithStore):
                              "  'aac' LeafNode None\n"
                              "      ('aac',) 'v'",
                              chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
         # Splits again, because it can't fit in the current structure
         chkmap.map(('bbb',), 'v')
         self.assertEqualDiff("'' InternalNode None\n"
@@ -236,6 +240,7 @@ class TestMap(TestCaseWithStore):
                              "  'b' LeafNode None\n"
                              "      ('bbb',) 'v'",
                              chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
 
     def test_deep_splitting(self):
         store = self.get_chk_bytes()
@@ -321,6 +326,37 @@ class TestMap(TestCaseWithStore):
                              "      'aaabad' LeafNode None\n"
                              "      ('aaabadaa',) 'v'",
                              chkmap._dump_tree())
+
+    def test_stable_unmap(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'",
+                             chkmap._dump_tree())
+        # Creates a new internal node, and splits the others into leaves
+        chkmap.map(('aac',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "  'aac' LeafNode None\n"
+                             "      ('aac',) 'v'",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+        # Now lets unmap one of the keys, and assert that we collapse the
+        # structures.
+        chkmap.unmap(('aac',))
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
 
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
@@ -929,10 +965,8 @@ class TestInternalNode(TestCaseWithStore):
         # children.
         result = node.unmap(chkmap._store, ('k23',))
         # check the pointed-at object within node - k2 should now point at the
-        # k22 leaf (which should not even have been paged in).
-        ptr = node._items['k2']
-        self.assertIsInstance(ptr, tuple)
-        child = _deserialise(self.read_bytes(chkmap._store, ptr), ptr)
+        # k22 leaf (which has been paged in to see if we can collapse the tree)
+        child = node._items['k2']
         self.assertIsInstance(child, LeafNode)
         self.assertEqual(1, len(child))
         self.assertEqual({('k22',): 'bar'},

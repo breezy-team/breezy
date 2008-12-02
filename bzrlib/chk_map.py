@@ -358,7 +358,8 @@ class CHKMap(object):
     def unmap(self, key):
         """remove key from the map."""
         self._ensure_root()
-        self._root_node.unmap(self._store, key)
+        unmapped = self._root_node.unmap(self._store, key)
+        self._root_node = unmapped
 
     def _save(self):
         """Save the map completely.
@@ -845,26 +846,83 @@ class InternalNode(Node):
         """Remove key from this node and it's children."""
         if not len(self._items):
             raise AssertionError("cant unmap in an empty InternalNode.")
-        serialised_key = self._serialised_key(key)
         children = self._iter_nodes(store, key_filter=[key])
-        serialised_key = self._serialised_key(key)
         if children:
             child = children[0]
         else:
             raise KeyError(key)
         self._len -= 1
         unmapped = child.unmap(store, key)
+        self._key = None
+        serialised_key = self._serialised_key(key)
         if len(unmapped) == 0:
             # All child nodes are gone, remove the child:
             del self._items[serialised_key]
+            unmapped = None
         else:
             # Stash the returned node
             self._items[serialised_key] = unmapped
         if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
-        self._key = None
-        return self
+        # Logic for how unmap determines when it needs to rebuild
+        # 1) Implicitly unmap() is removing a key which means that the child
+        #    nodes are going to be shrinking by some extent.
+        # 2) If all children are LeafNodes, it is possible that they could be
+        #    combined into a single LeafNode, which can then completely replace
+        #    this internal node with a single LeafNode
+        # 3) If *one* child is an InternalNode, we assume it has already done
+        #    all the work to determine that its children cannot collapse, and
+        #    we can then assume that those nodes *plus* the current nodes don't
+        #    have a chance of collapsing either.
+        #    So a very cheap check is to just say if 'unmapped' is an
+        #    InternalNode, we don't have to check further.
+        if isinstance(unmapped, InternalNode):
+            return self
+        node = self._check_remap(store)
+        return self._check_remap(store)
+
+    def _check_remap(self, store):
+        # Check and see if all keys contained by children could be mapped into
+        # a single LeafNode.
+
+        # TODO: If any child node is an InternalNode, we know we can stop. Is
+        #       it cheaper to load all children and see if one is an
+        #       InternalNode, or is it cheaper to start adding keys into a
+        #       LeafNode and stop when it gets full...
+        # TODO: Do a quick once-over the list of already-read children, and
+        #       check if any are an InternalNode. This will avoid any I/O some
+        #       of the time, and should be very cheap.
+        # TODO: Another alternative is to check the total size of all known
+        #       LeafNodes. If there is some formula we can use to determine the
+        #       final size without actually having to read in any more
+        #       children, it would be nice to have. However, we have to be
+        #       careful with stuff like nodes that pull out the common prefix
+        #       of each key, as adding a new key can change the common prefix
+        #       and cause size changes greater than the length of one key.
+        #       So for now, we just add everything to a new Leaf until it
+        #       splits, as we know that will give the right answer
+        new_leaf = LeafNode()
+        new_leaf.set_maximum_size(self._maximum_size)
+        new_leaf._key_width = self._key_width
+        for node in self._iter_nodes(store):
+            if isinstance(node, InternalNode):
+                # We won't be able to collapse
+                return self
+            for key, value in node._items.iteritems():
+                # TODO: it is expensive to have it actually do the split, when
+                #       all we care about is whether it *would* split. Refactor
+                #       the code a bit so we can just check without actually
+                #       having to do all the work
+                next_prefix, new_nodes = new_leaf.map(store, key, value)
+                if len(new_nodes) > 1:
+                    # These nodes cannot fit in a single leaf, so we are done
+                    return self
+                else:
+                    assert new_leaf is new_nodes[0][1]
+        # We have gone to every child, and everything fits in a single leaf
+        # node, we no longer need this internal node
+        return new_leaf
 
 
 def _deserialise(bytes, key):
