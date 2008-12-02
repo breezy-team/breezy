@@ -514,6 +514,9 @@ class LeafNode(Node):
                 #       at by the 'prefix\0' key. We might want to consider
                 #       folding it into the containing InternalNode rather than
                 #       having a fixed length-1 node.
+                #       Note this is probably not true for hash keys, as they
+                #       may get a '\00' node anywhere, but won't have keys of
+                #       different lengths.
                 if len(prefix) < split_at:
                     prefix += '\x00'*(split_at - len(prefix))
                 if prefix not in result:
