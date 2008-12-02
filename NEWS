@@ -5,6 +5,17 @@ Bazaar Release Notes
 .. contents::
 
 
+bzr 1.10 IN DEVELOPMENT
+-----------------------
+
+  BUG FIXES:
+
+    * Don't set a pack write cache size from RepoFetcher, because the
+      cache is not coherent with reads and causes ShortReadvErrors.
+      This reverses the change that fixed #294479.
+      (Martin Pool, #303856)
+
+
 bzr 1.10rc1 2008-11-28
 ----------------------
 
