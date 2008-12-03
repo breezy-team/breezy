@@ -15,6 +15,12 @@ bzr 1.10 IN DEVELOPMENT
       This reverses the change that fixed #294479.
       (Martin Pool, #303856)
 
+    * Properly handle when a revision can be inserted as a delta versus
+      when it needs to be expanded to a fulltext for stacked branches.
+      There was a bug involving merge revisions. As a method to help
+      prevent future difficulties, also make stacked fetches sort
+      topologically. (John Arbash Meinel, #304841)
+
 
 bzr 1.10rc1 2008-11-28
 ----------------------
