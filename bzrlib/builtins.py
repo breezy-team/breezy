@@ -4738,6 +4738,8 @@ class cmd_shelve(Command):
     ie. out of the way, until a later time when you can bring them back from
     the shelf with the 'unshelve' command.
 
+    If shelve --list is specified, previously-shelved changes are listed.
+
     Shelve is intended to help separate several sets of changes that have
     been inappropriately mingled.  If you just want to get rid of all changes
     and you don't need to restore them later, use revert.  If you want to
@@ -4760,12 +4762,16 @@ class cmd_shelve(Command):
         'message',
         RegistryOption('writer', 'Method to use for writing diffs.',
                        bzrlib.option.diff_writer_registry,
-                       value_switches=True, enum_switch=False)
+                       value_switches=True, enum_switch=False),
+
+        Option('list', help='list shelved changes.'),
     ]
     _see_also = ['unshelve', 'ls-shelf']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
-            writer=None):
+            writer=None, list=False):
+        if list:
+            return self.run_for_list()
         from bzrlib.shelf_ui import Shelver
         if writer is None:
             writer = bzrlib.option.diff_writer_registry.get()
@@ -4774,6 +4780,24 @@ class cmd_shelve(Command):
                               message).run()
         except errors.UserAbort:
             return 0
+
+    def run_for_list(self):
+        tree = WorkingTree.open('.')
+        tree.lock_read()
+        try:
+            manager = tree.get_shelf_manager()
+            shelves = manager.active_shelves()
+            if len(shelves) == 0:
+                note('No shelved changes.')
+                return 0
+            for shelf_id in reversed(shelves):
+                message = manager.get_metadata(shelf_id).get('message')
+                if message is None:
+                    message = '<no message>'
+                self.outf.write('%3d: %s\n' % (shelf_id, message))
+            return 1
+        finally:
+            tree.unlock()
 
 
 class cmd_unshelve(Command):
@@ -4799,30 +4823,6 @@ class cmd_unshelve(Command):
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.shelf_ui import Unshelver
         Unshelver.from_args(shelf_id, action).run()
-
-
-class cmd_ls_shelf(Command):
-    """List shelved changes."""
-
-    _see_also = ['shelve', 'unshelve']
-
-    def run(self):
-        tree = WorkingTree.open('.')
-        tree.lock_read()
-        try:
-            manager = tree.get_shelf_manager()
-            shelves = manager.active_shelves()
-            if len(shelves) == 0:
-                note('No shelved changes.')
-                return 0
-            for shelf_id in reversed(shelves):
-                message = manager.get_metadata(shelf_id).get('message')
-                if message is None:
-                    message = '<no message>'
-                self.outf.write('%3d: %s\n' % (shelf_id, message))
-            return 1
-        finally:
-            tree.unlock()
 
 
 def _create_prefix(cur_transport):
