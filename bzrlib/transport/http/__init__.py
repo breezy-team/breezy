@@ -41,6 +41,7 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     ConnectedTransport,
     _CoalescedOffset,
+    get_transport,
     Transport,
     )
 
@@ -451,17 +452,6 @@ class HttpTransportBase(ConnectedTransport):
         """
         raise errors.TransportNotPossible('http does not support lock_write()')
 
-    def clone(self, offset=None):
-        """Return a new HttpTransportBase with root at self.base + offset
-
-        We leave the daughter classes take advantage of the hint
-        that it's a cloning not a raw creation.
-        """
-        if offset is None:
-            return self.__class__(self.base, self)
-        else:
-            return self.__class__(self.abspath(offset), self)
-
     def _attempted_range_header(self, offsets, tail_amount):
         """Prepare a HTTP Range header at a level the server should accept.
 
@@ -516,6 +506,54 @@ class HttpTransportBase(ConnectedTransport):
             strings.append('-%d' % tail_amount)
 
         return ','.join(strings)
+
+    def _redirected_to(self, exception):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param exception: A RedirectRequested exception.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        relpath = self.relpath(exception.get_source_url())
+        if not exception.target.endswith(relpath):
+            # The final part of the url has been renamed, we can't handle the
+            # redirection.
+            return None
+        new_transport = None
+        (scheme,
+         user, password,
+         host, port,
+         path) = self._split_url(exception.target)
+        # Recalculate base path. This is needed to ensure that when the
+        # redirected tranport will be used to re-try whatever request was
+        # redirected, we end up with the same url
+        base_path = path[:-len(relpath)]
+        if scheme == self._unqualified_scheme:
+            # Same protocol (i.e. http[s])
+            if (host == self._host
+                and port == self._port
+                and (user is None or user == self._user)):
+                # If a user is specified, it should match, we don't care about
+                # passwords, wrong passwords will be rejected anyway.
+                new_transport = self.clone(base_path)
+            else:
+                # Rebuild the url preserving the qualified scheme
+                new_url = self._unsplit_url(self._scheme,
+                                            user, password,
+                                            host, port,
+                                            base_path)
+                new_transport = get_transport(new_url)
+        else:
+            # Redirected to a different protocol
+            new_url = self._unsplit_url(scheme,
+                                        user, password,
+                                        host, port,
+                                        base_path)
+            new_transport = get_transport(new_url)
+        return new_transport
 
 
 # TODO: May be better located in smart/medium.py with the other

@@ -1249,6 +1249,21 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
+    def _redirected_to(self, exception):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param exception: A RedirectRequested exception.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        # This returns None by default, meaning the transport can't handle the
+        # redirection.
+        return None
+
+
 
 class _SharedConnection(object):
     """A connection shared between several transports."""

@@ -1263,7 +1263,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
                                   ('bundle',
                                   '# Bazaar revision bundle v0.9\n#\n')
                                   ],)
-
+        # The requests to the old server will be redirected to the new server
         self.old_transport = self._transport(self.old_server.get_url())
 
     def test_redirected(self):
