@@ -474,7 +474,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         #     F
         # A & B are present in the base (stacked-on) repository, A-E are
         # present in the source.
-        # This is attempting to reproduce bug #304841
+        # This reproduces bug #304841
         # We need a large enough inventory that total size of compressed deltas
         # is shorter than the size of a compressed fulltext. We have to use
         # random ids because otherwise the inventory fulltext compresses too
