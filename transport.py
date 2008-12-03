@@ -28,7 +28,7 @@ from bzrlib.plugins.svn import ra
 from bzrlib.plugins.svn.auth import create_auth_baton
 from bzrlib.plugins.svn.client import get_config
 from bzrlib.plugins.svn.core import SubversionException
-from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_DIRECTORY, ERR_RA_DAV_RELOCATED, ERR_RA_DAV_PATH_NOT_FOUND
+from bzrlib.plugins.svn.errors import convert_svn_error, NoSvnRepositoryPresent, ERR_BAD_URL, ERR_RA_SVN_REPOS_NOT_FOUND, ERR_FS_ALREADY_EXISTS, ERR_FS_NOT_DIRECTORY, ERR_RA_DAV_RELOCATED, ERR_RA_DAV_PATH_NOT_FOUND, ERR_RA_ILLEGAL_URL
 import urlparse
 import urllib
 
@@ -115,9 +115,11 @@ def Connection(url):
         if num in (ERR_RA_SVN_REPOS_NOT_FOUND,):
             raise NoSvnRepositoryPresent(url=url)
         if num == ERR_BAD_URL:
-            raise InvalidURL(url)
+            raise InvalidURL(url, msg)
         if num == ERR_RA_DAV_PATH_NOT_FOUND:
             raise NoSuchFile(url)
+        if num == ERR_RA_ILLEGAL_URL:
+            raise InvalidURL(url, msg)
         if num == ERR_RA_DAV_RELOCATED:
             # Try to guess the new url
             if "'" in msg:
@@ -126,7 +128,8 @@ def Connection(url):
                 new_url = msg[msg.index("»")+2:msg.index("«")]
             else:
                 raise AssertionError("Unable to parse error message: %s" % msg)
-            raise RedirectRequested(source=url, target=new_url, 
+            raise RedirectRequested(source=url, 
+                                    target=urlutils.join(url, new_url), 
                                     is_permanent=True)
         raise
 
