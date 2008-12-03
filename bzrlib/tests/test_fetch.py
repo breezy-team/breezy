@@ -22,6 +22,7 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     merge,
     repository,
     versionedfile,
@@ -458,6 +459,72 @@ class TestKnitToPackFetch(TestCaseWithTransport):
             'unordered', False).next()
         self.assertEqual('knit-ft-gz', record.storage_kind)
 
+    def test_fetch_with_fallback_and_merge(self):
+        builder = self.make_branch_builder('source', format='pack-0.92')
+        builder.start_series()
+        # graph
+        #   A
+        #   |\
+        #   B C
+        #   | |
+        #   | D
+        #   | |
+        #   | E
+        #    \|
+        #     F
+        # A & B are present in the base (stacked-on) repository, A-E are
+        # present in the source.
+        # This is attempting to reproduce bug #304841
+        # We need a large enough inventory that total size of compressed deltas
+        # is shorter than the size of a compressed fulltext. We have to use
+        # random ids because otherwise the inventory fulltext compresses too
+        # well and the deltas get bigger.
+        to_add = [
+            ('add', ('', 'TREE_ROOT', 'directory', None))]
+        for i in xrange(10):
+            fname = 'file%03d' % (i,)
+            fileid = '%s-%s' % (fname, osutils.rand_chars(64))
+            to_add.append(('add', (fname, fileid, 'file', 'content\n')))
+        builder.build_snapshot('A', None, to_add)
+        builder.build_snapshot('B', ['A'], [])
+        builder.build_snapshot('C', ['A'], [])
+        builder.build_snapshot('D', ['C'], [])
+        builder.build_snapshot('E', ['D'], [])
+        builder.build_snapshot('F', ['E', 'B'], [])
+        builder.finish_series()
+        source_branch = builder.get_branch()
+        source_branch.bzrdir.sprout('base', revision_id='B')
+        target_branch = self.make_branch('target', format='1.6')
+        target_branch.set_stacked_on_url('../base')
+        source = source_branch.repository
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        source.inventories = versionedfile.OrderingVersionedFilesDecorator(
+                        source.inventories,
+                        key_priority={('E',): 1, ('D',): 2, ('C',): 4,
+                                      ('F',): 3})
+        # Ensure that the content is yielded in the proper order, and given as
+        # the expected kinds
+        records = [(record.key, record.storage_kind)
+                   for record in source.inventories.get_record_stream(
+                        [('D',), ('C',), ('E',), ('F',)], 'unordered', False)]
+        self.assertEqual([(('E',), 'knit-delta-gz'), (('D',), 'knit-delta-gz'),
+                          (('F',), 'knit-delta-gz'), (('C',), 'knit-delta-gz')],
+                          records)
+
+        target_branch.lock_write()
+        self.addCleanup(target_branch.unlock)
+        target = target_branch.repository
+        target.fetch(source, revision_id='F')
+        # 'C' should be expanded to a fulltext, but D and E should still be
+        # deltas
+        stream = target.inventories.get_record_stream(
+            [('C',), ('D',), ('E',), ('F',)],
+            'unordered', False)
+        kinds = dict((record.key, record.storage_kind) for record in stream)
+        self.assertEqual({('C',): 'knit-ft-gz', ('D',): 'knit-delta-gz',
+                          ('E',): 'knit-delta-gz', ('F',): 'knit-delta-gz'},
+                         kinds)
 
 
 class Test1To2Fetch(TestCaseWithTransport):
