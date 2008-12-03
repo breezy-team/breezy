@@ -1236,6 +1236,26 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             repo.get_parent_map, ['a-revision-id'])
 
 
+class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
+
+    def test_allows_new_revisions(self):
+        """get_parent_map's results can be updated by commit."""
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        self.addCleanup(smart_server.tearDown)
+        self.make_branch('branch')
+        branch = Branch.open(smart_server.get_url() + '/branch')
+        tree = branch.create_checkout('tree', lightweight=True)
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        # This provides an opportunity for the missing rev-id to be cached.
+        self.assertEqual({}, graph.get_parent_map(['rev1']))
+        tree.commit('message', rev_id='rev1')
+        graph = tree.branch.repository.get_graph()
+        self.assertEqual({'rev1': ('null:',)}, graph.get_parent_map(['rev1']))
+
+
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
     
     def test_null_revision(self):

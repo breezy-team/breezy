@@ -1446,6 +1446,18 @@ class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
         self.caching_pp.disable_cache()
         self.assertIs(None, self.caching_pp.get_cached_map())
 
+    def test_cache_misses(self):
+        self.assertEqual({}, self.caching_pp.get_cached_map())
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+    def test_no_cache_misses(self):
+        self.caching_pp.enable_cache(cache_misses=False)
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3', 'rev3'], self.inst_pp.calls)
+
     def test_cache_extras(self):
         self.assertEqual({}, self.caching_pp.get_parent_map(['rev3']))
         self.assertEqual({'rev2': ['rev1']},

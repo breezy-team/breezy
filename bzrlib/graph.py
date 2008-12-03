@@ -122,6 +122,7 @@ class CachingParentsProvider(object):
         else:
             self._get_parent_map = get_parent_map
         self._parents_map = {}
+        self._cache_misses = True
         self._debug = debug
         if self._debug:
             self._requested_parents = None
@@ -129,9 +130,10 @@ class CachingParentsProvider(object):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
-    def enable_cache(self):
+    def enable_cache(self, cache_misses=True):
         """Enable cache."""
         self._parents_map = {}
+        self._cache_misses = cache_misses
         if self._debug:
             self._requested_parents = set()
 
@@ -165,8 +167,9 @@ class CachingParentsProvider(object):
                         len(set(ancestry).intersection(parent_map)),
                         len(parent_map))
             ancestry.update(parent_map)
-            ancestry.update(dict((k, None) for k in missing_revisions
-                                 if k not in parent_map))
+            if self._cache_misses:
+                ancestry.update(dict((k, None) for k in missing_revisions
+                                     if k not in parent_map))
         present_keys = [k for k in keys if ancestry.get(k) is not None]
         if self._debug:
             if self._requested_parents is not None and len(ancestry) != 0:
