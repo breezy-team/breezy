@@ -1324,6 +1324,10 @@ class CHKInventory(CommonInventory):
     to reuse.
     """
 
+    def __init__(self):
+        CommonInventory.__init__(self)
+        self._entry_cache = {}
+
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
 
@@ -1418,7 +1422,6 @@ class CHKInventory(CommonInventory):
         else:
             result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
-        result._entry_cache = {}
         id_to_entry_delta = []
         for old_path, new_path, file_id, entry in inventory_delta:
             # file id changes
@@ -1485,7 +1488,6 @@ class CHKInventory(CommonInventory):
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
                 (result.revision_id, expected_revision_id))
-        result._entry_cache = {}
         return result
 
     @classmethod
@@ -1526,7 +1528,6 @@ class CHKInventory(CommonInventory):
         result.id_to_entry.apply_delta(file_id_delta)
         if parent_id_basename_index:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
-        result._entry_cache = {}
         return result
 
     def _parent_id_basename_key(self, entry):
