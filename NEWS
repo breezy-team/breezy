@@ -12,6 +12,8 @@ bzr-svn 0.4.16	UNRELEASED
    * Set bzr:user-agent revision property, e.g. to allow blacklisting 
      in the future.
 
+   * Fix removing of file properties. (#304866)
+
 bzr-svn 0.4.15	2008-11-10
 
   BUG FIXES

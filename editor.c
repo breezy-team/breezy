@@ -199,7 +199,7 @@ static PyObject *py_file_editor_change_prop(PyObject *self, PyObject *args)
 	c_value.len = vallen;
 
 	RUN_SVN(editor->editor->change_file_prop(editor->baton, name, 
-				&c_value, editor->pool));
+				(c_value.data == NULL)?NULL:&c_value, editor->pool));
 	Py_RETURN_NONE;
 }
 
@@ -370,7 +370,7 @@ static PyObject *py_dir_editor_change_prop(PyObject *self, PyObject *args)
 	c_value.len = vallen;
 
 	RUN_SVN(editor->editor->change_dir_prop(editor->baton, name, 
-					&c_value, editor->pool));
+					(c_value.data == NULL)?NULL:&c_value, editor->pool));
 
 	Py_RETURN_NONE;
 }
