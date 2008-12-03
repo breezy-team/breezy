@@ -1530,7 +1530,10 @@ class RepositoryPackCollection(object):
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
-            for suffix in ('.iix', '.six', '.tix', '.rix'):
+            suffixes = ['.iix', '.six', '.tix', '.rix']
+            if self.chk_index is not None:
+                suffixes.append('.cix')
+            for suffix in suffixes:
                 self._index_transport.rename(pack.name + suffix,
                     '../obsolete_packs/' + pack.name + suffix)
 
