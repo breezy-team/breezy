@@ -383,6 +383,18 @@ class TestCHKInventory(TestCaseWithTransport):
         self.assertEqual('dirid', new_inv.path2id('dir'))
         self.assertEqual('fileid', new_inv.path2id('dir/file'))
 
+    def test_create_by_apply_delta_sets_root(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        chk_bytes = self.get_chk_bytes()
+        base_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        inv.add_path("", "directory", "myrootid", None)
+        inv.revision_id = "expectedid"
+        reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        delta = [(None, "",  "myrootid", inv.root)]
+        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        self.assertEquals(reference_inv.root, new_inv.root)
+
     def test_create_by_apply_delta_empty_add_child(self):
         inv = Inventory()
         inv.revision_id = "revid"

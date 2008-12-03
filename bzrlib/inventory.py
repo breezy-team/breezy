@@ -1418,6 +1418,7 @@ class CHKInventory(CommonInventory):
         else:
             result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
+        result._entry_cache = {}
         id_to_entry_delta = []
         for old_path, new_path, file_id, entry in inventory_delta:
             # file id changes
