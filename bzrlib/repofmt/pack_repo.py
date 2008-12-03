@@ -783,12 +783,12 @@ class Packer(object):
         # the items? How should that interact with stacked repos?
         if new_pack.chk_index is not None:
             self._copy_chks()
-        if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: chk content copied: %s%s %d items t+%6.3fs',
-                time.ctime(), self._pack_collection._upload_transport.base,
-                new_pack.random_name,
-                new_pack.chk_index.key_count(),
-                time.time() - new_pack.start_time)
+            if 'pack' in debug.debug_flags:
+                mutter('%s: create_pack: chk content copied: %s%s %d items t+%6.3fs',
+                    time.ctime(), self._pack_collection._upload_transport.base,
+                    new_pack.random_name,
+                    new_pack.chk_index.key_count(),
+                    time.time() - new_pack.start_time)
         self._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
