@@ -30,6 +30,16 @@ from bzrlib.transport import get_transport
 
 class TestStacking(TestCaseWithBranch):
 
+    def check_lines_added_or_present(self, stacked_branch, revid):
+        # similar to a failure seen in bug 288751 by mbp 20081120
+        stacked_repo = stacked_branch.repository
+        stacked_repo.lock_read()
+        try:
+            list(stacked_repo.inventories.iter_lines_added_or_present_in_keys(
+                    [(revid,)]))
+        finally:
+            stacked_repo.unlock()
+
     def test_get_set_stacked_on_url(self):
         # branches must either:
         # raise UnstackableBranchFormat or
@@ -293,6 +303,8 @@ class TestStacking(TestCaseWithBranch):
         unstacked.fetch(stacked.branch.repository, 'rev2')
         unstacked.get_revision('rev1')
         unstacked.get_revision('rev2')
+        self.check_lines_added_or_present(stacked.branch, 'rev1')
+        self.check_lines_added_or_present(stacked.branch, 'rev2')
 
     def test_autopack_when_stacked(self):
         # in bzr.dev as of 20080730, autopack was reported to fail in stacked
@@ -334,12 +346,13 @@ class TestStacking(TestCaseWithBranch):
         other_tree = other_dir.open_workingtree()
         text_lines[9] = 'changed in other\n'
         self.build_tree_contents([('other/a', ''.join(text_lines))])
-        other_tree.commit('commit in other')
+        stacked_revid = other_tree.commit('commit in other')
         # this should have generated a delta; try to pull that across
         # bug 252821 caused a RevisionNotPresent here...
         stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
         stacked_tree.branch.check()
+        self.check_lines_added_or_present(stacked_tree.branch, stacked_revid)
 
     def test_fetch_revisions_with_file_changes(self):
         # Fetching revisions including file changes into a stacked branch
@@ -371,6 +384,7 @@ class TestStacking(TestCaseWithBranch):
         rtree.lock_read()
         self.addCleanup(rtree.unlock)
         self.assertEqual('new content', rtree.get_file_by_path('a').read())
+        self.check_lines_added_or_present(target, 'rev2')
 
     def test_transform_fallback_location_hook(self):
         # The 'transform_fallback_location' branch hook allows us to inspect
@@ -401,7 +415,10 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable()
         # Avoid make_branch, which produces standalone branches.
         bzrdir = self.make_bzrdir('repo/stack-on')
-        b = bzrdir.create_branch()
+        try:
+            b = bzrdir.create_branch()
+        except errors.UninitializableFormat:
+            raise TestNotApplicable()
         transport = self.get_transport('stacked')
         b.bzrdir.clone_on_transport(transport, stacked_on=b.base)
         # Ensure that opening the branch doesn't raise.

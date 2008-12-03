@@ -184,6 +184,7 @@ class MutableTree(tree.Tree):
         possible_master_transports=[]
         if not 'branch-nick' in revprops:
             revprops['branch-nick'] = self.branch._get_nick(
+                kwargs.get('local', False),
                 possible_master_transports)
         author = kwargs.pop('author', None)
         if author is not None:

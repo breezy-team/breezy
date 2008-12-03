@@ -12,6 +12,42 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+    * Fix SystemError in ``_patiencediff_c`` module by calling
+      PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.
+      (Andrew Bennetts, #303206)
+
+    * Give proper error message for diff with non-existent dotted revno.
+      (Marius Kruger, #301969)
+
+    * ``Transport.readv()`` defaults to not reading more than 100MB in a
+      single array. Further ``RemoteTransport.readv`` sets this to 5MB to
+      work better with how it splits its requests.
+      (John Arbash Meinel, #303538)
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+  INTERNALS:
+
+
+bzr 1.10rc1 2008-11-28
+----------------------
+
+This release of Bazaar focusses on performance improvements when pushing
+and pulling revisions, both locally and to remote networks.  The popular
+``shelve`` and ``unshelve`` commands, used to interactively revert and
+restore work in progress, have been merged from bzrtools into the bzr
+core.  There are also bug fixes for portability, and for stacked branches.
+
+  NEW FEATURES:
+
     * New ``commit_message_template`` hook that is called by the commit 
       code to generate a template commit message. (Jelmer Vernooij)
 
@@ -19,6 +55,30 @@ IN DEVELOPMENT
       (Aaron Bentley)
 
   IMPROVEMENTS:
+
+    * ``(Remote)Branch.copy_content_into`` no longer generates the full revision
+      history just to set the last revision info.
+      (Andrew Bennetts, John Arbash Meinel)
+
+    * Fetches between formats with different serializers (such as
+      pack-0.92-subtree and 1.9-rich-root) are faster now.  This is due to
+      operating on batches of 100 revisions at time rather than
+      one-by-one.  (Andrew Bennetts, John Arbash Meinel)
+
+    * Search index files corresponding to pack files we've already used
+      before searching others, because they are more likely to have the
+      keys we're looking for.  This reduces the number of iix and tix
+      files accessed when pushing 1 new revision, for instance.
+      (John Arbash Meinel)
+
+    * Signatures to transfer are calculated more efficiently in
+      ``item_keys_introduced_by``.  (Andrew Bennetts, John Arbash Meinel)
+
+    * The generic fetch code can once again copy revisions and signatures
+      without extracting them completely to fulltexts and then serializing
+      them back down into byte strings. This is a significant performance
+      improvement when fetching from a stacked branch.
+      (John Arbash Meinel, #300289)
 
     * When making a large readv() request over ``bzr+ssh``, break up the
       request into more manageable chunks. Because the RPC is not yet able
@@ -30,6 +90,35 @@ IN DEVELOPMENT
     * Better message when the user needs to set their Launchpad ID.
       (Martin Pool, #289148)
 
+    * ``bzr commit --local`` doesn't access the master branch anymore.
+      This fixes a regression introduced in 1.9.  (Marius Kruger, #299313)
+
+    * Don't call the system ``chdir()`` with an empty path. Sun OS seems
+      to give an error in that case.  Also, don't count on ``getcwd()`` 
+      being able to allocate a new buffer, which is a gnu extension.  
+      (John Arbash Meinel, Martin Pool, Harry Hirsch, #297831)
+
+    * Don't crash when requesting log --forward <file> for a revision range
+      starting with a dotted revno.
+      (Vincent Ladeuil, #300055)
+
+    * Don't create text deltas spanning stacked repositories; this could
+      cause "Revision X not present in Y" when later accessing them.
+      (Martin Pool, #288751)
+
+    * Pack repositories are now able to reload the pack listing and retry
+      the current operation if another action causes the data to be
+      repacked.  (John Arbash Meinel, #153786)
+
+    * PermissionDenied errors from smart servers no longer cause
+      "PermissionDenied: "None"" on the client.
+      (Andrew Bennetts, #299254)
+      
+    * Pushing to a stacked pack repository now batches writes, the same
+      way writes are batched to ordinary pack repository.  This makes
+      pushing to a stacked branch over the network much faster.
+      (Andrew Bennetts, #294479)
+
     * TooManyConcurrentRequests no longer occur when a fetch fails and
       tries to abort a write group.  This allows the root cause (e.g. a
       network interruption) to be reported.  (Andrew Bennetts, #297014)
@@ -37,9 +126,15 @@ IN DEVELOPMENT
     * RemoteRepository.get_parent_map now uses fallback repositories.
       (Aaron Bentley, #297991?, #293679?)
 
-  DOCUMENTATION:
-
   API CHANGES:
+
+    * ``CommitBuilder`` now validates the strings it will be committing,
+      to ensure that they do not have characters that will not be properly
+      round-tripped. For now, it just checks for characters that are
+      invalid in the XML form. (John Arbash Meinel, #295161)
+
+    * Constructor parameters for NewPack (internal to pack repositories)
+      have changed incompatibly.
 
     * ``Repository.abort_write_group`` now accepts an optional
       ``suppress_errors`` flag.  Repository implementations that override
@@ -56,8 +151,6 @@ IN DEVELOPMENT
       that's expected to have them.  (Martin Pool)
       
     * Doctests now only report the first failure.  (Martin Pool)
-
-  INTERNALS:
 
 
 bzr 1.9 2008-11-07

@@ -38,6 +38,7 @@ from bzrlib import (
     symbol_versioning,
     tsort,
     ui,
+    versionedfile,
     )
 from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
@@ -103,6 +104,7 @@ class CommitBuilder(object):
 
         self._revprops = {}
         if revprops is not None:
+            self._validate_revprops(revprops)
             self._revprops.update(revprops)
 
         if timestamp is None:
@@ -118,11 +120,27 @@ class CommitBuilder(object):
         self._generate_revision_if_needed()
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
 
+    def _validate_unicode_text(self, text, context):
+        """Verify things like commit messages don't have bogus characters."""
+        if '\r' in text:
+            raise ValueError('Invalid value for %s: %r' % (context, text))
+
+    def _validate_revprops(self, revprops):
+        for key, value in revprops.iteritems():
+            # We know that the XML serializers do not round trip '\r'
+            # correctly, so refuse to accept them
+            if not isinstance(value, basestring):
+                raise ValueError('revision property (%s) is not a valid'
+                                 ' (unicode) string: %r' % (key, value))
+            self._validate_unicode_text(value,
+                                        'revision property (%s)' % (key,))
+
     def commit(self, message):
         """Make the actual commit.
 
         :return: The revision id of the recorded revision.
         """
+        self._validate_unicode_text(message, 'commit message')
         rev = _mod_revision.Revision(
                        timestamp=self._timestamp,
                        timezone=self._timezone,
@@ -1527,15 +1545,14 @@ class Repository(object):
         yield ("inventory", None, revision_ids)
 
         # signatures
-        revisions_with_signatures = set()
-        for rev_id in revision_ids:
-            try:
-                self.get_signature_text(rev_id)
-            except errors.NoSuchRevision:
-                # not signed.
-                pass
-            else:
-                revisions_with_signatures.add(rev_id)
+        # XXX: Note ATM no callers actually pay attention to this return
+        #      instead they just use the list of revision ids and ignore
+        #      missing sigs. Consider removing this work entirely
+        revisions_with_signatures = set(self.signatures.get_parent_map(
+            [(r,) for r in revision_ids]))
+        revisions_with_signatures = set(
+            [r for (r,) in revisions_with_signatures])
+        revisions_with_signatures.intersection_update(revision_ids)
         yield ("signatures", None, revisions_with_signatures)
 
         # revisions
@@ -2241,7 +2258,12 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     rich_root_data = False
     supports_tree_reference = False
     supports_external_lookups = False
-    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    @property
+    def _matchingbzrdir(self):
+        matching = bzrdir.BzrDirMetaFormat1()
+        matching.repository_format = self
+        return matching
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()
@@ -2820,8 +2842,15 @@ class InterPackRepo(InterSameDataRepository):
             # we use the generic fetch logic which uses the VersionedFiles
             # attributes on repository.
             from bzrlib.fetch import RepoFetcher
+            # Make sure the generic fetcher sets the write cache size on the
+            # new pack (just like Packer.pack does) to avoid doing many tiny
+            # writes (which can be slow over a network connection).
+            # XXX: ideally the transport layer would do this automatically.
+            pack_coll = self._get_target_pack_collection()
+            set_cache_size = (
+                lambda: pack_coll._new_pack.set_write_cache_size(1024*1024))
             fetcher = RepoFetcher(self.target, self.source, revision_id,
-                                  pb, find_ghosts)
+                                  pb, find_ghosts, set_cache_size)
             return fetcher.count_copied, fetcher.failed_revisions
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
@@ -3067,15 +3096,19 @@ class InterDifferingSerializer(InterKnitRepo):
         revision_ids = tsort.topo_sort(
             self.source.get_graph().get_parent_map(revision_ids))
         def revisions_iterator():
-            for current_revision_id in revision_ids:
-                revision = self.source.get_revision(current_revision_id)
-                tree = self.source.revision_tree(current_revision_id)
-                try:
-                    signature = self.source.get_signature_text(
-                        current_revision_id)
-                except errors.NoSuchRevision:
-                    signature = None
-                yield revision, tree, signature
+            rev_ids = list(revision_ids)
+            for offset in xrange(0, len(rev_ids), 100):
+                current_revids = rev_ids[offset:offset+100]
+                revisions = self.source.get_revisions(current_revids)
+                trees = self.source.revision_trees(current_revids)
+                keys = [(r,) for r in current_revids]
+                sig_stream = self.source.signatures.get_record_stream(
+                    keys, 'unordered', True)
+                sigs = {}
+                for record in versionedfile.filter_absent(sig_stream):
+                    sigs[record.key[0]] = record.get_bytes_as('fulltext')
+                for rev, tree in zip(revisions, trees):
+                    yield rev, tree, sigs.get(rev.revision_id, None)
         if pb is None:
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb

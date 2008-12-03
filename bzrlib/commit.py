@@ -60,6 +60,7 @@ from bzrlib import (
     debug,
     errors,
     revision,
+    trace,
     tree,
     )
 from bzrlib.branch import Branch
@@ -384,7 +385,10 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
 
-            except:
+            except Exception, e:
+                mutter("aborting commit write group because of exception:")
+                trace.log_exception_quietly()
+                note("aborting commit write group: %r" % (e,))
                 self.builder.abort()
                 raise
 
