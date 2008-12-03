@@ -174,7 +174,7 @@ class CommitBuilder(object):
             except IndexError:
                 basis_id = _mod_revision.NULL_REVISION
             try:
-                self.inv_sha1 = self.repository.add_inventory_delta(
+                self.inv_sha1, _ = self.repository.add_inventory_delta(
                     basis_id, self.basis_delta, self._new_revision_id,
                     self.parents)
                 return
@@ -674,7 +674,8 @@ class Repository(object):
             compression.
 
         :returns: The validator(which is a sha1 digest, though what is sha'd is
-            repository format specific) of the serialized inventory.
+            repository format specific) of the serialized inventory and 
+            the resulting inventory.
         """
         if not self.is_in_write_group():
             raise AssertionError("%r not in write group" % (self,))
@@ -689,7 +690,8 @@ class Repository(object):
             basis_inv = basis_tree.inventory
             basis_inv.apply_delta(delta)
             basis_inv.revision_id = new_revision_id
-            return self.add_inventory(new_revision_id, basis_inv, parents)
+            return (self.add_inventory(new_revision_id, basis_inv, parents), 
+                    basis_inv)
         finally:
             basis_tree.unlock()
 

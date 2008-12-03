@@ -2127,7 +2127,8 @@ class CHKInventoryRepository(KnitPackRepository):
             compression.
 
         :returns: The validator(which is a sha1 digest, though what is sha'd is
-            repository format specific) of the serialized inventory.
+            repository format specific) of the serialized inventory and 
+            the resulting inventory.
         """
         if basis_revision_id == _mod_revision.NULL_REVISION:
             return KnitPackRepository.add_inventory_delta(self,
@@ -2142,7 +2143,7 @@ class CHKInventoryRepository(KnitPackRepository):
             result = basis_inv.create_by_apply_delta(delta, new_revision_id)
             inv_lines = result.to_lines()
             return self._inventory_add_lines(new_revision_id, parents,
-                inv_lines, check_content=False)
+                inv_lines, check_content=False), result
         finally:
             basis_tree.unlock()
 

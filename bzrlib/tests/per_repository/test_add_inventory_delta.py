@@ -80,7 +80,7 @@ class TestAddInventoryDelta(TestCaseWithRepository):
         repo_direct.commit_write_group()
         repo_delta = self._get_repo_in_write_group('delta')
         try:
-            delta_validator = repo_delta.add_inventory_delta(revision.NULL_REVISION,
+            delta_validator, result = repo_delta.add_inventory_delta(revision.NULL_REVISION,
                 delta, revid, [])
         except:
             repo_delta.abort_write_group()
@@ -88,3 +88,4 @@ class TestAddInventoryDelta(TestCaseWithRepository):
         else:
             repo_delta.commit_write_group()
         self.assertEqual(add_validator, delta_validator)
+        self.assertEqual(new_inv, result)
