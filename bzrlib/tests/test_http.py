@@ -1756,6 +1756,18 @@ class Test_redirected_to(tests.TestCase):
         # Both transports share the some connection
         self.assertEquals(t._get_connection(), r._get_connection())
 
+    def test_redirected_to_self_with_slash(self):
+        t = self._transport('http://www.example.com/foo')
+        e = errors.RedirectRequested('http://www.example.com/foo',
+                                     'http://www.example.com/foo/',
+                                     self._qualified_prefix)
+        r = t._redirected_to(e)
+        self.assertIsInstance(r, type(t))
+        # Both transports share the some connection (one can argue that we
+        # should return the exact same transport here, but that seems
+        # overkill).
+        self.assertEquals(t._get_connection(), r._get_connection())
+
     def test_redirected_to_host(self):
         t = self._transport('http://www.example.com/foo')
         e = errors.RedirectRequested('http://www.example.com/foo',
