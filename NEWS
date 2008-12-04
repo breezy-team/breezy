@@ -24,7 +24,7 @@ IN DEVELOPMENT
       (Marius Kruger, #301969)
 
     * Preserve transport decorators while following redirections.
-      (Vincent Ladeuil, #245964)
+      (Vincent Ladeuil, #245964, #270863)
 
     * Provides a finer and more robust filter for accepted redirections.
       (Vincent Ladeuil, #303959, #265070)

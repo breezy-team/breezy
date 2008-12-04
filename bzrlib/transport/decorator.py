@@ -173,6 +173,8 @@ class TransportDecorator(Transport):
         if redirected is not None:
             return self.__class__(self._get_url_prefix() + redirected.base,
                                   redirected)
+        else:
+            return None
 
 
 class DecoratorServer(Server):
