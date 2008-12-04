@@ -38,10 +38,16 @@ Densely packed upper nodes.
 """
 
 import heapq
+
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import versionedfile
 """)
+from bzrlib.lru_cache import LRUCache
+
+# approx 2MB
+_PAGE_CACHE_SIZE = 2*1024*1024 / 4*1024
+_page_cache = LRUCache(_PAGE_CACHE_SIZE)
 
 
 class CHKMap(object):
@@ -711,12 +717,29 @@ class InternalNode(Node):
                             nodes.append(node)
                         break
         if keys:
+            # Look in the page cache for some more bytes
+            found_keys = set()
+            for key in keys:
+                try:
+                    bytes = _page_cache[key]
+                except KeyError:
+                    continue
+                else:
+                    node = _deserialise(bytes, key)
+                    nodes.append(node)
+                    self._items[keys[key]] = node
+                    found_keys.add(key)
+            for key in found_keys:
+                del keys[key]
+        if keys:
             # demand load some pages.
             stream = store.get_record_stream(keys, 'unordered', True)
             for record in stream:
-                node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+                bytes = record.get_bytes_as('fulltext')
+                node = _deserialise(bytes, record.key)
                 nodes.append(node)
                 self._items[keys[record.key]] = node
+                _page_cache.add(record.key, bytes)
         return nodes
 
     def map(self, store, key, value):
