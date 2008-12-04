@@ -565,6 +565,7 @@ class LeafNode(Node):
             lines.append("%s\x00%s\n" % ('\x00'.join(key), value))
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
+        _page_cache.add(self._key, ''.join(lines))
         return [self._key]
 
     def _serialised_key(self, key):
@@ -839,6 +840,7 @@ class InternalNode(Node):
             lines.append("%s\x00%s\n" % (prefix, key))
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
+        _page_cache.add(self._key, ''.join(lines))
         yield self._key
 
     def _serialised_key(self, key):
