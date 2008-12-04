@@ -146,6 +146,18 @@ class TestLog(ExternalBase):
         log = self.run_bzr("log -c 1")[0]
         self.assertEqualDiff(expected_log, log)
 
+    def test_log_change_nonexistent_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 1234",
+            error_regexes=["bzr: ERROR: Requested revision: '1234' "
+                "does not exist in branch:"])
+
+    def test_log_change_nonexistent_dotted_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
+
     def test_log_change_single_revno(self):
         self._prepare()
         self.run_bzr_error('bzr: ERROR: Option --change does not'
