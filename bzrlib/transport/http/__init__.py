@@ -93,16 +93,13 @@ class HttpTransportBase(ConnectedTransport):
     # _unqualified_scheme: "http" or "https"
     # _scheme: may have "+pycurl", etc
 
-    def __init__(self, base, _from_transport=None):
+    def __init__(self, base, _impl_name, _from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
         self._unqualified_scheme = proto_match.group(1)
-        impl_name = proto_match.group(2)
-        if impl_name:
-            impl_name = impl_name[1:]
-        self._impl_name = impl_name
+        self._impl_name = _impl_name
         super(HttpTransportBase, self).__init__(base,
                                                 _from_transport=_from_transport)
         self._medium = None
@@ -517,7 +514,23 @@ class HttpTransportBase(ConnectedTransport):
 
         :returns: A transport or None.
         """
-        relpath = self.relpath(exception.get_source_url())
+        def relpath(abspath):
+            """Returns the path relative to our base.
+
+            The constraints are weaker than the real relpath method because the
+            abspath is coming from the server and may slightly differ from our
+            base. We don't check the scheme, host, port, user, password parts,
+            relying on the caller to give us a proper url (i.e. one returned by
+            the server mirroring the one we sent).
+            """
+            (scheme,
+             user, password,
+             host, port,
+             path) = self._split_url(abspath)
+            pl = len(self._path)
+            return path[pl:].strip('/')
+
+        relpath = relpath(exception.source)
         if not exception.target.endswith(relpath):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
@@ -531,18 +544,23 @@ class HttpTransportBase(ConnectedTransport):
         # redirected tranport will be used to re-try whatever request was
         # redirected, we end up with the same url
         base_path = path[:-len(relpath)]
-        if scheme == self._unqualified_scheme:
+        if scheme in ('http', 'https'):
             # Same protocol (i.e. http[s])
-            if (host == self._host
+            if (scheme == self._unqualified_scheme
+                and host == self._host
                 and port == self._port
                 and (user is None or user == self._user)):
                 # If a user is specified, it should match, we don't care about
                 # passwords, wrong passwords will be rejected anyway.
                 new_transport = self.clone(base_path)
             else:
-                # Rebuild the url preserving the qualified scheme
-                new_url = self._unsplit_url(self._scheme,
-                                            user, password,
+                # Rebuild the url preserving the scheme qualification and the
+                # credentials (if they don't apply, the redirected to server
+                # will tell us, but if they do apply, we avoid prompting the
+                # user)
+                redir_scheme = scheme + '+' + self._impl_name
+                new_url = self._unsplit_url(redir_scheme,
+                                            self._user, self._password,
                                             host, port,
                                             base_path)
                 new_transport = get_transport(new_url)

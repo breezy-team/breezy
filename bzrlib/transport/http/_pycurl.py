@@ -106,8 +106,9 @@ class PyCurlTransport(HttpTransportBase):
 
     def __init__(self, base, _from_transport=None):
         super(PyCurlTransport, self).__init__(base,
-                                              _from_transport=_from_transport)
-        if base.startswith('https'):
+                                              _from_transport=_from_transport,
+                                              _impl_name='pycurl')
+        if self._unqualified_scheme == 'https':
             # Check availability of https into pycurl supported
             # protocols
             supported = pycurl.version_info()[8]

@@ -43,7 +43,7 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     def __init__(self, base, _from_transport=None):
         super(HttpTransport_urllib, self).__init__(
-            base, _from_transport=_from_transport)
+            base, _from_transport=_from_transport, _impl_name='urllib')
         if _from_transport is not None:
             self._opener = _from_transport._opener
         else:
