@@ -1249,10 +1249,11 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
-    def _redirected_to(self, exception):
+    def _redirected_to(self, source, target):
         """Returns a transport suitable to re-issue a redirected request.
 
-        :param exception: A RedirectRequested exception.
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
 
         The redirection can be handled only if the relpath involved is not
         renamed by the redirection.

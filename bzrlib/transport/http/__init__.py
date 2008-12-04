@@ -504,10 +504,11 @@ class HttpTransportBase(ConnectedTransport):
 
         return ','.join(strings)
 
-    def _redirected_to(self, exception):
+    def _redirected_to(self, source, target):
         """Returns a transport suitable to re-issue a redirected request.
 
-        :param exception: A RedirectRequested exception.
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
 
         The redirection can be handled only if the relpath involved is not
         renamed by the redirection.
@@ -530,8 +531,8 @@ class HttpTransportBase(ConnectedTransport):
             pl = len(self._path)
             return path[pl:].strip('/')
 
-        relpath = relpath(exception.source)
-        if not exception.target.endswith(relpath):
+        relpath = relpath(source)
+        if not target.endswith(relpath):
             # The final part of the url has been renamed, we can't handle the
             # redirection.
             return None
@@ -539,7 +540,7 @@ class HttpTransportBase(ConnectedTransport):
         (scheme,
          user, password,
          host, port,
-         path) = self._split_url(exception.target)
+         path) = self._split_url(target)
         # Recalculate base path. This is needed to ensure that when the
         # redirected tranport will be used to re-try whatever request was
         # redirected, we end up with the same url

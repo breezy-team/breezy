@@ -781,7 +781,7 @@ class BzrDir(object):
                 transport, _server_formats=_server_formats)
 
         def redirected(transport, e, redirection_notice):
-            redirected_transport = transport._redirected_to(e)
+            redirected_transport = transport._redirected_to(e.source, e.target)
             if redirected_transport is None:
                 raise errors.NotBranchError(base)
             note('%s is%s redirected to %s',

@@ -368,9 +368,9 @@ class RedirectingMemoryTransport(MemoryTransport):
             return super(RedirectingMemoryTransport, self).mkdir(
                 relpath, mode)
 
-    def _redirected_to(self, exception):
+    def _redirected_to(self, source, target):
         # We do accept redirections
-        return transport.get_transport(exception.target)
+        return transport.get_transport(target)
 
 
 class RedirectingMemoryServer(MemoryServer):

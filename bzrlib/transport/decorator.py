@@ -168,8 +168,8 @@ class TransportDecorator(Transport):
         """See Transport.lock_write."""
         return self._decorated.lock_write(relpath)
 
-    def _redirected_to(self, exception):
-        redirected = self._decorated._redirected_to(exception)
+    def _redirected_to(self, source, target):
+        redirected = self._decorated._redirected_to(source, target)
         if redirected is not None:
             return self.__class__(self._get_url_prefix() + redirected.base,
                                   redirected)

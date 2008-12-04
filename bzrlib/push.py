@@ -76,7 +76,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
 
         def redirected(transport, e, redirection_notice):
             note(redirection_notice)
-            return transport._redirected_to(e)
+            return transport._redirected_to(e.source, e.target)
 
         try:
             to_transport = transport.do_catching_redirections(
