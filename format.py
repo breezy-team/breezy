@@ -79,6 +79,8 @@ class SvnRemoteFormat(BzrDirFormat):
                 mutter("Unable to open %r with Subversion: %s", 
                         transport, msg)
                 raise bzr_errors.NotBranchError(path=transport.base)
+        except bzr_errors.InvalidURL:
+                raise bzr_errors.NotBranchError(path=transport.base)
 
         return format
 
