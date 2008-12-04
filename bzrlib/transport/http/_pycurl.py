@@ -367,8 +367,7 @@ class PyCurlTransport(HttpTransportBase):
             redirected_to = msg.getheader('location')
             raise errors.RedirectRequested(url,
                                            redirected_to,
-                                           is_permanent=(code == 301),
-                                           qual_proto=self._scheme)
+                                           is_permanent=(code == 301))
 
 
 def get_test_permutations():

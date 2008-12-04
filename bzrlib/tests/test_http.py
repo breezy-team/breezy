@@ -1749,8 +1749,7 @@ class Test_redirected_to(tests.TestCase):
     def test_redirected_to_subdir(self):
         t = self._transport('http://www.example.com/foo')
         e = errors.RedirectRequested('http://www.example.com/foo',
-                                     'http://www.example.com/foo/subdir',
-                                     self._qualified_prefix)
+                                     'http://www.example.com/foo/subdir')
         r = t._redirected_to(e)
         self.assertIsInstance(r, type(t))
         # Both transports share the some connection
@@ -1759,8 +1758,7 @@ class Test_redirected_to(tests.TestCase):
     def test_redirected_to_self_with_slash(self):
         t = self._transport('http://www.example.com/foo')
         e = errors.RedirectRequested('http://www.example.com/foo',
-                                     'http://www.example.com/foo/',
-                                     self._qualified_prefix)
+                                     'http://www.example.com/foo/')
         r = t._redirected_to(e)
         self.assertIsInstance(r, type(t))
         # Both transports share the some connection (one can argue that we
@@ -1779,24 +1777,21 @@ class Test_redirected_to(tests.TestCase):
     def test_redirected_to_same_host_sibling_protocol(self):
         t = self._transport('http://www.example.com/foo')
         e = errors.RedirectRequested('http://www.example.com/foo',
-                                     'https://www.example.com/foo',
-                                     self._qualified_prefix)
+                                     'https://www.example.com/foo')
         r = t._redirected_to(e)
         self.assertIsInstance(r, type(t))
 
     def test_redirected_to_same_host_different_protocol(self):
         t = self._transport('http://www.example.com/foo')
         e = errors.RedirectRequested('http://www.example.com/foo',
-                                     'ftp://www.example.com/foo',
-                                     self._qualified_prefix)
+                                     'ftp://www.example.com/foo')
         r = t._redirected_to(e)
         self.assertNotEquals(type(r), type(t))
 
     def test_redirected_to_different_host_same_user(self):
         t = self._transport('http://joe@www.example.com/foo')
         e = errors.RedirectRequested('http://www.example.com/foo',
-                                     'https://foo.example.com/foo',
-                                     self._qualified_prefix)
+                                     'https://foo.example.com/foo')
         r = t._redirected_to(e)
         self.assertIsInstance(r, type(t))
         self.assertEquals(t._user, r._user)

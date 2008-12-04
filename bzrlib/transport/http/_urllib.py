@@ -90,8 +90,7 @@ class HttpTransport_urllib(http.HttpTransportBase):
                 and code in (301, 302, 303, 307):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
-                                           is_permanent=(code == 301),
-                                           qual_proto=self._scheme)
+                                           is_permanent=(code == 301))
 
         if request.redirected_to is not None:
             trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
