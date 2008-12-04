@@ -22,7 +22,7 @@ The CHKMap class implements a dict from tuple_of_strings->string by using a trie
 with internal nodes of 8-bit fan out; The key tuples are mapped to strings by
 joining them by \x00, and \x00 padding shorter keys out to the length of the
 longest key. Leaf nodes are packed as densely as possible, and internal nodes
-are all and additional 8-bits wide leading to a sparse upper tree. 
+are all and additional 8-bits wide leading to a sparse upper tree.
 
 Updates to a CHKMap are done preferentially via the apply_delta method, to
 allow optimisation of the update operation; but individual map/unmap calls are
@@ -90,7 +90,7 @@ class CHKMap(object):
         Node that this does not update the _items dict in objects containing a
         reference to this node. As such it does not prevent subsequent IO being
         performed.
-        
+
         :param node: A tuple key or node object.
         :return: A node object.
         """
@@ -108,6 +108,7 @@ class CHKMap(object):
         """Return the tree in a string representation."""
         self._ensure_root()
         res = self._dump_tree_node(self._root_node, prefix='', indent='')
+        res.append('') # Give a trailing '\n'
         return '\n'.join(res)
 
     def _dump_tree_node(self, node, prefix, indent):
@@ -131,7 +132,7 @@ class CHKMap(object):
     @classmethod
     def from_dict(klass, store, initial_value, maximum_size=0, key_width=1):
         """Create a CHKMap in store with initial_value as the content.
-        
+
         :param store: The store to record initial_value in, a VersionedFiles
             object with 1-tuple keys supporting CHK key generation.
         :param initial_value: A dict to store in store. Its keys and values
@@ -176,7 +177,7 @@ class CHKMap(object):
         #    after reading the 'a' subtree, but it is encountered in the first
         #    tree immediately. Variations on this may have read internal nodes like this.
         #    we want to cut the entire pending subtree when we realise we have a common node.
-        #    For this we use a list of keys - the path to a node - and check the entire path is 
+        #    For this we use a list of keys - the path to a node - and check the entire path is
         #    clean as we process each item.
         if self._node_key(self._root_node) == self._node_key(basis._root_node):
             return
@@ -210,7 +211,7 @@ class CHKMap(object):
             # Note that this is N^2, it depends on us trimming trees
             # aggressively to not become slow.
             # A better implementation would probably have a reverse map
-            # back to the children of a node, and jump straight to it when 
+            # back to the children of a node, and jump straight to it when
             # a common node is detected, the proceed to remove the already
             # pending children. bzrlib.graph has a searcher module with a
             # similar problem.
@@ -358,7 +359,8 @@ class CHKMap(object):
     def unmap(self, key):
         """remove key from the map."""
         self._ensure_root()
-        self._root_node.unmap(self._store, key)
+        unmapped = self._root_node.unmap(self._store, key)
+        self._root_node = unmapped
 
     def _save(self):
         """Save the map completely.
@@ -420,7 +422,7 @@ class Node(object):
 
 class LeafNode(Node):
     """A node containing actual key:value pairs.
-    
+
     :ivar _items: A dict of key->value items. The key is in tuple form.
     """
 
@@ -491,23 +493,46 @@ class LeafNode(Node):
         #       then that can be done via the C extension
         return 2 + len('\x00'.join(key)) + len(value)
 
+    def _map_no_split(self, key, value):
+        """Map a key to a value.
+
+        This assumes either the key does not already exist, or you have already
+        removed its size and length from self.
+
+        :return: True if adding this node should cause us to split.
+        """
+        self._items[key] = value
+        self._size += self._key_value_len(key, value)
+        self._len += 1
+        if (self._len > 1
+            and self._maximum_size
+            and self._current_size() > self._maximum_size):
+            return True
+        return False
+
     def map(self, store, key, value):
         """Map key to value."""
         if key in self._items:
             self._size -= self._key_value_len(key, self._items[key])
             self._len -= 1
-        self._items[key] = value
-        self._size += self._key_value_len(key, value)
-        self._len += 1
         self._key = None
-        if (self._maximum_size and self._current_size() > self._maximum_size and
-            self._len > 1):
+        if self._map_no_split(key, value):
             common_prefix = self.unique_serialised_prefix()
             split_at = len(common_prefix) + 1
             result = {}
             for key, value in self._items.iteritems():
                 serialised_key = self._serialised_key(key)
                 prefix = serialised_key[:split_at]
+                # TODO: Generally only 1 key can be exactly the right length,
+                #       which means we can only have 1 key in the node pointed
+                #       at by the 'prefix\0' key. We might want to consider
+                #       folding it into the containing InternalNode rather than
+                #       having a fixed length-1 node.
+                #       Note this is probably not true for hash keys, as they
+                #       may get a '\00' node anywhere, but won't have keys of
+                #       different lengths.
+                if len(prefix) < split_at:
+                    prefix += '\x00'*(split_at - len(prefix))
                 if prefix not in result:
                     node = LeafNode()
                     node.set_maximum_size(self._maximum_size)
@@ -576,7 +601,7 @@ class LeafNode(Node):
 
 class InternalNode(Node):
     """A node that contains references to other nodes.
-    
+
     An InternalNode is responsible for mapping serialised key prefixes to child
     nodes. It is greedy - it will defer splitting itself as long as possible.
     """
@@ -723,6 +748,10 @@ class InternalNode(Node):
             # new child needed:
             child = self._new_child(serialised_key, LeafNode)
         old_len = len(child)
+        if isinstance(child, LeafNode):
+            old_size = child._current_size()
+        else:
+            old_size = None
         prefix, node_details = child.map(store, key, value)
         if len(node_details) == 1:
             # child may have shrunk, or might be a new node
@@ -730,7 +759,15 @@ class InternalNode(Node):
             self._len = self._len - old_len + len(child)
             self._items[serialised_key] = child
             self._key = None
-            return self.unique_serialised_prefix(), [("", self)]
+            new_node = self
+            if (isinstance(child, LeafNode)
+                and (old_size is None or child._current_size() < old_size)):
+                # The old node was an InternalNode which means it has now
+                # collapsed, so we need to check if it will chain to a collapse
+                # at this level. Or the LeafNode has shrunk in size, so we need
+                # to check that as well.
+                new_node = self._check_remap(store)
+            return new_node.unique_serialised_prefix(), [("", new_node)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
         # to refer to more bytes of every child (which would give us
@@ -845,26 +882,107 @@ class InternalNode(Node):
         """Remove key from this node and it's children."""
         if not len(self._items):
             raise AssertionError("cant unmap in an empty InternalNode.")
-        serialised_key = self._serialised_key(key)
         children = self._iter_nodes(store, key_filter=[key])
-        serialised_key = self._serialised_key(key)
         if children:
             child = children[0]
         else:
             raise KeyError(key)
         self._len -= 1
         unmapped = child.unmap(store, key)
+        self._key = None
+        serialised_key = self._serialised_key(key)
         if len(unmapped) == 0:
             # All child nodes are gone, remove the child:
             del self._items[serialised_key]
+            unmapped = None
         else:
             # Stash the returned node
             self._items[serialised_key] = unmapped
         if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
-        self._key = None
-        return self
+        if isinstance(unmapped, InternalNode):
+            return self
+        return self._check_remap(store)
+
+    def _check_remap(self, store):
+        """Check if all keys contained by children fit in a single LeafNode.
+
+        :param store: A store to use for reading more nodes
+        :return: Either self, or a new LeafNode which should replace self.
+        """
+        # Logic for how we determine when we need to rebuild
+        # 1) Implicitly unmap() is removing a key which means that the child
+        #    nodes are going to be shrinking by some extent.
+        # 2) If all children are LeafNodes, it is possible that they could be
+        #    combined into a single LeafNode, which can then completely replace
+        #    this internal node with a single LeafNode
+        # 3) If *one* child is an InternalNode, we assume it has already done
+        #    all the work to determine that its children cannot collapse, and
+        #    we can then assume that those nodes *plus* the current nodes don't
+        #    have a chance of collapsing either.
+        #    So a very cheap check is to just say if 'unmapped' is an
+        #    InternalNode, we don't have to check further.
+
+        # TODO: Another alternative is to check the total size of all known
+        #       LeafNodes. If there is some formula we can use to determine the
+        #       final size without actually having to read in any more
+        #       children, it would be nice to have. However, we have to be
+        #       careful with stuff like nodes that pull out the common prefix
+        #       of each key, as adding a new key can change the common prefix
+        #       and cause size changes greater than the length of one key.
+        #       So for now, we just add everything to a new Leaf until it
+        #       splits, as we know that will give the right answer
+        new_leaf = LeafNode()
+        new_leaf.set_maximum_size(self._maximum_size)
+        new_leaf._key_width = self._key_width
+        keys = {}
+        # There is some overlap with _iter_nodes here, but not a lot, and it
+        # allows us to do quick evaluation without paging everything in
+        for prefix, node in self._items.iteritems():
+            if type(node) == tuple:
+                keys[node] = prefix
+            else:
+                if isinstance(node, InternalNode):
+                    # Without looking at any leaf nodes, we are sure
+                    return self
+                for key, value in node._items.iteritems():
+                    if new_leaf._map_no_split(key, value):
+                        # Adding this key would cause a split, so we know we
+                        # don't need to collapse
+                        return self
+        # So far, everything fits. Page in the rest of the nodes, and see if it
+        # holds true.
+        if keys:
+            # TODO: Consider looping over a limited set of keys (like 25 or so
+            #       at a time). If we have to read more than 25 we almost
+            #       certainly won't fit them all into a single new LeafNode, so
+            #       reading the extra nodes is a waste.
+            #       This will probably matter more with hash serialised keys,
+            #       as we will get InternalNodes with more references.
+            #       The other argument is that unmap() is uncommon, so we don't
+            #       need to optimize it. But map() with a slightly shorter
+            #       value may happen a lot.
+            stream = store.get_record_stream(keys, 'unordered', True)
+            nodes = []
+            # Fully consume the stream, even if we could determine that we
+            # don't need to continue. We requested the bytes, we may as well
+            # use them
+            for record in stream:
+                node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+                self._items[keys[record.key]] = node
+                nodes.append(node)
+            for node in nodes:
+                if isinstance(node, InternalNode):
+                    # We know we won't fit
+                    return self
+                for key, value in node._items.iteritems():
+                    if new_leaf._map_no_split(key, value):
+                        return self
+
+        # We have gone to every child, and everything fits in a single leaf
+        # node, we no longer need this internal node
+        return new_leaf
 
 
 def _deserialise(bytes, key):

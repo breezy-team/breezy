@@ -70,6 +70,73 @@ class TestMap(TestCaseWithStore):
         self.assertEqual("chkleaf:\n0\n1\n0\n", self.read_bytes(chk_bytes, root_key))
         return root_key
 
+    def assertMapLayoutEqual(self, map_one, map_two):
+        """Assert that the internal structure is identical between the maps."""
+        map_one._ensure_root()
+        node_one_stack = [map_one._root_node]
+        map_two._ensure_root()
+        node_two_stack = [map_two._root_node]
+        while node_one_stack:
+            node_one = node_one_stack.pop()
+            node_two = node_two_stack.pop()
+            if node_one.__class__ != node_two.__class__:
+                self.assertEqualDiff(map_one._dump_tree(),
+                                     map_two._dump_tree())
+            if isinstance(node_one, InternalNode):
+                # Internal nodes must have identical references
+                self.assertEqual(sorted(node_one._items.keys()),
+                                 sorted(node_two._items.keys()))
+                self.assertEqual(node_one._prefix, node_two._prefix)
+                node_one_stack.extend(node_one._iter_nodes(map_one._store))
+                node_two_stack.extend(node_two._iter_nodes(map_two._store))
+            else:
+                # Leaf nodes must have identical contents
+                self.assertEqual(node_one._items, node_two._items)
+
+    def assertCanonicalForm(self, chkmap):
+        """Assert that the chkmap is in 'canonical' form.
+
+        We do this by adding all of the key value pairs from scratch, both in
+        forward order and reverse order, and assert that the final tree layout
+        is identical.
+        """
+        items = list(chkmap.iteritems())
+        map_forward = chk_map.CHKMap(None, None)
+        map_forward._root_node.set_maximum_size(chkmap._root_node.maximum_size)
+        for key, value in items:
+            map_forward.map(key, value)
+        self.assertMapLayoutEqual(map_forward, chkmap)
+        map_reverse = chk_map.CHKMap(None, None)
+        map_reverse._root_node.set_maximum_size(chkmap._root_node.maximum_size)
+        for key, value in reversed(items):
+            map_reverse.map(key, value)
+        self.assertMapLayoutEqual(map_reverse, chkmap)
+
+    def test_assert_map_layout_equal(self):
+        store = self.get_chk_bytes()
+        map_one = CHKMap(store, None)
+        map_one._root_node.set_maximum_size(20)
+        map_two = CHKMap(store, None)
+        map_two._root_node.set_maximum_size(20)
+        self.assertMapLayoutEqual(map_one, map_two)
+        map_one.map('aaa', 'value')
+        self.assertRaises(AssertionError,
+            self.assertMapLayoutEqual, map_one, map_two)
+        map_two.map('aaa', 'value')
+        self.assertMapLayoutEqual(map_one, map_two)
+        # Split the tree, so we ensure that internal nodes and leaf nodes are
+        # properly checked
+        map_one.map('aab', 'value')
+        self.assertIsInstance(map_one._root_node, InternalNode)
+        self.assertRaises(AssertionError,
+            self.assertMapLayoutEqual, map_one, map_two)
+        map_two.map('aab', 'value')
+        self.assertMapLayoutEqual(map_one, map_two)
+        map_one.map('aac', 'value')
+        self.assertRaises(AssertionError,
+            self.assertMapLayoutEqual, map_one, map_two)
+        self.assertCanonicalForm(map_one)
+
     def test_from_dict_empty(self):
         chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, {})
@@ -120,6 +187,8 @@ class TestMap(TestCaseWithStore):
                              (None, ('bba',), 'target2'),
                              (None, ('bbb',), 'common')])
         root_key1 = chkmap1._save()
+        self.assertCanonicalForm(chkmap1)
+
         chkmap2 = CHKMap(chk_bytes, None)
         chkmap2._root_node.set_maximum_size(10)
         chkmap2.apply_delta([(None, ('bbb',), 'common'),
@@ -128,6 +197,7 @@ class TestMap(TestCaseWithStore):
         root_key2 = chkmap2._save()
         self.assertEqualDiff(chkmap1._dump_tree(), chkmap2._dump_tree())
         self.assertEqual(root_key1, root_key2)
+        self.assertCanonicalForm(chkmap2)
 
     def test_stable_splitting(self):
         store = self.get_chk_bytes()
@@ -136,13 +206,15 @@ class TestMap(TestCaseWithStore):
         chkmap._root_node.set_maximum_size(30)
         chkmap.map(('aaa',), 'v')
         self.assertEqualDiff("'' LeafNode None\n"
-                             "      ('aaa',) 'v'",
+                             "      ('aaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aab',), 'v')
         self.assertEqualDiff("'' LeafNode None\n"
                              "      ('aaa',) 'v'\n"
-                             "      ('aab',) 'v'",
+                             "      ('aab',) 'v'\n",
                              chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
         # Creates a new internal node, and splits the others into leaves
         chkmap.map(('aac',), 'v')
         self.assertEqualDiff("'' InternalNode None\n"
@@ -151,8 +223,10 @@ class TestMap(TestCaseWithStore):
                              "  'aab' LeafNode None\n"
                              "      ('aab',) 'v'\n"
                              "  'aac' LeafNode None\n"
-                             "      ('aac',) 'v'",
+                             "      ('aac',) 'v'\n",
                              chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
         # Splits again, because it can't fit in the current structure
         chkmap.map(('bbb',), 'v')
         self.assertEqualDiff("'' InternalNode None\n"
@@ -164,8 +238,19 @@ class TestMap(TestCaseWithStore):
                              "    'aac' LeafNode None\n"
                              "      ('aac',) 'v'\n"
                              "  'b' LeafNode None\n"
-                             "      ('bbb',) 'v'",
+                             "      ('bbb',) 'v'\n",
                              chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
+    def test_map_splits_with_longer_key(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 1 key per LeafNode
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aaaa',), 'v')
+        self.assertCanonicalForm(chkmap)
+        self.assertIsInstance(chkmap._root_node, InternalNode)
 
     def test_deep_splitting(self):
         store = self.get_chk_bytes()
@@ -176,7 +261,7 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aaaaabaa',), 'v')
         self.assertEqualDiff("'' LeafNode None\n"
                              "      ('aaaaaaaa',) 'v'\n"
-                             "      ('aaaaabaa',) 'v'",
+                             "      ('aaaaabaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aaabaaaa',), 'v')
         chkmap.map(('aaababaa',), 'v')
@@ -186,7 +271,7 @@ class TestMap(TestCaseWithStore):
                              "      ('aaaaabaa',) 'v'\n"
                              "  'aaab' LeafNode None\n"
                              "      ('aaabaaaa',) 'v'\n"
-                             "      ('aaababaa',) 'v'",
+                             "      ('aaababaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aaabacaa',), 'v')
         chkmap.map(('aaabadaa',), 'v')
@@ -202,7 +287,7 @@ class TestMap(TestCaseWithStore):
                              "    'aaabac' LeafNode None\n"
                              "      ('aaabacaa',) 'v'\n"
                              "    'aaabad' LeafNode None\n"
-                             "      ('aaabadaa',) 'v'",
+                             "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aaababba',), 'v')
         chkmap.map(('aaababca',), 'v')
@@ -223,7 +308,7 @@ class TestMap(TestCaseWithStore):
                              "    'aaabac' LeafNode None\n"
                              "      ('aaabacaa',) 'v'\n"
                              "    'aaabad' LeafNode None\n"
-                             "      ('aaabadaa',) 'v'",
+                             "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
         # Now we add a node that should fit around an existing InternalNode,
         # but has a slightly different key prefix, which causes a new
@@ -249,8 +334,247 @@ class TestMap(TestCaseWithStore):
                              "      'aaabac' LeafNode None\n"
                              "      ('aaabacaa',) 'v'\n"
                              "      'aaabad' LeafNode None\n"
-                             "      ('aaabadaa',) 'v'",
+                             "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
+
+    def test_map_collapses_if_size_changes(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'very long value that splits')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'very long value that splits'\n",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+        # Now changing the value to something small should cause a rebuild
+        chkmap.map(('aab',), 'v')
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'\n",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
+    def test_map_double_deep_collapses(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 3 small keys per LeafNode
+        chkmap._root_node.set_maximum_size(40)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'very long value that splits')
+        chkmap.map(('abc',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aa' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'very long value that splits'\n"
+                             "  'ab' LeafNode None\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+        chkmap.map(('aab',), 'v')
+        self.assertCanonicalForm(chkmap)
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+
+    def test_stable_unmap(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'\n",
+                             chkmap._dump_tree())
+        # Creates a new internal node, and splits the others into leaves
+        chkmap.map(('aac',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "  'aac' LeafNode None\n"
+                             "      ('aac',) 'v'\n",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+        # Now lets unmap one of the keys, and assert that we collapse the
+        # structures.
+        chkmap.unmap(('aac',))
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aab',) 'v'\n",
+                             chkmap._dump_tree())
+        self.assertCanonicalForm(chkmap)
+
+    def test_unmap_double_deep(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 3 keys per LeafNode
+        chkmap._root_node.set_maximum_size(40)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aaab',), 'v')
+        chkmap.map(('aab',), 'very long value')
+        chkmap.map(('abc',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aa' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aaab',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'very long value'\n"
+                             "  'ab' LeafNode None\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+        # Removing the 'aab' key should cause everything to collapse back to a
+        # single node
+        chkmap.unmap(('aab',))
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aaab',) 'v'\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+
+    def test_unmap_double_deep_non_empty_leaf(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 3 keys per LeafNode
+        chkmap._root_node.set_maximum_size(40)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'long value')
+        chkmap.map(('aabb',), 'v')
+        chkmap.map(('abc',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aa' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'long value'\n"
+                             "      ('aabb',) 'v'\n"
+                             "  'ab' LeafNode None\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+        # Removing the 'aab' key should cause everything to collapse back to a
+        # single node
+        chkmap.unmap(('aab',))
+        self.assertEqualDiff("'' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "      ('aabb',) 'v'\n"
+                             "      ('abc',) 'v'\n",
+                             chkmap._dump_tree())
+
+    def test_unmap_with_known_internal_node_doesnt_page(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 3 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        chkmap.map(('aac',), 'v')
+        chkmap.map(('abc',), 'v')
+        chkmap.map(('acd',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aa' InternalNode None\n"
+                             "    'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "    'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "    'aac' LeafNode None\n"
+                             "      ('aac',) 'v'\n"
+                             "  'ab' LeafNode None\n"
+                             "      ('abc',) 'v'\n"
+                             "  'ac' LeafNode None\n"
+                             "      ('acd',) 'v'\n",
+                             chkmap._dump_tree())
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, chkmap._save())
+        # Mapping an 'aa' key loads the internal node, but should not map the
+        # 'ab' and 'ac' nodes
+        chkmap.map(('aad',), 'v')
+        self.assertIsInstance(chkmap._root_node._items['aa'], InternalNode)
+        self.assertIsInstance(chkmap._root_node._items['ab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['ac'], tuple)
+        # Unmapping 'acd' can notice that 'aa' is an InternalNode and not have
+        # to map in 'ab'
+        chkmap.unmap(('acd',))
+        self.assertIsInstance(chkmap._root_node._items['aa'], InternalNode)
+        self.assertIsInstance(chkmap._root_node._items['ab'], tuple)
+
+    def test_unmap_without_fitting_doesnt_page_in(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(20)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n",
+                             chkmap._dump_tree())
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, chkmap._save())
+        chkmap.map(('aac',), 'v')
+        chkmap.map(('aad',), 'v')
+        chkmap.map(('aae',), 'v')
+        chkmap.map(('aaf',), 'v')
+        # At this point, the previous nodes should not be paged in, but the
+        # newly added nodes would be
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aaf'], LeafNode)
+        # Now unmapping one of the new nodes will use only the already-paged-in
+        # nodes to determine that we don't need to do more.
+        chkmap.unmap(('aaf',))
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
+
+    def test_unmap_pages_in_if_necessary(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(20)
+        chkmap.map(('aaa',), 'v')
+        chkmap.map(('aab',), 'v')
+        chkmap.map(('aac',), 'v')
+        self.assertEqualDiff("'' InternalNode None\n"
+                             "  'aaa' LeafNode None\n"
+                             "      ('aaa',) 'v'\n"
+                             "  'aab' LeafNode None\n"
+                             "      ('aab',) 'v'\n"
+                             "  'aac' LeafNode None\n"
+                             "      ('aac',) 'v'\n",
+                             chkmap._dump_tree())
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, chkmap._save())
+        chkmap.map(('aad',), 'v')
+        # At this point, the previous nodes should not be paged in, but the
+        # newly added node would be
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
+        # Unmapping the new node will check the existing nodes to see if they
+        # would fit, and find out that they do not
+        chkmap.unmap(('aad',))
+        self.assertIsInstance(chkmap._root_node._items['aaa'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
 
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
@@ -506,7 +830,7 @@ class TestMap(TestCaseWithStore):
             "      ('aab',) 'value2'",
             "  'b' LeafNode sha1:67f15d1dfa451d388ed08ff17b4f9578ba010d01",
             "      ('bbb',) 'value3'",
-            ]), chkmap._dump_tree())
+            ""]), chkmap._dump_tree())
 
     def test__dump_tree_in_progress(self):
         chkmap = self._get_map({("aaa",): "value1", ("aab",): "value2"},
@@ -523,7 +847,7 @@ class TestMap(TestCaseWithStore):
             "      ('aab',) 'value2'",
             "  'b' LeafNode None",
             "      ('bbb',) 'value3'",
-            ]), chkmap._dump_tree())
+            ""]), chkmap._dump_tree())
 
 
 class TestLeafNode(TestCaseWithStore):
@@ -859,10 +1183,8 @@ class TestInternalNode(TestCaseWithStore):
         # children.
         result = node.unmap(chkmap._store, ('k23',))
         # check the pointed-at object within node - k2 should now point at the
-        # k22 leaf (which should not even have been paged in).
-        ptr = node._items['k2']
-        self.assertIsInstance(ptr, tuple)
-        child = _deserialise(self.read_bytes(chkmap._store, ptr), ptr)
+        # k22 leaf (which has been paged in to see if we can collapse the tree)
+        child = node._items['k2']
         self.assertIsInstance(child, LeafNode)
         self.assertEqual(1, len(child))
         self.assertEqual({('k22',): 'bar'},
@@ -1017,7 +1339,7 @@ class TestIterInterestingNodes(TestCaseWithStore):
             "    'aab' LeafNode sha1:10567a3bfcc764fb8d8d9edaa28c0934ada366c5\n"
             "      ('aab',) 'new'\n"
             "  'c' LeafNode sha1:263208de2fce0a8f9db614c1ca39e8f6de8b3802\n"
-            "      ('c',) 'common'",
+            "      ('c',) 'common'\n",
             CHKMap(self.get_chk_bytes(), target)._dump_tree())
         # The key for the internal aa node
         aa_key = ('sha1:2ce01860338a614b93883a5bbeb89920137ac7ef',)
