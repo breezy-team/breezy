@@ -46,7 +46,7 @@ import os
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-version_info = (0, 4, 16, 'dev', 0)
+version_info = (0, 4, 16, 'final', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -54,7 +54,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-COMPATIBLE_BZR_VERSIONS = [(1, 9, 0)]
+COMPATIBLE_BZR_VERSIONS = [(1, 10, 0)]
 
 
 def check_subversion_version():
