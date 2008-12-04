@@ -36,6 +36,12 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``KnitVersionedFiles.get_record_stream()`` will now chose a
+      more optimal ordering when the keys are requested 'unordered'.
+      Previously the order was fully random, now the records should be
+      returned from each pack in turn, in forward I/O order.
+      (John Arbash Meinel)
+
 
 bzr 1.10rc1 2008-11-28
 ----------------------

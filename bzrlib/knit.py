@@ -1262,6 +1262,21 @@ class KnitVersionedFiles(VersionedFiles):
                 for key in parent_map:
                     present_keys.append(key)
                     source_keys[-1][1].append(key)
+            # We have been requested to return these records in an order that
+            # suits us. So we sort by the index_memo. Generally each entry is
+            # (index, start, length). We want to group by index so that we read
+            # from one pack at a time, and then we group by start so that we
+            # read from the beginning of the file to the end.
+            # This is a little bit iffy, because index_memo is technically
+            # "opaque", but it works with current formats and would otherwise
+            # require passing our custom dict 'positions' back to self._index
+            # for it to figure out that we could sort based on index_memo.
+            def get_index_memo(key):
+                return positions[key][1]
+            for source, sub_keys in source_keys:
+                if source is parent_maps[0]:
+                    # We don't need to sort the keys for fallbacks
+                    sub_keys.sort(key=get_index_memo)
         absent_keys = keys - set(global_map)
         for key in absent_keys:
             yield AbsentContentFactory(key)
