@@ -714,6 +714,23 @@ class TreeReference(InventoryEntry):
 class CommonInventory(object):
     """Basic inventory logic, defined in terms of primitives like has_id."""
 
+    def __contains__(self, file_id):
+        """True if this entry contains a file with given id.
+
+        >>> inv = Inventory()
+        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
+        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
+        >>> '123' in inv
+        True
+        >>> '456' in inv
+        False
+
+        Note that this method along with __iter__ are not encouraged for use as
+        they are less clear than specific query methods - they may be rmeoved
+        in the future.
+        """
+        return self.has_id(file_id)
+
     def id2path(self, file_id):
         """Return as a string the path to file_id.
         
@@ -1060,19 +1077,6 @@ class Inventory(CommonInventory):
                 descend(child_ie, child_path)
         descend(self.root, u'')
         return accum
-        
-    def __contains__(self, file_id):
-        """True if this entry contains a file with given id.
-
-        >>> inv = Inventory()
-        >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None, revision=None)
-        >>> '123' in inv
-        True
-        >>> '456' in inv
-        False
-        """
-        return (file_id in self._byid)
 
     def __getitem__(self, file_id):
         """Return the entry for given file_id.
