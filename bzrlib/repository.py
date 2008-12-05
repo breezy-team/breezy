@@ -277,7 +277,9 @@ class CommitBuilder(object):
         """
         if not self._recording_deletes:
             raise AssertionError("recording deletes not activated.")
-        self._basis_delta.append((path, None, file_id, None))
+        delta = (path, None, file_id, None)
+        self._basis_delta.append(delta)
+        return delta
 
     def will_record_deletes(self):
         """Tell the commit builder that deletes are being notified.
