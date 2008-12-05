@@ -1035,7 +1035,6 @@ class KnitVersionedFiles(VersionedFiles):
                 try:
                     record, record_details, digest, next = record_map[cursor]
                 except KeyError:
-                    import pdb; pdb.set_trace()
                     raise RevisionNotPresent(cursor, self)
                 components.append((cursor, record, record_details, digest))
                 cursor = next
