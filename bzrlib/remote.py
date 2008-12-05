@@ -766,10 +766,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.add_inventory(revid, inv, parents)
 
-    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
-        parents):
+    def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
+                               parents):
         self._ensure_real()
-        return self._real_repository.add_inventory_delta(basis_revision_id,
+        return self._real_repository.add_inventory_by_delta(basis_revision_id,
             delta, new_revision_id, parents)
 
     def add_revision(self, rev_id, rev, inv=None, config=None):

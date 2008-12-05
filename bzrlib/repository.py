@@ -648,12 +648,12 @@ class Repository(object):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
-    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
-        parents):
+    def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
+                               parents):
         """Add a new inventory expressed as a delta against another revision.
-        
+
         :param basis_revision_id: The inventory id the delta was created
-            against.
+            against. (This does not have to be a direct parent.)
         :param delta: The inventory delta (see Inventory.apply_delta for
             details).
         :param new_revision_id: The revision id that the inventory is being
