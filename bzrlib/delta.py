@@ -39,7 +39,7 @@ class TreeDelta(object):
     unchanged
         (path, id, kind)
     unversioned
-        (path, kind)
+        (path, None, kind)
 
     Each id is listed only once.
 
@@ -127,6 +127,7 @@ class TreeDelta(object):
                     to_file.write(indent + long_status_name + ':\n')
                     prefix = ''
                 prefix = indent + prefix + '  '
+
                 for item in files:
                     path, fid, kind = item[:3]
                     executable = None
