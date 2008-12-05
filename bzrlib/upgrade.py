@@ -75,10 +75,8 @@ class Convert(object):
 
     def _backup_control_dir(self):
         self.pb.note('making backup of tree history')
-        self.bzrdir.backup_bzrdir("backup.bzr")
-        self.pb.note('%s.bzr has been backed up to %sbackup.bzr',
-             self.transport.base,
-             self.transport.base)
+        old_path, new_path = self.bzrdir.backup_bzrdir()
+        self.pb.note('%s has been backed up to %s', old_path, new_path)
         self.pb.note('if conversion fails, you can move this directory back to .bzr')
         self.pb.note('if it succeeds, you can remove this directory if you wish')
 
