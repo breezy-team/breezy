@@ -1262,6 +1262,13 @@ class KnitVersionedFiles(VersionedFiles):
                 for key in parent_map:
                     present_keys.append(key)
                     source_keys[-1][1].append(key)
+            # We have been requested to return these records in an order that
+            # suits us. So we ask the index to give us an optimally sorted
+            # order.
+            for source, sub_keys in source_keys:
+                if source is parent_maps[0]:
+                    # Only sort the keys for this VF
+                    self._index._sort_keys_by_io(sub_keys, positions)
         absent_keys = keys - set(global_map)
         for key in absent_keys:
             yield AbsentContentFactory(key)
@@ -2121,6 +2128,26 @@ class _KndxIndex(object):
         else:
             self._mode = 'r'
 
+    def _sort_keys_by_io(self, keys, positions):
+        """Figure out an optimal order to read the records for the given keys.
+
+        Sort keys, grouped by index and sorted by position.
+
+        :param keys: A list of keys whose records we want to read. This will be
+            sorted 'in-place'.
+        :param positions: A dict, such as the one returned by
+            _get_components_positions()
+        :return: None
+        """
+        def get_sort_key(key):
+            index_memo = positions[key][1]
+            # Group by prefix and position. index_memo[0] is the key, so it is
+            # (file_id, revision_id) and we don't want to sort on revision_id,
+            # index_memo[1] is the position, and index_memo[2] is the size,
+            # which doesn't matter for the sort
+            return index_memo[0][:-1], index_memo[1]
+        return keys.sort(key=get_sort_key)
+
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
         return key[:-1], key[-1]
@@ -2379,6 +2406,26 @@ class _KnitGraphIndex(object):
         """Convert an index value to position details."""
         bits = node[2][1:].split(' ')
         return node[0], int(bits[0]), int(bits[1])
+
+    def _sort_keys_by_io(self, keys, positions):
+        """Figure out an optimal order to read the records for the given keys.
+
+        Sort keys, grouped by index and sorted by position.
+
+        :param keys: A list of keys whose records we want to read. This will be
+            sorted 'in-place'.
+        :param positions: A dict, such as the one returned by
+            _get_components_positions()
+        :return: None
+        """
+        def get_index_memo(key):
+            # index_memo is at offset [1]. It is made up of (GraphIndex,
+            # position, size). GI is an object, which will be unique for each
+            # pack file. This causes us to group by pack file, then sort by
+            # position. Size doesn't matter, but it isn't worth breaking up the
+            # tuple.
+            return positions[key][1]
+        return keys.sort(key=get_index_memo)
 
 
 class _KnitKeyAccess(object):
