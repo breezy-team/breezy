@@ -28,11 +28,13 @@ from bzrlib import (
     bzrdir,
     errors,
     lockdir,
+    osutils,
     repository,
     revision as _mod_revision,
     transactions,
     transport,
     ui,
+    urlutils,
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
@@ -1475,6 +1477,27 @@ class TestBzrDir(TestCaseWithBzrDir):
             self.assertTrue(isinstance(dir._format.get_converter(
                 format=dir._format), bzrdir.Converter))
         dir.needs_format_conversion(None)
+
+    def test_backup_copies_existing(self):
+        tree = self.make_branch_and_tree('test')
+        self.build_tree(['test/a'])
+        tree.add(['a'], ['a-id'])
+        tree.commit('some data to be copied.')
+        old_url, new_url = tree.bzrdir.backup_bzrdir()
+        old_path = urlutils.local_path_from_url(old_url)
+        new_path = urlutils.local_path_from_url(new_url)
+        self.failUnlessExists(old_path)
+        self.failUnlessExists(new_path)
+        for (((dir_relpath1, _), entries1), 
+             ((dir_relpath2, _), entries2)) in izip(
+                osutils.walkdirs(old_path), 
+                osutils.walkdirs(new_path)):
+            self.assertEquals(dir_relpath1, dir_relpath2)
+            for f1, f2 in zip(entries1, entries2):
+                self.assertEquals(f1[0], f2[0])
+                self.assertEquals(f1[2], f2[2])
+                if f1[2] == "file":
+                    osutils.compare_files(open(f1[4]), open(f2[4]))
 
     def test_upgrade_new_instance(self):
         """Does an available updater work?"""
