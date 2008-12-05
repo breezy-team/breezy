@@ -3207,7 +3207,8 @@ class InterDifferingSerializer(InterKnitRepo):
                         continue
                     # TODO: Do we need:
                     #       "if entry.revision == current_revision_id" ?
-                    text_keys.add((file_id, entry.revision))
+                    if entry.revision == current_revision_id:
+                        text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
                 current_revision_id, revision.parent_ids))
