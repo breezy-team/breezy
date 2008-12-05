@@ -119,6 +119,8 @@ class CommitBuilder(object):
 
         self._generate_revision_if_needed()
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
+        self.basis_delta = []
+        self._recording_deletes = False
 
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
@@ -230,14 +232,42 @@ class CommitBuilder(object):
         """Get a delta against the basis inventory for ie."""
         if ie.file_id not in basis_inv:
             # add
-            return (None, path, ie.file_id, ie)
+            result = (None, path, ie.file_id, ie)
+            self.basis_delta.append(result)
+            return result
         elif ie != basis_inv[ie.file_id]:
             # common but altered
             # TODO: avoid tis id2path call.
-            return (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
+            result = (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
+            self.basis_delta.append(result)
+            return result
         else:
             # common, unaltered
             return None
+
+    def record_delete(self, path, file_id):
+        """Record that a delete occured against a basis tree.
+
+        This is an optional API - when used it adds items to the basis_delta
+        being accumulated by the commit builder. It cannot be called unless the
+        method recording_deletes() has been called to inform the builder that a
+        delta is being supplied.
+
+        :param path: The path of the thing deleted.
+        :param file_id: The file id that was deleted.
+        """
+        if not self._recording_deletes:
+            raise AssertionError("recording deletes not activated.")
+        self.basis_delta.append((path, None, file_id, None))
+
+    def recording_deletes(self):
+        """Tell the commit builder that deletes are being notified.
+
+        This enables the accumulation of an inventory delta; for the resulting
+        commit to be valid deletes against the basis MUST be recorded via
+        builder.record_delete().
+        """
+        self._recording_deletes = True
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -296,15 +326,19 @@ class CommitBuilder(object):
         if ie.revision is not None:
             if not self._versioned_root and path == '':
                 # repositories that do not version the root set the root's
-                # revision to the new commit even when no change occurs, and
-                # this masks when a change may have occurred against the basis,
-                # so calculate if one happened.
+                # revision to the new commit even when no change occurs (more
+                # specifically, they do not record a revision on the root; and
+                # the rev id is assigned to the root during deserialisation -
+                # this masks when a change may have occurred against the basis.
+                # To match this we always issue a delta, because the revision
+                # of the root will always be changing.
                 if ie.file_id in basis_inv:
                     delta = (basis_inv.id2path(ie.file_id), path,
                         ie.file_id, ie)
                 else:
                     # add
                     delta = (None, path, ie.file_id, ie)
+                self.basis_delta.append(delta)
                 return delta, False, None
             else:
                 # we don't need to commit this, because the caller already
@@ -613,6 +647,42 @@ class Repository(object):
         inv_lines = self._serialise_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
+
+    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
+        parents):
+        """Add a new inventory expressed as a delta against another revision.
+        
+        :param basis_revision_id: The inventory id the delta was created
+            against.
+        :param delta: The inventory delta (see Inventory.apply_delta for
+            details).
+        :param new_revision_id: The revision id that the inventory is being
+            added for.
+        :param parents: The revision ids of the parents that revision_id is
+            known to have and are in the repository already. These are supplied
+            for repositories that depend on the inventory graph for revision
+            graph access, as well as for those that pun ancestry with delta
+            compression.
+
+        :returns: The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory.
+        """
+        if not self.is_in_write_group():
+            raise AssertionError("%r not in write group" % (self,))
+        _mod_revision.check_not_reserved_id(new_revision_id)
+        basis_tree = self.revision_tree(basis_revision_id)
+        basis_tree.lock_read()
+        try:
+            # Note that this mutates the inventory of basis_tree, which not all
+            # inventory implementations may support: A better idiom would be to
+            # return a new inventory, but as there is no revision tree cache in
+            # repository this is safe for now - RBC 20081013
+            basis_inv = basis_tree.inventory
+            basis_inv.apply_delta(delta)
+            basis_inv.revision_id = new_revision_id
+            return self.add_inventory(new_revision_id, basis_inv, parents)
+        finally:
+            basis_tree.unlock()
 
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):

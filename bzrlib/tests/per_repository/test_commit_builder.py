@@ -162,6 +162,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 self.assertEqual(
                     ('', '', ie.file_id, ie),
                     delta)
+                self.assertEqual(delta, builder.basis_delta[-1])
             else:
                 self.assertEqual(None, delta)
             # Directories do not get hashed.
@@ -190,6 +191,57 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # precisely test that - a repository that wants to can add it on deserialisation,
         # but thats all the current contract guarantees anyway.
         self.assertEqual(rev_id, tree.branch.repository.get_inventory(rev_id).revision_id)
+
+    def test_record_delete(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["foo"])
+        tree.add(["foo"], ["foo-id"])
+        rev_id = tree.commit("added foo")
+        # Remove the inventory details for foo-id, because
+        # record_entry_contents ends up copying root verbatim.
+        tree.unversion(["foo-id"])
+        tree.lock_write()
+        try:
+            basis = tree.branch.repository.revision_tree(rev_id)
+            builder = tree.branch.get_commit_builder([rev_id])
+            try:
+                builder.recording_deletes()
+                if builder.record_root_entry is True:
+                    parent_invs = [basis.inventory]
+                    del basis.inventory.root.children['foo']
+                    builder.record_entry_contents(basis.inventory.root,
+                        parent_invs, '', tree, tree.path_content_summary(''))
+                builder.record_delete("foo", "foo-id")
+                self.assertEqual(("foo", None, "foo-id", None),
+                    builder.basis_delta[-1])
+                builder.finish_inventory()
+                rev_id2 = builder.commit('delete foo')
+            except:
+                tree.branch.repository.abort_write_group()
+                raise
+        finally:
+            tree.unlock()
+        rev_tree = builder.revision_tree()
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertFalse(rev_tree.path2id('foo'))
+
+    def test_record_delete_without_notification(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["foo"])
+        tree.add(["foo"], ["foo-id"])
+        rev_id = tree.commit("added foo")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([rev_id])
+            try:
+                self.record_root(builder, tree)
+                self.assertRaises(AssertionError,
+                    builder.record_delete, "foo", "foo-id")
+            finally:
+                tree.branch.repository.abort_write_group()
+        finally:
+            tree.unlock()
 
     def test_revision_tree(self):
         tree = self.make_branch_and_tree(".")
@@ -424,6 +476,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             new_entry = builder.new_inventory[file_id]
             if delta_against_basis:
                 expected_delta = (name, new_name, file_id, new_entry)
+                self.assertEqual(expected_delta, builder.basis_delta[-1])
             else:
                 expected_delta = None
             self.assertEqual(expected_delta, delta)
