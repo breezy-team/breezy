@@ -109,37 +109,40 @@ class TreeDelta(object):
     def show(self, to_file, show_ids=False, show_unchanged=False,
              short_status=False, indent=''):
         """output this delta in status-like form to to_file."""
-        def show_list(files, short_status_letter=''):
-            for item in files:
-                path, fid, kind = item[:3]
 
-                if kind == 'directory':
-                    path += '/'
-                elif kind == 'symlink':
-                    path += '@'
+        def decorate_path(path, kind, executable=None):
+            if kind == 'directory':
+                path += '/'
+            elif kind == 'symlink':
+                path += '@'
+            if executable:
+                path += '*'
+            return path
 
-                if len(item) == 5 and item[4]:
-                    path += '*'
-
-                if show_ids:
-                    to_file.write(indent + '%s  %-30s %s\n' % (short_status_letter,
-                        path, fid))
+        def show_list(files, long_status_name, short_status_letter):
+            if files:
+                if short_status:
+                    prefix = short_status_letter
                 else:
-                    to_file.write(indent + '%s  %s\n' % (short_status_letter, path))
+                    to_file.write(indent + long_status_name + ':\n')
+                    prefix = ''
+                prefix = indent + prefix + '  '
+                for item in files:
+                    path, fid, kind = item[:3]
+                    executable = None
+                    if len(item) == 5:
+                        executable = item[4]
 
-        if self.removed:
-            if not short_status:
-                to_file.write(indent + 'removed:\n')
-                show_list(self.removed)
-            else:
-                show_list(self.removed, 'D')
+                    path = decorate_path(path, kind, executable)
 
-        if self.added:
-            if not short_status:
-                to_file.write(indent + 'added:\n')
-                show_list(self.added)
-            else:
-                show_list(self.added, 'A')
+                    to_file.write(prefix)
+                    if show_ids:
+                        to_file.write('%-30s %s\n' % (path, fid))
+                    else:
+                        to_file.write('%s\n' % path)
+
+        show_list(self.removed, 'removed', 'D')#
+        show_list(self.added, 'added', 'A')
 
         extra_modified = []
 
@@ -176,24 +179,11 @@ class TreeDelta(object):
                 to_file.write(indent + '%s  %s (%s => %s)%s\n' % (
                     short_status_letter, path, old_kind, new_kind, suffix))
 
-        if self.modified or extra_modified:
-            short_status_letter = 'M'
-            if not short_status:
-                to_file.write(indent + 'modified:\n')
-                short_status_letter = ''
-            show_list(self.modified, short_status_letter)
-            show_list(extra_modified, short_status_letter)
-            
-        if show_unchanged and self.unchanged:
-            if not short_status:
-                to_file.write(indent + 'unchanged:\n')
-                show_list(self.unchanged)
-            else:
-                show_list(self.unchanged, 'S')
+        show_list(self.modified + extra_modified, 'modified', 'M')
+        if show_unchanged:
+            show_list(self.unchanged, 'unchanged', 'S')
 
-        if self.unversioned:
-            to_file.write(indent + 'unknown:\n')
-            show_list(self.unversioned)
+        show_list(self.unversioned, 'unknown', ' ')
 
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
              short_status=False):
