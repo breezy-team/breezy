@@ -49,6 +49,14 @@ IN DEVELOPMENT
 bzr 1.10 2008-12-05
 -------------------
 
+Bazaar 1.10 has several performance improvements for copying revisions
+(especially for small updates to large projects).  There has also been a
+significant amount of effort in polishing stacked branches.  The commands
+``shelve`` and ``unshelve`` have become core commands, with an improved
+implementation.
+
+The only changes versus bzr-1.10rc1 are bugfixes for stacked branches.
+
   BUG FIXES:
 
     * Don't set a pack write cache size from RepoFetcher, because the
@@ -66,7 +74,7 @@ bzr 1.10 2008-12-05
 bzr 1.10rc1 2008-11-28
 ----------------------
 
-This release of Bazaar focusses on performance improvements when pushing
+This release of Bazaar focuses on performance improvements when pushing
 and pulling revisions, both locally and to remote networks.  The popular
 ``shelve`` and ``unshelve`` commands, used to interactively revert and
 restore work in progress, have been merged from bzrtools into the bzr
