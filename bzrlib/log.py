@@ -147,31 +147,25 @@ def show_log(branch,
              limit=None):
     """Write out human-readable log of commits to this branch.
 
-    lf
-        LogFormatter object to show the output.
+    :param lf: The LogFormatter object showing the output.
 
-    specific_fileid
-        If true, list only the commits affecting the specified
-        file, rather than all commits.
+    :param specific_fileid: If not None, list only the commits affecting the
+        specified file, rather than all commits.
 
-    verbose
-        If true show added/changed/deleted/renamed files.
+    :param verbose: If True show added/changed/deleted/renamed files.
 
-    direction
-        'reverse' (default) is latest to earliest;
-        'forward' is earliest to latest.
+    :param direction: 'reverse' (default) is latest to earliest; 'forward' is
+        earliest to latest.
 
-    start_revision
-        If not None, only show revisions >= start_revision
+    :param start_revision: If not None, only show revisions >= start_revision
 
-    end_revision
-        If not None, only show revisions <= end_revision
+    :param end_revision: If not None, only show revisions <= end_revision
 
-    search
-        If not None, only show revisions with matching commit messages
+    :param search: If not None, only show revisions with matching commit
+        messages
 
-    limit
-        If not None or 0, only show limit revisions
+    :param limit: If set, shows only 'limit' revisions, all revisions are shown
+        if None or 0.
     """
     branch.lock_read()
     try:
