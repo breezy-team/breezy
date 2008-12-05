@@ -1396,7 +1396,6 @@ class Repository(object):
         :param desired_files: a list of (file_id, revision_id, identifier)
             triples
         """
-        transaction = self.get_transaction()
         text_keys = {}
         for file_id, revision_id, callable_data in desired_files:
             text_keys[(file_id, revision_id)] = callable_data
