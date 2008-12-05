@@ -67,10 +67,10 @@ _deprecation_warning_done = False
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
-    This allows describing a tree to be committed without needing to 
+    This allows describing a tree to be committed without needing to
     know the internals of the format of the repository.
     """
-    
+
     # all clients should supply tree roots.
     record_root_entry = True
     # the default CommitBuilder does not manage trees whose root is versioned.
@@ -119,7 +119,11 @@ class CommitBuilder(object):
 
         self._generate_revision_if_needed()
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
-        self.basis_delta = []
+        self._basis_delta = []
+        # API compatibility, older code that used CommitBuilder did not call
+        # .record_delete(), which means the delta that is computed would not be
+        # valid. Callers that will call record_delete() should call
+        # .will_record_deletes() to indicate that.
         self._recording_deletes = False
 
     def _validate_unicode_text(self, text, context):
@@ -233,38 +237,53 @@ class CommitBuilder(object):
         if ie.file_id not in basis_inv:
             # add
             result = (None, path, ie.file_id, ie)
-            self.basis_delta.append(result)
+            self._basis_delta.append(result)
             return result
         elif ie != basis_inv[ie.file_id]:
             # common but altered
             # TODO: avoid tis id2path call.
             result = (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
-            self.basis_delta.append(result)
+            self._basis_delta.append(result)
             return result
         else:
             # common, unaltered
             return None
+
+    def get_basis_delta(self):
+        """Return the complete inventory delta versus the basis inventory.
+
+        This has been built up with the calls to record_delete and
+        record_entry_contents. The client must have already called
+        will_record_deletes() to indicate that they will be generating a
+        complete delta.
+
+        :return: An inventory delta, suitable for use with apply_delta, or
+            Repository.add_inventory_by_delta, etc.
+        """
+        if not self._recording_deletes:
+            raise AssertionError("recording deletes not activated.")
+        return self._basis_delta
 
     def record_delete(self, path, file_id):
         """Record that a delete occured against a basis tree.
 
         This is an optional API - when used it adds items to the basis_delta
         being accumulated by the commit builder. It cannot be called unless the
-        method recording_deletes() has been called to inform the builder that a
-        delta is being supplied.
+        method will_record_deletes() has been called to inform the builder that
+        a delta is being supplied.
 
         :param path: The path of the thing deleted.
         :param file_id: The file id that was deleted.
         """
         if not self._recording_deletes:
             raise AssertionError("recording deletes not activated.")
-        self.basis_delta.append((path, None, file_id, None))
+        self._basis_delta.append((path, None, file_id, None))
 
-    def recording_deletes(self):
+    def will_record_deletes(self):
         """Tell the commit builder that deletes are being notified.
 
         This enables the accumulation of an inventory delta; for the resulting
-        commit to be valid deletes against the basis MUST be recorded via
+        commit to be valid, deletes against the basis MUST be recorded via
         builder.record_delete().
         """
         self._recording_deletes = True
@@ -338,7 +357,7 @@ class CommitBuilder(object):
                 else:
                     # add
                     delta = (None, path, ie.file_id, ie)
-                self.basis_delta.append(delta)
+                self._basis_delta.append(delta)
                 return delta, False, None
             else:
                 # we don't need to commit this, because the caller already

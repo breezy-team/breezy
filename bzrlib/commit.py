@@ -352,9 +352,9 @@ class Commit(object):
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
-            
+
             try:
-                self.builder.recording_deletes()
+                self.builder.will_record_deletes()
                 # find the location being committed to
                 if self.bound_branch:
                     master_location = self.master_branch.base
@@ -412,7 +412,7 @@ class Commit(object):
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
             self.work_tree.update_basis_by_delta(self.rev_id,
-                 self.builder.basis_delta)
+                 self.builder.get_basis_delta())
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
