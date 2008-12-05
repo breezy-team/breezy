@@ -581,6 +581,7 @@ class Repository(object):
         self.inventories.add_fallback_versioned_files(repository.inventories)
         self.revisions.add_fallback_versioned_files(repository.revisions)
         self.signatures.add_fallback_versioned_files(repository.signatures)
+        self._fetch_order = 'topological'
 
     def _check_fallback_repository(self, repository):
         """Check that this repository can fallback to repository safely.
