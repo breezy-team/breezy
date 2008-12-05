@@ -2139,14 +2139,14 @@ class _KndxIndex(object):
             _get_components_positions()
         :return: None
         """
-        def get_index_memo(key):
+        def get_sort_key(key):
             index_memo = positions[key][1]
             # Group by prefix and position. index_memo[0] is the key, so it is
             # (file_id, revision_id) and we don't want to sort on revision_id,
             # index_memo[1] is the position, and index_memo[2] is the size,
             # which doesn't matter for the sort
             return index_memo[0][:-1], index_memo[1]
-        return keys.sort(key=get_index_memo)
+        return keys.sort(key=get_sort_key)
 
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
@@ -2419,6 +2419,11 @@ class _KnitGraphIndex(object):
         :return: None
         """
         def get_index_memo(key):
+            # index_memo is at offset [1]. It is made up of (GraphIndex,
+            # position, size). GI is an object, which will be unique for each
+            # pack file. This causes us to group by pack file, then sort by
+            # position. Size doesn't matter, but it isn't worth breaking up the
+            # tuple.
             return positions[key][1]
         return keys.sort(key=get_index_memo)
 
