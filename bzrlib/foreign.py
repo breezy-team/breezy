@@ -22,6 +22,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     errors,
+    osutils,
     registry,
     )
 """)
@@ -174,3 +175,63 @@ class ForeignVcsRegistry(registry.Registry):
 
 
 foreign_vcs_registry = ForeignVcsRegistry()
+
+
+class ForeignRepository(Repository):
+    """A Repository that exists in a foreign version control system.
+
+    The data in this repository can not be represented natively using 
+    Bazaars internal datastructures, but have to converted using a VcsMapping.
+    """
+
+    # This repository's native version control system
+    vcs = None
+
+    def has_foreign_revision(self, foreign_revid):
+        """Check whether the specified foreign revision is present.
+
+        :param foreign_revid: A foreign revision id, in the format used 
+                              by this Repository's VCS.
+        """
+        raise NotImplementedError(self.has_foreign_revision)
+
+    def lookup_bzr_revision_id(self, revid):
+        """Lookup a mapped or roundtripped revision by revision id.
+
+        :param revid: Bazaar revision id
+        :return: Tuple with foreign revision id and mapping.
+        """
+        raise NotImplementedError(self.lookup_revision_id)
+
+    def all_revision_ids(self, mapping=None):
+        """See Repository.all_revision_ids()."""
+        raise NotImplementedError(self.all_revision_ids)
+
+    def get_default_mapping(self):
+        """Get the default mapping for this repository."""
+        raise NotImplementedError(self.get_default_mapping)
+
+    def get_inventory_xml(self, revision_id):
+        """See Repository.get_inventory_xml()."""
+        return self.serialise_inventory(self.get_inventory(revision_id))
+
+    def get_inventory_sha1(self, revision_id):
+        """Get the sha1 for the XML representation of an inventory.
+
+        :param revision_id: Revision id of the inventory for which to return 
+         the SHA1.
+        :return: XML string
+        """
+
+        return osutils.sha_string(self.get_inventory_xml(revision_id))
+
+    def get_revision_xml(self, revision_id):
+        """Return the XML representation of a revision.
+
+        :param revision_id: Revision for which to return the XML.
+        :return: XML string
+        """
+        return self._serializer.write_revision_to_string(
+            self.get_revision(revision_id))
+
+
