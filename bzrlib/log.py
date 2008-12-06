@@ -210,11 +210,6 @@ def _show_log(branch,
                                               specific_fileid,
                                               generate_merge_revisions,
                                               allow_single_merge_revision)
-    if search is not None:
-        searchRE = re.compile(search, re.IGNORECASE)
-    else:
-        searchRE = None
-
     rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags:
@@ -225,35 +220,32 @@ def _show_log(branch,
 
     # now we just print all the revisions
     log_count = 0
-    for (rev_id, revno, merge_depth), rev, delta in _iter_revisions(
-        branch.repository, view_revisions, generate_delta):
-        if searchRE:
-            if not searchRE.search(rev.message):
-                continue
-
-        lr = LogRevision(rev, revno, merge_depth, delta,
-                         rev_tag_dict.get(rev_id))
-        lf.log_revision(lr)
-        if limit:
-            log_count += 1
-            if log_count >= limit:
-                break
+    revision_iterator = make_log_rev_iterator(branch, view_revisions,
+        generate_delta, search)
+    for revs in revision_iterator:
+        for (rev_id, revno, merge_depth), rev, delta in revs:
+            lr = LogRevision(rev, revno, merge_depth, delta,
+                             rev_tag_dict.get(rev_id))
+            lf.log_revision(lr)
+            if limit:
+                log_count += 1
+                if log_count >= limit:
+                    return
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision):
-    if (not generate_merge_revisions and start_revision is end_revision is
-        None and direction == 'reverse' and specific_fileid is None):
+    if (    not generate_merge_revisions
+        and start_revision is end_revision is None
+        and direction == 'reverse'
+        and specific_fileid is None):
         return _linear_view_revisions(branch)
 
-    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
-        _get_mainline_revs(branch, start_revision, end_revision)
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = _get_mainline_revs(
+        branch, start_revision, end_revision)
     if not mainline_revs:
         return []
-
-    if direction == 'reverse':
-        start_rev_id, end_rev_id = end_rev_id, start_rev_id
 
     generate_single_revision = False
     if ((not generate_merge_revisions)
@@ -267,6 +259,9 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         generate_merge_revisions = generate_single_revision
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
+
+    if direction == 'reverse':
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
     view_revisions = _filter_revision_range(list(view_revs_iter),
                                             start_rev_id,
                                             end_rev_id)
@@ -274,9 +269,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = view_revisions[0:1]
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
-                                                         specific_fileid,
-                                                         mainline_revs,
-                                                         view_revisions)
+                                                            specific_fileid,
+                                                            view_revisions)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -295,24 +289,127 @@ def _linear_view_revisions(branch):
         yield revision_id, str(start_revno - num), 0
 
 
-def _iter_revisions(repository, view_revisions, generate_delta):
-    num = 9
-    view_revisions = iter(view_revisions)
-    while True:
-        cur_view_revisions = [d for x, d in zip(range(num), view_revisions)]
-        if len(cur_view_revisions) == 0:
-            break
-        cur_deltas = {}
-        # r = revision, n = revno, d = merge depth
-        revision_ids = [r for (r, n, d) in cur_view_revisions]
+def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
+    """Create a revision iterator for log.
+
+    :param branch: The branch being logged.
+    :param view_revisions: The revisions being viewed.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
+    """
+    # Convert view_revisions into (view, None, None) groups to fit with
+    # the standard interface here.
+    if type(view_revisions) == list:
+        # A single batch conversion is faster than many incremental ones.
+        # As we have all the data, do a batch conversion.
+        nones = [None] * len(view_revisions)
+        log_rev_iterator = iter([zip(view_revisions, nones, nones)])
+    else:
+        def _convert():
+            for view in view_revisions:
+                yield (view, None, None)
+        log_rev_iterator = iter([_convert()])
+    for adapter in log_adapters:
+        log_rev_iterator = adapter(branch, generate_delta, search,
+            log_rev_iterator)
+    return log_rev_iterator
+
+
+def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
+    """Create a filtered iterator of log_rev_iterator matching on a regex.
+
+    :param branch: The branch being logged.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed, in lists.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
+    """
+    if search is None:
+        return log_rev_iterator
+    # Compile the search now to get early errors.
+    searchRE = re.compile(search, re.IGNORECASE)
+    return _filter_message_re(searchRE, log_rev_iterator)
+
+
+def _filter_message_re(searchRE, log_rev_iterator):
+    for revs in log_rev_iterator:
+        new_revs = []
+        for (rev_id, revno, merge_depth), rev, delta in revs:
+            if searchRE.search(rev.message):
+                new_revs.append(((rev_id, revno, merge_depth), rev, delta))
+        yield new_revs
+
+
+def _make_delta_filter(branch, generate_delta, search, log_rev_iterator):
+    """Add revision deltas to a log iterator if needed.
+
+    :param branch: The branch being logged.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed, in lists.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
+    """
+    if not generate_delta:
+        return log_rev_iterator
+    return _generate_deltas(branch.repository, log_rev_iterator)
+
+
+def _generate_deltas(repository, log_rev_iterator):
+    """Create deltas for each batch of revisions in log_rev_iterator."""
+    for revs in log_rev_iterator:
+        revisions = [rev[1] for rev in revs]
+        deltas = repository.get_deltas_for_revisions(revisions)
+        revs = [(rev[0], rev[1], delta) for rev, delta in izip(revs, deltas)]
+        yield revs
+
+
+def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
+    """Extract revision objects from the repository
+
+    :param branch: The branch being logged.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed, in lists.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
+    """
+    repository = branch.repository
+    for revs in log_rev_iterator:
+        # r = revision_id, n = revno, d = merge depth
+        revision_ids = [view[0] for view, _, _ in revs]
         revisions = repository.get_revisions(revision_ids)
-        if generate_delta:
-            deltas = repository.get_deltas_for_revisions(revisions)
-            cur_deltas = dict(izip((r.revision_id for r in revisions),
-                                   deltas))
-        for view_data, revision in izip(cur_view_revisions, revisions):
-            yield view_data, revision, cur_deltas.get(revision.revision_id)
-        num = min(int(num * 1.5), 200)
+        revs = [(rev[0], revision, rev[2]) for rev, revision in
+            izip(revs, revisions)]
+        yield revs
+
+
+def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
+    """Group up a single large batch into smaller ones.
+
+    :param branch: The branch being logged.
+    :param generate_delta: Whether to generate a delta for each revision.
+    :param search: A user text search string.
+    :param log_rev_iterator: An input iterator containing all revisions that
+        could be displayed, in lists.
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev, delta).
+    """
+    repository = branch.repository
+    num = 9
+    for batch in log_rev_iterator:
+        batch = iter(batch)
+        while True:
+            step = [detail for _, detail in zip(range(num), batch)]
+            if len(step) == 0:
+                break
+            yield step
+            num = min(int(num * 1.5), 200)
 
 
 def _get_mainline_revs(branch, start_revision, end_revision):
@@ -342,7 +439,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     # filtered later.
     # Also map the revisions to rev_ids, to be used in the later filtering
     # stage.
-    start_rev_id = None 
+    start_rev_id = None
     if start_revision is None:
         start_revno = 1
     else:
@@ -352,7 +449,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         else:
             branch.check_real_revno(start_revision)
             start_revno = start_revision
-    
+
     end_rev_id = None
     if end_revision is None:
         end_revno = branch_revno
@@ -411,7 +508,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    if start_rev_id or end_rev_id: 
+    if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
             start_index = revision_ids.index(start_rev_id)
@@ -440,75 +537,81 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, mainline_revisions,
-                                       view_revs_iter):
-    """Return the list of revision ids which touch a given file id.
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
+    r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
     This includes the revisions which directly change the file id,
     and the revisions which merge these changes. So if the
     revision graph is::
-        A
-        |\
-        B C
+        A-.
+        |\ \
+        B C E
+        |/ /
+        D |
+        |\|
+        | F
         |/
-        D
+        G
 
-    And 'C' changes a file, then both C and D will be returned.
+    And 'C' changes a file, then both C and D will be returned. F will not be
+    returned even though it brings the changes to C into the branch starting
+    with E. (Note that if we were using F as the tip instead of G, then we
+    would see C, D, F.)
 
-    This will also can be restricted based on a subset of the mainline.
+    This will also be restricted based on a subset of the mainline.
+
+    :param branch: The branch where we can get text revision information.
+
+    :param file_id: Filter out revisions that do not touch file_id.
+
+    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
+        tuples. This is the list of revisions which will be filtered. It is
+        assumed that view_revisions is in merge_sort order (i.e. newest
+        revision first ).
 
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
-    # find all the revisions that change the specific file
-    # build the ancestry of each revision in the graph
-    # - only listing the ancestors that change the specific file.
-    graph = branch.repository.get_graph()
-    # This asks for all mainline revisions, which means we only have to spider
-    # sideways, rather than depth history. That said, its still size-of-history
-    # and should be addressed.
-    # mainline_revisions always includes an extra revision at the beginning, so
-    # don't request it.
-    parent_map = dict(((key, value) for key, value in
-        graph.iter_ancestry(mainline_revisions[1:]) if value is not None))
-    sorted_rev_list = tsort.topo_sort(parent_map.items())
-    text_keys = [(file_id, rev_id) for rev_id in sorted_rev_list]
-    modified_text_versions = branch.repository.texts.get_parent_map(text_keys)
-    ancestry = {}
-    for rev in sorted_rev_list:
-        text_key = (file_id, rev)
-        parents = parent_map[rev]
-        if text_key not in modified_text_versions and len(parents) == 1:
-            # We will not be adding anything new, so just use a reference to
-            # the parent ancestry.
-            rev_ancestry = ancestry[parents[0]]
+    # Lookup all possible text keys to determine which ones actually modified
+    # the file.
+    text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
+    # Looking up keys in batches of 1000 can cut the time in half, as well as
+    # memory consumption. GraphIndex *does* like to look for a few keys in
+    # parallel, it just doesn't like looking for *lots* of keys in parallel.
+    # TODO: This code needs to be re-evaluated periodically as we tune the
+    #       indexing layer. We might consider passing in hints as to the known
+    #       access pattern (sparse/clustered, high success rate/low success
+    #       rate). This particular access is clustered with a low success rate.
+    get_parent_map = branch.repository.texts.get_parent_map
+    modified_text_revisions = set()
+    chunk_size = 1000
+    for start in xrange(0, len(text_keys), chunk_size):
+        next_keys = text_keys[start:start + chunk_size]
+        # Only keep the revision_id portion of the key
+        modified_text_revisions.update(
+            [k[1] for k in get_parent_map(next_keys)])
+    del text_keys, next_keys
+
+    result = []
+    # Track what revisions will merge the current revision, replace entries
+    # with 'None' when they have been added to result
+    current_merge_stack = [None]
+    for info in view_revisions:
+        rev_id, revno, depth = info
+        if depth == len(current_merge_stack):
+            current_merge_stack.append(info)
         else:
-            rev_ancestry = set()
-            if text_key in modified_text_versions:
-                rev_ancestry.add(rev)
-            for parent in parents:
-                if parent not in ancestry:
-                    # parent is a Ghost, which won't be present in
-                    # sorted_rev_list, but we may access it later, so create an
-                    # empty node for it
-                    ancestry[parent] = set()
-                rev_ancestry = rev_ancestry.union(ancestry[parent])
-        ancestry[rev] = rev_ancestry
+            del current_merge_stack[depth + 1:]
+            current_merge_stack[-1] = info
 
-    def is_merging_rev(r):
-        parents = parent_map[r]
-        if len(parents) > 1:
-            leftparent = parents[0]
-            for rightparent in parents[1:]:
-                if not ancestry[leftparent].issuperset(
-                        ancestry[rightparent]):
-                    return True
-        return False
-
-    # filter from the view the revisions that did not change or merge 
-    # the specific file
-    return [(r, n, d) for r, n, d in view_revs_iter
-            if (file_id, r) in modified_text_versions or is_merging_rev(r)]
+        if rev_id in modified_text_revisions:
+            # This needs to be logged, along with the extra revisions
+            for idx in xrange(len(current_merge_stack)):
+                node = current_merge_stack[idx]
+                if node is not None:
+                    result.append(node)
+                    current_merge_stack[idx] = None
+    return result
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
@@ -557,19 +660,27 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
     revision of that depth.  There may be no topological justification for this,
     but it looks much nicer.
     """
+    # Add a fake revision at start so that we can always attach sub revisions
+    merge_sorted_revisions = [(None, None, _depth)] + merge_sorted_revisions
     zd_revisions = []
     for val in merge_sorted_revisions:
         if val[2] == _depth:
+            # Each revision at the current depth becomes a chunk grouping all
+            # higher depth revisions.
             zd_revisions.append([val])
         else:
             zd_revisions[-1].append(val)
     for revisions in zd_revisions:
         if len(revisions) > 1:
+            # We have higher depth revisions, let reverse them locally
             revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
     zd_revisions.reverse()
     result = []
     for chunk in zd_revisions:
         result.extend(chunk)
+    if _depth == 0:
+        # Top level call, get rid of the fake revisions that have been added
+        result = [r for r in result if r[0] is not None and r[1] is not None]
     return result
 
 
@@ -752,7 +863,7 @@ class LineLogFormatter(LogFormatter):
         return str[:max_len-3]+'...'
 
     def date_string(self, rev):
-        return format_date(rev.timestamp, rev.timezone or 0, 
+        return format_date(rev.timestamp, rev.timezone or 0,
                            self.show_timezone, date_fmt="%Y-%m-%d",
                            show_offset=False)
 
@@ -769,7 +880,7 @@ class LineLogFormatter(LogFormatter):
 
     def log_string(self, revno, rev, max_chars):
         """Format log info into one string. Truncate tail of string
-        :param  revno:      revision number (int) or None.
+        :param  revno:      revision number or None.
                             Revision numbers counts from 1.
         :param  rev:        revision info object
         :param  max_chars:  maximum length of resulting string
@@ -894,3 +1005,24 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
 
 
 properties_handler_registry = registry.Registry()
+properties_handler_registry.register_lazy("foreign",
+                                          "bzrlib.foreign",
+                                          "show_foreign_properties")
+
+
+# adapters which revision ids to log are filtered. When log is called, the
+# log_rev_iterator is adapted through each of these factory methods.
+# Plugins are welcome to mutate this list in any way they like - as long
+# as the overall behaviour is preserved. At this point there is no extensible
+# mechanism for getting parameters to each factory method, and until there is
+# this won't be considered a stable api.
+log_adapters = [
+    # core log logic
+    _make_batch_filter,
+    # read revision objects
+    _make_revision_objects,
+    # filter on log messages
+    _make_search_filter,
+    # generate deltas for things we will show
+    _make_delta_filter
+    ]

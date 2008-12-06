@@ -50,7 +50,7 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_method
+from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter
 
 
@@ -176,6 +176,7 @@ class InventoryEntry(object):
                     candidates[ie.revision] = ie
         return candidates
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
         item = tarfile.TarInfo(osutils.pathjoin(root, dp).encode('utf8'))
@@ -238,6 +239,7 @@ class InventoryEntry(object):
         raise BzrError("don't know how to export {%s} of kind %r" %
                        (self.file_id, self.kind))
 
+    @deprecated_method(deprecated_in((1, 6, 0)))
     def put_on_disk(self, dest, dp, tree):
         """Create a representation of self on disk in the prefix dest.
         
@@ -813,7 +815,9 @@ class Inventory(object):
                 # adds come later
                 continue
             # Preserve unaltered children of file_id for later reinsertion.
-            children[file_id] = getattr(self[file_id], 'children', {})
+            file_id_children = getattr(self[file_id], 'children', {})
+            if len(file_id_children):
+                children[file_id] = file_id_children
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
             self.remove_recursive_id(file_id)
@@ -825,8 +829,16 @@ class Inventory(object):
         for new_path, new_entry in sorted((np, e) for op, np, f, e in
                                           delta if np is not None):
             if new_entry.kind == 'directory':
-                new_entry.children = children.get(new_entry.file_id, {})
+                # Pop the child which to allow detection of children whose
+                # parents were deleted and which were not reattached to a new
+                # parent.
+                new_entry.children = children.pop(new_entry.file_id, {})
             self.add(new_entry)
+        if len(children):
+            # Get the parent id that was deleted
+            parent_id, children = children.popitem()
+            raise errors.InconsistentDelta("<deleted>", parent_id,
+                "The file id was deleted but its children were not deleted.")
 
     def _set_root(self, ie):
         self.root = ie
@@ -838,6 +850,7 @@ class Inventory(object):
         if self.root is None:
             return Inventory(root_id=None)
         other = Inventory(entries.next()[1].file_id)
+        other.root.revision = self.root.revision
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
         for path, entry in entries:

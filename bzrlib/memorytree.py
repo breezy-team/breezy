@@ -21,10 +21,12 @@ See MemoryTree for more details.
 
 
 from copy import deepcopy
+import os
 
 from bzrlib import (
     errors,
     mutabletree,
+    osutils,
     revision as _mod_revision,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -68,8 +70,6 @@ class MemoryTree(mutabletree.MutableTree):
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
         revision_id = _mod_revision.ensure_null(branch.last_revision())
-        if _mod_revision.is_null(revision_id):
-            revision_id = None
         return MemoryTree(branch, revision_id)
 
     def _gather_kinds(self, files, kinds):
@@ -100,6 +100,14 @@ class MemoryTree(mutabletree.MutableTree):
         if entry is None:
             return None, False, None
         return entry.kind, entry.executable, None
+
+    @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel):
+        file_id = self.path2id(from_rel)
+        to_dir, to_tail = os.path.split(to_rel)
+        to_parent_id = self.path2id(to_dir)
+        self._file_transport.move(from_rel, to_rel)
+        self._inventory.rename(file_id, to_parent_id, to_tail)
 
     def path_content_summary(self, path):
         """See Tree.path_content_summary."""
@@ -206,7 +214,7 @@ class MemoryTree(mutabletree.MutableTree):
         """Populate the in-tree state from the branch."""
         self._basis_tree = self.branch.repository.revision_tree(
             self._branch_revision_id)
-        if self._branch_revision_id is None:
+        if self._branch_revision_id == _mod_revision.NULL_REVISION:
             self._parent_ids = []
         else:
             self._parent_ids = [self._branch_revision_id]
@@ -272,7 +280,8 @@ class MemoryTree(mutabletree.MutableTree):
             _mod_revision.check_not_reserved_id(revision_id)
         if len(revision_ids) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revision_tree(None)
+            self._basis_tree = self.branch.repository.revision_tree(
+                                    _mod_revision.NULL_REVISION)
         else:
             self._parent_ids = revision_ids
             self._basis_tree = self.branch.repository.revision_tree(
@@ -283,14 +292,16 @@ class MemoryTree(mutabletree.MutableTree):
         """See MutableTree.set_parent_trees()."""
         if len(parents_list) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revision_tree(None)
+            self._basis_tree = self.branch.repository.revision_tree(
+                                   _mod_revision.NULL_REVISION)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
             if parents_list[0][1] is None or parents_list[0][1] == 'null:':
-                self._basis_tree = self.branch.repository.revision_tree(None)
+                self._basis_tree = self.branch.repository.revision_tree(
+                                       _mod_revision.NULL_REVISION)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

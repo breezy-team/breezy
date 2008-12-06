@@ -20,7 +20,7 @@
 from bzrlib import bzrdir, errors, tests
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 

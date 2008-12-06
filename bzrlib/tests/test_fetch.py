@@ -22,8 +22,10 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     merge,
     repository,
+    versionedfile,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -170,8 +172,11 @@ class TestFetch(TestCaseWithTransport):
         knit3_tree = self.make_branch_and_tree('knit3',
             format='dirstate-with-subtree')
         knit3_tree.commit('blah')
-        self.assertRaises(errors.IncompatibleRepositories,
-                          knit_tree.branch.fetch, knit3_tree.branch)
+        e = self.assertRaises(errors.IncompatibleRepositories,
+                              knit_tree.branch.fetch, knit3_tree.branch)
+        self.assertContainsRe(str(e),
+            r"(?m).*/knit.*\nis not compatible with\n.*/knit3/.*\n"
+            r"different rich-root support")
 
 
 class TestMergeFetch(TestCaseWithTransport):
@@ -324,6 +329,202 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
         self.assertEqual(4, len(http_logs))
+
+
+class TestKnitToPackFetch(TestCaseWithTransport):
+
+    def find_get_record_stream(self, calls):
+        """In a list of calls, find 'get_record_stream' calls.
+
+        This also ensures that there is only one get_record_stream call.
+        """
+        get_record_call = None
+        for call in calls:
+            if call[0] == 'get_record_stream':
+                self.assertIs(None, get_record_call,
+                              "there should only be one call to"
+                              " get_record_stream")
+                get_record_call = call
+        self.assertIsNot(None, get_record_call,
+                         "there should be exactly one call to "
+                         " get_record_stream")
+        return get_record_call
+
+    def test_fetch_with_deltas_no_delta_closure(self):
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        source = tree.branch.repository
+        source.texts = versionedfile.RecordingVersionedFilesDecorator(
+                        source.texts)
+        source.signatures = versionedfile.RecordingVersionedFilesDecorator(
+                        source.signatures)
+        source.revisions = versionedfile.RecordingVersionedFilesDecorator(
+                        source.revisions)
+        source.inventories = versionedfile.RecordingVersionedFilesDecorator(
+                        source.inventories)
+        # precondition
+        self.assertTrue(target._fetch_uses_deltas)
+        target.fetch(source, revision_id='rev-one')
+        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.texts.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.inventories.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(source.revisions.calls))
+        # XXX: Signatures is special, and slightly broken. The
+        # standard item_keys_introduced_by actually does a lookup for every
+        # signature to see if it exists, rather than waiting to do them all at
+        # once at the end. The fetch code then does an all-at-once and just
+        # allows for some of them to be missing.
+        # So we know there will be extra calls, but the *last* one is the one
+        # we care about.
+        signature_calls = source.signatures.calls[-1:]
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, False),
+                         self.find_get_record_stream(signature_calls))
+
+    def test_fetch_no_deltas_with_delta_closure(self):
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        source = tree.branch.repository
+        source.texts = versionedfile.RecordingVersionedFilesDecorator(
+                        source.texts)
+        source.signatures = versionedfile.RecordingVersionedFilesDecorator(
+                        source.signatures)
+        source.revisions = versionedfile.RecordingVersionedFilesDecorator(
+                        source.revisions)
+        source.inventories = versionedfile.RecordingVersionedFilesDecorator(
+                        source.inventories)
+        target._fetch_uses_deltas = False
+        target.fetch(source, revision_id='rev-one')
+        self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.texts.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.inventories.calls))
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(source.revisions.calls))
+        # XXX: Signatures is special, and slightly broken. The
+        # standard item_keys_introduced_by actually does a lookup for every
+        # signature to see if it exists, rather than waiting to do them all at
+        # once at the end. The fetch code then does an all-at-once and just
+        # allows for some of them to be missing.
+        # So we know there will be extra calls, but the *last* one is the one
+        # we care about.
+        signature_calls = source.signatures.calls[-1:]
+        self.assertEqual(('get_record_stream', [('rev-one',)],
+                          target._fetch_order, True),
+                         self.find_get_record_stream(signature_calls))
+
+    def test_fetch_revisions_with_deltas_into_pack(self):
+        # See BUG #261339, dev versions of bzr could accidentally create deltas
+        # in revision texts in knit branches (when fetching from packs). So we
+        # ensure that *if* a knit repository has a delta in revisions, that it
+        # gets properly expanded back into a fulltext when stored in the pack
+        # file.
+        tree = self.make_branch_and_tree('source', format='dirstate')
+        target = self.make_repository('target', format='pack-0.92')
+        self.build_tree(['source/file'])
+        tree.set_root_id('root-id')
+        tree.add('file', 'file-id')
+        tree.commit('one', rev_id='rev-one')
+        # Hack the KVF for revisions so that it "accidentally" allows a delta
+        tree.branch.repository.revisions._max_delta_chain = 200
+        tree.commit('two', rev_id='rev-two')
+        source = tree.branch.repository
+        # Ensure that we stored a delta
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        record = source.revisions.get_record_stream([('rev-two',)],
+            'unordered', False).next()
+        self.assertEqual('knit-delta-gz', record.storage_kind)
+        target.fetch(tree.branch.repository, revision_id='rev-two')
+        # The record should get expanded back to a fulltext
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        record = target.revisions.get_record_stream([('rev-two',)],
+            'unordered', False).next()
+        self.assertEqual('knit-ft-gz', record.storage_kind)
+
+    def test_fetch_with_fallback_and_merge(self):
+        builder = self.make_branch_builder('source', format='pack-0.92')
+        builder.start_series()
+        # graph
+        #   A
+        #   |\
+        #   B C
+        #   | |
+        #   | D
+        #   | |
+        #   | E
+        #    \|
+        #     F
+        # A & B are present in the base (stacked-on) repository, A-E are
+        # present in the source.
+        # This reproduces bug #304841
+        # We need a large enough inventory that total size of compressed deltas
+        # is shorter than the size of a compressed fulltext. We have to use
+        # random ids because otherwise the inventory fulltext compresses too
+        # well and the deltas get bigger.
+        to_add = [
+            ('add', ('', 'TREE_ROOT', 'directory', None))]
+        for i in xrange(10):
+            fname = 'file%03d' % (i,)
+            fileid = '%s-%s' % (fname, osutils.rand_chars(64))
+            to_add.append(('add', (fname, fileid, 'file', 'content\n')))
+        builder.build_snapshot('A', None, to_add)
+        builder.build_snapshot('B', ['A'], [])
+        builder.build_snapshot('C', ['A'], [])
+        builder.build_snapshot('D', ['C'], [])
+        builder.build_snapshot('E', ['D'], [])
+        builder.build_snapshot('F', ['E', 'B'], [])
+        builder.finish_series()
+        source_branch = builder.get_branch()
+        source_branch.bzrdir.sprout('base', revision_id='B')
+        target_branch = self.make_branch('target', format='1.6')
+        target_branch.set_stacked_on_url('../base')
+        source = source_branch.repository
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        source.inventories = versionedfile.OrderingVersionedFilesDecorator(
+                        source.inventories,
+                        key_priority={('E',): 1, ('D',): 2, ('C',): 4,
+                                      ('F',): 3})
+        # Ensure that the content is yielded in the proper order, and given as
+        # the expected kinds
+        records = [(record.key, record.storage_kind)
+                   for record in source.inventories.get_record_stream(
+                        [('D',), ('C',), ('E',), ('F',)], 'unordered', False)]
+        self.assertEqual([(('E',), 'knit-delta-gz'), (('D',), 'knit-delta-gz'),
+                          (('F',), 'knit-delta-gz'), (('C',), 'knit-delta-gz')],
+                          records)
+
+        target_branch.lock_write()
+        self.addCleanup(target_branch.unlock)
+        target = target_branch.repository
+        target.fetch(source, revision_id='F')
+        # 'C' should be expanded to a fulltext, but D and E should still be
+        # deltas
+        stream = target.inventories.get_record_stream(
+            [('C',), ('D',), ('E',), ('F',)],
+            'unordered', False)
+        kinds = dict((record.key, record.storage_kind) for record in stream)
+        self.assertEqual({('C',): 'knit-ft-gz', ('D',): 'knit-delta-gz',
+                          ('E',): 'knit-delta-gz', ('F',): 'knit-delta-gz'},
+                         kinds)
 
 
 class Test1To2Fetch(TestCaseWithTransport):

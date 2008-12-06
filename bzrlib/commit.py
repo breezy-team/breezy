@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ from bzrlib import (
     debug,
     errors,
     revision,
+    trace,
     tree,
     )
 from bzrlib.branch import Branch
@@ -68,7 +69,8 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
+from bzrlib.osutils import (get_user_encoding,
+                            kind_marker, isdir,isfile, is_inside_any,
                             is_inside_or_parent_of_any,
                             minimum_path_selection,
                             quotefn, sha_file, split_lines,
@@ -76,8 +78,7 @@ from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
                             )
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
-from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import InventoryEntry, make_entry
+from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -204,7 +205,9 @@ class Commit(object):
                reporter=None,
                config=None,
                message_callback=None,
-               recursive='down'):
+               recursive='down',
+               exclude=None,
+               possible_master_transports=None):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -232,6 +235,9 @@ class Commit(object):
         :param verbose: if True and the reporter is not None, report everything
         :param recursive: If set to 'down', commit in any subtrees that have
             pending changes of any sort during this commit.
+        :param exclude: None or a list of relative paths to exclude from the
+            commit. Pending changes to excluded files will be ignored by the
+            commit. 
         """
         mutter('preparing to commit')
 
@@ -246,7 +252,7 @@ class Commit(object):
         if message_callback is None:
             if message is not None:
                 if isinstance(message, str):
-                    message = message.decode(bzrlib.user_encoding)
+                    message = message.decode(get_user_encoding())
                 message_callback = lambda x: message
             else:
                 raise BzrError("The message or message_callback keyword"
@@ -255,6 +261,11 @@ class Commit(object):
         self.bound_branch = None
         self.any_entries_changed = False
         self.any_entries_deleted = False
+        if exclude is not None:
+            self.exclude = sorted(
+                minimum_path_selection(exclude))
+        else:
+            self.exclude = []
         self.local = local
         self.master_branch = None
         self.master_locked = False
@@ -289,7 +300,7 @@ class Commit(object):
                 raise ConflictsInTree
 
             # Setup the bound branch variables as needed.
-            self._check_bound_branch()
+            self._check_bound_branch(possible_master_transports)
 
             # Check that the working tree is up to date
             old_revno, new_revno = self._check_out_of_date_tree()
@@ -329,12 +340,15 @@ class Commit(object):
             self.pb.show_count = True
             self.pb.show_bar = True
 
-            # After a merge, a selected file commit is not supported.
-            # See 'bzr help merge' for an explanation as to why.
             self.basis_inv = self.basis_tree.inventory
             self._gather_parents()
+            # After a merge, a selected file commit is not supported.
+            # See 'bzr help merge' for an explanation as to why.
             if len(self.parents) > 1 and self.specific_files:
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
+            # Excludes are a form of selected file commit.
+            if len(self.parents) > 1 and self.exclude:
+                raise errors.CannotCommitSelectedFileMerge(self.exclude)
 
             # Collect the changes
             self._set_progress_stage("Collecting changes",
@@ -371,7 +385,10 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
 
-            except:
+            except Exception, e:
+                mutter("aborting commit write group because of exception:")
+                trace.log_exception_quietly()
+                note("aborting commit write group: %r" % (e,))
                 self.builder.abort()
                 raise
 
@@ -432,7 +449,7 @@ class Commit(object):
             return
         raise PointlessCommit()
 
-    def _check_bound_branch(self):
+    def _check_bound_branch(self, possible_master_transports=None):
         """Check to see if the local branch is bound.
 
         If it is bound, then most of the commit will actually be
@@ -443,7 +460,8 @@ class Commit(object):
             raise errors.LocalRequiresBoundBranch()
 
         if not self.local:
-            self.master_branch = self.branch.get_master_branch()
+            self.master_branch = self.branch.get_master_branch(
+                possible_master_transports)
 
         if not self.master_branch:
             # make this branch the reference branch for out of date checks.
@@ -648,45 +666,59 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
 
-        specific_files = self.specific_files
+        exclude = self.exclude
+        specific_files = self.specific_files or []
         mutter("Selecting files for commit with filter %s", specific_files)
 
         # Build the new inventory
-        self._populate_from_inventory(specific_files)
+        self._populate_from_inventory()
 
         # If specific files are selected, then all un-selected files must be
         # recorded in their previous state. For more details, see
         # https://lists.ubuntu.com/archives/bazaar/2007q3/028476.html.
-        if specific_files:
+        if specific_files or exclude:
             for path, old_ie in self.basis_inv.iter_entries():
                 if old_ie.file_id in self.builder.new_inventory:
                     # already added - skip.
                     continue
-                if is_inside_any(specific_files, path):
-                    # was inside the selected path, if not present it has been
-                    # deleted so skip.
+                if (is_inside_any(specific_files, path)
+                    and not is_inside_any(exclude, path)):
+                    # was inside the selected path, and not excluded - if not
+                    # present it has been deleted so skip.
                     continue
+                # From here down it was either not selected, or was excluded:
                 if old_ie.kind == 'directory':
                     self._next_progress_entry()
-                # not in final inv yet, was not in the selected files, so is an
-                # entry to be preserved unaltered.
+                # We preserve the entry unaltered.
                 ie = old_ie.copy()
                 # Note: specific file commits after a merge are currently
                 # prohibited. This test is for sanity/safety in case it's
                 # required after that changes.
                 if len(self.parents) > 1:
                     ie.revision = None
-                delta, version_recorded = self.builder.record_entry_contents(
+                delta, version_recorded, _ = self.builder.record_entry_contents(
                     ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
-                if delta: self._basis_delta.append(delta)
+                if delta:
+                    self._basis_delta.append(delta)
 
     def _report_and_accumulate_deletes(self):
         # XXX: Could the list of deleted paths and ids be instead taken from
         # _populate_from_inventory?
-        deleted_ids = set(self.basis_inv._byid.keys()) - \
-            set(self.builder.new_inventory._byid.keys())
+        if (isinstance(self.basis_inv, Inventory)
+            and isinstance(self.builder.new_inventory, Inventory)):
+            # the older Inventory classes provide a _byid dict, and building a
+            # set from the keys of this dict is substantially faster than even
+            # getting a set of ids from the inventory
+            #
+            # <lifeless> set(dict) is roughly the same speed as
+            # set(iter(dict)) and both are significantly slower than
+            # set(dict.keys())
+            deleted_ids = set(self.basis_inv._byid.keys()) - \
+               set(self.builder.new_inventory._byid.keys())
+        else:
+            deleted_ids = set(self.basis_inv) - set(self.builder.new_inventory)
         if deleted_ids:
             self.any_entries_deleted = True
             deleted = [(self.basis_tree.id2path(file_id), file_id)
@@ -697,13 +729,15 @@ class Commit(object):
                 self._basis_delta.append((path, None, file_id, None))
                 self.reporter.deleted(path)
 
-    def _populate_from_inventory(self, specific_files):
+    def _populate_from_inventory(self):
         """Populate the CommitBuilder by walking the working tree inventory."""
         if self.strict:
             # raise an exception as soon as we find a single unknown.
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
-               
+        
+        specific_files = self.specific_files
+        exclude = self.exclude
         report_changes = self.reporter.is_verbose()
         deleted_ids = []
         # A tree of paths that have been deleted. E.g. if foo/bar has been
@@ -712,6 +746,8 @@ class Commit(object):
         # XXX: Note that entries may have the wrong kind because the entry does
         # not reflect the status on disk.
         work_inv = self.work_tree.inventory
+        # NB: entries will include entries within the excluded ids/paths
+        # because iter_entries_by_dir has no 'exclude' facility today.
         entries = work_inv.iter_entries_by_dir(
             specific_file_ids=self.specific_file_ids, yield_parents=True)
         for path, existing_ie in entries:
@@ -739,6 +775,10 @@ class Commit(object):
                 if deleted_dict is not None:
                     # the path has a deleted parent, do not add it.
                     continue
+            if exclude and is_inside_any(exclude, path):
+                # Skip excluded paths. Excluded paths are processed by
+                # _update_builder_with_changes.
+                continue
             content_summary = self.work_tree.path_content_summary(path)
             # Note that when a filter of specific files is given, we must only
             # skip/record deleted files matching that filter.
@@ -821,14 +861,18 @@ class Commit(object):
         else:
             ie = existing_ie.copy()
             ie.revision = None
-        delta, version_recorded = self.builder.record_entry_contents(ie,
-            self.parent_invs, path, self.work_tree, content_summary)
+        # For carried over entries we don't care about the fs hash - the repo
+        # isn't generating a sha, so we're not saving computation time.
+        delta, version_recorded, fs_hash = self.builder.record_entry_contents(
+            ie, self.parent_invs, path, self.work_tree, content_summary)
         if delta:
             self._basis_delta.append(delta)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:
             self._report_change(ie, path)
+        if fs_hash:
+            self.work_tree._observed_sha1(ie.file_id, path, fs_hash)
         return ie
 
     def _report_change(self, ie, path):

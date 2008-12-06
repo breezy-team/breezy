@@ -27,7 +27,10 @@ def _thread_profile(f, *args, **kwds):
 
 
 def profile(f, *args, **kwds):
-    """XXX docstring"""
+    """Run a function profile.
+    
+    :return: The functions return value and a stats object.
+    """
     global _g_threadmap
     p = Profiler()
     p.enable(subcalls=True)

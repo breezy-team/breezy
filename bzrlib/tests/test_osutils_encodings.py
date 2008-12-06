@@ -21,7 +21,6 @@ import locale
 import os
 import sys
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
@@ -78,7 +77,7 @@ class TestTerminalEncoding(TestCase):
         self._stdout = sys.stdout
         self._stderr = sys.stderr
         self._stdin = sys.stdin
-        self._user_encoding = bzrlib.user_encoding
+        self._user_encoding = osutils._cached_user_encoding
 
         self.addCleanup(self._reset)
 
@@ -94,7 +93,7 @@ class TestTerminalEncoding(TestCase):
         sys.stderr.encoding = stderr_encoding
         sys.stdin = StringIOWrapper()
         sys.stdin.encoding = stdin_encoding
-        bzrlib.user_encoding = user_encoding
+        osutils._cached_user_encoding = user_encoding
         if enable_fake_encodings:
             fake_codec.add(stdout_encoding)
             fake_codec.add(stderr_encoding)
@@ -104,7 +103,7 @@ class TestTerminalEncoding(TestCase):
         sys.stdout = self._stdout
         sys.stderr = self._stderr
         sys.stdin = self._stdin
-        bzrlib.user_encoding = self._user_encoding
+        osutils._cached_user_encoding = self._user_encoding
 
     def test_get_terminal_encoding(self):
         self.make_wrapped_streams('stdout_encoding',
@@ -119,7 +118,7 @@ class TestTerminalEncoding(TestCase):
         self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
 
         sys.stdin.encoding = None
-        # and in the worst case, use bzrlib.user_encoding
+        # and in the worst case, use osutils.get_user_encoding()
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
     def test_terminal_cp0(self):

@@ -18,6 +18,10 @@
 # perhaps show them in log -v and allow them as options to the commit command.
 
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import deprecated_graph
+""")
 from bzrlib import (
     errors,
     symbol_versioning,

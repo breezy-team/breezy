@@ -34,9 +34,11 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     osutils,
+    remote as _mod_remote,
     tests,
     transport,
     ui,
@@ -446,13 +448,6 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertTrue(server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
             % bzrlib.__version__) > -1)
-
-    def test_get_smart_medium(self):
-        # For HTTP, get_smart_medium should return the transport object.
-        server = self.get_readonly_server()
-        http_transport = self._transport(server.get_url())
-        medium = http_transport.get_smart_medium()
-        self.assertIs(medium, http_transport)
 
     def test_has_on_bogus_host(self):
         # Get a free address and don't 'accept' on it, so that we
@@ -1143,7 +1138,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'proxied contents of foo\n')
+            self.assertEqual('proxied contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1152,7 +1147,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'contents of foo\n')
+            self.assertEqual('contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1667,6 +1662,13 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         return http_utils.HTTPServerWithSmarts(
             protocol_version=self._protocol_version)
 
+    def test_open_bzrdir(self):
+        branch = self.make_branch('relpath')
+        http_server = self.get_readonly_server()
+        url = http_server.get_url() + 'relpath'
+        bd = bzrdir.BzrDir.open(url)
+        self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
+
     def test_bulk_data(self):
         # We should be able to send and receive bulk data in a single message.
         # The 'readv' command in the smart protocol both sends and receives
@@ -1738,5 +1740,6 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(errors.SmartProtocolError,
-                          t.send_http_smart_request, 'whatever')
+                          t.get_smart_medium().send_http_smart_request,
+                          'whatever')
 

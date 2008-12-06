@@ -52,8 +52,8 @@ Rule-based preferences
 ----------------------
 
 Some commands and plugins provide custom processing on files matching
-certain patterns. Branch-specific and per-user rule-based preferences
-are defined in ``.bzrrules`` and ``BZR_HOME/rules`` respectively.
+certain patterns. Per-user rule-based preferences are defined in
+``BZR_HOME/rules``.
 
 For further information on how rules are searched and the detailed syntax of
 the relevant files, see `Rules <../user-reference/bzr_man.html#rules>`_

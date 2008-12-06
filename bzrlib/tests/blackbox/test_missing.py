@@ -1,6 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
-# vim: encoding=utf-8
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +25,21 @@ from bzrlib.tests import TestCaseWithTransport
 
 
 class TestMissing(TestCaseWithTransport):
+
+    def test_missing_quiet(self):
+        # <https://bugs.launchpad.net/bzr/+bug/284748>
+        # create a source branch
+        #
+        # XXX: This still needs a test that missing is quiet when there are
+        # missing revisions.
+        a_tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='initial')
+
+        out, err = self.run_bzr('missing -q .')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_missing(self):
         missing = "You are missing 1 revision(s):"
@@ -142,7 +155,7 @@ class TestMissing(TestCaseWithTransport):
 
         # check last location
         lines, err = self.run_bzr('missing', working_dir='../b')
-        self.assertEquals('Using last location: %s\n'
+        self.assertEquals('Using saved parent location: %s\n'
                           'Branches are up to date.\n' % location,
                           lines)
         self.assertEquals('', err)

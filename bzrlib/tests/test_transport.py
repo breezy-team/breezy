@@ -180,10 +180,10 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 20, [(0, 10), (10, 10)])],
                    [(0, 10), (10, 10)])
 
-    # XXX: scary, http.readv() can't handle that --vila20071209
     def test_coalesce_overlapped(self):
-        self.check([(0, 15, [(0, 10), (5, 10)])],
-                   [(0, 10), (5, 10)])
+        self.assertRaises(ValueError,
+            self.check, [(0, 15, [(0, 10), (5, 10)])],
+                        [(0, 10), (5, 10)])
 
     def test_coalesce_limit(self):
         self.check([(10, 50, [(0, 10), (10, 10), (20, 10),
@@ -224,6 +224,16 @@ class TestCoalesceOffsets(TestCase):
         self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)]),],
                    [(10, 10), (20, 10), (30, 50), (80, 100)],
                   )
+
+    def test_coalesce_default_limit(self):
+        # By default we use a 100MB max size.
+        ten_mb = 10*1024*1024
+        self.check([(0, 10*ten_mb, [(i*ten_mb, ten_mb) for i in range(10)]),
+                    (10*ten_mb, ten_mb, [(0, ten_mb)])],
+                   [(i*ten_mb, ten_mb) for i in range(11)])
+        self.check([(0, 11*ten_mb, [(i*ten_mb, ten_mb) for i in range(11)]),],
+                   [(i*ten_mb, ten_mb) for i in range(11)],
+                   max_size=1*1024*1024*1024)
 
 
 class TestMemoryTransport(TestCase):

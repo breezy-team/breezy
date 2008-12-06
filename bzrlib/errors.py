@@ -81,7 +81,8 @@ class BzrError(StandardError):
         parameters.
 
         :param msg: If given, this is the literal complete text for the error,
-        not subject to expansion.
+           not subject to expansion. 'msg' is used instead of 'message' because
+           python evolved and, in 2.6, forbids the use of 'message'.
         """
         StandardError.__init__(self)
         if msg is not None:
@@ -93,23 +94,18 @@ class BzrError(StandardError):
             for key, value in kwds.items():
                 setattr(self, key, value)
 
-    def __str__(self):
+    def _format(self):
         s = getattr(self, '_preformatted_string', None)
         if s is not None:
-            # contains a preformatted message; must be cast to plain str
-            return str(s)
+            # contains a preformatted message
+            return s
         try:
             fmt = self._get_format_string()
             if fmt:
                 d = dict(self.__dict__)
-                # special case: python2.5 puts the 'message' attribute in a
-                # slot, so it isn't seen in __dict__
-                d['message'] = getattr(self, 'message', 'no message')
                 s = fmt % d
                 # __str__() should always return a 'str' object
                 # never a 'unicode' object.
-                if isinstance(s, unicode):
-                    return s.encode('utf8')
                 return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: dict=%r, fmt=%r, error=%r' \
@@ -117,6 +113,29 @@ class BzrError(StandardError):
                    self.__dict__,
                    getattr(self, '_fmt', None),
                    e)
+
+    def __unicode__(self):
+        u = self._format()
+        if isinstance(u, str):
+            # Try decoding the str using the default encoding.
+            u = unicode(u)
+        elif not isinstance(u, unicode):
+            # Try to make a unicode object from it, because __unicode__ must
+            # return a unicode object.
+            u = unicode(u)
+        return u
+
+    def __str__(self):
+        s = self._format()
+        if isinstance(s, unicode):
+            s = s.encode('utf8')
+        else:
+            # __str__ must return a str.
+            s = str(s)
+        return s
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, str(self))
 
     def _get_format_string(self):
         """Return format string for this exception or None"""
@@ -134,6 +153,11 @@ class BzrError(StandardError):
                self.__dict__,
                getattr(self, '_fmt', None),
                )
+
+    def __eq__(self, other):
+        if self.__class__ != other.__class__:
+            return NotImplemented
+        return self.__dict__ == other.__dict__
 
 
 class InternalBzrError(BzrError):
@@ -181,7 +205,7 @@ class BzrNewError(BzrError):
 
 
 class AlreadyBuilding(BzrError):
-    
+
     _fmt = "The tree builder is already building a tree."
 
 
@@ -193,12 +217,22 @@ class BranchError(BzrError):
 
 
 class BzrCheckError(InternalBzrError):
-    
-    _fmt = "Internal check failed: %(message)s"
 
-    def __init__(self, message):
+    _fmt = "Internal check failed: %(msg)s"
+
+    def __init__(self, msg):
         BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
+
+
+class DirstateCorrupt(BzrError):
+
+    _fmt = "The dirstate file (%(state)s) appears to be corrupt: %(msg)s"
+
+    def __init__(self, state, msg):
+        BzrError.__init__(self)
+        self.state = state
+        self.msg = msg
 
 
 class DisabledMethod(InternalBzrError):
@@ -366,16 +400,6 @@ class BzrCommandError(BzrError):
     # are not intended to be caught anyway.  UI code need not subclass
     # BzrCommandError, and non-UI code should not throw a subclass of
     # BzrCommandError.  ADHB 20051211
-    def __init__(self, msg):
-        # Object.__str__() must return a real string
-        # returning a Unicode string is a python error.
-        if isinstance(msg, unicode):
-            self.msg = msg.encode('utf8')
-        else:
-            self.msg = msg
-
-    def __str__(self):
-        return self.msg
 
 
 class NotWriteLocked(BzrError):
@@ -761,11 +785,15 @@ class IncompatibleFormat(BzrError):
 
 class IncompatibleRepositories(BzrError):
 
-    _fmt = "Repository %(target)s is not compatible with repository"\
-        " %(source)s"
+    _fmt = "%(target)s\n" \
+            "is not compatible with\n" \
+            "%(source)s\n" \
+            "%(details)s"
 
-    def __init__(self, source, target):
-        BzrError.__init__(self, target=target, source=source)
+    def __init__(self, source, target, details=None):
+        if details is None:
+            details = "(no details)"
+        BzrError.__init__(self, target=target, source=source, details=details)
 
 
 class IncompatibleRevision(BzrError):
@@ -1283,11 +1311,11 @@ class BoundBranchConnectionFailure(BzrError):
 
 class WeaveError(BzrError):
 
-    _fmt = "Error in processing weave: %(message)s"
+    _fmt = "Error in processing weave: %(msg)s"
 
-    def __init__(self, message=None):
+    def __init__(self, msg=None):
         BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
 
 
 class WeaveRevisionAlreadyPresent(WeaveError):
@@ -1399,6 +1427,21 @@ class KnitCorrupt(KnitError):
         self.how = how
 
 
+class SHA1KnitCorrupt(KnitCorrupt):
+
+    _fmt = ("Knit %(filename)s corrupt: sha-1 of reconstructed text does not "
+        "match expected sha-1. key %(key)s expected sha %(expected)s actual "
+        "sha %(actual)s")
+
+    def __init__(self, filename, actual, expected, key, content):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.actual = actual
+        self.expected = expected
+        self.key = key
+        self.content = content
+
+
 class KnitDataStreamIncompatible(KnitError):
     # Not raised anymore, as we can convert data streams.  In future we may
     # need it again for more exotic cases, so we're keeping it around for now.
@@ -1441,6 +1484,38 @@ class KnitIndexUnknownMethod(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.options = options
+
+
+class RetryWithNewPacks(BzrError):
+    """Raised when we realize that the packs on disk have changed.
+
+    This is meant as more of a signaling exception, to trap between where a
+    local error occurred and the code that can actually handle the error and
+    code that can retry appropriately.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and retry. %(orig_error)s")
+
+    def __init__(self, reload_occurred, exc_info):
+        """create a new RestartWithNewPacks error.
+
+        :param reload_occurred: Set to True if we know that the packs have
+            already been reloaded, and we are failing because of an in-memory
+            cache miss. If set to True then we will ignore if a reload says
+            nothing has changed, because we assume it has already reloaded. If
+            False, then a reload with nothing changed will force an error.
+        :param exc_info: The original exception traceback, so if there is a
+            problem we can raise the original error (value from sys.exc_info())
+        """
+        BzrError.__init__(self)
+        self.reload_occurred = reload_occurred
+        self.exc_info = exc_info
+        self.orig_error = exc_info[1]
+        # TODO: The global error handler should probably treat this by
+        #       raising/printing the original exception with a bit about
+        #       RetryWithNewPacks also not being caught
 
 
 class NoSuchExportFormat(BzrError):
@@ -1646,7 +1721,7 @@ class ParseConfigError(BzrError):
         if filename is None:
             filename = ""
         message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.message for e in errors)))
+            (filename, ('\n'.join(e.msg for e in errors)))
         BzrError.__init__(self, message)
 
 
@@ -1837,6 +1912,7 @@ class BzrMoveFailedError(BzrError):
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
 
     def __init__(self, from_path='', to_path='', extra=None):
+        from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
             self.extra = ': ' + str(extra)
@@ -1846,12 +1922,12 @@ class BzrMoveFailedError(BzrError):
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
         if has_from:
-            self.from_path = osutils.splitpath(from_path)[-1]
+            self.from_path = splitpath(from_path)[-1]
         else:
             self.from_path = ''
 
         if has_to:
-            self.to_path = osutils.splitpath(to_path)[-1]
+            self.to_path = splitpath(to_path)[-1]
         else:
             self.to_path = ''
 
@@ -2368,6 +2444,19 @@ class PatchMissing(BzrError):
         self.patch_type = patch_type
 
 
+class TargetNotBranch(BzrError):
+    """A merge directive's target branch is required, but isn't a branch"""
+
+    _fmt = ("Your branch does not have all of the revisions required in "
+            "order to merge this merge directive and the target "
+            "location specified in the merge directive is not a branch: "
+            "%(location)s.")
+
+    def __init__(self, location):
+        BzrError.__init__(self)
+        self.location = location
+
+
 class UnsupportedInventoryKind(BzrError):
     
     _fmt = """Unsupported entry kind %(kind)s"""
@@ -2416,7 +2505,7 @@ class NoSuchTag(BzrError):
 class TagsNotSupported(BzrError):
 
     _fmt = ("Tags not supported by %(branch)s;"
-            " you may be able to use bzr upgrade --dirstate-tags.")
+            " you may be able to use bzr upgrade.")
 
     def __init__(self, branch):
         self.branch = branch
@@ -2468,6 +2557,10 @@ class UnexpectedSmartServerResponse(BzrError):
 
 
 class ErrorFromSmartServer(BzrError):
+    """An error was received from a smart server.
+
+    :seealso: UnknownErrorFromSmartServer
+    """
 
     _fmt = "Error received from smart server: %(error_tuple)r"
 
@@ -2481,6 +2574,32 @@ class ErrorFromSmartServer(BzrError):
             self.error_verb = None
         self.error_args = error_tuple[1:]
 
+
+class UnknownErrorFromSmartServer(BzrError):
+    """An ErrorFromSmartServer could not be translated into a typical bzrlib
+    error.
+
+    This is distinct from ErrorFromSmartServer so that it is possible to
+    distinguish between the following two cases:
+      - ErrorFromSmartServer was uncaught.  This is logic error in the client
+        and so should provoke a traceback to the user.
+      - ErrorFromSmartServer was caught but its error_tuple could not be
+        translated.  This is probably because the server sent us garbage, and
+        should not provoke a traceback.
+    """
+
+    _fmt = "Server sent an unexpected error: %(error_tuple)r"
+
+    internal_error = False
+
+    def __init__(self, error_from_smart_server):
+        """Constructor.
+
+        :param error_from_smart_server: An ErrorFromSmartServer instance.
+        """
+        self.error_from_smart_server = error_from_smart_server
+        self.error_tuple = error_from_smart_server.error_tuple
+        
 
 class ContainerError(BzrError):
     """Base class of container errors."""
@@ -2739,6 +2858,7 @@ class UnableEncodePath(BzrError):
             'user encoding %(user_encoding)s')
 
     def __init__(self, path, kind):
+        from bzrlib.osutils import get_user_encoding
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
@@ -2789,3 +2909,51 @@ class UnknownRules(BzrError):
 
     def __init__(self, unknowns):
         BzrError.__init__(self, unknowns_str=", ".join(unknowns))
+
+
+class HookFailed(BzrError):
+    """Raised when a pre_change_branch_tip hook function fails anything other
+    than TipChangeRejected.
+    """
+
+    _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
+            "%(traceback_text)s%(exc_value)s")
+
+    def __init__(self, hook_stage, hook_name, exc_info):
+        import traceback
+        self.hook_stage = hook_stage
+        self.hook_name = hook_name
+        self.exc_info = exc_info
+        self.exc_type = exc_info[0]
+        self.exc_value = exc_info[1]
+        self.exc_tb = exc_info[2]
+        self.traceback_text = ''.join(traceback.format_tb(self.exc_tb))
+
+
+class TipChangeRejected(BzrError):
+    """A pre_change_branch_tip hook function may raise this to cleanly and
+    explicitly abort a change to a branch tip.
+    """
+    
+    _fmt = u"Tip change rejected: %(msg)s"
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class ShelfCorrupt(BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
+class NoSuchShelfId(BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class UserAbort(BzrError):
+
+    _fmt = 'The user aborted the operation.'

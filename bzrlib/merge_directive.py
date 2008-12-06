@@ -210,7 +210,11 @@ class _BaseMergeDirective(object):
                 except errors.RevisionNotPresent:
                     # At least one dependency isn't present.  Try installing
                     # missing revisions from the submit branch
-                    submit_branch = _mod_branch.Branch.open(self.target_branch)
+                    try:
+                        submit_branch = \
+                            _mod_branch.Branch.open(self.target_branch)
+                    except errors.NotBranchError:
+                        raise errors.TargetNotBranch(self.target_branch)
                     missing_revisions = []
                     bundle_revisions = set(r.revision_id for r in
                                            info.real_revisions)

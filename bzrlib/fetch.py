@@ -81,6 +81,9 @@ class RepoFetcher(object):
         """Create a repo fetcher.
 
         :param find_ghosts: If True search the entire history for ghosts.
+        :param _write_group_acquired_callable: Don't use; this parameter only
+            exists to facilitate a hack done in InterPackRepo.fetch.  We would
+            like to remove this parameter.
         """
         # result variables.
         self.failed_revisions = []
@@ -109,7 +112,7 @@ class RepoFetcher(object):
                 try:
                     self.__fetch()
                 except:
-                    self.to_repository.abort_write_group()
+                    self.to_repository.abort_write_group(suppress_errors=True)
                     raise
                 else:
                     self.to_repository.commit_write_group()
@@ -179,7 +182,8 @@ class RepoFetcher(object):
                     to_texts = self.to_repository.texts
                     from_texts = self.from_repository.texts
                     to_texts.insert_record_stream(from_texts.get_record_stream(
-                        text_keys, 'topological', False))
+                        text_keys, self.to_repository._fetch_order,
+                        not self.to_repository._fetch_uses_deltas))
                     # Cause an error if a text occurs after we have done the
                     # copy.
                     text_keys = None
@@ -198,6 +202,8 @@ class RepoFetcher(object):
                     self._fetch_revision_texts(revs, pb)
                 else:
                     raise AssertionError("Unknown knit kind %r" % knit_kind)
+            if self.to_repository._fetch_reconcile:
+                self.to_repository.reconcile()
         finally:
             if pb is not None:
                 pb.finished()
@@ -239,9 +245,33 @@ class RepoFetcher(object):
             # corrupt.
             to_weave.insert_record_stream(from_weave.get_record_stream(
                 [(rev_id,) for rev_id in revs],
-                'topological', False))
+                self.to_repository._fetch_order,
+                not self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
+
+    def _fetch_revision_texts(self, revs, pb):
+        # fetch signatures first and then the revision texts
+        # may need to be a InterRevisionStore call here.
+        to_sf = self.to_repository.signatures
+        from_sf = self.from_repository.signatures
+        # A missing signature is just skipped.
+        to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
+            [(rev_id,) for rev_id in revs],
+            self.to_repository._fetch_order,
+            not self.to_repository._fetch_uses_deltas)))
+        self._fetch_just_revision_texts(revs)
+
+    def _fetch_just_revision_texts(self, version_ids):
+        to_rf = self.to_repository.revisions
+        from_rf = self.from_repository.revisions
+        # If a revision has a delta, this is actually expanded inside the
+        # insert_record_stream code now, which is an alternate fix for
+        # bug #261339
+        to_rf.insert_record_stream(from_rf.get_record_stream(
+            [(rev_id,) for rev_id in version_ids],
+            self.to_repository._fetch_order,
+            not self.to_repository._fetch_uses_deltas))
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and
@@ -251,65 +281,6 @@ class RepoFetcher(object):
         after fetching weave texts.
         """
         pass
-
-
-class GenericRepoFetcher(RepoFetcher):
-    """This is a generic repo to repo fetcher.
-
-    This makes minimal assumptions about repo layout and contents.
-    It triggers a reconciliation after fetching to ensure integrity.
-    """
-
-    def _fetch_revision_texts(self, revs, pb):
-        """Fetch revision object texts"""
-        count = 0
-        total = len(revs)
-        for rev in revs:
-            pb.update('copying revisions', count, total)
-            try:
-                sig_text = self.from_repository.get_signature_text(rev)
-                self.to_repository.add_signature_text(rev, sig_text)
-            except errors.NoSuchRevision:
-                # not signed.
-                pass
-            self._copy_revision(rev)
-            count += 1
-        # fixup inventory if needed: 
-        # this is expensive because we have no inverse index to current ghosts.
-        # but on local disk its a few seconds and sftp push is already insane.
-        # so we just-do-it.
-        # FIXME: repository should inform if this is needed.
-        self.to_repository.reconcile()
-
-    def _copy_revision(self, rev_id):
-        rev = self.from_repository.get_revision(rev_id)
-        self.to_repository.add_revision(rev_id, rev)
-
-
-class KnitRepoFetcher(RepoFetcher):
-    """This is a knit format repository specific fetcher.
-
-    This differs from the GenericRepoFetcher by not doing a 
-    reconciliation after copying, and using knit joining to
-    copy revision texts.
-    """
-
-    def _fetch_revision_texts(self, revs, pb):
-        # may need to be a InterRevisionStore call here.
-        to_sf = self.to_repository.signatures
-        from_sf = self.from_repository.signatures
-        # A missing signature is just skipped.
-        to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
-            [(rev_id,) for rev_id in revs],
-            'unordered', False)))
-        self._fetch_just_revision_texts(revs)
-
-    def _fetch_just_revision_texts(self, version_ids):
-        to_rf = self.to_repository.revisions
-        from_rf = self.from_repository.revisions
-        to_rf.insert_record_stream(from_rf.get_record_stream(
-            [(rev_id,) for rev_id in version_ids],
-            'topological', False))
 
 
 class Inter1and2Helper(object):
@@ -416,17 +387,19 @@ class Inter1and2Helper(object):
                                       parents)
 
     def fetch_revisions(self, revision_ids):
+        # TODO: should this batch them up rather than requesting 10,000
+        #       revisions at once?
         for revision in self.source.get_revisions(revision_ids):
             self.target.add_revision(revision.revision_id, revision)
 
 
-class Model1toKnit2Fetcher(GenericRepoFetcher):
+class Model1toKnit2Fetcher(RepoFetcher):
     """Fetch from a Model1 repository into a Knit2 repository
     """
     def __init__(self, to_repository, from_repository, last_revision=None,
                  pb=None, find_ghosts=True):
         self.helper = Inter1and2Helper(from_repository, to_repository)
-        GenericRepoFetcher.__init__(self, to_repository, from_repository,
+        RepoFetcher.__init__(self, to_repository, from_repository,
             last_revision, pb, find_ghosts)
 
     def _generate_root_texts(self, revs):
@@ -435,17 +408,32 @@ class Model1toKnit2Fetcher(GenericRepoFetcher):
     def _fetch_inventory_weave(self, revs, pb):
         self.helper.regenerate_inventory(revs)
 
+    def _fetch_revision_texts(self, revs, pb):
+        """Fetch revision object texts"""
+        count = 0
+        total = len(revs)
+        for rev in revs:
+            pb.update('copying revisions', count, total)
+            try:
+                sig_text = self.from_repository.get_signature_text(rev)
+                self.to_repository.add_signature_text(rev, sig_text)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            self._copy_revision(rev)
+            count += 1
+
     def _copy_revision(self, rev):
         self.helper.fetch_revisions([rev])
 
 
-class Knit1to2Fetcher(KnitRepoFetcher):
+class Knit1to2Fetcher(RepoFetcher):
     """Fetch from a Knit1 repository into a Knit2 repository"""
 
-    def __init__(self, to_repository, from_repository, last_revision=None, 
+    def __init__(self, to_repository, from_repository, last_revision=None,
                  pb=None, find_ghosts=True):
         self.helper = Inter1and2Helper(from_repository, to_repository)
-        KnitRepoFetcher.__init__(self, to_repository, from_repository,
+        RepoFetcher.__init__(self, to_repository, from_repository,
             last_revision, pb, find_ghosts)
 
     def _generate_root_texts(self, revs):

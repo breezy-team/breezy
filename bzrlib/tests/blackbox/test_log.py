@@ -20,7 +20,7 @@
 
 import os
 
-import bzrlib
+from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 from bzrlib.tests.test_log import (
@@ -29,7 +29,8 @@ from bzrlib.tests.test_log import (
 from bzrlib.tests import test_log
 
 
-class TestCaseWithoutPropsHandler(ExternalBase, test_log.TestCaseWithoutPropsHandler):
+class TestCaseWithoutPropsHandler(ExternalBase,
+                                  test_log.TestCaseWithoutPropsHandler):
     pass
 
 
@@ -138,7 +139,25 @@ class TestLog(ExternalBase):
         self.assertTrue('revno: 2\n' not in log)
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
-        
+
+    def test_log_change_revno(self):
+        self._prepare()
+        expected_log = self.run_bzr("log -r 1")[0]
+        log = self.run_bzr("log -c 1")[0]
+        self.assertEqualDiff(expected_log, log)
+
+    def test_log_change_single_revno(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: Option --change does not'
+                           ' accept revision ranges',
+                           ['log', '--change', '2..3'])
+
+    def test_log_change_incompatible_with_revision(self):
+        self._prepare()
+        self.run_bzr_error('bzr: ERROR: --revision and --change'
+                           ' are mutually exclusive',
+                           ['log', '--change', '2', '--revision', '3'])
+
     def test_log_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
         # should give an error
@@ -152,8 +171,8 @@ class TestLog(ExternalBase):
         branch = tree.branch
         branch.tags.set_tag('tag1', branch.get_rev_id(1))
         branch.tags.set_tag('tag1.1', branch.get_rev_id(1))
-        branch.tags.set_tag('tag3', branch.last_revision()) 
-        
+        branch.tags.set_tag('tag3', branch.last_revision())
+
         log = self.run_bzr("log -r-1")[0]
         self.assertTrue('tags: tag3' in log)
 
@@ -177,11 +196,21 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'tags: tag1')
 
     def test_log_limit(self):
-        self._prepare()
+        tree = self.make_branch_and_tree('.')
+        # We want more commits than our batch size starts at
+        for pos in range(10):
+            tree.commit("%s" % pos)
         log = self.run_bzr("log --limit 2")[0]
         self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertContainsRe(log, r'revno: 2\n')
-        self.assertContainsRe(log, r'revno: 3\n')
+        self.assertNotContainsRe(log, r'revno: 2\n')
+        self.assertNotContainsRe(log, r'revno: 3\n')
+        self.assertNotContainsRe(log, r'revno: 4\n')
+        self.assertNotContainsRe(log, r'revno: 5\n')
+        self.assertNotContainsRe(log, r'revno: 6\n')
+        self.assertNotContainsRe(log, r'revno: 7\n')
+        self.assertNotContainsRe(log, r'revno: 8\n')
+        self.assertContainsRe(log, r'revno: 9\n')
+        self.assertContainsRe(log, r'revno: 10\n')
 
     def test_log_limit_short(self):
         self._prepare()
@@ -274,7 +303,7 @@ message:
 
     def test_merges_partial_range(self):
         self._prepare()
-        out,err = self.run_bzr('log -r1.1.1..1.1.2')
+        out, err = self.run_bzr('log -r1.1.1..1.1.2')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
@@ -311,7 +340,7 @@ message:
         out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
         self.assertContainsRe(err, err_msg)
 
- 
+
 class TestLogEncodings(TestCaseInTempDir):
 
     _mu = u'\xb5'
@@ -335,10 +364,10 @@ class TestLogEncodings(TestCaseInTempDir):
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        self.user_encoding = bzrlib.user_encoding
+        self.user_encoding = osutils._cached_user_encoding
 
     def tearDown(self):
-        bzrlib.user_encoding = self.user_encoding
+        osutils._cached_user_encoding = self.user_encoding
         TestCaseInTempDir.tearDown(self)
 
     def create_branch(self):
@@ -357,12 +386,12 @@ class TestLogEncodings(TestCaseInTempDir):
         else:
             encoded_msg = self._message.encode(encoding)
 
-        old_encoding = bzrlib.user_encoding
+        old_encoding = osutils._cached_user_encoding
         # This test requires that 'run_bzr' uses the current
         # bzrlib, because we override user_encoding, and expect
         # it to be used
         try:
-            bzrlib.user_encoding = 'ascii'
+            osutils._cached_user_encoding = 'ascii'
             # We should be able to handle any encoding
             out, err = bzr('log', encoding=encoding)
             if not fail:
@@ -373,7 +402,7 @@ class TestLogEncodings(TestCaseInTempDir):
             else:
                 self.assertNotEqual(-1, out.find('Message with ?'))
         finally:
-            bzrlib.user_encoding = old_encoding
+            osutils._cached_user_encoding = old_encoding
 
     def test_log_handles_encoding(self):
         self.create_branch()
@@ -389,7 +418,7 @@ class TestLogEncodings(TestCaseInTempDir):
 
     def test_stdout_encoding(self):
         bzr = self.run_bzr
-        bzrlib.user_encoding = "cp1251"
+        osutils._cached_user_encoding = "cp1251"
 
         bzr('init')
         self.build_tree(['a'])

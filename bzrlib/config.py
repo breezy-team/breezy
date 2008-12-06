@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -121,20 +121,25 @@ STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
 
+_ConfigObj = None
+def ConfigObj(*args, **kwargs):
+    global _ConfigObj
+    if _ConfigObj is None:
+        class ConfigObj(configobj.ConfigObj):
 
-class ConfigObj(configobj.ConfigObj):
+            def get_bool(self, section, key):
+                return self[section].as_bool(key)
 
-    def get_bool(self, section, key):
-        return self[section].as_bool(key)
-
-    def get_value(self, section, name):
-        # Try [] for the old DEFAULT section.
-        if section == "DEFAULT":
-            try:
-                return self[name]
-            except KeyError:
-                pass
-        return self[section][name]
+            def get_value(self, section, name):
+                # Try [] for the old DEFAULT section.
+                if section == "DEFAULT":
+                    try:
+                        return self[name]
+                    except KeyError:
+                        pass
+                return self[section][name]
+        _ConfigObj = ConfigObj
+    return _ConfigObj(*args, **kwargs)
 
 
 class Config(object):
@@ -147,21 +152,9 @@ class Config(object):
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
+        _registry = mail_client.mail_client_registry
         try:
-            mail_client_class = {
-                None: mail_client.DefaultMail,
-                # Specific clients
-                'emacsclient': mail_client.EmacsMail,
-                'evolution': mail_client.Evolution,
-                'kmail': mail_client.KMail,
-                'mutt': mail_client.Mutt,
-                'thunderbird': mail_client.Thunderbird,
-                # Generic options
-                'default': mail_client.DefaultMail,
-                'editor': mail_client.Editor,
-                'mapi': mail_client.MAPIClient,
-                'xdg-email': mail_client.XDGEmail,
-            }[selected_client]
+            mail_client_class = _registry.get(selected_client)
         except KeyError:
             raise errors.UnknownMailClient(selected_client)
         return mail_client_class(self)
@@ -236,7 +229,7 @@ class Config(object):
         """
         v = os.environ.get('BZR_EMAIL')
         if v:
-            return v.decode(bzrlib.user_encoding)
+            return v.decode(osutils.get_user_encoding())
 
         v = self._get_user_id()
         if v:
@@ -244,7 +237,7 @@ class Config(object):
 
         v = os.environ.get('EMAIL')
         if v:
-            return v.decode(bzrlib.user_encoding)
+            return v.decode(osutils.get_user_encoding())
 
         name, email = _auto_user_id()
         if name:
@@ -669,7 +662,7 @@ class BranchConfig(Config):
         """
         try:
             return (self.branch._transport.get_bytes("email")
-                    .decode(bzrlib.user_encoding)
+                    .decode(osutils.get_user_encoding())
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
             pass
@@ -846,7 +839,11 @@ def _auto_user_id():
     try:
         import pwd
         uid = os.getuid()
-        w = pwd.getpwuid(uid)
+        try:
+            w = pwd.getpwuid(uid)
+        except KeyError:
+            raise errors.BzrCommandError('Unable to determine your name.  '
+                'Please use "bzr whoami" to set it.')
 
         # we try utf-8 first, because on many variants (like Linux),
         # /etc/passwd "should" be in utf-8, and because it's unlikely to give
@@ -857,8 +854,8 @@ def _auto_user_id():
             encoding = 'utf-8'
         except UnicodeError:
             try:
-                gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-                encoding = bzrlib.user_encoding
+                encoding = osutils.get_user_encoding()
+                gecos = w.pw_gecos.decode(encoding)
             except UnicodeError:
                 raise errors.BzrCommandError('Unable to determine your name.  '
                    'Use "bzr whoami" to set it.')
@@ -879,10 +876,11 @@ def _auto_user_id():
     except ImportError:
         import getpass
         try:
-            realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+            user_encoding = osutils.get_user_encoding()
+            realname = username = getpass.getuser().decode(user_encoding)
         except UnicodeDecodeError:
             raise errors.BzrError("Can't decode username as %s." % \
-                    bzrlib.user_encoding)
+                    user_encoding)
 
     return realname, (username + '@' + socket.gethostname())
 
@@ -1069,6 +1067,47 @@ class AuthenticationConfig(object):
             break
 
         return credentials
+
+    def set_credentials(self, name, host, user, scheme=None, password=None,
+                        port=None, path=None, verify_certificates=None):
+        """Set authentication credentials for a host.
+
+        Any existing credentials with matching scheme, host, port and path
+        will be deleted, regardless of name.
+
+        :param name: An arbitrary name to describe this set of credentials.
+        :param host: Name of the host that accepts these credentials.
+        :param user: The username portion of these credentials.
+        :param scheme: The URL scheme (e.g. ssh, http) the credentials apply
+            to.
+        :param password: Password portion of these credentials.
+        :param port: The IP port on the host that these credentials apply to.
+        :param path: A filesystem path on the host that these credentials
+            apply to.
+        :param verify_certificates: On https, verify server certificates if
+            True.
+        """
+        values = {'host': host, 'user': user}
+        if password is not None:
+            values['password'] = password
+        if scheme is not None:
+            values['scheme'] = scheme
+        if port is not None:
+            values['port'] = '%d' % port
+        if path is not None:
+            values['path'] = path
+        if verify_certificates is not None:
+            values['verify_certificates'] = str(verify_certificates)
+        config = self._get_config()
+        for_deletion = []
+        for section, existing_values in config.items():
+            for key in ('scheme', 'host', 'port', 'path'):
+                if existing_values.get(key) != values.get(key):
+                    break
+            else:
+                del config[section]
+        config.update({name: values})
+        self._save()
 
     def get_user(self, scheme, host, port=None,
                  realm=None, path=None, prompt=None):

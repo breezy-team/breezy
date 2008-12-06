@@ -92,6 +92,13 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse( ('ok', ), content)
 
 
+class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        stacked_on_url = branch.get_stacked_on_url()
+        return SuccessfulSmartServerResponse(('ok', stacked_on_url))
+
+
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
@@ -115,9 +122,24 @@ class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
 
 
-class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
+class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
+    """Base class for handling common branch request logic for requests that
+    update the branch tip.
+    """
+
+    def do_with_locked_branch(self, branch, *args):
+        try:
+            return self.do_tip_change_with_locked_branch(branch, *args)
+        except errors.TipChangeRejected, e:
+            msg = e.msg
+            if isinstance(msg, unicode):
+                msg = msg.encode('utf-8')
+            return FailedSmartServerResponse(('TipChangeRejected', msg))
+
+
+class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
     
-    def do_with_locked_branch(self, branch, new_last_revision_id):
+    def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
         if new_last_revision_id == 'null:':
             branch.set_revision_history([])
         else:
@@ -128,9 +150,9 @@ class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
-class SmartServerBranchRequestSetLastRevisionEx(SmartServerLockedBranchRequest):
+class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
     
-    def do_with_locked_branch(self, branch, new_last_revision_id,
+    def do_tip_change_with_locked_branch(self, branch, new_last_revision_id,
             allow_divergence, allow_overwrite_descendant):
         """Set the last revision of the branch.
 
@@ -176,15 +198,15 @@ class SmartServerBranchRequestSetLastRevisionEx(SmartServerLockedBranchRequest):
             ('ok', new_revno, new_last_revision_id))
 
 
-class SmartServerBranchRequestSetLastRevisionInfo(
-    SmartServerLockedBranchRequest):
+class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
     """Branch.set_last_revision_info.  Sets the revno and the revision ID of
     the specified branch.
 
     New in bzrlib 1.4.
     """
     
-    def do_with_locked_branch(self, branch, new_revno, new_last_revision_id):
+    def do_tip_change_with_locked_branch(self, branch, new_revno,
+            new_last_revision_id):
         try:
             branch.set_last_revision_info(int(new_revno), new_last_revision_id)
         except errors.NoSuchRevision:

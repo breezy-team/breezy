@@ -1,4 +1,4 @@
-# Copyright (C) 2004 - 2006 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2004 - 2006, 2008 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-import re
 
 
 class PatchSyntax(Exception):
@@ -95,6 +94,7 @@ def parse_range(textrange):
 
  
 def hunk_from_header(line):
+    import re
     matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
     if matches is None:
         raise MalformedHunkHeader("Does not match format.", line)
@@ -393,13 +393,23 @@ def iter_patched(orig_lines, patch_lines):
     """Iterate through a series of lines with a patch applied.
     This handles a single file, and does exact, not fuzzy patching.
     """
-    if orig_lines is not None:
-        orig_lines = orig_lines.__iter__()
-    seen_patch = []
-    patch_lines = iter_lines_handle_nl(patch_lines.__iter__())
+    patch_lines = iter_lines_handle_nl(iter(patch_lines))
     get_patch_names(patch_lines)
+    return iter_patched_from_hunks(orig_lines, iter_hunks(patch_lines))
+
+
+def iter_patched_from_hunks(orig_lines, hunks):
+    """Iterate through a series of lines with a patch applied.
+    This handles a single file, and does exact, not fuzzy patching.
+
+    :param orig_lines: The unpatched lines.
+    :param hunks: An iterable of Hunk instances.
+    """
+    seen_patch = []
     line_no = 1
-    for hunk in iter_hunks(patch_lines):
+    if orig_lines is not None:
+        orig_lines = iter(orig_lines)
+    for hunk in hunks:
         while line_no < hunk.orig_pos:
             orig_line = orig_lines.next()
             yield orig_line

@@ -18,13 +18,21 @@
 
 import os
  
-from bzrlib import bzrdir, errors
+from bzrlib import (
+    branch,
+    builtins,
+    bzrdir,
+    debug,
+    errors,
+    tests,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
-from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
+from bzrlib.smart import client, server
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalURLServer
 
 
@@ -257,3 +265,68 @@ class TestPushHook(TestCaseWithBranch):
              2, rev2, True, None, True)
             ],
             self.hook_calls)
+
+
+class EmptyPushSmartEffortTests(TestCaseWithBranch):
+    """Tests that a push of 0 revisions should make a limited number of smart
+    protocol RPCs.
+    """
+
+    def setUp(self):
+        # Skip some scenarios that don't apply to these tests.
+        if (self.transport_server is not None and
+            issubclass(self.transport_server, server.SmartTCPServer)):
+            raise tests.TestNotApplicable(
+                'Does not apply when remote backing branch is also '
+                'a smart branch')
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise tests.TestNotApplicable(
+                'Branch format 4 is not usable via HPSS.')
+        super(EmptyPushSmartEffortTests, self).setUp()
+        # Create a smart server that publishes whatever the backing VFS server
+        # does.
+        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server.setUp(self.get_server())
+        self.addCleanup(self.smart_server.tearDown)
+        # Make two empty branches, 'empty' and 'target'.
+        self.empty_branch = self.make_branch('empty')
+        self.make_branch('target')
+        # Log all HPSS calls into self.hpss_calls.
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
+
+    def test_empty_branch_api(self):
+        """The branch_obj.push API should make a limited number of HPSS calls.
+        """
+        transport = get_transport(self.smart_server.get_url()).clone('target')
+        target = Branch.open_from_transport(transport)
+        self.empty_branch.push(target)
+        self.assertEqual(
+            ['BzrDir.open',
+             'BzrDir.open_branch',
+             'BzrDir.find_repositoryV2',
+             'Branch.get_stacked_on_url',
+             'Branch.lock_write',
+             'Branch.last_revision_info',
+             'Branch.unlock'],
+            self.hpss_calls)
+
+    def test_empty_branch_command(self):
+        """The 'bzr push' command should make a limited number of HPSS calls.
+        """
+        cmd = builtins.cmd_push()
+        cmd.outf = tests.StringIOWrapper()
+        cmd.run(
+            directory=self.get_url() + 'empty',
+            location=self.smart_server.get_url() + 'target')
+        # HPSS calls as of 2008/09/22:
+        # [BzrDir.open, BzrDir.open_branch, BzrDir.find_repositoryV2,
+        # Branch.get_stacked_on_url, get, get, Branch.lock_write,
+        # Branch.last_revision_info, Branch.unlock]
+        self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
+
+

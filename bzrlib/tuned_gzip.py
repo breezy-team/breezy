@@ -21,7 +21,7 @@ from cStringIO import StringIO
 
 # make GzipFile faster:
 import gzip
-from gzip import U32, LOWU32, FEXTRA, FCOMMENT, FNAME, FHCRC
+from gzip import FEXTRA, FCOMMENT, FNAME, FHCRC
 import sys
 import struct
 import zlib
@@ -30,6 +30,21 @@ import zlib
 import bzrlib
 
 __all__ = ["GzipFile", "bytes_to_gzip"]
+
+
+def U32(i):
+    """Return i as an unsigned integer, assuming it fits in 32 bits.
+
+    If it's >= 2GB when viewed as a 32-bit unsigned int, return a long.
+    """
+    if i < 0:
+        i += 1L << 32
+    return i
+
+
+def LOWU32(i):
+    """Return the low-order 32 bits of an int, as a non-negative int."""
+    return i & 0xFFFFFFFFL
 
 
 def bytes_to_gzip(bytes, factory=zlib.compressobj,

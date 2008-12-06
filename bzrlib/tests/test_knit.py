@@ -19,7 +19,6 @@
 from cStringIO import StringIO
 import difflib
 import gzip
-import sha
 import sys
 
 from bzrlib import (
@@ -27,6 +26,7 @@ from bzrlib import (
     generate_ids,
     knit,
     multiparent,
+    osutils,
     pack,
     )
 from bzrlib.errors import (
@@ -48,14 +48,14 @@ from bzrlib.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
-from bzrlib.osutils import split_lines
-from bzrlib.symbol_versioning import one_four
+from bzrlib.repofmt import pack_repo
 from bzrlib.tests import (
     Feature,
     KnownFailure,
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
+    TestNotApplicable,
     )
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
@@ -271,6 +271,24 @@ class MockTransport(object):
         return queue_call
 
 
+class MockReadvFailingTransport(MockTransport):
+    """Fail in the middle of a readv() result.
+
+    This Transport will successfully yield the first two requested hunks, but
+    raise NoSuchFile for the rest.
+    """
+
+    def readv(self, relpath, offsets):
+        count = 0
+        for result in MockTransport.readv(self, relpath, offsets):
+            count += 1
+            # we use 2 because the first offset is the pack header, the second
+            # is the first actual content requset
+            if count > 2:
+                raise errors.NoSuchFile(relpath)
+            yield result
+
+
 class KnitRecordAccessTestsMixin(object):
     """Tests for getting and putting knit records."""
 
@@ -305,7 +323,11 @@ class TestKnitKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         mapper = ConstantMapper("foo")
         access = _KnitKeyAccess(self.get_transport(), mapper)
         return access
-    
+
+
+class _TestException(Exception):
+    """Just an exception for local tests to use."""
+
 
 class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin):
     """Tests for the pack based access."""
@@ -322,6 +344,88 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         access = _DirectPackAccess({})
         access.set_writer(writer, index, (transport, packname))
         return access, writer
+
+    def make_pack_file(self):
+        """Create a pack file with 2 records."""
+        access, writer = self._get_access(packname='packname', index='foo')
+        memos = []
+        memos.extend(access.add_raw_records([('key1', 10)], '1234567890'))
+        memos.extend(access.add_raw_records([('key2', 5)], '12345'))
+        writer.end()
+        return memos
+
+    def make_vf_for_retrying(self):
+        """Create 3 packs and a reload function.
+
+        Originally, 2 pack files will have the data, but one will be missing.
+        And then the third will be used in place of the first two if reload()
+        is called.
+
+        :return: (versioned_file, reload_counter)
+            versioned_file  a KnitVersionedFiles using the packs for access
+        """
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        try:
+            tree.add([''], ['root-id'])
+            tree.commit('one', rev_id='rev-1')
+            tree.commit('two', rev_id='rev-2')
+            tree.commit('three', rev_id='rev-3')
+            # Pack these two revisions into another pack file, but don't remove
+            # the originials
+            repo = tree.branch.repository
+            collection = repo._pack_collection
+            collection.ensure_loaded()
+            orig_packs = collection.packs
+            packer = pack_repo.Packer(collection, orig_packs, '.testpack')
+            new_pack = packer.pack()
+
+            vf = tree.branch.repository.revisions
+        finally:
+            tree.unlock()
+        tree.branch.repository.lock_read()
+        self.addCleanup(tree.branch.repository.unlock)
+        del tree
+        # Set up a reload() function that switches to using the new pack file
+        new_index = new_pack.revision_index
+        access_tuple = new_pack.access_tuple()
+        reload_counter = [0, 0, 0]
+        def reload():
+            reload_counter[0] += 1
+            if reload_counter[1] > 0:
+                # We already reloaded, nothing more to do
+                reload_counter[2] += 1
+                return False
+            reload_counter[1] += 1
+            vf._index._graph_index._indices[:] = [new_index]
+            vf._access._indices.clear()
+            vf._access._indices[new_index] = access_tuple
+            return True
+        # Delete one of the pack files so the data will need to be reloaded. We
+        # will delete the file with 'rev-2' in it
+        trans, name = orig_packs[1].access_tuple()
+        trans.delete(name)
+        # We don't have the index trigger reloading because we want to test
+        # that we reload when the .pack disappears
+        vf._access._reload_func = reload
+        return vf, reload_counter
+
+    def make_reload_func(self, return_val=True):
+        reload_called = [0]
+        def reload():
+            reload_called[0] += 1
+            return return_val
+        return reload_called, reload
+
+    def make_retry_exception(self):
+        # We raise a real exception so that sys.exc_info() is properly
+        # populated
+        try:
+            raise _TestException('foobar')
+        except _TestException, e:
+            retry_exc = errors.RetryWithNewPacks(reload_occurred=False,
+                                                 exc_info=sys.exc_info())
+        return retry_exc
 
     def test_read_from_several_packs(self):
         access, writer = self._get_access()
@@ -364,6 +468,235 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         writer.end()
         self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
 
+    def test_missing_index_raises_retry(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        reload_called, reload_func = self.make_reload_func()
+        # Note that the index key has changed from 'foo' to 'bar'
+        access = _DirectPackAccess({'bar':(transport, 'packname')},
+                                   reload_func=reload_func)
+        e = self.assertListRaises(errors.RetryWithNewPacks,
+                                  access.get_raw_records, memos)
+        # Because a key was passed in which does not match our index list, we
+        # assume that the listing was already reloaded
+        self.assertTrue(e.reload_occurred)
+        self.assertIsInstance(e.exc_info, tuple)
+        self.assertIs(e.exc_info[0], KeyError)
+        self.assertIsInstance(e.exc_info[1], KeyError)
+
+    def test_missing_index_raises_key_error_with_no_reload(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        # Note that the index key has changed from 'foo' to 'bar'
+        access = _DirectPackAccess({'bar':(transport, 'packname')})
+        e = self.assertListRaises(KeyError, access.get_raw_records, memos)
+
+    def test_missing_file_raises_retry(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        reload_called, reload_func = self.make_reload_func()
+        # Note that the 'filename' has been changed to 'different-packname'
+        access = _DirectPackAccess({'foo':(transport, 'different-packname')},
+                                   reload_func=reload_func)
+        e = self.assertListRaises(errors.RetryWithNewPacks,
+                                  access.get_raw_records, memos)
+        # The file has gone missing, so we assume we need to reload
+        self.assertFalse(e.reload_occurred)
+        self.assertIsInstance(e.exc_info, tuple)
+        self.assertIs(e.exc_info[0], errors.NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
+        self.assertEqual('different-packname', e.exc_info[1].path)
+
+    def test_missing_file_raises_no_such_file_with_no_reload(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        # Note that the 'filename' has been changed to 'different-packname'
+        access = _DirectPackAccess({'foo':(transport, 'different-packname')})
+        e = self.assertListRaises(errors.NoSuchFile,
+                                  access.get_raw_records, memos)
+
+    def test_failing_readv_raises_retry(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        failing_transport = MockReadvFailingTransport(
+                                [transport.get_bytes('packname')])
+        reload_called, reload_func = self.make_reload_func()
+        access = _DirectPackAccess({'foo':(failing_transport, 'packname')},
+                                   reload_func=reload_func)
+        # Asking for a single record will not trigger the Mock failure
+        self.assertEqual(['1234567890'],
+            list(access.get_raw_records(memos[:1])))
+        self.assertEqual(['12345'],
+            list(access.get_raw_records(memos[1:2])))
+        # A multiple offset readv() will fail mid-way through
+        e = self.assertListRaises(errors.RetryWithNewPacks,
+                                  access.get_raw_records, memos)
+        # The file has gone missing, so we assume we need to reload
+        self.assertFalse(e.reload_occurred)
+        self.assertIsInstance(e.exc_info, tuple)
+        self.assertIs(e.exc_info[0], errors.NoSuchFile)
+        self.assertIsInstance(e.exc_info[1], errors.NoSuchFile)
+        self.assertEqual('packname', e.exc_info[1].path)
+
+    def test_failing_readv_raises_no_such_file_with_no_reload(self):
+        memos = self.make_pack_file()
+        transport = self.get_transport()
+        failing_transport = MockReadvFailingTransport(
+                                [transport.get_bytes('packname')])
+        reload_called, reload_func = self.make_reload_func()
+        access = _DirectPackAccess({'foo':(failing_transport, 'packname')})
+        # Asking for a single record will not trigger the Mock failure
+        self.assertEqual(['1234567890'],
+            list(access.get_raw_records(memos[:1])))
+        self.assertEqual(['12345'],
+            list(access.get_raw_records(memos[1:2])))
+        # A multiple offset readv() will fail mid-way through
+        e = self.assertListRaises(errors.NoSuchFile,
+                                  access.get_raw_records, memos)
+
+    def test_reload_or_raise_no_reload(self):
+        access = _DirectPackAccess({}, reload_func=None)
+        retry_exc = self.make_retry_exception()
+        # Without a reload_func, we will just re-raise the original exception
+        self.assertRaises(_TestException, access.reload_or_raise, retry_exc)
+
+    def test_reload_or_raise_reload_changed(self):
+        reload_called, reload_func = self.make_reload_func(return_val=True)
+        access = _DirectPackAccess({}, reload_func=reload_func)
+        retry_exc = self.make_retry_exception()
+        access.reload_or_raise(retry_exc)
+        self.assertEqual([1], reload_called)
+        retry_exc.reload_occurred=True
+        access.reload_or_raise(retry_exc)
+        self.assertEqual([2], reload_called)
+
+    def test_reload_or_raise_reload_no_change(self):
+        reload_called, reload_func = self.make_reload_func(return_val=False)
+        access = _DirectPackAccess({}, reload_func=reload_func)
+        retry_exc = self.make_retry_exception()
+        # If reload_occurred is False, then we consider it an error to have
+        # reload_func() return False (no changes).
+        self.assertRaises(_TestException, access.reload_or_raise, retry_exc)
+        self.assertEqual([1], reload_called)
+        retry_exc.reload_occurred=True
+        # If reload_occurred is True, then we assume nothing changed because
+        # it had changed earlier, but didn't change again
+        access.reload_or_raise(retry_exc)
+        self.assertEqual([2], reload_called)
+
+    def test_annotate_retries(self):
+        vf, reload_counter = self.make_vf_for_retrying()
+        # It is a little bit bogus to annotate the Revision VF, but it works,
+        # as we have ancestry stored there
+        key = ('rev-3',)
+        reload_lines = vf.annotate(key)
+        self.assertEqual([1, 1, 0], reload_counter)
+        plain_lines = vf.annotate(key)
+        self.assertEqual([1, 1, 0], reload_counter) # No extra reloading
+        if reload_lines != plain_lines:
+            self.fail('Annotation was not identical with reloading.')
+        # Now delete the packs-in-use, which should trigger another reload, but
+        # this time we just raise an exception because we can't recover
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertRaises(errors.NoSuchFile, vf.annotate, key)
+        self.assertEqual([2, 1, 1], reload_counter)
+
+    def test__get_record_map_retries(self):
+        vf, reload_counter = self.make_vf_for_retrying()
+        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
+        records = vf._get_record_map(keys)
+        self.assertEqual(keys, sorted(records.keys()))
+        self.assertEqual([1, 1, 0], reload_counter)
+        # Now delete the packs-in-use, which should trigger another reload, but
+        # this time we just raise an exception because we can't recover
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertRaises(errors.NoSuchFile, vf._get_record_map, keys)
+        self.assertEqual([2, 1, 1], reload_counter)
+
+    def test_get_record_stream_retries(self):
+        vf, reload_counter = self.make_vf_for_retrying()
+        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
+        record_stream = vf.get_record_stream(keys, 'topological', False)
+        record = record_stream.next()
+        self.assertEqual(('rev-1',), record.key)
+        self.assertEqual([0, 0, 0], reload_counter)
+        record = record_stream.next()
+        self.assertEqual(('rev-2',), record.key)
+        self.assertEqual([1, 1, 0], reload_counter)
+        record = record_stream.next()
+        self.assertEqual(('rev-3',), record.key)
+        self.assertEqual([1, 1, 0], reload_counter)
+        # Now delete all pack files, and see that we raise the right error
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertListRaises(errors.NoSuchFile,
+            vf.get_record_stream, keys, 'topological', False)
+
+    def test_iter_lines_added_or_present_in_keys_retries(self):
+        vf, reload_counter = self.make_vf_for_retrying()
+        keys = [('rev-1',), ('rev-2',), ('rev-3',)]
+        # Unfortunately, iter_lines_added_or_present_in_keys iterates the
+        # result in random order (determined by the iteration order from a
+        # set()), so we don't have any solid way to trigger whether data is
+        # read before or after. However we tried to delete the middle node to
+        # exercise the code well.
+        # What we care about is that all lines are always yielded, but not
+        # duplicated
+        count = 0
+        reload_lines = sorted(vf.iter_lines_added_or_present_in_keys(keys))
+        self.assertEqual([1, 1, 0], reload_counter)
+        # Now do it again, to make sure the result is equivalent
+        plain_lines = sorted(vf.iter_lines_added_or_present_in_keys(keys))
+        self.assertEqual([1, 1, 0], reload_counter) # No extra reloading
+        self.assertEqual(plain_lines, reload_lines)
+        self.assertEqual(21, len(plain_lines))
+        # Now delete all pack files, and see that we raise the right error
+        for trans, name in vf._access._indices.itervalues():
+            trans.delete(name)
+        self.assertListRaises(errors.NoSuchFile,
+            vf.iter_lines_added_or_present_in_keys, keys)
+        self.assertEqual([2, 1, 1], reload_counter)
+
+    def test_get_record_stream_yields_disk_sorted_order(self):
+        # if we get 'unordered' pick a semi-optimal order for reading. The
+        # order should be grouped by pack file, and then by position in file
+        repo = self.make_repository('test', format='pack-0.92')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        vf = repo.texts
+        vf.add_lines(('f-id', 'rev-5'), [('f-id', 'rev-4')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-1'), [], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-2'), [('f-id', 'rev-1')], ['lines\n'])
+        repo.commit_write_group()
+        # We inserted them as rev-5, rev-1, rev-2, we should get them back in
+        # the same order
+        stream = vf.get_record_stream([('f-id', 'rev-1'), ('f-id', 'rev-5'),
+                                       ('f-id', 'rev-2')], 'unordered', False)
+        keys = [r.key for r in stream]
+        self.assertEqual([('f-id', 'rev-5'), ('f-id', 'rev-1'),
+                          ('f-id', 'rev-2')], keys)
+        repo.start_write_group()
+        vf.add_lines(('f-id', 'rev-4'), [('f-id', 'rev-3')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-3'), [('f-id', 'rev-2')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-6'), [('f-id', 'rev-5')], ['lines\n'])
+        repo.commit_write_group()
+        # Request in random order, to make sure the output order isn't based on
+        # the request
+        request_keys = set(('f-id', 'rev-%d' % i) for i in range(1, 7))
+        stream = vf.get_record_stream(request_keys, 'unordered', False)
+        keys = [r.key for r in stream]
+        # We want to get the keys back in disk order, but it doesn't matter
+        # which pack we read from first. So this can come back in 2 orders
+        alt1 = [('f-id', 'rev-%d' % i) for i in [4, 3, 6, 5, 1, 2]]
+        alt2 = [('f-id', 'rev-%d' % i) for i in [5, 1, 2, 4, 3, 6]]
+        if keys != alt1 and keys != alt2:
+            self.fail('Returned key order did not match either expected order.'
+                      ' expected %s or %s, not %s'
+                      % (alt1, alt2, keys))
+
 
 class LowLevelKnitDataTests(TestCase):
 
@@ -374,8 +707,28 @@ class LowLevelKnitDataTests(TestCase):
         gz_file.close()
         return sio.getvalue()
 
+    def make_multiple_records(self):
+        """Create the content for multiple records."""
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
+        total_txt = []
+        gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
+                                        'foo\n'
+                                        'bar\n'
+                                        'end rev-id-1\n'
+                                        % (sha1sum,))
+        record_1 = (0, len(gz_txt), sha1sum)
+        total_txt.append(gz_txt)
+        sha1sum = osutils.sha('baz\n').hexdigest()
+        gz_txt = self.create_gz_content('version rev-id-2 1 %s\n'
+                                        'baz\n'
+                                        'end rev-id-2\n'
+                                        % (sha1sum,))
+        record_2 = (record_1[1], len(gz_txt), sha1sum)
+        total_txt.append(gz_txt)
+        return total_txt, record_1, record_2
+
     def test_valid_knit_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -393,8 +746,26 @@ class LowLevelKnitDataTests(TestCase):
         raw_contents = list(knit._read_records_iter_raw(records))
         self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
+    def test_multiple_records_valid(self):
+        total_txt, record_1, record_2 = self.make_multiple_records()
+        transport = MockTransport([''.join(total_txt)])
+        access = _KnitKeyAccess(transport, ConstantMapper('filename'))
+        knit = KnitVersionedFiles(None, access)
+        records = [(('rev-id-1',), (('rev-id-1',), record_1[0], record_1[1])),
+                   (('rev-id-2',), (('rev-id-2',), record_2[0], record_2[1]))]
+
+        contents = list(knit._read_records_iter(records))
+        self.assertEqual([(('rev-id-1',), ['foo\n', 'bar\n'], record_1[2]),
+                          (('rev-id-2',), ['baz\n'], record_2[2])],
+                         contents)
+
+        raw_contents = list(knit._read_records_iter_raw(records))
+        self.assertEqual([(('rev-id-1',), total_txt[0], record_1[2]),
+                          (('rev-id-2',), total_txt[1], record_2[2])],
+                         raw_contents)
+
     def test_not_enough_lines(self):
-        sha1sum = sha.new('foo\n').hexdigest()
+        sha1sum = osutils.sha('foo\n').hexdigest()
         # record says 2 lines data says 1
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
@@ -412,7 +783,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([(('rev-id-1',),  gz_txt, sha1sum)], raw_contents)
 
     def test_too_many_lines(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         # record says 1 lines data says 2
         gz_txt = self.create_gz_content('version rev-id-1 1 %s\n'
                                         'foo\n'
@@ -431,7 +802,7 @@ class LowLevelKnitDataTests(TestCase):
         self.assertEqual([(('rev-id-1',), gz_txt, sha1sum)], raw_contents)
 
     def test_mismatched_version_id(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -450,7 +821,7 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_uncompressed_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         txt = ('version rev-id-1 2 %s\n'
                'foo\n'
                'bar\n'
@@ -470,7 +841,7 @@ class LowLevelKnitDataTests(TestCase):
             knit._read_records_iter_raw(records))
 
     def test_corrupted_data(self):
-        sha1sum = sha.new('foo\nbar\n').hexdigest()
+        sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         gz_txt = self.create_gz_content('version rev-id-1 2 %s\n'
                                         'foo\n'
                                         'bar\n'
@@ -920,6 +1291,32 @@ class KnitTests(TestCaseWithTransport):
     def make_test_knit(self, annotate=False, name='test'):
         mapper = ConstantMapper(name)
         return make_file_factory(annotate, mapper)(self.get_transport())
+
+
+class TestBadShaError(KnitTests):
+    """Tests for handling of sha errors."""
+
+    def test_exception_has_text(self):
+        # having the failed text included in the error allows for recovery.
+        source = self.make_test_knit()
+        target = self.make_test_knit(name="target")
+        if not source._max_delta_chain:
+            raise TestNotApplicable(
+                "cannot get delta-caused sha failures without deltas.")
+        # create a basis
+        basis = ('basis',)
+        broken = ('broken',)
+        source.add_lines(basis, (), ['foo\n'])
+        source.add_lines(broken, (basis,), ['foo\n', 'bar\n'])
+        # Seed target with a bad basis text
+        target.add_lines(basis, (), ['gam\n'])
+        target.insert_record_stream(
+            source.get_record_stream([broken], 'unordered', False))
+        err = self.assertRaises(errors.KnitCorrupt,
+            target.get_record_stream([broken], 'unordered', True).next)
+        self.assertEqual(['gam\n', 'bar\n'], err.content)
+        # Test for formatting with live data
+        self.assertStartsWith(str(err), "Knit ")
 
 
 class TestKnitIndex(KnitTests):
@@ -1410,7 +1807,9 @@ class TestStacking(KnitTests):
         basis.calls = []
         test.add_lines(key_cross_border, (key_basis,), ['foo\n'])
         self.assertEqual('fulltext', test._index.get_method(key_cross_border))
-        self.assertEqual([("get_parent_map", set([key_basis]))], basis.calls)
+        # we don't even need to look at the basis to see that this should be
+        # stored as a fulltext
+        self.assertEqual([], basis.calls)
         # Subsequent adds do delta.
         basis.calls = []
         test.add_lines(key_delta, (key_cross_border,), ['foo\n'])
@@ -1641,7 +2040,7 @@ class TestStacking(KnitTests):
         key_basis = ('bar',)
         key_missing = ('missing',)
         test.add_lines(key, (), ['foo\n'])
-        key_sha1sum = sha.new('foo\n').hexdigest()
+        key_sha1sum = osutils.sha('foo\n').hexdigest()
         sha1s = test.get_sha1s([key])
         self.assertEqual({key: key_sha1sum}, sha1s)
         self.assertEqual([], basis.calls)
@@ -1649,7 +2048,7 @@ class TestStacking(KnitTests):
         # directly (rather than via text reconstruction) so that remote servers
         # etc don't have to answer with full content.
         basis.add_lines(key_basis, (), ['foo\n', 'bar\n'])
-        basis_sha1sum = sha.new('foo\nbar\n').hexdigest()
+        basis_sha1sum = osutils.sha('foo\nbar\n').hexdigest()
         basis.calls = []
         sha1s = test.get_sha1s([key, key_missing, key_basis])
         self.assertEqual({key: key_sha1sum,
@@ -1671,7 +2070,11 @@ class TestStacking(KnitTests):
         source.add_lines(key_delta, (key_basis,), ['bar\n'])
         stream = source.get_record_stream([key_delta], 'unordered', False)
         test.insert_record_stream(stream)
-        self.assertEqual([("get_parent_map", set([key_basis]))],
+        # XXX: this does somewhat too many calls in making sure of whether it
+        # has to recreate the full text.
+        self.assertEqual([("get_parent_map", set([key_basis])),
+             ('get_parent_map', set([key_basis])),
+             ('get_record_stream', [key_basis], 'unordered', True)],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
@@ -1738,8 +2141,7 @@ class TestStacking(KnitTests):
         test.add_mpdiffs([(key_delta, (key_basis,),
             source.get_sha1s([key_delta])[key_delta], diffs[0])])
         self.assertEqual([("get_parent_map", set([key_basis])),
-            ('get_record_stream', [key_basis], 'unordered', True),
-            ('get_parent_map', set([key_basis]))],
+            ('get_record_stream', [key_basis], 'unordered', True),],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
@@ -1764,14 +2166,13 @@ class TestStacking(KnitTests):
                 multiparent.NewText(['foo\n']),
                 multiparent.ParentText(1, 0, 2, 1)])],
             diffs)
-        self.assertEqual(4, len(basis.calls))
+        self.assertEqual(3, len(basis.calls))
         self.assertEqual([
             ("get_parent_map", set([key_left, key_right])),
             ("get_parent_map", set([key_left, key_right])),
-            ("get_parent_map", set([key_left, key_right])),
             ],
-            basis.calls[:3])
-        last_call = basis.calls[3]
+            basis.calls[:-1])
+        last_call = basis.calls[-1]
         self.assertEqual('get_record_stream', last_call[0])
         self.assertEqual(set([key_left, key_right]), set(last_call[1]))
         self.assertEqual('unordered', last_call[2])

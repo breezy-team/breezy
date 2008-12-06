@@ -23,6 +23,7 @@ from bzrlib import (
     bzrdir,
     errors,
     repository,
+    revision as _mod_revision,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.revisionspec import (
@@ -99,6 +100,12 @@ class TestRevisionSpec(TestCaseWithTransport):
         spec = RevisionSpec.from_string(revision_spec)
         self.assertEqual(revision_id,
                          spec.as_revision_id(self.tree.branch))
+
+    def get_as_tree(self, revision_spec, tree=None):
+        if tree is None:
+            tree = self.tree
+        spec = RevisionSpec.from_string(revision_spec)
+        return spec.as_tree(tree.branch)
 
 
 class RevisionSpecMatchOnTrap(RevisionSpec):
@@ -299,6 +306,20 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertAsRevisionId('r1', '-2')
         self.assertAsRevisionId('r2', '-1')
         self.assertAsRevisionId('alt_r2', '1.1.1')
+
+    def test_as_tree(self):
+        tree = self.get_as_tree('0')
+        self.assertEquals(_mod_revision.NULL_REVISION, tree.get_revision_id())
+        tree = self.get_as_tree('1')
+        self.assertEquals('r1', tree.get_revision_id())
+        tree = self.get_as_tree('2')
+        self.assertEquals('r2', tree.get_revision_id())
+        tree = self.get_as_tree('-2')
+        self.assertEquals('r1', tree.get_revision_id())
+        tree = self.get_as_tree('-1')
+        self.assertEquals('r2', tree.get_revision_id())
+        tree = self.get_as_tree('1.1.1')
+        self.assertEquals('alt_r2', tree.get_revision_id())
 
 
 class TestRevisionSpec_revid(TestRevisionSpec):
@@ -564,9 +585,16 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         new_tree = self.make_branch_and_tree('new_tree')
         self.assertRaises(errors.NoCommits,
                           self.get_in_history, 'branch:new_tree')
+        self.assertRaises(errors.NoCommits,
+                          self.get_as_tree, 'branch:new_tree')
 
     def test_as_revision_id(self):
         self.assertAsRevisionId('alt_r2', 'branch:tree2')
+
+    def test_as_tree(self):
+        tree = self.get_as_tree('branch:tree', self.tree2)
+        self.assertEquals('r2', tree.get_revision_id())
+        self.assertFalse(self.tree2.branch.repository.has_revision('r2'))
 
 
 class TestRevisionSpec_submit(TestRevisionSpec):

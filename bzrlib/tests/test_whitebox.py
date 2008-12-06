@@ -36,15 +36,15 @@ class MoreTests(TestCaseWithTransport):
         if it is inside a branch and return the path relative to the base.
         """
         import tempfile
-        
+
         savedir = os.getcwdu()
-        dtmp = tempfile.mkdtemp()
+        dtmp = osutils.mkdtemp()
         # On Mac OSX, /tmp actually expands to /private/tmp
         dtmp = realpath(dtmp)
 
         def rp(p):
             return relpath(dtmp, p)
-        
+
         try:
             # check paths inside dtmp while standing outside it
             self.assertEqual(rp(pathjoin(dtmp, 'foo')), 'foo')

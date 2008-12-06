@@ -24,6 +24,7 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+import errno
 import os
 import socket
 import sys
@@ -31,13 +32,17 @@ import urllib
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import atexit
+import weakref
 from bzrlib import (
+    debug,
     errors,
     osutils,
     symbol_versioning,
+    trace,
     urlutils,
     )
-from bzrlib.smart import protocol
+from bzrlib.smart import client, protocol
 from bzrlib.transport import ssh
 """)
 
@@ -78,6 +83,28 @@ def _get_protocol_factory_for_bytes(bytes):
     else:
         protocol_factory = protocol.SmartServerRequestProtocolOne
     return protocol_factory, bytes
+
+
+def _get_line(read_bytes_func):
+    """Read bytes using read_bytes_func until a newline byte.
+    
+    This isn't particularly efficient, so should only be used when the
+    expected size of the line is quite short.
+    
+    :returns: a tuple of two strs: (line, excess)
+    """
+    newline_pos = -1
+    bytes = ''
+    while newline_pos == -1:
+        new_bytes = read_bytes_func(1)
+        bytes += new_bytes
+        if new_bytes == '':
+            # Ran out of bytes before receiving a complete line.
+            return bytes, ''
+        newline_pos = bytes.find('\n')
+    line = bytes[:newline_pos+1]
+    excess = bytes[newline_pos+1:]
+    return line, excess
 
 
 class SmartMedium(object):
@@ -131,17 +158,8 @@ class SmartMedium(object):
 
         :returns: a string of bytes ending in a newline (byte 0x0A).
         """
-        newline_pos = -1
-        bytes = ''
-        while newline_pos == -1:
-            new_bytes = self.read_bytes(1)
-            bytes += new_bytes
-            if new_bytes == '':
-                # Ran out of bytes before receiving a complete line.
-                return bytes
-            newline_pos = bytes.find('\n')
-        line = bytes[:newline_pos+1]
-        self._push_back(bytes[newline_pos+1:])
+        line, excess = _get_line(self.read_bytes)
+        self._push_back(excess)
         return line
  
 
@@ -438,7 +456,7 @@ class SmartClientMediumRequest(object):
         return self._medium.read_bytes(count)
 
     def read_line(self):
-        line = self._medium._get_line()
+        line = self._read_line()
         if not line.endswith('\n'):
             # end of file encountered reading from server
             raise errors.ConnectionReset(
@@ -446,7 +464,66 @@ class SmartClientMediumRequest(object):
                 "(and try -Dhpss if further diagnosis is required)")
         return line
 
+    def _read_line(self):
+        """Helper for SmartClientMediumRequest.read_line.
+        
+        By default this forwards to self._medium._get_line because we are
+        operating on the medium's stream.
+        """
+        return self._medium._get_line()
 
+
+class _DebugCounter(object):
+    """An object that counts the HPSS calls made to each client medium.
+
+    When a medium is garbage-collected, or failing that when atexit functions
+    are run, the total number of calls made on that medium are reported via
+    trace.note.
+    """
+
+    def __init__(self):
+        self.counts = weakref.WeakKeyDictionary()
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.increment_call_count, 'hpss call counter')
+        atexit.register(self.flush_all)
+
+    def track(self, medium):
+        """Start tracking calls made to a medium.
+
+        This only keeps a weakref to the medium, so shouldn't affect the
+        medium's lifetime.
+        """
+        medium_repr = repr(medium)
+        # Add this medium to the WeakKeyDictionary
+        self.counts[medium] = [0, medium_repr]
+        # Weakref callbacks are fired in reverse order of their association
+        # with the referenced object.  So we add a weakref *after* adding to
+        # the WeakKeyDict so that we can report the value from it before the
+        # entry is removed by the WeakKeyDict's own callback.
+        ref = weakref.ref(medium, self.done)
+
+    def increment_call_count(self, params):
+        # Increment the count in the WeakKeyDictionary
+        value = self.counts[params.medium]
+        value[0] += 1
+
+    def done(self, ref):
+        value = self.counts[ref]
+        count, medium_repr = value
+        # In case this callback is invoked for the same ref twice (by the
+        # weakref callback and by the atexit function), set the call count back
+        # to 0 so this item won't be reported twice.
+        value[0] = 0
+        if count != 0:
+            trace.note('HPSS calls: %d %s', count, medium_repr)
+        
+    def flush_all(self):
+        for ref in list(self.counts.keys()):
+            self.done(ref)
+
+_debug_counter = None
+  
+  
 class SmartClientMedium(SmartMedium):
     """Smart client is a medium for sending smart protocol requests over."""
 
@@ -461,6 +538,12 @@ class SmartClientMedium(SmartMedium):
         # _remote_version_is_before tracks the bzr version the remote side
         # can be based on what we've seen so far.
         self._remote_version_is_before = None
+        # Install debug hook function if debug flag is set.
+        if 'hpss' in debug.debug_flags:
+            global _debug_counter
+            if _debug_counter is None:
+                _debug_counter = _DebugCounter()
+            _debug_counter.track(self)
 
     def _is_remote_before(self, version_tuple):
         """Is it possible the remote side supports RPCs for a given version?
@@ -683,7 +766,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
-BZR_DEFAULT_INTERFACE = '0.0.0.0'
+BZR_DEFAULT_INTERFACE = None
 BZR_DEFAULT_PORT = 4155
 
 
@@ -715,15 +798,31 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """Connect this medium if not already connected."""
         if self._connected:
             return
-        self._socket = socket.socket()
-        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         if self._port is None:
             port = BZR_DEFAULT_PORT
         else:
             port = int(self._port)
         try:
-            self._socket.connect((self._host, port))
-        except socket.error, err:
+            sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC, 
+                socket.SOCK_STREAM, 0, 0)
+        except socket.gaierror, (err_num, err_msg):
+            raise errors.ConnectionError("failed to lookup %s:%d: %s" %
+                    (self._host, port, err_msg))
+        # Initialize err in case there are no addresses returned:
+        err = socket.error("no address found for %s" % self._host)
+        for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
+            try:
+                self._socket = socket.socket(family, socktype, proto)
+                self._socket.setsockopt(socket.IPPROTO_TCP, 
+                                        socket.TCP_NODELAY, 1)
+                self._socket.connect(sockaddr)
+            except socket.error, err:
+                if self._socket is not None:
+                    self._socket.close()
+                self._socket = None
+                continue
+            break
+        if self._socket is None:
             # socket errors either have a (string) or (errno, string) as their
             # args.
             if type(err.args) is str:
@@ -747,7 +846,14 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
             raise errors.MediumNotConnected(self)
         # We ignore the desired_count because on sockets it's more efficient to
         # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        return self._socket.recv(_MAX_READ_SIZE)
+        try:
+            return self._socket.recv(_MAX_READ_SIZE)
+        except socket.error, e:
+            if len(e.args) and e.args[0] == errno.ECONNRESET:
+                # Callers expect an empty string in that case
+                return ''
+            else:
+                raise
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):

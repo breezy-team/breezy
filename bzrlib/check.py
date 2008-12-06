@@ -269,13 +269,20 @@ def check_branch(branch, verbose):
     branch_result.report_results(verbose)
 
 
-def check_dwim(path, verbose):
-    tree, branch, repo, relpath = BzrDir.open_containing_tree_branch_or_repository(path)
+def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
+    try:
+        tree, branch, repo, relpath = \
+                        BzrDir.open_containing_tree_branch_or_repository(path)
+    except errors.NotBranchError:
+        tree = branch = repo = None
 
-    if tree is not None:
-        note("Checking working tree at '%s'." 
-             % (tree.bzrdir.root_transport.base,))
-        tree._check()
+    if do_tree:
+        if tree is not None:
+            note("Checking working tree at '%s'." 
+                 % (tree.bzrdir.root_transport.base,))
+            tree._check()
+        else:
+            log_error("No working tree found at specified location.")
 
     if branch is not None:
         # We have a branch
@@ -289,13 +296,23 @@ def check_dwim(path, verbose):
     if repo is not None:
         repo.lock_read()
         try:
-            note("Checking repository at '%s'."
-                 % (repo.bzrdir.root_transport.base,))
-            result = repo.check()
-            result.report_results(verbose)
-            for branch in branches:
-                note("Checking branch at '%s'."
-                     % (branch.bzrdir.root_transport.base,))
-                check_branch(branch, verbose)
+            if do_repo:
+                note("Checking repository at '%s'."
+                     % (repo.bzrdir.root_transport.base,))
+                result = repo.check()
+                result.report_results(verbose)
+            if do_branch:
+                if branches == []:
+                    log_error("No branch found at specified location.")
+                else:
+                    for branch in branches:
+                        note("Checking branch at '%s'."
+                             % (branch.bzrdir.root_transport.base,))
+                        check_branch(branch, verbose)
         finally:
             repo.unlock()
+    else:
+        if do_branch:
+            log_error("No branch found at specified location.")
+        if do_repo:
+            log_error("No repository found at specified location.")

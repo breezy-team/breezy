@@ -216,13 +216,14 @@ class TestTreeShapes(TestCaseWithTree):
 
         revision_id = u'r\xe9v-1'.encode('utf8')
         root_id = 'TREE_ROOT'
-        bar_id = u'b\xe5r-id'.encode('utf8')
-        foo_id = u'f\xf6-id'.encode('utf8')
-        baz_id = u'b\xe1z-id'.encode('utf8')
-        path_and_ids = [(u'', root_id, None),
-                        (u'b\xe5r', bar_id, root_id),
-                        (u'f\xf6', foo_id, root_id),
-                        (u'b\xe5r/b\xe1z', baz_id, bar_id),
+        bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
+        foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
+        baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
+        path_and_ids = [(u'', root_id, None, None),
+                        (u'ba\N{Euro Sign}r', bar_id, root_id, revision_id),
+                        (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id),
+                        (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+                         baz_id, bar_id, revision_id),
                        ]
         tree.lock_read()
         try:
@@ -260,15 +261,17 @@ class TestTreeShapes(TestCaseWithTree):
         revision_id_1 = u'r\xe9v-1'.encode('utf8')
         revision_id_2 = u'r\xe9v-2'.encode('utf8')
         root_id = 'TREE_ROOT'
-        bar_id = u'b\xe5r-id'.encode('utf8')
-        foo_id = u'f\xf6-id'.encode('utf8')
-        baz_id = u'b\xe1z-id'.encode('utf8')
-        zez_id = u'z\xf7z-id'.encode('utf8')
+        bar_id = u'ba\N{Euro Sign}r-id'.encode('utf8')
+        foo_id = u'fo\N{Euro Sign}o-id'.encode('utf8')
+        baz_id = u'ba\N{Euro Sign}z-id'.encode('utf8')
+        qux_id = u'qu\N{Euro Sign}x-id'.encode('utf8')
         path_and_ids = [(u'', root_id, None, None),
-                        (u'b\xe5r', bar_id, root_id, revision_id_1),
-                        (u'f\xf6', foo_id, root_id, revision_id_1),
-                        (u'b\xe5r/b\xe1z', baz_id, bar_id, revision_id_1),
-                        (u'b\xe5r/z\xf7z', zez_id, bar_id, revision_id_2),
+                        (u'ba\N{Euro Sign}r', bar_id, root_id, revision_id_1),
+                        (u'fo\N{Euro Sign}o', foo_id, root_id, revision_id_1),
+                        (u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
+                         baz_id, bar_id, revision_id_1),
+                        (u'ba\N{Euro Sign}r/qu\N{Euro Sign}x',
+                         qux_id, bar_id, revision_id_2),
                        ]
         tree.lock_read()
         try:
@@ -276,22 +279,23 @@ class TestTreeShapes(TestCaseWithTree):
         finally:
             tree.unlock()
 
-        for expected, (path, ie) in zip(path_and_ids, path_entries):
-            self.assertEqual(expected[0], path) # Paths should match
+        for (epath, efid, eparent, erev), (path, ie) in zip(path_and_ids,
+                                                            path_entries):
+            self.assertEqual(epath, path) # Paths should match
             self.assertIsInstance(path, unicode)
-            self.assertEqual(expected[1], ie.file_id)
+            self.assertEqual(efid, ie.file_id)
             self.assertIsInstance(ie.file_id, str)
-            self.assertEqual(expected[2], ie.parent_id)
-            if expected[2] is not None:
+            self.assertEqual(eparent, ie.parent_id)
+            if eparent is not None:
                 self.assertIsInstance(ie.parent_id, str)
             # WorkingTree's return None for the last modified revision
             if ie.revision is not None:
                 self.assertIsInstance(ie.revision, str)
-                if expected[0] == '':
+                if epath == '':
                     # Some trees will preserve the revision id of the tree root,
                     # but not all will
                     continue
-                self.assertEqual(expected[3], ie.revision)
+                self.assertEqual(erev, ie.revision)
         self.assertEqual(len(path_and_ids), len(path_entries))
         get_revision_id = getattr(tree, 'get_revision_id', None)
         if get_revision_id is not None:
