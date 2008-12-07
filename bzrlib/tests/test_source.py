@@ -29,7 +29,6 @@ from StringIO import StringIO
 import symbol
 import sys
 import token
-import warnings
 
 #import bzrlib specific imports here
 from bzrlib import (
@@ -95,9 +94,9 @@ def check_coding_style(old_filename, oldlines, new_filename, newlines, to_file,
                     to_file.write('line %i has trailing whitespace: "%s"\n'% (
                         i+1+j1, line_content))
                 if len(line_content) > 79:
-                    warnings.warn(
+                    print (
                         '\nFile %s\nline %i is longer than 79 characters:'
-                        ' "%s"\n'% (new_filename, i+1+j1, line_content))
+                        '\n"%s"'% (new_filename, i+1+j1, line_content))
 
     for group in sequence_matcher(None, oldlines, newlines
             ).get_grouped_opcodes(0):
