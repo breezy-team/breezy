@@ -1349,12 +1349,6 @@ class RepositoryPackCollection(object):
         total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
             return False
-        # XXX: the following may want to be a class, to pack with a given
-        # policy.
-        mutter('Auto-packing repository %s, which has %d pack files, '
-            'containing %d revisions into no more than %d packs.', self,
-            total_packs, total_revisions,
-            self._max_pack_count(total_revisions))
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
