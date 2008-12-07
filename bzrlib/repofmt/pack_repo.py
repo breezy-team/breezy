@@ -861,7 +861,7 @@ class Packer(object):
         # XXX: Todo, recursive follow-pointers facility when fetching some
         # revisions only.
         chk_index_map, chk_indices = self._pack_map_and_index_list(
-            'text_index')
+            'chk_index')
         chk_nodes = self._index_contents(chk_indices, refs)
         new_refs = set()
         def accumlate_refs(lines):
