@@ -347,7 +347,12 @@ class TestSource(TestSourceHelper):
             * no newline at end of files
         """
         bzr_dir = osutils.dirname(osutils.realpath(sys.argv[0]))
-        wt = WorkingTree.open(bzr_dir)
+        try:
+            wt = WorkingTree.open(bzr_dir)
+        except:
+            raise TestSkipped(
+                'Could not open bazaar working tree %s'
+                % bzr_dir)
         diff_output = StringIO()
         wt.lock_read()
         self.log("TEST LOG")
