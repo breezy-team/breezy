@@ -36,7 +36,6 @@ from bzrlib import (
     osutils,
     patiencediff,
     textfile,
-    trace,
     )
 import bzrlib.branch
 from bzrlib.tests import (
