@@ -685,8 +685,10 @@ class Repository(object):
             graph access, as well as for those that pun ancestry with delta
             compression.
 
-        :returns: The validator(which is a sha1 digest, though what is sha'd is
-            repository format specific) of the serialized inventory.
+        :returns: (validator, new_inv)
+            The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory, and the
+            resulting inventory.
         """
         if not self.is_in_write_group():
             raise AssertionError("%r not in write group" % (self,))
@@ -701,7 +703,8 @@ class Repository(object):
             basis_inv = basis_tree.inventory
             basis_inv.apply_delta(delta)
             basis_inv.revision_id = new_revision_id
-            return self.add_inventory(new_revision_id, basis_inv, parents)
+            return (self.add_inventory(new_revision_id, basis_inv, parents),
+                    basis_inv)
         finally:
             basis_tree.unlock()
 
