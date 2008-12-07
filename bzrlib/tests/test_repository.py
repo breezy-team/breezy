@@ -844,7 +844,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        self.assertRaises(errors.RevisionNotPresent, empty_repo.fetch, broken_repo)
+        self.assertRaises((errors.RevisionNotPresent, errors.BzrCheckError),
+                          empty_repo.fetch, broken_repo)
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1131,9 +1132,14 @@ class TestNewPack(TestCaseWithTransport):
         pack_transport = self.get_transport('pack')
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
-        pack = pack_repo.NewPack(upload_transport, index_transport,
-            pack_transport, index_builder_class=BTreeBuilder,
+        collection = pack_repo.RepositoryPackCollection(repo=None,
+            transport=self.get_transport('.'),
+            index_transport=index_transport,
+            upload_transport=upload_transport,
+            pack_transport=pack_transport,
+            index_builder_class=BTreeBuilder,
             index_class=BTreeGraphIndex)
+        pack = pack_repo.NewPack(collection)
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
@@ -1149,8 +1155,36 @@ class TestNewPack(TestCaseWithTransport):
 class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
 
-    # To date, this class has been factored out and nothing new added to it;
-    # thus there are not yet any tests.
+    def test_pack_optimizes_pack_order(self):
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('f', 'f-id', 'file', 'content\n'))])
+        builder.build_snapshot('B', ['A'],
+            [('modify', ('f-id', 'new-content\n'))])
+        builder.build_snapshot('C', ['B'],
+            [('modify', ('f-id', 'third-content\n'))])
+        builder.build_snapshot('D', ['C'],
+            [('modify', ('f-id', 'fourth-content\n'))])
+        b = builder.get_branch()
+        b.lock_read()
+        builder.finish_series()
+        self.addCleanup(b.unlock)
+        # At this point, we should have 4 pack files available
+        # Because of how they were built, they correspond to
+        # ['D', 'C', 'B', 'A']
+        packs = b.repository._pack_collection.packs
+        packer = pack_repo.Packer(b.repository._pack_collection,
+                                  packs, 'testing',
+                                  revision_ids=['B', 'C'])
+        # Now, when we are copying the B & C revisions, their pack files should
+        # be moved to the front of the stack
+        # The new ordering moves B & C to the front of the .packs attribute,
+        # and leaves the others in the original order.
+        new_packs = [packs[1], packs[2], packs[0], packs[3]]
+        new_pack = packer.pack()
+        self.assertEqual(new_packs, packer.packs)
 
 
 class TestOptimisingPacker(TestCaseWithTransport):

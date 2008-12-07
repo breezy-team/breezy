@@ -60,6 +60,7 @@ from bzrlib import (
     debug,
     errors,
     revision,
+    trace,
     tree,
     )
 from bzrlib.branch import Branch
@@ -382,7 +383,10 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
 
-            except:
+            except Exception, e:
+                mutter("aborting commit write group because of exception:")
+                trace.log_exception_quietly()
+                note("aborting commit write group: %r" % (e,))
                 self.builder.abort()
                 raise
 
@@ -700,12 +704,13 @@ class Commit(object):
         # _populate_from_inventory?
         if (isinstance(self.basis_inv, Inventory)
             and isinstance(self.builder.new_inventory, Inventory)):
-            # Performance with commit was profiled extensively, and it found that
-            # using the keys (rather than eg building a set from the dict, or
-            # from the key iterator) of the Inventory._byid was faster at the
-            # time. We want to move away from doing this, but until careful
-            # profiling is done, we're preserving the old behaviour.
-            # <lifeless, poolie>
+            # the older Inventory classes provide a _byid dict, and building a
+            # set from the keys of this dict is substantially faster than even
+            # getting a set of ids from the inventory
+            #
+            # <lifeless> set(dict) is roughly the same speed as
+            # set(iter(dict)) and both are significantly slower than
+            # set(dict.keys())
             deleted_ids = set(self.basis_inv._byid.keys()) - \
                set(self.builder.new_inventory._byid.keys())
         else:

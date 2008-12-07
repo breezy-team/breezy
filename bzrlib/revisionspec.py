@@ -361,7 +361,7 @@ class RevisionSpec_revno(RevisionSpec):
             finally:
                 branch.unlock()
             if len(revisions) != 1:
-                return branch, None, None
+                raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
