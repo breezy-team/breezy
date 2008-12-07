@@ -49,8 +49,10 @@ from bzrlib.tests import (
     )
 from bzrlib.transport import (
     fakenfs,
+    memory,
     get_transport,
     )
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -418,6 +420,35 @@ class TestPackRepository(TestCaseWithTransport):
         finally:
             tree.unlock()
 
+    def test_concurrent_pack_during_get_record_reloads(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        try:
+            rev1 = tree.commit('one')
+            rev2 = tree.commit('two')
+            keys = [(rev1,), (rev2,)]
+            r2 = repository.Repository.open('tree')
+            r2.lock_read()
+            try:
+                # At this point, we will start grabbing a record stream, and
+                # trigger a repack mid-way
+                packed = False
+                result = {}
+                record_stream = r2.revisions.get_record_stream(keys,
+                                    'unordered', False)
+                for record in record_stream:
+                    result[record.key] = record
+                    if not packed:
+                        tree.branch.repository.pack()
+                        packed = True
+                # The first record will be found in the original location, but
+                # after the pack, we have to reload to find the next record
+                self.assertEqual(sorted(keys), sorted(result.keys()))
+            finally:
+                r2.unlock()
+        finally:
+            tree.unlock()
+
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo.lock_write()
@@ -507,6 +538,40 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(self.format_supports_external_lookups,
             repo._format.supports_external_lookups)
 
+    def test_abort_write_group_does_not_raise_when_suppressed(self):
+        """Similar to per_repository.test_write_group's test of the same name.
+
+        Also requires that the exception is logged.
+        """
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Damage the repository on the filesystem
+        self.get_transport('').rename('repo', 'foo')
+        # abort_write_group will not raise an error
+        self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
+        # But it does log an error
+        log_file = self._get_log(keep_log_file=True)
+        self.assertContainsRe(log_file, 'abort_write_group failed')
+        self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
+        if token is not None:
+            repo.leave_lock_in_place()
+        
+    def test_abort_write_group_does_raise_when_not_suppressed(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Damage the repository on the filesystem
+        self.get_transport('').rename('repo', 'foo')
+        # abort_write_group will not raise an error
+        self.assertRaises(Exception, repo.abort_write_group)
+        if token is not None:
+            repo.leave_lock_in_place()
+        
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
 

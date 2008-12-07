@@ -294,6 +294,12 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(self.repository_format,
                          repository.RepositoryFormat.find_format(opened_control))
 
+    def test_format_matchingbzrdir(self):
+        self.assertEqual(self.repository_format,
+            self.repository_format._matchingbzrdir.repository_format)
+        self.assertEqual(self.repository_format,
+            self.bzrdir_format.repository_format)
+
     def test_create_repository(self):
         # bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():
@@ -455,7 +461,6 @@ class TestRepository(TestCaseWithRepository):
             u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
             lambda match: match.group(0).encode('unicode_escape'),
             message)
-        escaped_message= re.sub('\r', '\n', escaped_message)
         self.assertEqual(rev.message, escaped_message)
         # insist the class is unicode no matter what came in for 
         # consistency.
@@ -467,8 +472,12 @@ class TestRepository(TestCaseWithRepository):
 
     def test_commit_unicode_control_characters(self):
         # a unicode message with control characters should roundtrip too.
+        unichars = [unichr(x) for x in range(256)]
+        # '\r' is not directly allowed anymore, as it used to be translated
+        # into '\n' anyway
+        unichars[ord('\r')] = u'\n'
         self.assertMessageRoundtrips(
-            "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)]))
+            u"All 8-bit chars: " +  ''.join(unichars))
 
     def test_check_repository(self):
         """Check a fairly simple repository's history"""
@@ -576,6 +585,11 @@ class TestRepository(TestCaseWithRepository):
         tree.add('foo', 'file1')
         tree.commit('message', rev_id='rev_id')
         repo = tree.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('rev_id', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
         repo.lock_read()
         self.addCleanup(repo.unlock)
 
@@ -588,7 +602,7 @@ class TestRepository(TestCaseWithRepository):
         expected_item_keys = [
             ('file', 'file1', ['rev_id']),
             ('inventory', None, ['rev_id']),
-            ('signatures', None, []),
+            ('signatures', None, ['rev_id']),
             ('revisions', None, ['rev_id'])]
         item_keys = list(repo.item_keys_introduced_by(['rev_id']))
         item_keys = [

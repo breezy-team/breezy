@@ -32,7 +32,12 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revision import Revision
-from bzrlib.tests import SymlinkFeature, TestNotApplicable
+from bzrlib.tests import (
+    KnownFailure,
+    SymlinkFeature,
+    TestNotApplicable,
+    UnicodeFilenameFeature,
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -226,6 +231,30 @@ class TestSetParents(TestParents):
         t.set_parent_trees([(rev2, rev_tree2), (rev1, rev_tree1),
                             (rev3, rev_tree3)])
         self.assertConsistentParents([rev2, rev3], t)
+
+    def test_unicode_symlink(self):
+        # this tests bug #272444
+        self.requireFeature(SymlinkFeature)
+        self.requireFeature(UnicodeFilenameFeature)
+
+        tree = self.make_branch_and_tree('tree1')
+
+        # The link points to a file whose name is an omega
+        # U+03A9 GREEK CAPITAL LETTER OMEGA
+        # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
+        os.symlink(u'\u03a9','tree1/link_name')
+        tree.add(['link_name'],['link-id'])
+
+        try:
+            # the actual commit occurs without errors (strangely):
+            revision1 = tree.commit('added a link to a Unicode target')
+            # python 2.4 failed with UnicodeDecodeError on this commit:
+            revision2 = tree.commit('this revision will be discarded')
+            # python 2.5 failed with UnicodeEncodeError on set_parent_ids:
+            tree.set_parent_ids([revision1])
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            raise KnownFailure('there is no support for'
+                               ' symlinks to non-ASCII targets (bug #272444)')
 
 
 class TestAddParent(TestParents):

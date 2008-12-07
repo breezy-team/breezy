@@ -38,6 +38,7 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    urlutils,
     versionedfile,
     weave,
     weavefile,
@@ -67,6 +68,13 @@ class AllInOneRepository(Repository):
     def _serializer(self):
         return xml5.serializer_v5
 
+    def _escape(self, file_or_path):
+        if not isinstance(file_or_path, basestring):
+            file_or_path = '/'.join(file_or_path)
+        if file_or_path == '':
+            return u''
+        return urlutils.escape(osutils.safe_unicode(file_or_path))
+
     def __init__(self, _format, a_bzrdir):
         # we reuse one control files instance.
         dir_mode = a_bzrdir._get_dir_mode()
@@ -77,7 +85,7 @@ class AllInOneRepository(Repository):
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
-            relpath = a_bzrdir._control_files._escape(name)
+            relpath = self._escape(name)
             store = TextStore(a_bzrdir.transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,
