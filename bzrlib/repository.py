@@ -197,8 +197,8 @@ class CommitBuilder(object):
             except IndexError:
                 basis_id = _mod_revision.NULL_REVISION
             try:
-                self.inv_sha1, _ = self.repository.add_inventory_delta(
-                    basis_id, self.basis_delta, self._new_revision_id,
+                self.inv_sha1, _ = self.repository.add_inventory_by_delta(
+                    basis_id, self._basis_delta, self._new_revision_id,
                     self.parents)
                 return
             except errors.NoSuchRevision:
@@ -2184,7 +2184,7 @@ def _install_revision(repository, rev, revision_tree, signature,
                 repository.add_inventory(rev.revision_id, inv, present_parents)
             else:
                 delta = inv._make_delta(basis_inv)
-                repository.add_inventory_delta(rev.parent_ids[0], delta,
+                repository.add_inventory_by_delta(rev.parent_ids[0], delta,
                     rev.revision_id, present_parents)
         else:
             repository.add_inventory(rev.revision_id, inv, present_parents)

@@ -2126,10 +2126,10 @@ class CHKInventoryRepository(KnitPackRepository):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
-    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
-        parents):
+    def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
+                               parents):
         """Add a new inventory expressed as a delta against another revision.
-        
+
         :param basis_revision_id: The inventory id the delta was created
             against.
         :param delta: The inventory delta (see Inventory.apply_delta for
@@ -2142,12 +2142,13 @@ class CHKInventoryRepository(KnitPackRepository):
             graph access, as well as for those that pun ancestry with delta
             compression.
 
-        :returns: The validator(which is a sha1 digest, though what is sha'd is
-            repository format specific) of the serialized inventory and 
-            the resulting inventory.
+        :returns: (validator, new_inv)
+            The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory, and the
+            resulting inventory.
         """
         if basis_revision_id == _mod_revision.NULL_REVISION:
-            return KnitPackRepository.add_inventory_delta(self,
+            return KnitPackRepository.add_inventory_by_delta(self,
                 basis_revision_id, delta, new_revision_id, parents)
         if not self.is_in_write_group():
             raise AssertionError("%r not in write group" % (self,))
