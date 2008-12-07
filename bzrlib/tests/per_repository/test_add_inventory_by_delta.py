@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for Repository.add_inventory_delta."""
+"""Tests for Repository.add_inventory_by_delta."""
 
 from bzrlib import errors, revision
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestAddInventoryDelta(TestCaseWithRepository):
+class TestAddInventoryByDelta(TestCaseWithRepository):
 
     def _get_repo_in_write_group(self, path='repository'):
         repo = self.make_repository(path)
@@ -28,13 +28,13 @@ class TestAddInventoryDelta(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         return repo
-    
+
     def test_basis_missing_errors(self):
         repo = self._get_repo_in_write_group()
         try:
             self.assertRaises(errors.NoSuchRevision,
-                repo.add_inventory_delta, "missing-revision", [], "new-revision",
-                ["missing-revision"])
+                repo.add_inventory_by_delta, "missing-revision", [],
+                "new-revision", ["missing-revision"])
         finally:
             repo.abort_write_group()
 
@@ -42,7 +42,7 @@ class TestAddInventoryDelta(TestCaseWithRepository):
         repo = self.make_repository('repository')
         repo.lock_write()
         self.addCleanup(repo.unlock)
-        self.assertRaises(AssertionError, repo.add_inventory_delta,
+        self.assertRaises(AssertionError, repo.add_inventory_by_delta,
             "missing-revision", [], "new-revision", ["missing-revision"])
 
     def make_inv_delta(self, old, new):
@@ -80,8 +80,8 @@ class TestAddInventoryDelta(TestCaseWithRepository):
         repo_direct.commit_write_group()
         repo_delta = self._get_repo_in_write_group('delta')
         try:
-            delta_validator, result = repo_delta.add_inventory_delta(revision.NULL_REVISION,
-                delta, revid, [])
+            delta_validator, inv = repo_delta.add_inventory_by_delta(
+                revision.NULL_REVISION, delta, revid, [])
         except:
             repo_delta.abort_write_group()
             raise

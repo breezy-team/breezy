@@ -67,10 +67,10 @@ _deprecation_warning_done = False
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
-    This allows describing a tree to be committed without needing to 
+    This allows describing a tree to be committed without needing to
     know the internals of the format of the repository.
     """
-    
+
     # all clients should supply tree roots.
     record_root_entry = True
     # the default CommitBuilder does not manage trees whose root is versioned.
@@ -119,7 +119,11 @@ class CommitBuilder(object):
 
         self._generate_revision_if_needed()
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
-        self.basis_delta = []
+        self._basis_delta = []
+        # API compatibility, older code that used CommitBuilder did not call
+        # .record_delete(), which means the delta that is computed would not be
+        # valid. Callers that will call record_delete() should call
+        # .will_record_deletes() to indicate that.
         self._recording_deletes = False
 
     def _validate_unicode_text(self, text, context):
@@ -253,38 +257,55 @@ class CommitBuilder(object):
         if ie.file_id not in basis_inv:
             # add
             result = (None, path, ie.file_id, ie)
-            self.basis_delta.append(result)
+            self._basis_delta.append(result)
             return result
         elif ie != basis_inv[ie.file_id]:
             # common but altered
             # TODO: avoid tis id2path call.
             result = (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
-            self.basis_delta.append(result)
+            self._basis_delta.append(result)
             return result
         else:
             # common, unaltered
             return None
+
+    def get_basis_delta(self):
+        """Return the complete inventory delta versus the basis inventory.
+
+        This has been built up with the calls to record_delete and
+        record_entry_contents. The client must have already called
+        will_record_deletes() to indicate that they will be generating a
+        complete delta.
+
+        :return: An inventory delta, suitable for use with apply_delta, or
+            Repository.add_inventory_by_delta, etc.
+        """
+        if not self._recording_deletes:
+            raise AssertionError("recording deletes not activated.")
+        return self._basis_delta
 
     def record_delete(self, path, file_id):
         """Record that a delete occured against a basis tree.
 
         This is an optional API - when used it adds items to the basis_delta
         being accumulated by the commit builder. It cannot be called unless the
-        method recording_deletes() has been called to inform the builder that a
-        delta is being supplied.
+        method will_record_deletes() has been called to inform the builder that
+        a delta is being supplied.
 
         :param path: The path of the thing deleted.
         :param file_id: The file id that was deleted.
         """
         if not self._recording_deletes:
             raise AssertionError("recording deletes not activated.")
-        self.basis_delta.append((path, None, file_id, None))
+        delta = (path, None, file_id, None)
+        self._basis_delta.append(delta)
+        return delta
 
-    def recording_deletes(self):
+    def will_record_deletes(self):
         """Tell the commit builder that deletes are being notified.
 
         This enables the accumulation of an inventory delta; for the resulting
-        commit to be valid deletes against the basis MUST be recorded via
+        commit to be valid, deletes against the basis MUST be recorded via
         builder.record_delete().
         """
         self._recording_deletes = True
@@ -358,7 +379,7 @@ class CommitBuilder(object):
                 else:
                     # add
                     delta = (None, path, ie.file_id, ie)
-                self.basis_delta.append(delta)
+                self._basis_delta.append(delta)
                 return delta, False, None
             else:
                 # we don't need to commit this, because the caller already
@@ -689,12 +710,12 @@ class Repository(object):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
-    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
-        parents):
+    def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
+                               parents):
         """Add a new inventory expressed as a delta against another revision.
-        
+
         :param basis_revision_id: The inventory id the delta was created
-            against.
+            against. (This does not have to be a direct parent.)
         :param delta: The inventory delta (see Inventory.apply_delta for
             details).
         :param new_revision_id: The revision id that the inventory is being
@@ -705,9 +726,10 @@ class Repository(object):
             graph access, as well as for those that pun ancestry with delta
             compression.
 
-        :returns: The validator(which is a sha1 digest, though what is sha'd is
-            repository format specific) of the serialized inventory and 
-            the resulting inventory.
+        :returns: (validator, new_inv)
+            The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory, and the
+            resulting inventory.
         """
         if not self.is_in_write_group():
             raise AssertionError("%r not in write group" % (self,))
@@ -722,7 +744,7 @@ class Repository(object):
             basis_inv = basis_tree.inventory
             basis_inv.apply_delta(delta)
             basis_inv.revision_id = new_revision_id
-            return (self.add_inventory(new_revision_id, basis_inv, parents), 
+            return (self.add_inventory(new_revision_id, basis_inv, parents),
                     basis_inv)
         finally:
             basis_tree.unlock()
@@ -3249,11 +3271,94 @@ class InterDifferingSerializer(InterKnitRepo):
             return False
         return True
 
+    def _fetch_batch(self, revision_ids, basis_id, basis_tree):
+        """Fetch across a few revisions.
+
+        :param revision_ids: The revisions to copy
+        :param basis_id: The revision_id of basis_tree
+        :param basis_tree: A tree that is not in revision_ids which should
+            already exist in the target.
+        :return: (basis_id, basis_tree) A new basis to use now that these trees
+            have been copied.
+        """
+        # Walk though all revisions; get inventory deltas, copy referenced
+        # texts that delta references, insert the delta, revision and
+        # signature.
+        text_keys = set()
+        pending_deltas = []
+        pending_revisions = []
+        for tree in self.source.revision_trees(revision_ids):
+            current_revision_id = tree.get_revision_id()
+            delta = tree.inventory._make_delta(basis_tree.inventory)
+            for old_path, new_path, file_id, entry in delta:
+                if new_path is not None:
+                    if not (new_path or self.target.supports_rich_root()):
+                        # We leave the inventory delta in, because that
+                        # will have the deserialised inventory root
+                        # pointer.
+                        continue
+                    # TODO: Do we need:
+                    #       "if entry.revision == current_revision_id" ?
+                    if entry.revision == current_revision_id:
+                        text_keys.add((file_id, entry.revision))
+            revision = self.source.get_revision(current_revision_id)
+            pending_deltas.append((basis_id, delta,
+                current_revision_id, revision.parent_ids))
+            pending_revisions.append(revision)
+            basis_id = current_revision_id
+            basis_tree = tree
+        # Copy file texts
+        from_texts = self.source.texts
+        to_texts = self.target.texts
+        to_texts.insert_record_stream(from_texts.get_record_stream(
+            text_keys, self.target._fetch_order,
+            not self.target._fetch_uses_deltas))
+        # insert deltas
+        for delta in pending_deltas:
+            self.target.add_inventory_by_delta(*delta)
+        # insert signatures and revisions
+        for revision in pending_revisions:
+            try:
+                signature = self.source.get_signature_text(
+                    revision.revision_id)
+                self.target.add_signature_text(revision.revision_id,
+                    signature)
+            except errors.NoSuchRevision:
+                pass
+            self.target.add_revision(revision.revision_id, revision)
+        return basis_id, basis_tree
+
+    def _fetch_all_revisions(self, revision_ids, pb):
+        """Fetch everything for the list of revisions.
+
+        :param revision_ids: The list of revisions to fetch. Must be in
+            topological order.
+        :param pb: A ProgressBar
+        :return: None
+        """
+        basis_id, basis_tree = self._get_basis(revision_ids[0])
+        batch_size = 100
+        for offset in range(0, len(revision_ids), batch_size):
+            self.target.start_write_group()
+            try:
+                pb.update('Transferring revisions', offset,
+                    len(revision_ids))
+                batch = revision_ids[offset:offset+batch_size]
+                basis_id, basis_tree = self._fetch_batch(batch,
+                    basis_id, basis_tree)
+            except:
+                self.target.abort_write_group()
+                raise
+            else:
+                self.target.commit_write_group()
+
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
+        if not revision_ids:
+            return 0, 0
         revision_ids = tsort.topo_sort(
             self.source.get_graph().get_parent_map(revision_ids))
         if not revision_ids:
@@ -3262,77 +3367,39 @@ class InterDifferingSerializer(InterKnitRepo):
         # texts that delta references, insert the delta, revision and
         # signature.
         first_rev = self.source.get_revision(revision_ids[0])
-        try:
-            basis_id = first_rev.parent_ids[0]
-            # only valid as a basis if the target has it
-            self.target.get_revision(basis_id)
-            # Try to get a basis tree - if its a ghost it will hit the
-            # NoSuchRevision case.
-            basis_tree = self.source.revision_tree(first_rev.parent_ids[0])
-        except (IndexError, errors.NoSuchRevision):
-            basis_id = _mod_revision.NULL_REVISION
-            basis_tree = self.source.revision_tree(basis_id)
         if pb is None:
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
         else:
             my_pb = None
         try:
-            batch_size = 100
-            for offset in range(len(revision_ids) / 100 + 1):
-                self.target.start_write_group()
-                try:
-                    pb.update('Transferring revisions', offset*batch_size,
-                        len(revision_ids))
-                    batch = revision_ids[offset*batch_size:(offset+1)*batch_size]
-                    text_keys = set()
-                    pending_deltas = []
-                    pending_revisions = []
-                    for tree in self.source.revision_trees(batch):
-                        current_revision_id = tree.get_revision_id()
-                        delta = tree.inventory._make_delta(basis_tree.inventory)
-                        for old_path, new_path, file_id, entry in delta:
-                            if new_path is not None:
-                                if not (new_path or self.target.supports_rich_root()):
-                                    # We leave the inventory delta in, because that
-                                    # will have the deserialised inventory root
-                                    # pointer.
-                                    continue
-                                text_keys.add((file_id, entry.revision))
-                        revision = self.source.get_revision(current_revision_id)
-                        pending_deltas.append((basis_id, delta,
-                            current_revision_id, revision.parent_ids))
-                        pending_revisions.append(revision)
-                        basis_id = current_revision_id
-                        basis_tree = tree
-                    # Copy file texts
-                    from_texts = self.source.texts
-                    to_texts = self.target.texts
-                    to_texts.insert_record_stream(from_texts.get_record_stream(
-                        text_keys, self.target._fetch_order,
-                        not self.target._fetch_uses_deltas))
-                    # insert deltas
-                    for delta in pending_deltas:
-                        self.target.add_inventory_delta(*delta)
-                    # insert signatures and revisions
-                    for revision in pending_revisions:
-                        try:
-                            signature = self.source.get_signature_text(
-                                revision.revision_id)
-                            self.target.add_signature_text(revision.revision_id,
-                                signature)
-                        except errors.NoSuchRevision:
-                            pass
-                        self.target.add_revision(revision.revision_id, revision)
-                except:
-                    self.target.abort_write_group()
-                    raise
-                else:
-                    self.target.commit_write_group()
+            self._fetch_all_revisions(revision_ids, pb)
         finally:
             if my_pb is not None:
                 my_pb.finished()
         return len(revision_ids), 0
+
+    def _get_basis(self, first_revision_id):
+        """Get a revision and tree which exists in the target.
+
+        This assumes that first_revision_id is selected for transmission
+        because all other ancestors are already present. If we can't find an
+        ancestor we fall back to NULL_REVISION since we know that is safe.
+
+        :return: (basis_id, basis_tree)
+        """
+        first_rev = self.source.get_revision(first_revision_id)
+        try:
+            basis_id = first_rev.parent_ids[0]
+            # only valid as a basis if the target has it
+            self.target.get_revision(basis_id)
+            # Try to get a basis tree - if its a ghost it will hit the
+            # NoSuchRevision case.
+            basis_tree = self.source.revision_tree(basis_id)
+        except (IndexError, errors.NoSuchRevision):
+            basis_id = _mod_revision.NULL_REVISION
+            basis_tree = self.source.revision_tree(basis_id)
+        return basis_id, basis_tree
 
 
 class InterOtherToRemote(InterRepository):
