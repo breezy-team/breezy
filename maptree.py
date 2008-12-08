@@ -44,6 +44,7 @@ def map_file_ids(repository, old_parents, new_parents):
 
 class MapInventory:
     """Maps the file ids in an inventory."""
+
     def __init__(self, oldinv, maptree):
         self.oldinv = oldinv
         self.maptree = maptree
@@ -60,26 +61,31 @@ class MapInventory:
         return new_ie
 
     def __len__(self):
+        """See Inventory.__len__()."""
         return len(self.oldinv)
 
     def iter_entries(self):
+        """See Inventory.iter_entries()."""
         for path, ie in self.oldinv.iter_entries():
             yield path, self.map_ie(ie)
 
     def path2id(self, path):
+        """See Inventory.path2id()."""
         return self.maptree.new_id(self.oldinv.path2id(path))
 
     def id2path(self, id):
+        """See Inventory.id2path()."""
         return self.oldinv.id2path(self.maptree.old_id(id))
 
     def has_id(self, id):
+        """See Inventory.has_id()."""
         return self.oldinv.has_id(self.maptree.old_id(id))
 
 
 class MapTree:
     """Wrapper around a tree that translates file ids.
     """
-    # TODO: Inventory
+
     def __init__(self, oldtree, fileid_map):
         """Create a new MapTree. 
 
@@ -113,10 +119,12 @@ class MapTree:
             return file_id
 
     def get_file_sha1(self, file_id, path=None):
+        "See Tree.get_file_sha1()."""
         return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
                                           path=path)
 
     def get_file_with_stat(self, file_id, path=None):
+        "See Tree.get_file_with_stat()."""
         if getattr(self.oldtree, "get_file_with_stat", None) is not None:
             return self.oldtree.get_file_with_stat(file_id=self.old_id(file_id),
                                                path=path)
@@ -124,17 +132,21 @@ class MapTree:
             return self.get_file(file_id, path), None
 
     def get_file(self, file_id, path=None):
+        "See Tree.get_file()."""
         if path is None:
             return self.oldtree.get_file(self.old_id(file_id=file_id))
         else:
             return self.oldtree.get_file(self.old_id(file_id=file_id), path)
 
     def is_executable(self, file_id, path=None):
+        "See Tree.is_executable()."""
         return self.oldtree.is_executable(self.old_id(file_id=file_id), 
                                           path=path)
 
     def has_filename(self, filename):
+        "See Tree.has_filename()."""
         return self.oldtree.has_filename(filename)
 
     def path_content_summary(self, path):
+        "See Tree.path_content_summary()."""
         return self.oldtree.path_content_summary(path)
