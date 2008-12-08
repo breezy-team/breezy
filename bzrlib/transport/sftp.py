@@ -295,7 +295,8 @@ class _SFTPReadvHelper(object):
             # get the previous node
             while True:
                 idx = bisect.bisect_left(data_chunks, (cur_offset,))
-                if data_chunks[idx][0] == cur_offset: # The data starts here
+                if idx < len(data_chunks) and data_chunks[idx][0] == cur_offset:
+                    # The data starts here
                     data = data_chunks[idx][1][:cur_size]
                 elif idx > 0:
                     # The data is in a portion of a previous page

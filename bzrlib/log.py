@@ -236,17 +236,16 @@ def _show_log(branch,
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision):
-    if (not generate_merge_revisions and start_revision is end_revision is
-        None and direction == 'reverse' and specific_fileid is None):
+    if (    not generate_merge_revisions
+        and start_revision is end_revision is None
+        and direction == 'reverse'
+        and specific_fileid is None):
         return _linear_view_revisions(branch)
 
-    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
-        _get_mainline_revs(branch, start_revision, end_revision)
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = _get_mainline_revs(
+        branch, start_revision, end_revision)
     if not mainline_revs:
         return []
-
-    if direction == 'reverse':
-        start_rev_id, end_rev_id = end_rev_id, start_rev_id
 
     generate_single_revision = False
     if ((not generate_merge_revisions)
@@ -260,6 +259,9 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         generate_merge_revisions = generate_single_revision
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
+
+    if direction == 'reverse':
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
     view_revisions = _filter_revision_range(list(view_revs_iter),
                                             start_rev_id,
                                             end_rev_id)
@@ -267,9 +269,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = view_revisions[0:1]
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
-                                                         specific_fileid,
-                                                         view_revisions,
-                                                         direction)
+                                                            specific_fileid,
+                                                            view_revisions)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -438,7 +439,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     # filtered later.
     # Also map the revisions to rev_ids, to be used in the later filtering
     # stage.
-    start_rev_id = None 
+    start_rev_id = None
     if start_revision is None:
         start_revno = 1
     else:
@@ -448,7 +449,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         else:
             branch.check_real_revno(start_revision)
             start_revno = start_revision
-    
+
     end_rev_id = None
     if end_revision is None:
         end_revno = branch_revno
@@ -507,7 +508,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    if start_rev_id or end_rev_id: 
+    if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
             start_index = revision_ids.index(start_rev_id)
@@ -536,8 +537,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
-                                       direction):
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
     r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
@@ -562,13 +562,14 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     This will also be restricted based on a subset of the mainline.
 
     :param branch: The branch where we can get text revision information.
+
     :param file_id: Filter out revisions that do not touch file_id.
+
     :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
         tuples. This is the list of revisions which will be filtered. It is
-        assumed that view_revisions is in merge_sort order (either forward or
-        reverse).
-    :param direction: The direction of view_revisions.  See also
-        reverse_by_depth, and get_view_revisions
+        assumed that view_revisions is in merge_sort order (i.e. newest
+        revision first ).
+
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
     # Lookup all possible text keys to determine which ones actually modified
@@ -592,11 +593,6 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     del text_keys, next_keys
 
     result = []
-    if direction == 'forward':
-        # TODO: The algorithm for finding 'merges' of file changes expects
-        #       'reverse' order (the default from 'merge_sort()'). Instead of
-        #       forcing this, we could just use the reverse_by_depth order.
-        view_revisions = reverse_by_depth(view_revisions)
     # Track what revisions will merge the current revision, replace entries
     # with 'None' when they have been added to result
     current_merge_stack = [None]
@@ -615,8 +611,6 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
                 if node is not None:
                     result.append(node)
                     current_merge_stack[idx] = None
-    if direction == 'forward':
-        result = reverse_by_depth(result)
     return result
 
 
@@ -666,19 +660,27 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
     revision of that depth.  There may be no topological justification for this,
     but it looks much nicer.
     """
+    # Add a fake revision at start so that we can always attach sub revisions
+    merge_sorted_revisions = [(None, None, _depth)] + merge_sorted_revisions
     zd_revisions = []
     for val in merge_sorted_revisions:
         if val[2] == _depth:
+            # Each revision at the current depth becomes a chunk grouping all
+            # higher depth revisions.
             zd_revisions.append([val])
         else:
             zd_revisions[-1].append(val)
     for revisions in zd_revisions:
         if len(revisions) > 1:
+            # We have higher depth revisions, let reverse them locally
             revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
     zd_revisions.reverse()
     result = []
     for chunk in zd_revisions:
         result.extend(chunk)
+    if _depth == 0:
+        # Top level call, get rid of the fake revisions that have been added
+        result = [r for r in result if r[0] is not None and r[1] is not None]
     return result
 
 
@@ -861,7 +863,7 @@ class LineLogFormatter(LogFormatter):
         return str[:max_len-3]+'...'
 
     def date_string(self, rev):
-        return format_date(rev.timestamp, rev.timezone or 0, 
+        return format_date(rev.timestamp, rev.timezone or 0,
                            self.show_timezone, date_fmt="%Y-%m-%d",
                            show_offset=False)
 
@@ -1003,6 +1005,10 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
 
 
 properties_handler_registry = registry.Registry()
+properties_handler_registry.register_lazy("foreign",
+                                          "bzrlib.foreign",
+                                          "show_foreign_properties")
+
 
 # adapters which revision ids to log are filtered. When log is called, the
 # log_rev_iterator is adapted through each of these factory methods.
