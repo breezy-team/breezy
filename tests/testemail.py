@@ -149,7 +149,7 @@ class TestGetTo(TestCaseInTempDir):
     def get_sender(self, text=sample_config):
         self.branch = BzrDir.create_branch_convenience('.')
         tree = self.branch.bzrdir.open_workingtree()
-        tree.commit('foo bar baz\nfuzzy\rwuzzy', rev_id='A',
+        tree.commit('foo bar baz\nfuzzy\nwuzzy', rev_id='A',
             allow_pointless=True,
             timestamp=1,
             timezone=0,
