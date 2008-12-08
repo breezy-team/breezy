@@ -21,6 +21,7 @@ from bzrlib import (
     cache_utf8,
     errors,
     inventory,
+    lru_cache,
     revision as _mod_revision,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
@@ -38,6 +39,8 @@ _xml_escape_map = {
     "<":"&lt;",
     ">":"&gt;",
     }
+# A cache of InventoryEntry objects
+_entry_cache = lru_cache.LRUCache(10*1024)
 
 
 def _ensure_utf8_re():
@@ -361,10 +364,21 @@ class Serializer_v8(Serializer):
 
         get_cached = _get_utf8_or_ascii
 
+        file_id = elt.get('file_id')
+        revision = elt.get('revision')
+        # Check and see if we have already unpacked this exact entry
+        key = (file_id, revision)
+        cached_ie = _entry_cache.get(key, None)
+        if cached_ie is not None:
+            # We copy it, because some operatations may mutate it
+            return cached_ie.copy()
+
+        file_id = get_cached(file_id)
+        if revision is not None:
+            revision = get_cached(revision)
         parent_id = elt.get('parent_id')
         if parent_id is not None:
             parent_id = get_cached(parent_id)
-        file_id = get_cached(elt.get('file_id'))
 
         if kind == 'directory':
             ie = inventory.InventoryDirectory(file_id,
@@ -386,10 +400,8 @@ class Serializer_v8(Serializer):
             ie.symlink_target = elt.get('symlink_target')
         else:
             raise errors.UnsupportedInventoryKind(kind)
-        revision = elt.get('revision')
-        if revision is not None:
-            revision = get_cached(revision)
         ie.revision = revision
+        _entry_cache[key] = ie
 
         return ie
 
