@@ -45,6 +45,11 @@ IN DEVELOPMENT
       returned from each pack in turn, in forward I/O order.
       (John Arbash Meinel)
 
+    * The default http handler has been changed from pycurl to urllib.
+      The default is still pycurl for https connections. (The only
+      advantage of pycurl is that it checks ssl certificates.)
+      (John Arbash Meinel)
+
 
 bzr 1.10 2008-12-05
 -------------------
