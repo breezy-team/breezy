@@ -23,6 +23,7 @@ from bzrlib import (
     inventory,
     lru_cache,
     revision as _mod_revision,
+    trace,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
@@ -355,6 +356,10 @@ class Serializer_v8(Serializer):
         for e in elt:
             ie = self._unpack_entry(e)
             inv.add(ie)
+        if len(inv) > _entry_cache._max_cache:
+            new_len = len(inv) * 1.2
+            trace.note('Resizing inventory cache to %s', new_len)
+            _entry_cache.resize(new_len)
         return inv
 
     def _unpack_entry(self, elt):
