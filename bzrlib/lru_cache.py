@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,25 +17,26 @@
 """A simple least-recently-used (LRU) cache."""
 
 from collections import deque
-import gc
+
+from bzrlib import symbol_versioning
 
 
 class LRUCache(object):
     """A class which manages a cache of entries, removing unused ones."""
 
-    def __init__(self, max_cache=100, after_cleanup_size=None):
-        self._max_cache = max_cache
-        if after_cleanup_size is None:
-            self._after_cleanup_size = self._max_cache
-        else:
-            self._after_cleanup_size = min(after_cleanup_size, self._max_cache)
-
-        self._compact_queue_length = 4*self._max_cache
-
+    def __init__(self, max_cache=100, after_cleanup_count=None,
+                 after_cleanup_size=symbol_versioning.DEPRECATED_PARAMETER):
+        if symbol_versioning.deprecated_passed(after_cleanup_size):
+            symbol_versioning.warn('LRUCache.__init__(after_cleanup_size) was'
+                                   ' deprecated in 1.11. Use'
+                                   ' after_cleanup_count instead.',
+                                   DeprecationWarning)
+            after_cleanup_count = after_cleanup_size
         self._cache = {}
         self._cleanup = {}
         self._queue = deque() # Track when things are accessed
         self._refcount = {} # number of entries in self._queue for each key
+        self._update_max_cache(max_cache, after_cleanup_count)
 
     def __contains__(self, key):
         return key in self._cache
@@ -89,11 +90,13 @@ class LRUCache(object):
         """Clear the cache until it shrinks to the requested size.
 
         This does not completely wipe the cache, just makes sure it is under
-        the after_cleanup_size.
+        the after_cleanup_count.
         """
         # Make sure the cache is shrunk to the correct size
-        while len(self._cache) > self._after_cleanup_size:
+        while len(self._cache) > self._after_cleanup_count:
             self._remove_lru()
+        # No need to compact the queue at this point, because the code that
+        # calls this would have already triggered it based on queue length
 
     def __setitem__(self, key, value):
         """Add a value to the cache, there will be no cleanup function."""
@@ -150,6 +153,23 @@ class LRUCache(object):
         while self._cache:
             self._remove_lru()
 
+    def resize(self, max_cache, after_cleanup_count=None):
+        """Change the number of entries that will be cached."""
+        self._update_max_cache(max_cache,
+                               after_cleanup_count=after_cleanup_count)
+
+    def _update_max_cache(self, max_cache, after_cleanup_count=None):
+        self._max_cache = max_cache
+        if after_cleanup_count is None:
+            self._after_cleanup_count = self._max_cache * 8 / 10
+        else:
+            self._after_cleanup_count = min(after_cleanup_count, self._max_cache)
+
+        self._compact_queue_length = 4*self._max_cache
+        if len(self._queue) > self._compact_queue_length:
+            self._compact_queue()
+        self.cleanup()
+
 
 class LRUSizeCache(LRUCache):
     """An LRUCache that removes things based on the size of the values.
@@ -175,20 +195,15 @@ class LRUSizeCache(LRUCache):
             The function should take the form "compute_size(value) => integer".
             If not supplied, it defaults to 'len()'
         """
-        # This approximates that texts are > 0.5k in size. It only really
-        # effects when we clean up the queue, so we don't want it to be too
-        # large.
-        LRUCache.__init__(self, max_cache=int(max_size/512))
-        self._max_size = max_size
-        if after_cleanup_size is None:
-            self._after_cleanup_size = self._max_size
-        else:
-            self._after_cleanup_size = min(after_cleanup_size, self._max_size)
-
         self._value_size = 0
         self._compute_size = compute_size
         if compute_size is None:
             self._compute_size = len
+        # This approximates that texts are > 0.5k in size. It only really
+        # effects when we clean up the queue, so we don't want it to be too
+        # large.
+        self._update_max_size(max_size, after_cleanup_size=after_cleanup_size)
+        LRUCache.__init__(self, max_cache=max(int(max_size/512), 1))
 
     def add(self, key, value, cleanup=None):
         """Add a new value to the cache.
@@ -229,3 +244,16 @@ class LRUSizeCache(LRUCache):
         """Remove an entry, making sure to maintain the invariants."""
         val = LRUCache._remove(self, key)
         self._value_size -= self._compute_size(val)
+
+    def resize(self, max_size, after_cleanup_size=None):
+        """Change the number of bytes that will be cached."""
+        self._update_max_size(max_size, after_cleanup_size=after_cleanup_size)
+        max_cache = max(int(max_size/512), 1)
+        self._update_max_cache(max_cache)
+
+    def _update_max_size(self, max_size, after_cleanup_size=None):
+        self._max_size = max_size
+        if after_cleanup_size is None:
+            self._after_cleanup_size = self._max_size * 8 / 10
+        else:
+            self._after_cleanup_size = min(after_cleanup_size, self._max_size)
