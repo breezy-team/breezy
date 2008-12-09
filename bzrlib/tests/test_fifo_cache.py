@@ -39,6 +39,7 @@ class TestFIFOCache(tests.TestCase):
         self.assertEqual([(1, 2)], list(c.iteritems()))
         self.assertEqual([2], c.values())
         self.assertEqual([2], list(c.itervalues()))
+        self.assertEqual({1: 2}, c)
 
     def test_missing(self):
         c = fifo_cache.FIFOCache()
@@ -53,6 +54,7 @@ class TestFIFOCache(tests.TestCase):
         self.assertEqual([], list(c.iteritems()))
         self.assertEqual([], c.values())
         self.assertEqual([], list(c.itervalues()))
+        self.assertEqual({}, c)
 
     def test_add_maintains_fifo(self):
         c = fifo_cache.FIFOCache(4, 4)
@@ -98,6 +100,7 @@ class TestFIFOCache(tests.TestCase):
         c.clear()
         self.assertEqual([], c.keys())
         self.assertEqual([], list(c._queue))
+        self.assertEqual({}, c)
 
     def test_copy_not_implemented(self):
         c = fifo_cache.FIFOCache()
@@ -111,9 +114,19 @@ class TestFIFOCache(tests.TestCase):
         c = fifo_cache.FIFOCache()
         self.assertRaises(NotImplementedError, c.popitem)
 
-    def test_setdefault_not_implemented(self):
-        c = fifo_cache.FIFOCache()
-        self.assertRaises(NotImplementedError, c.setdefault, 1, 2)
+    def test_setdefault(self):
+        c = fifo_cache.FIFOCache(5, 4)
+        c['one'] = 1
+        c['two'] = 2
+        c['three'] = 3
+        myobj = object()
+        self.assertIs(myobj, c.setdefault('four', myobj))
+        self.assertEqual({'one': 1, 'two': 2, 'three': 3, 'four': myobj}, c)
+        self.assertEqual(3, c.setdefault('three', myobj))
+        c.setdefault('five', myobj)
+        c.setdefault('six', myobj)
+        self.assertEqual({'three': 3, 'four': myobj, 'five': myobj,
+                          'six': myobj}, c)
 
     def test_update(self):
         c = fifo_cache.FIFOCache(5, 4)
