@@ -171,6 +171,11 @@ class TestFIFOCache(tests.TestCase):
         # Clearing everything should call all remaining cleanups
         c.clear()
         self.assertEqual([(6, 7)], log)
+        del log[:]
+        c.add(8, 9, cleanup=logging_cleanup)
+        # __delitem__ should also trigger a cleanup
+        del c[8]
+        self.assertEqual([(8, 9)], log)
 
     def test_cleanup_at_deconstruct(self):
         log = []
