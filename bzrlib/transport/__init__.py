@@ -84,7 +84,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.iteritems():
+    for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             if hasattr(factory, "_module_name"):
                 modules.add(factory._module_name)
@@ -796,6 +796,10 @@ class Transport(object):
         last_end = None
         cur = _CoalescedOffset(None, None, [])
         coalesced_offsets = []
+
+        if max_size <= 0:
+            # 'unlimited', but we actually take this to mean 100MB buffer limit
+            max_size = 100*1024*1024
 
         for start, size in offsets:
             end = start + size
@@ -1583,7 +1587,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
-    for proto, factory_list in transport_list_registry.iteritems():
+    for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:

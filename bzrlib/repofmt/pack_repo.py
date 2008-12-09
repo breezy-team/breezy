@@ -2313,8 +2313,10 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir(
+        matching = bzrdir.format_registry.make_bzrdir(
             '1.6.1-rich-root')
+        matching.repository_format = self
+        return matching
 
     def _ignore_setting_bzrdir(self, format):
         pass
