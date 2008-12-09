@@ -462,7 +462,9 @@ class LeafNode(Node):
             elements = line.split('\x00', width)
             items[tuple(elements[:-1])] = elements[-1]
         if len(items) != length:
-            raise AssertionError("item count mismatch")
+            import pdb; pdb.set_trace()
+            raise AssertionError("item count (%d) mismatch for key %s,"
+                " bytes %r" % (length, key, bytes))
         result._items = items
         result._len = length
         result._maximum_size = maximum_size
@@ -990,6 +992,7 @@ class InternalNode(Node):
                 except KeyError:
                     continue
                 else:
+                    found_keys.add(chk)
                     node = _deserialise(bytes, chk)
                     self._items[prefix] = node
                     if isinstance(node, InternalNode):
