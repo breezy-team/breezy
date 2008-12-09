@@ -148,9 +148,10 @@ class Branch(object):
     def get_config(self):
         return BranchConfig(self)
 
-    def _get_nick(self, possible_transports=None):
+    def _get_nick(self, local=False, possible_transports=None):
         config = self.get_config()
-        if not config.has_explicit_nickname(): # explicit overrides master
+        # explicit overrides master, but don't look for master if local is True
+        if not local and not config.has_explicit_nickname():
             try:
                 master = self.get_master_branch(possible_transports)
                 if master is not None:
@@ -709,27 +710,31 @@ class Branch(object):
         """Synchronize last revision and revision history between branches.
 
         This version is most efficient when the destination is also a
-        BzrBranch5, but works for BzrBranch6 as long as the revision
-        history is the true lefthand parent history, and all of the revisions
-        are in the destination's repository.  If not, set_revision_history
-        will fail.
+        BzrBranch6, but works for BzrBranch5, as long as the destination's
+        repository contains all the lefthand ancestors of the intended
+        last_revision.  If not, set_last_revision_info will fail.
 
         :param destination: The branch to copy the history into
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
-        if revision_id == _mod_revision.NULL_REVISION:
-            new_history = []
+        source_revno, source_revision_id = self.last_revision_info()
+        if revision_id is None:
+            revno, revision_id = source_revno, source_revision_id
+        elif source_revision_id == revision_id:
+            # we know the revno without needing to walk all of history
+            revno = source_revno
         else:
-            new_history = self.revision_history()
-        if revision_id is not None and new_history != []:
-            try:
-                new_history = new_history[:new_history.index(revision_id) + 1]
-            except ValueError:
-                rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
-        destination.set_revision_history(new_history)
-
+            # To figure out the revno for a random revision, we need to build
+            # the revision history, and count its length.
+            # We don't care about the order, just how long it is.
+            # Alternatively, we could start at the current location, and count
+            # backwards. But there is no guarantee that we will find it since
+            # it may be a merged revision.
+            revno = len(list(self.repository.iter_reverse_revision_history(
+                                                                revision_id)))
+        destination.set_last_revision_info(revno, revision_id)
+    
     @needs_read_lock
     def copy_content_into(self, destination, revision_id=None):
         """Copy the content of self into destination.
@@ -1264,6 +1269,7 @@ class BranchFormatMetadir(BranchFormat):
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+        self._matchingbzrdir.set_branch_format(self)
 
     def supports_tags(self):
         return True
@@ -1419,6 +1425,7 @@ class BranchReferenceFormat(BranchFormat):
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+        self._matchingbzrdir.set_branch_format(self)
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
@@ -1593,6 +1600,31 @@ class BzrBranch(Branch):
             hook(self, rev_history)
         if Branch.hooks['post_change_branch_tip']:
             self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+
+    def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+
+        This version is most efficient when the destination is also a
+        BzrBranch5, but works for BzrBranch6 as long as the revision
+        history is the true lefthand parent history, and all of the revisions
+        are in the destination's repository.  If not, set_revision_history
+        will fail.
+
+        :param destination: The branch to copy the history into
+        :param revision_id: The revision-id to truncate history at.  May
+          be None to copy complete history.
+        """
+        if revision_id == _mod_revision.NULL_REVISION:
+            new_history = []
+        else:
+            new_history = self.revision_history()
+        if revision_id is not None and new_history != []:
+            try:
+                new_history = new_history[:new_history.index(revision_id) + 1]
+            except ValueError:
+                rev = self.repository.get_revision(revision_id)
+                new_history = rev.get_history(self.repository)[1:]
+        destination.set_revision_history(new_history)
 
     def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
         """Run the pre_change_branch_tip hooks."""
@@ -2098,6 +2130,18 @@ class BzrBranch7(BzrBranch5):
         self._last_revision_info_cache = revno, revision_id
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
+    def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+        
+        :see: Branch._synchronize_history
+        """
+        # XXX: The base Branch has a fast implementation of this method based
+        # on set_last_revision_info, but BzrBranch/BzrBranch5 have a slower one
+        # that uses set_revision_history.  This class inherits from BzrBranch5,
+        # but wants the fast implementation, so it calls
+        # Branch._synchronize_history directly.
+        Branch._synchronize_history(self, destination, revision_id)
+
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
         if _mod_revision.is_null(last_revision):
@@ -2251,35 +2295,6 @@ class BzrBranch7(BzrBranch5):
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
         return value == 'True'
-
-    def _synchronize_history(self, destination, revision_id):
-        """Synchronize last revision and revision history between branches.
-
-        This version is most efficient when the destination is also a
-        BzrBranch6, but works for BzrBranch5, as long as the destination's
-        repository contains all the lefthand ancestors of the intended
-        last_revision.  If not, set_last_revision_info will fail.
-
-        :param destination: The branch to copy the history into
-        :param revision_id: The revision-id to truncate history at.  May
-          be None to copy complete history.
-        """
-        source_revno, source_revision_id = self.last_revision_info()
-        if revision_id is None:
-            revno, revision_id = source_revno, source_revision_id
-        elif source_revision_id == revision_id:
-            # we know the revno without needing to walk all of history
-            revno = source_revno
-        else:
-            # To figure out the revno for a random revision, we need to build
-            # the revision history, and count its length.
-            # We don't care about the order, just how long it is.
-            # Alternatively, we could start at the current location, and count
-            # backwards. But there is no guarantee that we will find it since
-            # it may be a merged revision.
-            revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                revision_id)))
-        destination.set_last_revision_info(revno, revision_id)
 
     def _make_tags(self):
         return BasicTags(self)

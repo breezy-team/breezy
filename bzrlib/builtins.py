@@ -979,7 +979,8 @@ class cmd_branch(Command):
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
                                             hardlink=hardlink, stacked=stacked,
-                                            force_new_repo=standalone)
+                                            force_new_repo=standalone,
+                                            source_branch=br_from)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')

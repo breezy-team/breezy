@@ -516,6 +516,15 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_workingtree)
 
+    def backup_bzrdir(self):
+        """Backup this bzr control directory.
+        
+        :return: Tuple with old path name and new path name
+        """
+        self.root_transport.copy_tree('.bzr', 'backup.bzr')
+        return (self.root_transport.abspath('.bzr'),
+                self.root_transport.abspath('backup.bzr'))
+
     def retire_bzrdir(self, limit=10000):
         """Permanently disable the bzrdir.
 
@@ -1061,7 +1070,8 @@ class BzrDir(object):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
-               accelerator_tree=None, hardlink=False, stacked=False):
+               accelerator_tree=None, hardlink=False, stacked=False,
+               source_branch=None):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -1088,22 +1098,25 @@ class BzrDir(object):
         cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
-        try:
-            source_branch = self.open_branch()
-            source_repository = source_branch.repository
+        # if a stacked branch wasn't requested, we don't create one
+        # even if the origin was stacked
+        stacked_branch_url = None
+        if source_branch is not None:
             if stacked:
                 stacked_branch_url = self.root_transport.base
-            else:
-                # if a stacked branch wasn't requested, we don't create one
-                # even if the origin was stacked
-                stacked_branch_url = None
-        except errors.NotBranchError:
-            source_branch = None
+            source_repository = source_branch.repository
+        else:
             try:
-                source_repository = self.open_repository()
-            except errors.NoRepositoryPresent:
-                source_repository = None
-            stacked_branch_url = None
+                source_branch = self.open_branch()
+                source_repository = source_branch.repository
+                if stacked:
+                    stacked_branch_url = self.root_transport.base
+            except errors.NotBranchError:
+                source_branch = None
+                try:
+                    source_repository = self.open_repository()
+                except errors.NoRepositoryPresent:
+                    source_repository = None
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo = repository_policy.acquire_repository()
@@ -2645,6 +2658,11 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         if not isinstance(other, RemoteBzrDirFormat):
             return False
         return self.get_format_description() == other.get_format_description()
+
+    @property
+    def repository_format(self):
+        # Using a property to avoid early loading of remote
+        return remote.RemoteRepositoryFormat()
 
 
 BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
