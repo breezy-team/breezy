@@ -516,6 +516,15 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_workingtree)
 
+    def backup_bzrdir(self):
+        """Backup this bzr control directory.
+        
+        :return: Tuple with old path name and new path name
+        """
+        self.root_transport.copy_tree('.bzr', 'backup.bzr')
+        return (self.root_transport.abspath('.bzr'),
+                self.root_transport.abspath('backup.bzr'))
+
     def retire_bzrdir(self, limit=10000):
         """Permanently disable the bzrdir.
 
@@ -2649,6 +2658,11 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         if not isinstance(other, RemoteBzrDirFormat):
             return False
         return self.get_format_description() == other.get_format_description()
+
+    @property
+    def repository_format(self):
+        # Using a property to avoid early loading of remote
+        return remote.RemoteRepositoryFormat()
 
 
 BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
