@@ -13,6 +13,8 @@ IN DEVELOPMENT
   NEW FEATURES:
 
   IMPROVEMENTS:
+    * Add trailing slash to directories in all output of ``bzr ls``, except
+      ``bzr ls --null``. (Gordon P. Hemsley, #306424)
 
   BUG FIXES:
   
