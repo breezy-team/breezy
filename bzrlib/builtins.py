@@ -1975,14 +1975,15 @@ class cmd_ls(Command):
                         continue
                     if kind is not None and fkind != kind:
                         continue
+                    kindch = entry.kind_character()
+                    outstring = '%s%s' % (fp, kindch)
                     if verbose:
-                        kindch = entry.kind_character()
-                        outstring = '%-8s %s%s' % (fc, fp, kindch)
+                        outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
                             outstring = "%-50s %s" % (outstring, fid)
                         self.outf.write(outstring + '\n')
                     elif null:
-                        self.outf.write(fp + '\0')
+                        self.outf.write(outstring + '\0')
                         if show_ids:
                             if fid is not None:
                                 self.outf.write(fid)
@@ -1994,9 +1995,9 @@ class cmd_ls(Command):
                         else:
                             my_id = ''
                         if show_ids:
-                            self.outf.write('%-50s %s\n' % (fp, my_id))
+                            self.outf.write('%-50s %s\n' % (outstring, my_id))
                         else:
-                            self.outf.write(fp + '\n')
+                            self.outf.write(outstring + '\n')
         finally:
             tree.unlock()
 
