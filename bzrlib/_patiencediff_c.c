@@ -768,6 +768,7 @@ PatienceSequenceMatcher_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->backpointers = (Py_ssize_t *)malloc(sizeof(Py_ssize_t) * self->bsize * 4);
         if (self->backpointers == NULL) {
             Py_DECREF(self);
+            PyErr_NoMemory();
             return NULL;
         }
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,6 +53,19 @@ _whitespace_re = re.compile('[\t\n\x0b\x0c\r\x00 ]')
 _newline_null_re = re.compile('[\n\0]')
 
 
+def _has_key_from_parent_map(self, key):
+    """Check if this index has one key.
+
+    If it's possible to check for multiple keys at once through 
+    calling get_parent_map that should be faster.
+    """
+    return (key in self.get_parent_map([key]))
+
+
+def _missing_keys_from_parent_map(self, keys):
+    return set(keys) - set(self.get_parent_map(keys))
+
+
 class GraphIndexBuilder(object):
     """A builder that can build a GraphIndex.
     
@@ -96,6 +109,28 @@ class GraphIndexBuilder(object):
         for element in key:
             if not element or _whitespace_re.search(element) is not None:
                 raise errors.BadIndexKey(element)
+
+    def _external_references(self):
+        """Return references that are not present in this index.
+        """
+        keys = set()
+        refs = set()
+        # TODO: JAM 2008-11-21 This makes an assumption about how the reference
+        #       lists are used. It is currently correct for pack-0.92 through
+        #       1.9, which use the node references (3rd column) second
+        #       reference list as the compression parent. Perhaps this should
+        #       be moved into something higher up the stack, since it
+        #       makes assumptions about how the index is used.
+        if self.reference_lists > 1:
+            for node in self.iter_all_entries():
+                keys.add(node[1])
+                refs.update(node[3][1])
+            return refs - keys
+        else:
+            # If reference_lists == 0 there can be no external references, and
+            # if reference_lists == 1, then there isn't a place to store the
+            # compression parent
+            return set()
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
@@ -1167,6 +1202,8 @@ class CombinedGraphIndex(object):
             found_parents[key] = parents
         return found_parents
 
+    has_key = _has_key_from_parent_map
+
     def insert_index(self, pos, index):
         """Insert a new index in the list of indices to query.
 
@@ -1270,6 +1307,8 @@ class CombinedGraphIndex(object):
                 return sum((index.key_count() for index in self._indices), 0)
             except errors.NoSuchFile:
                 self._reload_or_raise()
+
+    missing_keys = _missing_keys_from_parent_map
 
     def _reload_or_raise(self):
         """We just got a NoSuchFile exception.
