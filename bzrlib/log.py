@@ -392,7 +392,8 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev, delta).
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
     """
     repository = branch.repository
     num = 9
@@ -643,7 +644,8 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
-    for sequence, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
+    for (sequence, rev_id, merge_depth, revno, end_of_merge
+         ) in merge_sorted_revisions:
         yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
