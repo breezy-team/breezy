@@ -111,8 +111,23 @@ class FIFOCache(dict):
         # See pop()
         raise NotImplementedError(self.popitem)
 
-    def setdefault(self):
+    def setdefault(self, key, defaultval=None):
+        """similar to dict.setdefault"""
         raise NotImplementedError(self.setdefault)
 
     def update(self, *args, **kwargs):
-        raise NotImplementedError(self.update)
+        """Similar to dict.update()"""
+        if len(args) == 1:
+            arg = args[0]
+            if isinstance(arg, dict):
+                for key, val in arg.iteritems():
+                    self.add(key, val)
+            else:
+                for key, val in args[0]:
+                    self.add(key, val)
+        elif len(args) > 1:
+            raise TypeError('update expected at most 1 argument, got %d'
+                            % len(args))
+        if kwargs:
+            for key, val in kwargs.iteritems():
+                self.add(key, val)

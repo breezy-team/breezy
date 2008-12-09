@@ -113,11 +113,25 @@ class TestFIFOCache(tests.TestCase):
 
     def test_setdefault_not_implemented(self):
         c = fifo_cache.FIFOCache()
-        self.assertRaises(NotImplementedError, c.setdefault)
+        self.assertRaises(NotImplementedError, c.setdefault, 1, 2)
 
-    def test_update_not_implemented(self):
-        c = fifo_cache.FIFOCache()
-        self.assertRaises(NotImplementedError, c.update)
+    def test_update(self):
+        c = fifo_cache.FIFOCache(5, 4)
+        # We allow an iterable
+        c.update([(1, 2), (3, 4)])
+        self.assertEqual({1: 2, 3: 4}, c)
+        # Or kwarg form
+        c.update(foo=3, bar=4)
+        self.assertEqual({1: 2, 3: 4, 'foo': 3, 'bar': 4}, c)
+        # Even a dict (This triggers a cleanup)
+        c.update({'baz': 'biz', 'bing': 'bang'})
+        self.assertEqual({'foo': 3, 'bar': 4, 'baz': 'biz', 'bing': 'bang'}, c)
+        # We only allow 1 iterable, just like dict
+        self.assertRaises(TypeError, c.update, [(1, 2)], [(3, 4)])
+        # But you can mix and match. kwargs take precedence over iterable
+        c.update([('a', 'b'), ('d', 'e')], a='c', q='r')
+        self.assertEqual({'baz': 'biz', 'bing': 'bang',
+                          'a': 'c', 'd': 'e', 'q': 'r'}, c)
 
     def test_cleanup_funcs(self):
         log = []
