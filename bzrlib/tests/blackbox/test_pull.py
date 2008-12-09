@@ -347,6 +347,7 @@ class TestPull(ExternalBase):
         out = self.run_bzr('pull -v source -d target')[0]
         self.assertContainsRe(out,
                               r'revno: 1\ncommitter: .*\nbranch nick: source')
+        self.assertNotContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
 
     def test_pull_verbose_uses_default_log(self):
         tree = self.example_branch('source')
@@ -355,3 +356,5 @@ class TestPull(ExternalBase):
         target_config.set_user_option('log_format', 'short')
         out = self.run_bzr('pull -v source -d target')[0]
         self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
+        self.assertNotContainsRe(
+            out, r'revno: 1\ncommitter: .*\nbranch nick: source')
