@@ -123,6 +123,7 @@ class LockableFiles(object):
         self._lock.break_lock()
 
     def _escape(self, file_or_path):
+        """DEPRECATED: Do not use outside this class"""
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':

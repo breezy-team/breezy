@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     graph,
@@ -1020,6 +1021,19 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
 
+class TestTransportMkdir(tests.TestCase):
+
+    def test_permissiondenied(self):
+        client = FakeClient()
+        client.add_error_response('PermissionDenied', 'remote path', 'extra')
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        exc = self.assertRaises(
+            errors.PermissionDenied, transport.mkdir, 'client path')
+        expected_error = errors.PermissionDenied('/client path', 'extra')
+        self.assertEqual(expected_error, exc)
+
+
 class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
 
     def test_defaults_to_none(self):
@@ -1817,3 +1831,32 @@ class TestStacking(tests.TestCaseWithTransport):
         branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
         self.assertEqual([], repo._get_parent_map(['rev1']).keys())
+
+
+class TestRemoteBranchEffort(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestRemoteBranchEffort, self).setUp()
+        # Create a smart server that publishes whatever the backing VFS server
+        # does.
+        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server.setUp(self.get_server())
+        self.addCleanup(self.smart_server.tearDown)
+        # Log all HPSS calls into self.hpss_calls.
+        _SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
+
+    def test_copy_content_into_avoids_revision_history(self):
+        local = self.make_branch('local')
+        remote_backing_tree = self.make_branch_and_tree('remote')
+        remote_backing_tree.commit("Commit.")
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        local.repository.fetch(remote_branch.repository)
+        self.hpss_calls = []
+        remote_branch.copy_content_into(local)
+        self.assertFalse('Branch.revision_history' in self.hpss_calls)

@@ -81,6 +81,9 @@ class RepoFetcher(object):
         """Create a repo fetcher.
 
         :param find_ghosts: If True search the entire history for ghosts.
+        :param _write_group_acquired_callable: Don't use; this parameter only
+            exists to facilitate a hack done in InterPackRepo.fetch.  We would
+            like to remove this parameter.
         """
         # result variables.
         self.failed_revisions = []
@@ -248,6 +251,7 @@ class RepoFetcher(object):
             child_pb.finished()
 
     def _fetch_revision_texts(self, revs, pb):
+        # fetch signatures first and then the revision texts
         # may need to be a InterRevisionStore call here.
         to_sf = self.to_repository.signatures
         from_sf = self.from_repository.signatures
@@ -255,22 +259,19 @@ class RepoFetcher(object):
         to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
             [(rev_id,) for rev_id in revs],
             self.to_repository._fetch_order,
-            True)))
-        # Bug #261339, some knit repositories accidentally had deltas in their
-        # revision stream, when you weren't ever supposed to have deltas.
-        # So we now *force* fulltext copying for signatures and revisions
+            not self.to_repository._fetch_uses_deltas)))
         self._fetch_just_revision_texts(revs)
 
     def _fetch_just_revision_texts(self, version_ids):
         to_rf = self.to_repository.revisions
         from_rf = self.from_repository.revisions
+        # If a revision has a delta, this is actually expanded inside the
+        # insert_record_stream code now, which is an alternate fix for
+        # bug #261339
         to_rf.insert_record_stream(from_rf.get_record_stream(
             [(rev_id,) for rev_id in version_ids],
             self.to_repository._fetch_order,
-            True))
-        # Bug #261339, some knit repositories accidentally had deltas in their
-        # revision stream, when you weren't ever supposed to have deltas.
-        # So we now *force* fulltext copying for signatures and revisions
+            not self.to_repository._fetch_uses_deltas))
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and
