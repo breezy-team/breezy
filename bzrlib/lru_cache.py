@@ -63,7 +63,8 @@ class LRUCache(object):
         if key in self._cache:
             self._remove(key)
         self._cache[key] = value
-        self._cleanup[key] = cleanup
+        if cleanup is not None:
+            self._cleanup[key] = cleanup
         self._record_access(key)
 
         if len(self._cache) > self._max_cache:
@@ -129,7 +130,7 @@ class LRUCache(object):
 
     def _remove(self, key):
         """Remove an entry, making sure to maintain the invariants."""
-        cleanup = self._cleanup.pop(key)
+        cleanup = self._cleanup.pop(key, None)
         val = self._cache.pop(key)
         if cleanup is not None:
             cleanup(key, val)
@@ -223,7 +224,8 @@ class LRUSizeCache(LRUCache):
             return
         self._value_size += value_len
         self._cache[key] = value
-        self._cleanup[key] = cleanup
+        if cleanup is not None:
+            self._cleanup[key] = cleanup
         self._record_access(key)
 
         if self._value_size > self._max_size:
