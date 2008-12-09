@@ -798,8 +798,10 @@ class cmd_pull(Command):
                     result.old_revid))
                 old_rh.reverse()
                 new_rh = branch_to.revision_history()
+                log_format = branch_to.get_config().log_format()
                 log.show_changed_revisions(branch_to, old_rh, new_rh,
-                                           to_file=self.outf)
+                                           to_file=self.outf,
+                                           log_format=log_format)
         finally:
             branch_to.unlock()
 
