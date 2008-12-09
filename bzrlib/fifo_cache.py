@@ -38,6 +38,7 @@ class FIFOCache(dict):
         self.add(key, value, cleanup=None)
 
     def __delitem__(self, key):
+        # Remove the key from an arbitrary location in the queue
         self._queue.remove(key)
         self._remove(key)
 
@@ -58,10 +59,10 @@ class FIFOCache(dict):
             del self[key]
         self._queue.append(key)
         dict.__setitem__(self, key, value)
-        if len(self) > self._max_cache:
-            self.cleanup()
         if cleanup is not None:
             self._cleanup[key] = cleanup
+        if len(self) > self._max_cache:
+            self.cleanup()
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
@@ -138,3 +139,81 @@ class FIFOCache(dict):
         if kwargs:
             for key, val in kwargs.iteritems():
                 self.add(key, val)
+
+
+class FIFOSizeCache(FIFOCache):
+    """An FIFOCache that removes things based on the size of the values.
+
+    This differs in that it doesn't care how many actual items there are,
+    it restricts the cache to be cleaned based on the size of the data.
+    """
+
+    def __init__(self, max_size=1024*1024, after_cleanup_size=None,
+                 compute_size=None):
+        """Create a new FIFOSizeCache.
+
+        :param max_size: The max number of bytes to store before we start
+            clearing out entries.
+        :param after_cleanup_size: After cleaning up, shrink everything to this
+            size (defaults to 80% of max_size).
+        :param compute_size: A function to compute the size of a value. If
+            not supplied we default to 'len'.
+        """
+        # Arbitrary, we won't really be using the value anyway.
+        FIFOCache.__init__(self, max_cache=max_size)
+        self._max_size = max_size
+        if after_cleanup_size is None:
+            self._after_cleanup_size = self._max_size * 8 / 10
+        else:
+            self._after_cleanup_size = min(after_cleanup_size, self._max_size)
+
+        self._value_size = 0
+        self._compute_size = compute_size
+        if compute_size is None:
+            self._compute_size = len
+
+    def add(self, key, value, cleanup=None):
+        """Add a new value to the cache.
+
+        Also, if the entry is ever removed from the queue, call cleanup.
+        Passing it the key and value being removed.
+
+        :param key: The key to store it under
+        :param value: The object to store, this value by itself is >=
+            after_cleanup_size, then we will not store it at all.
+        :param cleanup: None or a function taking (key, value) to indicate
+                        'value' sohuld be cleaned up.
+        """
+        # Even if the new value won't be stored, we need to remove the old
+        # value
+        if key in self:
+            # Remove the earlier reference to this key, adding it again bumps
+            # it to the end of the queue
+            del self[key]
+        value_len = self._compute_size(value)
+        if value_len >= self._after_cleanup_size:
+            return
+        self._queue.append(key)
+        dict.__setitem__(self, key, value)
+        if cleanup is not None:
+            self._cleanup[key] = cleanup
+        self._value_size += value_len
+        if self._value_size > self._max_size:
+            # Time to cleanup
+            self.cleanup()
+
+    def cleanup(self):
+        """Clear the cache until it shrinks to the requested size.
+
+        This does not completely wipe the cache, just makes sure it is under
+        the after_cleanup_size.
+        """
+        # Make sure the cache is shrunk to the correct size
+        while self._value_size > self._after_cleanup_size:
+            self._remove_oldest()
+
+    def _remove(self, key):
+        """Remove an entry, making sure to maintain the invariants."""
+        val = FIFOCache._remove(self, key)
+        self._value_size -= self._compute_size(val)
+        return val
