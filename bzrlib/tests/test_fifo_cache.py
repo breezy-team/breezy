@@ -136,3 +136,16 @@ class TestFIFOCache(tests.TestCase):
         del log[:]
         c.clear()
         self.assertEqual([(3, 4)], log)
+
+    def test_cleanup_at_deconstruct(self):
+        log = []
+        def logging_cleanup(key, value):
+            log.append((key, value))
+        c = fifo_cache.FIFOCache()
+        c.add(1, 2, cleanup=logging_cleanup)
+        del c
+        # TODO: We currently don't support calling the cleanup() funcs during
+        #       __del__. We might want to consider implementing this.
+        self.expectFailure("we don't call cleanups during __del__",
+                           self.assertEqual, [(1, 2)], log)
+        self.assertEqual([(1, 2)], log)
