@@ -1523,6 +1523,11 @@ class TestVersionedFilesInsertRecordStream(TestRemoteRepository):
     def test_backwards_compatibility_1_10(self):
         """1.10 and earlier servers don't have this verb, so fallback to the
         plain VFS implementation.
+
+        First the RemoteVersionedFiles will try the insert_record_stream RPC
+        with the full stream, and then when that fails with an
+        UnknownSmartMethod it will try the VFS fallback with a copy of the full
+        stream.
         """
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)

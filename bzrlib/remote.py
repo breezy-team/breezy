@@ -1301,7 +1301,12 @@ class RemoteVersionedFiles(VersionedFiles):
         if _record_serialiser is None:
             _record_serialiser = _serialise_record_stream
         # Tee the stream, because we may need to replay it if we have to
-        # fallback to the VFS implementation.
+        # fallback to the VFS implementation.  This unfortunately means
+        # the entire record stream will temporarily be buffered in memory, even
+        # if we don't need to fallback.
+        # TODO: remember if this server accepts the insert_record_stream RPC,
+        # and if so skip the buffering.  (And if not, fallback immediately,
+        # again no buffering.)
         stream, fallback_stream = itertools.tee(stream)
         byte_stream = _record_serialiser(stream)
         client = self.remote_repo._client
