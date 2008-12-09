@@ -1983,7 +1983,7 @@ class cmd_ls(Command):
                             outstring = "%-50s %s" % (outstring, fid)
                         self.outf.write(outstring + '\n')
                     elif null:
-                        self.outf.write(outstring + '\0')
+                        self.outf.write(fp + '\0')
                         if show_ids:
                             if fid is not None:
                                 self.outf.write(fid)

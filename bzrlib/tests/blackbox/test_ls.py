@@ -106,7 +106,7 @@ class TestLS(TestCaseWithTransport):
             '--show-ids --verbose')
         self.ls_equals('.bzrignore\0\0'
                        'a\0a-id\0'
-                       'subdir/\0subdir-id\0', '--show-ids --null')
+                       'subdir\0subdir-id\0', '--show-ids --null')
 
     def test_ls_recursive(self):
         self.build_tree(['subdir/', 'subdir/b'])
@@ -134,7 +134,7 @@ class TestLS(TestCaseWithTransport):
                        , '--from-root')
         self.ls_equals('.bzrignore\0'
                        'a\0'
-                       'subdir/\0'
+                       'subdir\0'
                        'subdir/b\0'
                        , '--from-root --null')
         self.ls_equals('.bzrignore\n'
@@ -156,7 +156,7 @@ class TestLS(TestCaseWithTransport):
                        '..')
         self.ls_equals('../.bzrignore\0'
                        '../a\0'
-                       '../subdir/\0'
+                       '../subdir\0'
                        '../subdir/b\0' ,
                        '.. --null')
         self.ls_equals('?        ../.bzrignore\n'
