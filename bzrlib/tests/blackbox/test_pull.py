@@ -26,7 +26,7 @@ from bzrlib.osutils import pathjoin
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
-from bzrlib import urlutils
+from bzrlib import config, urlutils
 
 
 class TestPull(ExternalBase):
@@ -340,3 +340,17 @@ class TestPull(ExternalBase):
         self.addCleanup(lambda: directories.remove('foo:'))
         self.run_bzr('pull foo:bar -d target')
         self.assertEqual(source_last, target.last_revision())
+
+    def test_pull_verbose_defaults_to_long(self):
+        tree = self.example_branch('source')
+        target = self.make_branch_and_tree('target')
+        out = self.run_bzr('pull -v source -d target')[0]
+        self.assertContainsRe(out,
+                              r'revno: 1\ncommitter: .*\nbranch nick: source')
+
+    def test_pull_verbose_uses_default_log(self):
+        config.GlobalConfig().set_user_option('log_format', 'short')
+        tree = self.example_branch('source')
+        target = self.make_branch_and_tree('target')
+        out = self.run_bzr('pull -v source -d target')[0]
+        self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
