@@ -976,6 +976,25 @@ class InternalNode(Node):
                         # Adding this key would cause a split, so we know we
                         # don't need to collapse
                         return self
+        if keys:
+            # Look in the page cache for some more bytes
+            found_keys = set()
+            for chk, prefix in keys.iteritems():
+                try:
+                    bytes = _page_cache[chk]
+                except KeyError:
+                    continue
+                else:
+                    node = _deserialise(bytes, chk)
+                    self._items[prefix] = node
+                    if isinstance(node, InternalNode):
+                        # We have done enough to know that we can stop
+                        return self
+                    for key, value in node._items.iteritems():
+                        if new_leaf._map_no_split(key, value):
+                            return self
+            for chk in found_keys:
+                del keys[chk]
         # So far, everything fits. Page in the rest of the nodes, and see if it
         # holds true.
         if keys:
