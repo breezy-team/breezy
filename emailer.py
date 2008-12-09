@@ -30,7 +30,8 @@ class EmailSender(object):
 
     _smtplib_implementation = SMTPConnection
 
-    def __init__(self, branch, revision_id, config, local_branch=None):
+    def __init__(self, branch, revision_id, config, local_branch=None,
+        op='commit'):
         self.config = config
         self.branch = branch
         self.repository = branch.repository
@@ -40,6 +41,7 @@ class EmailSender(object):
         self._revision_id = revision_id
         self.revision = None
         self.revno = None
+        self.op = op
 
     def _setup_revision_and_revno(self):
         self.revision = self.repository.get_revision(self._revision_id)
@@ -230,6 +232,15 @@ class EmailSender(object):
                                             self.diff_filename())
 
     def should_send(self):
+        result = self.config.get_user_option('post_commit_difflimit')
+        post_commit_push_pull = self.config.get_user_option(
+            'post_commit_push_pull') == 'True'
+        if post_commit_push_pull and self.op == 'commit':
+            # We will be called again with a push op, send the mail then.
+            return False
+        if not post_commit_push_pull and self.op != 'commit':
+            # Mailing on commit only, and this is a push/pull operation.
+            return False
         return bool(self.to() and self.from_address())
 
     def send_maybe(self):

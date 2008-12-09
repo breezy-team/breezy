@@ -49,6 +49,10 @@ multiple_to_configured_config=("[DEFAULT]\n"
               "post_commit_sender=Sender <from@example.com>\n"
               "post_commit_to=Sample <foo@example.com>, Other <baz@bar.com>\n")
 
+push_config=("[DEFAULT]\n"
+    "post_commit_to=demo@example.com\n"
+    "post_commit_push_pull=True\n")
+
 with_url_config=("[DEFAULT]\n"
                  "post_commit_url=http://some.fake/url/\n"
                  "post_commit_to=demo@example.com\n"

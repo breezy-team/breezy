@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Sending emails upon commit with information about the commit.
+"""Sending emails for commits and branch changes.
 
 To have bzr send an email you need to configure an address to send mail
 to for that branch. To do this set the configuration option ``post_commit_to``
@@ -26,6 +26,10 @@ By default, the diff for the commit will be included in the email, if the
 length is less than 1000 lines. This limit can be changed (for instance, to 0
 to disable the feature) by setting the configuration option
 'post_commit_difflimit' to the number of lines you wish it to be limited to.
+
+By default bzr-email only emails when a commit occurs, not when a push or
+pull operation occurs. To email on push or pull set post_commit_push_pull=True
+in the configuration.
 
 If you are using a bzr release from before 0.15, you need to manually tell
 bzr about the commit action, by setting
@@ -87,11 +91,21 @@ def branch_commit_hook(local, master, old_revno, old_revid, new_revno, new_revid
                          local_branch=local).send_maybe()
 
 
+def branch_post_change_hook(params):
+    """This is the post_change_branch_tip hook."""
+    # (branch, old_revno, new_revno, old_revid, new_revid)
+    _emailer.EmailSender(params.branch, params.new_revid,
+        params.branch.get_config(), local_branch=None, op='change').send_maybe()
+
+
 def install_hooks():
     """Install CommitSender to send after commits with bzr >= 0.15 """
     install_named_hook = getattr(Branch.hooks, 'install_named_hook', None)
     if install_named_hook is not None:
         install_named_hook('post_commit', branch_commit_hook, 'bzr-email')
+        if 'post_change_branch_tip' in Branch.hooks:
+            install_named_hook('post_change_branch_tip',
+                branch_post_change_hook, 'bzr-email')
     else:
         Branch.hooks.install_hook('post_commit', branch_commit_hook)
         if getattr(Branch.hooks, 'name_hook', None) is not None:
