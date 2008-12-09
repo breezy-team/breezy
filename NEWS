@@ -16,8 +16,11 @@ IN DEVELOPMENT
 
   BUG FIXES:
   
-   * Allow BzrDir implementation to implement backing up of 
-     control directory. (#139691)
+    * Allow BzrDir implementation to implement backing up of 
+      control directory. (#139691)
+
+    * Don't call iteritems on transport_list_registry, because it may
+      change during iteration.  (Martin Pool, #277048)
 
     * Fix SystemError in ``_patiencediff_c`` module by calling
       PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.

@@ -84,7 +84,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.iteritems():
+    for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             if hasattr(factory, "_module_name"):
                 modules.add(factory._module_name)
@@ -1587,7 +1587,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
-    for proto, factory_list in transport_list_registry.iteritems():
+    for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
