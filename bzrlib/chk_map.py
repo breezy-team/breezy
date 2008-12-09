@@ -43,11 +43,12 @@ from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import versionedfile
 """)
-from bzrlib.lru_cache import LRUCache
+from bzrlib import lru_cache
 
 # approx 2MB
-_PAGE_CACHE_SIZE = 2*1024*1024 / 4*1024
-_page_cache = LRUCache(_PAGE_CACHE_SIZE)
+_PAGE_CACHE_SIZE = 2*1024*1024
+# We are caching bytes so len(value) is perfectly accurate
+_page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
 
 class CHKMap(object):
@@ -970,11 +971,15 @@ class InternalNode(Node):
             else:
                 if isinstance(node, InternalNode):
                     # Without looking at any leaf nodes, we are sure
+                    def child_is_internal_node(): pass
+                    child_is_internal_node()
                     return self
                 for key, value in node._items.iteritems():
                     if new_leaf._map_no_split(key, value):
                         # Adding this key would cause a split, so we know we
                         # don't need to collapse
+                        def child_causes_split(): pass
+                        child_causes_split()
                         return self
         if keys:
             # Look in the page cache for some more bytes
@@ -989,9 +994,13 @@ class InternalNode(Node):
                     self._items[prefix] = node
                     if isinstance(node, InternalNode):
                         # We have done enough to know that we can stop
+                        def page_is_internal(): pass
+                        page_is_internal()
                         return self
                     for key, value in node._items.iteritems():
                         if new_leaf._map_no_split(key, value):
+                            def page_causes_split(): pass
+                            page_causes_split()
                             return self
             for chk in found_keys:
                 del keys[chk]
@@ -1013,19 +1022,27 @@ class InternalNode(Node):
             # don't need to continue. We requested the bytes, we may as well
             # use them
             for record in stream:
-                node = _deserialise(record.get_bytes_as('fulltext'), record.key)
+                bytes = record.get_bytes_as('fulltext')
+                node = _deserialise(bytes, record.key)
                 self._items[keys[record.key]] = node
+                _page_cache[record.key] = bytes
                 nodes.append(node)
             for node in nodes:
                 if isinstance(node, InternalNode):
                     # We know we won't fit
+                    def stream_is_internal(): pass
+                    stream_is_internal()
                     return self
                 for key, value in node._items.iteritems():
                     if new_leaf._map_no_split(key, value):
+                        def stream_causes_split(): pass
+                        stream_causes_split()
                         return self
 
         # We have gone to every child, and everything fits in a single leaf
         # node, we no longer need this internal node
+        def check_remap_collapsed(): pass
+        check_remap_collapsed()
         return new_leaf
 
 
