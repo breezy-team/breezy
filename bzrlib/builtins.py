@@ -1976,7 +1976,7 @@ class cmd_ls(Command):
                     if kind is not None and fkind != kind:
                         continue
                     kindch = entry.kind_character()
-                    outstring = '%s%s' % (fp, kindch)
+                    outstring = fp + kindch
                     if verbose:
                         outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
