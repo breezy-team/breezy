@@ -158,11 +158,19 @@ class TestFIFOCache(tests.TestCase):
         c[5] = 6 # no cleanup for 5
         self.assertEqual([], log)
         # Adding another key should cleanup 1 & 2
-        c[6] = 7
+        c.add(6, 7, cleanup=logging_cleanup)
         self.assertEqual([(1, 2), (2, 3)], log)
         del log[:]
-        c.clear()
+        # replacing 3 should trigger a cleanup
+        c.add(3, 8, cleanup=logging_cleanup)
         self.assertEqual([(3, 4)], log)
+        del log[:]
+        c[3] = 9
+        self.assertEqual([(3, 8)], log)
+        del log[:]
+        # Clearing everything should call all remaining cleanups
+        c.clear()
+        self.assertEqual([(6, 7)], log)
 
     def test_cleanup_at_deconstruct(self):
         log = []
