@@ -465,13 +465,7 @@ class RemoteRepository(_RpcHelper):
 
     def get_graph(self, other_repository=None):
         """Return the graph for this repository format"""
-        parents_provider = self._make_parents_provider()
-        if (other_repository is not None and
-            other_repository.bzrdir.transport.base !=
-            self.bzrdir.transport.base):
-            parents_provider = graph._StackedParentsProvider(
-                [self._unstacked_provider,
-                 other_repository._make_parents_provider()])
+        parents_provider = self._make_parents_provider(other_repository)
         return graph.Graph(parents_provider)
 
     def gather_stats(self, revid=None, committers=None):
@@ -1181,8 +1175,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository._check_for_inconsistent_revision_parents()
 
-    def _make_parents_provider(self):
+    def _make_parents_provider(self, other=None):
         providers = [self._unstacked_provider]
+        if other is not None:
+            providers.insert(0, other)
         providers.extend(r._make_parents_provider() for r in
                          self._fallback_repositories)
         return graph._StackedParentsProvider(providers)
