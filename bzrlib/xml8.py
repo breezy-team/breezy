@@ -385,7 +385,7 @@ class Serializer_v8(Serializer):
         #   7.1s    InventoryFile.copy()
         #   2.4s    InventoryDirectory.copy()
         #   0.4s    decoding unique entries
-        #   1.6s    decoding entries
+        #   1.6s    decoding entries after FIFO fills up
         #   0.8s    Adding nodes to FIFO (including flushes)
         #   0.1s    cache miss lookups
         # Using an LRU cache
