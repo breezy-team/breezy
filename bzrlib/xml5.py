@@ -16,6 +16,7 @@
 
 from bzrlib import (
     cache_utf8,
+    errors,
     inventory,
     xml6,
     xml8,
@@ -44,11 +45,33 @@ class Serializer_v5(xml6.Serializer_v6):
         if data_revision_id is not None:
             revision_id = cache_utf8.encode(data_revision_id)
         inv = inventory.Inventory(root_id, revision_id=revision_id)
+        # Optimizations tested
+        #   baseline w/entry cache  2.85s
+        #   using inv._byid         2.55s
+        #   avoiding attributes     2.46s
+        #   adding assertions       2.50s
+        #   last_parent cache       2.52s (worse, removed)
+        unpack_entry = self._unpack_entry
+        byid = inv._byid
         for e in elt:
-            ie = self._unpack_entry(e)
-            if ie.parent_id is None:
-                ie.parent_id = root_id
-            inv.add(ie)
+            ie = unpack_entry(e)
+            parent_id = ie.parent_id
+            if parent_id is None:
+                ie.parent_id = parent_id = root_id
+            try:
+                parent = byid[parent_id]
+            except KeyError:
+                raise errors.BzrError("parent_id {%s} not in inventory"
+                                      % (parent_id,))
+            if ie.file_id in byid:
+                raise errors.DuplicateFileId(ie.file_id,
+                                             byid[ie.file_id])
+            if ie.name in parent.children:
+                raise errors.BzrError("%s is already versioned"
+                    % (osutils.pathjoin(inv.id2path(parent_id),
+                       ie.name).encode('utf-8'),))
+            parent.children[ie.name] = ie
+            byid[ie.file_id] = ie
         if revision_id is not None:
             inv.root.revision = revision_id
         return inv

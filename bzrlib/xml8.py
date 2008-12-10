@@ -368,16 +368,25 @@ class Serializer_v8(Serializer):
         # Some timings for "repo.revision_trees(last_100_bzr_revs)"
         #   unmodified  4.1s
         #   using lru   3.5s
-        #   using fifo  2.9s
+        #   using fifo  2.83s
         #   lru._cache  2.8s
+        #   dict        2.75s
         # Note that a cache of 10k nodes is more than sufficient to hold all of
         # the inventory for the last 100 revs.
+        #   With inventory.add() optimizations, and not copying file entries,
+        #   performance gets to 2.00s
         key = (file_id, revision)
         try:
             # We copy it, because some operatations may mutate it
-            return _entry_cache[key].copy()
+            cached_ie = _entry_cache[key]
         except KeyError:
             pass
+        else:
+            # Only copying directory entries drops us 2.85s => 2.35s
+            if cached_ie.kind == 'directory':
+                return cached_ie.copy()
+            return cached_ie
+            # return cached_ie.copy()
 
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
@@ -411,7 +420,8 @@ class Serializer_v8(Serializer):
         else:
             raise errors.UnsupportedInventoryKind(kind)
         ie.revision = revision
-        _entry_cache[key] = ie
+        if revision is not None:
+            _entry_cache[key] = ie
 
         return ie
 
