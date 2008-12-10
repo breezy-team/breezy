@@ -1181,38 +1181,38 @@ class TestGetHistoryChange(tests.TestCaseWithTransport):
 
     def test_all_new(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('1a', '3a', tree.branch)
+        old, new = log.get_history_change('1a', '3a', tree.branch.repository)
         self.assertEqual([], old)
         self.assertEqual(['2a', '3a'], new)
 
     def test_all_old(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', '1a', tree.branch)
+        old, new = log.get_history_change('3a', '1a', tree.branch.repository)
         self.assertEqual([], new)
         self.assertEqual(['2a', '3a'], old)
 
     def test_null_old(self):
         tree = self.setup_ab_tree()
         old, new = log.get_history_change(revision.NULL_REVISION,
-                                          '3a', tree.branch)
+                                          '3a', tree.branch.repository)
         self.assertEqual([], old)
         self.assertEqual(['1a', '2a', '3a'], new)
 
     def test_null_new(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a',
-                                          revision.NULL_REVISION, tree.branch)
+        old, new = log.get_history_change('3a', revision.NULL_REVISION,
+                                          tree.branch.repository)
         self.assertEqual([], new)
         self.assertEqual(['1a', '2a', '3a'], old)
 
     def test_diverged(self):
         tree = self.setup_ab_tree()
-        old, new = log.get_history_change('3a', '3b', tree.branch)
+        old, new = log.get_history_change('3a', '3b', tree.branch.repository)
         self.assertEqual(old, ['2a', '3a'])
         self.assertEqual(new, ['2b', '3b'])
 
     def test_unrelated(self):
         tree = self.setup_ac_tree()
-        old, new = log.get_history_change('3a', '3c', tree.branch)
+        old, new = log.get_history_change('3a', '3c', tree.branch.repository)
         self.assertEqual(old, ['1a', '2a', '3a'])
         self.assertEqual(new, ['1c', '2c', '3c'])

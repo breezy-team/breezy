@@ -1004,13 +1004,13 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  search=None)
 
 
-def get_history_change(old_revision_id, new_revision_id, branch):
+def get_history_change(old_revision_id, new_revision_id, repository):
     old_history = []
     old_revisions = set()
     new_history = []
     new_revisions = set()
-    new_iter = branch.repository.iter_reverse_revision_history(new_revision_id)
-    old_iter = branch.repository.iter_reverse_revision_history(old_revision_id)
+    new_iter = repository.iter_reverse_revision_history(new_revision_id)
+    old_iter = repository.iter_reverse_revision_history(old_revision_id)
     stop_revision = None
     do_old = True
     do_new = True
