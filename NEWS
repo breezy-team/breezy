@@ -2136,7 +2136,7 @@ bzr 1.3rc1 2008-03-16
       filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable
       is not defined but BZR_HOME is defined then default location
       for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
-      (Alexander Belchenko)
+      (Alexander Belchenko, #106117)
 
     * ``launchpad`` builtin plugin now shipped as separate part in standalone
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory,
