@@ -1151,7 +1151,7 @@ class TestReverseByDepth(tests.TestCase):
                             [('3', 3), ('4', 4), ('2', 2), ('1', 2),])
 
 
-class TestGetHistoryChange(tests.TestCaseWithTransport):
+class TestHistoryChange(tests.TestCaseWithTransport):
 
     def setup_a_tree(self):
         tree = self.make_branch_and_tree('tree')
@@ -1216,3 +1216,19 @@ class TestGetHistoryChange(tests.TestCaseWithTransport):
         old, new = log.get_history_change('3a', '3c', tree.branch.repository)
         self.assertEqual(old, ['1a', '2a', '3a'])
         self.assertEqual(new, ['1c', '2c', '3c'])
+
+    def test_show_branch_change(self):
+        tree = self.setup_ab_tree()
+        s = StringIO()
+        log.show_branch_change(3, '3a', tree.branch, s)
+        self.assertContainsRe(s.getvalue(),
+            '[*]{60}\nRemoved Revisions:\n(.|\n)*2a(.|\n)*3a(.|\n)*'
+            '[*]{60}\n\nAdded Revisions:\n(.|\n)*2b(.|\n)*3b')
+
+    def test_show_branch_change_no_change(self):
+        tree = self.setup_ab_tree()
+        s = StringIO()
+        log.show_branch_change(3, '3b', tree.branch, s)
+        self.assertEqual(s.getvalue(),
+            'Nothing seems to have changed\n')
+

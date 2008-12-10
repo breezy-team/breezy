@@ -1045,6 +1045,38 @@ def get_history_change(old_revision_id, new_revision_id, repository):
     return old_history, new_history
 
 
+def show_branch_change(old_revno, old_revision_id, branch, output):
+    new_revno, new_revision_id = branch.last_revision_info()
+    old_history, new_history = get_history_change(old_revision_id,
+                                                  new_revision_id,
+                                                  branch.repository)
+    if old_history == [] and new_history == []:
+        output.write('Nothing seems to have changed\n')
+        return
+
+    old_rh = list(
+        branch.repository.iter_reverse_revision_history(old_revision_id))
+    old_rh.reverse()
+    new_rh = branch.revision_history()
+    lf = log_formatter('long', show_ids=False, to_file=output,
+                       show_timezone='original')
+    if old_history != []:
+        output.write('*'*60)
+        output.write('\nRemoved Revisions:\n')
+        old_start_revno = old_revno - len(old_history) + 1
+        revisions = branch.repository.get_revisions(old_history)
+        for i, rev in enumerate(revisions):
+            lr = LogRevision(rev, i+old_start_revno, 0, None)
+            lf.log_revision(lr)
+        output.write('*'*60)
+        output.write('\n\n')
+    output.write('Added Revisions:\n')
+    if new_history != []:
+        start_revno = new_revno - len(new_history) + 1
+        show_log(branch, lf, None, verbose=False, direction='forward',
+                 start_revision=start_revno,)
+
+
 properties_handler_registry = registry.Registry()
 properties_handler_registry.register_lazy("foreign",
                                           "bzrlib.foreign",
