@@ -48,6 +48,11 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * The logic in commit now delegates inventory basis calculations to
+      the ``CommitBuilder`` object; this requires that the commit builder
+      in use has been updated to support the new ``recording_deletes`` and
+      ``record_delete`` methods. (Robert Collins)
+
   TESTING:
 
   INTERNALS:
@@ -57,6 +62,15 @@ IN DEVELOPMENT
       Previously the order was fully random, now the records should be
       returned from each pack in turn, in forward I/O order.
       (John Arbash Meinel)
+
+    * New method ``bzrlib.repository.Repository.add_inventory_by_delta``
+      allows adding an inventory via an inventory delta, which can be
+      more efficient for some repository types. (Robert Collins)
+
+    * Repository ``CommitBuilder`` objects can now accumulate an inventory
+      delta. To enable this functionality call ``builder.recording_deletes``
+      and additionally call ``builder.record_delete`` when a delete
+      against the basis occurs. (Robert Collins)
 
     * The default http handler has been changed from pycurl to urllib.
       The default is still pycurl for https connections. (The only
