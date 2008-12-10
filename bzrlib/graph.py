@@ -106,6 +106,8 @@ class CachingParentsProvider(object):
     Either a ParentsProvider or a get_parent_map-like callback may be
     supplied.  If it provides extra un-asked-for parents, they will be cached,
     but filtered out of get_parent_map.
+
+    The cache is enabled by default, but may be disabled and re-enabled.
     """
     def __init__(self, parent_provider=None, get_parent_map=None, debug=False):
         """Constructor.
@@ -121,7 +123,7 @@ class CachingParentsProvider(object):
             self._get_parent_map = self._real_provider.get_parent_map
         else:
             self._get_parent_map = get_parent_map
-        self._parents_map = {}
+        self._cache = {}
         self._cache_misses = True
         self._debug = debug
         if self._debug:
@@ -132,28 +134,28 @@ class CachingParentsProvider(object):
 
     def enable_cache(self, cache_misses=True):
         """Enable cache."""
-        self._parents_map = {}
+        self._cache = {}
         self._cache_misses = cache_misses
         if self._debug:
             self._requested_parents = set()
 
     def disable_cache(self):
-        """Disable cache."""
-        self._parents_map = None
+        """Disable and clear the cache."""
+        self._cache = None
         if self._debug:
             self._requested_parents = None
 
     def get_cached_map(self):
         """Return any cached get_parent_map values."""
-        if self._parents_map is None:
+        if self._cache is None:
             return None
-        return dict((k, v) for k, v in self._parents_map.items()
+        return dict((k, v) for k, v in self._cache.items()
                     if v is not None)
 
     def get_parent_map(self, keys):
-        """See RemoteRepository.get_parent_map."""
+        """See _StackedParentsProvider.get_parent_map."""
         # Hack to build up the caching logic.
-        ancestry = self._parents_map
+        ancestry = self._cache
         if ancestry is None:
             # Caching is disabled.
             missing_revisions = set(keys)
@@ -168,6 +170,8 @@ class CachingParentsProvider(object):
                         len(parent_map))
             ancestry.update(parent_map)
             if self._cache_misses:
+                # None is never a valid parents list, so it can be used to
+                # record misses.
                 ancestry.update(dict((k, None) for k in missing_revisions
                                      if k not in parent_map))
         present_keys = [k for k in keys if ancestry.get(k) is not None]
