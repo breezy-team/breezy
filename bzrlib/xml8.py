@@ -365,12 +365,16 @@ class Serializer_v8(Serializer):
         file_id = elt_get('file_id')
         revision = elt_get('revision')
         # Check and see if we have already unpacked this exact entry
-        # Some timings for "repo.revision_trees(last_100_bzr_revs)"
-        #   unmodified  4.1s
+        # Some timings for "repo.revision_trees(last_100_revs)"
+        #               bzr     mysql
+        #   unmodified  4.1s    40.8s
         #   using lru   3.5s
-        #   using fifo  2.83s
+        #   using fifo  2.83s   29.1s
         #   lru._cache  2.8s
-        #   dict        2.75s
+        #   dict        2.75s   26.8s
+        #   inv.add     2.5s    26.0s
+        #   no_copy     2.00s   20.5s
+        #   no_c,dict   1.95s   18.0s
         # Note that a cache of 10k nodes is more than sufficient to hold all of
         # the inventory for the last 100 revs.
         #   With inventory.add() optimizations, and not copying file entries,
@@ -383,10 +387,10 @@ class Serializer_v8(Serializer):
             pass
         else:
             # Only copying directory entries drops us 2.85s => 2.35s
-            if cached_ie.kind == 'directory':
-                return cached_ie.copy()
-            return cached_ie
-            # return cached_ie.copy()
+            # if cached_ie.kind == 'directory':
+            #     return cached_ie.copy()
+            # return cached_ie
+            return cached_ie.copy()
 
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
