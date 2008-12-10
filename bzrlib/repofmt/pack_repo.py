@@ -860,9 +860,9 @@ class Packer(object):
     def _copy_chks(self, refs=None):
         # XXX: Todo, recursive follow-pointers facility when fetching some
         # revisions only.
-        chk_index_map = self._pack_collection._packs_list_to_pack_map_and_index_list(
-            self.packs, 'chk_index')[0]
-        chk_nodes = self._pack_collection._index_contents(chk_index_map, refs)
+        chk_index_map, chk_indices = self._pack_map_and_index_list(
+            'chk_index')
+        chk_nodes = self._index_contents(chk_indices, refs)
         new_refs = set()
         def accumlate_refs(lines):
             # XXX: move to a generic location
@@ -1349,12 +1349,6 @@ class RepositoryPackCollection(object):
         total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
             return False
-        # XXX: the following may want to be a class, to pack with a given
-        # policy.
-        mutter('Auto-packing repository %s, which has %d pack files, '
-            'containing %d revisions into no more than %d packs.', self,
-            total_packs, total_revisions,
-            self._max_pack_count(total_revisions))
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -2132,10 +2126,10 @@ class CHKInventoryRepository(KnitPackRepository):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
-    def add_inventory_delta(self, basis_revision_id, delta, new_revision_id,
-        parents):
+    def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
+                               parents):
         """Add a new inventory expressed as a delta against another revision.
-        
+
         :param basis_revision_id: The inventory id the delta was created
             against.
         :param delta: The inventory delta (see Inventory.apply_delta for
@@ -2148,12 +2142,13 @@ class CHKInventoryRepository(KnitPackRepository):
             graph access, as well as for those that pun ancestry with delta
             compression.
 
-        :returns: The validator(which is a sha1 digest, though what is sha'd is
-            repository format specific) of the serialized inventory and 
-            the resulting inventory.
+        :returns: (validator, new_inv)
+            The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory, and the
+            resulting inventory.
         """
         if basis_revision_id == _mod_revision.NULL_REVISION:
-            return KnitPackRepository.add_inventory_delta(self,
+            return KnitPackRepository.add_inventory_by_delta(self,
                 basis_revision_id, delta, new_revision_id, parents)
         if not self.is_in_write_group():
             raise AssertionError("%r not in write group" % (self,))

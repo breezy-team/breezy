@@ -1033,7 +1033,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         try:
             self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
                               None, None)
-            self.assertRaises(errors.ReservedId, repo.add_inventory_delta,
+            self.assertRaises(errors.ReservedId, repo.add_inventory_by_delta,
                 "foo", [], 'reserved:', None)
             self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
                               None)

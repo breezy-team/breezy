@@ -798,8 +798,10 @@ class cmd_pull(Command):
                     result.old_revid))
                 old_rh.reverse()
                 new_rh = branch_to.revision_history()
+                log_format = branch_to.get_config().log_format()
                 log.show_changed_revisions(branch_to, old_rh, new_rh,
-                                           to_file=self.outf)
+                                           to_file=self.outf,
+                                           log_format=log_format)
         finally:
             branch_to.unlock()
 
@@ -1975,9 +1977,10 @@ class cmd_ls(Command):
                         continue
                     if kind is not None and fkind != kind:
                         continue
+                    kindch = entry.kind_character()
+                    outstring = fp + kindch
                     if verbose:
-                        kindch = entry.kind_character()
-                        outstring = '%-8s %s%s' % (fc, fp, kindch)
+                        outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
                             outstring = "%-50s %s" % (outstring, fid)
                         self.outf.write(outstring + '\n')
@@ -1994,9 +1997,9 @@ class cmd_ls(Command):
                         else:
                             my_id = ''
                         if show_ids:
-                            self.outf.write('%-50s %s\n' % (fp, my_id))
+                            self.outf.write('%-50s %s\n' % (outstring, my_id))
                         else:
-                            self.outf.write(fp + '\n')
+                            self.outf.write(outstring + '\n')
         finally:
             tree.unlock()
 

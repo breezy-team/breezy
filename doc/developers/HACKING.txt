@@ -249,7 +249,7 @@ Please put a "cover letter" on your merge request explaining:
 
 * the reason **why** you're making this change
 
-* **how** this change acheives this purpose
+* **how** this change achieves this purpose
 
 * anything else you may have fixed in passing 
 
