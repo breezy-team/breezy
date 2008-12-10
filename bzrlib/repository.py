@@ -3342,7 +3342,7 @@ class InterDifferingSerializer(InterKnitRepo):
             self.target.start_write_group()
             try:
                 pb.update('Transferring revisions', offset,
-                    len(revision_ids))
+                          len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
                 basis_id, basis_tree = self._fetch_batch(batch,
                     basis_id, basis_tree)
@@ -3351,6 +3351,8 @@ class InterDifferingSerializer(InterKnitRepo):
                 raise
             else:
                 self.target.commit_write_group()
+        pb.update('Transferring revisions', len(revision_ids),
+                  len(revision_ids))
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
