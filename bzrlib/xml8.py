@@ -21,7 +21,7 @@ from bzrlib import (
     cache_utf8,
     errors,
     inventory,
-    lru_cache,
+    fifo_cache,
     revision as _mod_revision,
     trace,
     )
@@ -41,7 +41,7 @@ _xml_escape_map = {
     ">":"&gt;",
     }
 # A cache of InventoryEntry objects
-_entry_cache = lru_cache.LRUCache(10*1024)
+_entry_cache = fifo_cache.FIFOCache(10*1024)
 
 
 def _ensure_utf8_re():
@@ -356,53 +356,51 @@ class Serializer_v8(Serializer):
         for e in elt:
             ie = self._unpack_entry(e)
             inv.add(ie)
-        if len(inv) > _entry_cache._max_cache:
-            new_len = len(inv) * 1.2
-            trace.note('Resizing inventory cache to %s', new_len)
-            _entry_cache.resize(new_len)
         return inv
 
     def _unpack_entry(self, elt):
+        get_cached = _get_utf8_or_ascii
+        elt_get = elt.get
+
+        file_id = elt_get('file_id')
+        revision = elt_get('revision')
+        # Check and see if we have already unpacked this exact entry
+        key = (file_id, revision)
+        try:
+            # We copy it, because some operatations may mutate it
+            return _entry_cache[key].copy()
+        except KeyError:
+            pass
+
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
 
-        get_cached = _get_utf8_or_ascii
-
-        file_id = elt.get('file_id')
-        revision = elt.get('revision')
-        # Check and see if we have already unpacked this exact entry
-        key = (file_id, revision)
-        cached_ie = _entry_cache.get(key, None)
-        if cached_ie is not None:
-            # We copy it, because some operatations may mutate it
-            return cached_ie.copy()
-
         file_id = get_cached(file_id)
         if revision is not None:
             revision = get_cached(revision)
-        parent_id = elt.get('parent_id')
+        parent_id = elt_get('parent_id')
         if parent_id is not None:
             parent_id = get_cached(parent_id)
 
         if kind == 'directory':
             ie = inventory.InventoryDirectory(file_id,
-                                              elt.get('name'),
+                                              elt_get('name'),
                                               parent_id)
         elif kind == 'file':
             ie = inventory.InventoryFile(file_id,
-                                         elt.get('name'),
+                                         elt_get('name'),
                                          parent_id)
-            ie.text_sha1 = elt.get('text_sha1')
-            if elt.get('executable') == 'yes':
+            ie.text_sha1 = elt_get('text_sha1')
+            if elt_get('executable') == 'yes':
                 ie.executable = True
-            v = elt.get('text_size')
+            v = elt_get('text_size')
             ie.text_size = v and int(v)
         elif kind == 'symlink':
             ie = inventory.InventoryLink(file_id,
-                                         elt.get('name'),
+                                         elt_get('name'),
                                          parent_id)
-            ie.symlink_target = elt.get('symlink_target')
+            ie.symlink_target = elt_get('symlink_target')
         else:
             raise errors.UnsupportedInventoryKind(kind)
         ie.revision = revision
