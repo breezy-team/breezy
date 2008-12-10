@@ -109,8 +109,24 @@ class TreeDelta(object):
 
 
     def show(self, to_file, show_ids=False, show_unchanged=False,
-             short_status=False, indent=''):
-        """output this delta in status-like form to to_file."""
+             short_status=False, indent='',
+             path_filter=None):
+        """Output this delta in status-like form to to_file.
+
+        :param to_file: A file-like object where the output is displayed.
+
+        :param show_ids: Output the file ids if True.
+
+        :param show_unchanged: Output the unchanged files if True.
+
+        :param short_status: Single-line status if True.
+
+        :param indent: Added at the beginning of all output lines (for merged
+            revisions).
+
+        :param path_filter: A callable recieving a path and returning True if
+            the path should be displayed.
+        """
 
         def decorate_path(path, kind, meta_modified=None):
             if kind == 'directory':
@@ -146,15 +162,20 @@ class TreeDelta(object):
                       default_format='%s', with_file_id_format='%-30s',
                       show_more=None):
             if files:
+                header_shown = False
                 if short_status:
                     prefix = short_status_letter
                 else:
-                    to_file.write(indent + long_status_name + ':\n')
                     prefix = ''
                 prefix = indent + prefix + '  '
 
                 for item in files:
                     path, file_id, kind = item[:3]
+                    if (path_filter is not None and not path_filter(path)):
+                        continue
+                    if not header_shown and not short_status:
+                        to_file.write(indent + long_status_name + ':\n')
+                        header_shown = True
                     meta_modified = None
                     if len(item) == 5:
                         meta_modified = item[4]
