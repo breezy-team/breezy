@@ -521,7 +521,7 @@ class RecordingVersionedFilesDecorator(object):
     """
 
     def __init__(self, backing_vf):
-        """Create a RecordingVersionedFileDsecorator decorating backing_vf.
+        """Create a RecordingVersionedFilesDecorator decorating backing_vf.
         
         :param backing_vf: The versioned file to answer all methods.
         """
@@ -560,6 +560,44 @@ class RecordingVersionedFilesDecorator(object):
     def keys(self):
         self.calls.append(("keys",))
         return self._backing_vf.keys()
+
+
+class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
+    """A VF that records calls, and returns keys in specific order.
+
+    :ivar calls: A list of the calls made; can be reset at any time by
+        assigning [] to it.
+    """
+
+    def __init__(self, backing_vf, key_priority):
+        """Create a RecordingVersionedFilesDecorator decorating backing_vf.
+
+        :param backing_vf: The versioned file to answer all methods.
+        :param key_priority: A dictionary defining what order keys should be
+            returned from an 'unordered' get_record_stream request.
+            Keys with lower priority are returned first, keys not present in
+            the map get an implicit priority of 0, and are returned in
+            lexicographical order.
+        """
+        RecordingVersionedFilesDecorator.__init__(self, backing_vf)
+        self._key_priority = key_priority
+
+    def get_record_stream(self, keys, sort_order, include_delta_closure):
+        self.calls.append(("get_record_stream", list(keys), sort_order,
+            include_delta_closure))
+        if sort_order == 'unordered':
+            def sort_key(key):
+                return (self._key_priority.get(key, 0), key)
+            # Use a defined order by asking for the keys one-by-one from the
+            # backing_vf
+            for key in sorted(keys, key=sort_key):
+                for record in self._backing_vf.get_record_stream([key],
+                                'unordered', include_delta_closure):
+                    yield record
+        else:
+            for record in self._backing_vf.get_record_stream(keys, sort_order,
+                            include_delta_closure):
+                yield record
 
 
 class KeyMapper(object):

@@ -1340,6 +1340,7 @@ class KnitVersionedFiles(VersionedFiles):
                 adapter = adapter_factory(self)
                 adapters[adapter_key] = adapter
                 return adapter
+        delta_types = set()
         if self._factory.annotated:
             # self is annotated, we need annotated knits to use directly.
             annotated = "annotated-"
@@ -1349,11 +1350,13 @@ class KnitVersionedFiles(VersionedFiles):
             annotated = ""
             convertibles = set(["knit-annotated-ft-gz"])
             if self._max_delta_chain:
+                delta_types.add("knit-annotated-delta-gz")
                 convertibles.add("knit-annotated-delta-gz")
         # The set of types we can cheaply adapt without needing basis texts.
         native_types = set()
         if self._max_delta_chain:
             native_types.add("knit-%sdelta-gz" % annotated)
+            delta_types.add("knit-%sdelta-gz" % annotated)
         native_types.add("knit-%sft-gz" % annotated)
         knit_types = native_types.union(convertibles)
         adapters = {}
@@ -1372,14 +1375,20 @@ class KnitVersionedFiles(VersionedFiles):
         buffered_index_entries = {}
         for record in stream:
             parents = record.parents
+            if record.storage_kind in delta_types:
+                # TODO: eventually the record itself should track
+                #       compression_parent
+                compression_parent = parents[0]
+            else:
+                compression_parent = None
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
             elif ((record.storage_kind in knit_types)
-                  and (not parents
+                  and (compression_parent is None
                        or not self._fallback_vfs
-                       or not self._index.missing_keys(parents)
-                       or self.missing_keys(parents))):
+                       or self._index.has_key(compression_parent)
+                       or not self.has_key(compression_parent))):
                 # we can insert the knit record literally if either it has no
                 # compression parent OR we already have its basis in this kvf
                 # OR the basis is not present even in the fallbacks.  In the
@@ -1427,8 +1436,7 @@ class KnitVersionedFiles(VersionedFiles):
                     #
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    compression_parent = parents[0]
-                    if self.missing_keys([compression_parent]):
+                    if not self._index.has_key(compression_parent):
                         pending = buffered_index_entries.setdefault(
                             compression_parent, [])
                         pending.append(index_entry)
