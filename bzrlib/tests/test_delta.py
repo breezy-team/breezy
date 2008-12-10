@@ -258,12 +258,14 @@ class TestDeltaShow(tests.TestCaseWithTransport):
         wt.commit('commit one', rev_id='1')
 
         long_status = """added:
+  dir/
   f1
   f2
   f3
   f4
 """
-        short_status = """A  f1
+        short_status = """A  dir/
+A  f1
 A  f2
 A  f3
 A  f4
@@ -288,23 +290,32 @@ A  f4
     def test_delta_show_no_filter(self):
         d, long_status, short_status = self._get_delta()
         out = StringIO()
-        def not_a_filter(path):
+        def not_a_filter(path, file_id):
             return True
-        d.show(out, short_status=True, path_filter=not_a_filter)
+        d.show(out, short_status=True, filter=not_a_filter)
         self.assertEquals(short_status, out.getvalue())
 
     def test_delta_show_short_status_single_file_filter(self):
         d, long_status, short_status = self._get_delta()
         out = StringIO()
-        def only_f2(path):
+        def only_f2(path, file_id):
             return path == 'f2'
-        d.show(out, short_status=True, path_filter=only_f2)
+        d.show(out, short_status=True, filter=only_f2)
         self.assertEquals("A  f2\n", out.getvalue())
 
     def test_delta_show_long_status_single_file_filter(self):
         d, long_status, short_status = self._get_delta()
         out = StringIO()
-        def only_f2(path):
+        def only_f2(path, file_id):
             return path == 'f2'
-        d.show(out, short_status=False, path_filter=only_f2)
+        d.show(out, short_status=False, filter=only_f2)
         self.assertEquals("added:\n  f2\n", out.getvalue())
+
+    def test_delta_show_short_status_single_file_id_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def only_f2_id(path, file_id):
+            return file_id == 'f2-id'
+        d.show(out, short_status=True, filter=only_f2_id)
+        self.assertEquals("A  f2\n", out.getvalue())
+

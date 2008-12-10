@@ -110,7 +110,7 @@ class TreeDelta(object):
 
     def show(self, to_file, show_ids=False, show_unchanged=False,
              short_status=False, indent='',
-             path_filter=None):
+             filter=None):
         """Output this delta in status-like form to to_file.
 
         :param to_file: A file-like object where the output is displayed.
@@ -124,8 +124,8 @@ class TreeDelta(object):
         :param indent: Added at the beginning of all output lines (for merged
             revisions).
 
-        :param path_filter: A callable recieving a path and returning True if
-            the path should be displayed.
+        :param filter: A callable receiving a path and a file id and
+            returning True if the path should be displayed.
         """
 
         def decorate_path(path, kind, meta_modified=None):
@@ -171,7 +171,7 @@ class TreeDelta(object):
 
                 for item in files:
                     path, file_id, kind = item[:3]
-                    if (path_filter is not None and not path_filter(path)):
+                    if (filter is not None and not filter(path, file_id)):
                         continue
                     if not header_shown and not short_status:
                         to_file.write(indent + long_status_name + ':\n')
