@@ -41,7 +41,7 @@ _xml_escape_map = {
     ">":"&gt;",
     }
 # A cache of InventoryEntry objects
-_entry_cache = fifo_cache.FIFOCache(10*1024)
+_entry_cache = fifo_cache.FIFOCache(10*1000)
 
 
 def _ensure_utf8_re():
@@ -169,6 +169,31 @@ class Serializer_v8(Serializer):
             raise AssertionError()
         if inv.root.revision is None:
             raise AssertionError()
+
+    def _check_cache_size(self, inv_size):
+        """Check that the _entry_cache is large enough.
+
+        We want the cache to be ~2x the size of an inventory. The reason is
+        because we use a FIFO cache, and how Inventory records are likely to
+        change. In general, you have a small number of records which change
+        often, and a lot of records which do not change at all. So when the
+        cache gets full, you actually flush out a lot of the records you are
+        interested in, which means you need to recreate all of those records.
+        An LRU Cache would be better, but the overhead negates the cache
+        coherency benefit.
+
+        One way to look at it, only the size of the cache > len(inv) is your
+        'working' set. And in general, it shouldn't be a problem to hold 2
+        inventories in memory anyway.
+
+        :param inv_size: The number of entries in an inventory.
+        """
+        # 1.5 times might also be reasonable.
+        recommended_cache_size = inv_size * 2
+        if _entry_cache.cache_size() < recommended_cache_size:
+            trace.mutter('Resizing the inventory entry cache to %d',
+                         recommended_cache_size)
+            _entry_cache.resize(recommended_cache_size)
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""
@@ -356,6 +381,7 @@ class Serializer_v8(Serializer):
         for e in elt:
             ie = self._unpack_entry(e)
             inv.add(ie)
+        self._check_cache_size(len(inv))
         return inv
 
     def _unpack_entry(self, elt):

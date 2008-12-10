@@ -74,6 +74,7 @@ class Serializer_v5(xml6.Serializer_v6):
             byid[ie.file_id] = ie
         if revision_id is not None:
             inv.root.revision = revision_id
+        self._check_cache_size(len(inv))
         return inv
 
     def _check_revisions(self, inv):
