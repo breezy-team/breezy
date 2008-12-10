@@ -99,42 +99,88 @@ class _StackedParentsProvider(object):
 
 
 class CachingParentsProvider(object):
-    """A parents provider which will cache the revision => parents in a dict.
+    """A parents provider which will cache the revision => parents as a dict.
 
-    This is useful for providers that have an expensive lookup.
+    This is useful for providers which have an expensive look up.
+
+    Either a ParentsProvider or a get_parent_map-like callback may be
+    supplied.  If it provides extra un-asked-for parents, they will be cached,
+    but filtered out of get_parent_map.
+
+    The cache is enabled by default, but may be disabled and re-enabled.
     """
+    def __init__(self, parent_provider=None, get_parent_map=None, debug=False):
+        """Constructor.
 
-    def __init__(self, parent_provider):
+        :param parent_provider: The ParentProvider to use.  It or
+            get_parent_map must be supplied.
+        :param get_parent_map: The get_parent_map callback to use.  It or
+            parent_provider must be supplied.
+        :param debug: If true, mutter debugging messages.
+        """
         self._real_provider = parent_provider
-        # Theoretically we could use an LRUCache here
+        if get_parent_map is None:
+            self._get_parent_map = self._real_provider.get_parent_map
+        else:
+            self._get_parent_map = get_parent_map
         self._cache = {}
+        self._cache_misses = True
+        self._debug = debug
+        if self._debug:
+            self._requested_parents = None
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
-    def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
-        needed = set()
-        # If the _real_provider doesn't have a key, we cache a value of None,
-        # which we then later use to realize we cannot provide a value for that
-        # key.
-        parent_map = {}
-        cache = self._cache
-        for key in keys:
-            if key in cache:
-                value = cache[key]
-                if value is not None:
-                    parent_map[key] = value
-            else:
-                needed.add(key)
+    def enable_cache(self, cache_misses=True):
+        """Enable cache."""
+        self._cache = {}
+        self._cache_misses = cache_misses
+        if self._debug:
+            self._requested_parents = set()
 
-        if needed:
-            new_parents = self._real_provider.get_parent_map(needed)
-            cache.update(new_parents)
-            parent_map.update(new_parents)
-            needed.difference_update(new_parents)
-            cache.update(dict.fromkeys(needed, None))
-        return parent_map
+    def disable_cache(self):
+        """Disable and clear the cache."""
+        self._cache = None
+        if self._debug:
+            self._requested_parents = None
+
+    def get_cached_map(self):
+        """Return any cached get_parent_map values."""
+        if self._cache is None:
+            return None
+        return dict((k, v) for k, v in self._cache.items()
+                    if v is not None)
+
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map."""
+        # Hack to build up the caching logic.
+        ancestry = self._cache
+        if ancestry is None:
+            # Caching is disabled.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            parent_map = self._get_parent_map(missing_revisions)
+            if self._debug:
+                mutter('re-retrieved revisions: %d of %d',
+                        len(set(ancestry).intersection(parent_map)),
+                        len(parent_map))
+            ancestry.update(parent_map)
+            if self._cache_misses:
+                # None is never a valid parents list, so it can be used to
+                # record misses.
+                ancestry.update(dict((k, None) for k in missing_revisions
+                                     if k not in parent_map))
+        present_keys = [k for k in keys if ancestry.get(k) is not None]
+        if self._debug:
+            if self._requested_parents is not None and len(ancestry) != 0:
+                self._requested_parents.update(present_keys)
+                mutter('Current hit rate: %d%%',
+                    100.0 * len(self._requested_parents) / len(ancestry))
+        return dict((k, ancestry[k]) for k in present_keys)
 
 
 class Graph(object):
