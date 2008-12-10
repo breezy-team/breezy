@@ -10,16 +10,20 @@ IN DEVELOPMENT
 
   CHANGES:
   
-   * ``LRUCache(after_cleanup_size)`` was renamed to
-     ``after_cleanup_count`` and the old name deprecated. The new name is
-     used for clarity, and to avoid confusion with
-     ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
+    * ``LRUCache(after_cleanup_size)`` was renamed to
+      ``after_cleanup_count`` and the old name deprecated. The new name is
+      used for clarity, and to avoid confusion with
+      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
   NEW FEATURES:
 
   IMPROVEMENTS:
+
     * Add trailing slash to directories in all output of ``bzr ls``, except
       ``bzr ls --null``. (Gordon P. Hemsley, #306424)
+
+    * ``bzr revision-info`` now supports a -d option to specify an
+      alternative branch. (Michael Hudson)
 
   BUG FIXES:
   
