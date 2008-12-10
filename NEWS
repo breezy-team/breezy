@@ -9,6 +9,11 @@ IN DEVELOPMENT
 --------------
 
   CHANGES:
+  
+   * ``LRUCache(after_cleanup_size)`` was renamed to
+     ``after_cleanup_count`` and the old name deprecated. The new name is
+     used for clarity, and to avoid confusion with
+     ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
   NEW FEATURES:
 
