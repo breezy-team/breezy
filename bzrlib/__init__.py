@@ -53,8 +53,8 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 version_info = (1, 11, 0, 'dev', 0)
 
 
-# API compatibility version: bzrlib is currently API compatible with 1.7.
-api_minimum_version = (1, 7, 0)
+# API compatibility version: bzrlib is currently API compatible with 1.11.
+api_minimum_version = (1, 11, 0)
 
 
 def _format_version_tuple(version_info):
