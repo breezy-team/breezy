@@ -1070,8 +1070,8 @@ def show_branch_change(old_revno, old_revision_id, branch, output):
             lf.log_revision(lr)
         output.write('*'*60)
         output.write('\n\n')
-    output.write('Added Revisions:\n')
     if new_history != []:
+        output.write('Added Revisions:\n')
         start_revno = new_revno - len(new_history) + 1
         show_log(branch, lf, None, verbose=False, direction='forward',
                  start_revision=start_revno,)

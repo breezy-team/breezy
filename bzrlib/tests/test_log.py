@@ -1232,3 +1232,17 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         self.assertEqual(s.getvalue(),
             'Nothing seems to have changed\n')
 
+    def test_show_branch_change_no_old(self):
+        tree = self.setup_ab_tree()
+        s = StringIO()
+        log.show_branch_change(2, '2b', tree.branch, s)
+        self.assertContainsRe(s.getvalue(), 'Added Revisions:')
+        self.assertNotContainsRe(s.getvalue(), 'Removed Revisions:')
+
+    def test_show_branch_change_no_new(self):
+        tree = self.setup_ab_tree()
+        tree.branch.set_last_revision_info(2, '2b')
+        s = StringIO()
+        log.show_branch_change(3, '3b', tree.branch, s)
+        self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
+        self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
