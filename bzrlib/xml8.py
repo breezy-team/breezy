@@ -385,9 +385,7 @@ class Serializer_v8(Serializer):
         return inv
 
     def _unpack_entry(self, elt):
-        get_cached = _get_utf8_or_ascii
         elt_get = elt.get
-
         file_id = elt_get('file_id')
         revision = elt_get('revision')
         # Check and see if we have already unpacked this exact entry
@@ -437,6 +435,8 @@ class Serializer_v8(Serializer):
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
+
+        get_cached = _get_utf8_or_ascii
 
         file_id = get_cached(file_id)
         if revision is not None:
