@@ -236,11 +236,11 @@ class NewPack(Pack):
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
+        index_builder_class = pack_collection._index_builder_class
         if pack_collection.chk_index is not None:
             chk_index = index_builder_class(reference_lists=0)
         else:
             chk_index = None
-        index_builder_class = pack_collection._index_builder_class
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             index_builder_class(reference_lists=1),
