@@ -365,6 +365,13 @@ class Serializer_v8(Serializer):
         file_id = elt_get('file_id')
         revision = elt_get('revision')
         # Check and see if we have already unpacked this exact entry
+        # Some timings for "repo.revision_trees(last_100_bzr_revs)"
+        #   unmodified  4.1s
+        #   using lru   3.5s
+        #   using fifo  2.9s
+        #   lru._cache  2.8s
+        # Note that a cache of 10k nodes is more than sufficient to hold all of
+        # the inventory for the last 100 revs.
         key = (file_id, revision)
         try:
             # We copy it, because some operatations may mutate it
