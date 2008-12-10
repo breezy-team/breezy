@@ -20,8 +20,8 @@ import re
 from bzrlib import (
     cache_utf8,
     errors,
-    inventory,
     fifo_cache,
+    inventory,
     revision as _mod_revision,
     trace,
     )
@@ -376,9 +376,25 @@ class Serializer_v8(Serializer):
         #   no_copy     2.00s   20.5s
         #   no_c,dict   1.95s   18.0s
         # Note that a cache of 10k nodes is more than sufficient to hold all of
-        # the inventory for the last 100 revs.
-        #   With inventory.add() optimizations, and not copying file entries,
-        #   performance gets to 2.00s
+        # the inventory for the last 100 revs for bzr, but not for mysql (20k
+        # is enough for mysql, which saves the same 2s as using a dict)
+
+        # Breakdown of mysql using time.clock()
+        #   4.1s    2 calls to element.get for file_id, revision_id
+        #   4.5s    cache_hit lookup
+        #   7.1s    InventoryFile.copy()
+        #   2.4s    InventoryDirectory.copy()
+        #   0.4s    decoding unique entries
+        #   1.6s    decoding entries
+        #   0.8s    Adding nodes to FIFO (including flushes)
+        #   0.1s    cache miss lookups
+        # Using an LRU cache
+        #   4.1s    2 calls to element.get for file_id, revision_id
+        #   9.9s    cache_hit lookup
+        #   10.8s   InventoryEntry.copy()
+        #   0.3s    cache miss lookus
+        #   1.2s    decoding entries
+        #   1.0s    adding nodes to LRU
         key = (file_id, revision)
         try:
             # We copy it, because some operatations may mutate it
