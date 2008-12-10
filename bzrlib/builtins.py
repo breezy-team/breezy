@@ -392,10 +392,18 @@ class cmd_revision_info(Command):
     """
     hidden = True
     takes_args = ['revision_info*']
-    takes_options = ['revision']
+    takes_options = [
+        'revision',
+        Option('directory',
+            help='Branch to examine, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
 
     @display_command
-    def run(self, revision=None, revision_info_list=[]):
+    def run(self, revision=None, directory=u'.', revision_info_list=[]):
 
         revs = []
         if revision is not None:
@@ -404,7 +412,7 @@ class cmd_revision_info(Command):
             for rev in revision_info_list:
                 revs.append(RevisionSpec.from_string(rev))
 
-        b = Branch.open_containing(u'.')[0]
+        b = Branch.open_containing(directory)[0]
 
         if len(revs) == 0:
             revs.append(RevisionSpec.from_string('-1'))
