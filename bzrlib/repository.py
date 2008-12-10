@@ -1687,7 +1687,7 @@ class Repository(object):
             else:
                 raise errors.NoSuchRevision(self, record.key)
         for key in keys:
-            yield texts[key], key[-1]
+            yield texts.pop(key), key[-1]
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
