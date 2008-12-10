@@ -1149,3 +1149,70 @@ class TestReverseByDepth(tests.TestCase):
         # revisions are not in the same order.
         self.assertReversed([('1', 2), ('2', 2), ('3', 3), ('4', 4)],
                             [('3', 3), ('4', 4), ('2', 2), ('1', 2),])
+
+
+class TestGetHistoryChange(tests.TestCaseWithTransport):
+
+    def setup_a_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('1a', rev_id='1a')
+        tree.commit('2a', rev_id='2a')
+        tree.commit('3a', rev_id='3a')
+        return tree
+
+    def setup_ab_tree(self):
+        tree = self.setup_a_tree()
+        tree.set_last_revision('1a')
+        tree.branch.set_last_revision_info(1, '1a')
+        tree.commit('2b', rev_id='2b')
+        tree.commit('3b', rev_id='3b')
+        return tree
+
+    def setup_ac_tree(self):
+        tree = self.setup_a_tree()
+        tree.set_last_revision(revision.NULL_REVISION)
+        tree.branch.set_last_revision_info(0, revision.NULL_REVISION)
+        tree.commit('1c', rev_id='1c')
+        tree.commit('2c', rev_id='2c')
+        tree.commit('3c', rev_id='3c')
+        return tree
+
+    def test_all_new(self):
+        tree = self.setup_ab_tree()
+        old, new = log.get_history_change('1a', '3a', tree.branch)
+        self.assertEqual([], old)
+        self.assertEqual(['2a', '3a'], new)
+
+    def test_all_old(self):
+        tree = self.setup_ab_tree()
+        old, new = log.get_history_change('3a', '1a', tree.branch)
+        self.assertEqual([], new)
+        self.assertEqual(['2a', '3a'], old)
+
+    def test_null_old(self):
+        tree = self.setup_ab_tree()
+        old, new = log.get_history_change(revision.NULL_REVISION,
+                                          '3a', tree.branch)
+        self.assertEqual([], old)
+        self.assertEqual(['1a', '2a', '3a'], new)
+
+    def test_null_new(self):
+        tree = self.setup_ab_tree()
+        old, new = log.get_history_change('3a',
+                                          revision.NULL_REVISION, tree.branch)
+        self.assertEqual([], new)
+        self.assertEqual(['1a', '2a', '3a'], old)
+
+    def test_diverged(self):
+        tree = self.setup_ab_tree()
+        old, new = log.get_history_change('3a', '3b', tree.branch)
+        self.assertEqual(old, ['2a', '3a'])
+        self.assertEqual(new, ['2b', '3b'])
+
+    def test_unrelated(self):
+        tree = self.setup_ac_tree()
+        old, new = log.get_history_change('3a', '3c', tree.branch)
+        self.assertEqual(old, ['1a', '2a', '3a'])
+        self.assertEqual(new, ['1c', '2c', '3c'])

@@ -1004,6 +1004,47 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  search=None)
 
 
+def get_history_change(old_revision_id, new_revision_id, branch):
+    old_history = []
+    old_revisions = set()
+    new_history = []
+    new_revisions = set()
+    new_iter = branch.repository.iter_reverse_revision_history(new_revision_id)
+    old_iter = branch.repository.iter_reverse_revision_history(old_revision_id)
+    stop_revision = None
+    do_old = True
+    do_new = True
+    while do_new or do_old:
+        if do_new:
+            try:
+                new_revision = new_iter.next()
+            except StopIteration:
+                do_new = False
+            else:
+                new_history.append(new_revision)
+                new_revisions.add(new_revision)
+                if new_revision in old_revisions:
+                    stop_revision = new_revision
+                    break
+        if do_old:
+            try:
+                old_revision = old_iter.next()
+            except StopIteration:
+                do_old = False
+            else:
+                old_history.append(old_revision)
+                old_revisions.add(old_revision)
+                if old_revision in new_revisions:
+                    stop_revision = old_revision
+                    break
+    new_history.reverse()
+    old_history.reverse()
+    if stop_revision is not None:
+        new_history = new_history[new_history.index(stop_revision) + 1:]
+        old_history = old_history[old_history.index(stop_revision) + 1:]
+    return old_history, new_history
+
+
 properties_handler_registry = registry.Registry()
 properties_handler_registry.register_lazy("foreign",
                                           "bzrlib.foreign",
