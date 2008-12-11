@@ -79,12 +79,6 @@ def chunks_to_lines(chunks):
             break
         c_str = PyString_AS_STRING(chunk)
         c_last = c_str + the_len - 1
-        # We spend 340us / 440us doing memchr, gcc also seems smart enough that
-        # if you don't use newline it will optimize out memchr completely,
-        # throwing off timings.
-        # If it was all one big string, doing memchr across the whole thing
-        # takes 120us. So we pay approx 3x to search each string independently.
-        # Not terrible considering it is only 240us for 307kB (7.5k lines)
         newline = <char *>memchr(c_str, c'\n', the_len)
         if newline != c_last:
             last_no_newline = 2
