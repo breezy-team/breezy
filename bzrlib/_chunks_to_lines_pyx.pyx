@@ -42,15 +42,22 @@ def chunks_to_lines(chunks):
     cdef char *newline
     cdef char *c_last
     cdef Py_ssize_t the_len
+    cdef Py_ssize_t chunks_len
+    cdef Py_ssize_t cur
 
     # Check to see if the chunks are already lines
+    chunks_len = len(chunks)
+    if chunks_len == 0:
+        return chunks
+    cur = 0
     for chunk in chunks:
+        cur += 1
         PyString_AsStringAndSize(chunk, &c_str, &the_len)
         if the_len == 0:
             break
         c_last = c_str + the_len - 1
         newline = <char *>memchr(c_str, c'\n', the_len)
-        if newline == NULL or newline != c_last:
+        if newline != c_last and not (newline == NULL and cur == chunks_len):
             break
     else:
         return chunks

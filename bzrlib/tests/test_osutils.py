@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -758,33 +758,19 @@ class TestMacFuncsDirs(TestCaseInTempDir):
 
 class TestChunksToLines(TestCase):
 
-    def assertChunksToLines(self, lines, chunks):
-        self.assertEqual(lines, osutils.chunks_to_lines(chunks))
+    def test_smoketest(self):
+        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
+                         osutils.chunks_to_lines(['foo\nbar', '\nbaz\n']))
+        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
+                         osutils.chunks_to_lines(['foo\n', 'bar\n', 'baz\n']))
 
-    def test_fulltext_chunk_to_lines(self):
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],
-                                 ['foo\nbar\r\nba\rz\n'])
-
-    def test_lines_to_lines(self):
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],
-                                 ['foo\n', 'bar\r\n', 'ba\rz\n'])
-
-    def test_no_final_newline(self):
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
-                                 ['foo\nbar\r\nba\rz'])
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
-                                 ['foo\n', 'bar\r\n', 'ba\rz'])
-
-    def test_mixed(self):
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
-                                 ['foo\n', 'bar\r\nba\r', 'z'])
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
-                                 ['foo\nb', 'a', 'r\r\nba\r', 'z'])
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
-                                 ['foo\nbar\r\nba', '\r', 'z'])
-
-        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
-                                 ['foo\n', '', 'bar\r\nba', '\r', 'z'])
+    def test_is_compiled(self):
+        from bzrlib.tests.test__chunks_to_lines import CompiledChunksToLinesFeature
+        if CompiledChunksToLinesFeature:
+            from bzrlib._chunks_to_lines_pyx import chunks_to_lines
+        else:
+            from bzrlib._chunks_to_lines_py import chunks_to_lines
+        self.assertIs(chunks_to_lines, osutils.chunks_to_lines)
 
 
 class TestSplitLines(TestCase):
