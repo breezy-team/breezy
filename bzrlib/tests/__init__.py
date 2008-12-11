@@ -2804,6 +2804,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_fifo_cache',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_foreign',
                    'bzrlib.tests.test_generate_docs',

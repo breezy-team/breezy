@@ -236,14 +236,16 @@ class TestLog(ExternalBase):
     def test_log_long_verbose(self):
         self._prepare()
         log = self.run_bzr(['log', '--long', '-v', '-r', '1'])[0]
-        # Check that we use the short status format and not the regular one
-        self.assertContainsRe(log, '(?m)^A  hello.txt$')
-        self.assertNotContainsRe(log, '(?m)^added:$')
+        # Check that we use the long status format, ignoring the verbosity
+        # level
+        self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^added:$')
 
     def test_log_long_verbose_verbose(self):
         self._prepare()
         log = self.run_bzr(['log', '--long', '-vv', '-r', '1'])[0]
-        # Check that we use the long status format and not the short one
+        # Check that we use the long status format, ignoring the verbosity
+        # level
         self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
         self.assertContainsRe(log, '(?m)^added:$')
 
