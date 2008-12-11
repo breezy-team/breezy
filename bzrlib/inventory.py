@@ -341,6 +341,9 @@ class InventoryEntry(object):
                    self.revision))
 
     def __eq__(self, other):
+        if other is self:
+            # For the case when objects are cached
+            return True
         if not isinstance(other, InventoryEntry):
             return NotImplemented
 
