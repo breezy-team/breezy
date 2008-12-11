@@ -69,6 +69,8 @@ class TestChunksToLines(tests.TestCase):
                                  ['foo\nbar\r\nba\rz\n'])
         self.assertChunksToLines(['foobarbaz\n'], ['foobarbaz\n'],
                                  alreadly_lines=True)
+        self.assertChunksToLines(['foo\n', 'bar\n', '\n', 'baz\n', '\n', '\n'],
+                                 ['foo\nbar\n\nbaz\n\n\n'])
 
     def test_lines_to_lines(self):
         self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],

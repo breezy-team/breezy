@@ -33,6 +33,7 @@ cdef extern from "Python.h":
     int PyString_CheckExact(object p)
     char *PyString_AS_STRING(object p)
     Py_ssize_t PyString_GET_SIZE(object p)
+    object PyString_FromStringAndSize(char *c_str, Py_ssize_t len)
 
 cdef extern from "string.h":
     void *memchr(void *s, int c, size_t n)
@@ -51,22 +52,29 @@ def chunks_to_lines(chunks):
     """
     cdef char *c_str
     cdef char *newline
-    cdef char *c_last
+    cdef char *c_last # the last valid character of the string
     cdef Py_ssize_t the_len
     cdef Py_ssize_t chunks_len
     cdef int last_no_newline
+    cdef int is_already_lines
 
     # Check to see if the chunks are already lines
     chunks_len = len(chunks)
     if chunks_len == 0:
         return chunks
 
+    lines = []
+    tail = None # Any remainder from the previous chunk
     last_no_newline = 0
+    is_already_lines = 1
     for chunk in chunks:
         if last_no_newline:
             # We have a chunk which followed a chunk without a newline, so this
             # is not a simple list of lines.
-            break
+            is_already_lines = 0
+        if tail is not None:
+            chunk = tail + chunk
+            tail = None
         # Switching from PyString_AsStringAndSize to PyString_CheckExact and
         # then the macros GET_SIZE and AS_STRING saved us 40us / 470us.
         # It seems PyString_AsStringAndSize can actually trigger a conversion,
@@ -75,20 +83,38 @@ def chunks_to_lines(chunks):
             raise TypeError('chunk is not a string')
         the_len = PyString_GET_SIZE(chunk)
         if the_len == 0:
-            # An empty string is never a valid line
-            break
+            # An empty string is never a valid line, and we don't need to
+            # append anything
+            is_already_lines = 0
+            continue
         c_str = PyString_AS_STRING(chunk)
         c_last = c_str + the_len - 1
         newline = <char *>memchr(c_str, c'\n', the_len)
-        if newline != c_last:
-            if newline == NULL:
-                # Missing a newline. Only valid as the last line
-                last_no_newline = 1
-            else:
-                # There is a newline in the middle, we must resplit
-                break
-    else:
+        if newline == c_last:
+            # A simple line
+            PyList_Append(lines, chunk)
+        elif newline == NULL:
+            # A chunk without a newline, if this is the last entry, then we
+            # allow it
+            tail = chunk
+            last_no_newline = 1
+        else:
+            # We have a newline in the middle, loop until we've consumed all
+            # lines
+            is_already_lines = 0
+            while newline != NULL:
+                line = PyString_FromStringAndSize(c_str, newline - c_str + 1)
+                PyList_Append(lines, line)
+                c_str = newline + 1
+                if c_str > c_last: # We are done
+                    break
+                the_len = c_last - c_str + 1
+                newline = <char *>memchr(c_str, c'\n', the_len)
+                if newline == NULL:
+                    tail = PyString_FromStringAndSize(c_str, the_len)
+                    break
+    if is_already_lines:
         return chunks
-
-    from bzrlib import osutils
-    return osutils.split_lines(''.join(chunks))
+    if tail is not None:
+        PyList_Append(lines, tail)
+    return lines
