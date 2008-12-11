@@ -468,7 +468,11 @@ class Serializer_v8(Serializer):
             raise errors.UnsupportedInventoryKind(kind)
         ie.revision = revision
         if revision is not None:
-            self._entry_cache[key] = ie
+            # We cache a copy() because callers like to mutate objects, and
+            # that would cause the item in cache to mutate as well.
+            # This has a small effect on many-inventory performance, because
+            # the majority fraction is spent in cache hits, not misses.
+            self._entry_cache[key] = ie.copy()
 
         return ie
 
