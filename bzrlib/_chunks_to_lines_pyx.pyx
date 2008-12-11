@@ -81,8 +81,6 @@ def chunks_to_lines(chunks):
         c_last = c_str + the_len - 1
         newline = <char *>memchr(c_str, c'\n', the_len)
         if newline != c_last:
-            last_no_newline = 2
-            continue
             if newline == NULL:
                 # Missing a newline. Only valid as the last line
                 last_no_newline = 1
