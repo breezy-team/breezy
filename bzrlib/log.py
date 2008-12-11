@@ -817,8 +817,9 @@ class LongLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 to_file.write(indent + '  %s\n' % (l,))
         if revision.delta is not None:
+            # We don't respect delta_format for compatibility
             revision.delta.show(to_file, self.show_ids, indent=indent,
-                                short_status=self.delta_format==1)
+                                short_status=False)
 
 
 class ShortLogFormatter(LogFormatter):
