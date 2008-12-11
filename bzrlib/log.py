@@ -1058,16 +1058,12 @@ def show_branch_change(old_revno, old_revision_id, branch, output):
         branch.repository.iter_reverse_revision_history(old_revision_id))
     old_rh.reverse()
     new_rh = branch.revision_history()
-    lf = log_formatter('long', show_ids=False, to_file=output,
-                       show_timezone='original')
+    log_format = log_formatter_registry.get_default(branch)
+    lf = log_format(show_ids=False, to_file=output, show_timezone='original')
     if old_history != []:
         output.write('*'*60)
         output.write('\nRemoved Revisions:\n')
-        old_start_revno = old_revno - len(old_history) + 1
-        revisions = branch.repository.get_revisions(old_history)
-        for i, rev in enumerate(revisions):
-            lr = LogRevision(rev, i+old_start_revno, 0, None)
-            lf.log_revision(lr)
+        show_flat_log(branch.repository, old_history, old_revno, lf)
         output.write('*'*60)
         output.write('\n\n')
     if new_history != []:
@@ -1075,6 +1071,14 @@ def show_branch_change(old_revno, old_revision_id, branch, output):
         start_revno = new_revno - len(new_history) + 1
         show_log(branch, lf, None, verbose=False, direction='forward',
                  start_revision=start_revno,)
+
+
+def show_flat_log(repository, history, last_revno, lf):
+    start_revno = last_revno - len(history) + 1
+    revisions = repository.get_revisions(history)
+    for i, rev in enumerate(revisions):
+        lr = LogRevision(rev, i + last_revno, 0, None)
+        lf.log_revision(lr)
 
 
 properties_handler_registry = registry.Registry()
