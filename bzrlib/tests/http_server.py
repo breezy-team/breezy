@@ -39,10 +39,6 @@ class BadWebserverPath(ValueError):
         return 'path %s is not in %s' % self.args
 
 
-def _quote_html(html):
-    return html.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """Handles one request.
 
@@ -131,33 +127,6 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def _header_line_length(self, keyword, value):
         header_line = '%s: %s\r\n' % (keyword, value)
         return len(header_line)
-
-    def send_error(self, code, message=None):
-        """Overrides base implementation to work around bugs in python2.5.
-
-
-        To be 1.1 compliant, we need to specify a Content-Length or 1.1 clients
-        may hang.
-        """
-        try:
-            short, long = self.responses[code]
-        except KeyError:
-            short, long = '???', '???'
-        if message is None:
-            message = short
-        explain = long
-        self.log_error("code %d, message %s", code, message)
-        # using _quote_html to prevent Cross Site Scripting attacks (see bug
-        # #1100201)
-        content = (self.error_message_format %
-                   {'code': code, 'message': _quote_html(message),
-                    'explain': explain})
-        self.send_response(code, message)
-        self.send_header("Content-Type", "text/html")
-        self.send_header('Content-Length', len(content))
-        self.end_headers()
-        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self.wfile.write(content)
 
     def send_head(self):
         """Overrides base implementation to work around a bug in python2.5."""

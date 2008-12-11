@@ -498,8 +498,6 @@ class ChrootedTests(TestCaseWithBranch):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        from bzrlib import debug
-        debug.debug_flags = set(['http'])
         if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
