@@ -842,12 +842,12 @@ class VersionedFiles(object):
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.
-        split_lines = osutils.split_lines
+        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(needed_parents, 'unordered',
             True):
             if record.storage_kind == 'absent':
                 continue
-            mpvf.add_version(split_lines(record.get_bytes_as('fulltext')),
+            mpvf.add_version(chunks_to_lines(record.get_bytes_as('chunked')),
                 record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in\
             zip(records, mpvf.get_line_list(versions)):
@@ -978,9 +978,9 @@ class VersionedFiles(object):
         ghosts = maybe_ghosts - set(self.get_parent_map(maybe_ghosts))
         knit_keys.difference_update(ghosts)
         lines = {}
-        split_lines = osutils.split_lines
+        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(knit_keys, 'topological', True):
-            lines[record.key] = split_lines(record.get_bytes_as('fulltext'))
+            lines[record.key] = chunks_to_lines(record.get_bytes_as('chunked'))
             # line_block_dict = {}
             # for parent, blocks in record.extract_line_blocks():
             #   line_blocks[parent] = blocks
