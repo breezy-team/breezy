@@ -110,7 +110,7 @@ from bzrlib.versionedfile import (
     adapter_registry,
     ConstantMapper,
     ContentFactory,
-    FulltextContentFactory,
+    ChunkedContentFactory,
     VersionedFile,
     VersionedFiles,
     )
@@ -276,11 +276,13 @@ class KnitContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             return self._raw_record
-        if storage_kind == 'fulltext' and self._knit is not None:
-            return self._knit.get_text(self.key[0])
-        else:
-            raise errors.UnavailableRepresentation(self.key, storage_kind,
-                self.storage_kind)
+        if self._knit is not None:
+            if storage_kind == 'chunked':
+                return self._knit.get_lines(self.key[0])
+            elif storage_kind == 'fulltext':
+                return self._knit.get_text(self.key[0])
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
 
 
 class KnitContent(object):
@@ -1288,9 +1290,8 @@ class KnitVersionedFiles(VersionedFiles):
                 text_map, _ = self._get_content_maps(keys, non_local)
                 for key in keys:
                     lines = text_map.pop(key)
-                    text = ''.join(lines)
-                    yield FulltextContentFactory(key, global_map[key], None,
-                                                 text)
+                    yield ChunkedContentFactory(key, global_map[key], None,
+                                                lines)
         else:
             for source, keys in source_keys:
                 if source is parent_maps[0]:
@@ -1443,7 +1444,8 @@ class KnitVersionedFiles(VersionedFiles):
                         buffered = True
                 if not buffered:
                     self._index.add_records([index_entry])
-            elif record.storage_kind == 'fulltext':
+            elif (record.storage_kind == 'fulltext'
+                  or record.storage_kind == 'chunked'):
                 self.add_lines(record.key, parents,
                     split_lines(record.get_bytes_as('fulltext')))
             else:

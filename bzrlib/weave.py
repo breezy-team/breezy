@@ -122,6 +122,8 @@ class WeaveContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
             return self._weave.get_text(self.key[-1])
+        elif storage_kind == 'chunked':
+            return self._weave.get_lines(self.key[-1])
         else:
             raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
 
@@ -357,7 +359,8 @@ class Weave(VersionedFile):
                 raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             parents = [parent[0] for parent in record.parents]
-            if record.storage_kind == 'fulltext':
+            if (record.storage_kind == 'fulltext'
+                or record.storage_kind == 'chunked'):
                 self.add_lines(record.key[0], parents,
                     split_lines(record.get_bytes_as('fulltext')))
             else:
