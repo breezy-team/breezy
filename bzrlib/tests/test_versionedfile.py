@@ -2213,8 +2213,9 @@ class VirtualVersionedFilesTests(TestCase):
         self._lines["A"] = ["FOO", "BAR"]
         it = self.texts.get_record_stream([("A",)], "unordered", True)
         record = it.next()
-        self.assertEquals("fulltext", record.storage_kind)
+        self.assertEquals("chunked", record.storage_kind)
         self.assertEquals("FOOBAR", record.get_bytes_as("fulltext"))
+        self.assertEquals(["FOO", "BAR"], record.get_bytes_as("chunked"))
 
     def test_get_record_stream_absent(self):
         it = self.texts.get_record_stream([("A",)], "unordered", True)

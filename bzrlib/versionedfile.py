@@ -95,7 +95,7 @@ class ChunkedContentFactory(ContentFactory):
 
     :ivar sha1: None, or the sha1 of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. Always
-        'fulltext' (for compatibility with clients that don't know 'chunked')
+        'chunked'
     :ivar key: The key of this content. Each key is a tuple with a single
         string in it.
     :ivar parents: A tuple of parent keys for self.key. If the object has
@@ -106,7 +106,7 @@ class ChunkedContentFactory(ContentFactory):
     def __init__(self, key, parents, sha1, chunks):
         """Create a ContentFactory."""
         self.sha1 = sha1
-        self.storage_kind = 'fulltext' #XXX: This should really be 'chunked'
+        self.storage_kind = 'chunked'
         self.key = key
         self.parents = parents
         self._chunks = chunks
