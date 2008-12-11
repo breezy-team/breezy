@@ -1680,14 +1680,15 @@ class Repository(object):
     def _iter_inventory_xmls(self, revision_ids):
         keys = [(revision_id,) for revision_id in revision_ids]
         stream = self.inventories.get_record_stream(keys, 'unordered', True)
-        texts = {}
+        text_chunks = {}
         for record in stream:
             if record.storage_kind != 'absent':
-                texts[record.key] = record.get_bytes_as('fulltext')
+                text_chunks[record.key] = record.get_bytes_as('chunked')
             else:
                 raise errors.NoSuchRevision(self, record.key)
         for key in keys:
-            yield texts.pop(key), key[-1]
+            chunks = text_chunks.pop(key)
+            yield ''.join(chunks), key[-1]
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
