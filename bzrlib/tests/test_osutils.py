@@ -769,6 +769,16 @@ class TestChunkedToLines(TestCase):
         self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],
                                  ['foo\n', 'bar\r\n', 'ba\rz\n'])
 
+    def test_no_final_newline(self):
+        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
+                                 ['foo\nbar\r\nba\rz'])
+        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
+                                 ['foo\n', 'bar\r\n', 'ba\rz'])
+
+    def test_mixed(self):
+        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz'],
+                                 ['foo\n', 'bar\r\nba\r', 'z'])
+
 
 class TestSplitLines(TestCase):
 
