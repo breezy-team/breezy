@@ -771,6 +771,7 @@ class TestCase(unittest.TestCase):
         self._benchtime = None
         self._clear_hooks()
         self._clear_debug_flags()
+        self._clear_caches()
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
 
@@ -787,9 +788,18 @@ class TestCase(unittest.TestCase):
                 # to a TestCase object.
                 atexit.register(_report_leaked_threads)
 
+    def _clear_caches(self):
+        from bzrlib import xml5, xml6, xml7, xml8
+        # Many tests re-use the same revision ids, so the entry caches are not
+        # valid
+        xml5.serializer_v5._entry_cache.clear()
+        xml6.serializer_v6._entry_cache.clear()
+        xml7.serializer_v7._entry_cache.clear()
+        xml8.serializer_v8._entry_cache.clear()
+
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
-        
+
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
