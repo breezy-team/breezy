@@ -101,6 +101,8 @@ class TestChunksToLines(tests.TestCase):
                                  ['foo\n', '', 'bar\r\nba', '\r', 'z'])
         self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],
                                  ['foo\n', 'bar\r\n', 'ba\rz\n', ''])
+        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],
+                                 ['foo\n', 'bar', '\r\n', 'ba\rz\n'])
 
     def test_not_lines(self):
         # We should raise a TypeError, not crash
