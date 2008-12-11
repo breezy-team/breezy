@@ -51,5 +51,7 @@ def chunks_to_lines(chunks):
         # For the last one, we allow it to not have a trailing newline, but it
         # is not allowed to be an empty string.
         return chunks
-    from bzrlib.osutils import split_lines
-    return split_lines(''.join(chunks))
+
+    # These aren't simple lines, just join and split again.
+    from bzrlib import osutils
+    return osutils._split_lines(''.join(chunks))

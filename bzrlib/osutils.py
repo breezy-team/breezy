@@ -828,6 +828,20 @@ except ImportError:
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
+    # Trivially convert a fulltext into a 'chunked' representation, and let
+    # chunks_to_lines do the heavy lifting.
+    if isinstance(s, str):
+        # chunks_to_lines only supports 8-bit strings
+        return chunks_to_lines([s])
+    else:
+        return _split_lines(s)
+
+
+def _split_lines(s):
+    """Split s into lines, but without removing the newline characters.
+
+    This supports Unicode or plain string objects.
+    """
     lines = s.split('\n')
     result = [line + '\n' for line in lines[:-1]]
     if lines[-1]:
