@@ -4782,7 +4782,7 @@ class cmd_shelve(Command):
             return 0
 
     def run_for_list(self):
-        tree = WorkingTree.open('.')
+        tree = WorkingTree.open_containing('.')
         tree.lock_read()
         try:
             manager = tree.get_shelf_manager()
