@@ -18,40 +18,38 @@
 
 
 def chunks_to_lines(chunks):
-    """Ensure that chunks is split cleanly into lines.
+    """Re-split chunks into simple lines.
 
     Each entry in the result should contain a single newline at the end. Except
-    for the last entry which may not have a final newline.
+    for the last entry which may not have a final newline. If chunks is already
+    a simple list of lines, we return it directly.
 
     :param chunks: An list/tuple of strings. If chunks is already a list of
         lines, then we will return it as-is.
     :return: A list of strings.
     """
     # Optimize for a very common case when chunks are already lines
-    def fail():
-        raise IndexError
-    try:
-        # This is a bit ugly, but is the fastest way to check if all of the
-        # chunks are individual lines.
-        # You can't use function calls like .count(), .index(), or endswith()
-        # because they incur too much python overhead.
-        # It works because
-        #   if chunk is an empty string, it will raise IndexError, which will
-        #       be caught.
-        #   if chunk doesn't end with '\n' then we hit fail()
-        #   if there is more than one '\n' then we hit fail()
-        # timing shows this loop to take 2.58ms rather than 3.18ms for
-        # split_lines(''.join(chunks))
-        # Further, it means we get to preserve the original lines, rather than
-        # expanding memory
-        if not chunks:
-            return chunks
-        [(chunk[-1] == '\n' and '\n' not in chunk[:-1]) or fail()
-         for chunk in chunks[:-1]]
-        last = chunks[-1]
-        if last and '\n' not in last[:-1]:
-            return chunks
-    except IndexError:
-        pass
+    last_no_newline = False
+    for chunk in chunks:
+        if last_no_newline:
+            # Only the last chunk is allowed to not have a trailing newline
+            # Getting here means the last chunk didn't have a newline, and we
+            # have a chunk following it
+            break
+        if not chunk:
+            # Empty strings are never valid lines
+            break
+        elif '\n' in chunk[:-1]:
+            # This chunk has an extra '\n', so we will have to split it
+            break
+        elif chunk[-1] != '\n':
+            # This chunk does not have a trailing newline
+            last_no_newline = True
+    else:
+        # All of the lines (but possibly the last) have a single newline at the
+        # end of the string.
+        # For the last one, we allow it to not have a trailing newline, but it
+        # is not allowed to be an empty string.
+        return chunks
     from bzrlib.osutils import split_lines
     return split_lines(''.join(chunks))

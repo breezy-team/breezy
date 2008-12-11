@@ -38,26 +38,45 @@ cdef extern from "string.h":
 
 
 def chunks_to_lines(chunks):
+    """Re-split chunks into simple lines.
+
+    Each entry in the result should contain a single newline at the end. Except
+    for the last entry which may not have a final newline. If chunks is already
+    a simple list of lines, we return it directly.
+
+    :param chunks: An list/tuple of strings. If chunks is already a list of
+        lines, then we will return it as-is.
+    :return: A list of strings.
+    """
     cdef char *c_str
     cdef char *newline
     cdef char *c_last
     cdef Py_ssize_t the_len
     cdef Py_ssize_t chunks_len
-    cdef Py_ssize_t cur
+    cdef int last_no_newline
 
     # Check to see if the chunks are already lines
     chunks_len = len(chunks)
     if chunks_len == 0:
         return chunks
-    cur = 0
+
+    last_no_newline = 0
     for chunk in chunks:
-        cur += 1
+        if last_no_newline:
+            # We have a chunk which followed a chunk without a newline, so this
+            # is not a simple list of lines.
+            break
         PyString_AsStringAndSize(chunk, &c_str, &the_len)
         if the_len == 0:
+            # An empty string is never a valid line
             break
         c_last = c_str + the_len - 1
         newline = <char *>memchr(c_str, c'\n', the_len)
-        if newline != c_last and not (newline == NULL and cur == chunks_len):
+        if newline == NULL:
+            # Missing a newline. Only valid as the last line
+            last_no_newline = 1
+        elif newline != c_last:
+            # There is a newline in the middle, we must resplit
             break
     else:
         return chunks
