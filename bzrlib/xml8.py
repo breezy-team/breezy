@@ -40,8 +40,6 @@ _xml_escape_map = {
     "<":"&lt;",
     ">":"&gt;",
     }
-# A cache of InventoryEntry objects
-_entry_cache = fifo_cache.FIFOCache(10*1000)
 
 
 def _ensure_utf8_re():
@@ -148,7 +146,7 @@ class Serializer_v8(Serializer):
     Its revision format number matches its inventory number.
     """
 
-    __slots__ = []
+    __slots__ = ['_entry_cache']
 
     root_id = None
     support_altered_by_hack = True
@@ -158,6 +156,9 @@ class Serializer_v8(Serializer):
     supported_kinds = set(['file', 'directory', 'symlink'])
     format_num = '8'
     revision_format_num = None
+
+    def __init__(self):
+        self._entry_cache = fifo_cache.FIFOCache(10*1024)
 
     def _check_revisions(self, inv):
         """Extension point for subclasses to check during serialisation.
@@ -190,10 +191,10 @@ class Serializer_v8(Serializer):
         """
         # 1.5 times might also be reasonable.
         recommended_cache_size = inv_size * 2
-        if _entry_cache.cache_size() < recommended_cache_size:
+        if self._entry_cache.cache_size() < recommended_cache_size:
             trace.mutter('Resizing the inventory entry cache to %d',
                          recommended_cache_size)
-            _entry_cache.resize(recommended_cache_size)
+            self._entry_cache.resize(recommended_cache_size)
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""
@@ -422,7 +423,7 @@ class Serializer_v8(Serializer):
         key = (file_id, revision)
         try:
             # We copy it, because some operatations may mutate it
-            cached_ie = _entry_cache[key]
+            cached_ie = self._entry_cache[key]
         except KeyError:
             pass
         else:
@@ -467,7 +468,7 @@ class Serializer_v8(Serializer):
             raise errors.UnsupportedInventoryKind(kind)
         ie.revision = revision
         if revision is not None:
-            _entry_cache[key] = ie
+            self._entry_cache[key] = ie
 
         return ie
 
