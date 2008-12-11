@@ -854,6 +854,12 @@ def chunks_to_lines(chunks):
     return split_lines(''.join(chunks))
 
 
+try:
+    from bzrlib._chunks_to_lines_pyx import chunks_to_lines
+except ImportError:
+    pass
+
+
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
     lines = s.split('\n')
