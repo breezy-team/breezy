@@ -820,7 +820,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
-def chunked_to_lines(chunks):
+def chunks_to_lines(chunks):
     """Ensure that chunks is split cleanly into lines.
 
     Each entry in the result should contain a single newline at the end. Except
@@ -829,6 +829,28 @@ def chunked_to_lines(chunks):
     :param chunks: An iterable of strings
     :return: A list of strings.
     """
+    # Optimize for a very common case when chunks are already lines
+    def fail():
+        raise IndexError
+    try:
+        # This is a bit ugly, but is the fastest way to check if all of the
+        # chunks are individual lines.
+        # You can't use function calls like .count(), .index(), or endswith()
+        # because they incur too much python overhead.
+        # It works because
+        #   if chunk is an empty string, it will raise IndexError, which will
+        #       be caught.
+        #   if chunk doesn't end with '\n' then we hit fail()
+        #   if there is more than one '\n' then we hit fail()
+        # timing shows this loop to take 2.58ms rather than 3.18ms for
+        # split_lines(''.join(chunks))
+        # Further, it means we get to preserve the original lines, rather than
+        # expanding memory
+        [(chunk[-1] == '\n' and '\n' not in chunk[:-1]) or fail()
+         for chunk in chunks]
+        return chunks
+    except IndexError:
+        pass
     return split_lines(''.join(chunks))
 
 
