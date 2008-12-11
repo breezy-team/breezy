@@ -52,29 +52,17 @@ def chunks_to_lines(chunks):
     """
     cdef char *c_str
     cdef char *newline
-    cdef char *c_last # the last valid character of the string
+    cdef char *c_last
     cdef Py_ssize_t the_len
-    cdef Py_ssize_t chunks_len
     cdef int last_no_newline
-    cdef int is_already_lines
 
     # Check to see if the chunks are already lines
-    chunks_len = len(chunks)
-    if chunks_len == 0:
-        return chunks
-
-    lines = []
-    tail = None # Any remainder from the previous chunk
     last_no_newline = 0
-    is_already_lines = 1
     for chunk in chunks:
         if last_no_newline:
             # We have a chunk which followed a chunk without a newline, so this
             # is not a simple list of lines.
-            is_already_lines = 0
-        if tail is not None:
-            chunk = tail + chunk
-            tail = None
+            break
         # Switching from PyString_AsStringAndSize to PyString_CheckExact and
         # then the macros GET_SIZE and AS_STRING saved us 40us / 470us.
         # It seems PyString_AsStringAndSize can actually trigger a conversion,
@@ -83,9 +71,35 @@ def chunks_to_lines(chunks):
             raise TypeError('chunk is not a string')
         the_len = PyString_GET_SIZE(chunk)
         if the_len == 0:
+            # An empty string is never a valid line
+            break
+        c_str = PyString_AS_STRING(chunk)
+        c_last = c_str + the_len - 1
+        newline = <char *>memchr(c_str, c'\n', the_len)
+        if newline != c_last:
+            if newline == NULL:
+                # Missing a newline. Only valid as the last line
+                last_no_newline = 1
+            else:
+                # There is a newline in the middle, we must resplit
+                break
+    else:
+        # Everything was already a list of lines
+        return chunks
+
+    # We know we need to create a new list of lines
+    lines = []
+    tail = None # Any remainder from the previous chunk
+    for chunk in chunks:
+        if tail is not None:
+            chunk = tail + chunk
+            tail = None
+        if not PyString_CheckExact(chunk):
+            raise TypeError('chunk is not a string')
+        the_len = PyString_GET_SIZE(chunk)
+        if the_len == 0:
             # An empty string is never a valid line, and we don't need to
             # append anything
-            is_already_lines = 0
             continue
         c_str = PyString_AS_STRING(chunk)
         c_last = c_str + the_len - 1
@@ -97,11 +111,9 @@ def chunks_to_lines(chunks):
             # A chunk without a newline, if this is the last entry, then we
             # allow it
             tail = chunk
-            last_no_newline = 1
         else:
             # We have a newline in the middle, loop until we've consumed all
             # lines
-            is_already_lines = 0
             while newline != NULL:
                 line = PyString_FromStringAndSize(c_str, newline - c_str + 1)
                 PyList_Append(lines, line)
@@ -113,8 +125,6 @@ def chunks_to_lines(chunks):
                 if newline == NULL:
                     tail = PyString_FromStringAndSize(c_str, the_len)
                     break
-    if is_already_lines:
-        return chunks
     if tail is not None:
         PyList_Append(lines, tail)
     return lines
