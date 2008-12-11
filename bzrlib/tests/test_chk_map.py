@@ -82,12 +82,12 @@ class TestMap(TestCaseWithStore):
             if node_one.__class__ != node_two.__class__:
                 self.assertEqualDiff(map_one._dump_tree(),
                                      map_two._dump_tree())
+            self.assertEqual(node_one._serialised_prefix,
+                             node_two._serialised_prefix)
             if isinstance(node_one, InternalNode):
                 # Internal nodes must have identical references
                 self.assertEqual(sorted(node_one._items.keys()),
                                  sorted(node_two._items.keys()))
-                self.assertEqual(node_one._serialised_prefix,
-                                 node_two._serialised_prefix)
                 node_one_stack.extend(node_one._iter_nodes(map_one._store))
                 node_two_stack.extend(node_two._iter_nodes(map_two._store))
             else:

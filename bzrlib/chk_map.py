@@ -482,6 +482,7 @@ class LeafNode(Node):
         result._key = key
         result._key_width = width
         result._size = len(bytes)
+        result._serialised_prefix = result.unique_serialised_prefix()
         return result
 
     def iteritems(self, store, key_filter=None):
@@ -524,6 +525,12 @@ class LeafNode(Node):
         self._items[key] = value
         self._size += self._key_value_len(key, value)
         self._len += 1
+        serialised_key = self._serialised_key(key)
+        if self._serialised_prefix is None:
+            self._serialised_prefix = serialised_key
+        elif not serialised_key.startswith(self._serialised_prefix):
+            self._serialised_prefix = self.common_prefix(
+                self._serialised_prefix, serialised_key)
         if (self._len > 1
             and self._maximum_size
             and self._current_size() > self._maximum_size):
@@ -538,7 +545,7 @@ class LeafNode(Node):
 
         :return: (common_serialized_prefix, [(node_serialized_prefix, node)])
         """
-        common_prefix = self.unique_serialised_prefix()
+        common_prefix = self._serialised_prefix
         split_at = len(common_prefix) + 1
         result = {}
         for key, value in self._items.iteritems():
@@ -573,7 +580,7 @@ class LeafNode(Node):
         if self._map_no_split(key, value):
             return self._split(store)
         else:
-            return self.unique_serialised_prefix(), [("", self)]
+            return self._serialised_prefix, [("", self)]
 
     def serialise(self, store):
         """Serialise the tree to store.
@@ -626,6 +633,8 @@ class LeafNode(Node):
         self._len -= 1
         del self._items[key]
         self._key = None
+        # Recompute from scratch
+        self._serialised_prefix = self.unique_serialised_prefix()
         return self
 
 
@@ -810,10 +819,8 @@ class InternalNode(Node):
                 # at this level. Or the LeafNode has shrunk in size, so we need
                 # to check that as well.
                 new_node = self._check_remap(store)
-            if new_node._serialised_prefix is None:
-                return new_node.unique_serialised_prefix(), [("", new_node)]
-            else:
-                return new_node._serialised_prefix, [('', new_node)]
+            assert new_node._serialised_prefix is not None
+            return new_node._serialised_prefix, [('', new_node)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
         # to refer to more bytes of every child (which would give us
