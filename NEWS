@@ -17,6 +17,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * ``shelve --list`` can now be used to list shelved changes.
+      (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Add trailing slash to directories in all output of ``bzr ls``, except
