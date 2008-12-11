@@ -50,6 +50,11 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Improved the formats help topic to explain why multiple formats
+      exist and to provide guidelines in selecting one. Formats using
+      Knit-based repository formats are now explicitly marked as
+      deprecated as well. (Ian Clatworthy)
+
   API CHANGES:
 
     * The logic in commit now delegates inventory basis calculations to

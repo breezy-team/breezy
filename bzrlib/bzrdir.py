@@ -2787,8 +2787,37 @@ class BzrDirFormatRegistry(registry.Registry):
 
     def help_topic(self, topic):
         output = textwrap.dedent("""\
-            These formats can be used for creating branches, working trees, and
-            repositories.
+            To ensure that older clients do not access data incorrectly,
+            Bazaar's policy is to introduce a new storage format whenever
+            new features requiring new metadata are added. New storage
+            formats may also be introduced to improve performance and
+            scalability.
+
+            Use the following guidelines to select a format (stopping
+            as soon as a condition is true):
+            
+            * If you are working on an existing project, use whatever
+              format that project is using. (Bazaar will do this for you
+              by default).
+
+            * If you are using bzr-svn to interoperate with a Subversion
+              repository, use 1.9-rich-root.
+
+            * If you are working on a project with big trees (5000+ paths)
+              or deep history (5000+ revisions), use 1.9.
+
+            * Otherwise, use the default format - it is good enough for
+              most projects.
+
+            Note: If some of your developers are unable to use the latest
+            version of Bazaar (due to corporate policy say), be sure to
+            adjust the guidelines above accordingly. E.g. you may need to
+            select 1.6.1 instead of 1.9 if your team has standardized on
+            Bazaar 1.7.
+
+
+            The complete list of formats that can be used for creating
+            branches, working trees, and repositories is given below.
 
             """)
         default_realkey = None
@@ -2825,12 +2854,12 @@ class BzrDirFormatRegistry(registry.Registry):
             else:
                 output += wrapped(key, help, info)
         if len(experimental_pairs) > 0:
-            output += "Experimental formats are shown below.\n\n"
+            output += "\nExperimental formats are shown below.\n\n"
             for key, help in experimental_pairs:
                 info = self.get_info(key)
                 output += wrapped(key, help, info)
         if len(deprecated_pairs) > 0:
-            output += "Deprecated formats are shown below.\n\n"
+            output += "\nDeprecated formats are shown below.\n\n"
             for key, help in deprecated_pairs:
                 info = self.get_info(key)
                 output += wrapped(key, help, info)
@@ -2979,7 +3008,8 @@ format_registry.register_metadir('knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat3')
+    tree_format='bzrlib.workingtree.WorkingTreeFormat3',
+    deprecated=True)
 format_registry.register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
@@ -2994,7 +3024,7 @@ format_registry.register_metadir('dirstate',
     # this uses bzrlib.workingtree.WorkingTreeFormat4 because importing
     # directly from workingtree_4 triggers a circular import.
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    )
+    deprecated=True)
 format_registry.register_metadir('dirstate-tags',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     help='New in 0.15: Fast local operations and improved scaling for '
@@ -3002,14 +3032,14 @@ format_registry.register_metadir('dirstate-tags',
         ' Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    )
+    deprecated=True)
 format_registry.register_metadir('rich-root',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
     help='New in 1.0.  Better handling of tree roots.  Incompatible with'
         ' bzr < 1.0',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    )
+    deprecated=True)
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
