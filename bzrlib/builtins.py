@@ -4775,7 +4775,7 @@ class cmd_shelve(Command):
                        bzrlib.option.diff_writer_registry,
                        value_switches=True, enum_switch=False),
 
-        Option('list', help='list shelved changes.'),
+        Option('list', help='List shelved changes.'),
     ]
     _see_also = ['unshelve']
 
