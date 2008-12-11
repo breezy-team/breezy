@@ -1454,12 +1454,17 @@ class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
         self.caching_pp.disable_cache()
         self.assertIs(None, self.caching_pp._cache)
 
+    def test_enable_cache_raises(self):
+        e = self.assertRaises(AssertionError, self.caching_pp.enable_cache)
+        self.assertEqual('Cache enabled when already enabled.', str(e))
+
     def test_cache_misses(self):
         self.caching_pp.get_parent_map(['rev3'])
         self.caching_pp.get_parent_map(['rev3'])
         self.assertEqual(['rev3'], self.inst_pp.calls)
 
     def test_no_cache_misses(self):
+        self.caching_pp.disable_cache()
         self.caching_pp.enable_cache(cache_misses=False)
         self.caching_pp.get_parent_map(['rev3'])
         self.caching_pp.get_parent_map(['rev3'])
