@@ -4777,7 +4777,7 @@ class cmd_shelve(Command):
 
         Option('list', help='list shelved changes.'),
     ]
-    _see_also = ['unshelve', 'ls-shelf']
+    _see_also = ['unshelve']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
             writer=None, list=False):
@@ -4829,7 +4829,7 @@ class cmd_unshelve(Command):
             delete_only="Delete changes without applying them."
         )
     ]
-    _see_also = ['shelve', 'ls-shelf']
+    _see_also = ['shelve']
 
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.shelf_ui import Unshelver
