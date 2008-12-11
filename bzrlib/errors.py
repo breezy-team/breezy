@@ -2957,3 +2957,8 @@ class NoSuchShelfId(BzrError):
 class UserAbort(BzrError):
 
     _fmt = 'The user aborted the operation.'
+
+
+class CacheReEnabled(BzrError):
+
+    _fmt = 'Cache enabled when already enabled.'

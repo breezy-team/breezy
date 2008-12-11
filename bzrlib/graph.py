@@ -134,6 +134,8 @@ class CachingParentsProvider(object):
 
     def enable_cache(self, cache_misses=True):
         """Enable cache."""
+        if self._cache is not None:
+            raise errors.CacheReEnabled()
         self._cache = {}
         self._cache_misses = cache_misses
         if self._debug:
