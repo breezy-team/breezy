@@ -812,11 +812,24 @@ def splitpath(p):
             rps.append(f)
     return rps
 
+
 def joinpath(p):
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
+
+
+def chunked_to_lines(chunks):
+    """Ensure that chunks is split cleanly into lines.
+
+    Each entry in the result should contain a single newline at the end. Except
+    for the last entry which may not have a final newline.
+
+    :param chunks: An iterable of strings
+    :return: A list of strings.
+    """
+    return split_lines(''.join(chunks))
 
 
 def split_lines(s):

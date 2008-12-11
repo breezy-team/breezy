@@ -756,6 +756,20 @@ class TestMacFuncsDirs(TestCaseInTempDir):
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
 
+class TestChunkedToLines(TestCase):
+
+    def assertChunksToLines(self, lines, chunks):
+        self.assertEqual(lines, osutils.chunked_to_lines(chunks))
+
+    def test_fulltext_chunk_to_lines(self):
+        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],
+                                 ['foo\nbar\r\nba\rz\n'])
+
+    def test_lines_to_lines(self):
+        self.assertChunksToLines(['foo\n', 'bar\r\n', 'ba\rz\n'],
+                                 ['foo\n', 'bar\r\n', 'ba\rz\n'])
+
+
 class TestSplitLines(TestCase):
 
     def test_split_unicode(self):
