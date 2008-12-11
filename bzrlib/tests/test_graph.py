@@ -1455,8 +1455,7 @@ class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
         self.assertIs(None, self.caching_pp._cache)
 
     def test_enable_cache_raises(self):
-        e = self.assertRaises(errors.CacheReEnabled,
-                              self.caching_pp.enable_cache)
+        e = self.assertRaises(AssertionError, self.caching_pp.enable_cache)
         self.assertEqual('Cache enabled when already enabled.', str(e))
 
     def test_cache_misses(self):
