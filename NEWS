@@ -61,6 +61,15 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Added an ``InventoryEntry`` cache when deserializing inventories.
+      Can cut the time to iterate over multiple RevisionsTrees in half.
+      (John Arbash Meinel)
+
+    * Added ``bzrlib.fifo_cache.FIFOCache`` which is designed to have
+      minimal overhead versus using a plain dict for cache hits, at the
+      cost of not preserving the 'active' set as well as an ``LRUCache``.
+      (John Arbash Meinel)
+
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
       Previously the order was fully random, now the records should be
