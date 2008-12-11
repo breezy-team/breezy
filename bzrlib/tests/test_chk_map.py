@@ -86,7 +86,8 @@ class TestMap(TestCaseWithStore):
                 # Internal nodes must have identical references
                 self.assertEqual(sorted(node_one._items.keys()),
                                  sorted(node_two._items.keys()))
-                self.assertEqual(node_one._prefix, node_two._prefix)
+                self.assertEqual(node_one._serialised_prefix,
+                                 node_two._serialised_prefix)
                 node_one_stack.extend(node_one._iter_nodes(map_one._store))
                 node_two_stack.extend(node_two._iter_nodes(map_two._store))
             else:
