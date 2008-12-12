@@ -1005,6 +1005,14 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
 
 
 def get_history_change(old_revision_id, new_revision_id, repository):
+    """Calculate the uncommon lefthand history between two revisions.
+
+    :param old_revision_id: The original revision id.
+    :param new_revision_id: The new revision id.
+    :param repository: The repository to use for the calcualtion.
+
+    return old_history, new_history
+    """
     old_history = []
     old_revisions = set()
     new_history = []
@@ -1045,7 +1053,14 @@ def get_history_change(old_revision_id, new_revision_id, repository):
     return old_history, new_history
 
 
-def show_branch_change(old_revno, old_revision_id, branch, output):
+def show_branch_change(branch, output, old_revno, old_revision_id):
+    """Show the changes made to a branch.
+
+    :param branch: The branch to show changes about.
+    :param output: A file-like object to write changes to.
+    :param old_revno: The revno of the old tip.
+    :param old_revision_id: The revision_id of the old tip.
+    """
     new_revno, new_revision_id = branch.last_revision_info()
     old_history, new_history = get_history_change(old_revision_id,
                                                   new_revision_id,
@@ -1054,10 +1069,6 @@ def show_branch_change(old_revno, old_revision_id, branch, output):
         output.write('Nothing seems to have changed\n')
         return
 
-    old_rh = list(
-        branch.repository.iter_reverse_revision_history(old_revision_id))
-    old_rh.reverse()
-    new_rh = branch.revision_history()
     log_format = log_formatter_registry.get_default(branch)
     lf = log_format(show_ids=False, to_file=output, show_timezone='original')
     if old_history != []:
@@ -1074,6 +1085,13 @@ def show_branch_change(old_revno, old_revision_id, branch, output):
 
 
 def show_flat_log(repository, history, last_revno, lf):
+    """Show a simple log of the specified history.
+
+    :param repository: The repository to retrieve revisions from.
+    :param history: A list of revision_ids indicating the lefthand history.
+    :param last_revno: The revno of the last revision_id in the history.
+    :param lf: The log formatter to use.
+    """
     start_revno = last_revno - len(history) + 1
     revisions = repository.get_revisions(history)
     for i, rev in enumerate(revisions):
