@@ -568,6 +568,17 @@ class RemoteHTTPTransport(RemoteTransport):
                                    _from_transport=self,
                                    http_transport=self._http_transport)
 
+    def _redirected_to(self, source, target):
+        """See transport._redirected_to"""
+        redirected = self._http_transport._redirected_to(source, target)
+        if (redirected is not None
+            and isinstance(redirected, type(self._http_transport))):
+            return RemoteHTTPTransport('bzr+' + redirected.external_url(),
+                                       http_transport=redirected)
+        else:
+            # Either None or a transport for a different protocol
+            return redirected
+
 
 def get_test_permutations():
     """Return (transport, server) permutations for testing."""
