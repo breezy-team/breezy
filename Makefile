@@ -23,7 +23,7 @@
 PYTHON=python
 PYTHON_BUILDFLAGS=
 
-.PHONY: all clean extensions pyflakes api-docs
+.PHONY: all clean extensions pyflakes api-docs check-nodocs check
 
 all: extensions
 
@@ -31,7 +31,9 @@ extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
-check: docs extensions
+check: docs check-nodocs
+
+check-nodocs: extensions
 	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests) 2>&1 | sed -e 's/^/[ascii] /'
