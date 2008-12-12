@@ -674,11 +674,22 @@ as soon as a condition is true):
 * Otherwise, use the default format - it is good enough for
   most projects.
 
-Note: If some of your developers are unable to use the latest
+If some of your developers are unable to use the most recent
 version of Bazaar (due to corporate policy say), be sure to
 adjust the guidelines above accordingly. For example, you may
-need to select 1.6 instead of 1.9 if your team has standardized
+need to select 1.6 instead of 1.9 if your company has standardized
 on Bazaar 1.7.
+
+Note: Many of the currently supported formats have two variants:
+a plain one and a rich-root one. The latter include an additional
+field about the root of the tree. There is no performance cost
+for using a rich-root format but you cannot easily merge changes
+from a rich-root format into a plain format. As a consequence,
+moving a project to a rich-root format takes some co-ordination
+in that all contributors need to upgrade their repositories
+around the same time. It is for this reason that we have delayed
+making a rich-root format the default so far, though we will do
+so at some appropriate time in the future.
 
 See ``bzr help current-formats`` for the complete list of
 currently supported formats. See ``bzr help other-formats`` for

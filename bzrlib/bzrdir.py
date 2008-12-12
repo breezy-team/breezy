@@ -3069,7 +3069,9 @@ format_registry.register_metadir('rich-root-pack',
     )
 format_registry.register_metadir('1.6',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
-    help='A branch and pack based repository that supports stacking. ',
+    help='An enhancement to pack-0.92 that allows a branch to indicate that '
+         'there is another (stacked) repository that should be used to access '
+         'data that is not present locally.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3082,7 +3084,9 @@ format_registry.register_metadir('1.6.1-rich-root',
     )
 format_registry.register_metadir('1.9',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
-    help='A branch and pack based repository that uses btree indexes. ',
+    help='An enhancement to 1.6 that introduces btree indexes. These indexes '
+         'are smaller in size, have smarter caching and provide faster '
+         'performance for most operations.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
