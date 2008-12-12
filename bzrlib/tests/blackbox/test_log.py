@@ -140,11 +140,35 @@ class TestLog(ExternalBase):
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
 
+    def test_log_nonexistent_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -r 1234",
+            error_regexes=["bzr: ERROR: Requested revision: '1234' "
+                "does not exist in branch:"])
+
+    def test_log_nonexistent_dotted_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -r 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
+
     def test_log_change_revno(self):
         self._prepare()
         expected_log = self.run_bzr("log -r 1")[0]
         log = self.run_bzr("log -c 1")[0]
         self.assertEqualDiff(expected_log, log)
+
+    def test_log_change_nonexistent_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 1234",
+            error_regexes=["bzr: ERROR: Requested revision: '1234' "
+                "does not exist in branch:"])
+
+    def test_log_change_nonexistent_dotted_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
 
     def test_log_change_single_revno(self):
         self._prepare()
