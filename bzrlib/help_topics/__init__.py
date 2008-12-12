@@ -687,9 +687,9 @@ for using a rich-root format but you cannot easily merge changes
 from a rich-root format into a plain format. As a consequence,
 moving a project to a rich-root format takes some co-ordination
 in that all contributors need to upgrade their repositories
-around the same time. It is for this reason that we have delayed
+around the same time. (It is for this reason that we have delayed
 making a rich-root format the default so far, though we will do
-so at some appropriate time in the future.
+so at some appropriate time in the future.)
 
 See ``bzr help current-formats`` for the complete list of
 currently supported formats. See ``bzr help other-formats`` for
