@@ -1239,7 +1239,11 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self._write_headers(self._headers)
         self._write_structure(args)
         self._write_chunked_body_start()
-        # XXX: handle errors while iterating stream
+        # XXX: handle errors while iterating the body stream
+        # XXX: notice if the server has sent an early error reply before we
+        #      have finished sending the stream.  We would notice at the end
+        #      anyway, but if the medium can deliver it early then it's good to
+        #      short-circuit the whole request...
         for part in stream:
             self._write_prefixed_body(part)
             self.flush()

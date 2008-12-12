@@ -879,8 +879,9 @@ class RemoteRepository(_RpcHelper):
         In the long term getting this back from the remote repository as part
         of open would be more efficient.
         """
-        self._ensure_real()
-        return self._real_repository._fetch_order
+        return 'topological'
+#        self._ensure_real()
+#        return self._real_repository._fetch_order
 
     @property
     def _fetch_uses_deltas(self):

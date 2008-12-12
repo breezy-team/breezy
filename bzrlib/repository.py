@@ -3148,9 +3148,20 @@ class InterOtherToRemote(InterRepository):
         self._real_inter.copy_content(revision_id=revision_id)
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
-        self._ensure_real_inter()
-        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts)
+        # XXX: Copied from InterSameDataRepository.fetch; need to deal with
+        # incompatible repo formats!
+        from bzrlib.fetch import RepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target,
+               self.target._format)
+        f = RepoFetcher(to_repository=self.target,
+                               from_repository=self.source,
+                               last_revision=revision_id,
+                               pb=pb, find_ghosts=find_ghosts)
+        return f.count_copied, f.failed_revisions
+#        self._ensure_real_inter()
+#        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
+#            find_ghosts=find_ghosts)
 
     @classmethod
     def _get_repo_format_to_test(self):
@@ -3238,7 +3249,7 @@ InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterOtherToRemote)
 InterRepository.register_optimiser(InterRemoteToOther)
-InterRepository.register_optimiser(InterPackToRemotePack)
+#InterRepository.register_optimiser(InterPackToRemotePack)
 
 
 class CopyConverter(object):

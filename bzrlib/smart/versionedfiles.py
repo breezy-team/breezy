@@ -17,6 +17,7 @@
 """Server-side versioned files related request implmentations."""
 
 from bzrlib import (
+    trace,
     versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
@@ -69,11 +70,14 @@ class SmartServerVersionedFilesInsertRecordStream(SmartServerVersionedFilesReque
 
     def do_chunk(self, stream_chunk):
         record = deserialise_record(stream_chunk)
+#        trace.mutter('inserting record %s (kind: %s, parents: %r)',
+#            record.key, record.storage_kind, record.parents)
         self.versioned_files.insert_record_stream([record])
     
     def do_end(self):
         self._repository.commit_write_group()
         self._repository.unlock()
+        self._repository = self.versioned_files = None
         return SuccessfulSmartServerResponse(('ok',))
 
 
