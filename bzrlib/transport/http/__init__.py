@@ -550,7 +550,11 @@ class HttpTransportBase(ConnectedTransport):
         # redirected, we end up with the same url
         base_path = path[:-len(relpath)]
         if scheme in ('http', 'https'):
-            # Same protocol (i.e. http[s])
+            # Same protocol family (i.e. http[s]), we will preserve the same
+            # http client implementation when a redirection occurs from one to
+            # the other (otherwise users may be surprised that bzr switches
+            # from one implementation to the other, and devs may suffer
+            # debugging it).
             if (scheme == self._unqualified_scheme
                 and host == self._host
                 and port == self._port
