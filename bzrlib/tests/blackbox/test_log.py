@@ -219,35 +219,43 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
 
-    def test_log_short_verbose(self):
-        self._prepare()
-        log = self.run_bzr(['log', '--short', '-v', '-r', '1'])[0]
-        # Check that we use the short status format and not the regular one
+
+class TestLogVerbose(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestLogVerbose, self).setUp()
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt'])
+        tree.add('hello.txt')
+        tree.commit(message='message1')
+
+    def assertUseShortDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the short status format
         self.assertContainsRe(log, '(?m)^A  hello.txt$')
         self.assertNotContainsRe(log, '(?m)^added:$')
 
-    def test_log_short_verbose_verbose(self):
-        self._prepare()
-        log = self.run_bzr(['log', '--short', '-vv', '-r', '1'])[0]
-        # Check that we use the long status format and not the short one
+    def assertUseLongDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the long status format
         self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
         self.assertContainsRe(log, '(?m)^added:$')
+
+    def test_log_short_verbose(self):
+        self.assertUseShortDeltaFormat(['log', '--short', '-v'])
+
+    def test_log_short_verbose_verbose(self):
+        self.assertUseLongDeltaFormat(['log', '--short', '-vv'])
 
     def test_log_long_verbose(self):
-        self._prepare()
-        log = self.run_bzr(['log', '--long', '-v', '-r', '1'])[0]
         # Check that we use the long status format, ignoring the verbosity
         # level
-        self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
-        self.assertContainsRe(log, '(?m)^added:$')
+        self.assertUseLongDeltaFormat(['log', '--long', '-v'])
 
     def test_log_long_verbose_verbose(self):
-        self._prepare()
-        log = self.run_bzr(['log', '--long', '-vv', '-r', '1'])[0]
         # Check that we use the long status format, ignoring the verbosity
         # level
-        self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
-        self.assertContainsRe(log, '(?m)^added:$')
+        self.assertUseLongDeltaFormat(['log', '--long', '-vv'])
 
 
 class TestLogMerges(TestCaseWithoutPropsHandler):
