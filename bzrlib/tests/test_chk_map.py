@@ -82,8 +82,8 @@ class TestMap(TestCaseWithStore):
             if node_one.__class__ != node_two.__class__:
                 self.assertEqualDiff(map_one._dump_tree(),
                                      map_two._dump_tree())
-            self.assertEqual(node_one._serialised_prefix,
-                             node_two._serialised_prefix)
+            self.assertEqual(node_one._lookup_prefix,
+                             node_two._lookup_prefix)
             if isinstance(node_one, InternalNode):
                 # Internal nodes must have identical references
                 self.assertEqual(sorted(node_one._items.keys()),
@@ -757,7 +757,7 @@ class TestMap(TestCaseWithStore):
         self.assertEqual(1, chkmap._root_node._key_width)
         # There should be two child nodes, and prefix of 2(bytes):
         self.assertEqual(2, len(chkmap._root_node._items))
-        self.assertEqual("k", chkmap._root_node.unique_serialised_prefix())
+        self.assertEqual("k", chkmap._root_node._compute_lookup_prefix())
         # The actual nodes pointed at will change as serialisers change; so
         # here we test that the key prefix is correct; then load the nodes and
         # check they have the right pointed at key; whether they have the
@@ -999,12 +999,12 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_unique_serialised_prefix_empty_new(self):
         node = LeafNode()
-        self.assertEqual("", node.unique_serialised_prefix())
+        self.assertEqual("", node._compute_lookup_prefix())
 
     def test_unique_serialised_prefix_one_item_new(self):
         node = LeafNode()
         node.map(None, ("foo bar", "baz"), "baz quux")
-        self.assertEqual("foo bar\x00baz", node.unique_serialised_prefix())
+        self.assertEqual("foo bar\x00baz", node._compute_lookup_prefix())
 
     def test_unmap_missing(self):
         node = LeafNode()
