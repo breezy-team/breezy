@@ -444,17 +444,26 @@ class LeafNode(Node):
     """A node containing actual key:value pairs.
 
     :ivar _items: A dict of key->value items. The key is in tuple form.
+    :ivar _size: The number of bytes that would be used by serializing all of
+        the key/value pairs.
     """
 
     def __init__(self):
         Node.__init__(self)
-        # The size of a leaf node with default values and no children.
-        self._size = 12
+        # All of the keys in this leaf node share this common prefix
+        self._common_prefix = None
 
     def _current_size(self):
-        """Answer the current serialised size of this node."""
-        return (self._size + len(str(self._len)) + len(str(self._key_width)) +
-            len(str(self._maximum_size)))
+        """Answer the current serialised size of this node.
+
+        This differs from self._size in that it includes the bytes used for the
+        header.
+        """
+        return (12 # bytes overhead for the header and separators
+            + len(str(self._len))
+            + len(str(self._key_width))
+            + len(str(self._maximum_size))
+            + self._size)
 
     @classmethod
     def deserialise(klass, bytes, key):
@@ -629,7 +638,7 @@ class LeafNode(Node):
 
     def unmap(self, store, key):
         """Unmap key from the node."""
-        self._size -= 2 + len('\x00'.join(key)) + len(self._items[key])
+        self._size -= self._key_value_len(key, self._items[key])
         self._len -= 1
         del self._items[key]
         self._key = None
@@ -643,6 +652,9 @@ class InternalNode(Node):
 
     An InternalNode is responsible for mapping serialised key prefixes to child
     nodes. It is greedy - it will defer splitting itself as long as possible.
+
+    :ivar _items: serialized_key => node dictionary. node may be a tuple,
+        LeafNode or InternalNode.
     """
 
     def __init__(self, prefix=''):
