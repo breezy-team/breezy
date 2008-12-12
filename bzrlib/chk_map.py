@@ -1130,6 +1130,10 @@ def iter_interesting_nodes(store, interesting_root_keys,
     """
     # TODO: consider that it may be more memory efficient to use the 20-byte
     #       sha1 string, rather than tuples of hexidecimal sha1 strings.
+    # TODO: Try to factor out a lot of the get_record_stream() calls into a
+    #       helper function similar to _read_bytes. This function should be
+    #       able to use nodes from the _page_cache as well as actually
+    #       requesting bytes from the store.
 
     # A way to adapt from the compressed texts back into fulltexts
     # In a way, this seems like a layering inversion to have CHKMap know the
