@@ -110,7 +110,7 @@ from bzrlib.versionedfile import (
     adapter_registry,
     ConstantMapper,
     ContentFactory,
-    FulltextContentFactory,
+    ChunkedContentFactory,
     VersionedFile,
     VersionedFiles,
     )
@@ -196,7 +196,8 @@ class DeltaAnnotatedToFullText(KnitAdapter):
             [compression_parent], 'unordered', True).next()
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_lines = split_lines(basis_entry.get_bytes_as('fulltext'))
+        basis_chunks = basis_entry.get_bytes_as('chunked')
+        basis_lines = osutils.chunks_to_lines(basis_chunks)
         # Manually apply the delta because we have one annotated content and
         # one plain.
         basis_content = PlainKnitContent(basis_lines, compression_parent)
@@ -229,7 +230,8 @@ class DeltaPlainToFullText(KnitAdapter):
             [compression_parent], 'unordered', True).next()
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_lines = split_lines(basis_entry.get_bytes_as('fulltext'))
+        basis_chunks = basis_entry.get_bytes_as('chunked')
+        basis_lines = osutils.chunks_to_lines(basis_chunks)
         basis_content = PlainKnitContent(basis_lines, compression_parent)
         # Manually apply the delta because we have one annotated content and
         # one plain.
@@ -276,11 +278,13 @@ class KnitContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             return self._raw_record
-        if storage_kind == 'fulltext' and self._knit is not None:
-            return self._knit.get_text(self.key[0])
-        else:
-            raise errors.UnavailableRepresentation(self.key, storage_kind,
-                self.storage_kind)
+        if self._knit is not None:
+            if storage_kind == 'chunked':
+                return self._knit.get_lines(self.key[0])
+            elif storage_kind == 'fulltext':
+                return self._knit.get_text(self.key[0])
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
 
 
 class KnitContent(object):
@@ -1025,7 +1029,7 @@ class KnitVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'absent':
                     continue
                 missing_keys.remove(record.key)
-                lines = split_lines(record.get_bytes_as('fulltext'))
+                lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
                 text_map[record.key] = lines
                 content_map[record.key] = PlainKnitContent(lines, record.key)
                 if record.key in keys:
@@ -1293,9 +1297,8 @@ class KnitVersionedFiles(VersionedFiles):
                 text_map, _ = self._get_content_maps(keys, non_local)
                 for key in keys:
                     lines = text_map.pop(key)
-                    text = ''.join(lines)
-                    yield FulltextContentFactory(key, global_map[key], None,
-                                                 text)
+                    yield ChunkedContentFactory(key, global_map[key], None,
+                                                lines)
         else:
             for source, keys in source_keys:
                 if source is parent_maps[0]:
@@ -1448,6 +1451,9 @@ class KnitVersionedFiles(VersionedFiles):
                         buffered = True
                 if not buffered:
                     self._index.add_records([index_entry])
+            elif record.storage_kind == 'chunked':
+                self.add_lines(record.key, parents,
+                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
             elif record.storage_kind == 'fulltext':
                 self.add_lines(record.key, parents,
                     split_lines(record.get_bytes_as('fulltext')))
@@ -2957,7 +2963,7 @@ class _KnitAnnotator(object):
         reannotate = annotate.reannotate
         for record in self._knit.get_record_stream(keys, 'topological', True):
             key = record.key
-            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            fulltext = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parents = parent_map[key]
             if parents is not None:
                 parent_lines = [parent_cache[parent] for parent in parent_map[key]]

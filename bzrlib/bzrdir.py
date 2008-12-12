@@ -782,29 +782,20 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
+        # Keep initial base since 'transport' may be modified while following
+        # the redirections.
         base = transport.base
-
         def find_format(transport):
             return transport, BzrDirFormat.find_format(
                 transport, _server_formats=_server_formats)
 
         def redirected(transport, e, redirection_notice):
-            qualified_source = e.get_source_url()
-            relpath = transport.relpath(qualified_source)
-            if not e.target.endswith(relpath):
-                # Not redirected to a branch-format, not a branch
-                raise errors.NotBranchError(path=e.target)
-            target = e.target[:-len(relpath)]
+            redirected_transport = transport._redirected_to(e.source, e.target)
+            if redirected_transport is None:
+                raise errors.NotBranchError(base)
             note('%s is%s redirected to %s',
-                 transport.base, e.permanently, target)
-            # Let's try with a new transport
-            # FIXME: If 'transport' has a qualifier, this should
-            # be applied again to the new transport *iff* the
-            # schemes used are the same. Uncomment this code
-            # once the function (and tests) exist.
-            # -- vila20070212
-            #target = urlutils.copy_url_qualifiers(original, target)
-            return get_transport(target)
+                 transport.base, e.permanently, redirected_transport.base)
+            return redirected_transport
 
         try:
             transport, format = do_catching_redirections(find_format,

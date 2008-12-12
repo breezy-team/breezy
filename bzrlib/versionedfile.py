@@ -59,6 +59,8 @@ adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
     'bzrlib.knit', 'FTAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'fulltext'),
     'bzrlib.knit', 'FTAnnotatedToFullText')
+# adapter_registry.register_lazy(('knit-annotated-ft-gz', 'chunked'),
+#     'bzrlib.knit', 'FTAnnotatedToChunked')
 
 
 class ContentFactory(object):
@@ -84,12 +86,46 @@ class ContentFactory(object):
         self.parents = None
 
 
+class ChunkedContentFactory(ContentFactory):
+    """Static data content factory.
+
+    This takes a 'chunked' list of strings. The only requirement on 'chunked' is
+    that ''.join(lines) becomes a valid fulltext. A tuple of a single string
+    satisfies this, as does a list of lines.
+
+    :ivar sha1: None, or the sha1 of the content fulltext.
+    :ivar storage_kind: The native storage kind of this factory. Always
+        'chunked'
+    :ivar key: The key of this content. Each key is a tuple with a single
+        string in it.
+    :ivar parents: A tuple of parent keys for self.key. If the object has
+        no parent information, None (as opposed to () for an empty list of
+        parents).
+     """
+
+    def __init__(self, key, parents, sha1, chunks):
+        """Create a ContentFactory."""
+        self.sha1 = sha1
+        self.storage_kind = 'chunked'
+        self.key = key
+        self.parents = parents
+        self._chunks = chunks
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == 'chunked':
+            return self._chunks
+        elif storage_kind == 'fulltext':
+            return ''.join(self._chunks)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
+
+
 class FulltextContentFactory(ContentFactory):
     """Static data content factory.
 
     This takes a fulltext when created and just returns that during
     get_bytes_as('fulltext').
-    
+
     :ivar sha1: None, or the sha1 of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. Always
         'fulltext'.
@@ -111,6 +147,8 @@ class FulltextContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             return self._text
+        elif storage_kind == 'chunked':
+            return (self._text,)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
@@ -805,12 +843,12 @@ class VersionedFiles(object):
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.
-        split_lines = osutils.split_lines
+        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(needed_parents, 'unordered',
             True):
             if record.storage_kind == 'absent':
                 continue
-            mpvf.add_version(split_lines(record.get_bytes_as('fulltext')),
+            mpvf.add_version(chunks_to_lines(record.get_bytes_as('chunked')),
                 record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in\
             zip(records, mpvf.get_line_list(versions)):
@@ -941,9 +979,9 @@ class VersionedFiles(object):
         ghosts = maybe_ghosts - set(self.get_parent_map(maybe_ghosts))
         knit_keys.difference_update(ghosts)
         lines = {}
-        split_lines = osutils.split_lines
+        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(knit_keys, 'topological', True):
-            lines[record.key] = split_lines(record.get_bytes_as('fulltext'))
+            lines[record.key] = chunks_to_lines(record.get_bytes_as('chunked'))
             # line_block_dict = {}
             # for parent, blocks in record.extract_line_blocks():
             #   line_blocks[parent] = blocks
@@ -1252,8 +1290,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
                 lines = self._lines[key]
                 parents = self._parents[key]
                 pending.remove(key)
-                yield FulltextContentFactory(key, parents, None,
-                    ''.join(lines))
+                yield ChunkedContentFactory(key, parents, None, lines)
         for versionedfile in self.fallback_versionedfiles:
             for record in versionedfile.get_record_stream(
                 pending, 'unordered', True):
@@ -1423,9 +1460,9 @@ class VirtualVersionedFiles(VersionedFiles):
             if lines is not None:
                 if not isinstance(lines, list):
                     raise AssertionError
-                yield FulltextContentFactory((k,), None, 
+                yield ChunkedContentFactory((k,), None,
                         sha1=osutils.sha_strings(lines),
-                        text=''.join(lines))
+                        chunks=lines)
             else:
                 yield AbsentContentFactory((k,))
 
