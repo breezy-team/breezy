@@ -40,6 +40,7 @@ _xml_escape_map = {
     "<":"&lt;",
     ">":"&gt;",
     }
+_entry_cache = fifo_cache.FIFOCache(10*1024)
 
 
 def _ensure_utf8_re():
@@ -146,7 +147,7 @@ class Serializer_v8(Serializer):
     Its revision format number matches its inventory number.
     """
 
-    __slots__ = ['_entry_cache']
+    __slots__ = []
 
     root_id = None
     support_altered_by_hack = True
@@ -156,9 +157,6 @@ class Serializer_v8(Serializer):
     supported_kinds = set(['file', 'directory', 'symlink'])
     format_num = '8'
     revision_format_num = None
-
-    def __init__(self):
-        self._entry_cache = fifo_cache.FIFOCache(10*1024)
 
     def _check_revisions(self, inv):
         """Extension point for subclasses to check during serialisation.
@@ -171,8 +169,8 @@ class Serializer_v8(Serializer):
         if inv.root.revision is None:
             raise AssertionError()
 
-    def _check_cache_size(self, inv_size):
-        """Check that the _entry_cache is large enough.
+    def _check_cache_size(self, inv_size, entry_cache):
+        """Check that the entry_cache is large enough.
 
         We want the cache to be ~2x the size of an inventory. The reason is
         because we use a FIFO cache, and how Inventory records are likely to
@@ -189,12 +187,15 @@ class Serializer_v8(Serializer):
 
         :param inv_size: The number of entries in an inventory.
         """
+        if entry_cache is None:
+            return
         # 1.5 times might also be reasonable.
-        recommended_cache_size = inv_size * 2
-        if self._entry_cache.cache_size() < recommended_cache_size:
-            trace.mutter('Resizing the inventory entry cache to %d',
-                         recommended_cache_size)
-            self._entry_cache.resize(recommended_cache_size)
+        recommended_min_cache_size = inv_size * 1.5
+        if entry_cache.cache_size() < recommended_min_cache_size:
+            recommended_cache_size = inv_size * 2
+            trace.mutter('Resizing the inventory entry cache from %d to %d',
+                         entry_cache.cache_size(), recommended_cache_size)
+            entry_cache.resize(recommended_cache_size)
 
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""
@@ -367,7 +368,7 @@ class Serializer_v8(Serializer):
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
 
-    def _unpack_inventory(self, elt, revision_id=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None):
         """Construct from XML Element"""
         if elt.tag != 'inventory':
             raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
@@ -375,17 +376,19 @@ class Serializer_v8(Serializer):
         if format != self.format_num:
             raise errors.UnexpectedInventoryFormat('Invalid format version %r'
                                                    % format)
+        if entry_cache is None:
+            entry_cache = _entry_cache
         revision_id = elt.get('revision_id')
         if revision_id is not None:
             revision_id = cache_utf8.encode(revision_id)
         inv = inventory.Inventory(root_id=None, revision_id=revision_id)
         for e in elt:
-            ie = self._unpack_entry(e)
+            ie = self._unpack_entry(e, entry_cache=entry_cache)
             inv.add(ie)
-        self._check_cache_size(len(inv))
+        self._check_cache_size(len(inv), entry_cache)
         return inv
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, entry_cache=None):
         elt_get = elt.get
         file_id = elt_get('file_id')
         revision = elt_get('revision')
@@ -420,18 +423,19 @@ class Serializer_v8(Serializer):
         #   0.3s    cache miss lookus
         #   1.2s    decoding entries
         #   1.0s    adding nodes to LRU
-        key = (file_id, revision)
-        try:
-            # We copy it, because some operatations may mutate it
-            cached_ie = self._entry_cache[key]
-        except KeyError:
-            pass
-        else:
-            # Only copying directory entries drops us 2.85s => 2.35s
-            # if cached_ie.kind == 'directory':
-            #     return cached_ie.copy()
-            # return cached_ie
-            return cached_ie.copy()
+        if entry_cache is not None and revision is not None:
+            key = (file_id, revision)
+            try:
+                # We copy it, because some operatations may mutate it
+                cached_ie = entry_cache[key]
+            except KeyError:
+                pass
+            else:
+                # Only copying directory entries drops us 2.85s => 2.35s
+                # if cached_ie.kind == 'directory':
+                #     return cached_ie.copy()
+                # return cached_ie
+                return cached_ie.copy()
 
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
@@ -467,12 +471,12 @@ class Serializer_v8(Serializer):
         else:
             raise errors.UnsupportedInventoryKind(kind)
         ie.revision = revision
-        if revision is not None:
+        if revision is not None and entry_cache is not None:
             # We cache a copy() because callers like to mutate objects, and
             # that would cause the item in cache to mutate as well.
             # This has a small effect on many-inventory performance, because
             # the majority fraction is spent in cache hits, not misses.
-            self._entry_cache[key] = ie.copy()
+            entry_cache[key] = ie.copy()
 
         return ie
 

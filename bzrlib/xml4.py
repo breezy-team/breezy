@@ -57,7 +57,7 @@ class _Serializer_v4(Serializer):
         return e
 
 
-    def _unpack_inventory(self, elt, revision_id=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None):
         """Construct from XML Element
 
         :param revision_id: Ignored parameter used by xml5.
@@ -65,14 +65,14 @@ class _Serializer_v4(Serializer):
         root_id = elt.get('file_id') or ROOT_ID
         inv = Inventory(root_id)
         for e in elt:
-            ie = self._unpack_entry(e)
+            ie = self._unpack_entry(e, entry_cache=entry_cache)
             if ie.parent_id == ROOT_ID:
                 ie.parent_id = root_id
             inv.add(ie)
         return inv
 
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, entry_cache=None):
         ## original format inventories don't have a parent_id for
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.

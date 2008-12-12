@@ -30,7 +30,7 @@ class Serializer_v5(xml6.Serializer_v6):
     format_num = '5'
     root_id = inventory.ROOT_ID
 
-    def _unpack_inventory(self, elt, revision_id):
+    def _unpack_inventory(self, elt, revision_id, entry_cache=None):
         """Construct from XML Element
         """
         root_id = elt.get('file_id') or inventory.ROOT_ID
@@ -51,10 +51,12 @@ class Serializer_v5(xml6.Serializer_v6):
         #   avoiding attributes     2.46s
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
+        if entry_cache is None:
+            entry_cache = xml8._entry_cache
         unpack_entry = self._unpack_entry
         byid = inv._byid
         for e in elt:
-            ie = unpack_entry(e)
+            ie = unpack_entry(e, entry_cache=entry_cache)
             parent_id = ie.parent_id
             if parent_id is None:
                 ie.parent_id = parent_id = root_id
@@ -74,7 +76,7 @@ class Serializer_v5(xml6.Serializer_v6):
             byid[ie.file_id] = ie
         if revision_id is not None:
             inv.root.revision = revision_id
-        self._check_cache_size(len(inv))
+        self._check_cache_size(len(inv), entry_cache)
         return inv
 
     def _check_revisions(self, inv):
