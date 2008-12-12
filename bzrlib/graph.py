@@ -24,7 +24,6 @@ from bzrlib import (
     trace,
     tsort,
     )
-from bzrlib.deprecated_graph import (node_distances, select_farthest)
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -109,14 +108,13 @@ class CachingParentsProvider(object):
 
     The cache is enabled by default, but may be disabled and re-enabled.
     """
-    def __init__(self, parent_provider=None, get_parent_map=None, debug=False):
+    def __init__(self, parent_provider=None, get_parent_map=None):
         """Constructor.
 
         :param parent_provider: The ParentProvider to use.  It or
             get_parent_map must be supplied.
         :param get_parent_map: The get_parent_map callback to use.  It or
             parent_provider must be supplied.
-        :param debug: If true, mutter debugging messages.
         """
         self._real_provider = parent_provider
         if get_parent_map is None:
@@ -125,25 +123,20 @@ class CachingParentsProvider(object):
             self._get_parent_map = get_parent_map
         self._cache = {}
         self._cache_misses = True
-        self._debug = debug
-        if self._debug:
-            self._requested_parents = None
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
     def enable_cache(self, cache_misses=True):
         """Enable cache."""
+        if self._cache is not None:
+            raise AssertionError('Cache enabled when already enabled.')
         self._cache = {}
         self._cache_misses = cache_misses
-        if self._debug:
-            self._requested_parents = set()
 
     def disable_cache(self):
         """Disable and clear the cache."""
         self._cache = None
-        if self._debug:
-            self._requested_parents = None
 
     def get_cached_map(self):
         """Return any cached get_parent_map values."""
@@ -164,10 +157,6 @@ class CachingParentsProvider(object):
             missing_revisions = set(key for key in keys if key not in ancestry)
         if missing_revisions:
             parent_map = self._get_parent_map(missing_revisions)
-            if self._debug:
-                mutter('re-retrieved revisions: %d of %d',
-                        len(set(ancestry).intersection(parent_map)),
-                        len(parent_map))
             ancestry.update(parent_map)
             if self._cache_misses:
                 # None is never a valid parents list, so it can be used to
@@ -175,11 +164,6 @@ class CachingParentsProvider(object):
                 ancestry.update(dict((k, None) for k in missing_revisions
                                      if k not in parent_map))
         present_keys = [k for k in keys if ancestry.get(k) is not None]
-        if self._debug:
-            if self._requested_parents is not None and len(ancestry) != 0:
-                self._requested_parents.update(present_keys)
-                mutter('Current hit rate: %d%%',
-                    100.0 * len(self._requested_parents) / len(ancestry))
         return dict((k, ancestry[k]) for k in present_keys)
 
 

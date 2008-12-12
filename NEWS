@@ -36,12 +36,21 @@ IN DEVELOPMENT
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
 
+    * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
+      (Jari Aalto)
+
     * Fix SystemError in ``_patiencediff_c`` module by calling
       PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.
       (Andrew Bennetts, #303206)
 
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
+
+    * Preserve transport decorators while following redirections.
+      (Vincent Ladeuil, #245964, #270863)
+
+    * Provides a finer and more robust filter for accepted redirections.
+      (Vincent Ladeuil, #303959, #265070)
 
     * ``shelve`` paths are now interpreted relative to the current working
       tree.  (Aaron Bentley)
@@ -54,10 +63,18 @@ IN DEVELOPMENT
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
 
+    * Use the short status format when the short format is used for log.
+      (Vincent Ladeuil, #87179)
+
   DOCUMENTATION:
 
   API CHANGES:
 
+    * ``node_distances`` and ``select_farthest`` can no longer be imported
+      from ``bzrlib.graph``.  They can still be imported from
+      ``bzrlib.deprecated_graph``, which has been the preferred way to
+      import them since before 1.0.  (Andrew Bennetts)
+      
     * The logic in commit now delegates inventory basis calculations to
       the ``CommitBuilder`` object; this requires that the commit builder
       in use has been updated to support the new ``recording_deletes`` and
@@ -86,6 +103,15 @@ IN DEVELOPMENT
       The default is still pycurl for https connections. (The only
       advantage of pycurl is that it checks ssl certificates.)
       (John Arbash Meinel)
+
+    * ``VersionedFiles.get_record_stream()`` can now return objects with a
+      storage_kind of ``chunked``. This is a collection (list/tuple) of
+      strings. You can use ``osutils.chunks_to_lines()`` to turn them into
+      guaranteed 'lines' or you can use ``''.join(chunks)`` to turn it
+      into a fulltext. This allows for some very good memory savings when
+      asking for many texts that share ancestry, as the individual chunks
+      can be shared between versions of the file. (John Arbash Meinel)
+
 
 
 bzr 1.10 2008-12-05

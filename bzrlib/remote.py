@@ -319,9 +319,8 @@ class RemoteRepository(_RpcHelper):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
-        debug_cache = ('hpss' in debug.debug_flags)
         self._unstacked_provider = graph.CachingParentsProvider(
-            get_parent_map=self._get_parent_map_rpc, debug=debug_cache)
+            get_parent_map=self._get_parent_map_rpc)
         self._unstacked_provider.disable_cache()
         # For tests:
         # These depend on the actual remote format, so force them off for
