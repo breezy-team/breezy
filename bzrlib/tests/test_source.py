@@ -55,15 +55,11 @@ LICENSE_EXCEPTIONS = ['bzrlib/lsprof.py']
 # (we do not check bzrlib/util/, since that is code bundled from elsewhere)
 # but for compatibility with previous releases, we don't want to move it.
 
+
 def check_coding_style(old_filename, oldlines, new_filename, newlines, to_file,
                   allow_binary=False, sequence_matcher=None,
                   path_encoding='utf8'):
     """text_differ to be passed to diff.DiffText, which checks code style """
-    # Special workaround for Python2.3, where difflib fails if
-    # both sequences are empty.
-    if not oldlines and not newlines:
-        return
-
     if allow_binary is False:
         textfile.check_text_lines(oldlines)
         textfile.check_text_lines(newlines)
@@ -339,13 +335,13 @@ class TestSource(TestSourceHelper):
     def test_coding_style(self):
         """ Check if bazaar code conforms to some coding style conventions.
 
-            Currently we check all .py files for:
-            * new trailing white space
-            * new leading tabs
-            * new long lines (give warning only)
-            * no newline at end of files
+        Currently we check all .py files for:
+         * new trailing white space
+         * new leading tabs
+         * new long lines (give warning only)
+         * no newline at end of files
         """
-        bzr_dir = osutils.dirname(osutils.realpath(sys.argv[0]))
+        bzr_dir = osutils.dirname(bzrlib.__path__[0])
         try:
             wt = WorkingTree.open(bzr_dir)
         except:
@@ -362,11 +358,10 @@ class TestSource(TestSourceHelper):
             old_tree.lock_read()
             new_tree.lock_read()
             try:
-                iterator = new_tree.iter_changes(old_tree, specific_files=None,
-                    extra_trees=None, require_versioned=False)
+                iterator = new_tree.iter_changes(old_tree)
                 for (file_id, paths, changed_content, versioned, parent,
                     name, kind, executable) in iterator:
-                    if (changed_content and kind[1] == 'file'
+                    if (changed_content and kind == ('file', 'file')
                         and paths[1].endswith('.py')):
                         diff_text = diff.DiffText(old_tree, new_tree,
                             to_file=diff_output,
