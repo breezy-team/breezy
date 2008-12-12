@@ -139,12 +139,15 @@ class TestFormatRegistry(TestCase):
         
     def test_help_topic(self):
         topics = help_topics.HelpTopicRegistry()
-        topics.register('formats', self.make_format_registry().help_topic, 
-                        'Directory formats')
-        topic = topics.get_detail('formats')
-        new, rest = topic.split('Experimental formats')
+        registry = self.make_format_registry()
+        topics.register('current-formats', registry.help_topic, 
+                        'Current formats')
+        topics.register('other-formats', registry.help_topic, 
+                        'Other formats')
+        new = topics.get_detail('current-formats')
+        rest = topics.get_detail('other-formats')
         experimental, deprecated = rest.split('Deprecated formats')
-        self.assertContainsRe(new, 'These formats can be used')
+        self.assertContainsRe(new, 'bzr help formats')
         self.assertContainsRe(new, 
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(experimental, 
