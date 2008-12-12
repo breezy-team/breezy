@@ -1220,7 +1220,7 @@ class TestHistoryChange(tests.TestCaseWithTransport):
     def test_show_branch_change(self):
         tree = self.setup_ab_tree()
         s = StringIO()
-        log.show_branch_change(3, '3a', tree.branch, s)
+        log.show_branch_change(tree.branch, s, 3, '3a')
         self.assertContainsRe(s.getvalue(),
             '[*]{60}\nRemoved Revisions:\n(.|\n)*2a(.|\n)*3a(.|\n)*'
             '[*]{60}\n\nAdded Revisions:\n(.|\n)*2b(.|\n)*3b')
@@ -1228,14 +1228,14 @@ class TestHistoryChange(tests.TestCaseWithTransport):
     def test_show_branch_change_no_change(self):
         tree = self.setup_ab_tree()
         s = StringIO()
-        log.show_branch_change(3, '3b', tree.branch, s)
+        log.show_branch_change(tree.branch, s, 3, '3b')
         self.assertEqual(s.getvalue(),
             'Nothing seems to have changed\n')
 
     def test_show_branch_change_no_old(self):
         tree = self.setup_ab_tree()
         s = StringIO()
-        log.show_branch_change(2, '2b', tree.branch, s)
+        log.show_branch_change(tree.branch, s, 2, '2b')
         self.assertContainsRe(s.getvalue(), 'Added Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Removed Revisions:')
 
@@ -1243,6 +1243,6 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         tree = self.setup_ab_tree()
         tree.branch.set_last_revision_info(2, '2b')
         s = StringIO()
-        log.show_branch_change(3, '3b', tree.branch, s)
+        log.show_branch_change(tree.branch, s, 3, '3b')
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
