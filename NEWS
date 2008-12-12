@@ -97,6 +97,9 @@ IN DEVELOPMENT
       asking for many texts that share ancestry, as the individual chunks
       can be shared between versions of the file. (John Arbash Meinel)
 
+    * ``pull -v`` uses new function ``bzrlib.log.show_branch_change``
+      (Aaron Bentley)
+
 
 
 bzr 1.10 2008-12-05
