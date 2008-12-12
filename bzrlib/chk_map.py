@@ -404,9 +404,9 @@ class Node(object):
         items_str = sorted(self._items)
         if len(items_str) > 20:
             items_str = items_str[16] + '...]'
-        return '%s(key:%s len:%s size:%s max:%s items:%s)' % (
+        return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
             self.__class__.__name__, self._key, self._len, self._size,
-            self._maximum_size, items_str)
+            self._maximum_size, self._serialised_prefix, items_str)
 
     def key(self):
         return self._key
