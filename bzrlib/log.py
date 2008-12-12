@@ -709,7 +709,10 @@ class LogFormatter(object):
     to indicate which LogRevision attributes it supports:
 
     - supports_delta must be True if this log formatter supports delta.
-        Otherwise the delta attribute may not be populated.
+        Otherwise the delta attribute may not be populated.  The 'delta_format'
+        attribute describes whether the 'short_status' format (1) or the long
+        one (2) sould be used.
+ 
     - supports_merge_revisions must be True if this log formatter supports 
         merge revisions.  If not, and if supports_single_merge_revisions is
         also not True, then only mainline revisions will be passed to the 
@@ -728,10 +731,15 @@ class LogFormatter(object):
             # to be shown
     """
 
-    def __init__(self, to_file, show_ids=False, show_timezone='original'):
+    def __init__(self, to_file, show_ids=False, show_timezone='original',
+                 delta_format=None):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
+        if delta_format is None:
+            # Ensures backward compatibility
+            delta_format = 2 # long format
+        self.delta_format = delta_format
 
 # TODO: uncomment this block after show() has been removed.
 # Until then defining log_revision would prevent _show_log calling show() 
@@ -809,7 +817,9 @@ class LongLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 to_file.write(indent + '  %s\n' % (l,))
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids, indent=indent)
+            # We don't respect delta_format for compatibility
+            revision.delta.show(to_file, self.show_ids, indent=indent,
+                                short_status=False)
 
 
 class ShortLogFormatter(LogFormatter):
@@ -830,7 +840,8 @@ class ShortLogFormatter(LogFormatter):
                             show_offset=False),
                 is_merge))
         if self.show_ids:
-            to_file.write('      revision-id:%s\n' % (revision.rev.revision_id,))
+            to_file.write('      revision-id:%s\n'
+                          % (revision.rev.revision_id,))
         if not revision.rev.message:
             to_file.write('      (no message)\n')
         else:
@@ -838,10 +849,9 @@ class ShortLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 to_file.write('      %s\n' % (l,))
 
-        # TODO: Why not show the modified files in a shorter form as
-        # well? rewrap them single lines of appropriate length
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids)
+            revision.delta.show(to_file, self.show_ids,
+                                short_status=self.delta_format==1)
         to_file.write('\n')
 
 
