@@ -2687,6 +2687,7 @@ class BzrDirFormatRegistry(registry.Registry):
     def __init__(self):
         """Create a BzrDirFormatRegistry."""
         self._aliases = set()
+        self._registration_order = list()
         super(BzrDirFormatRegistry, self).__init__()
 
     def aliases(self):
@@ -2754,6 +2755,7 @@ class BzrDirFormatRegistry(registry.Registry):
             BzrDirFormatInfo(native, deprecated, hidden, experimental))
         if alias:
             self._aliases.add(key)
+        self._registration_order.append(key)
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
         deprecated=False, hidden=False, experimental=False, alias=False):
@@ -2761,6 +2763,7 @@ class BzrDirFormatRegistry(registry.Registry):
             help, BzrDirFormatInfo(native, deprecated, hidden, experimental))
         if alias:
             self._aliases.add(key)
+        self._registration_order.append(key)
 
     def set_default(self, key):
         """Set the 'default' key to be a clone of the supplied key.
@@ -2786,44 +2789,11 @@ class BzrDirFormatRegistry(registry.Registry):
         return self.get(key)()
 
     def help_topic(self, topic):
-        output = textwrap.dedent("""\
-            To ensure that older clients do not access data incorrectly,
-            Bazaar's policy is to introduce a new storage format whenever
-            new features requiring new metadata are added. New storage
-            formats may also be introduced to improve performance and
-            scalability.
-
-            Use the following guidelines to select a format (stopping
-            as soon as a condition is true):
-            
-            * If you are working on an existing project, use whatever
-              format that project is using. (Bazaar will do this for you
-              by default).
-
-            * If you are using bzr-svn to interoperate with a Subversion
-              repository, use 1.9-rich-root.
-
-            * If you are working on a project with big trees (5000+ paths)
-              or deep history (5000+ revisions), use 1.9.
-
-            * Otherwise, use the default format - it is good enough for
-              most projects.
-
-            Note: If some of your developers are unable to use the latest
-            version of Bazaar (due to corporate policy say), be sure to
-            adjust the guidelines above accordingly. E.g. you may need to
-            select 1.6.1 instead of 1.9 if your team has standardized on
-            Bazaar 1.7.
-
-
-            The complete list of formats that can be used for creating
-            branches, working trees, and repositories is given below.
-
-            """)
+        output = ""
         default_realkey = None
         default_help = self.get_help('default')
         help_pairs = []
-        for key in self.keys():
+        for key in self._registration_order:
             if key == 'default':
                 continue
             help = self.get_help(key)
@@ -2853,18 +2823,31 @@ class BzrDirFormatRegistry(registry.Registry):
                 experimental_pairs.append((key, help))
             else:
                 output += wrapped(key, help, info)
+        output += "\nSee ``bzr help formats`` for more about storage formats."
+        other_output = ""
         if len(experimental_pairs) > 0:
-            output += "\nExperimental formats are shown below.\n\n"
+            other_output += "Experimental formats are shown below.\n\n"
             for key, help in experimental_pairs:
                 info = self.get_info(key)
-                output += wrapped(key, help, info)
+                other_output += wrapped(key, help, info)
+        else:
+            other_output += \
+                "No experimental formats are available.\n\n"
         if len(deprecated_pairs) > 0:
-            output += "\nDeprecated formats are shown below.\n\n"
+            other_output += "\nDeprecated formats are shown below.\n\n"
             for key, help in deprecated_pairs:
                 info = self.get_info(key)
-                output += wrapped(key, help, info)
+                other_output += wrapped(key, help, info)
+        else:
+            other_output += \
+                "\nNo deprecated formats are available.\n\n"
+        other_output += \
+            "\nSee ``bzr help formats`` for more about storage formats."
 
-        return output
+        if topic == 'other-formats':
+            return other_output
+        else:
+            return output
 
 
 class RepositoryAcquisitionPolicy(object):
@@ -2999,20 +2982,23 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
         return self._repository
 
 
+# Please register new formats after old formats so that formats
+# appear in chronological order and format descriptions can build
+# on previous ones.
 format_registry = BzrDirFormatRegistry()
 format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
     ' support checkouts or shared repositories.',
     deprecated=True)
-format_registry.register_metadir('knit',
-    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
-    'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat3',
-    deprecated=True)
 format_registry.register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
+    branch_format='bzrlib.branch.BzrBranchFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat3',
+    deprecated=True)
+format_registry.register_metadir('knit',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+    'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     tree_format='bzrlib.workingtree.WorkingTreeFormat3',
     deprecated=True)
@@ -3036,7 +3022,7 @@ format_registry.register_metadir('dirstate-tags',
 format_registry.register_metadir('rich-root',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
     help='New in 1.0.  Better handling of tree roots.  Incompatible with'
-        ' bzr < 1.0',
+        ' bzr < 1.0.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     deprecated=True)
@@ -3076,9 +3062,8 @@ format_registry.register_metadir('pack-0.92-subtree',
     )
 format_registry.register_metadir('rich-root-pack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='New in 1.0: Pack-based format with data compatible with '
-        'rich-root format repositories. Incompatible with'
-        ' bzr < 1.0',
+    help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
+         '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3090,8 +3075,8 @@ format_registry.register_metadir('1.6',
     )
 format_registry.register_metadir('1.6.1-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
-    help='A branch and pack based repository that supports stacking '
-         'and rich root data (needed for bzr-svn). ',
+    help='A variant of 1.6 that supports rich-root data '
+         '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3103,8 +3088,8 @@ format_registry.register_metadir('1.9',
     )
 format_registry.register_metadir('1.9-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
-    help='A branch and pack based repository that uses btree indexes '
-         'and rich root data (needed for bzr-svn). ',
+    help='A variant of 1.9 that supports rich-root data '
+         '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )

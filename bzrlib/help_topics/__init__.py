@@ -649,15 +649,60 @@ useful, you can "push --overwrite" or "pull --overwrite" instead.
 """
 
 
+_storage_formats = \
+"""Storage Formats
+
+To ensure that older clients do not access data incorrectly,
+Bazaar's policy is to introduce a new storage format whenever
+new features requiring new metadata are added. New storage
+formats may also be introduced to improve performance and
+scalability.
+
+Use the following guidelines to select a format (stopping
+as soon as a condition is true):
+
+* If you are working on an existing project, use whatever
+  format that project is using. (Bazaar will do this for you
+  by default).
+
+* If you are using bzr-svn to interoperate with a Subversion
+  repository, use 1.9-rich-root.
+
+* If you are working on a project with big trees (5000+ paths)
+  or deep history (5000+ revisions), use 1.9.
+
+* Otherwise, use the default format - it is good enough for
+  most projects.
+
+Note: If some of your developers are unable to use the latest
+version of Bazaar (due to corporate policy say), be sure to
+adjust the guidelines above accordingly. For example, you may
+need to select 1.6 instead of 1.9 if your team has standardized
+on Bazaar 1.7.
+
+See ``bzr help current-formats`` for the complete list of
+currently supported formats. See ``bzr help other-formats`` for
+descriptions of any available experimental and deprecated formats.
+"""
+
+
 # Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
 topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
-def get_format_topic(topic):
+def get_current_formats_topic(topic):
     from bzrlib import bzrdir
-    return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
-topic_registry.register('formats', get_format_topic, 'Directory formats')
+    return "Current Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+def get_other_formats_topic(topic):
+    from bzrlib import bzrdir
+    return "Other Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+topic_registry.register('current-formats', get_current_formats_topic,
+    'Current storage formats')
+topic_registry.register('other-formats', get_other_formats_topic,
+    'Experimental and deprecated storage formats')
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
@@ -695,6 +740,9 @@ topic_registry.register('branches', _branches,
                         'Information on what a branch is', SECT_CONCEPT)
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('formats', _storage_formats,
+                        'Information on choosing a storage format',
+                        SECT_CONCEPT)
 topic_registry.register('patterns', _load_from_file,
                         'Information on the pattern syntax',
                         SECT_CONCEPT)
