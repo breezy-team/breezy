@@ -1491,7 +1491,6 @@ class Repository(object):
         :param desired_files: a list of (file_id, revision_id, identifier)
             triples
         """
-        transaction = self.get_transaction()
         text_keys = {}
         for file_id, revision_id, callable_data in desired_files:
             text_keys[(file_id, revision_id)] = callable_data
@@ -1680,14 +1679,15 @@ class Repository(object):
     def _iter_inventory_xmls(self, revision_ids):
         keys = [(revision_id,) for revision_id in revision_ids]
         stream = self.inventories.get_record_stream(keys, 'unordered', True)
-        texts = {}
+        text_chunks = {}
         for record in stream:
             if record.storage_kind != 'absent':
-                texts[record.key] = record.get_bytes_as('fulltext')
+                text_chunks[record.key] = record.get_bytes_as('chunked')
             else:
                 raise errors.NoSuchRevision(self, record.key)
         for key in keys:
-            yield texts[key], key[-1]
+            chunks = text_chunks.pop(key)
+            yield ''.join(chunks), key[-1]
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 

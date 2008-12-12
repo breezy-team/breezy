@@ -886,6 +886,17 @@ New exception classes should be defined when callers might want to catch
 that exception specifically, or when it needs a substantially different
 format string.
 
+#. If it is something that a caller can recover from, a custom exception
+   is reasonable. 
+
+#. If it is a data consistency issue, using a builtin like
+   ``ValueError``/``TypeError`` is reasonable. 
+
+#. If it is a programmer error (using an api incorrectly)
+   ``AssertionError`` is reasonable. 
+
+#. Otherwise, use ``BzrError`` or ``InternalBzrError``.
+
 Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
 
