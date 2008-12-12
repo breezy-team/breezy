@@ -104,7 +104,7 @@ class TreeDelta(object):
             if v[1] == file_id:
                 return True
         return False
-            
+
 
     def show(self, to_file, show_ids=False, show_unchanged=False,
              short_status=False, indent=''):
@@ -126,14 +126,14 @@ class TreeDelta(object):
                         path, fid))
                 else:
                     to_file.write(indent + '%s  %s\n' % (short_status_letter, path))
-            
+
         if self.removed:
             if not short_status:
                 to_file.write(indent + 'removed:\n')
                 show_list(self.removed)
             else:
                 show_list(self.removed, 'D')
-                
+
         if self.added:
             if not short_status:
                 to_file.write(indent + 'added:\n')

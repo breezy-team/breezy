@@ -54,6 +54,9 @@ IN DEVELOPMENT
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
 
+    * Use the short status format when the short format is used for log.
+      (Vincent Ladeuil, #87179)
+
   DOCUMENTATION:
 
   API CHANGES:
