@@ -56,7 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet
+from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -1871,7 +1871,8 @@ class cmd_log(Command):
                 log_format = log.log_formatter_registry.get_default(b)
 
             lf = log_format(show_ids=show_ids, to_file=self.outf,
-                            show_timezone=timezone)
+                            show_timezone=timezone,
+                            delta_format=get_verbosity_level())
 
             show_log(b,
                      lf,
