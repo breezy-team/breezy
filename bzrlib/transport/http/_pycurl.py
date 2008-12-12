@@ -106,9 +106,9 @@ class PyCurlTransport(HttpTransportBase):
     """
 
     def __init__(self, base, _from_transport=None):
-        super(PyCurlTransport, self).__init__(base,
+        super(PyCurlTransport, self).__init__(base, 'pycurl',
                                               _from_transport=_from_transport)
-        if base.startswith('https'):
+        if self._unqualified_scheme == 'https':
             # Check availability of https into pycurl supported
             # protocols
             supported = pycurl.version_info()[8]
@@ -369,8 +369,7 @@ class PyCurlTransport(HttpTransportBase):
             redirected_to = msg.getheader('location')
             raise errors.RedirectRequested(url,
                                            redirected_to,
-                                           is_permanent=(code == 301),
-                                           qual_proto=self._scheme)
+                                           is_permanent=(code == 301))
 
 
 def get_test_permutations():

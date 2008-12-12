@@ -9,10 +9,24 @@ IN DEVELOPMENT
 --------------
 
   CHANGES:
+  
+    * ``LRUCache(after_cleanup_size)`` was renamed to
+      ``after_cleanup_count`` and the old name deprecated. The new name is
+      used for clarity, and to avoid confusion with
+      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
   NEW FEATURES:
 
+    * ``shelve --list`` can now be used to list shelved changes.
+      (Aaron Bentley)
+
   IMPROVEMENTS:
+
+    * Add trailing slash to directories in all output of ``bzr ls``, except
+      ``bzr ls --null``. (Gordon P. Hemsley, #306424)
+
+    * ``bzr revision-info`` now supports a -d option to specify an
+      alternative branch. (Michael Hudson)
 
   BUG FIXES:
   
@@ -22,6 +36,9 @@ IN DEVELOPMENT
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
 
+    * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
+      (Jari Aalto)
+
     * Fix SystemError in ``_patiencediff_c`` module by calling
       PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.
       (Andrew Bennetts, #303206)
@@ -29,14 +46,36 @@ IN DEVELOPMENT
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
 
+    * Preserve transport decorators while following redirections.
+      (Vincent Ladeuil, #245964, #270863)
+
+    * Provides a finer and more robust filter for accepted redirections.
+      (Vincent Ladeuil, #303959, #265070)
+
     * ``Transport.readv()`` defaults to not reading more than 100MB in a
       single array. Further ``RemoteTransport.readv`` sets this to 5MB to
       work better with how it splits its requests.
       (John Arbash Meinel, #303538)
 
+    * ``pull -v`` now respects the log_format configuration variable.
+      (Aaron Bentley)
+
+    * Use the short status format when the short format is used for log.
+      (Vincent Ladeuil, #87179)
+
   DOCUMENTATION:
 
   API CHANGES:
+
+    * ``node_distances`` and ``select_farthest`` can no longer be imported
+      from ``bzrlib.graph``.  They can still be imported from
+      ``bzrlib.deprecated_graph``, which has been the preferred way to
+      import them since before 1.0.  (Andrew Bennetts)
+      
+    * The logic in commit now delegates inventory basis calculations to
+      the ``CommitBuilder`` object; this requires that the commit builder
+      in use has been updated to support the new ``recording_deletes`` and
+      ``record_delete`` methods. (Robert Collins)
 
   TESTING:
 
@@ -47,6 +86,29 @@ IN DEVELOPMENT
       Previously the order was fully random, now the records should be
       returned from each pack in turn, in forward I/O order.
       (John Arbash Meinel)
+
+    * New method ``bzrlib.repository.Repository.add_inventory_by_delta``
+      allows adding an inventory via an inventory delta, which can be
+      more efficient for some repository types. (Robert Collins)
+
+    * Repository ``CommitBuilder`` objects can now accumulate an inventory
+      delta. To enable this functionality call ``builder.recording_deletes``
+      and additionally call ``builder.record_delete`` when a delete
+      against the basis occurs. (Robert Collins)
+
+    * The default http handler has been changed from pycurl to urllib.
+      The default is still pycurl for https connections. (The only
+      advantage of pycurl is that it checks ssl certificates.)
+      (John Arbash Meinel)
+
+    * ``VersionedFiles.get_record_stream()`` can now return objects with a
+      storage_kind of ``chunked``. This is a collection (list/tuple) of
+      strings. You can use ``osutils.chunks_to_lines()`` to turn them into
+      guaranteed 'lines' or you can use ``''.join(chunks)`` to turn it
+      into a fulltext. This allows for some very good memory savings when
+      asking for many texts that share ancestry, as the individual chunks
+      can be shared between versions of the file. (John Arbash Meinel)
+
 
 
 bzr 1.10 2008-12-05
@@ -2103,7 +2165,7 @@ bzr 1.3rc1 2008-03-16
       filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable
       is not defined but BZR_HOME is defined then default location
       for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
-      (Alexander Belchenko)
+      (Alexander Belchenko, #106117)
 
     * ``launchpad`` builtin plugin now shipped as separate part in standalone
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory,

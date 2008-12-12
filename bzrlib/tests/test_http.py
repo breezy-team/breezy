@@ -120,6 +120,7 @@ def load_tests(standard_tests, module, loader):
     t_adapter = TransportAdapter()
     t_classes= (TestHttpTransportRegistration,
                 TestHttpTransportUrls,
+                Test_redirected_to,
                 )
     is_testing_for_transports = tests.condition_isinstance(t_classes)
 
@@ -1263,7 +1264,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
                                   ('bundle',
                                   '# Bazaar revision bundle v0.9\n#\n')
                                   ],)
-
+        # The requests to the old server will be redirected to the new server
         self.old_transport = self._transport(self.old_server.get_url())
 
     def test_redirected(self):
@@ -1743,3 +1744,47 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
                           t.get_smart_medium().send_http_smart_request,
                           'whatever')
 
+class Test_redirected_to(tests.TestCase):
+
+    def test_redirected_to_subdir(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/foo/subdir')
+        self.assertIsInstance(r, type(t))
+        # Both transports share the some connection
+        self.assertEquals(t._get_connection(), r._get_connection())
+
+    def test_redirected_to_self_with_slash(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/foo/')
+        self.assertIsInstance(r, type(t))
+        # Both transports share the some connection (one can argue that we
+        # should return the exact same transport here, but that seems
+        # overkill).
+        self.assertEquals(t._get_connection(), r._get_connection())
+
+    def test_redirected_to_host(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://foo.example.com/foo/subdir')
+        self.assertIsInstance(r, type(t))
+
+    def test_redirected_to_same_host_sibling_protocol(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https://www.example.com/foo')
+        self.assertIsInstance(r, type(t))
+
+    def test_redirected_to_same_host_different_protocol(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'ftp://www.example.com/foo')
+        self.assertNotEquals(type(r), type(t))
+
+    def test_redirected_to_different_host_same_user(self):
+        t = self._transport('http://joe@www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https://foo.example.com/foo')
+        self.assertIsInstance(r, type(t))
+        self.assertEquals(t._user, r._user)

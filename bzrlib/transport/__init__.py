@@ -1249,6 +1249,22 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
+    def _redirected_to(self, source, target):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        # This returns None by default, meaning the transport can't handle the
+        # redirection.
+        return None
+
+
 
 class _SharedConnection(object):
     """A connection shared between several transports."""
@@ -1739,12 +1755,13 @@ register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
+# The default http implementation is urllib, but https is pycurl if available
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
-                        'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 
