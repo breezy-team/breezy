@@ -801,7 +801,6 @@ class cmd_pull(Command):
 
             result.report(self.outf)
             if verbose and result.old_revid != result.new_revid:
-                log_format = branch_to.get_config().log_format()
                 log.show_branch_change(branch_to, self.outf, result.old_revno,
                                        result.old_revid)
         finally:
