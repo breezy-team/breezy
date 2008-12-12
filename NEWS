@@ -55,6 +55,11 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``node_distances`` and ``select_farthest`` can no longer be imported
+      from ``bzrlib.graph``.  They can still be imported from
+      ``bzrlib.deprecated_graph``, which has been the preferred way to
+      import them since before 1.0.  (Andrew Bennetts)
+      
     * The logic in commit now delegates inventory basis calculations to
       the ``CommitBuilder`` object; this requires that the commit builder
       in use has been updated to support the new ``recording_deletes`` and
