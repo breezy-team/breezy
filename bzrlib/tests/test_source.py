@@ -361,13 +361,17 @@ class TestSource(TestSourceHelper):
                 iterator = new_tree.iter_changes(old_tree)
                 for (file_id, paths, changed_content, versioned, parent,
                     name, kind, executable) in iterator:
-                    if (changed_content and kind == ('file', 'file')
-                        and paths[1].endswith('.py')):
-                        diff_text = diff.DiffText(old_tree, new_tree,
-                            to_file=diff_output,
-                            text_differ=check_coding_style)
-                        diff_text.diff(file_id, paths[0], paths[1],
-                            kind[0], kind[1])
+                    if (changed_content and paths[1].endswith('.py')):
+                        if kind == ('file', 'file'):
+                            diff_text = diff.DiffText(old_tree, new_tree,
+                                to_file=diff_output,
+                                text_differ=check_coding_style)
+                            diff_text.diff(file_id, paths[0], paths[1],
+                                kind[0], kind[1])
+                        else:
+                            check_coding_style(name[0], (), name[1],
+                                new_tree.get_file(file_id).readlines(),
+                                diff_output)
             finally:
                 old_tree.unlock()
                 new_tree.unlock()
