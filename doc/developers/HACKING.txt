@@ -859,7 +859,7 @@ Errors are handled through Python exceptions. Exceptions should be defined
 inside bzrlib.errors, so that we can see the whole tree at a glance.
 
 We broadly classify errors as either being either internal or not,
-depending on whether ``internal_error`` is set or not.  f we think it's our
+depending on whether ``internal_error`` is set or not.  If we think it's our
 fault, we show a backtrace, an invitation to report the bug, and possibly
 other details.  This is the default for errors that aren't specifically
 recognized as being caused by a user error.  Otherwise we show a briefer
@@ -895,7 +895,7 @@ format string.
 #. If it is a programmer error (using an api incorrectly)
    ``AssertionError`` is reasonable. 
 
-#. Otherwise, use ``BzrError``.
+#. Otherwise, use ``BzrError`` or ``InternalBzrError``.
 
 Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
