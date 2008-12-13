@@ -52,6 +52,9 @@ IN DEVELOPMENT
     * Provides a finer and more robust filter for accepted redirections.
       (Vincent Ladeuil, #303959, #265070)
 
+    * ``shelve`` paths are now interpreted relative to the current working
+      tree.  (Aaron Bentley)
+
     * ``Transport.readv()`` defaults to not reading more than 100MB in a
       single array. Further ``RemoteTransport.readv`` sets this to 5MB to
       work better with how it splits its requests.
