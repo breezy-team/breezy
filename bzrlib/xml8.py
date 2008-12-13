@@ -20,7 +20,6 @@ import re
 from bzrlib import (
     cache_utf8,
     errors,
-    fifo_cache,
     inventory,
     revision as _mod_revision,
     trace,
@@ -40,7 +39,6 @@ _xml_escape_map = {
     "<":"&lt;",
     ">":"&gt;",
     }
-_entry_cache = fifo_cache.FIFOCache(10*1024)
 
 
 def _ensure_utf8_re():
@@ -376,8 +374,6 @@ class Serializer_v8(Serializer):
         if format != self.format_num:
             raise errors.UnexpectedInventoryFormat('Invalid format version %r'
                                                    % format)
-        if entry_cache is None:
-            entry_cache = _entry_cache
         revision_id = elt.get('revision_id')
         if revision_id is not None:
             revision_id = cache_utf8.encode(revision_id)

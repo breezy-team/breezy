@@ -51,8 +51,6 @@ class Serializer_v5(xml6.Serializer_v6):
         #   avoiding attributes     2.46s
         #   adding assertions       2.50s
         #   last_parent cache       2.52s (worse, removed)
-        if entry_cache is None:
-            entry_cache = xml8._entry_cache
         unpack_entry = self._unpack_entry
         byid = inv._byid
         for e in elt:
