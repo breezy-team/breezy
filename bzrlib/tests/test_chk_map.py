@@ -1018,6 +1018,47 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual({}, self.to_dict(node, None))
         self.assertEqual(0, len(node))
 
+    def test_map_maintains_common_prefixes(self):
+        node = LeafNode()
+        node._key_width = 2
+        node.map(None, ("foo bar", "baz"), "baz quux")
+        self.assertEqual('foo bar\x00baz', node._lookup_prefix)
+        self.assertEqual('foo bar\x00baz', node._common_serialised_prefix)
+        node.map(None, ("foo bar", "bing"), "baz quux")
+        self.assertEqual('foo bar\x00b', node._lookup_prefix)
+        self.assertEqual('foo bar\x00b', node._common_serialised_prefix)
+        node.map(None, ("fool", "baby"), "baz quux")
+        self.assertEqual('foo', node._lookup_prefix)
+        self.assertEqual('foo', node._common_serialised_prefix)
+        node.map(None, ("foo bar", "baz"), "replaced")
+        self.assertEqual('foo', node._lookup_prefix)
+        self.assertEqual('foo', node._common_serialised_prefix)
+        node.map(None, ("very", "different"), "value")
+        self.assertEqual('', node._lookup_prefix)
+        self.assertEqual('', node._common_serialised_prefix)
+
+    def test_unmap_maintains_common_prefixes(self):
+        node = LeafNode()
+        node._key_width = 2
+        node.map(None, ("foo bar", "baz"), "baz quux")
+        node.map(None, ("foo bar", "bing"), "baz quux")
+        node.map(None, ("fool", "baby"), "baz quux")
+        node.map(None, ("very", "different"), "value")
+        self.assertEqual('', node._lookup_prefix)
+        self.assertEqual('', node._common_serialised_prefix)
+        node.unmap(None, ("very", "different"))
+        self.assertEqual("foo", node._lookup_prefix)
+        self.assertEqual("foo", node._common_serialised_prefix)
+        node.unmap(None, ("fool", "baby"))
+        self.assertEqual('foo bar\x00b', node._lookup_prefix)
+        self.assertEqual('foo bar\x00b', node._common_serialised_prefix)
+        node.unmap(None, ("foo bar", "baz"))
+        self.assertEqual('foo bar\x00bing', node._lookup_prefix)
+        self.assertEqual('foo bar\x00bing', node._common_serialised_prefix)
+        node.unmap(None, ("foo bar", "bing"))
+        self.assertEqual('', node._lookup_prefix)
+        self.assertEqual('', node._common_serialised_prefix)
+
 
 class TestInternalNode(TestCaseWithStore):
 

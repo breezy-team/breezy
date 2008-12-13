@@ -381,7 +381,11 @@ class CHKMap(object):
 
 
 class Node(object):
-    """Base class defining the protocol for CHK Map nodes."""
+    """Base class defining the protocol for CHK Map nodes.
+
+    :ivar _raw_size: The total size of the serialized key:value data, before
+        adding the header bytes, and without prefix compression.
+    """
 
     def __init__(self, key_width=1):
         """Create a node.
@@ -394,7 +398,7 @@ class Node(object):
         self._maximum_size = 0
         self._key_width = 1
         # current size in bytes
-        self._size = 0
+        self._raw_size = 0
         # The pointers/values this node has - meaning defined by child classes.
         self._items = {}
         # The common lookup prefix
@@ -405,7 +409,7 @@ class Node(object):
         if len(items_str) > 20:
             items_str = items_str[16] + '...]'
         return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
-            self.__class__.__name__, self._key, self._len, self._size,
+            self.__class__.__name__, self._key, self._len, self._raw_size,
             self._maximum_size, self._lookup_prefix, items_str)
 
     def key(self):
@@ -487,14 +491,14 @@ class LeafNode(Node):
     def _current_size(self):
         """Answer the current serialised size of this node.
 
-        This differs from self._size in that it includes the bytes used for the
-        header.
+        This differs from self._raw_size in that it includes the bytes used for
+        the header.
         """
         return (12 # bytes overhead for the header and separators
             + len(str(self._len))
             + len(str(self._key_width))
             + len(str(self._maximum_size))
-            + self._size)
+            + self._raw_size)
 
     @classmethod
     def deserialise(klass, bytes, key):
@@ -521,7 +525,8 @@ class LeafNode(Node):
         result._maximum_size = maximum_size
         result._key = key
         result._key_width = width
-        result._size = len(bytes)
+        # XXX: This will change when we have prefix compression
+        result._raw_size = len(bytes)
         result._compute_lookup_prefix()
         result._compute_serialised_prefix()
         return result
@@ -564,7 +569,7 @@ class LeafNode(Node):
         :return: True if adding this node should cause us to split.
         """
         self._items[key] = value
-        self._size += self._key_value_len(key, value)
+        self._raw_size += self._key_value_len(key, value)
         self._len += 1
         serialised_key = self._serialise_key(key)
         if self._common_serialised_prefix is None:
@@ -621,7 +626,7 @@ class LeafNode(Node):
     def map(self, store, key, value):
         """Map key to value."""
         if key in self._items:
-            self._size -= self._key_value_len(key, self._items[key])
+            self._raw_size -= self._key_value_len(key, self._items[key])
             self._len -= 1
         self._key = None
         if self._map_no_split(key, value):
@@ -676,7 +681,7 @@ class LeafNode(Node):
 
     def unmap(self, store, key):
         """Unmap key from the node."""
-        self._size -= self._key_value_len(key, self._items[key])
+        self._raw_size -= self._key_value_len(key, self._items[key])
         self._len -= 1
         del self._items[key]
         self._key = None
@@ -699,7 +704,6 @@ class InternalNode(Node):
     def __init__(self, prefix=''):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
-        # self._size = 12
         # How many octets key prefixes within this node are.
         self._node_width = 0
         self._lookup_prefix = prefix
@@ -709,7 +713,7 @@ class InternalNode(Node):
         if len(items_str) > 20:
             items_str = items_str[16] + '...]'
         return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
-            self.__class__.__name__, self._key, self._len, self._size,
+            self.__class__.__name__, self._key, self._len, self._raw_size,
             self._maximum_size, self._lookup_prefix, items_str)
 
     def add_node(self, prefix, node):
@@ -730,7 +734,7 @@ class InternalNode(Node):
 
     def _current_size(self):
         """Answer the current serialised size of this node."""
-        return (self._size + len(str(self._len)) + len(str(self._key_width)) +
+        return (self._raw_size + len(str(self._len)) + len(str(self._key_width)) +
             len(str(self._maximum_size)))
 
     @classmethod
@@ -757,7 +761,9 @@ class InternalNode(Node):
         result._maximum_size = maximum_size
         result._key = key
         result._key_width = width
-        result._size = len(bytes)
+        # XXX: InternalNodes don't really care about their size, and this will
+        #      change if we add prefix compression
+        result._raw_size = None # len(bytes)
         result._node_width = len(prefix)
         result._compute_lookup_prefix()
         return result
