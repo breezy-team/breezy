@@ -38,7 +38,7 @@ IN DEVELOPMENT
   TESTING:
 
     * ``bzr selftest`` now fails if new trailing white space is added to the
-      bazaar sources. (Marius Kruger)
+      bazaar sources. It only checks changes not committed yet. (Marius Kruger)
 
   INTERNALS:
 

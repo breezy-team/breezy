@@ -341,7 +341,7 @@ class TestSource(TestSourceHelper):
          * new long lines (give warning only)
          * no newline at end of files
         """
-        bzr_dir = osutils.dirname(bzrlib.__path__[0])
+        bzr_dir = osutils.dirname(self.get_bzrlib_dir())
         try:
             wt = WorkingTree.open(bzr_dir)
         except:
@@ -350,7 +350,6 @@ class TestSource(TestSourceHelper):
                 % bzr_dir)
         diff_output = StringIO()
         wt.lock_read()
-        self.log("TEST LOG")
         try:
             new_tree = wt
             old_tree = new_tree.basis_tree()
