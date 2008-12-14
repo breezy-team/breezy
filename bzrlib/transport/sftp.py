@@ -419,11 +419,20 @@ class SFTPTransport(ConnectedTransport):
             f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
-            import pdb;pdb.set_trace()
             return f
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving',
                 failure_exc=errors.ReadError)
+
+    def get_bytes(self, relpath):
+        # reimplement this here so that we can report how many bytes came back
+        f = self.get(relpath)
+        try:
+            bytes = f.read()
+            self._report_activity(len(bytes), 'read')
+            return bytes
+        finally:
+            f.close()
 
     def _readv(self, relpath, offsets):
         """See Transport.readv()"""
