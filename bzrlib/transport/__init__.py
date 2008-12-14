@@ -580,7 +580,11 @@ class Transport(object):
 
         :param relpath: The relative path to the file
         """
-        return self.get(relpath).read()
+        f = self.get(relpath)
+        try:
+            return f.read()
+        finally:
+            f.close()
 
     @deprecated_method(one_four)
     def get_smart_client(self):
