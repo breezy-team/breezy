@@ -382,6 +382,18 @@ class Transport(object):
         except TypeError: # We can't tell how many, because relpaths is a generator
             return None
 
+    def _report_activity(self, bytes, direction):
+        """Notify that this transport has activity.
+
+        Implementations should call this from all methods that actually do IO.
+        Be careful that it's not called twice, if one method is implemented on
+        top of another.
+
+        :param bytes: Number of bytes read or written.
+        :param direction: 'read' or 'write' or None.
+        """
+        sys.stderr.write("[%d] " % (bytes,))
+
     def _update_pb(self, pb, msg, count, total):
         """Update the progress bar based on the current count
         and total available, total may be None if it was
