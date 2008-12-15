@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     help_topics,
     repository,
+    osutils,
     symbol_versioning,
     urlutils,
     win32utils,
@@ -47,15 +48,16 @@ from bzrlib.tests import (
     TestSkipped,
     test_sftp_transport
     )
-from bzrlib.tests.http_server import HttpServer
-from bzrlib.tests.http_utils import (
-    TestCaseWithTwoWebservers,
-    HTTPServerRedirecting,
+from bzrlib.tests import(
+    http_server,
+    http_utils,
     )
 from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import get_transport
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.memory import MemoryServer
+from bzrlib.transport.nosmart import NoSmartTransportDecorator
+from bzrlib.transport.readonly import ReadonlyTransportDecorator
 from bzrlib.repofmt import knitrepo, weaverepo
 
 
@@ -138,12 +140,15 @@ class TestFormatRegistry(TestCase):
         
     def test_help_topic(self):
         topics = help_topics.HelpTopicRegistry()
-        topics.register('formats', self.make_format_registry().help_topic, 
-                        'Directory formats')
-        topic = topics.get_detail('formats')
-        new, rest = topic.split('Experimental formats')
+        registry = self.make_format_registry()
+        topics.register('current-formats', registry.help_topic, 
+                        'Current formats')
+        topics.register('other-formats', registry.help_topic, 
+                        'Other formats')
+        new = topics.get_detail('current-formats')
+        rest = topics.get_detail('other-formats')
         experimental, deprecated = rest.split('Deprecated formats')
-        self.assertContainsRe(new, 'These formats can be used')
+        self.assertContainsRe(new, 'bzr help formats')
         self.assertContainsRe(new, 
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(experimental, 
@@ -441,9 +446,9 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual(parent_bzrdir.root_transport.base,
                          repo_policy._stack_on_pwd)
 
-    def prepare_default_stacking(self):
+    def prepare_default_stacking(self, child_format='1.6'):
         parent_bzrdir = self.make_bzrdir('.')
-        child_branch = self.make_branch('child', format='development1')
+        child_branch = self.make_branch('child', format=child_format)
         parent_bzrdir.get_config().set_default_stack_on(child_branch.base)
         new_child_transport = parent_bzrdir.transport.clone('child2')
         return child_branch, new_child_transport
@@ -460,29 +465,74 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual(child_branch.base,
                          new_child.open_branch().get_stacked_on_url())
 
+    def test_clone_ignores_policy_for_unsupported_formats(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.clone_on_transport(new_child_transport)
+        self.assertRaises(errors.UnstackableBranchFormat,
+                          new_child.open_branch().get_stacked_on_url)
+
+    def test_sprout_ignores_policy_for_unsupported_formats(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base)
+        self.assertRaises(errors.UnstackableBranchFormat,
+                          new_child.open_branch().get_stacked_on_url)
+
+    def test_sprout_upgrades_format_if_stacked_specified(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base,
+                                               stacked=True)
+        self.assertEqual(child_branch.bzrdir.root_transport.base,
+                         new_child.open_branch().get_stacked_on_url())
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertFalse(repo.supports_rich_root())
+
+    def test_clone_on_transport_upgrades_format_if_stacked_on_specified(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='pack-0.92')
+        new_child = child_branch.bzrdir.clone_on_transport(new_child_transport,
+            stacked_on=child_branch.bzrdir.root_transport.base)
+        self.assertEqual(child_branch.bzrdir.root_transport.base,
+                         new_child.open_branch().get_stacked_on_url())
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertFalse(repo.supports_rich_root())
+
+    def test_sprout_upgrades_to_rich_root_format_if_needed(self):
+        child_branch, new_child_transport = self.prepare_default_stacking(
+            child_format='rich-root-pack')
+        new_child = child_branch.bzrdir.sprout(new_child_transport.base,
+                                               stacked=True)
+        repo = new_child.open_repository()
+        self.assertTrue(repo._format.supports_external_lookups)
+        self.assertTrue(repo.supports_rich_root())
+
     def test_add_fallback_repo_handles_absolute_urls(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        repo = self.make_repository('repo', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        repo = self.make_repository('repo', format='1.6')
         policy = bzrdir.UseExistingRepository(repo, stack_on.base)
         policy._add_fallback(repo)
 
     def test_add_fallback_repo_handles_relative_urls(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        repo = self.make_repository('repo', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        repo = self.make_repository('repo', format='1.6')
         policy = bzrdir.UseExistingRepository(repo, '.', stack_on.base)
         policy._add_fallback(repo)
 
     def test_configure_relative_branch_stacking_url(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        stacked = self.make_branch('stack_on/stacked', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        stacked = self.make_branch('stack_on/stacked', format='1.6')
         policy = bzrdir.UseExistingRepository(stacked.repository,
             '.', stack_on.base)
         policy.configure_branch(stacked)
         self.assertEqual('..', stacked.get_stacked_on_url())
 
     def test_relative_branch_stacking_to_absolute(self):
-        stack_on = self.make_branch('stack_on', format='development1')
-        stacked = self.make_branch('stack_on/stacked', format='development1')
+        stack_on = self.make_branch('stack_on', format='1.6')
+        stacked = self.make_branch('stack_on/stacked', format='1.6')
         policy = bzrdir.UseExistingRepository(stacked.repository,
             '.', self.get_readonly_url('stack_on'))
         policy.configure_branch(stacked)
@@ -501,7 +551,7 @@ class ChrootedTests(TestCaseWithTransport):
     def setUp(self):
         super(ChrootedTests, self).setUp()
         if not self.vfs_transport_factory == MemoryServer:
-            self.transport_readonly_server = HttpServer
+            self.transport_readonly_server = http_server.HttpServer
 
     def local_branch_path(self, branch):
          return os.path.realpath(urlutils.local_path_from_url(branch.base))
@@ -532,7 +582,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('topdir'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('topdir', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('topdir', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -545,7 +595,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('branch', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('branch', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'foo')
 
@@ -557,7 +607,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('repo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('repo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -572,7 +622,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('shared/branch'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('shared', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('shared', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, '')
 
@@ -587,7 +637,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(os.path.realpath('foo'),
                          self.local_branch_path(branch))
         self.assertEqual(
-            os.path.realpath(os.path.join('foo', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('foo', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'bar')
 
@@ -600,7 +650,7 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual(tree, None)
         self.assertEqual(branch, None)
         self.assertEqual(
-            os.path.realpath(os.path.join('bar', '.bzr', 'repository')),
+            osutils.realpath(os.path.join('bar', '.bzr', 'repository')),
             repo.bzrdir.transport.local_abspath('repository'))
         self.assertEqual(relpath, 'baz')
 
@@ -1018,8 +1068,8 @@ class NonLocalTests(TestCaseWithTransport):
                               workingtree.WorkingTreeFormat3)
 
 
-class TestHTTPRedirectionLoop(object):
-    """Test redirection loop between two http servers.
+class TestHTTPRedirections(object):
+    """Test redirection between two http servers.
 
     This MUST be used by daughter classes that also inherit from
     TestCaseWithTwoWebservers.
@@ -1029,62 +1079,85 @@ class TestHTTPRedirectionLoop(object):
     run, its implementation being incomplete. 
     """
 
-    # Should be defined by daughter classes to ensure redirection
-    # still use the same transport implementation (not currently
-    # enforced as it's a bit tricky to get right (see the FIXME
-    # in BzrDir.open_from_transport for the unique use case so
-    # far)
-    _qualifier = None
-
     def create_transport_readonly_server(self):
-        return HTTPServerRedirecting()
+        return http_utils.HTTPServerRedirecting()
 
     def create_transport_secondary_server(self):
-        return HTTPServerRedirecting()
+        return http_utils.HTTPServerRedirecting()
 
     def setUp(self):
-        # Both servers redirect to each server creating a loop
-        super(TestHTTPRedirectionLoop, self).setUp()
+        super(TestHTTPRedirections, self).setUp()
         # The redirections will point to the new server
         self.new_server = self.get_readonly_server()
         # The requests to the old server will be redirected
         self.old_server = self.get_secondary_server()
         # Configure the redirections
         self.old_server.redirect_to(self.new_server.host, self.new_server.port)
-        self.new_server.redirect_to(self.old_server.host, self.old_server.port)
-
-    def _qualified_url(self, host, port):
-        return 'http+%s://%s:%s' % (self._qualifier, host, port)
 
     def test_loop(self):
+        # Both servers redirect to each other creating a loop
+        self.new_server.redirect_to(self.old_server.host, self.old_server.port)
         # Starting from either server should loop
-        old_url = self._qualified_url(self.old_server.host, 
+        old_url = self._qualified_url(self.old_server.host,
                                       self.old_server.port)
         oldt = self._transport(old_url)
         self.assertRaises(errors.NotBranchError,
                           bzrdir.BzrDir.open_from_transport, oldt)
-        new_url = self._qualified_url(self.new_server.host, 
+        new_url = self._qualified_url(self.new_server.host,
                                       self.new_server.port)
         newt = self._transport(new_url)
         self.assertRaises(errors.NotBranchError,
                           bzrdir.BzrDir.open_from_transport, newt)
 
+    def test_qualifier_preserved(self):
+        wt = self.make_branch_and_tree('branch')
+        old_url = self._qualified_url(self.old_server.host,
+                                      self.old_server.port)
+        start = self._transport(old_url).clone('branch')
+        bdir = bzrdir.BzrDir.open_from_transport(start)
+        # Redirection should preserve the qualifier, hence the transport class
+        # itself.
+        self.assertIsInstance(bdir.root_transport, type(start))
 
-class TestHTTPRedirections_urllib(TestHTTPRedirectionLoop,
-                                  TestCaseWithTwoWebservers):
+
+class TestHTTPRedirections_urllib(TestHTTPRedirections,
+                                  http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for urllib implementation"""
 
-    _qualifier = 'urllib'
     _transport = HttpTransport_urllib
+
+    def _qualified_url(self, host, port):
+        return 'http+urllib://%s:%s' % (host, port)
 
 
 
 class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
-                                  TestHTTPRedirectionLoop,
-                                  TestCaseWithTwoWebservers):
+                                  TestHTTPRedirections,
+                                  http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for pycurl implementation"""
 
-    _qualifier = 'pycurl'
+    def _qualified_url(self, host, port):
+        return 'http+pycurl://%s:%s' % (host, port)
+
+
+class TestHTTPRedirections_nosmart(TestHTTPRedirections,
+                                  http_utils.TestCaseWithTwoWebservers):
+    """Tests redirections for the nosmart decorator"""
+
+    _transport = NoSmartTransportDecorator
+
+    def _qualified_url(self, host, port):
+        return 'nosmart+http://%s:%s' % (host, port)
+
+
+class TestHTTPRedirections_readonly(TestHTTPRedirections,
+                                    http_utils.TestCaseWithTwoWebservers):
+    """Tests redirections for readonly decoratror"""
+
+    _transport = ReadonlyTransportDecorator
+
+    def _qualified_url(self, host, port):
+        return 'readonly+http://%s:%s' % (host, port)
 
 
 class TestDotBzrHidden(TestCaseWithTransport):
@@ -1138,7 +1211,7 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
     def open_branch(self, unsupported=False):
         return self.test_branch
 
-    def cloning_metadir(self):
+    def cloning_metadir(self, require_stacking=False):
         return _TestBzrDirFormat()
 
 
@@ -1148,9 +1221,20 @@ class _TestBranch(bzrlib.branch.Branch):
     def __init__(self, *args, **kwargs):
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
-    
+        self._parent = None
+
     def sprout(self, *args, **kwargs):
         self.calls.append('sprout')
+        return _TestBranch()
+
+    def copy_content_into(self, destination, revision_id=None):
+        self.calls.append('copy_content_into')
+
+    def get_parent(self):
+        return self._parent
+
+    def set_parent(self, parent):
+        self._parent = parent
 
 
 class TestBzrDirSprout(TestCaseWithMemoryTransport):
@@ -1181,5 +1265,10 @@ class TestBzrDirSprout(TestCaseWithMemoryTransport):
         result = source_bzrdir.sprout(target_url, recurse='no')
 
         # The bzrdir called the branch's sprout method.
-        self.assertEqual(['sprout'], source_bzrdir.test_branch.calls)
-        
+        self.assertSubset(['sprout'], source_bzrdir.test_branch.calls)
+
+    def test_sprout_parent(self):
+        grandparent_tree = self.make_branch('grandparent')
+        parent = grandparent_tree.bzrdir.sprout('parent').open_branch()
+        branch_tree = parent.bzrdir.sprout('branch').open_branch()
+        self.assertContainsRe(branch_tree.get_parent(), '/parent/$')

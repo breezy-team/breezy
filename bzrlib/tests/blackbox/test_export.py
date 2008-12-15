@@ -57,6 +57,9 @@ class TestExport(ExternalBase):
         # '.bzrignore'.
         self.assertEqual(['test/a'], sorted(ball.getnames()))
 
+        if sys.version_info < (2, 5, 2) and sys.platform == 'darwin':
+            raise tests.KnownFailure('python %r has a tar related bug, upgrade'
+                                     % sys.version_info)
         out, err = self.run_bzr('export --format=tgz --root=test -')
         ball = tarfile.open('', fileobj=StringIO(out))
         self.assertEqual(['test/a'], sorted(ball.getnames()))
@@ -174,6 +177,7 @@ class TestExport(ExternalBase):
         self.assertEqual(['a'], files)
 
     def example_branch(self):
+        """Create a branch a 'branch' containing hello and goodbye."""
         tree = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/hello', 'foo')])
         tree.add('hello')
@@ -277,3 +281,11 @@ class TestExport(ExternalBase):
         self.run_bzr('export first -r 1 branch')
         self.assertEqual(['hello'], sorted(os.listdir('first')))
         self.check_file_contents('first/hello', 'foo')
+
+    def test_export_partial_tree(self):
+        tree = self.example_branch()
+        self.build_tree(['branch/subdir/', 'branch/subdir/foo.txt'])
+        tree.smart_add(['branch'])
+        tree.commit('more setup')
+        out, err = self.run_bzr('export exported branch/subdir')
+        self.assertEqual(['foo.txt'], os.listdir('exported'))

@@ -1252,7 +1252,7 @@ class TransportTests(TestTransportImplementation):
         self.failIf(t3.has('b/d'))
 
         if t1.is_readonly():
-            open('b/d', 'wb').write('newfile\n')
+            self.build_tree_contents([('b/d', 'newfile\n')])
         else:
             t2.put_bytes('d', 'newfile\n')
 
@@ -1338,6 +1338,23 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(transport.clone("/").abspath('foo'),
                          transport.abspath("/foo"))
 
+    def test_win32_abspath(self):
+        # Note: we tried to set sys.platform='win32' so we could test on
+        # other platforms too, but then osutils does platform specific
+        # things at import time which defeated us...
+        if sys.platform != 'win32':
+            raise TestSkipped(
+                'Testing drive letters in abspath implemented only for win32')
+
+        # smoke test for abspath on win32.
+        # a transport based on 'file:///' never fully qualifies the drive.
+        transport = get_transport("file:///")
+        self.failUnlessEqual(transport.abspath("/"), "file:///")
+
+        # but a transport that starts with a drive spec must keep it.
+        transport = get_transport("file:///C:/")
+        self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
+
     def test_local_abspath(self):
         transport = self.get_transport()
         try:
@@ -1409,6 +1426,36 @@ class TransportTests(TestTransportImplementation):
                          'from/bar'],
                         transport=transport)
         transport.copy_tree('from', 'to')
+        paths = set(transport.iter_files_recursive())
+        self.assertEqual(paths,
+                    set(['from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%2525z',
+                         'from/bar',
+                         'to/dir/foo',
+                         'to/dir/bar',
+                         'to/dir/b%2525z',
+                         'to/bar',]))
+
+    def test_copy_tree_to_transport(self):
+        transport = self.get_transport()
+        if not transport.listable():
+            self.assertRaises(TransportNotPossible,
+                              transport.iter_files_recursive)
+            return
+        if transport.is_readonly():
+            return
+        self.build_tree(['from/',
+                         'from/dir/',
+                         'from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%25z', # make sure quoting is correct
+                         'from/bar'],
+                        transport=transport)
+        from_transport = transport.clone('from')
+        to_transport = transport.clone('to')
+        to_transport.ensure_base()
+        from_transport.copy_tree_to_transport(to_transport)
         paths = set(transport.iter_files_recursive())
         self.assertEqual(paths,
                     set(['from/dir/foo',
@@ -1546,7 +1593,7 @@ class TransportTests(TestTransportImplementation):
         content = osutils.rand_bytes(200*1024)
         content_size = len(content)
         if transport.is_readonly():
-            file('a', 'w').write(content)
+            self.build_tree_contents([('a', content)])
         else:
             transport.put_bytes('a', content)
         def check_result_data(result_vector):

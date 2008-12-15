@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ import stat
 import sys
 import time
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
@@ -37,19 +36,40 @@ from bzrlib.osutils import (
         is_inside_or_parent_of_any,
         pathjoin,
         pumpfile,
+        pump_string_file,
         )
 from bzrlib.tests import (
+        adapt_tests,
+        Feature,
         probe_unicode_in_user_encoding,
+        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
         TestCase,
         TestCaseInTempDir,
+        TestScenarioApplier,
         TestSkipped,
         )
 from bzrlib.tests.file_utils import (
     FakeReadFile,
     )
-from bzrlib.tests.test__walkdirs_win32 import WalkdirsWin32Feature
+from bzrlib.tests.test__walkdirs_win32 import Win32ReadDirFeature
+
+
+class _UTF8DirReaderFeature(Feature):
+
+    def _probe(self):
+        try:
+            from bzrlib import _readdir_pyx
+            self.reader = _readdir_pyx.UTF8DirReader
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'bzrlib._readdir_pyx'
+
+UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -271,6 +291,12 @@ class TestOSUtils(TestCaseInTempDir):
     def test_format_date(self):
         self.assertRaises(errors.UnsupportedTimezoneFormat,
             osutils.format_date, 0, timezone='foo')
+        self.assertIsInstance(osutils.format_date(0), str)
+        self.assertIsInstance(osutils.format_local_date(0), unicode)
+        # Testing for the actual value of the local weekday without
+        # duplicating the code from format_date is difficult.
+        # Instead blackbox.test_locale should check for localized
+        # dates once they do occur in output strings.
 
     def test_dereference_path(self):
         self.requireFeature(SymlinkFeature)
@@ -439,6 +465,30 @@ class TestPumpFile(TestCase):
         if response_data != self.test_data:
             message = "Data not equal.  Expected %d bytes, received %d."
             self.fail(message % (len(response_data), self.test_data_len))
+
+
+class TestPumpStringFile(TestCase):
+
+    def test_empty(self):
+        output = StringIO()
+        pump_string_file("", output)
+        self.assertEqual("", output.getvalue())
+
+    def test_more_than_segment_size(self):
+        output = StringIO()
+        pump_string_file("123456789", output, 2)
+        self.assertEqual("123456789", output.getvalue())
+
+    def test_segment_size(self):
+        output = StringIO()
+        pump_string_file("12", output, 2)
+        self.assertEqual("12", output.getvalue())
+
+    def test_segment_size_multiple(self):
+        output = StringIO()
+        pump_string_file("1234", output, 2)
+        self.assertEqual("1234", output.getvalue())
+
 
 class TestSafeUnicode(TestCase):
 
@@ -706,6 +756,23 @@ class TestMacFuncsDirs(TestCaseInTempDir):
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
 
+class TestChunksToLines(TestCase):
+
+    def test_smoketest(self):
+        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
+                         osutils.chunks_to_lines(['foo\nbar', '\nbaz\n']))
+        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
+                         osutils.chunks_to_lines(['foo\n', 'bar\n', 'baz\n']))
+
+    def test_is_compiled(self):
+        from bzrlib.tests.test__chunks_to_lines import CompiledChunksToLinesFeature
+        if CompiledChunksToLinesFeature:
+            from bzrlib._chunks_to_lines_pyx import chunks_to_lines
+        else:
+            from bzrlib._chunks_to_lines_py import chunks_to_lines
+        self.assertIs(chunks_to_lines, osutils.chunks_to_lines)
+
+
 class TestSplitLines(TestCase):
 
     def test_split_unicode(self):
@@ -822,79 +889,64 @@ class TestWalkDirs(TestCaseInTempDir):
                 new_dirblock.append((info[0], info[1], info[2], info[4]))
             dirblock[:] = new_dirblock
 
-    def test__walkdirs_utf8_selection(self):
-        # Just trigger the function once, to make sure it has selected a real
-        # implementation.
-        list(osutils._walkdirs_utf8('.'))
-        if WalkdirsWin32Feature.available():
-            # If the compiled form is available, make sure it is used
-            from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
-            self.assertIs(_walkdirs_utf8_win32_find_file,
-                          osutils._real_walkdirs_utf8)
-        elif sys.platform == 'win32':
-            self.assertIs(osutils._walkdirs_unicode_to_utf8,
-                          osutils._real_walkdirs_utf8)
-        elif osutils._fs_enc.upper() in ('UTF-8', 'ASCII', 'ANSI_X3.4-1968'): # ascii
-            self.assertIs(osutils._walkdirs_fs_utf8,
-                          osutils._real_walkdirs_utf8)
-        else:
-            self.assertIs(osutils._walkdirs_unicode_to_utf8,
-                          osutils._real_walkdirs_utf8)
-
     def _save_platform_info(self):
         cur_winver = win32utils.winver
         cur_fs_enc = osutils._fs_enc
-        cur_real_walkdirs_utf8 = osutils._real_walkdirs_utf8
+        cur_dir_reader = osutils._selected_dir_reader
         def restore():
             win32utils.winver = cur_winver
             osutils._fs_enc = cur_fs_enc
-            osutils._real_walkdirs_utf8 = cur_real_walkdirs_utf8
+            osutils._selected_dir_reader = cur_dir_reader
         self.addCleanup(restore)
 
-    def assertWalkdirsUtf8Is(self, expected):
+    def assertReadFSDirIs(self, expected):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
         # Force it to redetect
-        osutils._real_walkdirs_utf8 = None
+        osutils._selected_dir_reader = None
         # Nothing to list, but should still trigger the selection logic
         self.assertEqual([(('', '.'), [])], list(osutils._walkdirs_utf8('.')))
-        self.assertIs(expected, osutils._real_walkdirs_utf8)
+        self.assertIsInstance(osutils._selected_dir_reader, expected)
 
     def test_force_walkdirs_utf8_fs_utf8(self):
+        self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'UTF-8'
-        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_ascii(self):
+        self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'US-ASCII'
-        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_ANSI(self):
+        self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'ANSI_X3.4-1968'
-        self.assertWalkdirsUtf8Is(osutils._walkdirs_fs_utf8)
+        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'latin1'
-        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
+        self.assertReadFSDirIs(osutils.UnicodeDirReader)
 
     def test_force_walkdirs_utf8_nt(self):
-        self.requireFeature(WalkdirsWin32Feature)
+        # Disabled because the thunk of the whole walkdirs api is disabled.
+        self.requireFeature(Win32ReadDirFeature)
         self._save_platform_info()
         win32utils.winver = 'Windows NT'
-        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
-        self.assertWalkdirsUtf8Is(_walkdirs_utf8_win32_find_file)
+        from bzrlib._walkdirs_win32 import Win32ReadDir
+        self.assertReadFSDirIs(Win32ReadDir)
 
-    def test_force_walkdirs_utf8_nt(self):
-        self.requireFeature(WalkdirsWin32Feature)
+    def test_force_walkdirs_utf8_98(self):
+        self.requireFeature(Win32ReadDirFeature)
         self._save_platform_info()
         win32utils.winver = 'Windows 98'
-        self.assertWalkdirsUtf8Is(osutils._walkdirs_unicode_to_utf8)
+        self.assertReadFSDirIs(osutils.UnicodeDirReader)
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
@@ -1003,11 +1055,15 @@ class TestWalkDirs(TestCaseInTempDir):
             result.append((dirdetail, new_dirblock))
         self.assertEqual(expected_dirblocks, result)
 
-    def test_unicode__walkdirs_unicode_to_utf8(self):
-        """walkdirs_unicode_to_utf8 should be a safe fallback everywhere
+    def test__walkdirs_utf8_with_unicode_fs(self):
+        """UnicodeDirReader should be a safe fallback everywhere
 
         The abspath portion should be in unicode
         """
+        # Use the unicode reader. TODO: split into driver-and-driven unit
+        # tests.
+        self._save_platform_info()
+        osutils._selected_dir_reader = osutils.UnicodeDirReader()
         name0u = u'0file-\xb6'
         name1u = u'1dir-\u062c\u0648'
         name2u = u'2file-\u0633'
@@ -1048,14 +1104,16 @@ class TestWalkDirs(TestCaseInTempDir):
                  ]
                 ),
             ]
-        result = list(osutils._walkdirs_unicode_to_utf8('.'))
+        result = list(osutils._walkdirs_utf8('.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
 
-    def test__walkdirs_utf_win32_find_file(self):
-        self.requireFeature(WalkdirsWin32Feature)
+    def test__walkdirs_utf8_win32readdir(self):
+        self.requireFeature(Win32ReadDirFeature)
         self.requireFeature(tests.UnicodeFilenameFeature)
-        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        from bzrlib._walkdirs_win32 import Win32ReadDir
+        self._save_platform_info()
+        osutils._selected_dir_reader = Win32ReadDir()
         name0u = u'0file-\xb6'
         name1u = u'1dir-\u062c\u0648'
         name2u = u'2file-\u0633'
@@ -1092,7 +1150,7 @@ class TestWalkDirs(TestCaseInTempDir):
                  ]
                 ),
             ]
-        result = list(_walkdirs_utf8_win32_find_file(u'.'))
+        result = list(osutils._walkdirs_utf8(u'.'))
         self._filter_out_stat(result)
         self.assertEqual(expected_dirblocks, result)
 
@@ -1108,9 +1166,9 @@ class TestWalkDirs(TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(Win32ReadDirFeature)
         self.requireFeature(tests.UnicodeFilenameFeature)
-        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u])
@@ -1123,8 +1181,8 @@ class TestWalkDirs(TestCaseInTempDir):
         finally:
             f.close()
 
-        result = list(_walkdirs_utf8_win32_find_file(u'.'))
-        entry = result[0][1][0]
+        result = Win32ReadDir().read_dir('', u'.')
+        entry = result[0]
         self.assertEqual((name0, name0, 'file'), entry[:3])
         self.assertEqual(u'./' + name0u, entry[4])
         self.assertStatIsCorrect(entry[4], entry[3])
@@ -1132,15 +1190,15 @@ class TestWalkDirs(TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(WalkdirsWin32Feature)
+        self.requireFeature(Win32ReadDirFeature)
         self.requireFeature(tests.UnicodeFilenameFeature)
-        from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+        from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
         name0 = name0u.encode('utf8')
         self.build_tree([name0u + '/'])
 
-        result = list(_walkdirs_utf8_win32_find_file(u'.'))
-        entry = result[0][1][0]
+        result = Win32ReadDir().read_dir('', u'.')
+        entry = result[0]
         self.assertEqual((name0, name0, 'directory'), entry[:3])
         self.assertEqual(u'./' + name0u, entry[4])
         self.assertStatIsCorrect(entry[4], entry[3])
@@ -1315,7 +1373,7 @@ class TestSetUnsetEnv(TestCase):
         uni_val, env_val = probe_unicode_in_user_encoding()
         if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (bzrlib.user_encoding,))
+                              ' encoding %s' % (osutils.get_user_encoding(),))
 
         old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', uni_val)
         self.assertEqual(env_val, os.environ.get('BZR_TEST_ENV_VAR'))

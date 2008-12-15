@@ -184,10 +184,11 @@ def load_tests(basic_tests, module, loader):
     tests.adapt_modules(test_branch_implementations, adapter, loader, result)
 
     # Add RemoteBranch tests, which need a special server.
+    remote_branch_format = RemoteBranchFormat()
     adapt_to_smart_server = BranchTestProviderAdapter(
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
-        [(RemoteBranchFormat(), RemoteBzrDirFormat())],
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
         MemoryServer,
         name_suffix='-default')
     tests.adapt_modules(test_branch_implementations,
@@ -200,7 +201,7 @@ def load_tests(basic_tests, module, loader):
     adapt_to_smart_server = BranchTestProviderAdapter(
         SmartTCPServer_for_testing_v2_only,
         ReadonlySmartTCPServer_for_testing_v2_only,
-        [(RemoteBranchFormat(), RemoteBzrDirFormat())],
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
         MemoryServer,
         name_suffix='-v2')
     tests.adapt_modules(test_branch_implementations,

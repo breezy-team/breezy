@@ -74,8 +74,9 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             transport.mkdir('.')
             return transport
 
-        def redirected(redirected_transport, e, redirection_notice):
-            return transport.get_transport(e.get_target_url())
+        def redirected(transport, e, redirection_notice):
+            note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
 
         try:
             to_transport = transport.do_catching_redirections(
@@ -101,29 +102,19 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Now the target directory exists, but doesn't have a .bzr
         # directory. So we need to create it, along with any work to create
         # all of the dependent branches, etc.
-        if stacked_on is not None:
-            # This should be buried in the clone method itself. TODO.
-            try:
-                # if the from format is stackable, this will either work or
-                # trigger NotStacked. If it's not, an error will be given to
-                # the user.
-                br_from.get_stacked_on_url()
-            except errors.NotStacked:
-                pass
-            # now we need to sprout the repository,
-            dir_to = br_from.bzrdir._format.initialize_on_transport(to_transport)
-            br_from.repository._format.initialize(dir_to)
-            br_to = br_from._format.initialize(dir_to)
-            br_to.set_stacked_on_url(stacked_on)
-            # and copy the data up.
-            br_from.push(br_to)
-        else:
-            dir_to = br_from.bzrdir.clone_on_transport(to_transport,
-                revision_id=revision_id)
+        dir_to = br_from.bzrdir.clone_on_transport(to_transport,
+            revision_id=revision_id, stacked_on=stacked_on)
         br_to = dir_to.open_branch()
         # TODO: Some more useful message about what was copied
-        if stacked_on is not None:
-            note('Created new stacked branch referring to %s.' % stacked_on)
+        try:
+            finally_stacked_on = br_to.get_stacked_on_url()
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat,
+                errors.NotStacked):
+            finally_stacked_on = None
+        if finally_stacked_on is not None:
+            note('Created new stacked branch referring to %s.' %
+                 finally_stacked_on)
         else:
             note('Created new branch.')
         # We successfully created the target, remember it

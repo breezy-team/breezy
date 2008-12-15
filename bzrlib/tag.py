@@ -28,11 +28,15 @@ when the branch is opened.  Clients should typically do
 
 from warnings import warn
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.util import bencode
+""")
+
 from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.util import bencode
 
 
 class _Tags(object):

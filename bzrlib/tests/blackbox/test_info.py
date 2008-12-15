@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -247,7 +247,8 @@ Repository:
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root \
+or 1.9 or 1.9-rich-root \
 or dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -415,7 +416,8 @@ Repository:
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root or \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
+1.9 or 1.9-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -552,7 +554,8 @@ Repository:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root or \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
+1.9 or 1.9-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -676,7 +679,8 @@ Repository:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6-rich-root or \
+"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
+1.9 or 1.9-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -1092,7 +1096,8 @@ Repository:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: '1.6 or 1.6-rich-root'
+        format = {True: '1.6 or 1.6.1-rich-root'
+                        ' or 1.9 or 1.9-rich-root'
                         ' or dirstate or dirstate-tags or pack-0.92'
                         ' or rich-root or rich-root-pack',
                   False: 'dirstate'}[light_checkout]
@@ -1376,13 +1381,13 @@ Repository:
     def test_info_stacked(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline',
-            format='development1')
+            format='1.6')
         trunk_tree.commit('mainline')
         # and a branch from it which is stacked
         new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
         out, err = self.run_bzr('info newbranch')
         self.assertEqual(
-"""Standalone tree (format: development1)
+"""Standalone tree (format: 1.6)
 Location:
   branch root: newbranch
 

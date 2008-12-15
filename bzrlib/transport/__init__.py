@@ -84,7 +84,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.iteritems():
+    for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             if hasattr(factory, "_module_name"):
                 modules.add(factory._module_name)
@@ -100,7 +100,7 @@ def _get_transport_modules():
 class TransportListRegistry(registry.Registry):
     """A registry which simplifies tracking available Transports.
 
-    A registration of a new protocol requires two step:
+    A registration of a new protocol requires two steps:
     1) register the prefix with the function register_transport( )
     2) register the protocol provider with the function
     register_transport_provider( ) ( and the "lazy" variant )
@@ -254,7 +254,7 @@ class FileFileStream(FileStream):
         self.file_handle.close()
 
     def write(self, bytes):
-        self.file_handle.write(bytes)
+        osutils.pump_string_file(bytes, self.file_handle)
 
 
 class AppendBasedFileStream(FileStream):
@@ -293,7 +293,7 @@ class Transport(object):
     _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
-        super(Transport, self).__init__(base=base)
+        super(Transport, self).__init__()
         self.base = base
 
     def _translate_error(self, e, path, raise_generic=True):
@@ -688,8 +688,21 @@ class Transport(object):
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
-                yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = offset_stack.next()
+                this_offset = cur_offset_and_size[0]
+                try:
+                    cur_offset_and_size = offset_stack.next()
+                except StopIteration:
+                    # Close the file handle as there will be no more data
+                    # The handle would normally be cleaned up as this code goes
+                    # out of scope, but as we are a generator, not all code
+                    # will re-enter once we have consumed all the expected
+                    # data. For example:
+                    #   zip(range(len(requests)), readv(foo, requests))
+                    # Will stop because the range is done, and not run the
+                    # cleanup code for the readv().
+                    fp.close()
+                    cur_offset_and_size = None
+                yield this_offset, this_data
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.
@@ -758,29 +771,35 @@ class Transport(object):
         into a single large request, while retaining the original
         offsets.
         Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
+        Note that overlapping requests are not permitted. (So [(15, 10), (20,
+        10)] will raise a ValueError.) This is because the data we access never
+        overlaps, and it allows callers to trust that we only need any byte of
+        data for 1 request (so nothing needs to be buffered to fulfill a second
+        request.)
 
         :param offsets: A list of (start, length) pairs
-
         :param limit: Only combine a maximum of this many pairs Some transports
                 penalize multiple reads more than others, and sometimes it is
                 better to return early.
                 0 means no limit
-
         :param fudge_factor: All transports have some level of 'it is
-                better to read some more data and throw it away rather 
+                better to read some more data and throw it away rather
                 than seek', so collapse if we are 'close enough'
-
         :param max_size: Create coalesced offsets no bigger than this size.
                 When a single offset is bigger than 'max_size', it will keep
                 its size and be alone in the coalesced offset.
                 0 means no maximum size.
-
-        :return: yield _CoalescedOffset objects, which have members for where
-                to start, how much to read, and how to split those 
-                chunks back up
+        :return: return a list of _CoalescedOffset objects, which have members
+            for where to start, how much to read, and how to split those chunks
+            back up
         """
         last_end = None
         cur = _CoalescedOffset(None, None, [])
+        coalesced_offsets = []
+
+        if max_size <= 0:
+            # 'unlimited', but we actually take this to mean 100MB buffer limit
+            max_size = 100*1024*1024
 
         for start, size in offsets:
             end = start + size
@@ -789,18 +808,21 @@ class Transport(object):
                 and start >= cur.start
                 and (limit <= 0 or len(cur.ranges) < limit)
                 and (max_size <= 0 or end - cur.start <= max_size)):
+                if start < last_end:
+                    raise ValueError('Overlapping range not allowed:'
+                        ' last range ended at %s, new one starts at %s'
+                        % (last_end, start))
                 cur.length = end - cur.start
                 cur.ranges.append((start-cur.start, size))
             else:
                 if cur.start is not None:
-                    yield cur
+                    coalesced_offsets.append(cur)
                 cur = _CoalescedOffset(start, size, [(0, size)])
             last_end = end
 
         if cur.start is not None:
-            yield cur
-
-        return
+            coalesced_offsets.append(cur)
+        return coalesced_offsets
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
@@ -1017,22 +1039,31 @@ class Transport(object):
         implement it.
         """
         source = self.clone(from_relpath)
-        self.mkdir(to_relpath)
         target = self.clone(to_relpath)
+        target.mkdir('.')
+        source.copy_tree_to_transport(target)
+
+    def copy_tree_to_transport(self, to_transport):
+        """Copy a subtree from one transport to another.
+
+        self.base is used as the source tree root, and to_transport.base
+        is used as the target.  to_transport.base must exist (and be a
+        directory).
+        """
         files = []
         directories = ['.']
         while directories:
             dir = directories.pop()
             if dir != '.':
-                target.mkdir(dir)
-            for path in source.list_dir(dir):
+                to_transport.mkdir(dir)
+            for path in self.list_dir(dir):
                 path = dir + '/' + path
-                stat = source.stat(path)
+                stat = self.stat(path)
                 if S_ISDIR(stat.st_mode):
                     directories.append(path)
                 else:
                     files.append(path)
-        source.copy_to(files, target)
+        self.copy_to(files, to_transport)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory.
@@ -1217,6 +1248,22 @@ class Transport(object):
         # have Transport refuses to be reused than testing that the reuse
         # should be asked to ConnectedTransport only.
         return None
+
+    def _redirected_to(self, source, target):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        # This returns None by default, meaning the transport can't handle the
+        # redirection.
+        return None
+
 
 
 class _SharedConnection(object):
@@ -1556,7 +1603,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
-    for proto, factory_list in transport_list_registry.iteritems():
+    for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
@@ -1708,12 +1755,13 @@ register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
+# The default http implementation is urllib, but https is pycurl if available
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
-                        'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 
@@ -1721,6 +1769,25 @@ register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+
+# Default to trying GSSAPI authentication (if the kerberos module is available)
+register_transport_proto('ftp+gssapi://', register_netloc=True)
+register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_transport_proto('aftp+gssapi://', register_netloc=True)
+register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_transport_proto('ftp+nogssapi://', register_netloc=True)
+register_transport_proto('aftp+nogssapi://', register_netloc=True)
+
+register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi', 
+                        'GSSAPIFtpTransport')
+register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp', 
+                        'FtpTransport')
+register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp', 
+                        'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
@@ -1738,6 +1805,9 @@ register_lazy_transport('readonly+', 'bzrlib.transport.readonly',
 register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs',
                         'FakeNFSTransportDecorator')
+
+register_transport_proto('log+')
+register_lazy_transport('log+', 'bzrlib.transport.log', 'TransportLogDecorator')
 
 register_transport_proto('trace+')
 register_lazy_transport('trace+', 'bzrlib.transport.trace',

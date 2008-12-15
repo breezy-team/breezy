@@ -20,6 +20,7 @@ import os
 import posixpath
 import random
 import re
+import select
 import SimpleHTTPServer
 import socket
 import SocketServer
@@ -346,7 +347,12 @@ class TestingHTTPServerMixin:
              # WSAENOTCONN (10057) 'Socket is not connected' is harmless on
              # windows (occurs before the first connection attempt
              # vila--20071230)
-             if not len(e.args) or e.args[0] != 10057:
+
+             # 'Socket is not connected' can also occur on OSX, with a
+             # "regular" ENOTCONN (when something went wrong during test case
+             # setup leading to self.setUp() *not* being called but
+             # self.tearDown() still being called -- vila20081106
+             if not len(e.args) or e.args[0] not in (errno.ENOTCONN, 10057):
                  raise
          # Let the server properly close the socket
          self.server_close()
@@ -418,6 +424,10 @@ class HttpServer(transport.Server):
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
 
+    def __repr__(self):
+        return "%s(%s:%s)" % \
+            (self.__class__.__name__, self.host, self.port)
+
     def _get_httpd(self):
         if self._httpd is None:
             rhandler = self.request_handler
@@ -467,6 +477,14 @@ class HttpServer(transport.Server):
                 httpd.handle_request()
             except socket.timeout:
                 pass
+            except (socket.error, select.error), e:
+               if e[0] == errno.EBADF:
+                   # Starting with python-2.6, handle_request may raise socket
+                   # or select exceptions when the server is shut down (as we
+                   # do).
+                   pass
+               else:
+                   raise
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)

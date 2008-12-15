@@ -74,7 +74,7 @@ def load_tests(basic_tests, module, test_loader):
 #        ('knit', 'rich-root', True),
         ('knit', '1.6', False),
 #        ('pack-0.92', '1.6', False),
-        ('1.6', '1.6-rich-root', True),
+        ('1.6', '1.6.1-rich-root', True),
         ]
     scenarios = []
     for (old_name, new_name, model_change) in scenario_pairs:

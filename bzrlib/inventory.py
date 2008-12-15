@@ -850,6 +850,7 @@ class Inventory(object):
         if self.root is None:
             return Inventory(root_id=None)
         other = Inventory(entries.next()[1].file_id)
+        other.root.revision = self.root.revision
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
         for path, entry in entries:
@@ -1232,9 +1233,27 @@ class Inventory(object):
     def has_id(self, file_id):
         return (file_id in self._byid)
 
+    def _make_delta(self, old):
+        """Make an inventory delta from two inventories."""
+        old_ids = set(old)
+        new_ids = set(self)
+        adds = new_ids - old_ids
+        deletes = old_ids - new_ids
+        common = old_ids.intersection(new_ids)
+        delta = []
+        for file_id in deletes:
+            delta.append((old.id2path(file_id), None, file_id, None))
+        for file_id in adds:
+            delta.append((None, self.id2path(file_id), file_id, self[file_id]))
+        for file_id in common:
+            if old[file_id] != self[file_id]:
+                delta.append((old.id2path(file_id), self.id2path(file_id),
+                    file_id, self[file_id]))
+        return delta
+
     def remove_recursive_id(self, file_id):
         """Remove file_id, and children, from the inventory.
-        
+
         :param file_id: A file_id to remove.
         """
         to_find_delete = [self._byid[file_id]]

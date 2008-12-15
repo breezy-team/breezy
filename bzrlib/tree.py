@@ -37,6 +37,7 @@ from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import mutter, note
 
 
@@ -132,7 +133,8 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
-    __contains__ = has_id
+    def __contains__(self, file_id):
+        return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
@@ -261,6 +263,30 @@ class Tree(object):
         to which one is used.
         """
         raise NotImplementedError(self.get_file)
+
+    def get_file_text(self, file_id, path=None):
+        """Return the byte content of a file.
+
+        :param file_id: The file_id of the file.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
+        """
+        my_file = self.get_file(file_id, path)
+        try:
+            return my_file.read()
+        finally:
+            my_file.close()
+
+    def get_file_lines(self, file_id, path=None):
+        """Return the content of a file, as lines.
+
+        :param file_id: The file_id of the file.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
+        """
+        return osutils.split_lines(self.get_file_text(file_id, path))
 
     def get_file_mtime(self, file_id, path=None):
         """Return the modification time for a file.
@@ -455,6 +481,11 @@ class Tree(object):
         """
         return find_ids_across_trees(paths, [self] + list(trees), require_versioned)
 
+    def iter_children(self, file_id):
+        entry = self.iter_entries_by_dir([file_id]).next()[1]
+        for child in getattr(entry, 'children', {}).itervalues():
+            yield child.file_id
+
     @symbol_versioning.deprecated_method(symbol_versioning.one_six)
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
@@ -557,11 +588,6 @@ class Tree(object):
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
-        file_id = self.path2id(rules.RULES_TREE_FILENAME)
-        if file_id is not None:
-            ini_file = self.get_file(file_id)
-            searcher = rules._StackedRulesSearcher(
-                [rules._IniBasedRulesSearcher(ini_file), default_searcher])
         return searcher
 
 
@@ -648,7 +674,7 @@ def file_status(filename, old_tree, new_tree):
     return 'wtf?'
 
     
-
+@deprecated_function(deprecated_in((1, 9, 0)))
 def find_renames(old_inv, new_inv):
     for file_id in old_inv:
         if file_id not in new_inv:
@@ -657,7 +683,7 @@ def find_renames(old_inv, new_inv):
         new_name = new_inv.id2path(file_id)
         if old_name != new_name:
             yield (old_name, new_name)
-            
+
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.
@@ -724,10 +750,9 @@ def _find_children_across_trees(specified_ids, trees):
             for tree in trees:
                 if not tree.has_id(file_id):
                     continue
-                entry = tree.inventory[file_id]
-                for child in getattr(entry, 'children', {}).itervalues():
-                    if child.file_id not in interesting_ids:
-                        new_pending.add(child.file_id)
+                for child_id in tree.iter_children(file_id):
+                    if child_id not in interesting_ids:
+                        new_pending.add(child_id)
         interesting_ids.update(new_pending)
         pending = new_pending
     return interesting_ids
@@ -836,10 +861,10 @@ class InterTree(InterObject):
         else:
             all_unversioned = deque()
         to_paths = {}
-        from_entries_by_dir = list(self.source.inventory.iter_entries_by_dir(
+        from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(self.target.inventory.iter_entries_by_dir(
+        to_entries_by_dir = list(self.target.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
@@ -937,7 +962,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if not file_id in self.target.inventory:
+            if not file_id in self.target.all_file_ids():
                 # common case - paths we have not emitted are not present in
                 # target.
                 to_path = None
@@ -953,7 +978,7 @@ class InterTree(InterObject):
                 self.source._comparison_data(from_entry, path)
             kind = (from_kind, None)
             executable = (from_executable, None)
-            changed_content = True
+            changed_content = from_kind is not None
             # the parent's path is necessarily known at this point.
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)

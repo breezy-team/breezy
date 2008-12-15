@@ -22,17 +22,27 @@ import subprocess
 import sys
 import time
 
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib import tests
 
 
-class TestBreakin(TestCase):
+class TestBreakin(tests.TestCase):
     # FIXME: If something is broken, these tests may just hang indefinitely in
     # wait() waiting for the child to exit when it's not going to.
 
     def setUp(self):
         if sys.platform == 'win32':
-            raise TestSkipped('breakin signal not tested on win32')
+            raise tests.TestSkipped('breakin signal not tested on win32')
         super(TestBreakin, self).setUp()
+
+    def _dont_SIGQUIT_on_darwin(self):
+        if sys.platform == 'darwin':
+            # At least on Leopard and with python 2.6, this test will raise a
+            # popup window asking if the python failure should be reported to
+            # Apple... That's not the point of the test :) Marking the test as
+            # not applicable Until we find a way to disable that intrusive
+            # behavior... --vila20080611
+            raise tests.TestNotApplicable(
+                '%s raises a popup on OSX' % self.id())
 
     # port 0 means to allocate any port
     _test_process_args = ['serve', '--port', 'localhost:0']
@@ -53,6 +63,7 @@ class TestBreakin(TestCase):
         self.assertContainsRe(err, r'entering debugger')
 
     def test_breakin_harder(self):
+        self._dont_SIGQUIT_on_darwin()
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB=None))
         # wait for it to get started, and print the 'listening' line
@@ -78,6 +89,7 @@ class TestBreakin(TestCase):
             self.fail("subprocess wasn't terminated by repeated SIGQUIT")
 
     def test_breakin_disabled(self):
+        self._dont_SIGQUIT_on_darwin()
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB='0'))
         # wait for it to get started, and print the 'listening' line

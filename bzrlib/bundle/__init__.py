@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from StringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -82,6 +80,8 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             return directive, transport
         else:
             return _serializer.read_bundle(f), transport
+    except errors.ConnectionReset:
+        raise
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:

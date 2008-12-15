@@ -56,7 +56,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('send -o-')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -68,7 +68,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('bundle')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -189,6 +189,11 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(md_file.read(), 'revision3')
         stdout = self.run_bzr('send -f branch --output -')[0]
         self.assertContainsRe(stdout, 'revision3')
+
+    def test_note_revisions(self):
+        self.make_trees()
+        stderr = self.run_bzr('send -f branch --output file1')[1]
+        self.assertContainsRe(stderr, r'Bundling 1 revision\(s\).\n')
 
     def test_mailto_option(self):
         self.make_trees()

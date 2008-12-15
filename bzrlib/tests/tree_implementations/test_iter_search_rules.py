@@ -32,6 +32,7 @@ class TestIterSearchRules(TestCaseWithTree):
     def make_tree_with_rules(self, text):
         tree = self.make_branch_and_tree('.')
         if text is not None:
+            self.fail("No method for in-tree rules agreed on yet.")
             text_utf8 = text.encode('utf-8')
             self.build_tree_contents([(rules.RULES_TREE_FILENAME, text_utf8)])
             tree.add(rules.RULES_TREE_FILENAME)
@@ -51,7 +52,7 @@ class TestIterSearchRules(TestCaseWithTree):
         self.assertEquals((('foo', 'baz'),), result[0])
         self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
 
-    def test_iter_search_rules_just_tree(self):
+    def _disabled_test_iter_search_rules_just_tree(self):
         per_user = self.make_per_user_searcher('')
         tree = self.make_tree_with_rules(
             "[name ./a.txt]\n"
@@ -64,7 +65,7 @@ class TestIterSearchRules(TestCaseWithTree):
         self.assertEquals((('foo', 'baz'),), result[0])
         self.assertEquals((('foo', 'bar'), ('a', 'True')), result[1])
 
-    def test_iter_search_rules_tree_and_per_user(self):
+    def _disabled_test_iter_search_rules_tree_and_per_user(self):
         per_user = self.make_per_user_searcher(
             "[name ./a.txt]\nfoo=baz\n"
             "[name *.txt]\nfoo=bar\na=True\n")

@@ -81,6 +81,9 @@ class RepoFetcher(object):
         """Create a repo fetcher.
 
         :param find_ghosts: If True search the entire history for ghosts.
+        :param _write_group_acquired_callable: Don't use; this parameter only
+            exists to facilitate a hack done in InterPackRepo.fetch.  We would
+            like to remove this parameter.
         """
         # result variables.
         self.failed_revisions = []
@@ -109,7 +112,7 @@ class RepoFetcher(object):
                 try:
                     self.__fetch()
                 except:
-                    self.to_repository.abort_write_group()
+                    self.to_repository.abort_write_group(suppress_errors=True)
                     raise
                 else:
                     self.to_repository.commit_write_group()
@@ -180,7 +183,7 @@ class RepoFetcher(object):
                     from_texts = self.from_repository.texts
                     to_texts.insert_record_stream(from_texts.get_record_stream(
                         text_keys, self.to_repository._fetch_order,
-                        self.to_repository._fetch_uses_deltas))
+                        not self.to_repository._fetch_uses_deltas))
                     # Cause an error if a text occurs after we have done the
                     # copy.
                     text_keys = None
@@ -243,11 +246,12 @@ class RepoFetcher(object):
             to_weave.insert_record_stream(from_weave.get_record_stream(
                 [(rev_id,) for rev_id in revs],
                 self.to_repository._fetch_order,
-                self.to_repository._fetch_uses_deltas))
+                not self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
 
     def _fetch_revision_texts(self, revs, pb):
+        # fetch signatures first and then the revision texts
         # may need to be a InterRevisionStore call here.
         to_sf = self.to_repository.signatures
         from_sf = self.from_repository.signatures
@@ -255,16 +259,19 @@ class RepoFetcher(object):
         to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
             [(rev_id,) for rev_id in revs],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas)))
+            not self.to_repository._fetch_uses_deltas)))
         self._fetch_just_revision_texts(revs)
 
     def _fetch_just_revision_texts(self, version_ids):
         to_rf = self.to_repository.revisions
         from_rf = self.from_repository.revisions
+        # If a revision has a delta, this is actually expanded inside the
+        # insert_record_stream code now, which is an alternate fix for
+        # bug #261339
         to_rf.insert_record_stream(from_rf.get_record_stream(
             [(rev_id,) for rev_id in version_ids],
             self.to_repository._fetch_order,
-            self.to_repository._fetch_uses_deltas))
+            not self.to_repository._fetch_uses_deltas))
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and
@@ -380,6 +387,8 @@ class Inter1and2Helper(object):
                                       parents)
 
     def fetch_revisions(self, revision_ids):
+        # TODO: should this batch them up rather than requesting 10,000
+        #       revisions at once?
         for revision in self.source.get_revisions(revision_ids):
             self.target.add_revision(revision.revision_id, revision)
 

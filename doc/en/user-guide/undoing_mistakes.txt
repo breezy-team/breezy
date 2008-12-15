@@ -135,7 +135,7 @@ since then. If you have, the ``revert`` would wipe them out as well. In that
 case, you probably want to use `Reverse cherrypicking`_ instead to
 back out the bad fix.
 
-Note: As an alternative to using an absolute bug number (like 19), you can
+Note: As an alternative to using an absolute revision number (like 19), you can
 specify one relative to the tip (-1) using a negative number like this::
 
   bzr revert -r -2

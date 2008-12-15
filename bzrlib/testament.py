@@ -70,9 +70,12 @@ Testament format 1
 # revisions can be serialized.
 
 from copy import copy
-from sha import sha
 
-from bzrlib.osutils import contains_whitespace, contains_linebreaks
+from bzrlib.osutils import (
+    contains_whitespace,
+    contains_linebreaks,
+    sha,
+    )
 
 
 class Testament(object):

@@ -63,10 +63,7 @@ class RevisionTree(Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
-    def get_file_lines(self, file_id):
-        return osutils.split_lines(self.get_file_text(file_id))
-
-    def get_file_text(self, file_id):
+    def get_file_text(self, file_id, path=None):
         return list(self.iter_files_bytes([(file_id, None)]))[0][1]
 
     def get_file(self, file_id, path=None):

@@ -21,7 +21,6 @@
 import errno
 import os
 from cStringIO import StringIO
-import urllib
 from warnings import warn
 
 from bzrlib import (

@@ -35,7 +35,10 @@ from bzrlib import (
     revision,
     urlutils,
     )
-from bzrlib.bundle.serializer import write_bundle
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.bundle import serializer
+""")
 
 
 class SmartServerRequest(object):
@@ -179,8 +182,7 @@ class SmartServerResponse(object):
                 other.body_stream is self.body_stream)
 
     def __repr__(self):
-        status = {True: 'OK', False: 'ERR'}[self.is_successful()]
-        return "<SmartServerResponse status=%s args=%r body=%r>" % (status,
+        return "<%s args=%r body=%r>" % (self.__class__.__name__,
             self.args, self.body)
 
 
@@ -288,13 +290,22 @@ class SmartServerRequestHandler(object):
         except errors.ShortReadvError, e:
             return FailedSmartServerResponse(('ShortReadvError',
                 e.path, str(e.offset), str(e.length), str(e.actual)))
+        except errors.UnstackableRepositoryFormat, e:
+            return FailedSmartServerResponse(('UnstackableRepositoryFormat',
+                str(e.format), e.url))
+        except errors.UnstackableBranchFormat, e:
+            return FailedSmartServerResponse(('UnstackableBranchFormat',
+                str(e.format), e.url))
+        except errors.NotStacked, e:
+            return FailedSmartServerResponse(('NotStacked',))
         except UnicodeError, e:
             # If it is a DecodeError, than most likely we are starting
             # with a plain string
             str_or_unicode = e.object
             if isinstance(str_or_unicode, unicode):
-                # XXX: UTF-8 might have \x01 (our seperator byte) in it.  We
-                # should escape it somehow.
+                # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
+                # byte) in it, so this encoding could cause broken responses.
+                # Newer clients use protocol v3, so will be fine.
                 val = 'u:' + str_or_unicode.encode('utf-8')
             else:
                 val = 's:' + str_or_unicode.encode('base64')
@@ -306,6 +317,12 @@ class SmartServerRequestHandler(object):
                 return FailedSmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
+        except errors.ReadError, e:
+            # cannot read the file
+            return FailedSmartServerResponse(('ReadError', e.path))
+        except errors.PermissionDenied, e:
+            return FailedSmartServerResponse(
+                ('PermissionDenied', e.path, e.extra))
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
@@ -353,7 +370,7 @@ class GetBundleRequest(SmartServerRequest):
         repo = control.open_repository()
         tmpf = tempfile.TemporaryFile()
         base_revision = revision.NULL_REVISION
-        write_bundle(repo, revision_id, base_revision, tmpf)
+        serializer.write_bundle(repo, revision_id, base_revision, tmpf)
         tmpf.seek(0)
         return SuccessfulSmartServerResponse((), tmpf.read())
 
@@ -374,6 +391,8 @@ request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
+request_handlers.register_lazy(
+    'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
@@ -424,6 +443,9 @@ request_handlers.register_lazy(
     'readv', 'bzrlib.smart.vfs', 'ReadvRequest')
 request_handlers.register_lazy(
     'rename', 'bzrlib.smart.vfs', 'RenameRequest')
+request_handlers.register_lazy(
+    'PackRepository.autopack', 'bzrlib.smart.packrepository',
+    'SmartServerPackRepositoryAutopack')
 request_handlers.register_lazy('Repository.gather_stats',
                                'bzrlib.smart.repository',
                                'SmartServerRepositoryGatherStats')
