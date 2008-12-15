@@ -10,6 +10,9 @@ IN DEVELOPMENT
 
   CHANGES:
   
+    * Formats using Knit-based repository formats are now explicitly
+      marked as deprecated. (Ian Clatworthy)
+
     * ``LRUCache(after_cleanup_size)`` was renamed to
       ``after_cleanup_count`` and the old name deprecated. The new name is
       used for clarity, and to avoid confusion with
@@ -67,6 +70,11 @@ IN DEVELOPMENT
       (Vincent Ladeuil, #87179)
 
   DOCUMENTATION:
+
+    * Improved the formats help topic to explain why multiple formats
+      exist and to provide guidelines in selecting one. Introduced
+      two new supporting help topics: current-formats and other-formats.
+      (Ian Clatworthy)
 
   API CHANGES:
 

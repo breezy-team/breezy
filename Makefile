@@ -124,6 +124,7 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
 		 bzrlib/conflicts.py \
 		 bzrlib/help_topics/__init__.py \
+		 bzrlib/bzrdir.py \
 		 bzrlib/sign_my_commits.py \
 		 bzrlib/bugtracker.py \
 		 generate_docs.py \
