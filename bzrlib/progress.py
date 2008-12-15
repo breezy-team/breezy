@@ -153,11 +153,11 @@ class TextProgressView(object):
         self._have_output = False
         self._width = osutils.terminal_width()
         self._last_transport_msg = ''
-        self._last_task_msg = ''
         self._spin_pos = 0
         self._last_update = 0
         self._transport_update_time = 0
         self._task_fraction = None
+        self._last_task = None
 
     def _show_line(self, s):
         n = self._width - 1
@@ -170,14 +170,14 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if self._task_fraction is not None:
-            cols = 20
-            # number of markers highlighted in bar
-            markers = int(round(float(cols) * self._task_fraction))
-            bar_str = ' [' + ('#' * markers).ljust(cols) + '] '
-            return bar_str
-        else:
-            return ''
+        spin_str =  r'/-\|'[self._spin_pos % 4]
+        self._spin_pos += 1
+        f = self._task_fraction or 0
+        cols = 20
+        # number of markers highlighted in bar
+        markers = int(round(float(cols) * f)) - 1
+        bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
+        return bar_str
 
     def _format_task(self, task):
         if task.total_cnt is not None:
@@ -204,22 +204,23 @@ class TextProgressView(object):
             # no recent activity; expire it
             self._last_transport_msg = ''
         self._last_update = now
-        spin_str =  r'/-\|'[self._spin_pos % 4]
-        self._spin_pos += 1
         bar_string = self._render_bar()
-        s = (self._last_transport_msg
-             + ' ' + spin_str + ' ' +
-             self._last_task_msg)
-        s_max = self._width - 1 - len(bar_string)
-        if len(s) > s_max:
-            s = s[:s_max+1]
-        elif len(s) < s_max:
-            s = s.ljust(s_max)
-        self._show_line(s + bar_string)
+        if self._last_task:
+            task_msg = self._format_task(self._last_task)
+        else:
+            task_msg = ''
+        trans = self._last_transport_msg
+        if trans:
+            trans += ' | '
+        s = (bar_string
+             + trans
+             + task_msg
+             )
+        self._show_line(s)
         self._have_output = True
 
     def show_progress(self, task):
-        self._last_task_msg = self._format_task(task)
+        self._last_task = task
         self._repaint()
 
     def show_transport_activity(self, msg):

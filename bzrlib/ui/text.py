@@ -98,7 +98,7 @@ class TextUIFactory(CLIUIFactory):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._last_activity_time)
-            msg = ("%6dkB @ %6.1fkB/s" %
+            msg = ("%6dkB @ %4dkB/s" %
                 (self._total_byte_count>>10, int(rate)>>10,))
             self._last_activity_time = now
             self._bytes_since_update = 0
