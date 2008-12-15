@@ -49,8 +49,7 @@ class TextUIFactory(CLIUIFactory):
                          select.
         """
         super(TextUIFactory, self).__init__()
-        # XXX: mbp, temporarily disabled so we can see the network progress
-        self._bar_type = progress.DummyProgress # bar_type
+        self._bar_type = bar_type
         if stdout is None:
             self.stdout = sys.stdout
         else:
@@ -63,6 +62,9 @@ class TextUIFactory(CLIUIFactory):
         self._total_byte_count = 0
         self._bytes_since_update = 0
         self._last_activity_time = None
+        # there must always be a top-level progress bar, even if it's not
+        # always shown.
+        self.nested_progress_bar()
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
@@ -84,6 +86,10 @@ class TextUIFactory(CLIUIFactory):
 
         This will, clear any progress bars, and leave the cursor at the
         leftmost position."""
+        # XXX: If this is preparing to write to stdout, but that's for example
+        # directed into a file rather than to the terminal, and the progress
+        # bar _is_ going to the terminal, we shouldn't need
+        # to clear it.  We might need to separately check for the case of 
         if self._progress_bar_stack is None:
             return
         overall_pb = self._progress_bar_stack.bottom()
@@ -107,7 +113,9 @@ class TextUIFactory(CLIUIFactory):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._last_activity_time)
-            sys.stderr.write("transport %6dkB @ %6.1fkB/s                            \r" %
+            msg = ("%6dkB @ %6.1fkB/s" %
                 (self._total_byte_count>>10, int(rate)>>10,))
             self._last_activity_time = now
             self._bytes_since_update = 0
+            overall_pb = self._progress_bar_stack.bottom()
+            overall_pb.update(msg=None, transport_msg=msg)
