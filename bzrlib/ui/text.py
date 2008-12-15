@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 """
 
 import sys
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -48,7 +49,8 @@ class TextUIFactory(CLIUIFactory):
                          select.
         """
         super(TextUIFactory, self).__init__()
-        self._bar_type = bar_type
+        # XXX: mbp, temporarily disabled so we can see the network progress
+        self._bar_type = progress.DummyProgress # bar_type
         if stdout is None:
             self.stdout = sys.stdout
         else:
@@ -57,6 +59,10 @@ class TextUIFactory(CLIUIFactory):
             self.stderr = sys.stderr
         else:
             self.stderr = stderr
+        # total bytes read/written so far
+        self._total_byte_count = 0
+        self._bytes_since_update = 0
+        self._last_activity_time = None
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
@@ -83,3 +89,25 @@ class TextUIFactory(CLIUIFactory):
         overall_pb = self._progress_bar_stack.bottom()
         if overall_pb is not None:
             overall_pb.clear()
+
+    def report_transport_activity(self, transport, byte_count, direction):
+        """Called by transports as they do IO.
+        
+        This may update a progress bar, spinner, or similar display.
+        By default it does nothing.
+        """
+        # XXX: this is separate from the count-based progress bar, but should
+        # be integrated with it...
+        self._total_byte_count += byte_count
+        self._bytes_since_update += byte_count
+        now = time.time()
+        if self._last_activity_time is None:
+            self._last_activity_time = now
+        elif now >= (self._last_activity_time + 0.2):
+            # guard against clock stepping backwards, and don't update too
+            # often
+            rate = self._bytes_since_update / (now - self._last_activity_time)
+            sys.stderr.write("transport %6dkB @ %6.1fkB/s                            \r" %
+                (self._total_byte_count>>10, int(rate)>>10,))
+            self._last_activity_time = now
+            self._bytes_since_update = 0

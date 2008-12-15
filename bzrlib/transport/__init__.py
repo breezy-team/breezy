@@ -41,6 +41,7 @@ from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
+    ui,
     urlutils,
     )
 """)
@@ -392,7 +393,7 @@ class Transport(object):
         :param bytes: Number of bytes read or written.
         :param direction: 'read' or 'write' or None.
         """
-        sys.stderr.write("[%d] " % (bytes,))
+        ui.ui_factory.report_transport_activity(self, bytes, direction)
 
     def _update_pb(self, pb, msg, count, total):
         """Update the progress bar based on the current count
