@@ -33,6 +33,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
   
+    * Fix a problem with CIFS client/server lag on windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
 
