@@ -62,25 +62,13 @@ class TextUIFactory(CLIUIFactory):
         self._total_byte_count = 0
         self._bytes_since_update = 0
         self._last_activity_time = None
-        # there must always be a top-level progress bar, even if it's not
-        # always shown.
-        self.nested_progress_bar()
+        # paints progress, network activity, etc
+        self._progress_view = progress.TextProgressView(self.stderr)
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
         self.stdout.write(prompt)
         
-    def nested_progress_bar(self):
-        """Return a nested progress bar.
-        
-        The actual bar type returned depends on the progress module which
-        may return a tty or dots bar depending on the terminal.
-        """
-        if self._progress_bar_stack is None:
-            self._progress_bar_stack = progress.ProgressBarStack(
-                klass=self._bar_type)
-        return self._progress_bar_stack.get_nested()
-
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -90,11 +78,7 @@ class TextUIFactory(CLIUIFactory):
         # directed into a file rather than to the terminal, and the progress
         # bar _is_ going to the terminal, we shouldn't need
         # to clear it.  We might need to separately check for the case of 
-        if self._progress_bar_stack is None:
-            return
-        overall_pb = self._progress_bar_stack.bottom()
-        if overall_pb is not None:
-            overall_pb.clear()
+        self._progress_view.clear()
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -102,8 +86,9 @@ class TextUIFactory(CLIUIFactory):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        # XXX: this is separate from the count-based progress bar, but should
-        # be integrated with it...
+        # XXX: Probably there should be a transport activity model, and that
+        # too should be seen by the progress view, rather than being poked in
+        # here.
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
         now = time.time()
@@ -117,5 +102,15 @@ class TextUIFactory(CLIUIFactory):
                 (self._total_byte_count>>10, int(rate)>>10,))
             self._last_activity_time = now
             self._bytes_since_update = 0
-            overall_pb = self._progress_bar_stack.bottom()
-            overall_pb.update(msg=None, transport_msg=msg)
+            self._progress_view.show_transport_activity(msg)
+
+    def show_progress(self, task):
+        """A task has been updated and wants to be displayed.
+        """
+        self._progress_view.show_progress(task)
+
+    def progress_finished(self, task):
+        CLIUIFactory.progress_finished(self, task)
+        if not self._task_stack:
+            # finished top-level task
+            self._progress_view.clear()

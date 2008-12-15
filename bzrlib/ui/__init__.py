@@ -50,7 +50,7 @@ class UIFactory(object):
 
     def __init__(self):
         super(UIFactory, self).__init__()
-        self._progress_bar_stack = None
+        self._task_stack = []
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -73,7 +73,17 @@ class UIFactory(object):
         When the bar has been finished with, it should be released by calling
         bar.finished().
         """
-        raise NotImplementedError(self.nested_progress_bar)
+        if self._task_stack:
+            t = progress.ProgressTask(self._task_stack[-1])
+        else:
+            t = progress.ProgressTask()
+        self._task_stack.append(t)
+        return t
+
+    def progress_finished(self, task):
+        if task != self._task_stack[-1]:
+            raise AssertionError()
+        del self._task_stack[-1]
 
     def clear_term(self):
         """Prepare the terminal for output.
@@ -167,18 +177,17 @@ class SilentUIFactory(CLIUIFactory):
     def get_password(self, prompt='', **kwargs):
         return None
 
-    def nested_progress_bar(self):
-        if self._progress_bar_stack is None:
-            self._progress_bar_stack = progress.ProgressBarStack(
-                klass=progress.DummyProgress)
-        return self._progress_bar_stack.get_nested()
-
     def clear_term(self):
         pass
 
     def recommend_upgrade(self, *args):
         pass
 
+    def show_progress(self, task):
+        pass
+
+    def progress_finished(self, task):
+        pass
 
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""
