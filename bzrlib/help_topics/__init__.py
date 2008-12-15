@@ -675,10 +675,10 @@ as soon as a condition is true):
   most projects.
 
 If some of your developers are unable to use the most recent
-version of Bazaar (due to corporate policy say), be sure to
-adjust the guidelines above accordingly. For example, you may
-need to select 1.6 instead of 1.9 if your company has standardized
-on Bazaar 1.7.
+version of Bazaar (due to distro package availability say), be
+sure to adjust the guidelines above accordingly. For example,
+you may need to select 1.6 instead of 1.9 if your project has
+standardized on Bazaar 1.7.
 
 Note: Many of the currently supported formats have two variants:
 a plain one and a rich-root one. The latter include an additional
