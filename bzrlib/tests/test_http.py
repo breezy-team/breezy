@@ -34,9 +34,11 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     osutils,
+    remote as _mod_remote,
     tests,
     transport,
     ui,
@@ -118,6 +120,7 @@ def load_tests(standard_tests, module, loader):
     t_adapter = TransportAdapter()
     t_classes= (TestHttpTransportRegistration,
                 TestHttpTransportUrls,
+                Test_redirected_to,
                 )
     is_testing_for_transports = tests.condition_isinstance(t_classes)
 
@@ -446,13 +449,6 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
         self.assertTrue(server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
             % bzrlib.__version__) > -1)
-
-    def test_get_smart_medium(self):
-        # For HTTP, get_smart_medium should return the transport object.
-        server = self.get_readonly_server()
-        http_transport = self._transport(server.get_url())
-        medium = http_transport.get_smart_medium()
-        self.assertIs(medium, http_transport)
 
     def test_has_on_bogus_host(self):
         # Get a free address and don't 'accept' on it, so that we
@@ -1143,7 +1139,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'proxied contents of foo\n')
+            self.assertEqual('proxied contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1152,7 +1148,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(), 'contents of foo\n')
+            self.assertEqual('contents of foo\n', t.get('foo').read())
         finally:
             self._restore_env()
 
@@ -1268,7 +1264,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
                                   ('bundle',
                                   '# Bazaar revision bundle v0.9\n#\n')
                                   ],)
-
+        # The requests to the old server will be redirected to the new server
         self.old_transport = self._transport(self.old_server.get_url())
 
     def test_redirected(self):
@@ -1667,6 +1663,13 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         return http_utils.HTTPServerWithSmarts(
             protocol_version=self._protocol_version)
 
+    def test_open_bzrdir(self):
+        branch = self.make_branch('relpath')
+        http_server = self.get_readonly_server()
+        url = http_server.get_url() + 'relpath'
+        bd = bzrdir.BzrDir.open(url)
+        self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
+
     def test_bulk_data(self):
         # We should be able to send and receive bulk data in a single message.
         # The 'readv' command in the smart protocol both sends and receives
@@ -1738,5 +1741,50 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(errors.SmartProtocolError,
-                          t.send_http_smart_request, 'whatever')
+                          t.get_smart_medium().send_http_smart_request,
+                          'whatever')
 
+class Test_redirected_to(tests.TestCase):
+
+    def test_redirected_to_subdir(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/foo/subdir')
+        self.assertIsInstance(r, type(t))
+        # Both transports share the some connection
+        self.assertEquals(t._get_connection(), r._get_connection())
+
+    def test_redirected_to_self_with_slash(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/foo/')
+        self.assertIsInstance(r, type(t))
+        # Both transports share the some connection (one can argue that we
+        # should return the exact same transport here, but that seems
+        # overkill).
+        self.assertEquals(t._get_connection(), r._get_connection())
+
+    def test_redirected_to_host(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://foo.example.com/foo/subdir')
+        self.assertIsInstance(r, type(t))
+
+    def test_redirected_to_same_host_sibling_protocol(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https://www.example.com/foo')
+        self.assertIsInstance(r, type(t))
+
+    def test_redirected_to_same_host_different_protocol(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'ftp://www.example.com/foo')
+        self.assertNotEquals(type(r), type(t))
+
+    def test_redirected_to_different_host_same_user(self):
+        t = self._transport('http://joe@www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https://foo.example.com/foo')
+        self.assertIsInstance(r, type(t))
+        self.assertEquals(t._user, r._user)

@@ -23,10 +23,12 @@ import os
 from subprocess import call
 import sys
 
-import bzrlib
-import bzrlib.config as config
-from bzrlib import osutils
+from bzrlib import (
+    config,
+    osutils,
+    )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
+from bzrlib.hooks import Hooks
 from bzrlib.trace import warning, mutter
 
 
@@ -102,8 +104,8 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     """
 
     if not start_message is None:
-        start_message = start_message.encode(bzrlib.user_encoding)
-    infotext = infotext.encode(bzrlib.user_encoding, 'replace')
+        start_message = start_message.encode(osutils.get_user_encoding())
+    infotext = infotext.encode(osutils.get_user_encoding(), 'replace')
     return edit_commit_message_encoded(infotext, ignoreline, start_message)
 
 
@@ -144,7 +146,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         f = file(msgfilename, 'rU')
         try:
             try:
-                for line in codecs.getreader(bzrlib.user_encoding)(f):
+                for line in codecs.getreader(osutils.get_user_encoding())(f):
                     stripped_line = line.strip()
                     # strip empty line before the log message starts
                     if not started:
@@ -267,3 +269,42 @@ def make_commit_message_template_encoded(working_tree, specific_files,
         template = template + '\n' + stream.getvalue()
 
     return template
+
+
+class MessageEditorHooks(Hooks):
+    """A dictionary mapping hook name to a list of callables for message editor
+    hooks.
+
+    e.g. ['commit_message_template'] is the list of items to be called to 
+    generate a commit message template
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially.
+        """
+        Hooks.__init__(self)
+        # Introduced in 1.10:
+        # Invoked to generate the commit message template shown in the editor
+        # The api signature is:
+        # (commit, message), and the function should return the new message
+        # There is currently no way to modify the order in which 
+        # template hooks are invoked
+        self['commit_message_template'] = []
+
+
+hooks = MessageEditorHooks()
+
+
+def generate_commit_message_template(commit, start_message=None):
+    """Generate a commit message template.
+
+    :param commit: Commit object for the active commit.
+    :param start_message: Message to start with.
+    :return: A start commit message or None for an empty start commit message.
+    """
+    start_message = None
+    for hook in hooks['commit_message_template']:
+        start_message = hook(commit, start_message)
+    return start_message

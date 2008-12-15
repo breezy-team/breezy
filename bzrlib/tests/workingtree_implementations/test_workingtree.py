@@ -34,7 +34,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            UnsupportedOperation, PathsNotVersionedError)
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, TestNotApplicable
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -894,13 +894,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                          tree.all_file_ids())
 
     def test_sprout_hardlink(self):
+        real_os_link = getattr(os, 'link', None)
+        if real_os_link is None:
+            raise TestNotApplicable("This platform doesn't provide os.link")
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file'])
         source.add('file')
         source.commit('added file')
         def fake_link(source, target):
             raise OSError(errno.EPERM, 'Operation not permitted')
-        real_os_link = os.link
         os.link = fake_link
         try:
             # Hard-link support is optional, so supplying hardlink=True may
@@ -918,6 +920,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 class TestIllegalPaths(TestCaseWithWorkingTree):
 
     def test_bad_fs_path(self):
+        if osutils.normalizes_filenames():
+            # You *can't* create an illegal filename on OSX.
+            raise tests.TestNotApplicable('OSX normalizes filenames')
         self.requireFeature(tests.UTF8Filesystem)
         # We require a UTF8 filesystem, because otherwise we would need to get
         # tricky to figure out how to create an illegal filename.

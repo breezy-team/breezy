@@ -24,7 +24,6 @@ from bzrlib import (
     trace,
     tsort,
     )
-from bzrlib.deprecated_graph import (node_distances, select_farthest)
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -99,42 +98,73 @@ class _StackedParentsProvider(object):
 
 
 class CachingParentsProvider(object):
-    """A parents provider which will cache the revision => parents in a dict.
+    """A parents provider which will cache the revision => parents as a dict.
 
-    This is useful for providers that have an expensive lookup.
+    This is useful for providers which have an expensive look up.
+
+    Either a ParentsProvider or a get_parent_map-like callback may be
+    supplied.  If it provides extra un-asked-for parents, they will be cached,
+    but filtered out of get_parent_map.
+
+    The cache is enabled by default, but may be disabled and re-enabled.
     """
+    def __init__(self, parent_provider=None, get_parent_map=None):
+        """Constructor.
 
-    def __init__(self, parent_provider):
+        :param parent_provider: The ParentProvider to use.  It or
+            get_parent_map must be supplied.
+        :param get_parent_map: The get_parent_map callback to use.  It or
+            parent_provider must be supplied.
+        """
         self._real_provider = parent_provider
-        # Theoretically we could use an LRUCache here
+        if get_parent_map is None:
+            self._get_parent_map = self._real_provider.get_parent_map
+        else:
+            self._get_parent_map = get_parent_map
         self._cache = {}
+        self._cache_misses = True
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
-    def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
-        needed = set()
-        # If the _real_provider doesn't have a key, we cache a value of None,
-        # which we then later use to realize we cannot provide a value for that
-        # key.
-        parent_map = {}
-        cache = self._cache
-        for key in keys:
-            if key in cache:
-                value = cache[key]
-                if value is not None:
-                    parent_map[key] = value
-            else:
-                needed.add(key)
+    def enable_cache(self, cache_misses=True):
+        """Enable cache."""
+        if self._cache is not None:
+            raise AssertionError('Cache enabled when already enabled.')
+        self._cache = {}
+        self._cache_misses = cache_misses
 
-        if needed:
-            new_parents = self._real_provider.get_parent_map(needed)
-            cache.update(new_parents)
-            parent_map.update(new_parents)
-            needed.difference_update(new_parents)
-            cache.update(dict.fromkeys(needed, None))
-        return parent_map
+    def disable_cache(self):
+        """Disable and clear the cache."""
+        self._cache = None
+
+    def get_cached_map(self):
+        """Return any cached get_parent_map values."""
+        if self._cache is None:
+            return None
+        return dict((k, v) for k, v in self._cache.items()
+                    if v is not None)
+
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map."""
+        # Hack to build up the caching logic.
+        ancestry = self._cache
+        if ancestry is None:
+            # Caching is disabled.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            parent_map = self._get_parent_map(missing_revisions)
+            ancestry.update(parent_map)
+            if self._cache_misses:
+                # None is never a valid parents list, so it can be used to
+                # record misses.
+                ancestry.update(dict((k, None) for k in missing_revisions
+                                     if k not in parent_map))
+        present_keys = [k for k in keys if ancestry.get(k) is not None]
+        return dict((k, ancestry[k]) for k in present_keys)
 
 
 class Graph(object):
@@ -1331,7 +1361,13 @@ class _BreadthFirstSearcher(object):
         Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
-        search list.  In this case, the call is a no-op.
+        search list.
+
+        It is okay to call stop_searching_any() for revisions which were seen
+        in previous iterations. It is the callers responsibility to call
+        find_seen_ancestors() to make sure that current search tips that are
+        ancestors of those revisions are also stopped.  All explicitly stopped
+        revisions will be excluded from the search result's get_keys(), though.
         """
         # TODO: does this help performance?
         # if not revisions:
@@ -1368,6 +1404,7 @@ class _BreadthFirstSearcher(object):
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
         self._stopped_keys.update(stopped)
+        self._stopped_keys.update(revisions - set([revision.NULL_REVISION]))
         return stopped
 
     def start_searching(self, revisions):

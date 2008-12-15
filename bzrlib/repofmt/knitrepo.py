@@ -17,26 +17,24 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    debug,
-    )
-from bzrlib.store import revision
-from bzrlib.store.revision.knit import KnitRevisionStore
-""")
-from bzrlib import (
     bzrdir,
     errors,
-    knit,
+    knit as _mod_knit,
     lockable_files,
     lockdir,
     osutils,
-    symbol_versioning,
+    revision as _mod_revision,
     transactions,
+    versionedfile,
     xml5,
     xml6,
     xml7,
     )
+""")
+from bzrlib import (
+    symbol_versioning,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.knit import KnitVersionedFiles, _KndxIndex, _KnitKeyAccess
 from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepository,
@@ -44,11 +42,7 @@ from bzrlib.repository import (
     RepositoryFormat,
     RootCommitBuilder,
     )
-import bzrlib.revision as _mod_revision
-from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.trace import mutter, mutter_callsite
-from bzrlib.util import bencode
-from bzrlib.versionedfile import ConstantMapper, HashEscapedPrefixMapper
 
 
 class _KnitParentsProvider(object):
@@ -287,42 +281,44 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _commit_builder_class = None
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
     # Knit based repositories handle ghosts reasonably well.
     supports_ghosts = True
     # External lookups are not supported in this format.
     supports_external_lookups = False
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
-        mapper = ConstantMapper(name)
-        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(repo_transport, mapper)
-        return KnitVersionedFiles(index, access, annotated=False)
+        mapper = versionedfile.ConstantMapper(name)
+        index = _mod_knit._KndxIndex(repo_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, annotated=False)
 
     def _get_revisions(self, repo_transport, repo):
-        mapper = ConstantMapper('revisions')
-        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(repo_transport, mapper)
-        return KnitVersionedFiles(index, access, max_delta_chain=0,
+        mapper = versionedfile.ConstantMapper('revisions')
+        index = _mod_knit._KndxIndex(repo_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=0,
             annotated=False)
 
     def _get_signatures(self, repo_transport, repo):
-        mapper = ConstantMapper('signatures')
-        index = _KndxIndex(repo_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(repo_transport, mapper)
-        return KnitVersionedFiles(index, access, max_delta_chain=0,
+        mapper = versionedfile.ConstantMapper('signatures')
+        index = _mod_knit._KndxIndex(repo_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(repo_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=0,
             annotated=False)
 
     def _get_texts(self, repo_transport, repo):
-        mapper = HashEscapedPrefixMapper()
+        mapper = versionedfile.HashEscapedPrefixMapper()
         base_transport = repo_transport.clone('knits')
-        index = _KndxIndex(base_transport, mapper, repo.get_transaction,
-            repo.is_write_locked, repo.is_locked)
-        access = _KnitKeyAccess(base_transport, mapper)
-        return KnitVersionedFiles(index, access, max_delta_chain=200,
+        index = _mod_knit._KndxIndex(base_transport, mapper,
+            repo.get_transaction, repo.is_write_locked, repo.is_locked)
+        access = _mod_knit._KnitKeyAccess(base_transport, mapper)
+        return _mod_knit.KnitVersionedFiles(index, access, max_delta_chain=200,
             annotated=True)
 
     def initialize(self, a_bzrdir, shared=False):
@@ -399,7 +395,9 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
 
     repository_class = KnitRepository
     _commit_builder_class = CommitBuilder
-    _serializer = xml5.serializer_v5
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __ne__(self, other):
         return self.__class__ is not other.__class__
@@ -436,7 +434,9 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     _commit_builder_class = RootCommitBuilder
     rich_root_data = True
     supports_tree_reference = True
-    _serializer = xml7.serializer_v7
+    @property
+    def _serializer(self):
+        return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
@@ -483,7 +483,9 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     _commit_builder_class = RootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
-    _serializer = xml6.serializer_v6
+    @property
+    def _serializer(self):
+        return xml6.serializer_v6
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('rich-root')

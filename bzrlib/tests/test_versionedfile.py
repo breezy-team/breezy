@@ -1558,8 +1558,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """Assert that storage_kind is a valid storage_kind."""
         self.assertSubset([storage_kind],
             ['mpdiff', 'knit-annotated-ft', 'knit-annotated-delta',
-             'knit-ft', 'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
-             'knit-annotated-delta-gz', 'knit-ft-gz', 'knit-delta-gz'])
+             'knit-ft', 'knit-delta', 'chunked', 'fulltext',
+             'knit-annotated-ft-gz', 'knit-annotated-delta-gz', 'knit-ft-gz',
+             'knit-delta-gz'])
 
     def capture_stream(self, f, entries, on_seen, parents):
         """Capture a stream for testing."""
@@ -1636,9 +1637,11 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 [None, files.get_sha1s([factory.key])[factory.key]])
             self.assertEqual(parent_map[factory.key], factory.parents)
             # self.assertEqual(files.get_text(factory.key),
-            self.assertIsInstance(factory.get_bytes_as('fulltext'), str)
-            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                str)
+            ft_bytes = factory.get_bytes_as('fulltext')
+            self.assertIsInstance(ft_bytes, str)
+            chunked_bytes = factory.get_bytes_as('chunked')
+            self.assertEqualDiff(ft_bytes, ''.join(chunked_bytes))
+
         self.assertStreamOrder(sort_order, seen, keys)
 
     def assertStreamOrder(self, sort_order, seen, keys):
@@ -2210,11 +2213,67 @@ class VirtualVersionedFilesTests(TestCase):
         self._lines["A"] = ["FOO", "BAR"]
         it = self.texts.get_record_stream([("A",)], "unordered", True)
         record = it.next()
-        self.assertEquals("fulltext", record.storage_kind)
+        self.assertEquals("chunked", record.storage_kind)
         self.assertEquals("FOOBAR", record.get_bytes_as("fulltext"))
+        self.assertEquals(["FOO", "BAR"], record.get_bytes_as("chunked"))
 
     def test_get_record_stream_absent(self):
         it = self.texts.get_record_stream([("A",)], "unordered", True)
         record = it.next()
         self.assertEquals("absent", record.storage_kind)
 
+
+class TestOrderingVersionedFilesDecorator(TestCaseWithMemoryTransport):
+
+    def get_ordering_vf(self, key_priority):
+        builder = self.make_branch_builder('test')
+        builder.start_series()
+        builder.build_snapshot('A', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', None))])
+        builder.build_snapshot('B', ['A'], [])
+        builder.build_snapshot('C', ['B'], [])
+        builder.build_snapshot('D', ['C'], [])
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        vf = b.repository.inventories
+        return versionedfile.OrderingVersionedFilesDecorator(vf, key_priority)
+
+    def test_get_empty(self):
+        vf = self.get_ordering_vf({})
+        self.assertEqual([], vf.calls)
+
+    def test_get_record_stream_topological(self):
+        vf = self.get_ordering_vf({('A',): 3, ('B',): 2, ('C',): 4, ('D',): 1})
+        request_keys = [('B',), ('C',), ('D',), ('A',)]
+        keys = [r.key for r in vf.get_record_stream(request_keys,
+                                    'topological', False)]
+        # We should have gotten the keys in topological order
+        self.assertEqual([('A',), ('B',), ('C',), ('D',)], keys)
+        # And recorded that the request was made
+        self.assertEqual([('get_record_stream', request_keys, 'topological',
+                           False)], vf.calls)
+
+    def test_get_record_stream_ordered(self):
+        vf = self.get_ordering_vf({('A',): 3, ('B',): 2, ('C',): 4, ('D',): 1})
+        request_keys = [('B',), ('C',), ('D',), ('A',)]
+        keys = [r.key for r in vf.get_record_stream(request_keys,
+                                   'unordered', False)]
+        # They should be returned based on their priority
+        self.assertEqual([('D',), ('B',), ('A',), ('C',)], keys)
+        # And the request recorded
+        self.assertEqual([('get_record_stream', request_keys, 'unordered',
+                           False)], vf.calls)
+
+    def test_get_record_stream_implicit_order(self):
+        vf = self.get_ordering_vf({('B',): 2, ('D',): 1})
+        request_keys = [('B',), ('C',), ('D',), ('A',)]
+        keys = [r.key for r in vf.get_record_stream(request_keys,
+                                   'unordered', False)]
+        # A and C are not in the map, so they get sorted to the front. A comes
+        # before C alphabetically, so it comes back first
+        self.assertEqual([('A',), ('C',), ('D',), ('B',)], keys)
+        # And the request recorded
+        self.assertEqual([('get_record_stream', request_keys, 'unordered',
+                           False)], vf.calls)

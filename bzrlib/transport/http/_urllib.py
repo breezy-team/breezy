@@ -43,7 +43,7 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     def __init__(self, base, _from_transport=None):
         super(HttpTransport_urllib, self).__init__(
-            base, _from_transport=_from_transport)
+            base, 'urllib', _from_transport=_from_transport)
         if _from_transport is not None:
             self._opener = _from_transport._opener
         else:
@@ -90,8 +90,7 @@ class HttpTransport_urllib(http.HttpTransportBase):
                 and code in (301, 302, 303, 307):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
-                                           is_permanent=(code == 301),
-                                           qual_proto=self._scheme)
+                                           is_permanent=(code == 301))
 
         if request.redirected_to is not None:
             trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),

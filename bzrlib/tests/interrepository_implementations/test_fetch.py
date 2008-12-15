@@ -36,6 +36,9 @@ from bzrlib.tests import (
 from bzrlib.tests.interrepository_implementations import (
     TestCaseWithInterRepository,
     )
+from bzrlib.tests.interrepository_implementations.test_interrepository import (
+    check_repo_format_for_funky_id_on_win32
+    )
 
 
 class TestInterRepository(TestCaseWithInterRepository):
@@ -98,9 +101,12 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
-        except errors.RevisionNotPresent, e:
+        except (errors.BzrCheckError, errors.RevisionNotPresent), e:
             # If an exception is raised, the revision should not be in the
             # target.
+            # 
+            # Can also just raise a generic check errors; stream insertion
+            # does this to include all the missing data
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
                               to_repo.revision_tree, 'rev-two')
         else:
