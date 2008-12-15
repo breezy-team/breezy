@@ -84,7 +84,7 @@ class TestRename(tests.TestCaseWithTransport):
         modified = changes.modified
         if expected_renamed is not None:
             self.assertEquals(len(renamed), len(expected_renamed),
-                "%s is renamed" % str(renamed))
+                "%s is renamed, expected %s" % (renamed, expected_renamed))
             renamed_files = [(item[0], item[1]) for item in renamed]
             for expected_renamed_entry in expected_renamed:
                 self.assertTrue(expected_renamed_entry in renamed_files,
@@ -125,6 +125,10 @@ class TestRename(tests.TestCaseWithTransport):
         revtree1 = repo.revision_tree(branch.revision_history()[0])
         revtree2 = repo.revision_tree(branch.revision_history()[1])
         changes = revtree2.changes_from(revtree1)
+        self.assertEqual(revtree1.get_revision_id(),
+                         revtree1.inventory.root.children['a'].revision)
+        self.assertEqual(revtree2.get_revision_id(),
+                         revtree2.inventory.root.children['b'].revision)
         self.check_changes(changes, expected_renamed=[(old_path, new_path)])
 
     def test_rename_in_subdir(self):

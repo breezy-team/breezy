@@ -805,8 +805,12 @@ class GenericCommitHandler(processor.CommitHandler):
         existing_id = self.inventory.path2id(new_path)
         if existing_id is not None:
             self.inventory.remove_recursive_id(existing_id)
+        ie = self.inventory[file_id]
+        lines = self.loader._get_lines(file_id, ie.revision)
+        self.lines_for_commit[file_id] = lines
         self.inventory.rename(file_id, new_parent_id, basename)
         self.cache_mgr._rename_path(old_path, new_path)
+        self.inventory[file_id].revision = self.revision_id
 
     def deleteall_handler(self, filecmd):
         self.debug("deleting all files (and also all directories)")

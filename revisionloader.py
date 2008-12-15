@@ -152,6 +152,11 @@ class RevisionLoader1(AbstractRevisionLoader):
             vfile = self.repo.weave_store.get_weave_or_empty(ie.file_id,  tx)
             vfile.add_lines(revision_id, text_parents, lines)
 
+    def _get_lines(self, file_id, revision_id):
+        tx = self.repo.get_transaction()
+        w = self.repo.weave_store.get_weave(ie.file_id, tx)
+        return w.get_lines(revision_id)
+
     def _add_revision(self, rev, inv):
         # There's no need to do everything repo.add_revision does and
         # doing so (since bzr.dev 3392) can be pretty slow for long
@@ -188,6 +193,13 @@ class RevisionLoader2(AbstractRevisionLoader):
                 text_parents.append((ie.file_id, parent_id))
             lines = text_provider(ie.file_id)
             self.repo.texts.add_lines(text_key, text_parents, lines)
+
+    def _get_lines(self, file_id, revision_id):
+        record = self.repo.texts.get_record_stream([(file_id, revision_id)],
+            'unordered', True).next()
+        if record.storage_kind == 'absent':
+            raise errors.RevisionNotPresent(record.key, self.repo)
+        return osutils.split_lines(record.get_bytes_as('fulltext'))
 
     def _add_revision(self, rev, inv):
         # There's no need to do everything repo.add_revision does and
