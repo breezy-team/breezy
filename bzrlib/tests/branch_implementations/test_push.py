@@ -16,6 +16,7 @@
 
 """Tests for branch.push behaviour."""
 
+from cStringIO import StringIO
 import os
  
 from bzrlib import (
@@ -24,6 +25,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    push,
     tests,
     )
 from bzrlib.branch import Branch
@@ -177,9 +179,9 @@ class TestPush(TestCaseWithBranch):
         source.branch.push(target, stop_revision='rev-2', overwrite=True)
         self.assertEqual('rev-2', target.last_revision())
 
-    def test_push_doesnt_create_broken_branch(self):
-        self.make_repository('repo', shared=True, format='1.6')
-        builder = self.make_branch_builder('repo/local')#, format='pack-0.92')
+    def test_push_with_default_stacking_does_not_create_broken_branch(self):
+        repo = self.make_repository('repo', shared=True, format='1.6')
+        builder = self.make_branch_builder('repo/local')
         builder.start_series()
         builder.build_snapshot('rev-1', None, [
             ('add', ('', 'root-id', 'directory', '')),
@@ -190,16 +192,11 @@ class TestPush(TestCaseWithBranch):
         builder.finish_series()
         branch = builder.get_branch()
         branch.bzrdir.sprout(self.get_url('trunk'), revision_id='rev-1')
-        #self.run_bzr('push -d repo/local trunk -r 1')
         self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
-        #out, err = self.run_bzr('push -d repo/local remote -r 2')
-        remote = branch.bzrdir.sprout(
-            self.get_url('remote'), revision_id='rev-2')
-        remote_branch = remote.open_branch()
-#        self.assertContainsRe(
-#            err, 'Using default stacking branch trunk at .*')
+        output = StringIO()
+        push._show_push_branch(branch, 'rev-2', self.get_url('remote'), output)
+        remote_branch = Branch.open(self.get_url('remote'))
         branch.push(remote_branch)
-        #out, err = self.run_bzr('push -d repo/local remote -r 3')
 
 
 class TestPushHook(TestCaseWithBranch):
