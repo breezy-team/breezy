@@ -153,6 +153,8 @@ class GitRepository(ForeignRepository):
 
         :return: a `bzrlib.revision.Revision` object.
         """
+        if commit is None:
+            raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, mapping, mapping.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         rev.message = commit.message.decode("utf-8", "replace")
