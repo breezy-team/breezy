@@ -48,7 +48,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         tests.run_git('init')
 
         repo = Repository.open('.')
-        self.assertIsInstance(repo._git, git.repository.Repository)
+        self.assertIsInstance(repo._git, git.repo.Repo)
 
     def test_get_revision(self):
         # GitRepository.get_revision gives a Revision object.
@@ -131,7 +131,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        git.repository.Repository.create(self.test_dir)
+        git.repo.Repo.create(self.test_dir)
         self.git_repo = Repository.open(self.test_dir)
 
     def test_supports_rich_root(self):
