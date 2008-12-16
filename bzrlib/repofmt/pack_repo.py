@@ -869,8 +869,13 @@ class Packer(object):
             # copy the data
             pack_obj = index_map[index]
             transport, path = pack_obj.access_tuple()
-            reader = pack.make_readv_reader(transport, path,
-                [offset[0:2] for offset in pack_readv_requests])
+            try:
+                reader = pack.make_readv_reader(transport, path,
+                    [offset[0:2] for offset in pack_readv_requests])
+            except errors.NoSuchFile:
+                if self._reload_func is not None:
+                    self._reload_func()
+                raise
             for (names, read_func), (_1, _2, (key, eol_flag)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
@@ -883,20 +888,16 @@ class Packer(object):
                 record_index += 1
 
     def _copy_nodes_graph(self, index_map, writer, write_index,
-        readv_group_iter, total_items, output_lines=False, completed_keys=None):
+        readv_group_iter, total_items, output_lines=False):
         """Copy knit nodes between packs.
 
         :param output_lines: Return lines present in the copied data as
             an iterator of line,version_id.
-        :param completed_keys: If set to a list, we will fill it with the keys
-            that have been successfully written to the target repository. This
-            is used in case there is a fault and we need to restart.
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for result in self._do_copy_nodes_graph(index_map, writer,
-                write_index, output_lines, pb, readv_group_iter, total_items,
-                completed_keys=completed_keys):
+                write_index, output_lines, pb, readv_group_iter, total_items):
                 yield result
         except Exception:
             # Python 2.4 does not permit try:finally: in a generator.
@@ -906,7 +907,7 @@ class Packer(object):
             pb.finished()
 
     def _do_copy_nodes_graph(self, index_map, writer, write_index,
-        output_lines, pb, readv_group_iter, total_items, completed_keys=None):
+        output_lines, pb, readv_group_iter, total_items):
         # for record verification
         knit = KnitVersionedFiles(None, None)
         # for line extraction when requested (inventories only)
@@ -914,15 +915,16 @@ class Packer(object):
             factory = KnitPlainFactory()
         record_index = 0
         pb.update("Copied record", record_index, total_items)
-        if completed_keys is None:
-            completed_keys_append = None
-        else:
-            completed_keys_append = completed_keys.append
         for index, readv_vector, node_vector in readv_group_iter:
             # copy the data
             pack_obj = index_map[index]
             transport, path = pack_obj.access_tuple()
-            reader = pack.make_readv_reader(transport, path, readv_vector)
+            try:
+                reader = pack.make_readv_reader(transport, path, readv_vector)
+            except errors.NoSuchFile:
+                if self._reload_func is not None:
+                    self._reload_func()
+                raise
             for (names, read_func), (key, eol_flag, references) in \
                 izip(reader.iter_records(), node_vector):
                 raw_data = read_func(None)
@@ -941,8 +943,6 @@ class Packer(object):
                     df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size), references)
-                if completed_keys_append is not None:
-                    completed_keys_append(key)
                 pb.update("Copied record", record_index)
                 record_index += 1
 
