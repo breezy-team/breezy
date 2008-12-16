@@ -356,12 +356,10 @@ class TestPush(ExternalBase):
         builder.start_series()
         builder.build_snapshot('rev-1', None, [
             ('add', ('', 'root-id', 'directory', '')),
-            ('add', ('filename1', 'f1-id', 'file', 'content\n')),
-            ('add', ('filename2', 'f2-id', 'file', 'content\n'))])
-        builder.build_snapshot('rev-2', ['rev-1'],
-            [('modify', ('f1-id', 'new-content\n'))])
+            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
         builder.build_snapshot('rev-3', ['rev-2'],
-            [('modify', ('f2-id', 'new-content\n'))])
+            [('modify', ('f-id', 'new-content\n'))])
         builder.finish_series()
         branch = builder.get_branch()
         self.run_bzr('push -d repo/local trunk -r 1')
