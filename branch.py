@@ -35,8 +35,8 @@ class GitTagDict(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        for name, value in self.repository._git.get_tags().items():
-            ret[name] = self.branch.mapping.revision_id_foreign_to_bzr(value)
+        for tag in self.repository._git.tags:
+            ret[tag.name] = self.branch.mapping.revision_id_foreign_to_bzr(tag.commit)
         return ret
 
     def set_tag(self, name, revid):
