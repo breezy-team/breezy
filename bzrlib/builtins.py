@@ -1848,7 +1848,7 @@ class cmd_log(Command):
 
         b.lock_read()
         try:
-            rev1, rev2 = _get2Revisions(revision, b, self.name())
+            rev1, rev2 = _get_revision_range(revision, b, self.name())
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
 
@@ -1868,7 +1868,12 @@ class cmd_log(Command):
         finally:
             b.unlock()
 
-def _get2Revisions(revisionspec_list, branch, command_name):
+def _get_revision_range(revisionspec_list, branch, command_name):
+    """Take the input of a revision option and turn it into a revision range.
+
+    It returns RevisionInfo objects which can be used to obtain the rev_id's
+    of the desired revisons. It does some user input validations.
+    """
     if revisionspec_list is None:
         rev1 = None
         rev2 = None
@@ -1881,8 +1886,8 @@ def _get2Revisions(revisionspec_list, branch, command_name):
             # show_log will use its revision_history. Having
             # different branches will lead to weird behaviors.
             raise errors.BzrCommandError(
-                "Log doesn't accept two revisions in different"
-                " branches.")
+                "bzr %s doesn't accept two revisions in different"
+                " branches." % command_name)
         rev1 = revisionspec_list[0].in_history(branch)
         rev2 = revisionspec_list[1].in_history(branch)
     else:
@@ -4599,7 +4604,7 @@ class cmd_tags(Command):
             branch.lock_read()
             try:
                 graph = branch.repository.get_graph()
-                rev1, rev2 = _get2Revisions(revision, branch, self.name())
+                rev1, rev2 = _get_revision_range(revision, branch, self.name())
                 revid1, revid2 = rev1.rev_id, rev2.rev_id
                 # only show revisions between revid1 and revid2 (inclusive)
                 tags = [(tag, revid) for tag, revid in tags if
