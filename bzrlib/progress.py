@@ -65,6 +65,10 @@ class ProgressTask(object):
 
     Most code that needs to indicate progress should update one of these, 
     and it will in turn update the display, if one is present.
+
+    Code updating the task may also set fields as hints about how to display
+    it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
+    will not necessarily respect all these fields.
     """
 
     def __init__(self, parent_task=None, ui_factory=None):
@@ -74,6 +78,11 @@ class ProgressTask(object):
         self.current_cnt = None
         self.msg = ''
         self.ui_factory = ui_factory
+        self.show_pct = False
+        self.show_spinner = True
+        self.show_eta = False,
+        self.show_count = True
+        self.show_bar = True
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         self.msg = msg
@@ -177,17 +186,26 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        spin_str =  r'/-\|'[self._spin_pos % 4]
-        self._spin_pos += 1
-        f = self._task_fraction or 0
-        cols = 20
-        # number of markers highlighted in bar
-        markers = int(round(float(cols) * f)) - 1
-        bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
-        return bar_str
+        if (self._last_task is not None) and self._last_task.show_bar:
+            spin_str =  r'/-\|'[self._spin_pos % 4]
+            self._spin_pos += 1
+            f = self._task_fraction or 0
+            cols = 20
+            # number of markers highlighted in bar
+            markers = int(round(float(cols) * f)) - 1
+            bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
+            return bar_str
+        elif (self._last_task is None) or self._last_task.show_spinner:
+            spin_str =  r'/-\|'[self._spin_pos % 4]
+            self._spin_pos += 1
+            return spin_str + ' '
+        else:
+            return ''
 
     def _format_task(self, task):
-        if task.total_cnt is not None:
+        if not task.show_count:
+            s = ''
+        elif task.total_cnt is not None:
             s = ' %d/%d' % (task.current_cnt, task.total_cnt)
         elif task.current_cnt is not None:
             s = ' %d' % (task.current_cnt)
@@ -210,7 +228,7 @@ class TextProgressView(object):
         else:
             task_msg = ''
         trans = self._last_transport_msg
-        if trans:
+        if trans and task_msg:
             trans += ' | '
         s = (bar_string
              + trans
