@@ -16,7 +16,7 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir"""
 
-import git, os
+import git, git.repository, os
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import
@@ -97,7 +97,7 @@ class GitDir(bzrdir.BzrDir):
         if repo._git.heads == []:
             head = None
         else:
-            head = filter(lambda h: h.name == repo._git.active_branch, repo._git.heads)[0].commit.id
+            head = repo._git.head()
         return branch.GitBranch(self, repo, head, 
                                     self.root_transport.base, self._lockfiles)
 
@@ -143,7 +143,7 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
             url = url[len('readonly+'):]
 
         try:
-            gitrepo = git.repo.Repo(transport.local_abspath("."))
+            gitrepo = git.repository.Repository(transport.local_abspath("."))
         except errors.bzr_errors.NotLocalUrl:
             raise errors.bzr_errors.NotBranchError(path=transport.base)
         lockfiles = GitLockableFiles(GitLock())
