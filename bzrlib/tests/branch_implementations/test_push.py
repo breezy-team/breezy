@@ -180,6 +180,11 @@ class TestPush(TestCaseWithBranch):
         self.assertEqual('rev-2', target.last_revision())
 
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise tests.TestNotApplicable('Not a metadir format.')
+        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+            raise tests.TestSkipped(
+                "BranchBuilder can't make reference branches.")
         repo = self.make_repository('repo', shared=True, format='1.6')
         builder = self.make_branch_builder('repo/local')
         builder.start_series()
@@ -190,13 +195,14 @@ class TestPush(TestCaseWithBranch):
         builder.build_snapshot('rev-3', ['rev-2'],
             [('modify', ('f-id', 'new-content\n'))])
         builder.finish_series()
-        branch = builder.get_branch()
-        branch.bzrdir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        trunk = builder.get_branch()
+        trunk.bzrdir.sprout(self.get_url('trunk'), revision_id='rev-1')
         self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
         output = StringIO()
-        push._show_push_branch(branch, 'rev-2', self.get_url('remote'), output)
+        push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
         remote_branch = Branch.open(self.get_url('remote'))
-        branch.push(remote_branch)
+        trunk.push(remote_branch)
+        remote_branch.check()
 
 
 class TestPushHook(TestCaseWithBranch):
