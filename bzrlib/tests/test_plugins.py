@@ -404,7 +404,9 @@ class TestPluginHelp(TestCaseInTempDir):
     def split_help_commands(self):
         help = {}
         current = None
-        for line in self.run_bzr('help commands')[0].splitlines():
+        out, err = self.run_bzr('--no-plugins help commands')
+        print err
+        for line in out.splitlines():
             if not line.startswith(' '):
                 current = line.split()[0]
             help[current] = help.get(current, '') + line
@@ -635,9 +637,14 @@ def clear_plugins(test_case):
     old_plugins_path = bzrlib.plugins.__path__
     bzrlib.plugins.__path__ = []
     plugin._loaded = False
+    def load_from_path(dirs):
+        pass
+    old_load_from_path = plugin.load_from_path
+    plugin.load_from_path = load_from_path
     def restore_plugins():
         bzrlib.plugins.__path__ = old_plugins_path
         plugin._loaded = False
+        plugin.load_from_path = old_load_from_path
     test_case.addCleanup(restore_plugins)
 
 
