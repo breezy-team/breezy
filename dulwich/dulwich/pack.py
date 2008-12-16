@@ -149,6 +149,7 @@ def resolve_object(offset, type, obj, get_ref, get_offset):
   type, base_text = resolve_object(offset, type, base_obj, get_ref, get_offset)
   return type, apply_delta(base_text, delta)
 
+
 class PackIndex(object):
   """An index in to a packfile.
 
@@ -170,7 +171,6 @@ class PackIndex(object):
     it whenever required.
     """
     self._filename = filename
-    assert os.path.exists(filename), "%s is not a pack index" % filename
     # Take the size now, so it can be checked each time we map the file to
     # ensure that it hasn't changed.
     self._size = os.path.getsize(filename)
@@ -738,4 +738,5 @@ class Pack(object):
 
 def load_packs(path):
     for name in os.listdir(path):
-        yield Pack(os.path.join(path, name.rstrip(".pack")))
+        if name.endswith(".pack"):
+            yield Pack(os.path.join(path, name.rstrip(".pack")))

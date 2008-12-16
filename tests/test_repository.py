@@ -16,8 +16,6 @@
 
 """Tests for interfacing with a Git Repository"""
 
-import git
-
 from bzrlib import (
     errors,
     inventory,
@@ -27,6 +25,7 @@ from bzrlib.repository import Repository
 
 from bzrlib.plugins.git import (
     dir,
+    git,
     repository,
     tests,
     )
