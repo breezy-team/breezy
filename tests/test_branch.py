@@ -16,8 +16,6 @@
 
 """Tests for interfacing with a Git Branch"""
 
-import git
-
 from bzrlib import revision
 from bzrlib.branch import Branch
 
@@ -26,6 +24,8 @@ from bzrlib.plugins.git import (
     tests,
     )
 from bzrlib.plugins.git.mapping import default_mapping
+from bzrlib.plugins.git import git
+
 
 
 class TestGitBranch(tests.TestCaseInTempDir):

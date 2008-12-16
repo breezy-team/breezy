@@ -16,7 +16,7 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir"""
 
-import git, os
+import os
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import
@@ -35,6 +35,7 @@ from bzrlib.plugins.git import (
     workingtree,
     )
 """)
+
 
 
 class GitLock(object):
@@ -137,6 +138,7 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
         """Open this directory.
 
         """
+        from bzrlib.plugins.git import git
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
         if url.startswith('readonly+'):
@@ -173,6 +175,7 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
     def initialize_on_transport(self, transport):
         from bzrlib.transport.local import LocalTransport
+        from bzrlib.plugins.git import git
 
         if not isinstance(transport, LocalTransport):
             raise NotImplementedError(self.initialize, 

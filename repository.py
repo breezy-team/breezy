@@ -16,7 +16,6 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
-import git
 import os
 import time
 
@@ -42,6 +41,8 @@ from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
 from bzrlib.plugins.git.mapping import default_mapping
+
+from bzrlib.plugins.git import git
 
 
 class GitTags(object):

@@ -18,6 +18,7 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
+import dulwich as git
 from bzrlib import bzrdir
 from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
 from bzrlib.plugins.git.dir import GitBzrDirFormat
