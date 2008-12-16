@@ -16,7 +16,7 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir"""
 
-import git, git.repo, os
+import git, os
 
 import bzrlib
 from bzrlib.lazy_import import lazy_import

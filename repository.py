@@ -44,6 +44,15 @@ from bzrlib.plugins.git.foreign import (
 from bzrlib.plugins.git.mapping import default_mapping
 
 
+class GitTags(object):
+
+    def __init__(self, tags):
+        self._tags = tags
+
+    def __iter__(self):
+        return iter(self._tags)
+
+
 class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
@@ -59,6 +68,7 @@ class GitRepository(ForeignRepository):
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self._format = GitFormat()
         self._fallback_repositories = []
+        self.tags = GitTags(self._git.get_tags())
 
     def _all_revision_ids(self):
         if self._git.heads == []:
