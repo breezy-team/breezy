@@ -177,6 +177,30 @@ class TestPush(TestCaseWithBranch):
         source.branch.push(target, stop_revision='rev-2', overwrite=True)
         self.assertEqual('rev-2', target.last_revision())
 
+    def test_push_doesnt_create_broken_branch(self):
+        self.make_repository('repo', shared=True, format='1.6')
+        builder = self.make_branch_builder('repo/local')#, format='pack-0.92')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.build_snapshot('rev-3', ['rev-2'],
+            [('modify', ('f-id', 'new-content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        branch.bzrdir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        #self.run_bzr('push -d repo/local trunk -r 1')
+        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        #out, err = self.run_bzr('push -d repo/local remote -r 2')
+        remote = branch.bzrdir.sprout(
+            self.get_url('remote'), revision_id='rev-2')
+        remote_branch = remote.open_branch()
+#        self.assertContainsRe(
+#            err, 'Using default stacking branch trunk at .*')
+        branch.push(remote_branch)
+        #out, err = self.run_bzr('push -d repo/local remote -r 3')
+
 
 class TestPushHook(TestCaseWithBranch):
 
