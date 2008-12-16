@@ -57,6 +57,9 @@ class TextUIFactory(CLIUIFactory):
             self.stderr = sys.stderr
         else:
             self.stderr = stderr
+        if bar_type:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 11, 0))
+                % "bar_type parameter")
         # paints progress, network activity, etc
         self._progress_view = progress.TextProgressView(self.stderr)
 
