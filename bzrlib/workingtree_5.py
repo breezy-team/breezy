@@ -33,7 +33,7 @@ class WorkingTree5(workingtree_4.WorkingTree4):
      - Supporting a current view that may mask the set of files in a tree
        impacted by most user operations.
 
-    This is new in bzr 1.7.
+    This is new in bzr 1.11.
     """
 
     def _make_views(self):
@@ -50,7 +50,7 @@ class WorkingTreeFormat5(workingtree_4.WorkingTreeFormat4):
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar Working Tree Format 5 (bzr 1.7)\n"
+        return "Bazaar Working Tree Format 5 (bzr 1.11)\n"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
