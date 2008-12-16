@@ -18,7 +18,12 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
-import dulwich as git
+try:
+    import dulwich as git
+except ImportError:
+    import os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "dulwich"))
+    import dulwich as git
 from bzrlib import bzrdir
 from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
 from bzrlib.plugins.git.dir import GitBzrDirFormat
