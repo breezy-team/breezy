@@ -72,6 +72,7 @@ from bzrlib import (
     transform,
     ui,
     urlutils,
+    workingtree_5,
     xml5,
     xml6,
     xml7,
@@ -283,6 +284,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def supports_tree_reference(self):
         return False
+
+    def supports_content_filtering(self):
+        return self._format.supports_content_filtering()
+
+    def supports_views(self):
+        return self._format.supports_views()
 
     def _set_inventory(self, inv, dirty):
         """Set the internal cached inventory.
@@ -2714,6 +2721,14 @@ class WorkingTreeFormat(object):
         """
         return True
 
+    def supports_content_filtering(self):
+        """True if this format supports content filtering."""
+        return False
+
+    def supports_views(self):
+        """True if this format supports stored views."""
+        return False
+
     @classmethod
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
@@ -2942,6 +2957,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(workingtree_5.WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable

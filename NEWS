@@ -90,6 +90,11 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * Introduced new experimental formats called ``1.12-preview`` and
+      ``1.12-preview-rich-root`` to enable testing of related pending
+      features, namely content filtering and filtered views.
+      (Ian Clatworthy)
+
   INTERNALS:
 
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
