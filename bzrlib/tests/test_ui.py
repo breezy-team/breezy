@@ -101,11 +101,10 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
+        ui_factory = TextUIFactory(bar_type=TTYProgressBar, stderr=stderr,
+                stdout=stdout)
         pb = ui_factory.nested_progress_bar()
         try:
-            pb.to_messages_file = stdout
-            ui_factory._progress_bar_stack.bottom().to_file = stderr
             result = pb.note('t')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
@@ -122,11 +121,10 @@ class UITests(TestCase):
         # The PQM redirects the output to a file, so it
         # defaults to creating a Dots progress bar. we
         # need to force it to believe we are a TTY
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
+        ui_factory = TextUIFactory(bar_type=TTYProgressBar,
+            stdout=stdout, stderr=stderr)
         pb = ui_factory.nested_progress_bar()
         try:
-            pb.to_messages_file = stdout
-            ui_factory._progress_bar_stack.bottom().to_file = stderr
             # Create a progress update that isn't throttled
             pb.start_time -= 10
             pb.update('x', 1, 1)
@@ -145,7 +143,8 @@ class UITests(TestCase):
         ui = TextUIFactory()
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
-        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        self.assertRaises((AssertionError, errors.MissingProgressBarFinish),
+            pb1.finished)
         pb2.finished()
         pb1.finished()
 

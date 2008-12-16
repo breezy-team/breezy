@@ -103,11 +103,10 @@ class ProgressTask(object):
                 own_fraction = 0.0
             return self._parent_task._overall_completion_fraction(own_fraction)
 
-    def note(self, fmt_string, *args, **kwargs):
+    def note(self, fmt_string, *args):
         """Record a note without disrupting the progress bar."""
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        self.ui_factory.clear_term()
-        trace.note(fmt_string % args)
+        self.ui_factory.note(fmt_string % args)
 
     def clear(self):
         # XXX: shouldn't be here; put it in mutter or the ui instead

@@ -189,6 +189,9 @@ class SilentUIFactory(CLIUIFactory):
     def progress_finished(self, task):
         pass
 
+    def note(self, msg):
+        pass
+
 
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""

@@ -75,6 +75,11 @@ class TextUIFactory(CLIUIFactory):
         # to clear it.  We might need to separately check for the case of 
         self._progress_view.clear()
 
+    def note(self, msg):
+        """Write an already-formatted message, clearing the progress bar if necessary."""
+        self.clear_term()
+        self.stdout.write(msg + '\n')
+
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
         
