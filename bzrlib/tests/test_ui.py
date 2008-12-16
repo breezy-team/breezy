@@ -101,8 +101,9 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory(stderr=stderr,
-                stdout=stdout)
+        ui_factory = TextUIFactory(stdin=StringIO(''),
+            stderr=stderr,
+            stdout=stdout)
         pb = ui_factory.nested_progress_bar()
         try:
             result = pb.note('t')
@@ -122,6 +123,7 @@ class UITests(TestCase):
         # defaults to creating a Dots progress bar. we
         # need to force it to believe we are a TTY
         ui_factory = TextUIFactory(
+            stdin=StringIO(''),
             stdout=stdout, stderr=stderr)
         pb = ui_factory.nested_progress_bar()
         try:
@@ -139,7 +141,7 @@ class UITests(TestCase):
 
     def test_progress_nested(self):
         # test factory based nested and popping.
-        ui = TextUIFactory()
+        ui = TextUIFactory(None, None, None)
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
         self.assertRaises(AssertionError, pb1.finished)
@@ -167,10 +169,6 @@ class UITests(TestCase):
         self.assertRaises(AssertionError, pb1.finished)
         pb2.finished()
         pb1.finished()
-
-    def test_cli_stdin_is_default_stdin(self):
-        factory = CLIUIFactory()
-        self.assertEqual(sys.stdin, factory.stdin)
 
     def assert_get_bool_acceptance_of_user_input(self, factory):
         factory.stdin = StringIO("y\nyes with garbage\n"
@@ -202,14 +200,13 @@ class UITests(TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getbool(self):
-        factory = TextUIFactory()
+        factory = TextUIFactory(None, None, None)
         self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         out = _TTYStringIO()
-        factory = TextUIFactory(stdout=out, stderr=out)
-        factory.stdin = StringIO("yada\ny\n")
+        factory = TextUIFactory(stdin=StringIO("yada\ny\n"), stdout=out, stderr=out)
         pb = factory.nested_progress_bar()
         pb.show_bar = False
         pb.show_spinner = False

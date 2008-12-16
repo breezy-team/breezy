@@ -42,6 +42,7 @@ class TextUIFactory(CLIUIFactory):
 
     def __init__(self,
                  bar_type=None,
+                 stdin=None,
                  stdout=None,
                  stderr=None):
         """Create a TextUIFactory.
@@ -50,15 +51,8 @@ class TextUIFactory(CLIUIFactory):
                          letting the bzrlib.progress.ProgressBar factory auto
                          select.   Deprecated.
         """
-        super(TextUIFactory, self).__init__()
-        if stdout is None:
-            self.stdout = sys.stdout
-        else:
-            self.stdout = stdout
-        if stderr is None:
-            self.stderr = sys.stderr
-        else:
-            self.stderr = stderr
+        super(TextUIFactory, self).__init__(stdin=stdin,
+                stdout=stdout, stderr=stderr)
         if bar_type:
             symbol_versioning.warn(symbol_versioning.deprecated_in((1, 11, 0))
                 % "bar_type parameter")
