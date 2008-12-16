@@ -29,7 +29,9 @@ import getpass
 from bzrlib import (
     progress,
     osutils,
+    symbol_versioning,
     )
+
 """)
 
 from bzrlib.ui import CLIUIFactory

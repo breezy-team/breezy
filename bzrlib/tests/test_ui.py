@@ -101,7 +101,7 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar, stderr=stderr,
+        ui_factory = TextUIFactory(stderr=stderr,
                 stdout=stdout)
         pb = ui_factory.nested_progress_bar()
         try:
@@ -121,7 +121,7 @@ class UITests(TestCase):
         # The PQM redirects the output to a file, so it
         # defaults to creating a Dots progress bar. we
         # need to force it to believe we are a TTY
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar,
+        ui_factory = TextUIFactory(
             stdout=stdout, stderr=stderr)
         pb = ui_factory.nested_progress_bar()
         try:
@@ -169,13 +169,6 @@ class UITests(TestCase):
         pb2.finished()
         pb1.finished()
 
-    def test_text_factory_setting_progress_bar(self):
-        # we should be able to choose the progress bar type used.
-        factory = TextUIFactory(bar_type=DotsProgressBar)
-        bar = factory.nested_progress_bar()
-        bar.finished()
-        self.assertIsInstance(bar, DotsProgressBar)
-
     def test_cli_stdin_is_default_stdin(self):
         factory = CLIUIFactory()
         self.assertEqual(sys.stdin, factory.stdin)
@@ -215,7 +208,7 @@ class UITests(TestCase):
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        factory = TextUIFactory(bar_type=DotsProgressBar)
+        factory = TextUIFactory()
         factory.stdout = _TTYStringIO()
         factory.stdin = StringIO("yada\ny\n")
         pb = self.apply_redirected(factory.stdin, factory.stdout,

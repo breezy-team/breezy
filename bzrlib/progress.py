@@ -1,4 +1,3 @@
-# Copyright (C) 2005 Aaron Bentley <aaron.bentley@utoronto.ca>
 # Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -91,6 +90,9 @@ class ProgressTask(object):
             self.total_cnt = total_cnt
         self.ui_factory.show_progress(self)
 
+    def tick(self):
+        self.update(self.msg)
+
     def finished(self):
         self.ui_factory.progress_finished(self)
 
@@ -143,7 +145,6 @@ def ProgressBar(to_file=None, **kwargs):
             raise errors.InvalidProgressBarType(requested_bar_type,
                                                 _progress_bar_types.keys())
         return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
-
 
 
 class TextProgressView(object):
@@ -393,6 +394,7 @@ class DummyProgress(_BaseProgressBar):
 
     This can be used as the default argument for methods that
     take an optional progress indicator."""
+
     def tick(self):
         pass
 
