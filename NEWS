@@ -31,6 +31,9 @@ IN DEVELOPMENT
     * setup.py support fixed.
       (Jelmer Vernooij)
 
+    * Update the last-modified revision for a renamed file.
+      (John Arbash Meinel)
+
   COMPATIBILITY BREAKS:
 
     * bzr-fast-export.py renamed to bzr-fast-export.
