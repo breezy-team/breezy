@@ -126,7 +126,6 @@ class UITests(TestCase):
         pb = ui_factory.nested_progress_bar()
         try:
             # Create a progress update that isn't throttled
-            pb.start_time -= 10
             pb.update('x', 1, 1)
             result = pb.note('t')
             self.assertEqual(None, result)
@@ -208,23 +207,23 @@ class UITests(TestCase):
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        factory = TextUIFactory()
-        factory.stdout = _TTYStringIO()
+        out = _TTYStringIO()
+        factory = TextUIFactory(stdout=out, stderr=out)
         factory.stdin = StringIO("yada\ny\n")
-        pb = self.apply_redirected(factory.stdin, factory.stdout,
-                                   factory.stdout, factory.nested_progress_bar)
-        pb.start_time = None
-        self.apply_redirected(factory.stdin, factory.stdout,
-                              factory.stdout, pb.update, "foo", 0, 1)
+        pb = factory.nested_progress_bar()
+        pb.show_bar = False
+        pb.show_spinner = False
+        pb.show_count = False
+        pb.update("foo", 0, 1)
         self.assertEqual(True,
                          self.apply_redirected(None, factory.stdout,
                                                factory.stdout,
                                                factory.get_boolean,
                                                "what do you want"))
-        output = factory.stdout.getvalue()
-        self.assertEqual("foo: .\n"
-                         "what do you want? [y/n]: what do you want? [y/n]: ",
-                         factory.stdout.getvalue())
-        # stdin should be empty
+        output = out.getvalue()
+        self.assertContainsRe(factory.stdout.getvalue(),
+            "foo *\r\r  *\r*")
+        self.assertContainsRe(factory.stdout.getvalue(),
+            r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
+        # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
-
