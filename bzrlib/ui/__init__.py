@@ -74,9 +74,9 @@ class UIFactory(object):
         bar.finished().
         """
         if self._task_stack:
-            t = progress.ProgressTask(self._task_stack[-1], ui)
+            t = progress.ProgressTask(self._task_stack[-1], self)
         else:
-            t = progress.ProgressTask(None, ui)
+            t = progress.ProgressTask(None, self)
         self._task_stack.append(t)
         return t
 

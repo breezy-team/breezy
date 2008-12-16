@@ -86,7 +86,7 @@ class ProgressTask(object):
         self.ui_factory.progress_finished(self)
 
     def make_sub_task(self):
-        return ProgressTask(parent_task=self, self.ui_factory)
+        return ProgressTask(self, self.ui_factory)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
@@ -146,6 +146,8 @@ class TextProgressView(object):
 
     One instance of this is created and held by the UI, and fed updates when a
     task wants to be painted.
+
+    Transports feed data to this through the ui_factory object.
     """
 
     def __init__(self, term_file):
@@ -156,10 +158,14 @@ class TextProgressView(object):
         self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
-        self._last_update = 0
+        # time we last repainted the screen
+        self._last_repaint = 0
+        # time we last got information about transport activity
         self._transport_update_time = 0
         self._task_fraction = None
         self._last_task = None
+        self._total_byte_count = 0
+        self._bytes_since_update = 0
 
     def _show_line(self, s):
         n = self._width - 1
@@ -199,13 +205,6 @@ class TextProgressView(object):
         return m + s
 
     def _repaint(self):
-        now = time.time()
-        if now < self._last_update + 0.1:
-            return
-        if now > self._transport_update_time + 5:
-            # no recent activity; expire it
-            self._last_transport_msg = ''
-        self._last_update = now
         bar_string = self._render_bar()
         if self._last_task:
             task_msg = self._format_task(self._last_task)
@@ -223,12 +222,40 @@ class TextProgressView(object):
 
     def show_progress(self, task):
         self._last_task = task
+        now = time.time()
+        if now < self._last_repaint + 0.1:
+            return
+        if now > self._transport_update_time + 5:
+            # no recent activity; expire it
+            self._last_transport_msg = ''
+        self._last_repaint = now
         self._repaint()
 
-    def show_transport_activity(self, msg):
-        self._last_transport_msg = msg
-        self._transport_update_time = time.time()
-        self._repaint()
+    def show_transport_activity(self, byte_count):
+        """Called by transports as they do IO.
+        
+        This may update a progress bar, spinner, or similar display.
+        By default it does nothing.
+        """
+        # XXX: Probably there should be a transport activity model, and that
+        # too should be seen by the progress view, rather than being poked in
+        # here.
+        self._total_byte_count += byte_count
+        self._bytes_since_update += byte_count
+        now = time.time()
+        if self._transport_update_time is None:
+            self._transport_update_time = now
+        elif now >= (self._transport_update_time + 0.2):
+            # guard against clock stepping backwards, and don't update too
+            # often
+            rate = self._bytes_since_update / (now - self._transport_update_time)
+            msg = ("%6dkB @ %4dkB/s" %
+                (self._total_byte_count>>10, int(rate)>>10,))
+            self._transport_update_time = now
+            self._last_repaint = now
+            self._bytes_since_update = 0
+            self._last_transport_msg = msg
+            self._repaint()
 
 
 class ProgressBarStack(object):

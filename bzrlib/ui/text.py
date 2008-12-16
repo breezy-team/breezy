@@ -46,10 +46,9 @@ class TextUIFactory(CLIUIFactory):
 
         :param bar_type: The type of progress bar to create. It defaults to 
                          letting the bzrlib.progress.ProgressBar factory auto
-                         select.
+                         select.   Deprecated.
         """
         super(TextUIFactory, self).__init__()
-        self._bar_type = bar_type
         if stdout is None:
             self.stdout = sys.stdout
         else:
@@ -58,10 +57,6 @@ class TextUIFactory(CLIUIFactory):
             self.stderr = sys.stderr
         else:
             self.stderr = stderr
-        # total bytes read/written so far
-        self._total_byte_count = 0
-        self._bytes_since_update = 0
-        self._last_activity_time = None
         # paints progress, network activity, etc
         self._progress_view = progress.TextProgressView(self.stderr)
 
@@ -86,23 +81,7 @@ class TextUIFactory(CLIUIFactory):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        # XXX: Probably there should be a transport activity model, and that
-        # too should be seen by the progress view, rather than being poked in
-        # here.
-        self._total_byte_count += byte_count
-        self._bytes_since_update += byte_count
-        now = time.time()
-        if self._last_activity_time is None:
-            self._last_activity_time = now
-        elif now >= (self._last_activity_time + 0.2):
-            # guard against clock stepping backwards, and don't update too
-            # often
-            rate = self._bytes_since_update / (now - self._last_activity_time)
-            msg = ("%6dkB @ %4dkB/s" %
-                (self._total_byte_count>>10, int(rate)>>10,))
-            self._last_activity_time = now
-            self._bytes_since_update = 0
-            self._progress_view.show_transport_activity(msg)
+        self._progress_view.show_transport_activity(byte_count)
 
     def show_progress(self, task):
         """A task has been updated and wants to be displayed.
