@@ -67,25 +67,26 @@ class ProgressTask(object):
     and it will in turn update the display, if one is present.
     """
 
-    def __init__(self, parent_task=None):
+    def __init__(self, parent_task=None, ui_factory=None):
         self._parent_task = parent_task
         self._last_update = 0
         self.total_cnt = None
         self.current_cnt = None
         self.msg = ''
+        self.ui_factory = ui_factory
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         self.msg = msg
         self.current_cnt = current_cnt
         if total_cnt:
             self.total_cnt = total_cnt
-        ui.ui_factory.show_progress(self)
+        self.ui_factory.show_progress(self)
 
     def finished(self):
-        ui.ui_factory.progress_finished(self)
+        self.ui_factory.progress_finished(self)
 
     def make_sub_task(self):
-        return ProgressTask(parent_task=self)
+        return ProgressTask(parent_task=self, self.ui_factory)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
@@ -105,12 +106,12 @@ class ProgressTask(object):
     def note(self, fmt_string, *args, **kwargs):
         """Record a note without disrupting the progress bar."""
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        ui.ui_factory.clear_term()
+        self.ui_factory.clear_term()
         trace.note(fmt_string % args)
 
     def clear(self):
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        ui.ui_factory.clear_term()
+        self.ui_factory.clear_term()
 
 
 def ProgressBar(to_file=None, **kwargs):

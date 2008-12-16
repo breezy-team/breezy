@@ -74,9 +74,9 @@ class UIFactory(object):
         bar.finished().
         """
         if self._task_stack:
-            t = progress.ProgressTask(self._task_stack[-1])
+            t = progress.ProgressTask(self._task_stack[-1], ui)
         else:
-            t = progress.ProgressTask()
+            t = progress.ProgressTask(None, ui)
         self._task_stack.append(t)
         return t
 
@@ -188,6 +188,7 @@ class SilentUIFactory(CLIUIFactory):
 
     def progress_finished(self, task):
         pass
+
 
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""
