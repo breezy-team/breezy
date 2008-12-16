@@ -10,6 +10,9 @@ IN DEVELOPMENT
 
   CHANGES:
   
+    * Formats using Knit-based repository formats are now explicitly
+      marked as deprecated. (Ian Clatworthy)
+
     * ``LRUCache(after_cleanup_size)`` was renamed to
       ``after_cleanup_count`` and the old name deprecated. The new name is
       used for clarity, and to avoid confusion with
@@ -46,6 +49,15 @@ IN DEVELOPMENT
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
 
+    * Preserve transport decorators while following redirections.
+      (Vincent Ladeuil, #245964, #270863)
+
+    * Provides a finer and more robust filter for accepted redirections.
+      (Vincent Ladeuil, #303959, #265070)
+
+    * ``shelve`` paths are now interpreted relative to the current working
+      tree.  (Aaron Bentley)
+
     * ``Transport.readv()`` defaults to not reading more than 100MB in a
       single array. Further ``RemoteTransport.readv`` sets this to 5MB to
       work better with how it splits its requests.
@@ -58,6 +70,11 @@ IN DEVELOPMENT
       (Vincent Ladeuil, #87179)
 
   DOCUMENTATION:
+
+    * Improved the formats help topic to explain why multiple formats
+      exist and to provide guidelines in selecting one. Introduced
+      two new supporting help topics: current-formats and other-formats.
+      (Ian Clatworthy)
 
   API CHANGES:
 
