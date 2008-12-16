@@ -111,6 +111,15 @@ class GitRepository(ForeignRepository):
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
+    def lookup_revision_id(self, revid):
+        """Lookup a revision id.
+        
+        :param revid: Bazaar revision id.
+        :return: Tuple with git revisionid and mapping.
+        """
+        # Yes, this doesn't really work, but good enough as a stub
+        return osutils.sha(rev_id).hexdigest(), self.get_mapping()
+
     def has_signature_for_revision_id(self, revision_id):
         return False
 
@@ -120,8 +129,7 @@ class GitRepository(ForeignRepository):
             if revid == revision.NULL_REVISION:
                 ret[revid] = ()
             else:
-                commit = self._git.commit(self.lookup_git_revid(revid, default_mapping))
-                ret[revid] = tuple([default_mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
+                ret[revid] = tuple([self.get_mapping().revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         return ret
 
     def lookup_git_revid(self, bzr_revid, mapping):
