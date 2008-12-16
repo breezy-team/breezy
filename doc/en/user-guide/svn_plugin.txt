@@ -40,9 +40,9 @@ default repository format. Next, create a feature branch and hack away::
 
   bzr branch beagle-trunk beagle-feature1
   cd beagle-feature1
-  *changes*
+  (hack, hack, hack)
   bzr commit -m "blah blah blah"
-  *changes*
+  (hack, hack, hack)
   bzr commit -m "blah blah blah"
 
 When the feature is cooked, refresh your trunk mirror and merge
@@ -78,9 +78,9 @@ Here's the recipe from above updated to use a central Bazaar mirror::
   bzr branch bzr+ssh://bzr.gnome.org/beagle.bzr/trunk beagle-trunk
   bzr branch beagle-trunk beagle-feature1
   cd beagle-feature1
-  *changes*
+  (hack, hack, hack)
   bzr commit -m "blah blah blah"
-  *changes*
+  (hack, hack, hack)
   bzr commit -m "blah blah blah"
   cd ../beagle-trunk
   bzr pull
