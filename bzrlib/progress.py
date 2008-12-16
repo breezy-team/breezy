@@ -151,6 +151,7 @@ class TextProgressView(object):
         self._term_file = term_file
         # true when there's output on the screen we may need to clear
         self._have_output = False
+        # XXX: We could listen for SIGWINCH and update the terminal width...
         self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
@@ -423,13 +424,11 @@ class TTYProgressBar(_BaseProgressBar):
         from bzrlib.osutils import terminal_width
         _BaseProgressBar.__init__(self, **kwargs)
         self.spin_pos = 0
-        # XXX: We could listen for SIGWINCH and update the terminal width...
         self.width = terminal_width()
         self.last_updates = []
         self._max_last_updates = 10
         self.child_fraction = 0
         self._have_output = False
-        self._last_transport_msg = ''
     
     def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
@@ -467,12 +466,9 @@ class TTYProgressBar(_BaseProgressBar):
         self.tick()
 
     def update(self, msg, current_cnt=None, total_cnt=None,
-               child_fraction=0, transport_msg=None):
+            child_fraction=0):
         """Update and redraw progress bar.
-        
-        :param transport_msg: A short message inserted into the string to 
-            show the state of network activity.
-            """
+        """
         if msg is None:
             msg = self.last_msg
 
@@ -498,8 +494,6 @@ class TTYProgressBar(_BaseProgressBar):
         ##     self.child_fraction == child_fraction):
         ##     return
 
-        if transport_msg is None:
-            transport_msg = self._last_transport_msg
         if msg is None:
             msg = ''
 
@@ -553,7 +547,7 @@ class TTYProgressBar(_BaseProgressBar):
         if self.show_bar:
             # progress bar, if present, soaks up all remaining space
             cols = self.width - 1 - len(self.last_msg) - len(spin_str) - len(pct_str) \
-                   - len(eta_str) - len(count_str) - 3 - len(transport_msg)
+                   - len(eta_str) - len(count_str) - 3
 
             if self.last_total:
                 # number of markers highlighted in bar
@@ -572,7 +566,7 @@ class TTYProgressBar(_BaseProgressBar):
         else:
             bar_str = ''
 
-        m = spin_str + transport_msg + bar_str + self.last_msg + count_str \
+        m = spin_str + bar_str + self.last_msg + count_str \
             + pct_str + eta_str
         self.to_file.write('\r%-*.*s' % (self.width - 1, self.width - 1, m))
         self._have_output = True
