@@ -992,12 +992,9 @@ class TestSmartTCPServer(tests.TestCase):
         smart_server.start_background_thread('-' + self.id())
         try:
             transport = remote.RemoteTCPTransport(smart_server.get_url())
-            try:
-                transport.get('something')
-            except errors.TransportError, e:
-                self.assertContainsRe(str(e), 'some random exception')
-            else:
-                self.fail("get did not raise expected error")
+            err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+                transport.get, 'something')
+            self.assertContainsRe(str(err), 'some random exception')
             transport.disconnect()
         finally:
             smart_server.stop_background_thread()
@@ -1091,12 +1088,9 @@ class WritableEndToEndTests(SmartTCPTests):
         # asked for by the client. This gives meaningful and unsurprising errors
         # for users.
         self._captureVar('BZR_NO_SMART_VFS', None)
-        try:
-            self.transport.get('not%20a%20file')
-        except errors.NoSuchFile, e:
-            self.assertEqual('not%20a%20file', e.path)
-        else:
-            self.fail("get did not raise expected error")
+        err = self.assertRaises(
+            errors.NoSuchFile, self.transport.get, 'not%20a%20file')
+        self.assertEqual('not%20a%20file', err.path)
 
     def test_simple_clone_conn(self):
         """Test that cloning reuses the same connection."""
@@ -1400,8 +1394,9 @@ class TestRemoteTransport(tests.TestCase):
         client_medium = medium.SmartSimplePipesClientMedium(None, None, 'base')
         transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
+        err = errors.ErrorFromSmartServer(("ReadOnlyError", ))
         self.assertRaises(errors.TransportNotPossible,
-            transport._translate_error, ("ReadOnlyError", ))
+            transport._translate_error, err)
 
 
 class TestSmartProtocol(tests.TestCase):
@@ -3362,8 +3357,8 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         # requests for child URLs of that to the original URL.  i.e., we want to
         # POST to "bzr+http://host/foo/.bzr/smart" and never something like
         # "bzr+http://host/foo/.bzr/branch/.bzr/smart".  So, a cloned
-        # RemoteHTTPTransport remembers the initial URL, and adjusts the relpaths
-        # it sends in smart requests accordingly.
+        # RemoteHTTPTransport remembers the initial URL, and adjusts the
+        # relpaths it sends in smart requests accordingly.
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/path')
         new_transport = base_transport.clone('child_dir')
         self.assertEqual(base_transport._http_transport,
@@ -3389,7 +3384,34 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
             'c/',
             new_transport._client.remote_path_from_transport(new_transport))
 
-        
+    def test__redirect_to(self):
+        t = remote.RemoteHTTPTransport('bzr+http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/bar')
+        self.assertEquals(type(r), type(t))
+
+    def test__redirect_sibling_protocol(self):
+        t = remote.RemoteHTTPTransport('bzr+http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https://www.example.com/bar')
+        self.assertEquals(type(r), type(t))
+        self.assertStartsWith(r.base, 'bzr+https')
+
+    def test__redirect_to_with_user(self):
+        t = remote.RemoteHTTPTransport('bzr+http://joe@www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/bar')
+        self.assertEquals(type(r), type(t))
+        self.assertEquals('joe', t._user)
+        self.assertEquals(t._user, r._user)
+
+    def test_redirected_to_same_host_different_protocol(self):
+        t = remote.RemoteHTTPTransport('bzr+http://joe@www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'ftp://www.example.com/foo')
+        self.assertNotEquals(type(r), type(t))
+
+
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when
 # coming from a smart server.

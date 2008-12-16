@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -248,6 +248,7 @@ Repository:
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
 """Lightweight checkout (format: 1.6 or 1.6.1-rich-root \
+or 1.9 or 1.9-rich-root \
 or dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -416,6 +417,7 @@ Repository:
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
+1.9 or 1.9-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -553,6 +555,7 @@ Repository:
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
+1.9 or 1.9-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -677,6 +680,7 @@ Repository:
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
+1.9 or 1.9-rich-root or \
 dirstate or dirstate-tags or \
 pack-0.92 or rich-root or rich-root-pack)
 Location:
@@ -1093,6 +1097,7 @@ Repository:
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
         format = {True: '1.6 or 1.6.1-rich-root'
+                        ' or 1.9 or 1.9-rich-root'
                         ' or dirstate or dirstate-tags or pack-0.92'
                         ' or rich-root or rich-root-pack',
                   False: 'dirstate'}[light_checkout]

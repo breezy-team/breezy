@@ -84,7 +84,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.iteritems():
+    for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             if hasattr(factory, "_module_name"):
                 modules.add(factory._module_name)
@@ -797,6 +797,10 @@ class Transport(object):
         cur = _CoalescedOffset(None, None, [])
         coalesced_offsets = []
 
+        if max_size <= 0:
+            # 'unlimited', but we actually take this to mean 100MB buffer limit
+            max_size = 100*1024*1024
+
         for start, size in offsets:
             end = start + size
             if (last_end is not None
@@ -1035,22 +1039,31 @@ class Transport(object):
         implement it.
         """
         source = self.clone(from_relpath)
-        self.mkdir(to_relpath)
         target = self.clone(to_relpath)
+        target.mkdir('.')
+        source.copy_tree_to_transport(target)
+
+    def copy_tree_to_transport(self, to_transport):
+        """Copy a subtree from one transport to another.
+
+        self.base is used as the source tree root, and to_transport.base
+        is used as the target.  to_transport.base must exist (and be a
+        directory).
+        """
         files = []
         directories = ['.']
         while directories:
             dir = directories.pop()
             if dir != '.':
-                target.mkdir(dir)
-            for path in source.list_dir(dir):
+                to_transport.mkdir(dir)
+            for path in self.list_dir(dir):
                 path = dir + '/' + path
-                stat = source.stat(path)
+                stat = self.stat(path)
                 if S_ISDIR(stat.st_mode):
                     directories.append(path)
                 else:
                     files.append(path)
-        source.copy_to(files, target)
+        self.copy_to(files, to_transport)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory.
@@ -1235,6 +1248,22 @@ class Transport(object):
         # have Transport refuses to be reused than testing that the reuse
         # should be asked to ConnectedTransport only.
         return None
+
+    def _redirected_to(self, source, target):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        # This returns None by default, meaning the transport can't handle the
+        # redirection.
+        return None
+
 
 
 class _SharedConnection(object):
@@ -1574,7 +1603,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
-    for proto, factory_list in transport_list_registry.iteritems():
+    for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
@@ -1726,12 +1755,13 @@ register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
+# The default http implementation is urllib, but https is pycurl if available
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
-                        'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 

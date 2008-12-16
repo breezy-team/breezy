@@ -659,6 +659,44 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             vf.iter_lines_added_or_present_in_keys, keys)
         self.assertEqual([2, 1, 1], reload_counter)
 
+    def test_get_record_stream_yields_disk_sorted_order(self):
+        # if we get 'unordered' pick a semi-optimal order for reading. The
+        # order should be grouped by pack file, and then by position in file
+        repo = self.make_repository('test', format='pack-0.92')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        vf = repo.texts
+        vf.add_lines(('f-id', 'rev-5'), [('f-id', 'rev-4')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-1'), [], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-2'), [('f-id', 'rev-1')], ['lines\n'])
+        repo.commit_write_group()
+        # We inserted them as rev-5, rev-1, rev-2, we should get them back in
+        # the same order
+        stream = vf.get_record_stream([('f-id', 'rev-1'), ('f-id', 'rev-5'),
+                                       ('f-id', 'rev-2')], 'unordered', False)
+        keys = [r.key for r in stream]
+        self.assertEqual([('f-id', 'rev-5'), ('f-id', 'rev-1'),
+                          ('f-id', 'rev-2')], keys)
+        repo.start_write_group()
+        vf.add_lines(('f-id', 'rev-4'), [('f-id', 'rev-3')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-3'), [('f-id', 'rev-2')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-6'), [('f-id', 'rev-5')], ['lines\n'])
+        repo.commit_write_group()
+        # Request in random order, to make sure the output order isn't based on
+        # the request
+        request_keys = set(('f-id', 'rev-%d' % i) for i in range(1, 7))
+        stream = vf.get_record_stream(request_keys, 'unordered', False)
+        keys = [r.key for r in stream]
+        # We want to get the keys back in disk order, but it doesn't matter
+        # which pack we read from first. So this can come back in 2 orders
+        alt1 = [('f-id', 'rev-%d' % i) for i in [4, 3, 6, 5, 1, 2]]
+        alt2 = [('f-id', 'rev-%d' % i) for i in [5, 1, 2, 4, 3, 6]]
+        if keys != alt1 and keys != alt2:
+            self.fail('Returned key order did not match either expected order.'
+                      ' expected %s or %s, not %s'
+                      % (alt1, alt2, keys))
+
 
 class LowLevelKnitDataTests(TestCase):
 
@@ -1769,7 +1807,9 @@ class TestStacking(KnitTests):
         basis.calls = []
         test.add_lines(key_cross_border, (key_basis,), ['foo\n'])
         self.assertEqual('fulltext', test._index.get_method(key_cross_border))
-        self.assertEqual([("get_parent_map", set([key_basis]))], basis.calls)
+        # we don't even need to look at the basis to see that this should be
+        # stored as a fulltext
+        self.assertEqual([], basis.calls)
         # Subsequent adds do delta.
         basis.calls = []
         test.add_lines(key_delta, (key_cross_border,), ['foo\n'])
@@ -2030,7 +2070,11 @@ class TestStacking(KnitTests):
         source.add_lines(key_delta, (key_basis,), ['bar\n'])
         stream = source.get_record_stream([key_delta], 'unordered', False)
         test.insert_record_stream(stream)
-        self.assertEqual([("get_parent_map", set([key_basis]))],
+        # XXX: this does somewhat too many calls in making sure of whether it
+        # has to recreate the full text.
+        self.assertEqual([("get_parent_map", set([key_basis])),
+             ('get_parent_map', set([key_basis])),
+             ('get_record_stream', [key_basis], 'unordered', True)],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
@@ -2097,8 +2141,7 @@ class TestStacking(KnitTests):
         test.add_mpdiffs([(key_delta, (key_basis,),
             source.get_sha1s([key_delta])[key_delta], diffs[0])])
         self.assertEqual([("get_parent_map", set([key_basis])),
-            ('get_record_stream', [key_basis], 'unordered', True),
-            ('get_parent_map', set([key_basis]))],
+            ('get_record_stream', [key_basis], 'unordered', True),],
             basis.calls)
         self.assertEqual({key_delta:(key_basis,)},
             test.get_parent_map([key_delta]))
@@ -2123,14 +2166,13 @@ class TestStacking(KnitTests):
                 multiparent.NewText(['foo\n']),
                 multiparent.ParentText(1, 0, 2, 1)])],
             diffs)
-        self.assertEqual(4, len(basis.calls))
+        self.assertEqual(3, len(basis.calls))
         self.assertEqual([
             ("get_parent_map", set([key_left, key_right])),
             ("get_parent_map", set([key_left, key_right])),
-            ("get_parent_map", set([key_left, key_right])),
             ],
-            basis.calls[:3])
-        last_call = basis.calls[3]
+            basis.calls[:-1])
+        last_call = basis.calls[-1]
         self.assertEqual('get_record_stream', last_call[0])
         self.assertEqual(set([key_left, key_right]), set(last_call[1]))
         self.assertEqual('unordered', last_call[2])

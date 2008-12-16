@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ from bzrlib import (
     debug,
     errors,
     revision,
+    trace,
     tree,
     )
 from bzrlib.branch import Branch
@@ -77,7 +78,7 @@ from bzrlib.osutils import (get_user_encoding,
                             )
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
-from bzrlib.inventory import InventoryEntry, make_entry
+from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -205,7 +206,8 @@ class Commit(object):
                config=None,
                message_callback=None,
                recursive='down',
-               exclude=None):
+               exclude=None,
+               possible_master_transports=None):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -283,9 +285,6 @@ class Commit(object):
         self.committer = committer
         self.strict = strict
         self.verbose = verbose
-        # accumulates an inventory delta to the basis entry, so we can make
-        # just the necessary updates to the workingtree's cached basis.
-        self._basis_delta = []
 
         self.work_tree.lock_write()
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -298,7 +297,7 @@ class Commit(object):
                 raise ConflictsInTree
 
             # Setup the bound branch variables as needed.
-            self._check_bound_branch()
+            self._check_bound_branch(possible_master_transports)
 
             # Check that the working tree is up to date
             old_revno, new_revno = self._check_out_of_date_tree()
@@ -353,8 +352,9 @@ class Commit(object):
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
-            
+
             try:
+                self.builder.will_record_deletes()
                 # find the location being committed to
                 if self.bound_branch:
                     master_location = self.master_branch.base
@@ -383,7 +383,10 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
 
-            except:
+            except Exception, e:
+                mutter("aborting commit write group because of exception:")
+                trace.log_exception_quietly()
+                note("aborting commit write group: %r" % (e,))
                 self.builder.abort()
                 raise
 
@@ -409,7 +412,7 @@ class Commit(object):
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
             self.work_tree.update_basis_by_delta(self.rev_id,
-                 self._basis_delta)
+                 self.builder.get_basis_delta())
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -428,7 +431,7 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # TODO: we could simplify this by using self._basis_delta.
+        # TODO: we could simplify this by using self.builder.basis_delta.
 
         # The initial commit adds a root directory, but this in itself is not
         # a worthwhile commit.
@@ -444,7 +447,7 @@ class Commit(object):
             return
         raise PointlessCommit()
 
-    def _check_bound_branch(self):
+    def _check_bound_branch(self, possible_master_transports=None):
         """Check to see if the local branch is bound.
 
         If it is bound, then most of the commit will actually be
@@ -455,7 +458,8 @@ class Commit(object):
             raise errors.LocalRequiresBoundBranch()
 
         if not self.local:
-            self.master_branch = self.branch.get_master_branch()
+            self.master_branch = self.branch.get_master_branch(
+                possible_master_transports)
 
         if not self.master_branch:
             # make this branch the reference branch for out of date checks.
@@ -690,18 +694,27 @@ class Commit(object):
                 # required after that changes.
                 if len(self.parents) > 1:
                     ie.revision = None
-                delta, version_recorded, _ = self.builder.record_entry_contents(
+                _, version_recorded, _ = self.builder.record_entry_contents(
                     ie, self.parent_invs, path, self.basis_tree, None)
                 if version_recorded:
                     self.any_entries_changed = True
-                if delta:
-                    self._basis_delta.append(delta)
 
     def _report_and_accumulate_deletes(self):
         # XXX: Could the list of deleted paths and ids be instead taken from
         # _populate_from_inventory?
-        deleted_ids = set(self.basis_inv._byid.keys()) - \
-            set(self.builder.new_inventory._byid.keys())
+        if (isinstance(self.basis_inv, Inventory)
+            and isinstance(self.builder.new_inventory, Inventory)):
+            # the older Inventory classes provide a _byid dict, and building a
+            # set from the keys of this dict is substantially faster than even
+            # getting a set of ids from the inventory
+            #
+            # <lifeless> set(dict) is roughly the same speed as
+            # set(iter(dict)) and both are significantly slower than
+            # set(dict.keys())
+            deleted_ids = set(self.basis_inv._byid.keys()) - \
+               set(self.builder.new_inventory._byid.keys())
+        else:
+            deleted_ids = set(self.basis_inv) - set(self.builder.new_inventory)
         if deleted_ids:
             self.any_entries_deleted = True
             deleted = [(self.basis_tree.id2path(file_id), file_id)
@@ -709,7 +722,7 @@ class Commit(object):
             deleted.sort()
             # XXX: this is not quite directory-order sorting
             for path, file_id in deleted:
-                self._basis_delta.append((path, None, file_id, None))
+                self.builder.record_delete(path, file_id)
                 self.reporter.deleted(path)
 
     def _populate_from_inventory(self):
@@ -846,10 +859,8 @@ class Commit(object):
             ie.revision = None
         # For carried over entries we don't care about the fs hash - the repo
         # isn't generating a sha, so we're not saving computation time.
-        delta, version_recorded, fs_hash = self.builder.record_entry_contents(
+        _, version_recorded, fs_hash = self.builder.record_entry_contents(
             ie, self.parent_invs, path, self.work_tree, content_summary)
-        if delta:
-            self._basis_delta.append(delta)
         if version_recorded:
             self.any_entries_changed = True
         if report_changes:

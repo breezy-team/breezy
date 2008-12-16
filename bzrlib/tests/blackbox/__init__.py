@@ -103,6 +103,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_send',
                      'bzrlib.tests.blackbox.test_serve',
                      'bzrlib.tests.blackbox.test_shared_repository',
+                     'bzrlib.tests.blackbox.test_shelve',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_split',
                      'bzrlib.tests.blackbox.test_status',

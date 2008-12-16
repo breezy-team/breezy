@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -110,7 +110,7 @@ from bzrlib.versionedfile import (
     adapter_registry,
     ConstantMapper,
     ContentFactory,
-    FulltextContentFactory,
+    ChunkedContentFactory,
     VersionedFile,
     VersionedFiles,
     )
@@ -196,7 +196,8 @@ class DeltaAnnotatedToFullText(KnitAdapter):
             [compression_parent], 'unordered', True).next()
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_lines = split_lines(basis_entry.get_bytes_as('fulltext'))
+        basis_chunks = basis_entry.get_bytes_as('chunked')
+        basis_lines = osutils.chunks_to_lines(basis_chunks)
         # Manually apply the delta because we have one annotated content and
         # one plain.
         basis_content = PlainKnitContent(basis_lines, compression_parent)
@@ -229,7 +230,8 @@ class DeltaPlainToFullText(KnitAdapter):
             [compression_parent], 'unordered', True).next()
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_lines = split_lines(basis_entry.get_bytes_as('fulltext'))
+        basis_chunks = basis_entry.get_bytes_as('chunked')
+        basis_lines = osutils.chunks_to_lines(basis_chunks)
         basis_content = PlainKnitContent(basis_lines, compression_parent)
         # Manually apply the delta because we have one annotated content and
         # one plain.
@@ -276,11 +278,13 @@ class KnitContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             return self._raw_record
-        if storage_kind == 'fulltext' and self._knit is not None:
-            return self._knit.get_text(self.key[0])
-        else:
-            raise errors.UnavailableRepresentation(self.key, storage_kind,
-                self.storage_kind)
+        if self._knit is not None:
+            if storage_kind == 'chunked':
+                return self._knit.get_lines(self.key[0])
+            elif storage_kind == 'fulltext':
+                return self._knit.get_text(self.key[0])
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
 
 
 class KnitContent(object):
@@ -775,8 +779,9 @@ class KnitVersionedFiles(VersionedFiles):
         present_parents = []
         if parent_texts is None:
             parent_texts = {}
-        # Do a single query to ascertain parent presence.
-        present_parent_map = self.get_parent_map(parents)
+        # Do a single query to ascertain parent presence; we only compress
+        # against parents in the same kvf.
+        present_parent_map = self._index.get_parent_map(parents)
         for parent in parents:
             if parent in present_parent_map:
                 present_parents.append(parent)
@@ -1019,7 +1024,7 @@ class KnitVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'absent':
                     continue
                 missing_keys.remove(record.key)
-                lines = split_lines(record.get_bytes_as('fulltext'))
+                lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
                 text_map[record.key] = lines
                 content_map[record.key] = PlainKnitContent(lines, record.key)
                 if record.key in keys:
@@ -1261,6 +1266,13 @@ class KnitVersionedFiles(VersionedFiles):
                 for key in parent_map:
                     present_keys.append(key)
                     source_keys[-1][1].append(key)
+            # We have been requested to return these records in an order that
+            # suits us. So we ask the index to give us an optimally sorted
+            # order.
+            for source, sub_keys in source_keys:
+                if source is parent_maps[0]:
+                    # Only sort the keys for this VF
+                    self._index._sort_keys_by_io(sub_keys, positions)
         absent_keys = keys - set(global_map)
         for key in absent_keys:
             yield AbsentContentFactory(key)
@@ -1280,9 +1292,8 @@ class KnitVersionedFiles(VersionedFiles):
                 text_map, _ = self._get_content_maps(keys, non_local)
                 for key in keys:
                     lines = text_map.pop(key)
-                    text = ''.join(lines)
-                    yield FulltextContentFactory(key, global_map[key], None,
-                                                 text)
+                    yield ChunkedContentFactory(key, global_map[key], None,
+                                                lines)
         else:
             for source, keys in source_keys:
                 if source is parent_maps[0]:
@@ -1332,6 +1343,7 @@ class KnitVersionedFiles(VersionedFiles):
                 adapter = adapter_factory(self)
                 adapters[adapter_key] = adapter
                 return adapter
+        delta_types = set()
         if self._factory.annotated:
             # self is annotated, we need annotated knits to use directly.
             annotated = "annotated-"
@@ -1341,11 +1353,13 @@ class KnitVersionedFiles(VersionedFiles):
             annotated = ""
             convertibles = set(["knit-annotated-ft-gz"])
             if self._max_delta_chain:
+                delta_types.add("knit-annotated-delta-gz")
                 convertibles.add("knit-annotated-delta-gz")
         # The set of types we can cheaply adapt without needing basis texts.
         native_types = set()
         if self._max_delta_chain:
             native_types.add("knit-%sdelta-gz" % annotated)
+            delta_types.add("knit-%sdelta-gz" % annotated)
         native_types.add("knit-%sft-gz" % annotated)
         knit_types = native_types.union(convertibles)
         adapters = {}
@@ -1355,14 +1369,39 @@ class KnitVersionedFiles(VersionedFiles):
         # can't generate annotations from new deltas until their basis parent
         # is present anyway, so we get away with not needing an index that
         # includes the new keys.
+        #
+        # See <http://launchpad.net/bugs/300177> about ordering of compression
+        # parents in the records - to be conservative, we insist that all
+        # parents must be present to avoid expanding to a fulltext.
+        #
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
             parents = record.parents
+            if record.storage_kind in delta_types:
+                # TODO: eventually the record itself should track
+                #       compression_parent
+                compression_parent = parents[0]
+            else:
+                compression_parent = None
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
-            if record.storage_kind in knit_types:
+            elif ((record.storage_kind in knit_types)
+                  and (compression_parent is None
+                       or not self._fallback_vfs
+                       or self._index.has_key(compression_parent)
+                       or not self.has_key(compression_parent))):
+                # we can insert the knit record literally if either it has no
+                # compression parent OR we already have its basis in this kvf
+                # OR the basis is not present even in the fallbacks.  In the
+                # last case it will either turn up later in the stream and all
+                # will be well, or it won't turn up at all and we'll raise an
+                # error at the end.
+                #
+                # TODO: self.has_key is somewhat redundant with
+                # self._index.has_key; we really want something that directly
+                # asks if it's only present in the fallbacks. -- mbp 20081119
                 if record.storage_kind not in native_types:
                     try:
                         adapter_key = (record.storage_kind, "knit-delta-gz")
@@ -1390,23 +1429,35 @@ class KnitVersionedFiles(VersionedFiles):
                 index_entry = (record.key, options, access_memo, parents)
                 buffered = False
                 if 'fulltext' not in options:
-                    basis_parent = parents[0]
+                    # Not a fulltext, so we need to make sure the compression
+                    # parent will also be present.
                     # Note that pack backed knits don't need to buffer here
                     # because they buffer all writes to the transaction level,
                     # but we don't expose that difference at the index level. If
                     # the query here has sufficient cost to show up in
                     # profiling we should do that.
-                    if basis_parent not in self.get_parent_map([basis_parent]):
+                    #
+                    # They're required to be physically in this
+                    # KnitVersionedFiles, not in a fallback.
+                    if not self._index.has_key(compression_parent):
                         pending = buffered_index_entries.setdefault(
-                            basis_parent, [])
+                            compression_parent, [])
                         pending.append(index_entry)
                         buffered = True
                 if not buffered:
                     self._index.add_records([index_entry])
+            elif record.storage_kind == 'chunked':
+                self.add_lines(record.key, parents,
+                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
             elif record.storage_kind == 'fulltext':
                 self.add_lines(record.key, parents,
                     split_lines(record.get_bytes_as('fulltext')))
             else:
+                # Not a fulltext, and not suitable for direct insertion as a
+                # delta, either because it's not the right format, or this
+                # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
+                # 0) or because it depends on a base only present in the
+                # fallback kvfs.
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
@@ -1427,8 +1478,10 @@ class KnitVersionedFiles(VersionedFiles):
                     del buffered_index_entries[key]
         # If there were any deltas which had a missing basis parent, error.
         if buffered_index_entries:
-            raise errors.RevisionNotPresent(buffered_index_entries.keys()[0],
-                self)
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "record_stream refers to compression parents not in %r:\n%s"
+                % (self, pformat(sorted(buffered_index_entries.keys()))))
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
@@ -1445,9 +1498,11 @@ class KnitVersionedFiles(VersionedFiles):
         is an iterator).
 
         NOTES:
-         * Lines are normalised by the underlying store: they will all have \n
+         * Lines are normalised by the underlying store: they will all have \\n
            terminators.
          * Lines are returned in arbitrary order.
+         * If a requested key did not change any lines (or didn't have any
+           lines), it may not be mentioned at all in the result.
 
         :return: An iterator over (line, key).
         """
@@ -1488,6 +1543,14 @@ class KnitVersionedFiles(VersionedFiles):
                 done = True
             except errors.RetryWithNewPacks, e:
                 self._access.reload_or_raise(e)
+        # If there are still keys we've not yet found, we look in the fallback
+        # vfs, and hope to find them there.  Note that if the keys are found
+        # but had no changes or no content, the fallback may not return
+        # anything.  
+        if keys and not self._fallback_vfs:
+            # XXX: strictly the second parameter is meant to be the file id
+            # but it's not easily accessible here.
+            raise RevisionNotPresent(keys, repr(self))
         for source in self._fallback_vfs:
             if not keys:
                 break
@@ -1496,10 +1559,6 @@ class KnitVersionedFiles(VersionedFiles):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        if keys:
-            # XXX: strictly the second parameter is meant to be the file id
-            # but it's not easily accessible here.
-            raise RevisionNotPresent(keys, repr(self))
         pb.update('Walking content.', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
@@ -1970,6 +2029,8 @@ class _KndxIndex(object):
         entry = self._kndx_cache[prefix][0][suffix]
         return key, entry[2], entry[3]
 
+    has_key = _mod_index._has_key_from_parent_map
+    
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
         sio = StringIO()
@@ -2035,6 +2096,8 @@ class _KndxIndex(object):
                     del self._filename
                     del self._history
 
+    missing_keys = _mod_index._missing_keys_from_parent_map
+
     def _partition_keys(self, keys):
         """Turn keys into a dict of prefix:suffix_list."""
         result = {}
@@ -2078,6 +2141,26 @@ class _KndxIndex(object):
             self._mode = 'w'
         else:
             self._mode = 'r'
+
+    def _sort_keys_by_io(self, keys, positions):
+        """Figure out an optimal order to read the records for the given keys.
+
+        Sort keys, grouped by index and sorted by position.
+
+        :param keys: A list of keys whose records we want to read. This will be
+            sorted 'in-place'.
+        :param positions: A dict, such as the one returned by
+            _get_components_positions()
+        :return: None
+        """
+        def get_sort_key(key):
+            index_memo = positions[key][1]
+            # Group by prefix and position. index_memo[0] is the key, so it is
+            # (file_id, revision_id) and we don't want to sort on revision_id,
+            # index_memo[1] is the position, and index_memo[2] is the size,
+            # which doesn't matter for the sort
+            return index_memo[0][:-1], index_memo[1]
+        return keys.sort(key=get_sort_key)
 
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
@@ -2321,6 +2404,8 @@ class _KnitGraphIndex(object):
         node = self._get_node(key)
         return self._node_to_position(node)
 
+    has_key = _mod_index._has_key_from_parent_map
+
     def keys(self):
         """Get all the keys in the collection.
         
@@ -2329,10 +2414,32 @@ class _KnitGraphIndex(object):
         self._check_read()
         return [node[1] for node in self._graph_index.iter_all_entries()]
     
+    missing_keys = _mod_index._missing_keys_from_parent_map
+
     def _node_to_position(self, node):
         """Convert an index value to position details."""
         bits = node[2][1:].split(' ')
         return node[0], int(bits[0]), int(bits[1])
+
+    def _sort_keys_by_io(self, keys, positions):
+        """Figure out an optimal order to read the records for the given keys.
+
+        Sort keys, grouped by index and sorted by position.
+
+        :param keys: A list of keys whose records we want to read. This will be
+            sorted 'in-place'.
+        :param positions: A dict, such as the one returned by
+            _get_components_positions()
+        :return: None
+        """
+        def get_index_memo(key):
+            # index_memo is at offset [1]. It is made up of (GraphIndex,
+            # position, size). GI is an object, which will be unique for each
+            # pack file. This causes us to group by pack file, then sort by
+            # position. Size doesn't matter, but it isn't worth breaking up the
+            # tuple.
+            return positions[key][1]
+        return keys.sort(key=get_index_memo)
 
 
 class _KnitKeyAccess(object):
@@ -2851,7 +2958,7 @@ class _KnitAnnotator(object):
         reannotate = annotate.reannotate
         for record in self._knit.get_record_stream(keys, 'topological', True):
             key = record.key
-            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            fulltext = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parents = parent_map[key]
             if parents is not None:
                 parent_lines = [parent_cache[parent] for parent in parent_map[key]]

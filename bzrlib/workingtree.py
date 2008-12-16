@@ -85,7 +85,7 @@ from bzrlib.workingtree_4 import WorkingTreeFormat4
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, TreeReference
-from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -433,11 +433,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         file_obj = self.get_file_byname(path)
         return (file_obj, _fstat(file_obj.fileno()))
 
-    def get_file_text(self, file_id):
-        return self.get_file(file_id).read()
-
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
+
+    def get_file_lines(self, file_id, path=None):
+        """See Tree.get_file_lines()"""
+        file = self.get_file(file_id, path)
+        try:
+            return file.readlines()
+        finally:
+            file.close()
 
     @needs_read_lock
     def annotate_iter(self, file_id, default_revision=CURRENT_REVISION):
@@ -2503,6 +2508,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self._rules_searcher = super(WorkingTree,
                 self)._get_rules_searcher(default_searcher)
         return self._rules_searcher
+
+    def get_shelf_manager(self):
+        """Return the ShelfManager for this WorkingTree."""
+        from bzrlib.shelf import ShelfManager
+        return ShelfManager(self, self._transport)
 
 
 class WorkingTree2(WorkingTree):

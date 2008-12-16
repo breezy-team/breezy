@@ -347,7 +347,12 @@ class TestingHTTPServerMixin:
              # WSAENOTCONN (10057) 'Socket is not connected' is harmless on
              # windows (occurs before the first connection attempt
              # vila--20071230)
-             if not len(e.args) or e.args[0] != 10057:
+
+             # 'Socket is not connected' can also occur on OSX, with a
+             # "regular" ENOTCONN (when something went wrong during test case
+             # setup leading to self.setUp() *not* being called but
+             # self.tearDown() still being called -- vila20081106
+             if not len(e.args) or e.args[0] not in (errno.ENOTCONN, 10057):
                  raise
          # Let the server properly close the socket
          self.server_close()

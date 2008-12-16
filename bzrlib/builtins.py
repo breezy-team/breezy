@@ -56,7 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet
+from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -392,10 +392,18 @@ class cmd_revision_info(Command):
     """
     hidden = True
     takes_args = ['revision_info*']
-    takes_options = ['revision']
+    takes_options = [
+        'revision',
+        Option('directory',
+            help='Branch to examine, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
 
     @display_command
-    def run(self, revision=None, revision_info_list=[]):
+    def run(self, revision=None, directory=u'.', revision_info_list=[]):
 
         revs = []
         if revision is not None:
@@ -404,7 +412,7 @@ class cmd_revision_info(Command):
             for rev in revision_info_list:
                 revs.append(RevisionSpec.from_string(rev))
 
-        b = Branch.open_containing(u'.')[0]
+        b = Branch.open_containing(directory)[0]
 
         if len(revs) == 0:
             revs.append(RevisionSpec.from_string('-1'))
@@ -798,8 +806,10 @@ class cmd_pull(Command):
                     result.old_revid))
                 old_rh.reverse()
                 new_rh = branch_to.revision_history()
+                log_format = branch_to.get_config().log_format()
                 log.show_changed_revisions(branch_to, old_rh, new_rh,
-                                           to_file=self.outf)
+                                           to_file=self.outf,
+                                           log_format=log_format)
         finally:
             branch_to.unlock()
 
@@ -977,7 +987,8 @@ class cmd_branch(Command):
                                             possible_transports=[to_transport],
                                             accelerator_tree=accelerator_tree,
                                             hardlink=hardlink, stacked=stacked,
-                                            force_new_repo=standalone)
+                                            force_new_repo=standalone,
+                                            source_branch=br_from)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
@@ -1860,7 +1871,8 @@ class cmd_log(Command):
                 log_format = log.log_formatter_registry.get_default(b)
 
             lf = log_format(show_ids=show_ids, to_file=self.outf,
-                            show_timezone=timezone)
+                            show_timezone=timezone,
+                            delta_format=get_verbosity_level())
 
             show_log(b,
                      lf,
@@ -1974,9 +1986,10 @@ class cmd_ls(Command):
                         continue
                     if kind is not None and fkind != kind:
                         continue
+                    kindch = entry.kind_character()
+                    outstring = fp + kindch
                     if verbose:
-                        kindch = entry.kind_character()
-                        outstring = '%-8s %s%s' % (fc, fp, kindch)
+                        outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
                             outstring = "%-50s %s" % (outstring, fid)
                         self.outf.write(outstring + '\n')
@@ -1993,9 +2006,9 @@ class cmd_ls(Command):
                         else:
                             my_id = ''
                         if show_ids:
-                            self.outf.write('%-50s %s\n' % (fp, my_id))
+                            self.outf.write('%-50s %s\n' % (outstring, my_id))
                         else:
-                            self.outf.write(fp + '\n')
+                            self.outf.write(outstring + '\n')
         finally:
             tree.unlock()
 
@@ -2374,6 +2387,7 @@ class cmd_commit(Command):
         )
         from bzrlib.msgeditor import (
             edit_commit_message_encoded,
+            generate_commit_message_template,
             make_commit_message_template_encoded
         )
 
@@ -2408,7 +2422,9 @@ class cmd_commit(Command):
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
-                my_message = edit_commit_message_encoded(t)
+                start_message = generate_commit_message_template(commit_obj)
+                my_message = edit_commit_message_encoded(t, 
+                    start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
@@ -2586,10 +2602,13 @@ class cmd_whoami(Command):
 
 
 class cmd_nick(Command):
-    """Print or set the branch nickname.  
+    """Print or set the branch nickname.
 
-    If unset, the tree root directory name is used as the nickname
-    To print the current nickname, execute with no argument.  
+    If unset, the tree root directory name is used as the nickname.
+    To print the current nickname, execute with no argument.
+
+    Bound branches use the nickname of its master branch unless it is set
+    locally.
     """
 
     _see_also = ['info']
@@ -3762,6 +3781,10 @@ class cmd_bind(Command):
 
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.
+
+    Bound branches use the nickname of its master branch unless it is set
+    locally, in which case binding will update the the local nickname to be
+    that of the master.
     """
 
     _see_also = ['checkouts', 'unbind']
@@ -3786,6 +3809,8 @@ class cmd_bind(Command):
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                          ' Try merging, and then bind again.')
+        if b.get_config().has_explicit_nickname():
+            b.nick = b_other.nick
 
 
 class cmd_unbind(Command):
@@ -4651,7 +4676,7 @@ class cmd_switch(Command):
     For heavyweight checkouts, this checks that there are no local commits
     versus the current bound branch, then it makes the local branch a mirror
     of the new location and binds to it.
-    
+
     In both cases, the working tree is updated and uncommitted changes
     are merged. The user can commit or revert these as they desire.
 
@@ -4661,6 +4686,10 @@ class cmd_switch(Command):
     directory of the current branch. For example, if you are currently in a
     checkout of /path/to/branch, specifying 'newbranch' will find a branch at
     /path/to/newbranch.
+
+    Bound branches use the nickname of its master branch unless it is set
+    locally, in which case switching will update the the local nickname to be
+    that of the master.
     """
 
     takes_args = ['to_location']
@@ -4672,6 +4701,7 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        branch = control_dir.open_branch()
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
@@ -4684,6 +4714,9 @@ class cmd_switch(Command):
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
+        if branch.get_config().has_explicit_nickname():
+            branch = control_dir.open_branch() #get the new branch!
+            branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
@@ -4708,6 +4741,100 @@ class cmd_hooks(Command):
                                     (branch_hooks.get_hook_name(hook),))
             else:
                 self.outf.write("  <no hooks installed>\n")
+
+
+class cmd_shelve(Command):
+    """Temporarily set aside some changes from the current tree.
+
+    Shelve allows you to temporarily put changes you've made "on the shelf",
+    ie. out of the way, until a later time when you can bring them back from
+    the shelf with the 'unshelve' command.
+
+    If shelve --list is specified, previously-shelved changes are listed.
+
+    Shelve is intended to help separate several sets of changes that have
+    been inappropriately mingled.  If you just want to get rid of all changes
+    and you don't need to restore them later, use revert.  If you want to
+    shelve all text changes at once, use shelve --all.
+
+    If filenames are specified, only the changes to those files will be
+    shelved. Other files will be left untouched.
+
+    If a revision is specified, changes since that revision will be shelved.
+
+    You can put multiple items on the shelf, and by default, 'unshelve' will
+    restore the most recently shelved changes.
+    """
+
+    takes_args = ['file*']
+
+    takes_options = [
+        'revision',
+        Option('all', help='Shelve all changes.'),
+        'message',
+        RegistryOption('writer', 'Method to use for writing diffs.',
+                       bzrlib.option.diff_writer_registry,
+                       value_switches=True, enum_switch=False),
+
+        Option('list', help='List shelved changes.'),
+    ]
+    _see_also = ['unshelve']
+
+    def run(self, revision=None, all=False, file_list=None, message=None,
+            writer=None, list=False):
+        if list:
+            return self.run_for_list()
+        from bzrlib.shelf_ui import Shelver
+        if writer is None:
+            writer = bzrlib.option.diff_writer_registry.get()
+        try:
+            Shelver.from_args(writer(sys.stdout), revision, all, file_list,
+                              message).run()
+        except errors.UserAbort:
+            return 0
+
+    def run_for_list(self):
+        tree = WorkingTree.open_containing('.')[0]
+        tree.lock_read()
+        try:
+            manager = tree.get_shelf_manager()
+            shelves = manager.active_shelves()
+            if len(shelves) == 0:
+                note('No shelved changes.')
+                return 0
+            for shelf_id in reversed(shelves):
+                message = manager.get_metadata(shelf_id).get('message')
+                if message is None:
+                    message = '<no message>'
+                self.outf.write('%3d: %s\n' % (shelf_id, message))
+            return 1
+        finally:
+            tree.unlock()
+
+
+class cmd_unshelve(Command):
+    """Restore shelved changes.
+
+    By default, the most recently shelved changes are restored. However if you
+    specify a patch by name those changes will be restored instead.  This
+    works best when the changes don't depend on each other.
+    """
+
+    takes_args = ['shelf_id?']
+    takes_options = [
+        RegistryOption.from_kwargs(
+            'action', help="The action to perform.",
+            enum_switch=False, value_switches=True,
+            apply="Apply changes and remove from the shelf.",
+            dry_run="Show changes, but do not apply or remove them.",
+            delete_only="Delete changes without applying them."
+        )
+    ]
+    _see_also = ['shelve']
+
+    def run(self, shelf_id=None, action='apply'):
+        from bzrlib.shelf_ui import Unshelver
+        Unshelver.from_args(shelf_id, action).run()
 
 
 def _create_prefix(cur_transport):

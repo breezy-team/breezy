@@ -190,6 +190,11 @@ class TestSend(tests.TestCaseWithTransport):
         stdout = self.run_bzr('send -f branch --output -')[0]
         self.assertContainsRe(stdout, 'revision3')
 
+    def test_note_revisions(self):
+        self.make_trees()
+        stderr = self.run_bzr('send -f branch --output file1')[1]
+        self.assertContainsRe(stderr, r'Bundling 1 revision\(s\).\n')
+
     def test_mailto_option(self):
         self.make_trees()
         branch = _mod_branch.Branch.open('branch')

@@ -19,6 +19,7 @@
 import os
 
 import bzrlib
+from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -42,3 +43,38 @@ class TestNick(ExternalBase):
         os.chdir('!repo')
         nick = self.run_bzr('nick')[0]
         self.assertEqual(nick, '!repo\n')
+
+    def test_bound_nick(self):
+        """Check that nick works well for checkouts."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        self.assertEqual(self.run_bzr('nick')[0][:-1], 'child')
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+        self.run_bzr('bind ../base')
+        self.assertEqual(self.run_bzr('nick')[0][:-1], base.branch.nick)
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+
+        self.run_bzr('unbind')
+        self.run_bzr("nick explicit_nick")
+        self.assertEqual(self.run_bzr('nick')[0][:-1], "explicit_nick")
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            "explicit_nick")
+        self.run_bzr('bind ../base')
+        self.assertEqual(self.run_bzr('nick')[0][:-1], base.branch.nick)
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            base.branch.nick)
+
+    def test_boundless_nick(self):
+        """Nick defaults to implicit local nick when bound branch is AWOL"""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        self.run_bzr('bind ../base')
+        self.assertEqual(self.run_bzr('nick')[0][:-1], base.branch.nick)
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+        osutils.rmtree('../base')
+        self.assertEqual(self.run_bzr('nick')[0][:-1], 'child')

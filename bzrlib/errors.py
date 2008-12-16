@@ -134,6 +134,9 @@ class BzrError(StandardError):
             s = str(s)
         return s
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, str(self))
+
     def _get_format_string(self):
         """Return format string for this exception or None"""
         fmt = getattr(self, '_fmt', None)
@@ -1670,48 +1673,14 @@ class RedirectRequested(TransportError):
 
     _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
 
-    def __init__(self, source, target, is_permanent=False, qual_proto=None):
+    def __init__(self, source, target, is_permanent=False):
         self.source = source
         self.target = target
         if is_permanent:
             self.permanently = ' permanently'
         else:
             self.permanently = ''
-        self._qualified_proto = qual_proto
         TransportError.__init__(self)
-
-    def _requalify_url(self, url):
-        """Restore the qualified proto in front of the url"""
-        # When this exception is raised, source and target are in
-        # user readable format. But some transports may use a
-        # different proto (http+urllib:// will present http:// to
-        # the user. If a qualified proto is specified, the code
-        # trapping the exception can get the qualified urls to
-        # properly handle the redirection themself (creating a
-        # new transport object from the target url for example).
-        # But checking that the scheme of the original and
-        # redirected urls are the same can be tricky. (see the
-        # FIXME in BzrDir.open_from_transport for the unique use
-        # case so far).
-        if self._qualified_proto is None:
-            return url
-
-        # The TODO related to NotBranchError mention that doing
-        # that kind of manipulation on the urls may not be the
-        # exception object job. On the other hand, this object is
-        # the interface between the code and the user so
-        # presenting the urls in different ways is indeed its
-        # job...
-        import urlparse
-        proto, netloc, path, query, fragment = urlparse.urlsplit(url)
-        return urlparse.urlunsplit((self._qualified_proto, netloc, path,
-                                   query, fragment))
-
-    def get_source_url(self):
-        return self._requalify_url(self.source)
-
-    def get_target_url(self):
-        return self._requalify_url(self.target)
 
 
 class TooManyRedirections(TransportError):
@@ -2949,3 +2918,20 @@ class TipChangeRejected(BzrError):
     def __init__(self, msg):
         self.msg = msg
 
+
+class ShelfCorrupt(BzrError):
+
+    _fmt = "Shelf corrupt."
+
+
+class NoSuchShelfId(BzrError):
+
+    _fmt = 'No changes are shelved with id "%(shelf_id)d".'
+
+    def __init__(self, shelf_id):
+        BzrError.__init__(self, shelf_id=shelf_id)
+
+
+class UserAbort(BzrError):
+
+    _fmt = 'The user aborted the operation.'

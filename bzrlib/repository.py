@@ -38,6 +38,7 @@ from bzrlib import (
     symbol_versioning,
     tsort,
     ui,
+    versionedfile,
     )
 from bzrlib.bundle import serializer
 from bzrlib.revisiontree import RevisionTree
@@ -55,7 +56,8 @@ from bzrlib.symbol_versioning import (
         one_two,
         one_six,
         )
-from bzrlib.trace import mutter, mutter_callsite, warning
+from bzrlib.trace import (
+    log_exception_quietly, note, mutter, mutter_callsite, warning)
 
 
 # Old formats display a warning, but only once
@@ -65,10 +67,10 @@ _deprecation_warning_done = False
 class CommitBuilder(object):
     """Provides an interface to build up a commit.
 
-    This allows describing a tree to be committed without needing to 
+    This allows describing a tree to be committed without needing to
     know the internals of the format of the repository.
     """
-    
+
     # all clients should supply tree roots.
     record_root_entry = True
     # the default CommitBuilder does not manage trees whose root is versioned.
@@ -102,6 +104,7 @@ class CommitBuilder(object):
 
         self._revprops = {}
         if revprops is not None:
+            self._validate_revprops(revprops)
             self._revprops.update(revprops)
 
         if timestamp is None:
@@ -116,12 +119,34 @@ class CommitBuilder(object):
 
         self._generate_revision_if_needed()
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
+        self._basis_delta = []
+        # API compatibility, older code that used CommitBuilder did not call
+        # .record_delete(), which means the delta that is computed would not be
+        # valid. Callers that will call record_delete() should call
+        # .will_record_deletes() to indicate that.
+        self._recording_deletes = False
+
+    def _validate_unicode_text(self, text, context):
+        """Verify things like commit messages don't have bogus characters."""
+        if '\r' in text:
+            raise ValueError('Invalid value for %s: %r' % (context, text))
+
+    def _validate_revprops(self, revprops):
+        for key, value in revprops.iteritems():
+            # We know that the XML serializers do not round trip '\r'
+            # correctly, so refuse to accept them
+            if not isinstance(value, basestring):
+                raise ValueError('revision property (%s) is not a valid'
+                                 ' (unicode) string: %r' % (key, value))
+            self._validate_unicode_text(value,
+                                        'revision property (%s)' % (key,))
 
     def commit(self, message):
         """Make the actual commit.
 
         :return: The revision id of the recorded revision.
         """
+        self._validate_unicode_text(message, 'commit message')
         rev = _mod_revision.Revision(
                        timestamp=self._timestamp,
                        timezone=self._timezone,
@@ -211,14 +236,59 @@ class CommitBuilder(object):
         """Get a delta against the basis inventory for ie."""
         if ie.file_id not in basis_inv:
             # add
-            return (None, path, ie.file_id, ie)
+            result = (None, path, ie.file_id, ie)
+            self._basis_delta.append(result)
+            return result
         elif ie != basis_inv[ie.file_id]:
             # common but altered
             # TODO: avoid tis id2path call.
-            return (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
+            result = (basis_inv.id2path(ie.file_id), path, ie.file_id, ie)
+            self._basis_delta.append(result)
+            return result
         else:
             # common, unaltered
             return None
+
+    def get_basis_delta(self):
+        """Return the complete inventory delta versus the basis inventory.
+
+        This has been built up with the calls to record_delete and
+        record_entry_contents. The client must have already called
+        will_record_deletes() to indicate that they will be generating a
+        complete delta.
+
+        :return: An inventory delta, suitable for use with apply_delta, or
+            Repository.add_inventory_by_delta, etc.
+        """
+        if not self._recording_deletes:
+            raise AssertionError("recording deletes not activated.")
+        return self._basis_delta
+
+    def record_delete(self, path, file_id):
+        """Record that a delete occured against a basis tree.
+
+        This is an optional API - when used it adds items to the basis_delta
+        being accumulated by the commit builder. It cannot be called unless the
+        method will_record_deletes() has been called to inform the builder that
+        a delta is being supplied.
+
+        :param path: The path of the thing deleted.
+        :param file_id: The file id that was deleted.
+        """
+        if not self._recording_deletes:
+            raise AssertionError("recording deletes not activated.")
+        delta = (path, None, file_id, None)
+        self._basis_delta.append(delta)
+        return delta
+
+    def will_record_deletes(self):
+        """Tell the commit builder that deletes are being notified.
+
+        This enables the accumulation of an inventory delta; for the resulting
+        commit to be valid, deletes against the basis MUST be recorded via
+        builder.record_delete().
+        """
+        self._recording_deletes = True
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -277,15 +347,19 @@ class CommitBuilder(object):
         if ie.revision is not None:
             if not self._versioned_root and path == '':
                 # repositories that do not version the root set the root's
-                # revision to the new commit even when no change occurs, and
-                # this masks when a change may have occurred against the basis,
-                # so calculate if one happened.
+                # revision to the new commit even when no change occurs (more
+                # specifically, they do not record a revision on the root; and
+                # the rev id is assigned to the root during deserialisation -
+                # this masks when a change may have occurred against the basis.
+                # To match this we always issue a delta, because the revision
+                # of the root will always be changing.
                 if ie.file_id in basis_inv:
                     delta = (basis_inv.id2path(ie.file_id), path,
                         ie.file_id, ie)
                 else:
                     # add
                     delta = (None, path, ie.file_id, ie)
+                self._basis_delta.append(delta)
                 return delta, False, None
             else:
                 # we don't need to commit this, because the caller already
@@ -513,15 +587,27 @@ class Repository(object):
         r'.* revision="(?P<revision_id>[^"]+)"'
         )
 
-    def abort_write_group(self):
+    def abort_write_group(self, suppress_errors=False):
         """Commit the contents accrued within the current write group.
+
+        :param suppress_errors: if true, abort_write_group will catch and log
+            unexpected errors that happen during the abort, rather than
+            allowing them to propagate.  Defaults to False.
 
         :seealso: start_write_group.
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
             raise errors.BzrError('mismatched lock context and write group.')
-        self._abort_write_group()
+        try:
+            self._abort_write_group()
+        except Exception, exc:
+            self._write_group = None
+            if not suppress_errors:
+                raise
+            mutter('abort_write_group failed')
+            log_exception_quietly()
+            note('bzr: ERROR (ignored): %s', exc)
         self._write_group = None
 
     def _abort_write_group(self):
@@ -550,6 +636,7 @@ class Repository(object):
         self.inventories.add_fallback_versioned_files(repository.inventories)
         self.revisions.add_fallback_versioned_files(repository.revisions)
         self.signatures.add_fallback_versioned_files(repository.signatures)
+        self._fetch_order = 'topological'
 
     def _check_fallback_repository(self, repository):
         """Check that this repository can fallback to repository safely.
@@ -582,6 +669,45 @@ class Repository(object):
         inv_lines = self._serialise_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
+
+    def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
+                               parents):
+        """Add a new inventory expressed as a delta against another revision.
+
+        :param basis_revision_id: The inventory id the delta was created
+            against. (This does not have to be a direct parent.)
+        :param delta: The inventory delta (see Inventory.apply_delta for
+            details).
+        :param new_revision_id: The revision id that the inventory is being
+            added for.
+        :param parents: The revision ids of the parents that revision_id is
+            known to have and are in the repository already. These are supplied
+            for repositories that depend on the inventory graph for revision
+            graph access, as well as for those that pun ancestry with delta
+            compression.
+
+        :returns: (validator, new_inv)
+            The validator(which is a sha1 digest, though what is sha'd is
+            repository format specific) of the serialized inventory, and the
+            resulting inventory.
+        """
+        if not self.is_in_write_group():
+            raise AssertionError("%r not in write group" % (self,))
+        _mod_revision.check_not_reserved_id(new_revision_id)
+        basis_tree = self.revision_tree(basis_revision_id)
+        basis_tree.lock_read()
+        try:
+            # Note that this mutates the inventory of basis_tree, which not all
+            # inventory implementations may support: A better idiom would be to
+            # return a new inventory, but as there is no revision tree cache in
+            # repository this is safe for now - RBC 20081013
+            basis_inv = basis_tree.inventory
+            basis_inv.apply_delta(delta)
+            basis_inv.revision_id = new_revision_id
+            return (self.add_inventory(new_revision_id, basis_inv, parents),
+                    basis_inv)
+        finally:
+            basis_tree.unlock()
 
     def _inventory_add_lines(self, revision_id, parents, lines,
         check_content=True):
@@ -1365,7 +1491,6 @@ class Repository(object):
         :param desired_files: a list of (file_id, revision_id, identifier)
             triples
         """
-        transaction = self.get_transaction()
         text_keys = {}
         for file_id, revision_id, callable_data in desired_files:
             text_keys[(file_id, revision_id)] = callable_data
@@ -1514,15 +1639,14 @@ class Repository(object):
         yield ("inventory", None, revision_ids)
 
         # signatures
-        revisions_with_signatures = set()
-        for rev_id in revision_ids:
-            try:
-                self.get_signature_text(rev_id)
-            except errors.NoSuchRevision:
-                # not signed.
-                pass
-            else:
-                revisions_with_signatures.add(rev_id)
+        # XXX: Note ATM no callers actually pay attention to this return
+        #      instead they just use the list of revision ids and ignore
+        #      missing sigs. Consider removing this work entirely
+        revisions_with_signatures = set(self.signatures.get_parent_map(
+            [(r,) for r in revision_ids]))
+        revisions_with_signatures = set(
+            [r for (r,) in revisions_with_signatures])
+        revisions_with_signatures.intersection_update(revision_ids)
         yield ("signatures", None, revisions_with_signatures)
 
         # revisions
@@ -1555,14 +1679,15 @@ class Repository(object):
     def _iter_inventory_xmls(self, revision_ids):
         keys = [(revision_id,) for revision_id in revision_ids]
         stream = self.inventories.get_record_stream(keys, 'unordered', True)
-        texts = {}
+        text_chunks = {}
         for record in stream:
             if record.storage_kind != 'absent':
-                texts[record.key] = record.get_bytes_as('fulltext')
+                text_chunks[record.key] = record.get_bytes_as('chunked')
             else:
                 raise errors.NoSuchRevision(self, record.key)
         for key in keys:
-            yield texts[key], key[-1]
+            chunks = text_chunks.pop(key)
+            yield ''.join(chunks), key[-1]
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
@@ -2228,7 +2353,12 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     rich_root_data = False
     supports_tree_reference = False
     supports_external_lookups = False
-    _matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    @property
+    def _matchingbzrdir(self):
+        matching = bzrdir.BzrDirMetaFormat1()
+        matching.repository_format = self
+        return matching
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()
@@ -2324,6 +2454,16 @@ format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
+    )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack6',
+    )
+format_registry.register_lazy(
+    'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatKnitPack6RichRoot',
     )
 
 # Development formats. 
@@ -2439,11 +2579,14 @@ class InterRepository(InterObject):
                     raise errors.NoSuchRevision(
                         self.source, ghosts_to_check.pop())
                 missing_revs.update(next_revs - have_revs)
-                searcher.stop_searching_any(have_revs)
+                # Because we may have walked past the original stop point, make
+                # sure everything is stopped
+                stop_revs = searcher.find_seen_ancestors(have_revs)
+                searcher.stop_searching_any(stop_revs)
             if searcher_exhausted:
                 break
         return searcher.get_result()
-   
+
     @deprecated_method(one_two)
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2797,7 +2940,6 @@ class InterPackRepo(InterSameDataRepository):
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
             return fetcher.count_copied, fetcher.failed_revisions
-        from bzrlib.repofmt.pack_repo import Packer
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         self.count_copied = 0
@@ -2811,7 +2953,8 @@ class InterPackRepo(InterSameDataRepository):
             revision_ids = source_revision_ids - \
                 frozenset(self.target_get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
-            index = self.target._pack_collection.revision_index.combined_index
+            target_pack_collection = self._get_target_pack_collection()
+            index = target_pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
                 index.iter_entries(revision_keys))
             revision_ids = set(revision_ids) - present_revision_ids
@@ -2833,18 +2976,30 @@ class InterPackRepo(InterSameDataRepository):
                 raise errors.InstallFailed([revision_id])
             if len(revision_ids) == 0:
                 return (0, [])
-        packs = self.source._pack_collection.all_packs()
-        pack = Packer(self.target._pack_collection, packs, '.fetch',
+        return self._pack(self.source, self.target, revision_ids)
+
+    def _pack(self, source, target, revision_ids):
+        from bzrlib.repofmt.pack_repo import Packer
+        target_pack_collection = self._get_target_pack_collection()
+        packs = source._pack_collection.all_packs()
+        pack = Packer(target_pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            self.target._pack_collection._save_pack_names()
+            target_pack_collection._save_pack_names()
+            copied_revs = pack.get_revision_count()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self.target._pack_collection.autopack()
-            return (pack.get_revision_count(), [])
+            self._autopack()
+            return (copied_revs, [])
         else:
             return (0, [])
+
+    def _autopack(self):
+        self.target._pack_collection.autopack()
+        
+    def _get_target_pack_collection(self):
+        return self.target._pack_collection
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2950,6 +3105,8 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack4,
                 RepositoryFormatKnitPack5,
                 RepositoryFormatKnitPack5RichRoot,
+                RepositoryFormatKnitPack6,
+                RepositoryFormatKnitPack6RichRoot,
                 RepositoryFormatPackDevelopment2,
                 RepositoryFormatPackDevelopment2Subtree,
                 )
@@ -2958,12 +3115,14 @@ class InterKnit1and2(InterKnitRepo):
                 RepositoryFormatKnitPack1,        # no rr, no subtree
                 RepositoryFormatPackDevelopment2, # no rr, no subtree
                 RepositoryFormatKnitPack5,        # no rr, no subtree
+                RepositoryFormatKnitPack6,        # no rr, no subtree
                 )
             richroot = (
                 RepositoryFormatKnit3,            # rr, subtree
                 RepositoryFormatKnitPack3,        # rr, subtree
                 RepositoryFormatKnitPack4,        # rr, no subtree
                 RepositoryFormatKnitPack5RichRoot,# rr, no subtree
+                RepositoryFormatKnitPack6RichRoot,# rr, no subtree
                 RepositoryFormatPackDevelopment2Subtree, # rr, subtree
                 )
             for format in norichroot:
@@ -3017,38 +3176,137 @@ class InterDifferingSerializer(InterKnitRepo):
             return False
         return True
 
+    def _fetch_batch(self, revision_ids, basis_id, basis_tree):
+        """Fetch across a few revisions.
+
+        :param revision_ids: The revisions to copy
+        :param basis_id: The revision_id of basis_tree
+        :param basis_tree: A tree that is not in revision_ids which should
+            already exist in the target.
+        :return: (basis_id, basis_tree) A new basis to use now that these trees
+            have been copied.
+        """
+        # Walk though all revisions; get inventory deltas, copy referenced
+        # texts that delta references, insert the delta, revision and
+        # signature.
+        text_keys = set()
+        pending_deltas = []
+        pending_revisions = []
+        for tree in self.source.revision_trees(revision_ids):
+            current_revision_id = tree.get_revision_id()
+            delta = tree.inventory._make_delta(basis_tree.inventory)
+            for old_path, new_path, file_id, entry in delta:
+                if new_path is not None:
+                    if not (new_path or self.target.supports_rich_root()):
+                        # We leave the inventory delta in, because that
+                        # will have the deserialised inventory root
+                        # pointer.
+                        continue
+                    # TODO: Do we need:
+                    #       "if entry.revision == current_revision_id" ?
+                    if entry.revision == current_revision_id:
+                        text_keys.add((file_id, entry.revision))
+            revision = self.source.get_revision(current_revision_id)
+            pending_deltas.append((basis_id, delta,
+                current_revision_id, revision.parent_ids))
+            pending_revisions.append(revision)
+            basis_id = current_revision_id
+            basis_tree = tree
+        # Copy file texts
+        from_texts = self.source.texts
+        to_texts = self.target.texts
+        to_texts.insert_record_stream(from_texts.get_record_stream(
+            text_keys, self.target._fetch_order,
+            not self.target._fetch_uses_deltas))
+        # insert deltas
+        for delta in pending_deltas:
+            self.target.add_inventory_by_delta(*delta)
+        # insert signatures and revisions
+        for revision in pending_revisions:
+            try:
+                signature = self.source.get_signature_text(
+                    revision.revision_id)
+                self.target.add_signature_text(revision.revision_id,
+                    signature)
+            except errors.NoSuchRevision:
+                pass
+            self.target.add_revision(revision.revision_id, revision)
+        return basis_id, basis_tree
+
+    def _fetch_all_revisions(self, revision_ids, pb):
+        """Fetch everything for the list of revisions.
+
+        :param revision_ids: The list of revisions to fetch. Must be in
+            topological order.
+        :param pb: A ProgressBar
+        :return: None
+        """
+        basis_id, basis_tree = self._get_basis(revision_ids[0])
+        batch_size = 100
+        for offset in range(0, len(revision_ids), batch_size):
+            self.target.start_write_group()
+            try:
+                pb.update('Transferring revisions', offset,
+                          len(revision_ids))
+                batch = revision_ids[offset:offset+batch_size]
+                basis_id, basis_tree = self._fetch_batch(batch,
+                    basis_id, basis_tree)
+            except:
+                self.target.abort_write_group()
+                raise
+            else:
+                self.target.commit_write_group()
+        pb.update('Transferring revisions', len(revision_ids),
+                  len(revision_ids))
+
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """See InterRepository.fetch()."""
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
+        if not revision_ids:
+            return 0, 0
         revision_ids = tsort.topo_sort(
             self.source.get_graph().get_parent_map(revision_ids))
-        def revisions_iterator():
-            for current_revision_id in revision_ids:
-                revision = self.source.get_revision(current_revision_id)
-                tree = self.source.revision_tree(current_revision_id)
-                try:
-                    signature = self.source.get_signature_text(
-                        current_revision_id)
-                except errors.NoSuchRevision:
-                    signature = None
-                yield revision, tree, signature
         if pb is None:
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
         else:
             my_pb = None
         try:
-            install_revisions(self.target, revisions_iterator(),
-                              len(revision_ids), pb)
+            self._fetch_all_revisions(revision_ids, pb)
         finally:
             if my_pb is not None:
                 my_pb.finished()
         return len(revision_ids), 0
 
+    def _get_basis(self, first_revision_id):
+        """Get a revision and tree which exists in the target.
+
+        This assumes that first_revision_id is selected for transmission
+        because all other ancestors are already present. If we can't find an
+        ancestor we fall back to NULL_REVISION since we know that is safe.
+
+        :return: (basis_id, basis_tree)
+        """
+        first_rev = self.source.get_revision(first_revision_id)
+        try:
+            basis_id = first_rev.parent_ids[0]
+            # only valid as a basis if the target has it
+            self.target.get_revision(basis_id)
+            # Try to get a basis tree - if its a ghost it will hit the
+            # NoSuchRevision case.
+            basis_tree = self.source.revision_tree(basis_id)
+        except (IndexError, errors.NoSuchRevision):
+            basis_id = _mod_revision.NULL_REVISION
+            basis_tree = self.source.revision_tree(basis_id)
+        return basis_id, basis_tree
+
 
 class InterOtherToRemote(InterRepository):
+    """An InterRepository that simply delegates to the 'real' InterRepository
+    calculated for (source, target._real_repository).
+    """
 
     _walk_to_common_revisions_batch_size = 50
 
@@ -3124,6 +3382,39 @@ class InterRemoteToOther(InterRepository):
 
 
 
+class InterPackToRemotePack(InterPackRepo):
+    """A specialisation of InterPackRepo for a target that is a
+    RemoteRepository.
+
+    This will use the get_parent_map RPC rather than plain readvs, and also
+    uses an RPC for autopacking.
+    """
+
+    _walk_to_common_revisions_batch_size = 50
+
+    @staticmethod
+    def is_compatible(source, target):
+        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        if isinstance(source._format, RepositoryFormatPack):
+            if isinstance(target, remote.RemoteRepository):
+                target._ensure_real()
+                if isinstance(target._real_repository._format,
+                              RepositoryFormatPack):
+                    if InterRepository._same_model(source, target):
+                        return True
+        return False
+    
+    def _autopack(self):
+        self.target.autopack()
+        
+    def _get_target_pack_collection(self):
+        return self.target._real_repository._pack_collection
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
@@ -3133,6 +3424,7 @@ InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterOtherToRemote)
 InterRepository.register_optimiser(InterRemoteToOther)
+InterRepository.register_optimiser(InterPackToRemotePack)
 
 
 class CopyConverter(object):
