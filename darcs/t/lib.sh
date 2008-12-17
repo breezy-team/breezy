@@ -58,6 +58,11 @@ third line"
 	_drrec -a -m "add empty file"
 	rm file3
 	_drrec -a -m "remove file"
+	mkdir dir
+	darcs add dir
+	_drrec -a -m "add empty dir"
+	darcs mv dir dir2
+	_drrec -a -m "rename empty dir"
 	cd ..
 }
 

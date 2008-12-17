@@ -186,6 +186,11 @@ def simplify_nodes(i):
 		for k in nodes['move']:
 			if j == k[1]:
 				nodes['move'].remove(k)
+
+	# rename of empty dir is a noop
+	for j in nodes['move']:
+		if not len(os.listdir(j[1])):
+			nodes['move'].remove(j)
 	return nodes
 
 # Option Parser
