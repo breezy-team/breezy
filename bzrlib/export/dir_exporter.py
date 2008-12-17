@@ -22,6 +22,7 @@ import os
 import StringIO
 
 from bzrlib import errors, osutils
+from bzrlib.export import _export_iter_entries
 from bzrlib.filters import (
     ContentFilterContext,
     filtered_output_bytes,
@@ -29,7 +30,7 @@ from bzrlib.filters import (
 from bzrlib.trace import mutter
 
 
-def dir_exporter(tree, dest, root, filtered=False):
+def dir_exporter(tree, dest, root, subdir, filtered=False):
     """Export this tree to a new directory.
 
     `dest` should not exist, and will be created holding the
@@ -41,17 +42,9 @@ def dir_exporter(tree, dest, root, filtered=False):
     :note: If the export fails, the destination directory will be
            left in a half-assed state.
     """
-    os.mkdir(dest)
     mutter('export version %r', tree)
-    inv = tree.inventory
-    entries = inv.iter_entries()
-    entries.next() # skip root
-    for dp, ie in entries:
-        # The .bzr* namespace is reserved for "magic" files like
-        # .bzrignore and .bzrrules - do not export these
-        if dp.startswith(".bzr"):
-            continue
-        
+    os.mkdir(dest)
+    for dp, ie in _export_iter_entries(tree, subdir):
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
             if filtered:

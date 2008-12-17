@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -326,4 +326,13 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove('config', keep_files=False)
         self.failIfExists('config/file')
         self.failIfExists('config')
+        tree._validate()
+
+    def test_remove_dir_before_bzr(self):
+        # As per bug #272648. Note that a file must be present in the directory
+        # or the bug doesn't manifest itself.
+        tree = self.get_committed_tree(['.aaa/', '.aaa/file'])
+        tree.remove('.aaa/', keep_files=False)
+        self.failIfExists('.aaa/file')
+        self.failIfExists('.aaa')
         tree._validate()

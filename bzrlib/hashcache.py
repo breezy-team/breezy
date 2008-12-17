@@ -30,10 +30,9 @@
 CACHE_HEADER = "### bzr hashcache v5\n"
 
 import os, stat, time
-import sha
 
 from bzrlib.filters import internal_size_sha_file_byname
-from bzrlib.osutils import pathjoin, safe_unicode
+from bzrlib.osutils import sha_file, sha_string, pathjoin, safe_unicode
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import BzrError
@@ -177,7 +176,7 @@ class HashCache(object):
                 filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            digest = sha.new(os.readlink(abspath)).hexdigest()
+            digest = sha_string(os.readlink(abspath))
         else:
             raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
 

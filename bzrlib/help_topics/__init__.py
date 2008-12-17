@@ -149,10 +149,33 @@ def _help_on_revisionspec(name):
     import bzrlib.revisionspec
 
     out = []
-    out.append("Revision Identifiers\n")
-    out.append("A revision, or a range bound, can be one of the following.\n")
+    out.append(
+"""Revision Identifiers
+
+A revision identifier refers to a specific state of a branch's history. It can
+be a revision number, or a keyword followed by ':' and often other
+parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
+and 'submit:'.
+
+If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
+revision range. Examples: '3647..3649', 'date:yesterday..-1' and
+'branch:/path/to/branch1/..branch:/branch2' (note that there are no quotes or
+spaces around the '..').
+
+Ranges are interpreted differently by different commands. To the "log" command,
+a range is a sequence of log messages, but to the "diff" command, the range
+denotes a change between revisions (and not a sequence of changes).  In
+addition, "log" considers a closed range whereas "diff" and "merge" consider it
+to be open-ended, that is, they include one end but not the other.  For example:
+"bzr log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
+while "bzr diff -r 3647..3649" includes the changes done in revisions 3647 and
+3648, but not 3649.
+
+The keywords used as revision selection methods are the following:
+""")
     details = []
-    details.append("\nFurther details are given below.\n")
+    details.append("\nIn addition, plugins can provide other keywords.")
+    details.append("\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
@@ -241,6 +264,7 @@ Basic commands:
 
   bzr merge          pull in changes from another branch
   bzr commit         save some or all changes
+  bzr send           send changes via email
 
   bzr log            show history of changes
   bzr check          validate storage
@@ -626,15 +650,71 @@ useful, you can "push --overwrite" or "pull --overwrite" instead.
 """
 
 
+_storage_formats = \
+"""Storage Formats
+
+To ensure that older clients do not access data incorrectly,
+Bazaar's policy is to introduce a new storage format whenever
+new features requiring new metadata are added. New storage
+formats may also be introduced to improve performance and
+scalability.
+
+Use the following guidelines to select a format (stopping
+as soon as a condition is true):
+
+* If you are working on an existing project, use whatever
+  format that project is using. (Bazaar will do this for you
+  by default).
+
+* If you are using bzr-svn to interoperate with a Subversion
+  repository, use 1.9-rich-root.
+
+* If you are working on a project with big trees (5000+ paths)
+  or deep history (5000+ revisions), use 1.9.
+
+* Otherwise, use the default format - it is good enough for
+  most projects.
+
+If some of your developers are unable to use the most recent
+version of Bazaar (due to distro package availability say), be
+sure to adjust the guidelines above accordingly. For example,
+you may need to select 1.6 instead of 1.9 if your project has
+standardized on Bazaar 1.7.
+
+Note: Many of the currently supported formats have two variants:
+a plain one and a rich-root one. The latter include an additional
+field about the root of the tree. There is no performance cost
+for using a rich-root format but you cannot easily merge changes
+from a rich-root format into a plain format. As a consequence,
+moving a project to a rich-root format takes some co-ordination
+in that all contributors need to upgrade their repositories
+around the same time. (It is for this reason that we have delayed
+making a rich-root format the default so far, though we will do
+so at some appropriate time in the future.)
+
+See ``bzr help current-formats`` for the complete list of
+currently supported formats. See ``bzr help other-formats`` for
+descriptions of any available experimental and deprecated formats.
+"""
+
+
 # Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
 topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
-def get_format_topic(topic):
+def get_current_formats_topic(topic):
     from bzrlib import bzrdir
-    return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
-topic_registry.register('formats', get_format_topic, 'Directory formats')
+    return "Current Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+def get_other_formats_topic(topic):
+    from bzrlib import bzrdir
+    return "Other Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+topic_registry.register('current-formats', get_current_formats_topic,
+    'Current storage formats')
+topic_registry.register('other-formats', get_other_formats_topic,
+    'Experimental and deprecated storage formats')
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
@@ -675,6 +755,9 @@ topic_registry.register('checkouts', _checkouts,
 topic_registry.register('content-filters', _load_from_file,
                         'Conversion of content into/from working trees',
                         SECT_CONCEPT)
+topic_registry.register('formats', _storage_formats,
+                        'Information on choosing a storage format',
+                        SECT_CONCEPT)
 topic_registry.register('patterns', _load_from_file,
                         'Information on the pattern syntax',
                         SECT_CONCEPT)
@@ -692,7 +775,8 @@ topic_registry.register('working-trees', _working_trees,
 topic_registry.register('criss-cross', _criss_cross,
                         'Information on criss-cross merging', SECT_CONCEPT)
 topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
-                        'Information on criss-cross merging', SECT_CONCEPT)
+                        'Steps to resolve "out-of-sync" when reconfiguring',
+                        SECT_CONCEPT)
 
 
 class HelpTopicIndex(object):

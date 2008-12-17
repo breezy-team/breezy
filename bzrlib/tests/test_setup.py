@@ -20,7 +20,6 @@ import os
 import sys
 import subprocess
 import shutil
-import tempfile
 from tempfile import TemporaryFile
 
 import bzrlib
@@ -56,7 +55,7 @@ class TestSetup(TestCase):
             raise TestSkipped('You must have distutils installed to run this test.'
                               ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
-        install_dir = tempfile.mkdtemp()
+        install_dir = osutils.mkdtemp()
         # setup.py must be run from the root source directory, but the tests
         # are not necessarily invoked from there
         self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))

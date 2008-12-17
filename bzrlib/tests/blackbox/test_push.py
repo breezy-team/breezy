@@ -22,6 +22,7 @@ import re
 
 from bzrlib import (
     errors,
+    transport,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -30,7 +31,6 @@ from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.http_server import HttpServer
-from bzrlib.transport import register_transport, unregister_transport
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.uncommit import uncommit
 from bzrlib.urlutils import local_path_from_url
@@ -87,7 +87,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
         self.assertEquals(out,
-                          'Using saved location: %s\n' 
+                          'Using saved push location: %s\n' 
                           'Pushed up to revision 2.\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
@@ -343,9 +343,9 @@ class TestPush(ExternalBase):
         self.assertFalse(self.get_transport('published').has('.'))
 
     def test_push_notifies_default_stacking(self):
-        self.make_branch('stack_on', format='development1')
+        self.make_branch('stack_on', format='1.6')
         self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
-        self.make_branch('from', format='development1')
+        self.make_branch('from', format='1.6')
         out, err = self.run_bzr('push -d from to')
         self.assertContainsRe(err,
                               'Using default stacking branch stack_on at .*')
@@ -353,17 +353,24 @@ class TestPush(ExternalBase):
 
 class RedirectingMemoryTransport(MemoryTransport):
 
-    def mkdir(self, path, mode=None):
-        path = self.abspath(path)[len(self._scheme):]
-        if path == '/source':
-            raise errors.RedirectRequested(
-                path, self._scheme + '/target', is_permanent=True)
-        elif path == '/infinite-loop':
-            raise errors.RedirectRequested(
-                path, self._scheme + '/infinite-loop', is_permanent=True)
+    def mkdir(self, relpath, mode=None):
+        from bzrlib.trace import mutter
+        mutter('cwd: %r, rel: %r, abs: %r' % (self._cwd, relpath, abspath))
+        if self._cwd == '/source/':
+            raise errors.RedirectRequested(self.abspath(relpath),
+                                           self.abspath('../target'),
+                                           is_permanent=True)
+        elif self._cwd == '/infinite-loop/':
+            raise errors.RedirectRequested(self.abspath(relpath),
+                                           self.abspath('../infinite-loop'),
+                                           is_permanent=True)
         else:
             return super(RedirectingMemoryTransport, self).mkdir(
-                path, mode)
+                relpath, mode)
+
+    def _redirected_to(self, source, target):
+        # We do accept redirections
+        return transport.get_transport(target)
 
 
 class RedirectingMemoryServer(MemoryServer):
@@ -373,7 +380,7 @@ class RedirectingMemoryServer(MemoryServer):
         self._files = {}
         self._locks = {}
         self._scheme = 'redirecting-memory+%s:///' % id(self)
-        register_transport(self._scheme, self._memory_factory)
+        transport.register_transport(self._scheme, self._memory_factory)
 
     def _memory_factory(self, url):
         result = RedirectingMemoryTransport(url)
@@ -383,7 +390,7 @@ class RedirectingMemoryServer(MemoryServer):
         return result
 
     def tearDown(self):
-        unregister_transport(self._scheme, self._memory_factory)
+        transport.unregister_transport(self._scheme, self._memory_factory)
 
 
 class TestPushRedirect(ExternalBase):
@@ -406,10 +413,8 @@ class TestPushRedirect(ExternalBase):
         This is added primarily to handle lp:/ URI support, so that users can
         push to new branches by specifying lp:/ URIs.
         """
-        os.chdir('tree')
         destination_url = self.memory_server.get_url() + 'source'
-        self.run_bzr('push %s' % destination_url)
-        os.chdir('..')
+        self.run_bzr(['push', '-d', 'tree', destination_url])
 
         local_revision = Branch.open('tree').last_revision()
         remote_revision = Branch.open(
@@ -420,11 +425,9 @@ class TestPushRedirect(ExternalBase):
         """Push fails gracefully if the mkdir generates a large number of
         redirects.
         """
-        os.chdir('tree')
         destination_url = self.memory_server.get_url() + 'infinite-loop'
         out, err = self.run_bzr_error(
             ['Too many redirections trying to make %s\\.\n'
              % re.escape(destination_url)],
-            'push %s' % destination_url, retcode=3)
-        os.chdir('..')
+            ['push', '-d', 'tree', destination_url], retcode=3)
         self.assertEqual('', out)

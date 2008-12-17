@@ -103,3 +103,24 @@ class TestInventory(TestCaseWithTree):
         entry = get_entry(self.tree, self.tree.path2id('symlink'))
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
+
+    def test_paths2ids_recursive(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set(['dir-id', 'file-id']), tree.paths2ids(['dir']))
+
+    def test_paths2ids_forget_old(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'first-id')
+        work_tree.commit('commit old state')
+        work_tree.remove('file')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set([]), tree.paths2ids(['file'],
+                         require_versioned=False))

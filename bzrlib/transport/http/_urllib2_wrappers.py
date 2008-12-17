@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,8 +47,6 @@ DEBUG = 0
 # ensure that.
 
 import httplib
-import md5
-import sha
 import socket
 import urllib
 import urllib2
@@ -62,6 +60,7 @@ from bzrlib import (
     config,
     debug,
     errors,
+    osutils,
     trace,
     transport,
     ui,
@@ -233,7 +232,19 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
         httplib.HTTPConnection.connect(self)
 
 
-# FIXME: Should test for ssl availability
+# Build the appropriate socket wrapper for ssl
+try:
+    # python 2.6 introduced a better ssl package
+    import ssl
+    _ssl_wrap_socket = ssl.wrap_socket
+except ImportError:
+    # python versions prior to 2.6 don't have ssl and ssl.wrap_socket instead
+    # they use httplib.FakeSocket
+    def _ssl_wrap_socket(sock, key_file, cert_file):
+        ssl_sock = socket.ssl(sock, key_file, cert_file)
+        return httplib.FakeSocket(sock, ssl_sock)
+
+
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
@@ -252,8 +263,7 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
             self.connect_to_origin()
 
     def connect_to_origin(self):
-        ssl = socket.ssl(self.sock, self.key_file, self.cert_file)
-        self.sock = httplib.FakeSocket(self.sock, ssl)
+        self.sock = _ssl_wrap_socket(self.sock, self.key_file, self.cert_file)
 
 
 class Request(urllib2.Request):
@@ -1123,9 +1133,9 @@ def get_digest_algorithm_impls(algorithm):
     H = None
     KD = None
     if algorithm == 'MD5':
-        H = lambda x: md5.new(x).hexdigest()
+        H = lambda x: osutils.md5(x).hexdigest()
     elif algorithm == 'SHA':
-        H = lambda x: sha.new(x).hexdigest()
+        H = lambda x: osutils.sha(x).hexdigest()
     if H is not None:
         KD = lambda secret, data: H("%s:%s" % (secret, data))
     return H, KD
@@ -1134,7 +1144,7 @@ def get_digest_algorithm_impls(algorithm):
 def get_new_cnonce(nonce, nonce_count):
     raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
                            urllib2.randombytes(8))
-    return sha.new(raw).hexdigest()[:16]
+    return osutils.sha(raw).hexdigest()[:16]
 
 
 class DigestAuthHandler(AbstractAuthHandler):

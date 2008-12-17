@@ -225,7 +225,7 @@ To make sure your branch stays up to date, you should merge changes from
 the parent into your personal branch::
 
   $ bzr merge
-  Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+  Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
   All changes applied successfully.
             
 Check what has changed::
@@ -254,7 +254,7 @@ where they can be found.
 Replacing ``mycode.patch``, create your merge directive::
 
  $ bzr send -o mycode.patch
- Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+ Using saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
  
 You can now email the merge directive to the bzr-gtk project who, if
 they choose, can use it merge your work back into the parent branch.

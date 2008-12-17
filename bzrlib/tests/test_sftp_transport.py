@@ -29,7 +29,10 @@ except ImportError:
 
 from bzrlib import (
     bzrdir,
+    config,
     errors,
+    tests,
+    transport as _mod_transport,
     )
 from bzrlib.osutils import (
     pathjoin,
@@ -46,6 +49,7 @@ from bzrlib.transport import get_transport
 import bzrlib.transport.http
 
 if paramiko_loaded:
+    from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.transport.sftp import (
         SFTPAbsoluteServer,
         SFTPHomeDirServer,
@@ -76,7 +80,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
         set_test_transport_to_sftp(self)
 
 
-class SFTPLockTests (TestCaseWithSFTPServer):
+class SFTPLockTests(TestCaseWithSFTPServer):
 
     def test_sftp_locks(self):
         from bzrlib.errors import LockError
@@ -459,3 +463,80 @@ class TestSocketDelay(TestCase):
         self.assertAlmostEqual(t2 - t1, 100 + 7)
 
 
+class ReadvFile(object):
+    """An object that acts like Paramiko's SFTPFile.readv()"""
+
+    def __init__(self, data):
+        self._data = data
+
+    def readv(self, requests):
+        for start, length in requests:
+            yield self._data[start:start+length]
+
+
+class Test_SFTPReadvHelper(tests.TestCase):
+
+    def checkGetRequests(self, expected_requests, offsets):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        self.assertEqual(expected_requests, helper._get_requests())
+
+    def test__get_requests(self):
+        # Small single requests become a single readv request
+        self.checkGetRequests([(0, 100)],
+                              [(0, 20), (30, 50), (20, 10), (80, 20)])
+        # Non-contiguous ranges are given as multiple requests
+        self.checkGetRequests([(0, 20), (30, 50)],
+                              [(10, 10), (30, 20), (0, 10), (50, 30)])
+        # Ranges larger than _max_request_size (32kB) are broken up into
+        # multiple requests, even if it actually spans multiple logical
+        # requests
+        self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
+                              [(0, 40000), (40000, 100), (40100, 1900),
+                               (42000, 24000)])
+
+    def checkRequestAndYield(self, expected, data, offsets):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        data_f = ReadvFile(data)
+        result = list(helper.request_and_yield_offsets(data_f))
+        self.assertEqual(expected, result)
+
+    def test_request_and_yield_offsets(self):
+        data = 'abcdefghijklmnopqrstuvwxyz'
+        self.checkRequestAndYield([(0, 'a'), (5, 'f'), (10, 'klm')], data,
+                                  [(0, 1), (5, 1), (10, 3)])
+        # Should combine requests, and split them again
+        self.checkRequestAndYield([(0, 'a'), (1, 'b'), (10, 'klm')], data,
+                                  [(0, 1), (1, 1), (10, 3)])
+        # Out of order requests. The requests should get combined, but then be
+        # yielded out-of-order. We also need one that is at the end of a
+        # previous range. See bug #293746
+        self.checkRequestAndYield([(0, 'a'), (10, 'k'), (4, 'efg'), (1, 'bcd')],
+                                  data, [(0, 1), (10, 1), (4, 3), (1, 3)])
+
+
+class TestUsesAuthConfig(TestCaseWithSFTPServer):
+    """Test that AuthenticationConfig can supply default usernames."""
+
+    def get_transport_for_connection(self, set_config):
+        port = self.get_server()._listener.port
+        if set_config:
+            conf = config.AuthenticationConfig()
+            conf._get_config().update(
+                {'sftptest': {'scheme': 'ssh', 'port': port, 'user': 'bar'}})
+            conf._save()
+        t = get_transport('sftp://localhost:%d' % port)
+        # force a connection to be performed.
+        t.has('foo')
+        return t
+
+    def test_sftp_uses_config(self):
+        t = self.get_transport_for_connection(set_config=True)
+        self.assertEqual('bar', t._get_credentials()[0])
+
+    def test_sftp_is_none_if_no_config(self):
+        t = self.get_transport_for_connection(set_config=False)
+        self.assertIs(None, t._get_credentials()[0])

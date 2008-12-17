@@ -26,6 +26,7 @@ from bzrlib.transport.local import LocalTransport
 from bzrlib.store.text import TextStore
 from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 import bzrlib.store as store
+import bzrlib.store.versioned
 import bzrlib.transactions as transactions
 import bzrlib.transport as transport
 from bzrlib.transport.memory import MemoryTransport
