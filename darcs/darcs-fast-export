@@ -144,51 +144,51 @@ def simplify_nodes(i):
 			'modify_file': [],
 			'remove_file': []
 			}
-	for j in i.getElementsByTagName('add_file'):
+	for j in i.getElementsByTagName('add_file')[:]:
 		nodes['add_file'].append(j.childNodes[0].data.strip())
-	for j in i.getElementsByTagName('move'):
+	for j in i.getElementsByTagName('move')[:]:
 		nodes['move'].append([j.attributes['from'].value, j.attributes['to'].value])
-	for j in i.getElementsByTagName('modify_file'):
+	for j in i.getElementsByTagName('modify_file')[:]:
 		nodes['modify_file'].append(j.childNodes[0].data.strip())
-	for j in i.getElementsByTagName('remove_file'):
+	for j in i.getElementsByTagName('remove_file')[:]:
 		nodes['remove_file'].append(j.childNodes[0].data.strip())
 	# add A, remove A -> None
-	for j in nodes['add_file']:
-		for k in nodes['remove_file']:
+	for j in nodes['add_file'][:]:
+		for k in nodes['remove_file'][:]:
 			if j == k:
 				nodes['add_file'].remove(j)
 				nodes['remove_file'].remove(k)
 	# add A, rename A B, modify B -> add B
-	for j in nodes['add_file']:
-		for k in nodes['move']:
-			for l in nodes['modify_file']:
+	for j in nodes['add_file'][:]:
+		for k in nodes['move'][:]:
+			for l in nodes['modify_file'][:]:
 				if j == k[0] and k[1] == l:
 					nodes['add_file'].remove(j)
 					nodes['move'].remove(k)
 					nodes['modify_file'].remove(l)
 					nodes['add_file'].append(l)
 	# add A, rename A B -> add B
-	for j in nodes['add_file']:
-		for k in nodes['move']:
+	for j in nodes['add_file'][:]:
+		for k in nodes['move'][:]:
 			if j == k[0]:
 				nodes['add_file'].remove(j)
 				nodes['move'].remove(k)
 				nodes['add_file'].append(k[1])
 	# rename A B, remove B -> remove A
-	for j in nodes['remove_file']:
-		for k in nodes['move']:
+	for j in nodes['remove_file'][:]:
+		for k in nodes['move'][:]:
 			if j == k[1]:
 				nodes['remove_file'].remove(j)
 				nodes['move'].remove(k)
 				nodes['remove_file'].append(k[0])
 	# rename A B, add B -> add B
-	for j in nodes['add_file']:
-		for k in nodes['move']:
+	for j in nodes['add_file'][:]:
+		for k in nodes['move'][:]:
 			if j == k[1]:
 				nodes['move'].remove(k)
 
 	# rename of empty dir is a noop
-	for j in nodes['move']:
+	for j in nodes['move'][:]:
 		if os.path.isdir(j[1]) and not len(os.listdir(j[1])):
 			nodes['move'].remove(j)
 	return nodes
