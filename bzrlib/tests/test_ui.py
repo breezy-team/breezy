@@ -144,7 +144,9 @@ class UITests(TestCase):
         ui = TextUIFactory(None, None, None)
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
-        self.assertRaises(AssertionError, pb1.finished)
+        # this raises a warning, but has no other effect
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
 
@@ -159,14 +161,16 @@ class UITests(TestCase):
         self.assertFalse(getattr(stack, 'note', False))
         pb1 = stack.get_nested()
         pb2 = stack.get_nested()
-        self.assertRaises(AssertionError, pb1.finished)
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
         # the text ui factory never actually removes the stack once its setup.
         # we need to be able to nest again correctly from here.
         pb1 = stack.get_nested()
         pb2 = stack.get_nested()
-        self.assertRaises(AssertionError, pb1.finished)
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
 

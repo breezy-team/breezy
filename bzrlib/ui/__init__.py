@@ -28,6 +28,7 @@ displays no output.
 
 import os
 import sys
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -82,8 +83,9 @@ class UIFactory(object):
 
     def progress_finished(self, task):
         if task != self._task_stack[-1]:
-            raise AssertionError()
-        del self._task_stack[-1]
+            warnings.warn("%r is not currently active" % (task,))
+        else:
+            del self._task_stack[-1]
 
     def clear_term(self):
         """Prepare the terminal for output.

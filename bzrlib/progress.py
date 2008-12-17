@@ -31,6 +31,7 @@ bzrlib it really is best to use bzrlib.ui.ui_factory.
 import sys
 import time
 import os
+import warnings
 
 
 from bzrlib import (
@@ -206,8 +207,9 @@ class ProgressBarStack(object):
     def return_pb(self, bar):
         """Return bar after its been used."""
         if bar is not self._stack[-1]:
-            raise AssertionError()
-        self._stack.pop()
+            warnings.warn("%r is not currently active" % (bar,))
+        else:
+            self._stack.pop()
 
  
 class _BaseProgressBar(object):
