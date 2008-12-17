@@ -36,6 +36,10 @@ IN DEVELOPMENT
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
 
+    * Don't make a broken branch when pushing an unstackable-format branch
+      that's in a stackable shared repository to a location with default
+      stack-on location.  (Andrew Bennetts, #291046)
+
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
 
