@@ -68,12 +68,6 @@ a content filter, the plugin can usually achieve this effect by using a
 ``start_commit`` or ``post_commit`` hook say. See ``bzr help hooks`` and
 `Using hooks`_ in the Bazaar User Guide for more information on hooks.
 
-In the future, it is likely that additional options will be added to
-commands like ``cat`` and ``export`` so that content filtering can
-optionally be enabled for them. If you have a particular need like
-this, please raise it in community formums (e.g. the mailing list or
-bug tracker) so these enhancements can be correctly prioritized.
-
 
 Refreshing your working tree
 ----------------------------
