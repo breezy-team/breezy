@@ -311,19 +311,6 @@ class Tree(object):
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
 
-    def get_special_file(self, type):
-        """Get a file special to Bazaar.
-
-        :type: a type of XXX maps to a file path .bzrXXX
-        :return: a file-like object or None if the file does not exist
-        """
-        path = ".bzr" + type
-        file_id = self.path2id(path)
-        if file_id is None:
-            return None
-        else:
-            return self.get_file(file_id, path)
-
     def iter_files_bytes(self, desired_files):
         """Iterate through file contents.
 
