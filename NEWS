@@ -42,6 +42,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * The progress and UI classes have changed; the main APIs remain the
+      same.  (Martin Pool)
+
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
       Previously the order was fully random, now the records should be
