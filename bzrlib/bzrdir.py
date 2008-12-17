@@ -2032,7 +2032,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
                  bzrdir_format_name, repo_format.get_format_description())
             self.repository_format = repo_format
 
-        
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         if format is None:
