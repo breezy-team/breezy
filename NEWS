@@ -34,6 +34,10 @@ IN DEVELOPMENT
     * Add trailing slash to directories in all output of ``bzr ls``, except
       ``bzr ls --null``. (Gordon P. Hemsley, #306424)
 
+    * ``bzr cat`` and ``bzr export`` now supports a ``--filters`` option
+      that displays/saves the content after content filters are applied.
+      (Ian Clatworthy)
+
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
@@ -1045,12 +1049,7 @@ other bugs and performance issues were fixed.
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
 
-
   IMPROVEMENTS:
-
-    * ``bzr cat`` and ``bzr export`` now supports a ``--filters`` option
-      that displays/saves the content after content filters are applied.
-      (Ian Clatworthy)
 
     * ``bzr check`` can now be told which elements at a location it should
       check.  (Daniel Watkins)
