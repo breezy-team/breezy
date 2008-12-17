@@ -46,6 +46,7 @@ DEBUG = 0
 # actual code more or less do that, tests should be written to
 # ensure that.
 
+import getpass
 import httplib
 import socket
 import urllib
@@ -965,10 +966,6 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             raise KeyError('%s not found' % self.auth_required_header)
 
         auth = self.get_auth(request)
-        if auth.get('user', None) is None:
-            # Without a known user, we can't authenticate
-            return None
-
         auth['modified'] = False
         if self.auth_match(server_header, auth):
             # auth_match may have modified auth (by adding the
@@ -1046,7 +1043,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         realm = auth['realm']
 
         if user is None:
-            user = auth.get_user(auth['protocol'], auth['host'],
+            user = auth_conf.get_user(auth['protocol'], auth['host'],
                                  port=auth['port'], path=auth['path'],
                                  realm=realm)
             if user is None:

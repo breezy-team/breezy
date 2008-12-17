@@ -76,6 +76,10 @@ IN DEVELOPMENT
     * Use the short status format when the short format is used for log.
       (Vincent Ladeuil, #87179)
 
+    * Don't require "username@" in HTTP(S) URLs that require
+      authentication.
+      (#256612)
+
   DOCUMENTATION:
 
     * Improved the formats help topic to explain why multiple formats
