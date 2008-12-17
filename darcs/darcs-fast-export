@@ -189,7 +189,7 @@ def simplify_nodes(i):
 
 	# rename of empty dir is a noop
 	for j in nodes['move']:
-		if not len(os.listdir(j[1])):
+		if os.path.isdir(j[1]) and not len(os.listdir(j[1])):
 			nodes['move'].remove(j)
 	return nodes
 
