@@ -140,12 +140,15 @@ def inline_path(path):
 def simplify_nodes(i):
 	nodes = {
 			'add_file': [],
+			'add_directory': [],
 			'move': [],
 			'modify_file': [],
 			'remove_file': []
 			}
 	for j in i.getElementsByTagName('add_file')[:]:
 		nodes['add_file'].append(j.childNodes[0].data.strip())
+	for j in i.getElementsByTagName('add_directory')[:]:
+		nodes['add_directory'].append(j.childNodes[0].data.strip())
 	for j in i.getElementsByTagName('move')[:]:
 		nodes['move'].append([j.attributes['from'].value, j.attributes['to'].value])
 	for j in i.getElementsByTagName('modify_file')[:]:
@@ -174,6 +177,11 @@ def simplify_nodes(i):
 				nodes['add_file'].remove(j)
 				nodes['move'].remove(k)
 				nodes['add_file'].append(k[1])
+	# adddir A, rename A B -> noop
+	for j in nodes['add_directory'][:]:
+		for k in nodes['move'][:]:
+			if j == k[0]:
+				nodes['move'].remove(k)
 	# rename A B, remove B -> remove A
 	for j in nodes['remove_file'][:]:
 		for k in nodes['move'][:]:
