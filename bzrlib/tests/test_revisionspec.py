@@ -176,6 +176,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_dotted_decimal(self):
         self.assertInHistoryIs(None, 'alt_r2', '1.1.1')
+        self.assertInvalid('1.1.123')
 
     def test_negative_int(self):
         self.assertInHistoryIs(2, 'r2', '-1')

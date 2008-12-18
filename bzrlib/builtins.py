@@ -56,7 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet
+from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -392,10 +392,18 @@ class cmd_revision_info(Command):
     """
     hidden = True
     takes_args = ['revision_info*']
-    takes_options = ['revision']
+    takes_options = [
+        'revision',
+        Option('directory',
+            help='Branch to examine, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
 
     @display_command
-    def run(self, revision=None, revision_info_list=[]):
+    def run(self, revision=None, directory=u'.', revision_info_list=[]):
 
         revs = []
         if revision is not None:
@@ -404,7 +412,7 @@ class cmd_revision_info(Command):
             for rev in revision_info_list:
                 revs.append(RevisionSpec.from_string(rev))
 
-        b = Branch.open_containing(u'.')[0]
+        b = Branch.open_containing(directory)[0]
 
         if len(revs) == 0:
             revs.append(RevisionSpec.from_string('-1'))
@@ -798,8 +806,10 @@ class cmd_pull(Command):
                     result.old_revid))
                 old_rh.reverse()
                 new_rh = branch_to.revision_history()
+                log_format = branch_to.get_config().log_format()
                 log.show_changed_revisions(branch_to, old_rh, new_rh,
-                                           to_file=self.outf)
+                                           to_file=self.outf,
+                                           log_format=log_format)
         finally:
             branch_to.unlock()
 
@@ -1838,30 +1848,13 @@ class cmd_log(Command):
 
         b.lock_read()
         try:
-            if revision is None:
-                rev1 = None
-                rev2 = None
-            elif len(revision) == 1:
-                rev1 = rev2 = revision[0].in_history(b)
-            elif len(revision) == 2:
-                if revision[1].get_branch() != revision[0].get_branch():
-                    # b is taken from revision[0].get_branch(), and
-                    # show_log will use its revision_history. Having
-                    # different branches will lead to weird behaviors.
-                    raise errors.BzrCommandError(
-                        "Log doesn't accept two revisions in different"
-                        " branches.")
-                rev1 = revision[0].in_history(b)
-                rev2 = revision[1].in_history(b)
-            else:
-                raise errors.BzrCommandError(
-                    'bzr log --revision takes one or two values.')
-
+            rev1, rev2 = _get_revision_range(revision, b, self.name())
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
 
             lf = log_format(show_ids=show_ids, to_file=self.outf,
-                            show_timezone=timezone)
+                            show_timezone=timezone,
+                            delta_format=get_verbosity_level())
 
             show_log(b,
                      lf,
@@ -1875,6 +1868,32 @@ class cmd_log(Command):
         finally:
             b.unlock()
 
+def _get_revision_range(revisionspec_list, branch, command_name):
+    """Take the input of a revision option and turn it into a revision range.
+
+    It returns RevisionInfo objects which can be used to obtain the rev_id's
+    of the desired revisons. It does some user input validations.
+    """
+    if revisionspec_list is None:
+        rev1 = None
+        rev2 = None
+    elif len(revisionspec_list) == 1:
+        rev1 = rev2 = revisionspec_list[0].in_history(branch)
+    elif len(revisionspec_list) == 2:
+        if revisionspec_list[1].get_branch() != revisionspec_list[0
+                ].get_branch():
+            # b is taken from revision[0].get_branch(), and
+            # show_log will use its revision_history. Having
+            # different branches will lead to weird behaviors.
+            raise errors.BzrCommandError(
+                "bzr %s doesn't accept two revisions in different"
+                " branches." % command_name)
+        rev1 = revisionspec_list[0].in_history(branch)
+        rev2 = revisionspec_list[1].in_history(branch)
+    else:
+        raise errors.BzrCommandError(
+            'bzr %s --revision takes one or two values.' % command_name)
+    return rev1, rev2
 
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
@@ -1975,9 +1994,10 @@ class cmd_ls(Command):
                         continue
                     if kind is not None and fkind != kind:
                         continue
+                    kindch = entry.kind_character()
+                    outstring = fp + kindch
                     if verbose:
-                        kindch = entry.kind_character()
-                        outstring = '%-8s %s%s' % (fc, fp, kindch)
+                        outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
                             outstring = "%-50s %s" % (outstring, fid)
                         self.outf.write(outstring + '\n')
@@ -1994,9 +2014,9 @@ class cmd_ls(Command):
                         else:
                             my_id = ''
                         if show_ids:
-                            self.outf.write('%-50s %s\n' % (fp, my_id))
+                            self.outf.write('%-50s %s\n' % (outstring, my_id))
                         else:
-                            self.outf.write(fp + '\n')
+                            self.outf.write(outstring + '\n')
         finally:
             tree.unlock()
 
@@ -4564,6 +4584,7 @@ class cmd_tags(Command):
             time='Sort tags chronologically.',
             ),
         'show-ids',
+        'revision',
     ]
 
     @display_command
@@ -4571,11 +4592,28 @@ class cmd_tags(Command):
             directory='.',
             sort='alpha',
             show_ids=False,
+            revision=None,
             ):
         branch, relpath = Branch.open_containing(directory)
+
         tags = branch.tags.get_tag_dict().items()
         if not tags:
             return
+
+        if revision:
+            branch.lock_read()
+            try:
+                graph = branch.repository.get_graph()
+                rev1, rev2 = _get_revision_range(revision, branch, self.name())
+                revid1, revid2 = rev1.rev_id, rev2.rev_id
+                # only show revisions between revid1 and revid2 (inclusive)
+                tags = [(tag, revid) for tag, revid in tags if
+                     (revid2 is None or
+                         graph.is_ancestor(revid, revid2)) and
+                     (revid1 is None or
+                         graph.is_ancestor(revid1, revid))]
+            finally:
+                branch.unlock()
         if sort == 'alpha':
             tags.sort()
         elif sort == 'time':
@@ -4738,6 +4776,8 @@ class cmd_shelve(Command):
     ie. out of the way, until a later time when you can bring them back from
     the shelf with the 'unshelve' command.
 
+    If shelve --list is specified, previously-shelved changes are listed.
+
     Shelve is intended to help separate several sets of changes that have
     been inappropriately mingled.  If you just want to get rid of all changes
     and you don't need to restore them later, use revert.  If you want to
@@ -4760,12 +4800,16 @@ class cmd_shelve(Command):
         'message',
         RegistryOption('writer', 'Method to use for writing diffs.',
                        bzrlib.option.diff_writer_registry,
-                       value_switches=True, enum_switch=False)
+                       value_switches=True, enum_switch=False),
+
+        Option('list', help='List shelved changes.'),
     ]
     _see_also = ['unshelve']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
-            writer=None):
+            writer=None, list=False):
+        if list:
+            return self.run_for_list()
         from bzrlib.shelf_ui import Shelver
         if writer is None:
             writer = bzrlib.option.diff_writer_registry.get()
@@ -4774,6 +4818,24 @@ class cmd_shelve(Command):
                               message).run()
         except errors.UserAbort:
             return 0
+
+    def run_for_list(self):
+        tree = WorkingTree.open_containing('.')[0]
+        tree.lock_read()
+        try:
+            manager = tree.get_shelf_manager()
+            shelves = manager.active_shelves()
+            if len(shelves) == 0:
+                note('No shelved changes.')
+                return 0
+            for shelf_id in reversed(shelves):
+                message = manager.get_metadata(shelf_id).get('message')
+                if message is None:
+                    message = '<no message>'
+                self.outf.write('%3d: %s\n' % (shelf_id, message))
+            return 1
+        finally:
+            tree.unlock()
 
 
 class cmd_unshelve(Command):

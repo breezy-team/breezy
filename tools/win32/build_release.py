@@ -106,10 +106,6 @@ def get_plugin_release_dir(plugin_name):
 
 
 def get_plugin_trunk_branch(plugin_name):
-    if plugin_name == 'bzr-svn':
-        # For some reason bzr-svn doesn't have the latest tags on its 'trunk'
-        # branch, but only exist in the 0.4 releases.
-        return 'lp:bzr-svn/0.4'
     return 'lp:%s' % (plugin_name,)
 
 
