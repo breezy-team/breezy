@@ -436,7 +436,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         file_obj = self.get_file_byname(path, filtered=False)
         stat_value = _fstat(file_obj.fileno())
         if self.supports_content_filtering() and filtered:
-            filters = self._content_filter_stack(filename)
+            filters = self._content_filter_stack(path)
             file_obj = filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
