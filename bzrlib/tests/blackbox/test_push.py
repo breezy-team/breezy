@@ -350,6 +350,38 @@ class TestPush(ExternalBase):
         self.assertContainsRe(err,
                               'Using default stacking branch stack_on at .*')
 
+    def test_push_doesnt_create_broken_branch(self):
+        """Pushing a new standalone branch works even when there's a default
+        stacking policy at the destination.
+
+        The new branch will preserve the repo format (even if it isn't the
+        default for the branch), and will be stacked when the repo format
+        allows (which means that the branch format isn't necessarly preserved).
+        """
+        self.make_repository('repo', shared=True, format='1.6')
+        builder = self.make_branch_builder('repo/local', format='pack-0.92')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.build_snapshot('rev-3', ['rev-2'],
+            [('modify', ('f-id', 'new-content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        # Push rev-1 to "trunk", so that we can stack on it.
+        self.run_bzr('push -d repo/local trunk -r 1')
+        # Set a default stacking policy so that new branches will automatically
+        # stack on trunk.
+        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
+        out, err = self.run_bzr('push -d repo/local remote -r 2')
+        self.assertContainsRe(
+            err, 'Using default stacking branch trunk at .*')
+        # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
+        # fulltext record for f-id @ rev-1, then this will fail.
+        out, err = self.run_bzr('push -d repo/local remote -r 3')
+
 
 class RedirectingMemoryTransport(MemoryTransport):
 
