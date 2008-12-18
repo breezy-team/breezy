@@ -288,7 +288,7 @@ if unavailable_files:
 
 
 def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
-                         gui_targets):
+                         gui_targets, data_files):
     packages.append('tbzrcommands')
 
     # ModuleFinder can't handle runtime changes to __path__, but
@@ -340,16 +340,21 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
 
+    # NOTE: We still create a DLL version of the Python implemented shell
+    # extension for testing purposes - but it is *not* registered by
+    # default - our C++ one is instead.  To discourage people thinking
+    # this DLL is still necessary, its called 'tbzr_old.dll'
     tbzr = dict(
         modules=["tbzr"],
         create_exe = False, # we only want a .dll
+        dest_base = 'tbzr_old',
     )
     com_targets.append(tbzr)
 
     # tbzrcache executables - a "console" version for debugging and a
     # GUI version that is generally used.
     tbzrcache = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
+        script = os.path.join(tbzr_root, "scripts", "tbzrcache.py"),
         icon_resources = icon_resources,
         other_resources = other_resources,
     )
@@ -362,7 +367,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrcommand.py"),
+        script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
         icon_resources = [(0,'bzr.ico')],
     )
     console_targets.append(tbzrcommand)
@@ -370,21 +375,16 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     tbzrcommandw["dest_base"]="tbzrcommandw"
     gui_targets.append(tbzrcommandw)
     
-    # tbzr tests
-    tbzrtest = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrtest.py"),
-    )
-    console_targets.append(tbzrtest)
-
-    # A utility to see python output from the shell extension - this will
-    # die when we get a c++ extension
-    # any .py file from pywin32's win32 lib will do (other than
-    # win32traceutil itself that is)
-    import winerror
-    win32_lib_dir = os.path.dirname(winerror.__file__)
-    tracer = dict(script = os.path.join(win32_lib_dir, "win32traceutil.py"),
-                  dest_base="tbzr_tracer")
+    # A utility to see python output from both C++ and Python based shell
+    # extensions
+    tracer = dict(script=os.path.join(tbzr_root, "scripts", "tbzrtrace.py"))
     console_targets.append(tracer)
+
+    # The C++ implemented shell extensions.
+    dist_dir = os.path.join(tbzr_root, "shellext", "cpp", "tbzrshellext",
+                            "build", "dist")
+    data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x86.dll')]))
+    data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x64.dll')]))
 
 
 def get_qbzr_py2exe_info(includes, excludes, packages):
@@ -550,6 +550,9 @@ elif 'py2exe' in sys.argv:
     for root, dirs, files in os.walk('bzrlib/plugins'):
         if root == 'bzrlib/plugins':
             plugins = set(dirs)
+            # py2exe may find references to part of the plugin (eg, the tests)
+            # so we tell py2exe to leave the plugins out of the .zip file
+            excludes.extend(["bzrlib.plugins." + d for d in dirs])
         x = []
         for i in files:
             if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
@@ -573,6 +576,7 @@ elif 'py2exe' in sys.argv:
                        ]
     gui_targets = []
     com_targets = []
+    data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages)
@@ -582,13 +586,15 @@ elif 'py2exe' in sys.argv:
         # TortoiseOverlays MSI installer file. It is in the TSVN svn repo and
         # can be downloaded from (username=guest, blank password):
         # http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
-        if not os.path.isfile(os.environ.get('TORTOISE_OVERLAYS_MSI_WIN32',
-                                             '<nofile>')):
-            raise RuntimeError("Please set TORTOISE_OVERLAYS_MSI_WIN32 to the"
-                               " location of the Win32 TortoiseOverlays .msi"
-                               " installer file")
+        # Ditto for TORTOISE_OVERLAYS_MSI_X64, pointing at *-x64.msi.
+        for needed in ('TORTOISE_OVERLAYS_MSI_WIN32',
+                       'TORTOISE_OVERLAYS_MSI_X64'):
+            if not os.path.isfile(os.environ.get(needed, '<nofile>')):
+                raise RuntimeError("Please set %s to the"
+                                   " location of the relevant TortoiseOverlays"
+                                   " .msi installer file" % needed)
         get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
-                             gui_targets)
+                             gui_targets, data_files)
     else:
         # print this warning to stderr as output is redirected, so it is seen
         # at build time.  Also to stdout so it appears in the log
@@ -613,7 +619,7 @@ elif 'py2exe' in sys.argv:
           windows=gui_targets,
           com_server=com_targets,
           zipfile='lib/library.zip',
-          data_files=topics_files + plugins_files,
+          data_files=data_files,
           cmdclass={'install_data': install_data_with_bytecompile},
           )
 
