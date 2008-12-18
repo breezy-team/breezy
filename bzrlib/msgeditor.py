@@ -45,7 +45,7 @@ def _get_editor():
         
     for varname in 'VISUAL', 'EDITOR':
         if varname in os.environ:
-            yield os.environ[varname], '$VISUAL'
+            yield os.environ[varname], '$' + varname
 
     if sys.platform == 'win32':
         for editor in 'wordpad.exe', 'notepad.exe':
