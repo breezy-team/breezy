@@ -81,7 +81,7 @@ class GitRepository(ForeignRepository):
         while cms != []:
             cms = self._git.commits("--all", max_count=max_count, skip=skip)
             skip += max_count
-            ret.update([default_mapping.revision_id_foreign_to_bzr(cm.id) for cm in cms])
+            ret.update([self.get_mapping().revision_id_foreign_to_bzr(cm.id) for cm in cms])
         return ret
 
     def is_shared(self):
@@ -103,9 +103,9 @@ class GitRepository(ForeignRepository):
             max_count = 1000
             cms = None
             while cms != []:
-                cms = self._git.commits(self.lookup_git_revid(revision_id, default_mapping), max_count=max_count, skip=skip)
+                cms = self._git.commits(self.lookup_git_revid(revision_id, self.get_mapping()), max_count=max_count, skip=skip)
                 skip += max_count
-                ret += [default_mapping.revision_id_foreign_to_bzr(cm.id) for cm in cms]
+                ret += [self.get_mapping().revision_id_foreign_to_bzr(cm.id) for cm in cms]
         return [None] + ret
 
     def get_signature_text(self, revision_id):
@@ -123,12 +123,17 @@ class GitRepository(ForeignRepository):
     def has_signature_for_revision_id(self, revision_id):
         return False
 
+    def get_mapping(self):
+        return default_mapping
+
     def get_parent_map(self, revision_ids):
         ret = {}
         for revid in revision_ids:
             if revid == revision.NULL_REVISION:
                 ret[revid] = ()
             else:
+                git_commit_id = self.lookup_git_revid(revid, self.get_mapping())
+                commit = self._git.commit(git_commit_id)
                 ret[revid] = tuple([self.get_mapping().revision_id_foreign_to_bzr(p.id) for p in commit.parents])
         return ret
 
@@ -139,10 +144,10 @@ class GitRepository(ForeignRepository):
             raise errors.NoSuchRevision(bzr_revid, self)
 
     def get_revision(self, revision_id):
-        git_commit_id = self.lookup_git_revid(revision_id, default_mapping)
+        git_commit_id = self.lookup_git_revid(revision_id, self.get_mapping())
         commit = self._git.commit(git_commit_id)
         # print "fetched revision:", git_commit_id
-        revision = self._parse_rev(commit, default_mapping)
+        revision = self._parse_rev(commit, self.get_mapping())
         return revision
 
     def has_revision(self, revision_id):
@@ -208,7 +213,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def __init__(self, repository, revision_id):
         self._repository = repository
         self.revision_id = revision_id
-        git_id = repository.lookup_git_revid(revision_id, default_mapping)
+        git_id = repository.lookup_git_revid(revision_id, repository.get_mapping())
         self.tree = repository._git.commit(git_id).tree
         self._inventory = inventory.Inventory(revision_id=revision_id)
         self._inventory.root.revision = revision_id
@@ -224,34 +229,34 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _build_inventory(self, tree, ie, path):
         assert isinstance(path, str)
-        for b in tree.contents:
-            basename = b.name.decode("utf-8")
+        for name, mode, hexsha in tree.entries():
+            basename = name.decode("utf-8")
             if path == "":
-                child_path = b.name
+                child_path = name
             else:
-                child_path = urlutils.join(path, b.name)
+                child_path = urlutils.join(path, name)
             file_id = escape_file_id(child_path.encode('utf-8'))
-            if b.mode[0] == '0':
+            if mode[0] == '0':
                 child_ie = inventory.InventoryDirectory(file_id, basename, ie.file_id)
-            elif b.mode[0] == '1':
-                if b.mode[1] == '0':
+            elif mode[0] == '1':
+                if mode[1] == '0':
                     child_ie = inventory.InventoryFile(file_id, basename, ie.file_id)
                     child_ie.text_sha1 = osutils.sha_string(b.data)
-                elif b.mode[1] == '2':
+                elif mode[1] == '2':
                     child_ie = inventory.InventoryLink(file_id, basename, ie.file_id)
                     child_ie.text_sha1 = osutils.sha_string("")
                 else:
                     raise AssertionError(
-                        "Unknown file kind, perms=%r." % (b.mode,))
+                        "Unknown file kind, perms=%r." % (mode,))
                 child_ie.text_id = b.id
                 child_ie.text_size = b.size
             else:
                 raise AssertionError(
-                    "Unknown blob kind, perms=%r." % (b.mode,))
-            child_ie.executable = bool(int(b.mode[3:], 8) & 0111)
+                    "Unknown blob kind, perms=%r." % (mode,))
+            child_ie.executable = bool(int(mode[3:], 8) & 0111)
             child_ie.revision = self.revision_id
             self._inventory.add(child_ie)
-            if b.mode[0] == '0':
+            if mode[0] == '0':
                 self._build_inventory(b, child_ie, child_path)
 
 

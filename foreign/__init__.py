@@ -61,7 +61,7 @@ class ForeignRepository(Repository):
         raise NotImplementedError(self.all_revision_ids)
 
     def get_mapping(self):
-        raise NotImplementedError(self.get_default_mapping)
+        raise NotImplementedError(self.get_mapping)
 
     def get_inventory_xml(self, revision_id):
         """See Repository.get_inventory_xml()."""
