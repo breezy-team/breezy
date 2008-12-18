@@ -62,9 +62,10 @@ def get_zone_int():
 
 def get_patchname(patch):
 	ret = []
-	if patch.attributes['inverted'] == 'True':
-		ret.append("UNDO: ")
-	ret.append(patch.getElementsByTagName("name")[0].childNodes[0].data)
+	s = ""
+	if patch.attributes['inverted'].value == 'True':
+		s = "UNDO: "
+	ret.append(s + patch.getElementsByTagName("name")[0].childNodes[0].data)
 	lines = patch.getElementsByTagName("comment")
 	if lines:
 		for i in lines[0].childNodes[0].data.split('\n'):
