@@ -65,11 +65,15 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # test handling when read then write gives back the initial content
         tree, txt_fileid, bin_fileid = self.create_cf_tree(
             txt_reader=_swapcase, txt_writer=_swapcase)
-        # Check that the basis tree has the transformed content
+        # Check that the basis tree has the expected content
         basis = tree.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertEqual('fOO tXT', basis.get_file_text(txt_fileid))
+        if tree.supports_content_filtering():
+            expected = "fOO tXT"
+        else:
+            expected = "Foo Txt"
+        self.assertEqual(expected, basis.get_file_text(txt_fileid))
         self.assertEqual('Foo Bin', basis.get_file_text(bin_fileid))
         # Check that the working tree has the original content
         tree.lock_read()
@@ -83,11 +87,15 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # test handling with a read filter but no write filter
         tree, txt_fileid, bin_fileid = self.create_cf_tree(
             txt_reader=_uppercase, txt_writer=None)
-        # Check that the basis tree has the transformed content
+        # Check that the basis tree has the expected content
         basis = tree.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)
-        self.assertEqual('FOO TXT', basis.get_file_text(txt_fileid))
+        if tree.supports_content_filtering():
+            expected = "FOO TXT"
+        else:
+            expected = "Foo Txt"
+        self.assertEqual(expected, basis.get_file_text(txt_fileid))
         self.assertEqual('Foo Bin', basis.get_file_text(bin_fileid))
         # We expect the workingtree content to be unchanged (for now at least)
         tree.lock_read()

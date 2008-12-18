@@ -227,7 +227,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
             self.bzrdir._get_file_mode(),
-            lambda path, file_id: self._content_filter_stack(path, file_id))
+            self._content_filter_stack_provider())
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -426,16 +426,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id, path=None, filtered=True):
-        if path is None:
-            path = self.id2path(file_id)
-        return self.get_file_byname(path, filtered=filtered)
+        return self.get_file_with_stat(file_id, path, filtered=filtered)[0]
 
-    def get_file_with_stat(self, file_id, path=None, _fstat=os.fstat):
+    def get_file_with_stat(self, file_id, path=None, filtered=True,
+        _fstat=os.fstat):
         """See MutableTree.get_file_with_stat."""
         if path is None:
             path = self.id2path(file_id)
         file_obj = self.get_file_byname(path, filtered=False)
-        return (file_obj, _fstat(file_obj.fileno()))
+        stat_value = _fstat(file_obj.fileno())
+        if self.supports_content_filtering() and filtered:
+            filters = self._content_filter_stack(filename)
+            file_obj = filtered_input_file(file_obj, filters)
+        return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
         return self.get_file(file_id, path=path, filtered=filtered).read()
@@ -443,15 +446,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
         f = file(path, 'rb')
-        if filtered:
+        if self.supports_content_filtering() and filtered:
             filters = self._content_filter_stack(filename)
             return filtered_input_file(f, filters)
         else:
             return f
 
-    def get_file_lines(self, file_id, path=None):
+    def get_file_lines(self, file_id, path=None, filtered=True):
         """See Tree.get_file_lines()"""
-        file = self.get_file(file_id, path)
+        file = self.get_file(file_id, path, filtered=filtered)
         try:
             return file.readlines()
         finally:

@@ -566,9 +566,12 @@ class Tree(object):
         """
         raise NotImplementedError(self.walkdirs)
 
+    def supports_content_filtering(self):
+        return False
+
     def _content_filter_stack(self, path=None, file_id=None):
-        """The stack of content filters for a path.
-        
+        """The stack of content filters for a path if filtering is supported.
+ 
         Readers will be applied in first-to-last order.
         Writers will be applied in last-to-first order.
         Either the path or the file-id needs to be provided.
@@ -588,6 +591,20 @@ class Tree(object):
         if 'filters' in debug.debug_flags:
             note("*** %s content-filter: %s => %r" % (path,prefs,stk))
         return stk
+
+    def _content_filter_stack_provider(self):
+        """A function that returns a stack of ContentFilters.
+
+        The function takes a path (relative to the top of the tree) and a
+        file-id as parameters.
+
+        :return: None if content filtering is not supported by this tree.
+        """
+        if self.supports_content_filtering():
+            return lambda path, file_id: \
+                    self._content_filter_stack(path, file_id)
+        else:
+            return None
 
     def iter_search_rules(self, path_names, pref_names=None,
         _default_searcher=rules._per_user_searcher):
