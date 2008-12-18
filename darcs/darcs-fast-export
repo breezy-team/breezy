@@ -200,6 +200,18 @@ def simplify_nodes(i):
 	for j in nodes['move'][:]:
 		if os.path.isdir(j[1]) and not len(os.listdir(j[1])):
 			nodes['move'].remove(j)
+
+	# hacks for those rare inverted patches. today's darcs no longer
+	# creates them, but old repos still contain such stuff
+	if i.attributes['inverted'].value == 'True':
+		# in case there are file moves, the modify_file paths
+		# contain the old path, so we have to replace them
+		for j in nodes['modify_file'][:]:
+			for k in nodes['move']:
+				if j.startswith(k[0]):
+					nodes['modify_file'].remove(j)
+					nodes['modify_file'].append(j.replace(k[0], k[1]))
+
 	return nodes
 
 # Option Parser
