@@ -109,6 +109,11 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * ``bzr selftest`` now fails if new trailing white space is added to
+      the bazaar sources. It only checks changes not committed yet. This
+      means that PQM will now reject changes that introduce new trailing
+      whitespace. (Marius Kruger)
+
   INTERNALS:
 
     * Added an ``InventoryEntry`` cache when deserializing inventories.
