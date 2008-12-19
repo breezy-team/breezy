@@ -46,7 +46,6 @@ DEBUG = 0
 # actual code more or less do that, tests should be written to
 # ensure that.
 
-import getpass
 import httplib
 import socket
 import urllib
@@ -975,6 +974,10 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # We already tried that, give up
                 return None
 
+            if auth.get('user', None) is None:
+                # Without a known user, we can't authenticate
+                return None
+
             # Housekeeping
             request.connection.cleanup_pipe()
             response = self.parent.open(request)
@@ -1044,13 +1047,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
-                                 port=auth['port'], path=auth['path'],
-                                 realm=realm)
-            if user is None:
-                # Default to local user
-                user = getpass.getuser()
-
-        if password is None:
+                                      port=auth['port'], path=auth['path'],
+                                      realm=realm)
+        if user is not None and password is None:
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
                 path=auth['path'], realm=realm,

@@ -46,6 +46,9 @@ IN DEVELOPMENT
       that's in a stackable shared repository to a location with default
       stack-on location.  (Andrew Bennetts, #291046)
 
+    * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
+      (Ben Jansen, Vincent Ladeuil, #300347)
+
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
 
@@ -75,10 +78,6 @@ IN DEVELOPMENT
 
     * Use the short status format when the short format is used for log.
       (Vincent Ladeuil, #87179)
-
-    * Don't require "username@" in HTTP(S) URLs that require
-      authentication.
-      (#256612)
 
   DOCUMENTATION:
 

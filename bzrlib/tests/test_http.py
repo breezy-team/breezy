@@ -1557,6 +1557,25 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
+    def test_user_from_auth_conf(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl does not support authentication.conf')
+        user =' joe'
+        password = 'foo'
+        self.server.add_user(user, password)
+        # Create a minimal config file with the right password
+        conf = config.AuthenticationConfig()
+        conf._get_config().update(
+            {'httptest': {'scheme': 'http', 'port': self.server.port,
+                          'user': user, 'password': password}})
+        conf._save()
+        t = self.get_user_transport()
+        # Issue a request to the server to connect
+        self.assertEqual('contents of a\n',t.get('a').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
     def test_changing_nonce(self):
         if self._auth_scheme != 'digest':
             raise tests.TestNotApplicable('HTTP auth digest only test')
