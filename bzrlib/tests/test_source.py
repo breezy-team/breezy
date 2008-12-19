@@ -25,7 +25,7 @@ They are useful for testing code quality, checking coverage metric etc.
 import os
 import parser
 import re
-from StringIO import StringIO
+from cStringIO import StringIO
 import symbol
 import sys
 import token
