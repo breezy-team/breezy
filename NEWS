@@ -56,6 +56,10 @@ IN DEVELOPMENT
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
 
+    * Handle EACCES (permission denied) errors when launching a message
+      editor, and emit warnings when a configured editor cannot be
+      started. (Andrew Bennetts)
+
     * Preserve transport decorators while following redirections.
       (Vincent Ladeuil, #245964, #270863)
 
