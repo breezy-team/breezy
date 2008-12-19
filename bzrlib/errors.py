@@ -1496,9 +1496,10 @@ class RetryWithNewPacks(BzrError):
 
     internal_error = True
 
-    _fmt = ("Pack files have changed, reload and retry. %(orig_error)s")
+    _fmt = ("Pack files have changed, reload and retry. context: %(context)s"
+            " %(orig_error)s")
 
-    def __init__(self, reload_occurred, exc_info):
+    def __init__(self, context, reload_occurred, exc_info):
         """create a new RetryWithNewPacks error.
 
         :param reload_occurred: Set to True if we know that the packs have
@@ -1527,7 +1528,8 @@ class RetryAutopack(RetryWithNewPacks):
 
     internal_error = True
 
-    _fmt = ("Pack files have changed, reload and try autopack again.")
+    _fmt = ("Pack files have changed, reload and try autopack again."
+            " context: %(context)s %(orig_error)s")
 
 
 class NoSuchExportFormat(BzrError):

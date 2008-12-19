@@ -1756,7 +1756,7 @@ class RepositoryPackCollection(object):
             # Re-raise the original exception, because something went missing
             # and a restart didn't find it
             raise
-        raise errors.RetryAutopack(False, sys.exc_info())
+        raise errors.RetryAutopack(self.repo, False, sys.exc_info())
 
     def _clear_obsolete_packs(self):
         """Delete everything from the obsolete-packs directory.
