@@ -1093,8 +1093,7 @@ def _deserialise(bytes, key):
         raise AssertionError("Unknown node type.")
 
 
-def _find_children_info(store, interesting_keys, uninteresting_keys,
-                        adapter, pb):
+def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
     """Read the associated records, and determine what is interesting."""
     uninteresting_keys = set(uninteresting_keys)
     chks_to_read = uninteresting_keys.union(interesting_keys)
@@ -1108,11 +1107,7 @@ def _find_children_info(store, interesting_keys, uninteresting_keys,
         # records_read.add(record.key())
         if pb is not None:
             pb.tick()
-        if record.storage_kind != 'fulltext':
-            bytes = adapter.get_bytes(record,
-                        record.get_bytes_as(record.storage_kind))
-        else:
-            bytes = record.get_bytes_as('fulltext')
+        bytes = record.get_bytes_as('fulltext')
         node = _deserialise(bytes, record.key)
         if record.key in uninteresting_keys:
             if isinstance(node, InternalNode):
@@ -1154,7 +1149,7 @@ def _find_all_uninteresting(store, interesting_root_keys,
      interesting_keys, interesting_records,
      interesting_items) = _find_children_info(store, interesting_root_keys,
                                               uninteresting_root_keys,
-                                              adapter=adapter, pb=pb)
+                                              pb=pb)
     all_uninteresting_chks.update(uninteresting_keys)
     all_uninteresting_items.update(uninteresting_items)
     del uninteresting_items
@@ -1172,11 +1167,11 @@ def _find_all_uninteresting(store, interesting_root_keys,
             # TODO: Handle 'absent'
             if pb is not None:
                 pb.tick()
-            if record.storage_kind != 'fulltext':
+            if record.storage_kind in ('fulltext', 'chunked'):
+                bytes = record.get_bytes_as('fulltext')
+            else:
                 bytes = adapter.get_bytes(record,
                             record.get_bytes_as(record.storage_kind))
-            else:
-                bytes = record.get_bytes_as('fulltext')
             node = _deserialise(bytes, record.key)
             if isinstance(node, InternalNode):
                 # uninteresting_prefix_chks.update(node._items.iteritems())
@@ -1208,6 +1203,10 @@ def iter_interesting_nodes(store, interesting_root_keys,
     """
     # TODO: consider that it may be more memory efficient to use the 20-byte
     #       sha1 string, rather than tuples of hexidecimal sha1 strings.
+    # TODO: Try to factor out a lot of the get_record_stream() calls into a
+    #       helper function similar to _read_bytes. This function should be
+    #       able to use nodes from the _page_cache as well as actually
+    #       requesting bytes from the store.
 
     # A way to adapt from the compressed texts back into fulltexts
     # In a way, this seems like a layering inversion to have CHKMap know the
@@ -1236,11 +1235,11 @@ def iter_interesting_nodes(store, interesting_root_keys,
             if pb is not None:
                 pb.tick()
             # TODO: Handle 'absent'?
-            if record.storage_kind != 'fulltext':
+            if record.storage_kind in ('fulltext', 'chunked'):
+                bytes = record.get_bytes_as('fulltext')
+            else:
                 bytes = adapter.get_bytes(record,
                             record.get_bytes_as(record.storage_kind))
-            else:
-                bytes = record.get_bytes_as('fulltext')
             node = _deserialise(bytes, record.key)
             if isinstance(node, InternalNode):
                 chks = set(node.refs())

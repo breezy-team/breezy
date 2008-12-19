@@ -789,7 +789,7 @@ class TestCase(unittest.TestCase):
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
-        
+
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
@@ -2790,6 +2790,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_cache_utf8',
                    'bzrlib.tests.test_chk_map',
                    'bzrlib.tests.test_chunk_writer',
+                   'bzrlib.tests.test__chunks_to_lines',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',

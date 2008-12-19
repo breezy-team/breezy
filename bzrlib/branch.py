@@ -1614,6 +1614,10 @@ class BzrBranch(Branch):
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
+        if not isinstance(destination._format, BzrBranchFormat5):
+            super(BzrBranch, self)._synchronize_history(
+                destination, revision_id)
+            return
         if revision_id == _mod_revision.NULL_REVISION:
             new_history = []
         else:

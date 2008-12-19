@@ -25,6 +25,7 @@ from bzrlib import (
     check,
     debug,
     errors,
+    fifo_cache,
     generate_ids,
     gpg,
     graph,
@@ -882,6 +883,8 @@ class Repository(object):
         # Should fetch trigger a reconcile after the fetch? Only needed for
         # some repository formats that can suffer internal inconsistencies.
         self._fetch_reconcile = False
+        # An InventoryEntry cache, used during deserialization
+        self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -1185,6 +1188,8 @@ class Repository(object):
                 raise errors.BzrError(
                     'Must end write groups before releasing write locks.')
         self.control_files.unlock()
+        if self.control_files._lock_count == 0:
+            self._inventory_entry_cache.clear()
         for repo in self._fallback_repositories:
             repo.unlock()
 
@@ -1528,7 +1533,6 @@ class Repository(object):
         :param desired_files: a list of (file_id, revision_id, identifier)
             triples
         """
-        transaction = self.get_transaction()
         text_keys = {}
         for file_id, revision_id, callable_data in desired_files:
             text_keys[(file_id, revision_id)] = callable_data
@@ -1725,14 +1729,15 @@ class Repository(object):
     def _iter_inventory_xmls(self, revision_ids):
         keys = [(revision_id,) for revision_id in revision_ids]
         stream = self.inventories.get_record_stream(keys, 'unordered', True)
-        texts = {}
+        text_chunks = {}
         for record in stream:
             if record.storage_kind != 'absent':
-                texts[record.key] = record.get_bytes_as('fulltext')
+                text_chunks[record.key] = record.get_bytes_as('chunked')
             else:
                 raise errors.NoSuchRevision(self, record.key)
         for key in keys:
-            yield texts[key], key[-1]
+            chunks = text_chunks.pop(key)
+            yield ''.join(chunks), key[-1]
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
@@ -1740,7 +1745,8 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        result = self._serializer.read_inventory_from_string(xml, revision_id)
+        result = self._serializer.read_inventory_from_string(xml, revision_id,
+                    entry_cache=self._inventory_entry_cache)
         if result.revision_id != revision_id:
             raise AssertionError('revision id mismatch %s != %s' % (
                 result.revision_id, revision_id))

@@ -423,7 +423,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         try:
             raise _TestException('foobar')
         except _TestException, e:
-            retry_exc = errors.RetryWithNewPacks(reload_occurred=False,
+            retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
         return retry_exc
 
