@@ -10,6 +10,9 @@ IN DEVELOPMENT
 
   CHANGES:
   
+    * Formats using Knit-based repository formats are now explicitly
+      marked as deprecated. (Ian Clatworthy)
+
     * ``LRUCache(after_cleanup_size)`` was renamed to
       ``after_cleanup_count`` and the old name deprecated. The new name is
       used for clarity, and to avoid confusion with
@@ -19,6 +22,9 @@ IN DEVELOPMENT
 
     * ``shelve --list`` can now be used to list shelved changes.
       (Aaron Bentley)
+
+    * Add support for `bzr tags -r 1..2`, that is we now support showing
+      tags applicable for a specified revision range. (Marius Kruger)
 
   IMPROVEMENTS:
 
@@ -30,11 +36,19 @@ IN DEVELOPMENT
 
   BUG FIXES:
   
+    * Fix a problem with CIFS client/server lag on windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
 
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
+
+    * Don't make a broken branch when pushing an unstackable-format branch
+      that's in a stackable shared repository to a location with default
+      stack-on location.  (Andrew Bennetts, #291046)
 
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
@@ -46,16 +60,27 @@ IN DEVELOPMENT
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
 
+    * Handle EACCES (permission denied) errors when launching a message
+      editor, and emit warnings when a configured editor cannot be
+      started. (Andrew Bennetts)
+
     * Preserve transport decorators while following redirections.
       (Vincent Ladeuil, #245964, #270863)
 
     * Provides a finer and more robust filter for accepted redirections.
       (Vincent Ladeuil, #303959, #265070)
 
+    * ``shelve`` paths are now interpreted relative to the current working
+      tree.  (Aaron Bentley)
+
     * ``Transport.readv()`` defaults to not reading more than 100MB in a
       single array. Further ``RemoteTransport.readv`` sets this to 5MB to
       work better with how it splits its requests.
       (John Arbash Meinel, #303538)
+
+    * Pack repositories are now able to reload the pack listing and retry
+      the current operation if another action causes the data to be
+      repacked.  (John Arbash Meinel, #153786)
 
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
@@ -64,6 +89,11 @@ IN DEVELOPMENT
       (Vincent Ladeuil, #87179)
 
   DOCUMENTATION:
+
+    * Improved the formats help topic to explain why multiple formats
+      exist and to provide guidelines in selecting one. Introduced
+      two new supporting help topics: current-formats and other-formats.
+      (Ian Clatworthy)
 
   API CHANGES:
 
@@ -79,7 +109,21 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * ``bzr selftest`` now fails if new trailing white space is added to
+      the bazaar sources. It only checks changes not committed yet. This
+      means that PQM will now reject changes that introduce new trailing
+      whitespace. (Marius Kruger)
+
   INTERNALS:
+
+    * Added an ``InventoryEntry`` cache when deserializing inventories.
+      Can cut the time to iterate over multiple RevisionsTrees in half.
+      (John Arbash Meinel)
+
+    * Added ``bzrlib.fifo_cache.FIFOCache`` which is designed to have
+      minimal overhead versus using a plain dict for cache hits, at the
+      cost of not preserving the 'active' set as well as an ``LRUCache``.
+      (John Arbash Meinel)
 
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.

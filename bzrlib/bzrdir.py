@@ -218,6 +218,9 @@ class BzrDir(object):
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
+            if not require_stacking and repository_policy._require_stacking:
+                require_stacking = True
+                result._format.require_stacking()
             result_repo.fetch(local_repo, revision_id=revision_id)
         else:
             result_repo = None
@@ -1035,25 +1038,8 @@ class BzrDir(object):
                 return format
             tree_format = repository._format._matchingbzrdir.workingtree_format
             format.workingtree_format = tree_format.__class__()
-        if (require_stacking and not
-            format.get_branch_format().supports_stacking()):
-            # We need to make a stacked branch, but the default format for the
-            # target doesn't support stacking.  So force a branch that *can*
-            # support stacking.
-            from bzrlib.branch import BzrBranchFormat7
-            format._branch_format = BzrBranchFormat7()
-            mutter("using %r for stacking" % (format._branch_format,))
-            from bzrlib.repofmt import pack_repo
-            if format.repository_format.rich_root_data:
-                bzrdir_format_name = '1.6.1-rich-root'
-                repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
-            else:
-                bzrdir_format_name = '1.6'
-                repo_format = pack_repo.RepositoryFormatKnitPack5()
-            note('Source format does not support stacking, using format:'
-                 ' \'%s\'\n  %s\n',
-                 bzrdir_format_name, repo_format.get_format_description())
-            format.repository_format = repo_format
+        if require_stacking:
+            format.require_stacking()
         return format
 
     def checkout_metadir(self):
@@ -2026,6 +2012,26 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def set_branch_format(self, format):
         self._branch_format = format
 
+    def require_stacking(self):
+        if not self.get_branch_format().supports_stacking():
+            # We need to make a stacked branch, but the default format for the
+            # target doesn't support stacking.  So force a branch that *can*
+            # support stacking.
+            from bzrlib.branch import BzrBranchFormat7
+            self._branch_format = BzrBranchFormat7()
+            mutter("using %r for stacking" % (self._branch_format,))
+            from bzrlib.repofmt import pack_repo
+            if self.repository_format.rich_root_data:
+                bzrdir_format_name = '1.6.1-rich-root'
+                repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+            else:
+                bzrdir_format_name = '1.6'
+                repo_format = pack_repo.RepositoryFormatKnitPack5()
+            note('Source format does not support stacking, using format:'
+                 ' \'%s\'\n  %s\n',
+                 bzrdir_format_name, repo_format.get_format_description())
+            self.repository_format = repo_format
+
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         if format is None:
@@ -2678,6 +2684,7 @@ class BzrDirFormatRegistry(registry.Registry):
     def __init__(self):
         """Create a BzrDirFormatRegistry."""
         self._aliases = set()
+        self._registration_order = list()
         super(BzrDirFormatRegistry, self).__init__()
 
     def aliases(self):
@@ -2745,6 +2752,7 @@ class BzrDirFormatRegistry(registry.Registry):
             BzrDirFormatInfo(native, deprecated, hidden, experimental))
         if alias:
             self._aliases.add(key)
+        self._registration_order.append(key)
 
     def register_lazy(self, key, module_name, member_name, help, native=True,
         deprecated=False, hidden=False, experimental=False, alias=False):
@@ -2752,6 +2760,7 @@ class BzrDirFormatRegistry(registry.Registry):
             help, BzrDirFormatInfo(native, deprecated, hidden, experimental))
         if alias:
             self._aliases.add(key)
+        self._registration_order.append(key)
 
     def set_default(self, key):
         """Set the 'default' key to be a clone of the supplied key.
@@ -2777,15 +2786,11 @@ class BzrDirFormatRegistry(registry.Registry):
         return self.get(key)()
 
     def help_topic(self, topic):
-        output = textwrap.dedent("""\
-            These formats can be used for creating branches, working trees, and
-            repositories.
-
-            """)
+        output = ""
         default_realkey = None
         default_help = self.get_help('default')
         help_pairs = []
-        for key in self.keys():
+        for key in self._registration_order:
             if key == 'default':
                 continue
             help = self.get_help(key)
@@ -2815,18 +2820,31 @@ class BzrDirFormatRegistry(registry.Registry):
                 experimental_pairs.append((key, help))
             else:
                 output += wrapped(key, help, info)
+        output += "\nSee ``bzr help formats`` for more about storage formats."
+        other_output = ""
         if len(experimental_pairs) > 0:
-            output += "Experimental formats are shown below.\n\n"
+            other_output += "Experimental formats are shown below.\n\n"
             for key, help in experimental_pairs:
                 info = self.get_info(key)
-                output += wrapped(key, help, info)
+                other_output += wrapped(key, help, info)
+        else:
+            other_output += \
+                "No experimental formats are available.\n\n"
         if len(deprecated_pairs) > 0:
-            output += "Deprecated formats are shown below.\n\n"
+            other_output += "\nDeprecated formats are shown below.\n\n"
             for key, help in deprecated_pairs:
                 info = self.get_info(key)
-                output += wrapped(key, help, info)
+                other_output += wrapped(key, help, info)
+        else:
+            other_output += \
+                "\nNo deprecated formats are available.\n\n"
+        other_output += \
+            "\nSee ``bzr help formats`` for more about storage formats."
 
-        return output
+        if topic == 'other-formats':
+            return other_output
+        else:
+            return output
 
 
 class RepositoryAcquisitionPolicy(object):
@@ -2894,6 +2912,8 @@ class RepositoryAcquisitionPolicy(object):
         except errors.UnstackableRepositoryFormat:
             if self._require_stacking:
                 raise
+        else:
+            self._require_stacking = True
 
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Acquire a repository for this bzrdir.
@@ -2961,19 +2981,23 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
         return self._repository
 
 
+# Please register new formats after old formats so that formats
+# appear in chronological order and format descriptions can build
+# on previous ones.
 format_registry = BzrDirFormatRegistry()
 format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
     ' support checkouts or shared repositories.',
     deprecated=True)
-format_registry.register_metadir('knit',
-    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
-    'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat3')
 format_registry.register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
+    branch_format='bzrlib.branch.BzrBranchFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat3',
+    deprecated=True)
+format_registry.register_metadir('knit',
+    'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
+    'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     tree_format='bzrlib.workingtree.WorkingTreeFormat3',
     deprecated=True)
@@ -2985,7 +3009,7 @@ format_registry.register_metadir('dirstate',
     # this uses bzrlib.workingtree.WorkingTreeFormat4 because importing
     # directly from workingtree_4 triggers a circular import.
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    )
+    deprecated=True)
 format_registry.register_metadir('dirstate-tags',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     help='New in 0.15: Fast local operations and improved scaling for '
@@ -2993,14 +3017,14 @@ format_registry.register_metadir('dirstate-tags',
         ' Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    )
+    deprecated=True)
 format_registry.register_metadir('rich-root',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
     help='New in 1.0.  Better handling of tree roots.  Incompatible with'
-        ' bzr < 1.0',
+        ' bzr < 1.0.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    )
+    deprecated=True)
 format_registry.register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
@@ -3037,35 +3061,38 @@ format_registry.register_metadir('pack-0.92-subtree',
     )
 format_registry.register_metadir('rich-root-pack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='New in 1.0: Pack-based format with data compatible with '
-        'rich-root format repositories. Incompatible with'
-        ' bzr < 1.0',
+    help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
+         '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 format_registry.register_metadir('1.6',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
-    help='A branch and pack based repository that supports stacking. ',
+    help='A format that allows a branch to indicate that there is another '
+         '(stacked) repository that should be used to access data that is '
+         'not present locally.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 format_registry.register_metadir('1.6.1-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
-    help='A branch and pack based repository that supports stacking '
-         'and rich root data (needed for bzr-svn). ',
+    help='A variant of 1.6 that supports rich-root data '
+         '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 format_registry.register_metadir('1.9',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
-    help='A branch and pack based repository that uses btree indexes. ',
+    help='A repository format using B+tree indexes. These indexes '
+         'are smaller in size, have smarter caching and provide faster '
+         'performance for most operations.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 format_registry.register_metadir('1.9-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
-    help='A branch and pack based repository that uses btree indexes '
-         'and rich root data (needed for bzr-svn). ',
+    help='A variant of 1.9 that supports rich-root data '
+         '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )

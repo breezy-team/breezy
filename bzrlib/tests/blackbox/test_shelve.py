@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+
 from bzrlib import shelf
 from bzrlib.tests import TestCaseWithTransport
 
@@ -49,3 +51,13 @@ class TestShelveList(TestCaseWithTransport):
         out, err = self.run_bzr('shelve --list', retcode=1)
         self.assertEqual('', err)
         self.assertEqual('  2: Bar\n  1: Foo\n', out)
+
+
+class TestShelveRelpath(TestCaseWithTransport):
+
+    def test_shelve_in_subdir(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/dir/'])
+        tree.add('file')
+        os.chdir('tree/dir')
+        self.run_bzr('shelve --all ../file')

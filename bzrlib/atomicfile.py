@@ -55,7 +55,8 @@ class AtomicFile(object):
         if _hostname is None:
             _hostname = osutils.get_host_name()
 
-        self.tmpfilename = '%s.%d.%s.tmp' % (filename, _pid, _hostname)
+        self.tmpfilename = '%s.%d.%s.%s.tmp' % (filename, _pid, _hostname,
+                                                osutils.rand_chars(10))
 
         self.realfilename = filename
         
