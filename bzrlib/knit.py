@@ -2594,7 +2594,7 @@ class _DirectPackAccess(object):
                     # If we don't have a _reload_func there is nothing that can
                     # be done
                     raise
-                raise errors.RetryWithNewPacks(transport.abspath(path),
+                raise errors.RetryWithNewPacks(index,
                                                reload_occurred=True,
                                                exc_info=sys.exc_info())
             try:
