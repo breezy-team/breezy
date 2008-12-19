@@ -267,7 +267,7 @@ if len(sys.argv) == 2:
             msgeditor._run_editor('')
         finally:
             trace.warning = _warning
-        self.assertStartsWith(warnings[0], 'Could not start editor eacces.py:')
+        self.assertStartsWith(warnings[0], 'Could not start editor "eacces.py"')
 
     def test__create_temp_file_with_commit_template(self):
         # check that commit template written properly
