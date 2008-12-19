@@ -74,6 +74,10 @@ IN DEVELOPMENT
       work better with how it splits its requests.
       (John Arbash Meinel, #303538)
 
+    * Pack repositories are now able to reload the pack listing and retry
+      the current operation if another action causes the data to be
+      repacked.  (John Arbash Meinel, #153786)
+
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
 
