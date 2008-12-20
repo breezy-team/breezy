@@ -2982,7 +2982,7 @@ class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 4 (needs bzr.dev from before 1.10)\n"
+        return "Bazaar development format 4 (needs bzr.dev from before 1.11)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -3029,11 +3029,11 @@ class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
         if not getattr(target_format, 'supports_tree_reference', False):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
-            
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar development format 4 with subtree support "
-            "(needs bzr.dev from before 1.10)\n")
+            "(needs bzr.dev from before 1.11)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
