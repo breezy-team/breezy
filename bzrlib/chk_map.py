@@ -778,7 +778,9 @@ class InternalNode(Node):
         maximum_size = int(lines[1])
         width = int(lines[2])
         length = int(lines[3])
-        for line in lines[4:]:
+        common_prefix = lines[4]
+        for line in lines[5:]:
+            line = common_prefix + line
             prefix, flat_key = line.rsplit('\x00', 1)
             items[prefix] = (flat_key,)
         result._items = items
@@ -942,12 +944,17 @@ class InternalNode(Node):
         lines.append("%d\n" % self._maximum_size)
         lines.append("%d\n" % self._key_width)
         lines.append("%d\n" % self._len)
+        assert self._lookup_prefix is not None
+        lines.append('%s\n' % (self._lookup_prefix,))
+        prefix_len = len(self._lookup_prefix)
         for prefix, node in sorted(self._items.items()):
             if type(node) == tuple:
                 key = node[0]
             else:
                 key = node._key[0]
-            lines.append("%s\x00%s\n" % (prefix, key))
+            serialised = "%s\x00%s\n" % (prefix, key)
+            assert serialised.startswith(self._lookup_prefix)
+            lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
         _page_cache.add(self._key, ''.join(lines))
