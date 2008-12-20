@@ -495,9 +495,9 @@ class LeafNode(Node):
         the header.
         """
         return (12 # bytes overhead for the header and separators
-            + len(str(self._len))
-            + len(str(self._key_width))
             + len(str(self._maximum_size))
+            + len(str(self._key_width))
+            + len(str(self._len))
             + self._raw_size)
 
     @classmethod
@@ -525,10 +525,10 @@ class LeafNode(Node):
         result._maximum_size = maximum_size
         result._key = key
         result._key_width = width
-        # XXX: This will change when we have prefix compression
-        result._raw_size = len(bytes)
+        result._raw_size = sum(map(len, lines[4:])) + len(lines[4:])
         result._compute_lookup_prefix()
         result._compute_serialised_prefix()
+        assert len(bytes) == result._current_size()
         return result
 
     def iteritems(self, store, key_filter=None):
@@ -648,7 +648,9 @@ class LeafNode(Node):
             lines.append("%s\x00%s\n" % (self._serialise_key(key), value))
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
-        _page_cache.add(self._key, ''.join(lines))
+        bytes = ''.join(lines)
+        assert len(bytes) == self._current_size()
+        _page_cache.add(self._key, bytes)
         return [self._key]
 
     def _lookup_key(self, key):
