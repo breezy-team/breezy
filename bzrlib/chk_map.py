@@ -494,11 +494,19 @@ class LeafNode(Node):
         This differs from self._raw_size in that it includes the bytes used for
         the header.
         """
-        return (12 # bytes overhead for the header and separators
+        if self._common_serialised_prefix is None:
+            bytes_for_items = 0
+        else:
+            # We will store a single string with the common prefix
+            # And then that common prefix will not be stored in any of the
+            # entry lines
+            prefix_len = len(self._common_serialised_prefix)
+            bytes_for_items = (self._raw_size - (prefix_len * (self._len - 1)))
+        return (13 # bytes overhead for the header and separators
             + len(str(self._maximum_size))
             + len(str(self._key_width))
             + len(str(self._len))
-            + self._raw_size)
+            + bytes_for_items)
 
     @classmethod
     def deserialise(klass, bytes, key):
@@ -515,19 +523,25 @@ class LeafNode(Node):
         maximum_size = int(lines[1])
         width = int(lines[2])
         length = int(lines[3])
-        for line in lines[4:]:
+        prefix = lines[4]
+        for line in lines[5:]:
+            line = prefix + line
             elements = line.split('\x00', width)
             items[tuple(elements[:-1])] = elements[-1]
         if len(items) != length:
             raise AssertionError("item count mismatch")
         result._items = items
         result._len = length
+        assert length == len(lines) - 5
         result._maximum_size = maximum_size
         result._key = key
         result._key_width = width
-        result._raw_size = sum(map(len, lines[4:])) + len(lines[4:])
+        result._raw_size = (sum(map(len, lines[5:])) # the length of the suffix
+            + (length)*(len(prefix)+1)) # prefix + '\n'
         result._compute_lookup_prefix()
         result._compute_serialised_prefix()
+        if len(bytes) != result._current_size():
+            import pdb; pdb.set_trace()
         assert len(bytes) == result._current_size()
         return result
 
@@ -644,11 +658,20 @@ class LeafNode(Node):
         lines.append("%d\n" % self._maximum_size)
         lines.append("%d\n" % self._key_width)
         lines.append("%d\n" % self._len)
+        if self._common_serialised_prefix is None:
+            lines.append('\n')
+        else:
+            lines.append('%s\n' % (self._common_serialised_prefix,))
+            prefix_len = len(self._common_serialised_prefix)
         for key, value in sorted(self._items.items()):
-            lines.append("%s\x00%s\n" % (self._serialise_key(key), value))
+            serialized = "%s\x00%s\n" % (self._serialise_key(key), value)
+            assert serialized.startswith(self._common_serialised_prefix)
+            lines.append(serialized[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
         bytes = ''.join(lines)
+        if len(bytes) != self._current_size():
+            import pdb; pdb.set_trace()
         assert len(bytes) == self._current_size()
         _page_cache.add(self._key, bytes)
         return [self._key]
