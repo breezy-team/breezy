@@ -3227,6 +3227,9 @@ class _CaseInsCasePresFilenameFeature(Feature):
             os.close(fileno)
             os.remove(name)
 
+    def feature_name(self):
+        return "case-insensitive case-preserving filesystem"
+
 CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
 
 
