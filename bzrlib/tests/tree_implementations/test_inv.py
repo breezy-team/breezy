@@ -130,26 +130,41 @@ class TestInventory(TestCaseWithTree):
         self.build_tree(['tree/dir/', 'tree/dir/file'])
         work_tree.add(['dir', 'dir/file'])
         work_tree.commit('commit 1')
-        self.assertEqual(work_tree.get_canonical_path('Dir/File'), 'dir/file')
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir/File'), 'dir/file')
+
+    def test_canonical_path_before_commit(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        # note: not committed.
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir/File'), 'dir/file')
+
+    def test_canonical_path_dir(self):
+        # check it works when asked for just the directory portion.
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        work_tree.commit('commit 1')
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir'), 'dir')
 
     def test_canonical_path_root(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/', 'tree/dir/file'])
         work_tree.add(['dir', 'dir/file'])
         work_tree.commit('commit 1')
-        self.assertEqual(work_tree.get_canonical_path(''), '')
-        self.assertEqual(work_tree.get_canonical_path('/'), '/')
+        self.assertEqual(work_tree.get_canonical_inventory_path(''), '')
+        self.assertEqual(work_tree.get_canonical_inventory_path('/'), '/')
 
     def test_canonical_path_invalid_all(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/', 'tree/dir/file'])
         work_tree.add(['dir', 'dir/file'])
         work_tree.commit('commit 1')
-        self.assertEqual(work_tree.get_canonical_path('foo/bar'), 'foo/bar')
+        self.assertEqual(work_tree.get_canonical_inventory_path('foo/bar'), 'foo/bar')
 
     def test_canonical_invalid_child(self):
         work_tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/', 'tree/dir/file'])
         work_tree.add(['dir', 'dir/file'])
         work_tree.commit('commit 1')
-        self.assertEqual(work_tree.get_canonical_path('Dir/None'), 'dir/None')
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir/None'), 'dir/None')
