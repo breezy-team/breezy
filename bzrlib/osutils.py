@@ -969,10 +969,8 @@ def cicp_canonical_relpath(base, path):
     will return the relpath as stored on the file-system rather than in the
     case specified in the input string, for all existing portions of the path.
 
-    NOTE: There is a risk that this will cause O(N) behaviour if called
-    for every path in a tree.  However, it is expected this should only be
-    used on path specified by the users.  A cache with lifetime controlled
-    by the caller would probably resolve this if it becomes a problem.
+    This will cause O(N) behaviour if called for every path in a tree; if you
+    have a number of paths to convert, you should use canonical_relpaths().
 
     TODO: it should be possible to optimize this for Windows by using the
     win32 API FindFiles function to look for the specified name - but using
