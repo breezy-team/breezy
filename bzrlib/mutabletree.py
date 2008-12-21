@@ -75,6 +75,12 @@ class MutableTree(tree.Tree):
     A mutable tree always has an associated Branch and BzrDir object - the
     branch and bzrdir attributes.
     """
+    def __init__(self, *args, **kw):
+        super(MutableTree, self).__init__(*args, **kw)
+        # Is this tree on a case-insensitive or case-preserving file-system?
+        # Sub-classes may initialize to False if they detect they are being
+        # used on media which doesn't differentiate the case of names.
+        self.case_sensitive = True
 
     @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
@@ -282,6 +288,12 @@ class MutableTree(tree.Tree):
         :return: None
         """
 
+    def fix_case_of_inventory_path(self, path):
+        """If our tree isn't case sensitive, return the canonical path"""
+        if not self.case_sensitive:
+            path = self.get_canonical_inventory_path(path)
+        return path
+
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """Update the content of a file in the tree.
@@ -346,9 +358,10 @@ class MutableTree(tree.Tree):
 
         # validate user file paths and convert all paths to tree 
         # relative : it's cheaper to make a tree relative path an abspath
-        # than to convert an abspath to tree relative.
-        for filepath in file_list:
-            rf = _FastPath(self.canonical_relpath(filepath))
+        # than to convert an abspath to tree relative, and its cheaper to
+        # perform the canonicalization in bulk.
+        for filepath in osutils.canonical_relpaths(self.basedir, file_list):
+            rf = _FastPath(filepath)
             # validate user parameters. Our recursive code avoids adding new files
             # that need such validation 
             if self.is_control_filename(rf.raw_path):
@@ -409,7 +422,8 @@ class MutableTree(tree.Tree):
             else:
                 # without the parent ie, use the relatively slower inventory 
                 # probing method
-                versioned = inv.has_filename(directory.raw_path)
+                versioned = inv.has_filename(
+                        self.fix_case_of_inventory_path(directory.raw_path))
 
             if kind == 'directory':
                 try:
@@ -448,7 +462,8 @@ class MutableTree(tree.Tree):
                 else:
                     # without the parent ie, use the relatively slower inventory 
                     # probing method
-                    this_id = inv.path2id(directory.raw_path)
+                    this_id = inv.path2id(
+                            self.fix_case_of_inventory_path(directory.raw_path))
                     if this_id is None:
                         this_ie = None
                     else:
@@ -580,7 +595,7 @@ def _add_one_and_parent(tree, inv, parent_ie, path, kind, action):
         added = []
     else:
         # slower but does not need parent_ie
-        if inv.has_filename(path.raw_path):
+        if inv.has_filename(tree.fix_case_of_inventory_path(path.raw_path)):
             return []
         # its really not there : add the parent
         # note that the dirname use leads to some extra str copying etc but as
