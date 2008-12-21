@@ -992,6 +992,14 @@ if sys.platform == "win32":
 else:
     canonical_relpath = relpath
 
+def canonical_relpaths(base, paths):
+    """Create an iterable to canonicalize a sequence of relative paths.
+
+    The intent is for this implementation to use a cache, vastly speeding
+    up multiple transformations in the same directory.
+    """
+    # but for now, we haven't optimized...
+    return [canonical_relpath(base, p) for p in paths]
 
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
