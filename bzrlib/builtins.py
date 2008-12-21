@@ -210,8 +210,8 @@ class cmd_status(Command):
                 no_pending = True
         # A specific path within a tree was given.
         elif relfile_list is not None:
-            # convert the names to canonical versions as stored in the inventory
-            relfile_list = [tree.get_canonical_path(f) for f in relfile_list]
+            # convert the names to canonical versions stored in the inventory
+            relfile_list = tree.get_canonical_inventory_paths(relfile_list)
             no_pending = True
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
@@ -670,7 +670,8 @@ class cmd_mv(Command):
             else:
                 inv = tree.inventory
                 # 'fix' the case of a potential 'from'
-                from_id = tree.path2id(tree.get_canonical_path(rel_names[0]))
+                from_id = tree.path2id(
+                            tree.get_canonical_inventory_path(rel_names[0]))
                 if (not osutils.lexists(names_list[0]) and
                     from_id and inv.get_file_kind(from_id) == "directory"):
                     into_existing = False
@@ -679,7 +680,7 @@ class cmd_mv(Command):
             # move into existing directory
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
-            rel_names = [tree.get_canonical_path(n) for n in rel_names]
+            rel_names = tree.get_canonical_inventory_paths(rel_names)
             for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
         else:
@@ -690,26 +691,46 @@ class cmd_mv(Command):
 
             # for cicp file-systems: the src references an existing inventory
             # item:
-            src = tree.get_canonical_path(rel_names[0])
+            src = tree.get_canonical_inventory_path(rel_names[0])
             # Find the canonical version of the destination:  In all cases, the
             # parent of the target must be in the inventory, so we fetch the
-            # canonical version from there.
-            dest_parent = tree.get_canonical_path(osutils.dirname(rel_names[1]))
-            dest_tail = osutils.basename(rel_names[1])
-            if after:
-                # If 'after' is specified, the tail must refer to a file on disk,
-                # so fixup the tail using the file-system.
-                if dest_parent:
-                    dest_parent_fq = osutils.pathjoin(tree.basedir, dest_parent)
+            # canonical version from there (we do not always *use* the
+            # canonicalized tail portion - we may be attempting to rename the
+            # case of the tail)
+            canon_dest = tree.get_canonical_inventory_path(rel_names[1])
+            dest_parent = osutils.dirname(canon_dest)
+            spec_tail = osutils.basename(rel_names[1])
+            # For a CICP file-system, we need to avoid creating 2 inventory
+            # entries that differ only by case.  So regardless of the case
+            # we *want* to use (ie, specified by the user or the file-system),
+            # we must always choose to use the case of any existing inventory
+            # items.  The only exception to this is when we are attempting a
+            # case-only rename (ie, canonical versions of src and dest are
+            # the same)
+            dest_id = tree.path2id(canon_dest)
+            if dest_id is None or tree.path2id(src) == dest_id:
+                # No existing item we care about, so work out what case we
+                # are actually going to use.
+                if after:
+                    # If 'after' is specified, the tail must refer to a file on disk.
+                    if dest_parent:
+                        dest_parent_fq = osutils.pathjoin(tree.basedir, dest_parent)
+                    else:
+                        # pathjoin with an empty tail adds a slash, which breaks
+                        # relpath :(
+                        dest_parent_fq = tree.basedir
+    
+                    dest_tail = osutils.canonical_relpath(
+                                    dest_parent_fq,
+                                    osutils.pathjoin(dest_parent_fq, spec_tail))
                 else:
-                    # pathjoin with an empty tail adds a slash, which breaks
-                    # relpath :(
-                    dest_parent_fq = tree.basedir
-
-                dest_tail = osutils.canonical_relpath(
-                                dest_parent_fq,
-                                osutils.pathjoin(dest_parent_fq, dest_tail))
+                    # not 'after', so case as specified is used
+                    dest_tail = spec_tail
+            else:
+                # Use the existing item so 'mv' fails with AlreadyVersioned.
+                dest_tail = os.path.basename(canon_dest)
             dest = osutils.pathjoin(dest_parent, dest_tail)
+            mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
             self.outf.write("%s => %s\n" % (src, dest))
 
@@ -1240,7 +1261,7 @@ class cmd_remove(Command):
         tree, file_list = tree_files(file_list)
 
         if file_list is not None:
-            file_list = [tree.get_canonical_path(f) for f in file_list]
+            file_list = tree.get_canonical_inventory_paths(file_list)
 
         tree.lock_write()
         try:
@@ -2422,7 +2443,7 @@ class cmd_commit(Command):
             # selected-file merge commit is not done yet
             selected_list = []
         if selected_list:
-            selected_list = [tree.get_canonical_path(f) for f in selected_list]
+            selected_list = tree.get_canonical_inventory_paths(selected_list)
 
         if fixes is None:
             fixes = []
