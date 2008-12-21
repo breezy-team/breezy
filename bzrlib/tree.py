@@ -31,7 +31,7 @@ from bzrlib import (
     symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
-from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib.errors import BzrError, BzrCheckError, NoSuchId
 from bzrlib import errors
 from bzrlib.inventory import Inventory, InventoryFile
 from bzrlib.inter import InterObject
@@ -345,8 +345,9 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
-    def get_canonical_path(self, path):
-        """Returns the first path that case-insensitively matches the input.
+    def get_canonical_inventory_paths(self, paths):
+        """Returns a list with each item the first path that
+        case-insensitively matches the specified input paths.
 
         If a path matches exactly, it is returned. If no path matches exactly
         but more than one path matches case-insensitively, it is implementation
@@ -355,37 +356,51 @@ class Tree(object):
         If no path matches case-insensitively, the input path is returned, but
         with as many path entries that do exist changed to their canonical form.
 
-        NOTE: There is a risk that this will cause O(N) behaviour if called
-        for every path in a working tree. However, it is expected this should
-        only be used on path specified by the users. A cache with lifetime
-        controlled by the caller would probably resolve this if it becomes a
-        problem.
-
-        :param path: A path, relative to the root of the tree.
-        :return: The input path adjusted to account for existing elements that
-        match case insensitively.
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A list of paths, with each item the corresponding input path
+        adjusted to account for existing elements that match case
+        insensitively.
         """
-        # First, if the path as specified exists exactly, just use it.
-        if self.path2id(path) is not None:
-            return path
-        # go walkin...
-        cur_id = self.get_root_id()
-        cur_path = ''
-        bit_iter = iter(path.split("/"))
-        for elt in bit_iter:
-            lelt = elt.lower()
-            for child in self.iter_children(cur_id):
-                child_base = os.path.basename(self.id2path(child))
-                if child_base.lower() == lelt:
-                    cur_id = child
-                    cur_path = osutils.pathjoin(cur_path, child_base)
+        return list(self._yield_canonical_inventory_paths(paths))
+
+    def get_canonical_inventory_path(self, path):
+        """A convenience version of get_canonical_inventory_path which
+        takes a single path.
+
+        If you need to resolve many names from the same tree, you should
+        use get_canonical_inventory_paths() to avoid O(N) behaviour.
+        """
+        return self._yield_canonical_inventory_paths([path]).next()
+
+    def _yield_canonical_inventory_paths(self, paths):
+        for path in paths:
+            # First, if the path as specified exists exactly, just use it.
+            if self.path2id(path) is not None:
+                yield path
+                continue
+            # go walkin...
+            cur_id = self.get_root_id()
+            cur_path = ''
+            bit_iter = iter(path.split("/"))
+            for elt in bit_iter:
+                lelt = elt.lower()
+                for child in self.iter_children(cur_id):
+                    try:
+                        child_base = os.path.basename(self.id2path(child))
+                        if child_base.lower() == lelt:
+                            cur_id = child
+                            cur_path = osutils.pathjoin(cur_path, child_base)
+                            break
+                    except NoSuchId:
+                        # before a change is committed we can see this error...
+                        continue
+                else:
+                    # got to the end of this directory and no entries matched.
+                    # Return what matched so far, plus the rest as specified.
+                    cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
                     break
-            else:
-                # got to the end of this directory and no entries matched.
-                # Return what matched so far, plus the rest as specified.
-                cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
-                break
-        return cur_path
+            yield cur_path
+        # all done.
 
     def get_root_id(self):
         """Return the file_id for the root of this tree."""
