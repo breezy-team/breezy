@@ -962,7 +962,7 @@ def relpath(base, path):
         return ''
 
 
-def cicp_canonical_relpath(base, path):
+def _cicp_canonical_relpath(base, path):
     """Return the canonical path relative to base.
 
     Like relpath, but on case-insensitive-case-preserving file-systems, this
@@ -1007,7 +1007,7 @@ def cicp_canonical_relpath(base, path):
 # probably benefit from the same basic support there.  For now though, only
 # Windows gets that support, and it gets it for *all* file-systems!
 if sys.platform == "win32":
-    canonical_relpath = cicp_canonical_relpath
+    canonical_relpath = _cicp_canonical_relpath
 else:
     canonical_relpath = relpath
 
