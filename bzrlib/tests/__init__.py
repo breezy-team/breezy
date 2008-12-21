@@ -789,7 +789,7 @@ class TestCase(unittest.TestCase):
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
-        
+
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
@@ -1235,6 +1235,7 @@ class TestCase(unittest.TestCase):
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
+            'BZR_PLUGIN_PATH': None,
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -2787,6 +2788,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
                    'bzrlib.tests.test_chunk_writer',
+                   'bzrlib.tests.test__chunks_to_lines',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
@@ -2803,7 +2805,9 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_fifo_cache',
                    'bzrlib.tests.test_ftp_transport',
+                   'bzrlib.tests.test_foreign',
                    'bzrlib.tests.test_generate_docs',
                    'bzrlib.tests.test_generate_ids',
                    'bzrlib.tests.test_globbing',

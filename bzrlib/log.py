@@ -147,31 +147,25 @@ def show_log(branch,
              limit=None):
     """Write out human-readable log of commits to this branch.
 
-    lf
-        LogFormatter object to show the output.
+    :param lf: The LogFormatter object showing the output.
 
-    specific_fileid
-        If true, list only the commits affecting the specified
-        file, rather than all commits.
+    :param specific_fileid: If not None, list only the commits affecting the
+        specified file, rather than all commits.
 
-    verbose
-        If true show added/changed/deleted/renamed files.
+    :param verbose: If True show added/changed/deleted/renamed files.
 
-    direction
-        'reverse' (default) is latest to earliest;
-        'forward' is earliest to latest.
+    :param direction: 'reverse' (default) is latest to earliest; 'forward' is
+        earliest to latest.
 
-    start_revision
-        If not None, only show revisions >= start_revision
+    :param start_revision: If not None, only show revisions >= start_revision
 
-    end_revision
-        If not None, only show revisions <= end_revision
+    :param end_revision: If not None, only show revisions <= end_revision
 
-    search
-        If not None, only show revisions with matching commit messages
+    :param search: If not None, only show revisions with matching commit
+        messages
 
-    limit
-        If not None or 0, only show limit revisions
+    :param limit: If set, shows only 'limit' revisions, all revisions are shown
+        if None or 0.
     """
     branch.lock_read()
     try:
@@ -236,17 +230,16 @@ def _show_log(branch,
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision):
-    if (not generate_merge_revisions and start_revision is end_revision is
-        None and direction == 'reverse' and specific_fileid is None):
+    if (    not generate_merge_revisions
+        and start_revision is end_revision is None
+        and direction == 'reverse'
+        and specific_fileid is None):
         return _linear_view_revisions(branch)
 
-    mainline_revs, rev_nos, start_rev_id, end_rev_id = \
-        _get_mainline_revs(branch, start_revision, end_revision)
+    mainline_revs, rev_nos, start_rev_id, end_rev_id = _get_mainline_revs(
+        branch, start_revision, end_revision)
     if not mainline_revs:
         return []
-
-    if direction == 'reverse':
-        start_rev_id, end_rev_id = end_rev_id, start_rev_id
 
     generate_single_revision = False
     if ((not generate_merge_revisions)
@@ -260,6 +253,9 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         generate_merge_revisions = generate_single_revision
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
+
+    if direction == 'reverse':
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
     view_revisions = _filter_revision_range(list(view_revs_iter),
                                             start_rev_id,
                                             end_rev_id)
@@ -267,9 +263,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = view_revisions[0:1]
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
-                                                         specific_fileid,
-                                                         view_revisions,
-                                                         direction)
+                                                            specific_fileid,
+                                                            view_revisions)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -397,7 +392,8 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev, delta).
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
     """
     repository = branch.repository
     num = 9
@@ -438,7 +434,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     # filtered later.
     # Also map the revisions to rev_ids, to be used in the later filtering
     # stage.
-    start_rev_id = None 
+    start_rev_id = None
     if start_revision is None:
         start_revno = 1
     else:
@@ -448,7 +444,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         else:
             branch.check_real_revno(start_revision)
             start_revno = start_revision
-    
+
     end_rev_id = None
     if end_revision is None:
         end_revno = branch_revno
@@ -507,7 +503,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    if start_rev_id or end_rev_id: 
+    if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
             start_index = revision_ids.index(start_rev_id)
@@ -536,8 +532,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
-                                       direction):
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
     r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
@@ -562,13 +557,14 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     This will also be restricted based on a subset of the mainline.
 
     :param branch: The branch where we can get text revision information.
+
     :param file_id: Filter out revisions that do not touch file_id.
+
     :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
         tuples. This is the list of revisions which will be filtered. It is
-        assumed that view_revisions is in merge_sort order (either forward or
-        reverse).
-    :param direction: The direction of view_revisions.  See also
-        reverse_by_depth, and get_view_revisions
+        assumed that view_revisions is in merge_sort order (i.e. newest
+        revision first ).
+
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
     # Lookup all possible text keys to determine which ones actually modified
@@ -592,11 +588,6 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     del text_keys, next_keys
 
     result = []
-    if direction == 'forward':
-        # TODO: The algorithm for finding 'merges' of file changes expects
-        #       'reverse' order (the default from 'merge_sort()'). Instead of
-        #       forcing this, we could just use the reverse_by_depth order.
-        view_revisions = reverse_by_depth(view_revisions)
     # Track what revisions will merge the current revision, replace entries
     # with 'None' when they have been added to result
     current_merge_stack = [None]
@@ -615,8 +606,6 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
                 if node is not None:
                     result.append(node)
                     current_merge_stack[idx] = None
-    if direction == 'forward':
-        result = reverse_by_depth(result)
     return result
 
 
@@ -655,7 +644,8 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
-    for sequence, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
+    for (sequence, rev_id, merge_depth, revno, end_of_merge
+         ) in merge_sorted_revisions:
         yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
@@ -666,19 +656,27 @@ def reverse_by_depth(merge_sorted_revisions, _depth=0):
     revision of that depth.  There may be no topological justification for this,
     but it looks much nicer.
     """
+    # Add a fake revision at start so that we can always attach sub revisions
+    merge_sorted_revisions = [(None, None, _depth)] + merge_sorted_revisions
     zd_revisions = []
     for val in merge_sorted_revisions:
         if val[2] == _depth:
+            # Each revision at the current depth becomes a chunk grouping all
+            # higher depth revisions.
             zd_revisions.append([val])
         else:
             zd_revisions[-1].append(val)
     for revisions in zd_revisions:
         if len(revisions) > 1:
+            # We have higher depth revisions, let reverse them locally
             revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
     zd_revisions.reverse()
     result = []
     for chunk in zd_revisions:
         result.extend(chunk)
+    if _depth == 0:
+        # Top level call, get rid of the fake revisions that have been added
+        result = [r for r in result if r[0] is not None and r[1] is not None]
     return result
 
 
@@ -711,7 +709,10 @@ class LogFormatter(object):
     to indicate which LogRevision attributes it supports:
 
     - supports_delta must be True if this log formatter supports delta.
-        Otherwise the delta attribute may not be populated.
+        Otherwise the delta attribute may not be populated.  The 'delta_format'
+        attribute describes whether the 'short_status' format (1) or the long
+        one (2) sould be used.
+ 
     - supports_merge_revisions must be True if this log formatter supports 
         merge revisions.  If not, and if supports_single_merge_revisions is
         also not True, then only mainline revisions will be passed to the 
@@ -730,10 +731,15 @@ class LogFormatter(object):
             # to be shown
     """
 
-    def __init__(self, to_file, show_ids=False, show_timezone='original'):
+    def __init__(self, to_file, show_ids=False, show_timezone='original',
+                 delta_format=None):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
+        if delta_format is None:
+            # Ensures backward compatibility
+            delta_format = 2 # long format
+        self.delta_format = delta_format
 
 # TODO: uncomment this block after show() has been removed.
 # Until then defining log_revision would prevent _show_log calling show() 
@@ -811,7 +817,9 @@ class LongLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 to_file.write(indent + '  %s\n' % (l,))
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids, indent=indent)
+            # We don't respect delta_format for compatibility
+            revision.delta.show(to_file, self.show_ids, indent=indent,
+                                short_status=False)
 
 
 class ShortLogFormatter(LogFormatter):
@@ -832,7 +840,8 @@ class ShortLogFormatter(LogFormatter):
                             show_offset=False),
                 is_merge))
         if self.show_ids:
-            to_file.write('      revision-id:%s\n' % (revision.rev.revision_id,))
+            to_file.write('      revision-id:%s\n'
+                          % (revision.rev.revision_id,))
         if not revision.rev.message:
             to_file.write('      (no message)\n')
         else:
@@ -840,10 +849,9 @@ class ShortLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 to_file.write('      %s\n' % (l,))
 
-        # TODO: Why not show the modified files in a shorter form as
-        # well? rewrap them single lines of appropriate length
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids)
+            revision.delta.show(to_file, self.show_ids,
+                                short_status=self.delta_format==1)
         to_file.write('\n')
 
 
@@ -861,7 +869,7 @@ class LineLogFormatter(LogFormatter):
         return str[:max_len-3]+'...'
 
     def date_string(self, rev):
-        return format_date(rev.timestamp, rev.timezone or 0, 
+        return format_date(rev.timestamp, rev.timezone or 0,
                            self.show_timezone, date_fmt="%Y-%m-%d",
                            show_offset=False)
 
@@ -1003,6 +1011,10 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
 
 
 properties_handler_registry = registry.Registry()
+properties_handler_registry.register_lazy("foreign",
+                                          "bzrlib.foreign",
+                                          "show_foreign_properties")
+
 
 # adapters which revision ids to log are filtered. When log is called, the
 # log_rev_iterator is adapted through each of these factory methods.

@@ -41,6 +41,7 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     ConnectedTransport,
     _CoalescedOffset,
+    get_transport,
     Transport,
     )
 
@@ -92,16 +93,13 @@ class HttpTransportBase(ConnectedTransport):
     # _unqualified_scheme: "http" or "https"
     # _scheme: may have "+pycurl", etc
 
-    def __init__(self, base, _from_transport=None):
+    def __init__(self, base, _impl_name, _from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
         self._unqualified_scheme = proto_match.group(1)
-        impl_name = proto_match.group(2)
-        if impl_name:
-            impl_name = impl_name[1:]
-        self._impl_name = impl_name
+        self._impl_name = _impl_name
         super(HttpTransportBase, self).__init__(base,
                                                 _from_transport=_from_transport)
         self._medium = None
@@ -414,8 +412,12 @@ class HttpTransportBase(ConnectedTransport):
 
     def external_url(self):
         """See bzrlib.transport.Transport.external_url."""
-        # HTTP URL's are externally usable.
-        return self.base
+        # HTTP URL's are externally usable as long as they don't mention their
+        # implementation qualifier
+        return self._unsplit_url(self._unqualified_scheme,
+                                 self._user, self._password,
+                                 self._host, self._port,
+                                 self._path)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -450,17 +452,6 @@ class HttpTransportBase(ConnectedTransport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         raise errors.TransportNotPossible('http does not support lock_write()')
-
-    def clone(self, offset=None):
-        """Return a new HttpTransportBase with root at self.base + offset
-
-        We leave the daughter classes take advantage of the hint
-        that it's a cloning not a raw creation.
-        """
-        if offset is None:
-            return self.__class__(self.base, self)
-        else:
-            return self.__class__(self.abspath(offset), self)
 
     def _attempted_range_header(self, offsets, tail_amount):
         """Prepare a HTTP Range header at a level the server should accept.
@@ -516,6 +507,80 @@ class HttpTransportBase(ConnectedTransport):
             strings.append('-%d' % tail_amount)
 
         return ','.join(strings)
+
+    def _redirected_to(self, source, target):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        def relpath(abspath):
+            """Returns the path relative to our base.
+
+            The constraints are weaker than the real relpath method because the
+            abspath is coming from the server and may slightly differ from our
+            base. We don't check the scheme, host, port, user, password parts,
+            relying on the caller to give us a proper url (i.e. one returned by
+            the server mirroring the one we sent).
+            """
+            (scheme,
+             user, password,
+             host, port,
+             path) = self._split_url(abspath)
+            pl = len(self._path)
+            return path[pl:].strip('/')
+
+        relpath = relpath(source)
+        if not target.endswith(relpath):
+            # The final part of the url has been renamed, we can't handle the
+            # redirection.
+            return None
+        new_transport = None
+        (scheme,
+         user, password,
+         host, port,
+         path) = self._split_url(target)
+        # Recalculate base path. This is needed to ensure that when the
+        # redirected tranport will be used to re-try whatever request was
+        # redirected, we end up with the same url
+        base_path = path[:-len(relpath)]
+        if scheme in ('http', 'https'):
+            # Same protocol family (i.e. http[s]), we will preserve the same
+            # http client implementation when a redirection occurs from one to
+            # the other (otherwise users may be surprised that bzr switches
+            # from one implementation to the other, and devs may suffer
+            # debugging it).
+            if (scheme == self._unqualified_scheme
+                and host == self._host
+                and port == self._port
+                and (user is None or user == self._user)):
+                # If a user is specified, it should match, we don't care about
+                # passwords, wrong passwords will be rejected anyway.
+                new_transport = self.clone(base_path)
+            else:
+                # Rebuild the url preserving the scheme qualification and the
+                # credentials (if they don't apply, the redirected to server
+                # will tell us, but if they do apply, we avoid prompting the
+                # user)
+                redir_scheme = scheme + '+' + self._impl_name
+                new_url = self._unsplit_url(redir_scheme,
+                                            self._user, self._password,
+                                            host, port,
+                                            base_path)
+                new_transport = get_transport(new_url)
+        else:
+            # Redirected to a different protocol
+            new_url = self._unsplit_url(scheme,
+                                        user, password,
+                                        host, port,
+                                        base_path)
+            new_transport = get_transport(new_url)
+        return new_transport
 
 
 # TODO: May be better located in smart/medium.py with the other

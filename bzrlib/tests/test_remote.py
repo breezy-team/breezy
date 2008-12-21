@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    bzrdir,
     config,
     errors,
     graph,
@@ -1012,6 +1013,19 @@ class TestTransportIsReadonly(tests.TestCase):
             client._calls)
 
 
+class TestTransportMkdir(tests.TestCase):
+
+    def test_permissiondenied(self):
+        client = FakeClient()
+        client.add_error_response('PermissionDenied', 'remote path', 'extra')
+        transport = RemoteTransport('bzr://example.com/', medium=False,
+                                    _client=client)
+        exc = self.assertRaises(
+            errors.PermissionDenied, transport.mkdir, 'client path')
+        expected_error = errors.PermissionDenied('/client path', 'extra')
+        self.assertEqual(expected_error, exc)
+
+
 class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
 
     def test_defaults_to_none(self):
@@ -1116,12 +1130,11 @@ class TestRepositoryGatherStats(TestRemoteRepository):
 class TestRepositoryGetGraph(TestRemoteRepository):
 
     def test_get_graph(self):
-        # get_graph returns a graph with the repository as the
-        # parents_provider.
+        # get_graph returns a graph with a custom parents provider.
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         graph = repo.get_graph()
-        self.assertEqual(graph._parents_provider, repo)
+        self.assertNotEqual(graph._parents_provider, repo)
 
 
 class TestRepositoryGetParentMap(TestRemoteRepository):
@@ -1221,6 +1234,26 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertRaises(
             errors.UnexpectedSmartServerResponse,
             repo.get_parent_map, ['a-revision-id'])
+
+
+class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
+
+    def test_allows_new_revisions(self):
+        """get_parent_map's results can be updated by commit."""
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        self.addCleanup(smart_server.tearDown)
+        self.make_branch('branch')
+        branch = Branch.open(smart_server.get_url() + '/branch')
+        tree = branch.create_checkout('tree', lightweight=True)
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        # This provides an opportunity for the missing rev-id to be cached.
+        self.assertEqual({}, graph.get_parent_map(['rev1']))
+        tree.commit('message', rev_id='rev1')
+        graph = tree.branch.repository.get_graph()
+        self.assertEqual({'rev1': ('null:',)}, graph.get_parent_map(['rev1']))
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
@@ -1750,3 +1783,57 @@ class TestStacking(tests.TestCaseWithTransport):
                 'message')
         finally:
             remote_repo.unlock()
+
+    def prepare_stacked_remote_branch(self):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp()
+        self.addCleanup(smart_server.tearDown)
+        tree1 = self.make_branch_and_tree('tree1')
+        tree1.commit('rev1', rev_id='rev1')
+        tree2 = self.make_branch_and_tree('tree2', format='1.6')
+        tree2.branch.set_stacked_on_url(tree1.branch.base)
+        branch2 = Branch.open(smart_server.get_url() + '/tree2')
+        branch2.lock_read()
+        self.addCleanup(branch2.unlock)
+        return branch2
+
+    def test_stacked_get_parent_map(self):
+        # the public implementation of get_parent_map obeys stacking
+        branch = self.prepare_stacked_remote_branch()
+        repo = branch.repository
+        self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
+
+    def test_unstacked_get_parent_map(self):
+        # _unstacked_provider.get_parent_map ignores stacking
+        branch = self.prepare_stacked_remote_branch()
+        provider = branch.repository._unstacked_provider
+        self.assertEqual([], provider.get_parent_map(['rev1']).keys())
+
+
+class TestRemoteBranchEffort(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestRemoteBranchEffort, self).setUp()
+        # Create a smart server that publishes whatever the backing VFS server
+        # does.
+        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server.setUp(self.get_server())
+        self.addCleanup(self.smart_server.tearDown)
+        # Log all HPSS calls into self.hpss_calls.
+        _SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
+
+    def test_copy_content_into_avoids_revision_history(self):
+        local = self.make_branch('local')
+        remote_backing_tree = self.make_branch_and_tree('remote')
+        remote_backing_tree.commit("Commit.")
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        local.repository.fetch(remote_branch.repository)
+        self.hpss_calls = []
+        remote_branch.copy_content_into(local)
+        self.assertFalse('Branch.revision_history' in self.hpss_calls)

@@ -101,6 +101,12 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
         except errors.UninitializableFormat:
             raise tests.TestSkipped('Uninitializable branch format')
 
+    def make_branch_builder(self, relpath, format=None):
+        if format is None:
+            format = self.branch_format._matchingbzrdir
+        return super(TestCaseWithBranch, self).make_branch_builder(
+            relpath, format=format)
+
     def make_repository(self, relpath, shared=False, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
@@ -184,10 +190,11 @@ def load_tests(basic_tests, module, loader):
     tests.adapt_modules(test_branch_implementations, adapter, loader, result)
 
     # Add RemoteBranch tests, which need a special server.
+    remote_branch_format = RemoteBranchFormat()
     adapt_to_smart_server = BranchTestProviderAdapter(
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
-        [(RemoteBranchFormat(), RemoteBzrDirFormat())],
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
         MemoryServer,
         name_suffix='-default')
     tests.adapt_modules(test_branch_implementations,
@@ -200,7 +207,7 @@ def load_tests(basic_tests, module, loader):
     adapt_to_smart_server = BranchTestProviderAdapter(
         SmartTCPServer_for_testing_v2_only,
         ReadonlySmartTCPServer_for_testing_v2_only,
-        [(RemoteBranchFormat(), RemoteBzrDirFormat())],
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
         MemoryServer,
         name_suffix='-v2')
     tests.adapt_modules(test_branch_implementations,

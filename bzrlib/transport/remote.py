@@ -172,14 +172,24 @@ class RemoteTransport(transport.ConnectedTransport):
         try:
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err)
+            # The first argument, if present, is always a path.
+            if args:
+                context = {'relpath': args[0]}
+            else:
+                context = {}
+            self._translate_error(err, **context)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         try:
             return self._client.call_with_body_bytes(method, args, body)
         except errors.ErrorFromSmartServer, err:
-            self._translate_error(err)
+            # The first argument, if present, is always a path.
+            if args:
+                context = {'relpath': args[0]}
+            else:
+                context = {}
+            self._translate_error(err, **context)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -313,7 +323,8 @@ class RemoteTransport(transport.ConnectedTransport):
         sorted_offsets = sorted(offsets)
         coalesced = list(self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
-                               fudge_factor=self._bytes_to_read_before_seek))
+                               fudge_factor=self._bytes_to_read_before_seek,
+                               max_size=self._max_readv_bytes))
 
         # now that we've coallesced things, avoid making enormous requests
         requests = []
@@ -347,7 +358,7 @@ class RemoteTransport(transport.ConnectedTransport):
                     [(c.start, c.length) for c in cur_request])
                 resp, response_handler = result
             except errors.ErrorFromSmartServer, err:
-                self._translate_error(err)
+                self._translate_error(err, relpath)
 
             if resp[0] != 'readv':
                 # This should raise an exception
@@ -411,8 +422,8 @@ class RemoteTransport(transport.ConnectedTransport):
         if resp[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(resp)
         
-    def _translate_error(self, err, orig_path=None):
-        remote._translate_error(err, path=orig_path)
+    def _translate_error(self, err, relpath=None):
+        remote._translate_error(err, path=relpath)
 
     def disconnect(self):
         self.get_smart_medium().disconnect()
@@ -556,6 +567,17 @@ class RemoteHTTPTransport(RemoteTransport):
         return RemoteHTTPTransport(abs_url,
                                    _from_transport=self,
                                    http_transport=self._http_transport)
+
+    def _redirected_to(self, source, target):
+        """See transport._redirected_to"""
+        redirected = self._http_transport._redirected_to(source, target)
+        if (redirected is not None
+            and isinstance(redirected, type(self._http_transport))):
+            return RemoteHTTPTransport('bzr+' + redirected.external_url(),
+                                       http_transport=redirected)
+        else:
+            # Either None or a transport for a different protocol
+            return redirected
 
 
 def get_test_permutations():

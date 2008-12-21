@@ -1486,6 +1486,52 @@ class KnitIndexUnknownMethod(KnitError):
         self.options = options
 
 
+class RetryWithNewPacks(BzrError):
+    """Raised when we realize that the packs on disk have changed.
+
+    This is meant as more of a signaling exception, to trap between where a
+    local error occurred and the code that can actually handle the error and
+    code that can retry appropriately.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and retry. context: %(context)s"
+            " %(orig_error)s")
+
+    def __init__(self, context, reload_occurred, exc_info):
+        """create a new RetryWithNewPacks error.
+
+        :param reload_occurred: Set to True if we know that the packs have
+            already been reloaded, and we are failing because of an in-memory
+            cache miss. If set to True then we will ignore if a reload says
+            nothing has changed, because we assume it has already reloaded. If
+            False, then a reload with nothing changed will force an error.
+        :param exc_info: The original exception traceback, so if there is a
+            problem we can raise the original error (value from sys.exc_info())
+        """
+        BzrError.__init__(self)
+        self.reload_occurred = reload_occurred
+        self.exc_info = exc_info
+        self.orig_error = exc_info[1]
+        # TODO: The global error handler should probably treat this by
+        #       raising/printing the original exception with a bit about
+        #       RetryWithNewPacks also not being caught
+
+
+class RetryAutopack(RetryWithNewPacks):
+    """Raised when we are autopacking and we find a missing file.
+
+    Meant as a signaling exception, to tell the autopack code it should try
+    again.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and try autopack again."
+            " context: %(context)s %(orig_error)s")
+
+
 class NoSuchExportFormat(BzrError):
     
     _fmt = "Export format %(format)r not supported"
@@ -1629,48 +1675,14 @@ class RedirectRequested(TransportError):
 
     _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
 
-    def __init__(self, source, target, is_permanent=False, qual_proto=None):
+    def __init__(self, source, target, is_permanent=False):
         self.source = source
         self.target = target
         if is_permanent:
             self.permanently = ' permanently'
         else:
             self.permanently = ''
-        self._qualified_proto = qual_proto
         TransportError.__init__(self)
-
-    def _requalify_url(self, url):
-        """Restore the qualified proto in front of the url"""
-        # When this exception is raised, source and target are in
-        # user readable format. But some transports may use a
-        # different proto (http+urllib:// will present http:// to
-        # the user. If a qualified proto is specified, the code
-        # trapping the exception can get the qualified urls to
-        # properly handle the redirection themself (creating a
-        # new transport object from the target url for example).
-        # But checking that the scheme of the original and
-        # redirected urls are the same can be tricky. (see the
-        # FIXME in BzrDir.open_from_transport for the unique use
-        # case so far).
-        if self._qualified_proto is None:
-            return url
-
-        # The TODO related to NotBranchError mention that doing
-        # that kind of manipulation on the urls may not be the
-        # exception object job. On the other hand, this object is
-        # the interface between the code and the user so
-        # presenting the urls in different ways is indeed its
-        # job...
-        import urlparse
-        proto, netloc, path, query, fragment = urlparse.urlsplit(url)
-        return urlparse.urlunsplit((self._qualified_proto, netloc, path,
-                                   query, fragment))
-
-    def get_source_url(self):
-        return self._requalify_url(self.source)
-
-    def get_target_url(self):
-        return self._requalify_url(self.target)
 
 
 class TooManyRedirections(TransportError):

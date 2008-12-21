@@ -1177,7 +1177,7 @@ class TreeTransformBase(object):
             if kind == 'file':
                 cur_file = open(self._limbo_name(trans_id), 'rb')
                 try:
-                    lines = osutils.split_lines(cur_file.read())
+                    lines = osutils.chunks_to_lines(cur_file.readlines())
                 finally:
                     cur_file.close()
                 parents = self._get_parents_lines(trans_id)

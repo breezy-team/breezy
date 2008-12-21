@@ -29,7 +29,8 @@ from bzrlib.tests.test_log import (
 from bzrlib.tests import test_log
 
 
-class TestCaseWithoutPropsHandler(ExternalBase, test_log.TestCaseWithoutPropsHandler):
+class TestCaseWithoutPropsHandler(ExternalBase,
+                                  test_log.TestCaseWithoutPropsHandler):
     pass
 
 
@@ -139,11 +140,35 @@ class TestLog(ExternalBase):
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
 
+    def test_log_nonexistent_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -r 1234",
+            error_regexes=["bzr: ERROR: Requested revision: '1234' "
+                "does not exist in branch:"])
+
+    def test_log_nonexistent_dotted_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -r 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
+
     def test_log_change_revno(self):
         self._prepare()
         expected_log = self.run_bzr("log -r 1")[0]
         log = self.run_bzr("log -c 1")[0]
         self.assertEqualDiff(expected_log, log)
+
+    def test_log_change_nonexistent_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 1234",
+            error_regexes=["bzr: ERROR: Requested revision: '1234' "
+                "does not exist in branch:"])
+
+    def test_log_change_nonexistent_dotted_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
 
     def test_log_change_single_revno(self):
         self._prepare()
@@ -170,8 +195,8 @@ class TestLog(ExternalBase):
         branch = tree.branch
         branch.tags.set_tag('tag1', branch.get_rev_id(1))
         branch.tags.set_tag('tag1.1', branch.get_rev_id(1))
-        branch.tags.set_tag('tag3', branch.last_revision()) 
-        
+        branch.tags.set_tag('tag3', branch.last_revision())
+
         log = self.run_bzr("log -r-1")[0]
         self.assertTrue('tags: tag3' in log)
 
@@ -217,6 +242,44 @@ class TestLog(ExternalBase):
         self.assertNotContainsRe(log, r'revno: 1\n')
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
+
+
+class TestLogVerbose(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestLogVerbose, self).setUp()
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt'])
+        tree.add('hello.txt')
+        tree.commit(message='message1')
+
+    def assertUseShortDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the short status format
+        self.assertContainsRe(log, '(?m)^A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^added:$')
+
+    def assertUseLongDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the long status format
+        self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^added:$')
+
+    def test_log_short_verbose(self):
+        self.assertUseShortDeltaFormat(['log', '--short', '-v'])
+
+    def test_log_short_verbose_verbose(self):
+        self.assertUseLongDeltaFormat(['log', '--short', '-vv'])
+
+    def test_log_long_verbose(self):
+        # Check that we use the long status format, ignoring the verbosity
+        # level
+        self.assertUseLongDeltaFormat(['log', '--long', '-v'])
+
+    def test_log_long_verbose_verbose(self):
+        # Check that we use the long status format, ignoring the verbosity
+        # level
+        self.assertUseLongDeltaFormat(['log', '--long', '-vv'])
 
 
 class TestLogMerges(TestCaseWithoutPropsHandler):
@@ -302,7 +365,7 @@ message:
 
     def test_merges_partial_range(self):
         self._prepare()
-        out,err = self.run_bzr('log -r1.1.1..1.1.2')
+        out, err = self.run_bzr('log -r1.1.1..1.1.2')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
@@ -339,7 +402,7 @@ message:
         out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
         self.assertContainsRe(err, err_msg)
 
- 
+
 class TestLogEncodings(TestCaseInTempDir):
 
     _mu = u'\xb5'

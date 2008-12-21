@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -215,6 +215,9 @@ class Registry(object):
     def iteritems(self):
         for key, getter in self._dict.iteritems():
             yield key, getter.get_obj()
+
+    def items(self):
+        return sorted(self.iteritems())
 
     def _set_default_key(self, key):
         if not self._dict.has_key(key):
