@@ -34,6 +34,12 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
+    * When working on a case-insensitive case-preserving file-systems, as
+      commonly found with Windows, bzr will often ignore the case of the
+      arguments specified by the user in preference to the case of an existing
+      item on the file-system or in the inventory to help prevent
+      counter-intuitive behaviour on Windows.
+
   BUG FIXES:
   
     * Fix a problem with CIFS client/server lag on windows colliding with
@@ -227,12 +233,6 @@ core.  There are also bug fixes for portability, and for stacked branches.
       request into more manageable chunks. Because the RPC is not yet able
       to stream, this helps keep us from buffering too much information at
       once. (John Arbash Meinel)
-
-    * When working on a case-insensitive case-preserving file-systems, as
-      commonly found with Windows, bzr will often ignore the case of the
-      arguments specified by the user in preference to the case of an existing
-      item on the file-system or in the inventory to help prevent
-      counter-intuitive behaviour on Windows.
 
   BUG FIXES:
 
