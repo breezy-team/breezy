@@ -23,10 +23,8 @@ from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import CaseInsCasePresFilenameFeature, KnownFailure
 from bzrlib.osutils import canonical_relpath
 
-
-class TestIncorrectUserCase(ExternalBase):
-    """Tests for when the filename has the 'correct' case on disk, but the user
-    has specified a version of the filename that differs only by case.
+class TestCICPBase(ExternalBase):
+    """Base class for tests on a case-insensitive, case-preserving filesystem.
     """
 
     _test_needs_features = [CaseInsCasePresFilenameFeature]
@@ -45,7 +43,8 @@ class TestIncorrectUserCase(ExternalBase):
     def check_error_output(self, retcode, output, *args):
         got = self.run_bzr(retcode=retcode, *args)[1]
         self.failUnlessEqual(got, output)
-        
+
+class TestAdd(TestCICPBase):
     def test_add_simple(self):
         """Test add always uses the case of the filename reported by the os."""
         wt = self.make_branch_and_tree('.')
@@ -72,31 +71,32 @@ class TestIncorrectUserCase(ExternalBase):
         self.check_output('added CamelCaseParent\nadded CamelCaseParent/CamelCase\n',
                           'add')
 
-    def test_status(self):
-        wt = self._make_mixed_case_tree()
-        self.run_bzr('add')
+    def test_re_add(self):
+        """Test than when a file has 'unintentionally' changed case, we can't
+        add a new entry using the new case."""
+        wt = self.make_branch_and_tree('.')
+        # create a file on disk with the mixed-case name
+        self.build_tree(['MixedCase'])
+        self.check_output('added MixedCase\n', 'add MixedCase')
+        # 'accidently' rename the file on disk
+        os.rename('MixedCase', 'mixedcase')
+        self.check_output('', 'add mixedcase')
 
-        self.check_output('added:\n  CamelCaseParent/CamelCase\n  lowercaseparent/lowercase\n',
-                          'status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
+    def test_re_add_dir(self):
+        # like re-add, but tests when the operation is on a directory.
+        """Test than when a file has 'unintentionally' changed case, we can't
+        add a new entry using the new case."""
+        wt = self.make_branch_and_tree('.')
+        # create a file on disk with the mixed-case name
+        self.build_tree(['MixedCaseParent/', 'MixedCaseParent/MixedCase'])
+        self.check_output('added MixedCaseParent\nadded MixedCaseParent/MixedCase\n',
+                          'add MixedCaseParent')
+        # 'accidently' rename the directory on disk
+        os.rename('MixedCaseParent', 'mixedcaseparent')
+        self.check_output('', 'add mixedcaseparent')
 
-    def test_ci(self):
-        wt = self._make_mixed_case_tree()
-        self.run_bzr('add')
 
-        got = self.run_bzr('ci -m message camelcaseparent LOWERCASEPARENT')[1]
-        for expected in ['CamelCaseParent', 'lowercaseparent',
-                         'CamelCaseParent/CamelCase', 'lowercaseparent/lowercase']:
-            self.assertContainsRe(got, 'added ' + expected + '\n')
-
-    def test_rm(self):
-        wt = self._make_mixed_case_tree()
-        self.run_bzr('add')
-        self.run_bzr('ci -m message')
-
-        got = self.run_bzr('rm camelcaseparent LOWERCASEPARENT')[1]
-        for expected in ['lowercaseparent/lowercase', 'CamelCaseParent/CamelCase']:
-            self.assertContainsRe(got, 'deleted ' + expected + '\n')
-
+class TestMove(TestCICPBase):
     def test_mv_newname(self):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
@@ -192,29 +192,33 @@ class TestIncorrectUserCase(ExternalBase):
                           'lowercaseparent/mixedCase => CamelCaseParent/mixedCase\n',
                           'mv LOWercaseparent/LOWercase LOWercaseparent/MIXEDCase camelcaseparent')
 
-    def test_re_add(self):
-        """Test than when a file has 'unintentionally' changed case, we can't
-        add a new entry using the new case."""
-        wt = self.make_branch_and_tree('.')
-        # create a file on disk with the mixed-case name
-        self.build_tree(['MixedCase'])
-        self.check_output('added MixedCase\n', 'add MixedCase')
-        # 'accidently' rename the file on disk
-        os.rename('MixedCase', 'mixedcase')
-        self.check_output('', 'add mixedcase')
 
-    def test_re_add_dir(self):
-        # like re-add, but tests when the operation is on a directory.
-        """Test than when a file has 'unintentionally' changed case, we can't
-        add a new entry using the new case."""
-        wt = self.make_branch_and_tree('.')
-        # create a file on disk with the mixed-case name
-        self.build_tree(['MixedCaseParent/', 'MixedCaseParent/MixedCase'])
-        self.check_output('added MixedCaseParent\nadded MixedCaseParent/MixedCase\n',
-                          'add MixedCaseParent')
-        # 'accidently' rename the directory on disk
-        os.rename('MixedCaseParent', 'mixedcaseparent')
-        self.check_output('', 'add mixedcaseparent')
+class TestMisc(TestCICPBase):
+    def test_status(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+
+        self.check_output('added:\n  CamelCaseParent/CamelCase\n  lowercaseparent/lowercase\n',
+                          'status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
+
+    def test_ci(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+
+        got = self.run_bzr('ci -m message camelcaseparent LOWERCASEPARENT')[1]
+        for expected in ['CamelCaseParent', 'lowercaseparent',
+                         'CamelCaseParent/CamelCase', 'lowercaseparent/lowercase']:
+            self.assertContainsRe(got, 'added ' + expected + '\n')
+
+    def test_rm(self):
+        wt = self._make_mixed_case_tree()
+        self.run_bzr('add')
+        self.run_bzr('ci -m message')
+
+        got = self.run_bzr('rm camelcaseparent LOWERCASEPARENT')[1]
+        for expected in ['lowercaseparent/lowercase', 'CamelCaseParent/CamelCase']:
+            self.assertContainsRe(got, 'deleted ' + expected + '\n')
+
 
     # The following commands need tests and/or cicp lovin':
     # update, remove, file_id, file_path, diff, log, touching_revisions, ls,
