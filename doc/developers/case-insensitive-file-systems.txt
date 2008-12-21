@@ -81,10 +81,7 @@ boil down to the following new API functions:
 * osutils.canonical_relpath() - like osutils.relpath() but adjust the case
   of the result to match any existing items.
 
-* WorkingTree.canonical_relpath() - like WorkingTree.relpath() - implemented
-  using osutils.canonical_relpath
-
-* Tree.get_canonical_path - somewhat like Tree.get_symlink_target(),
+* Tree.get_canonical_inventory_path - somewhat like Tree.get_symlink_target(),
   Tree.get_file_by_path() etc; returns a name with the case adjusted to match
   existing inventory items.
 
@@ -92,11 +89,5 @@ NOTE: It is likely these names will change.
 
 The only complication is the requirement that Bazaar not allow the creation
 of items that differ only by case on such file-systems.  For this requirement,
-case-insensitive and cicp file-systems can be treated the same.
-
-Fortunately, Bazaar already has an attribute on a WorkingTree called
-'case_sensitive', and although the name doesn't differentiate between ci
-and cicp file-systems, the attribute is set to False for both file-systems.
-Unfortunately, to enforce this requirement, the attribute must be available
-to the base MutableTree class.  It is hoped we can simply move this attribute
-up the inheritance chain and check the value to enforce this restriction.
+case-insensitive and cicp file-systems can be treated the same.  The
+'case_sensitive' attribute on a MutableTree is used to control this behaviour.
