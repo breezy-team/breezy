@@ -15,6 +15,11 @@ $DARCS_EMAIL
 $@" | darcs rec --ignore-times -a --pipe .
 }
 
+_drrecamend()
+{
+	echo y |darcs amend-rec --ignore-times -a
+}
+
 create_darcs()
 {
 	rm -rf $1
@@ -65,6 +70,14 @@ third line"
 	darcs mv dir dir-p
 	darcs mv dir2 dir2-p
 	_drrec -a -m "rename empty dirs"
+	echo a > a
+	echo b > b
+	darcs add a b
+	_drrec -a -m "add a b"
+	rm b
+	_drrec -a -m "remove and rename"
+	darcs mv a b
+	_drrecamend
 	cd ..
 }
 
