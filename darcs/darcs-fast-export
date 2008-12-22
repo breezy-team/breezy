@@ -130,90 +130,6 @@ def parse_inventory(sock=None):
 		sock = gzip.open(os.path.join("_darcs", "inventories", prev))
 		parse_inventory(sock)
 
-def inline_path(path):
-	sock = open(path)
-	buf = sock.read()
-	sock.close()
-	# darcs does not track the executable bit :/
-	print "M 644 inline %s" % path
-	print "data %s\n%s" % (len(buf), buf)
-
-def simplify_nodes(i):
-	nodes = {
-			'add_file': [],
-			'add_directory': [],
-			'move': [],
-			'modify_file': [],
-			'remove_file': []
-			}
-	for j in i.getElementsByTagName('add_file'):
-		nodes['add_file'].append(j.childNodes[0].data.strip())
-	for j in i.getElementsByTagName('add_directory'):
-		nodes['add_directory'].append(j.childNodes[0].data.strip())
-	for j in i.getElementsByTagName('move'):
-		nodes['move'].append([j.attributes['from'].value, j.attributes['to'].value])
-	for j in i.getElementsByTagName('modify_file'):
-		nodes['modify_file'].append(j.childNodes[0].data.strip())
-	for j in i.getElementsByTagName('remove_file'):
-		nodes['remove_file'].append(j.childNodes[0].data.strip())
-	# add A, remove A -> None
-	for j in nodes['add_file'][:]:
-		for k in nodes['remove_file'][:]:
-			if j == k:
-				nodes['add_file'].remove(j)
-				nodes['remove_file'].remove(k)
-	# add A, rename A B, modify B -> add B
-	for j in nodes['add_file'][:]:
-		for k in nodes['move'][:]:
-			for l in nodes['modify_file'][:]:
-				if j == k[0] and k[1] == l:
-					nodes['add_file'].remove(j)
-					nodes['move'].remove(k)
-					nodes['modify_file'].remove(l)
-					nodes['add_file'].append(l)
-	# add A, rename A B -> add B
-	for j in nodes['add_file'][:]:
-		for k in nodes['move'][:]:
-			if j == k[0]:
-				nodes['add_file'].remove(j)
-				nodes['move'].remove(k)
-				nodes['add_file'].append(k[1])
-	# adddir A, rename A B -> noop
-	for j in nodes['add_directory'][:]:
-		for k in nodes['move'][:]:
-			if j == k[0]:
-				nodes['move'].remove(k)
-	# rename A B, remove B -> remove A
-	for j in nodes['remove_file'][:]:
-		for k in nodes['move'][:]:
-			if j == k[1]:
-				nodes['remove_file'].remove(j)
-				nodes['move'].remove(k)
-				nodes['remove_file'].append(k[0])
-	# rename A B, add B -> add B
-	for j in nodes['add_file'][:]:
-		for k in nodes['move'][:]:
-			if j == k[1]:
-				nodes['move'].remove(k)
-
-	# rename of empty dir is a noop
-	for j in nodes['move'][:]:
-		if os.path.isdir(j[1]) and not len(os.listdir(j[1])):
-			nodes['move'].remove(j)
-
-	# hacks for those rare inverted patches. today's darcs no longer
-	# creates them, but old repos still contain such stuff
-	if i.attributes['inverted'].value == 'True':
-		# in case there are file moves, the modify_file paths
-		# contain the old path, so we have to replace them
-		for j in nodes['modify_file'][:]:
-			for k in nodes['move']:
-				if j.startswith(k[0]):
-					nodes['modify_file'].remove(j)
-					nodes['modify_file'].append(j.replace(k[0], k[1]))
-
-	return nodes
-
 # Option Parser
 usage="%prog [options] darcsrepo"
 opp = optparse.OptionParser(usage=usage)
@@ -280,9 +196,9 @@ else:
 
 progress("getting list of patches")
 if not len(import_marks):
-	sock = os.popen("darcs changes --xml -s --reverse --repo %s" % origin)
+	sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
 else:
-	sock = os.popen("darcs changes --xml -s --reverse  --repo %s --from-match 'hash %s'" % (origin, import_marks[-1]))
+	sock = os.popen("darcs changes --xml --reverse  --repo %s --from-match 'hash %s'" % (origin, import_marks[-1]))
 buf = sock.read()
 sock.close()
 # this is hackish. we need to escape some bad chars, otherwise the xml
@@ -347,6 +263,7 @@ if not len(import_marks):
 	progress("starting export, repo has %d patches" % patchnum)
 else:
 	progress("continuing export, %d patches to convert" % patchnum)
+paths = []
 for i in patches:
 	# apply the patch
 	hash = i.attributes['hash'].value
@@ -377,15 +294,21 @@ for i in patches:
 	if markcount > 1:
 		print "from :%s" % (markcount-1)
 	# export the files
-	nodes = simplify_nodes(i)
-	for j in nodes['move']:
-		print "R %s %s" % (j[0], j[1])
-	for j in nodes['add_file']:
-		inline_path(j)
-	for j in nodes['modify_file']:
-		inline_path(j)
-	for j in nodes['remove_file']:
+	for j in paths:
 		print "D %s" % j
+	paths = []
+	for (root, dirs, files) in os.walk ("."):
+		for f in files:
+			j = os.path.normpath(os.path.join(root, f))
+			if j.startswith("_darcs") or "-darcs-backup" in j:
+				continue
+			paths.append(j)
+			sock = open(j)
+			buf = sock.read()
+			sock.close()
+			# darcs does not track the executable bit :/
+			print "M 644 inline %s" % j
+			print "data %s\n%s" % (len(buf), buf)
 	if message[:4] == "TAG ":
 	        tag = message[4:].strip().split('\n')[0].replace(' ','_')
 		print "tag %s" % tag
