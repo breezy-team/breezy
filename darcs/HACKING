@@ -1,4 +1,4 @@
-There are two branches in this repo which will be probably never merged
+There are branches in this repo which will be probably never merged
 to master, but they may be interesting.
 
 The 'deleteall' branch makes d-f-e use the deleteall command in the
@@ -8,3 +8,6 @@ production environment is not efficient.
 The 'show' branch implements a way to avoid any working directory, it
 replaces 'darcs apply' calls with 'darcs show contents' ones - which is
 quite elegant but three times slower.
+
+The 'xml' branch implements a way to avoid re-adding already tracked
+files, but this can cause a corruption.
