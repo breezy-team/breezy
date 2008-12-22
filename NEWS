@@ -38,7 +38,7 @@ IN DEVELOPMENT
       commonly found with Windows, bzr will often ignore the case of the
       arguments specified by the user in preference to the case of an existing
       item on the file-system or in the inventory to help prevent
-      counter-intuitive behaviour on Windows.
+      counter-intuitive behaviour on Windows. (Mark Hammond)
 
   BUG FIXES:
   
