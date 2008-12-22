@@ -97,6 +97,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``DirStateWorkingTree`` and ``DirStateWorkingTreeFormat`` added
+      as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
+      respectively. (Ian Clatworthy)
+
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
       Previously the order was fully random, now the records should be

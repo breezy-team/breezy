@@ -72,7 +72,6 @@ from bzrlib import (
     transform,
     ui,
     urlutils,
-    workingtree_5,
     xml5,
     xml6,
     xml7,
@@ -80,7 +79,7 @@ from bzrlib import (
 import bzrlib.branch
 from bzrlib.transport import get_transport
 import bzrlib.ui
-from bzrlib.workingtree_4 import WorkingTreeFormat4
+from bzrlib.workingtree_4 import WorkingTreeFormat4, WorkingTreeFormat5
 """)
 
 from bzrlib import symbol_versioning
@@ -2957,7 +2956,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(workingtree_5.WorkingTreeFormat5())
+WorkingTreeFormat.register_format(WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable
