@@ -44,6 +44,13 @@ class TestCICPBase(ExternalBase):
         got = self.run_bzr(retcode=retcode, *args)[1]
         self.failUnlessEqual(got, output)
 
+    def check_empty_output(self, *args):
+        """Check a bzr command generates no output anywhere and exits with 0"""
+        out, err = self.run_bzr(retcode=0, *args)
+        self.failIf(out)
+        self.failIf(err)
+
+
 class TestAdd(TestCICPBase):
     def test_add_simple(self):
         """Test add always uses the case of the filename reported by the os."""
@@ -80,7 +87,7 @@ class TestAdd(TestCICPBase):
         self.check_output('added MixedCase\n', 'add MixedCase')
         # 'accidently' rename the file on disk
         os.rename('MixedCase', 'mixedcase')
-        self.check_output('', 'add mixedcase')
+        self.check_empty_output('add mixedcase')
 
     def test_re_add_dir(self):
         # like re-add, but tests when the operation is on a directory.
@@ -93,7 +100,7 @@ class TestAdd(TestCICPBase):
                           'add MixedCaseParent')
         # 'accidently' rename the directory on disk
         os.rename('MixedCaseParent', 'mixedcaseparent')
-        self.check_output('', 'add mixedcaseparent')
+        self.check_empty_output('add mixedcaseparent')
 
 
 class TestMove(TestCICPBase):
@@ -222,4 +229,4 @@ class TestMisc(TestCICPBase):
 
     # The following commands need tests and/or cicp lovin':
     # update, remove, file_id, file_path, diff, log, touching_revisions, ls,
-    # ignore, cat, revert.
+    # ignore, cat, revert, resolve.

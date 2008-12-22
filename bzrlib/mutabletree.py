@@ -289,7 +289,7 @@ class MutableTree(tree.Tree):
         :return: None
         """
 
-    def fix_case_of_inventory_path(self, path):
+    def _fix_case_of_inventory_path(self, path):
         """If our tree isn't case sensitive, return the canonical path"""
         if not self.case_sensitive:
             path = self.get_canonical_inventory_path(path)
@@ -359,7 +359,7 @@ class MutableTree(tree.Tree):
 
         # validate user file paths and convert all paths to tree 
         # relative : it's cheaper to make a tree relative path an abspath
-        # than to convert an abspath to tree relative, and its cheaper to
+        # than to convert an abspath to tree relative, and its' cheaper to
         # perform the canonicalization in bulk.
         for filepath in osutils.canonical_relpaths(self.basedir, file_list):
             rf = _FastPath(filepath)
@@ -424,7 +424,7 @@ class MutableTree(tree.Tree):
                 # without the parent ie, use the relatively slower inventory 
                 # probing method
                 versioned = inv.has_filename(
-                        self.fix_case_of_inventory_path(directory.raw_path))
+                        self._fix_case_of_inventory_path(directory.raw_path))
 
             if kind == 'directory':
                 try:
@@ -464,7 +464,7 @@ class MutableTree(tree.Tree):
                     # without the parent ie, use the relatively slower inventory 
                     # probing method
                     this_id = inv.path2id(
-                            self.fix_case_of_inventory_path(directory.raw_path))
+                            self._fix_case_of_inventory_path(directory.raw_path))
                     if this_id is None:
                         this_ie = None
                     else:
@@ -596,7 +596,7 @@ def _add_one_and_parent(tree, inv, parent_ie, path, kind, action):
         added = []
     else:
         # slower but does not need parent_ie
-        if inv.has_filename(tree.fix_case_of_inventory_path(path.raw_path)):
+        if inv.has_filename(tree._fix_case_of_inventory_path(path.raw_path)):
             return []
         # its really not there : add the parent
         # note that the dirname use leads to some extra str copying etc but as

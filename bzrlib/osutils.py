@@ -971,12 +971,12 @@ def _cicp_canonical_relpath(base, path):
 
     This will cause O(N) behaviour if called for every path in a tree; if you
     have a number of paths to convert, you should use canonical_relpaths().
-
-    TODO: it should be possible to optimize this for Windows by using the
-    win32 API FindFiles function to look for the specified name - but using
-    os.listdir() still gives us the correct, platform agnostic semantics in
-    the short term.
     """
+    # TODO: it should be possible to optimize this for Windows by using the
+    # win32 API FindFiles function to look for the specified name - but using
+    # os.listdir() still gives us the correct, platform agnostic semantics in
+    # the short term.
+
     rel = relpath(base, path)
     # '.' will have been turned into ''
     if not rel:
