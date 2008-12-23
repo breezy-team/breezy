@@ -1561,7 +1561,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         if self._testing_pycurl():
             raise tests.TestNotApplicable(
                 'pycurl does not support authentication.conf')
-        user =' joe'
+        user = 'joe'
         password = 'foo'
         self.server.add_user(user, password)
         # Create a minimal config file with the right password
@@ -1572,7 +1572,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         conf._save()
         t = self.get_user_transport()
         # Issue a request to the server to connect
-        self.assertEqual('contents of a\n',t.get('a').read())
+        self.assertEqual('contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 

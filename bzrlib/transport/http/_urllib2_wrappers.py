@@ -1039,7 +1039,10 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         self._retry_count = None
 
     def get_user_password(self, auth):
-        """Ask user for a password if none is already available."""
+        """Ask user for a password if none is already available.
+
+        :param auth: authentication headers from the HTTP response
+        """
         auth_conf = config.AuthenticationConfig()
         user = auth['user']
         password = auth['password']
