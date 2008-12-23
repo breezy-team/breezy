@@ -50,16 +50,20 @@ class PathBasedViews(_Views):
 
       Bazaar views format X
 
-    where X is an integer number. Version 1 format is stored as follows:
+    where X is an integer number. After this top line, version 1 format is
+    stored as follows:
 
-     * the line after the format marker holds the name of the current view
+     * optional name-values pairs in the format 'name=value'
 
-     * subsequent lines hold view definitions, one per line is the format
+     * optional view definitions, one per line in the format
 
+       views:
+       name file1 file2 ...
        name file1 file2 ...
 
     where the fields are separated by a nul character (\0). The views file
-    is encoded in utf-8.
+    is encoded in utf-8. The only supported keyword in version 1 is
+    'current' which stores the name of the current view, if any.
     """
 
     def __init__(self, tree):
@@ -158,8 +162,12 @@ class PathBasedViews(_Views):
         """
         self.tree.lock_write()
         try:
+            if self._current is None:
+                keywords = {}
+            else:
+                keywords = {'current': self._current}
             self.tree._transport.put_bytes('views',
-                self._serialize_view_content(self._current, self._views))
+                self._serialize_view_content(keywords, self._views))
         finally:
             self.tree.unlock()
 
@@ -173,30 +181,32 @@ class PathBasedViews(_Views):
                 except errors.NoSuchFile, e:
                     self._current, self._views = None, {}
                 else:
-                    self._current, self._views = \
+                    keywords, self._views = \
                         self._deserialize_view_content(view_content)
+                    self._current = keywords.get('current')
             finally:
                 self.tree.unlock()
             self._loaded = True
 
-    def _serialize_view_content(self, current, view_dict):
-        """Convert a current view and view dictionary into a stream."""
+    def _serialize_view_content(self, keywords, view_dict):
+        """Convert view keywords and a view dictionary into a stream."""
         lines = [_VIEWS_FORMAT1_MARKER]
-        if current is None:
-            lines.append("\n")
-        else:
-            lines.append((current + "\n").encode('utf-8'))
-        for view in sorted(view_dict):
-            view_data = "%s\0%s\n" % (view, "\0".join(view_dict[view]))
-            lines.append(view_data.encode('utf-8'))
+        for key in keywords:
+            line = "%s=%s\n" % (key,keywords[key])
+            lines.append(line.encode('utf-8'))
+        if view_dict:
+            lines.append("views:\n".encode('utf-8'))
+            for view in sorted(view_dict):
+                view_data = "%s\0%s\n" % (view, "\0".join(view_dict[view]))
+                lines.append(view_data.encode('utf-8'))
         return "".join(lines)
 
     def _deserialize_view_content(self, view_content):
-        """Convert a stream into a current view and dictionary of views."""
+        """Convert a stream into view keywords and a dictionary of views."""
         # as a special case to make initialization easy, an empty definition
         # maps to no current view and an empty view dictionary
         if view_content == '':
-            return None, {}
+            return {}, {}
         lines = view_content.splitlines()
         match = _VIEWS_FORMAT_MARKER_RE.match(lines[0])
         if not match:
@@ -206,15 +216,26 @@ class PathBasedViews(_Views):
             raise ValueError(
                 "cannot decode views format %s" % match.group(1))
         try:
-            current = lines[1].decode('utf-8')
-            if current == '':
-                current = None
+            keywords = {}
             views = {}
-            for line in lines[2:]:
-                parts = line.decode('utf-8').split('\0')
-                view = parts.pop(0)
-                views[view] = parts
-            return current, views
+            in_views = False
+            for line in lines[1:]:
+                text = line.decode('utf-8')
+                if in_views:
+                    parts = text.split('\0')
+                    view = parts.pop(0)
+                    views[view] = parts
+                elif text == 'views:':
+                    in_views = True
+                    continue
+                elif text.find('=') >= 0:
+                    # must be a name-value pair
+                    keyword, value = text.split('=', 1)
+                    keywords[keyword] = value
+                else:
+                    raise ValueError("failed to deserialize views line %s",
+                        text)
+            return keywords, views
         except ValueError, e:
             raise ValueError("failed to deserialize views content %r: %s"
                 % (view_content, e))
