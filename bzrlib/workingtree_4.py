@@ -58,6 +58,7 @@ from bzrlib import (
     trace,
     transform,
     urlutils,
+    views,
     xml5,
     xml6,
     )
@@ -1305,6 +1306,9 @@ class WorkingTree5(DirStateWorkingTree):
 
     This is new in bzr 1.11.
     """
+
+    def _make_views(self):
+        return views.PathBasedViews(self)
 
 
 class DirStateWorkingTreeFormat(WorkingTreeFormat3):
