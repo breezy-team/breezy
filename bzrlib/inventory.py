@@ -341,6 +341,9 @@ class InventoryEntry(object):
                    self.revision))
 
     def __eq__(self, other):
+        if other is self:
+            # For the case when objects are cached
+            return True
         if not isinstance(other, InventoryEntry):
             return NotImplemented
 
@@ -1235,20 +1238,33 @@ class Inventory(object):
 
     def _make_delta(self, old):
         """Make an inventory delta from two inventories."""
-        old_ids = set(old)
-        new_ids = set(self)
+        old_getter = getattr(old, '_byid', old)
+        new_getter = self._byid
+        old_ids = set(old_getter)
+        new_ids = set(new_getter)
         adds = new_ids - old_ids
         deletes = old_ids - new_ids
-        common = old_ids.intersection(new_ids)
+        if not adds and not deletes:
+            common = new_ids
+        else:
+            common = old_ids.intersection(new_ids)
         delta = []
         for file_id in deletes:
             delta.append((old.id2path(file_id), None, file_id, None))
         for file_id in adds:
             delta.append((None, self.id2path(file_id), file_id, self[file_id]))
         for file_id in common:
-            if old[file_id] != self[file_id]:
+            new_ie = new_getter[file_id]
+            old_ie = old_getter[file_id]
+            # If xml_serializer returns the cached InventoryEntries (rather
+            # than always doing .copy()), inlining the 'is' check saves 2.7M
+            # calls to __eq__.  Under lsprof this saves 20s => 6s.
+            # It is a minor improvement without lsprof.
+            if old_ie is new_ie or old_ie == new_ie:
+                continue
+            else:
                 delta.append((old.id2path(file_id), self.id2path(file_id),
-                    file_id, self[file_id]))
+                              file_id, new_ie))
         return delta
 
     def remove_recursive_id(self, file_id):

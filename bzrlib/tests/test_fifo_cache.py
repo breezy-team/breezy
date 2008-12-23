@@ -41,6 +41,12 @@ class TestFIFOCache(tests.TestCase):
         self.assertEqual([2], list(c.itervalues()))
         self.assertEqual({1: 2}, c)
 
+    def test_cache_size(self):
+        c = fifo_cache.FIFOCache()
+        self.assertEqual(100, c.cache_size())
+        c.resize(20, 5)
+        self.assertEqual(20, c.cache_size())
+
     def test_missing(self):
         c = fifo_cache.FIFOCache()
         self.assertRaises(KeyError, c.__getitem__, 1)
@@ -113,6 +119,45 @@ class TestFIFOCache(tests.TestCase):
     def test_popitem_not_implemeted(self):
         c = fifo_cache.FIFOCache()
         self.assertRaises(NotImplementedError, c.popitem)
+
+    def test_resize_smaller(self):
+        c = fifo_cache.FIFOCache()
+        c[1] = 2
+        c[2] = 3
+        c[3] = 4
+        c[4] = 5
+        c[5] = 6
+        # No cleanup, because it is the exact size
+        c.resize(5)
+        self.assertEqual({1: 2, 2: 3, 3: 4, 4: 5, 5: 6}, c)
+        self.assertEqual(5, c.cache_size())
+        # Adding one more will trigger a cleanup, though
+        c[6] = 7
+        self.assertEqual({3: 4, 4: 5, 5: 6, 6: 7}, c)
+        c.resize(3, 2)
+        self.assertEqual({5: 6, 6: 7}, c)
+
+    def test_resize_larger(self):
+        c = fifo_cache.FIFOCache(5, 4)
+        c[1] = 2
+        c[2] = 3
+        c[3] = 4
+        c[4] = 5
+        c[5] = 6
+        # No cleanup, because it is the exact size
+        c.resize(10)
+        self.assertEqual({1: 2, 2: 3, 3: 4, 4: 5, 5: 6}, c)
+        self.assertEqual(10, c.cache_size())
+        c[6] = 7
+        c[7] = 8
+        c[8] = 9
+        c[9] = 10
+        c[10] = 11
+        self.assertEqual({1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9,
+                          9: 10, 10: 11}, c)
+        c[11] = 12
+        self.assertEqual({4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11,
+                          11: 12}, c)
 
     def test_setdefault(self):
         c = fifo_cache.FIFOCache(5, 4)
@@ -208,6 +253,7 @@ class TestFIFOSizeCache(tests.TestCase):
         self.assertEqual(['2'], c.values())
         self.assertEqual(['2'], list(c.itervalues()))
         self.assertEqual({1: '2'}, c)
+        self.assertEqual(1024*1024, c.cache_size())
 
     def test_missing(self):
         c = fifo_cache.FIFOSizeCache()
@@ -248,3 +294,32 @@ class TestFIFOSizeCache(tests.TestCase):
         c[1] = 'abcdefgh'
         self.assertEqual({}, c)
         self.assertEqual(0, c._value_size)
+
+    def test_resize_smaller(self):
+        c = fifo_cache.FIFOSizeCache(20, 16)
+        c[1] = 'a'
+        c[2] = 'bc'
+        c[3] = 'def'
+        c[4] = 'ghij'
+        # No cleanup, because it is the exact size
+        c.resize(10, 8)
+        self.assertEqual({1: 'a', 2: 'bc', 3: 'def', 4: 'ghij'}, c)
+        self.assertEqual(10, c.cache_size())
+        # Adding one more will trigger a cleanup, though
+        c[5] = 'k'
+        self.assertEqual({3: 'def', 4: 'ghij', 5: 'k'}, c)
+        c.resize(5, 4)
+        self.assertEqual({5: 'k'}, c)
+
+    def test_resize_larger(self):
+        c = fifo_cache.FIFOSizeCache(10, 8)
+        c[1] = 'a'
+        c[2] = 'bc'
+        c[3] = 'def'
+        c[4] = 'ghij'
+        c.resize(12, 10)
+        self.assertEqual({1: 'a', 2: 'bc', 3: 'def', 4: 'ghij'}, c)
+        c[5] = 'kl'
+        self.assertEqual({1: 'a', 2: 'bc', 3: 'def', 4: 'ghij', 5: 'kl'}, c)
+        c[6] = 'mn'
+        self.assertEqual({4: 'ghij', 5: 'kl', 6: 'mn'}, c)

@@ -789,7 +789,7 @@ class TestCase(unittest.TestCase):
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
-        
+
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
