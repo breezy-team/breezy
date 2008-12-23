@@ -73,6 +73,10 @@ class FIFOCache(dict):
         if len(self) > self._max_cache:
             self.cleanup()
 
+    def cache_size(self):
+        """Get the number of entries we will cache."""
+        return self._max_cache
+
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
 
@@ -107,6 +111,21 @@ class FIFOCache(dict):
         """Remove the oldest entry."""
         key = self._queue.popleft()
         self._remove(key)
+
+    def resize(self, max_cache, after_cleanup_count=None):
+        """Increase/decrease the number of cached entries.
+
+        :param max_cache: The maximum number of entries to cache.
+        :param after_cleanup_count: After cleanup, we should have at most this
+            many entries. This defaults to 80% of max_cache.
+        """
+        self._max_cache = max_cache
+        if after_cleanup_count is None:
+            self._after_cleanup_count = max_cache * 8 / 10
+        else:
+            self._after_cleanup_count = min(max_cache, after_cleanup_count)
+        if len(self) > self._max_cache:
+            self.cleanup()
 
     # raise NotImplementedError on dict functions that would mutate the cache
     # which have not been properly implemented yet.
@@ -211,6 +230,10 @@ class FIFOSizeCache(FIFOCache):
             # Time to cleanup
             self.cleanup()
 
+    def cache_size(self):
+        """Get the number of bytes we will cache."""
+        return self._max_size
+
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
 
@@ -226,3 +249,20 @@ class FIFOSizeCache(FIFOCache):
         val = FIFOCache._remove(self, key)
         self._value_size -= self._compute_size(val)
         return val
+
+    def resize(self, max_size, after_cleanup_size=None):
+        """Increase/decrease the amount of cached data.
+
+        :param max_size: The maximum number of bytes to cache.
+        :param after_cleanup_size: After cleanup, we should have at most this
+            many bytes cached. This defaults to 80% of max_size.
+        """
+        FIFOCache.resize(self, max_size)
+        self._max_size = max_size
+        if after_cleanup_size is None:
+            self._after_cleanup_size = max_size * 8 / 10
+        else:
+            self._after_cleanup_size = min(max_size, after_cleanup_size)
+        if self._value_size > self._max_size:
+            self.cleanup()
+

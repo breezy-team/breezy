@@ -23,7 +23,7 @@ from bzrlib import (
     osutils,
     )
 
-from bzrlib.workingtree_4 import WorkingTreeFormat4
+from bzrlib.workingtree_4 import DirStateWorkingTreeFormat
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -99,9 +99,10 @@ class TestMove(TestCaseWithWorkingTree):
                                 tree.move, ['a1'], to_name='sub1',
                                 after=False)
         except TypeError:
-            # WorkingTreeFormat4 doesn't have to maintain api compatibility
-            # since it was deprecated before the class was introduced.
-            if not isinstance(self.workingtree_format, WorkingTreeFormat4):
+            # WorkingTreeFormat4 and later don't have to maintain api
+            # compatibility since it was deprecated before they were introduced.
+            if not isinstance(self.workingtree_format,
+                DirStateWorkingTreeFormat):
                 raise
         tree._validate()
 
