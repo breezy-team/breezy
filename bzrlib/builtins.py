@@ -1275,6 +1275,9 @@ class cmd_remove(Command):
         file_deletion_strategy='safe'):
         tree, file_list = tree_files(file_list)
 
+        if file_list is not None:
+            file_list = [f for f in file_list]
+
         tree.lock_write()
         try:
             # Heuristics should probably all move into tree.remove_smart or
