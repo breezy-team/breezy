@@ -346,15 +346,7 @@ class Tree(object):
         raise NotImplementedError(self.get_symlink_target)
 
     def get_canonical_inventory_paths(self, paths):
-        """Returns a list with each item the first path that
-        case-insensitively matches the specified input paths.
-
-        If a path matches exactly, it is returned. If no path matches exactly
-        but more than one path matches case-insensitively, it is implementation
-        defined which is returned.
-
-        If no path matches case-insensitively, the input path is returned, but
-        with as many path entries that do exist changed to their canonical form.
+        """Like get_canonical_inventory_path() but works on multiple items.
 
         :param paths: A sequence of paths relative to the root of the tree.
         :return: A list of paths, with each item the corresponding input path
@@ -364,11 +356,22 @@ class Tree(object):
         return list(self._yield_canonical_inventory_paths(paths))
 
     def get_canonical_inventory_path(self, path):
-        """A convenience version of get_canonical_inventory_path which
-        takes a single path.
+        """Returns the first inventory item that case-insensitively matches path.
+
+        If a path matches exactly, it is returned. If no path matches exactly
+        but more than one path matches case-insensitively, it is implementation
+        defined which is returned.
+
+        If no path matches case-insensitively, the input path is returned, but
+        with as many path entries that do exist changed to their canonical
+        form.
 
         If you need to resolve many names from the same tree, you should
         use get_canonical_inventory_paths() to avoid O(N) behaviour.
+
+        :param path: A paths relative to the root of the tree.
+        :return: The input path adjusted to account for existing elements
+        that match case insensitively.
         """
         return self._yield_canonical_inventory_paths([path]).next()
 
