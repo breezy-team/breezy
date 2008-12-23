@@ -987,7 +987,7 @@ def _cicp_canonical_relpath(base, path):
     _listdir = os.listdir
 
     # use an explicit iterator so we can easily consume the rest on early exit.
-    bit_iter = rel.split('/')
+    bit_iter = iter(rel.split('/'))
     for bit in bit_iter:
         lbit = bit.lower()
         for look in _listdir(current):

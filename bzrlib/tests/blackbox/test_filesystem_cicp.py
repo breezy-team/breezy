@@ -21,7 +21,7 @@ import os
 
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import CaseInsCasePresFilenameFeature, KnownFailure
-from bzrlib.osutils import canonical_relpath
+from bzrlib.osutils import canonical_relpath, pathjoin
 
 class TestCICPBase(ExternalBase):
     """Base class for tests on a case-insensitive, case-preserving filesystem.
@@ -101,6 +101,15 @@ class TestAdd(TestCICPBase):
         # 'accidently' rename the directory on disk
         os.rename('MixedCaseParent', 'mixedcaseparent')
         self.check_empty_output('add mixedcaseparent')
+
+    def test_add_not_found(self):
+        """Test add when the input file doesn't exist."""
+        wt = self.make_branch_and_tree('.')
+        # create a file on disk with the mixed-case name
+        self.build_tree(['MixedCaseParent/', 'MixedCaseParent/MixedCase'])
+        expected_fname = pathjoin(wt.basedir, "MixedCaseParent", "notfound")
+        expected_msg = "bzr: ERROR: No such file: %r\n" % expected_fname
+        self.check_error_output(3, expected_msg, 'add mixedcaseparent/notfound')
 
 
 class TestMove(TestCICPBase):
