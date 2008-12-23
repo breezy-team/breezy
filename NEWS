@@ -114,6 +114,11 @@ IN DEVELOPMENT
       means that PQM will now reject changes that introduce new trailing
       whitespace. (Marius Kruger)
 
+    * Introduced new experimental formats called ``1.12-preview`` and
+      ``1.12-preview-rich-root`` to enable testing of related pending
+      features, namely content filtering and filtered views.
+      (Ian Clatworthy)
+
   INTERNALS:
 
     * Added an ``InventoryEntry`` cache when deserializing inventories.
@@ -124,6 +129,10 @@ IN DEVELOPMENT
       minimal overhead versus using a plain dict for cache hits, at the
       cost of not preserving the 'active' set as well as an ``LRUCache``.
       (John Arbash Meinel)
+
+    * ``DirStateWorkingTree`` and ``DirStateWorkingTreeFormat`` added
+      as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
+      respectively. (Ian Clatworthy)
 
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.

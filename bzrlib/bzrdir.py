@@ -2592,10 +2592,15 @@ class ConvertMetaToMeta(Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups
             if (isinstance(tree, workingtree.WorkingTree3) and
-                not isinstance(tree, workingtree_4.WorkingTree4) and
+                not isinstance(tree, workingtree_4.DirStateWorkingTree) and
                 isinstance(self.target_format.workingtree_format,
-                    workingtree_4.WorkingTreeFormat4)):
+                    workingtree_4.DirStateWorkingTreeFormat)):
                 workingtree_4.Converter3to4().convert(tree)
+            if (isinstance(tree, workingtree_4.DirStateWorkingTree) and
+                not isinstance(tree, workingtree_4.WorkingTree5) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_4.WorkingTreeFormat5)):
+                workingtree_4.Converter4to5().convert(tree)
         return to_convert
 
 
@@ -3095,6 +3100,21 @@ format_registry.register_metadir('1.9-rich-root',
          '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('1.12-preview',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    help='A working-tree format that supports views and content filtering.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    experimental=True,
+    )
+format_registry.register_metadir('1.12-preview-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    help='A variant of 1.12-preview that supports rich-root data '
+         '(needed for bzr-svn).',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    experimental=True,
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',

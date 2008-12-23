@@ -564,6 +564,9 @@ class Tree(object):
         """
         raise NotImplementedError(self.walkdirs)
 
+    def supports_content_filtering(self):
+        return False
+
     def iter_search_rules(self, path_names, pref_names=None,
         _default_searcher=rules._per_user_searcher):
         """Find the preferences for filenames in a tree.
