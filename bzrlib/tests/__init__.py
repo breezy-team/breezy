@@ -3379,4 +3379,3 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         return 'case-insensitive filesystem'
 
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
-

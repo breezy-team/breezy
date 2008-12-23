@@ -359,7 +359,7 @@ class MutableTree(tree.Tree):
 
         # validate user file paths and convert all paths to tree 
         # relative : it's cheaper to make a tree relative path an abspath
-        # than to convert an abspath to tree relative, and its' cheaper to
+        # than to convert an abspath to tree relative, and it's cheaper to
         # perform the canonicalization in bulk.
         for filepath in osutils.canonical_relpaths(self.basedir, file_list):
             rf = _FastPath(filepath)
