@@ -26,14 +26,14 @@ class TestViewOps(TestCaseWithTransport):
     def make_abc_tree_with_ab_view(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('1.7preview')
+        format = bzrdir.format_registry.make_bzrdir('1.12-preview')
         wt = TestCaseWithTransport.make_branch_and_tree(self, '.',
             format=format)
         self.build_tree(['a', 'b', 'c'])
-        wt.views.set_view(['a', 'b'])
+        wt.views.set_view('my', ['a', 'b'])
         return wt
 
     def test_view_on_status(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('status')
-        self.assertEquals('ignoring files outside view: a, b', out[0])
+        self.assertEquals('ignoring files outside view: a, b\n', err)
