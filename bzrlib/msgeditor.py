@@ -26,45 +26,52 @@ import sys
 from bzrlib import (
     config,
     osutils,
+    trace,
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
 from bzrlib.hooks import Hooks
-from bzrlib.trace import warning, mutter
 
 
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
     try:
-        yield os.environ["BZR_EDITOR"]
+        yield os.environ["BZR_EDITOR"], '$BZR_EDITOR'
     except KeyError:
         pass
 
     e = config.GlobalConfig().get_editor()
     if e is not None:
-        yield e
+        yield e, config.config_filename()
         
     for varname in 'VISUAL', 'EDITOR':
         if varname in os.environ:
-            yield os.environ[varname]
+            yield os.environ[varname], '$' + varname
 
     if sys.platform == 'win32':
         for editor in 'wordpad.exe', 'notepad.exe':
-            yield editor
+            yield editor, None
     else:
         for editor in ['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe']:
-            yield editor
+            yield editor, None
 
 
 def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
-    for e in _get_editor():
-        edargs = e.split(' ')
+    for candidate, candidate_source in _get_editor():
+        edargs = candidate.split(' ')
         try:
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
             # We're searching for an editor, so catch safe errors and continue
-            if e.errno in (errno.ENOENT, ):
+            if e.errno in (errno.ENOENT, errno.EACCES):
+                if candidate_source is not None:
+                    # We tried this editor because some user configuration (an
+                    # environment variable or config file) said to try it.  Let
+                    # the user know their configuration is broken.
+                    trace.warning(
+                        'Could not start editor "%s" (specified by %s): %s\n'
+                        % (candidate, candidate_source, str(e)))
                 continue
             raise
         if x == 0:
@@ -183,7 +190,8 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
             try:
                 os.unlink(msgfilename)
             except IOError, e:
-                warning("failed to unlink %s: %s; ignored", msgfilename, e)
+                trace.warning(
+                    "failed to unlink %s: %s; ignored", msgfilename, e)
 
 
 def _create_temp_file_with_commit_template(infotext,

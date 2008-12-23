@@ -2594,7 +2594,8 @@ class _DirectPackAccess(object):
                     # If we don't have a _reload_func there is nothing that can
                     # be done
                     raise
-                raise errors.RetryWithNewPacks(reload_occurred=True,
+                raise errors.RetryWithNewPacks(index,
+                                               reload_occurred=True,
                                                exc_info=sys.exc_info())
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
@@ -2605,7 +2606,8 @@ class _DirectPackAccess(object):
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:
                     raise
-                raise errors.RetryWithNewPacks(reload_occurred=False,
+                raise errors.RetryWithNewPacks(transport.abspath(path),
+                                               reload_occurred=False,
                                                exc_info=sys.exc_info())
 
     def set_writer(self, writer, index, transport_packname):

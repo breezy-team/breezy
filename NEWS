@@ -23,6 +23,9 @@ IN DEVELOPMENT
     * ``shelve --list`` can now be used to list shelved changes.
       (Aaron Bentley)
 
+    * Add support for `bzr tags -r 1..2`, that is we now support showing
+      tags applicable for a specified revision range. (Marius Kruger)
+
   IMPROVEMENTS:
 
     * Add trailing slash to directories in all output of ``bzr ls``, except
@@ -33,11 +36,19 @@ IN DEVELOPMENT
 
   BUG FIXES:
   
+    * Fix a problem with CIFS client/server lag on windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
 
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
+
+    * Don't make a broken branch when pushing an unstackable-format branch
+      that's in a stackable shared repository to a location with default
+      stack-on location.  (Andrew Bennetts, #291046)
 
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
@@ -48,6 +59,10 @@ IN DEVELOPMENT
 
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
+
+    * Handle EACCES (permission denied) errors when launching a message
+      editor, and emit warnings when a configured editor cannot be
+      started. (Andrew Bennetts)
 
     * Preserve transport decorators while following redirections.
       (Vincent Ladeuil, #245964, #270863)
@@ -62,6 +77,10 @@ IN DEVELOPMENT
       single array. Further ``RemoteTransport.readv`` sets this to 5MB to
       work better with how it splits its requests.
       (John Arbash Meinel, #303538)
+
+    * Pack repositories are now able to reload the pack listing and retry
+      the current operation if another action causes the data to be
+      repacked.  (John Arbash Meinel, #153786)
 
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
@@ -90,7 +109,30 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * ``bzr selftest`` now fails if new trailing white space is added to
+      the bazaar sources. It only checks changes not committed yet. This
+      means that PQM will now reject changes that introduce new trailing
+      whitespace. (Marius Kruger)
+
+    * Introduced new experimental formats called ``1.12-preview`` and
+      ``1.12-preview-rich-root`` to enable testing of related pending
+      features, namely content filtering and filtered views.
+      (Ian Clatworthy)
+
   INTERNALS:
+
+    * Added an ``InventoryEntry`` cache when deserializing inventories.
+      Can cut the time to iterate over multiple RevisionsTrees in half.
+      (John Arbash Meinel)
+
+    * Added ``bzrlib.fifo_cache.FIFOCache`` which is designed to have
+      minimal overhead versus using a plain dict for cache hits, at the
+      cost of not preserving the 'active' set as well as an ``LRUCache``.
+      (John Arbash Meinel)
+
+    * ``DirStateWorkingTree`` and ``DirStateWorkingTreeFormat`` added
+      as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
+      respectively. (Ian Clatworthy)
 
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
