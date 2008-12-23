@@ -59,9 +59,9 @@ from bzrlib.option import ListOption, Option, RegistryOption, custom_help
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
-def tree_files(file_list, default_branch=u'.'):
+def tree_files(file_list, default_branch=u'.', canonicalize=True):
     try:
-        return internal_tree_files(file_list, default_branch)
+        return internal_tree_files(file_list, default_branch, canonicalize)
     except errors.FileInWrongBranch, e:
         raise errors.BzrCommandError("%s is not in the same branch as %s" %
                                      (e.path, file_list[0]))
@@ -86,7 +86,7 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
 
 # XXX: Bad function name; should possibly also be a class method of
 # WorkingTree rather than a function.
-def internal_tree_files(file_list, default_branch=u'.'):
+def internal_tree_files(file_list, default_branch=u'.', canonicalize=True):
     """Convert command-line paths to a WorkingTree and relative paths.
 
     This is typically used for command-line processors that take one or
@@ -104,10 +104,10 @@ def internal_tree_files(file_list, default_branch=u'.'):
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
-    return tree, safe_relpath_files(tree, file_list)
+    return tree, safe_relpath_files(tree, file_list, canonicalize)
 
 
-def safe_relpath_files(tree, file_list):
+def safe_relpath_files(tree, file_list, canonicalize=True):
     """Convert file_list into a list of relpaths in tree.
 
     :param tree: A tree to operate on.
@@ -119,9 +119,15 @@ def safe_relpath_files(tree, file_list):
     if file_list is None:
         return None
     new_list = []
+    # tree.relpath exists as a "thunk" to osutils, but canonical_relpath
+    # doesn't - fix that up here before we enter the loop.
+    if canonicalize:
+        fixer = lambda p: osutils.canonical_relpath(tree.basedir, p)
+    else:
+        fixer = tree.relpath
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(osutils.dereference_path(filename)))
+            new_list.append(fixer(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return new_list
@@ -210,8 +216,6 @@ class cmd_status(Command):
                 no_pending = True
         # A specific path within a tree was given.
         elif relfile_list is not None:
-            # convert the names to canonical versions stored in the inventory
-            relfile_list = tree.get_canonical_inventory_paths(relfile_list)
             no_pending = True
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
@@ -657,7 +661,7 @@ class cmd_mv(Command):
 
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
-        tree, rel_names = tree_files(names_list)
+        tree, rel_names = tree_files(names_list, canonicalize=False)
         tree.lock_write()
         try:
             self._run(tree, names_list, rel_names, after)
@@ -1270,9 +1274,6 @@ class cmd_remove(Command):
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
         tree, file_list = tree_files(file_list)
-
-        if file_list is not None:
-            file_list = tree.get_canonical_inventory_paths(file_list)
 
         tree.lock_write()
         try:
@@ -2463,8 +2464,6 @@ class cmd_commit(Command):
             # as just default commit in that tree, and succeed even though
             # selected-file merge commit is not done yet
             selected_list = []
-        if selected_list:
-            selected_list = tree.get_canonical_inventory_paths(selected_list)
 
         if fixes is None:
             fixes = []
