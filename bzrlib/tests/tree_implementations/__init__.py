@@ -54,6 +54,7 @@ from bzrlib.workingtree import (
 from bzrlib.workingtree_4 import (
     DirStateRevisionTree,
     WorkingTreeFormat4,
+    WorkingTreeFormat5,
     )
 
 
@@ -346,6 +347,9 @@ class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
         self.scenarios.append(self.create_tree_scenario(
             DirStateRevisionTree.__name__, _dirstate_tree_from_workingtree,
             WorkingTreeFormat4()))
+        self.scenarios.append(self.create_tree_scenario(
+            DirStateRevisionTree.__name__, _dirstate_tree_from_workingtree,
+            WorkingTreeFormat5()))
         self.scenarios.append(self.create_tree_scenario('PreviewTree',
             preview_tree_pre))
         self.scenarios.append(self.create_tree_scenario('PreviewTreePost',

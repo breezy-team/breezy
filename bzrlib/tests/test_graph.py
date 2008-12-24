@@ -1413,6 +1413,70 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
 
 
+class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
+    """Test the behaviour when parents are provided that were not requested."""
+
+    def setUp(self):
+        super(TestCachingParentsProviderExtras, self).setUp()
+        class ExtraParentsProvider(object):
+
+            def get_parent_map(self, keys):
+                return {'rev1': [], 'rev2': ['rev1',]}
+
+        self.inst_pp = InstrumentedParentsProvider(ExtraParentsProvider())
+        self.caching_pp = _mod_graph.CachingParentsProvider(
+            get_parent_map=self.inst_pp.get_parent_map)
+
+    def test_uncached(self):
+        self.caching_pp.disable_cache()
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertIs(None, self.caching_pp._cache)
+
+    def test_cache_initially_empty(self):
+        self.assertEqual({}, self.caching_pp._cache)
+
+    def test_cached(self):
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertEqual({'rev1': [], 'rev2': ['rev1']},
+                         self.caching_pp._cache)
+        self.assertEqual({'rev1': []},
+                          self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+
+    def test_disable_cache_clears_cache(self):
+        # Put something in the cache
+        self.caching_pp.get_parent_map(['rev1'])
+        self.assertEqual(2, len(self.caching_pp._cache))
+        self.caching_pp.disable_cache()
+        self.assertIs(None, self.caching_pp._cache)
+
+    def test_enable_cache_raises(self):
+        e = self.assertRaises(AssertionError, self.caching_pp.enable_cache)
+        self.assertEqual('Cache enabled when already enabled.', str(e))
+
+    def test_cache_misses(self):
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+    def test_no_cache_misses(self):
+        self.caching_pp.disable_cache()
+        self.caching_pp.enable_cache(cache_misses=False)
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3', 'rev3'], self.inst_pp.calls)
+
+    def test_cache_extras(self):
+        self.assertEqual({}, self.caching_pp.get_parent_map(['rev3']))
+        self.assertEqual({'rev2': ['rev1']},
+                         self.caching_pp.get_parent_map(['rev2']))
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+
 class TestCollapseLinearRegions(tests.TestCase):
 
     def assertCollapsed(self, collapsed, original):

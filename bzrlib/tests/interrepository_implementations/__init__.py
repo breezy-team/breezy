@@ -122,6 +122,9 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
         result.append((InterKnitRepo,
                        pack_repo.RepositoryFormatKnitPack3(),
                        knitrepo.RepositoryFormatKnit3()))
+        result.append((InterKnitRepo,
+                       pack_repo.RepositoryFormatKnitPack3(),
+                       pack_repo.RepositoryFormatKnitPack4()))
         return result
 
 
