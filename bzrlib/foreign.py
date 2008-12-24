@@ -13,10 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
 """Foreign branch utilities."""
+
 
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
+from bzrlib.repository import Repository
 from bzrlib.revision import Revision
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
