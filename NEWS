@@ -97,6 +97,9 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * New ``ForeignRepository`` base class, to help with foreign branch 
+      support (e.g. svn).  (Jelmer Vernooij)
+
     * ``node_distances`` and ``select_farthest`` can no longer be imported
       from ``bzrlib.graph``.  They can still be imported from
       ``bzrlib.deprecated_graph``, which has been the preferred way to
