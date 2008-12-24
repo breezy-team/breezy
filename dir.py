@@ -189,5 +189,8 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
         git.repo.Repo.create(transport.local_abspath(".")) 
         return self.open(transport)
 
+    def is_supported(self):
+        return True
+
 
 bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)

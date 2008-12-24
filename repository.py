@@ -131,6 +131,10 @@ class GitRepository(ForeignRepository):
         ancestry.reverse()
         return ancestry
 
+    def _warn_if_deprecated(self):
+        # This class isn't deprecated
+        pass
+
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
@@ -284,6 +288,13 @@ class GitRevisionTree(revisiontree.RevisionTree):
 class GitFormat(object):
 
     supports_tree_reference = False
+    rich_root_data = True
 
     def get_format_description(self):
         return "Git Repository"
+
+    def initialize(self, url, shared=False, _internal=False):
+        raise bzr_errors.UninitializableFormat(self)
+
+    def check_conversion_target(self, target_repo_format):
+        return target_repo_format.rich_root_data
