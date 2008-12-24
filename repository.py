@@ -178,7 +178,7 @@ class GitRepository(ForeignRepository):
             return True
 
     def get_revisions(self, revids):
-        return (self.get_revision(r) for r in revids)
+        return [self.get_revision(r) for r in revids]
 
     @classmethod
     def _parse_rev(klass, commit, mapping):
