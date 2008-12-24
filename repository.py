@@ -23,6 +23,7 @@ import bzrlib
 from bzrlib import (
     deprecated_graph,
     errors,
+    graph,
     inventory,
     osutils,
     repository,
@@ -34,6 +35,7 @@ from bzrlib import (
 from bzrlib.foreign import (
         ForeignRevision,
         )
+from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.git.foreign import (
@@ -60,6 +62,9 @@ class GitRepository(ForeignRepository):
     _serializer = None
 
     def __init__(self, gitdir, lockfiles):
+        # FIXME: This also caches negatives. Need to be more careful 
+        # about this once we start writing to git
+        self._parents_provider = graph.CachingParentsProvider(self)
         ForeignRepository.__init__(self, GitFormat(), gitdir, lockfiles)
         self.base = gitdir.root_transport.base
         self.bzrdir = gitdir
@@ -91,8 +96,13 @@ class GitRepository(ForeignRepository):
     #    diff = self._git.diff(ids.convert_revision_id_bzr_to_git(parent_revid),
     #                   ids.convert_revision_id_bzr_to_git(revision_id))
 
+    def _make_parents_provider(self):
+        """See Repository._make_parents_provider()."""
+        return self._parents_provider
+
     def get_parent_map(self, revids):
         parent_map = {}
+        mutter("get_parent_map(%r)", revids)
         for revision_id in revids:
             assert isinstance(revision_id, str)
             if revision_id == revision.NULL_REVISION:
@@ -175,10 +185,11 @@ class GitRepository(ForeignRepository):
         if commit is None:
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, mapping, mapping.revision_id_foreign_to_bzr(commit.id))
-        rev.parent_ids = tuple([mapping.revision_id_foreign_to_bzr(p.id) for p in commit.parents])
+        rev.parent_ids = tuple([mapping.revision_id_foreign_to_bzr(p) for p in commit.parents])
         rev.message = commit.message.decode("utf-8", "replace")
         rev.committer = str(commit.committer).decode("utf-8", "replace")
-        rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
+        if commit.committer != commit.author:
+            rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
         rev.timestamp = commit.commit_time
         rev.timezone = 0
         return rev
