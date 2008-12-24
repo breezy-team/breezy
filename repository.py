@@ -69,42 +69,57 @@ class GitRepository(ForeignRepository):
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self.tags = GitTags(self._git.get_tags())
 
-    def _all_revision_ids(self):
-        if self._git.heads == []:
-            return set()
-        ret = set()
-        skip = 0
-        max_count = 1000
-        cms = None
-        while cms != []:
-            cms = self._git.commits("--all", max_count=max_count, skip=skip)
-            skip += max_count
-            ret.update([self.get_mapping().revision_id_foreign_to_bzr(cm.id) for cm in cms])
+    def all_revision_ids(self):
+        ret = set([revision.NULL_REVISION])
+        if self._git.heads() == []:
+            return ret
+        bzr_heads = [self.get_mapping().revision_id_foreign_to_bzr(h) for h in self._git.heads()]
+        ret = set(bzr_heads)
+        graph = self.get_graph()
+        for rev, parents in graph.iter_ancestry(bzr_heads):
+            ret.add(rev)
         return ret
 
     def is_shared(self):
         return True
 
     def supports_rich_root(self):
-        return False
+        return True
 
     #def get_revision_delta(self, revision_id):
     #    parent_revid = self.get_revision(revision_id).parent_ids[0]
     #    diff = self._git.diff(ids.convert_revision_id_bzr_to_git(parent_revid),
     #                   ids.convert_revision_id_bzr_to_git(revision_id))
 
-    def get_ancestry(self, revision_id):
-        revision_id = revision.ensure_null(revision_id)
-        ret = []
-        if revision_id != revision.NULL_REVISION:
-            skip = 0
-            max_count = 1000
-            cms = None
-            while cms != []:
-                cms = self._git.commits(self.lookup_git_revid(revision_id, self.get_mapping()), max_count=max_count, skip=skip)
-                skip += max_count
-                ret += [self.get_mapping().revision_id_foreign_to_bzr(cm.id) for cm in cms]
-        return [None] + ret
+    def get_parent_map(self, revids):
+        parent_map = {}
+        for revision_id in revids:
+            assert isinstance(revision_id, str)
+            if revision_id == revision.NULL_REVISION:
+                parent_map[revision_id] = ()
+                continue
+            hexsha = self.lookup_git_revid(revision_id, self.get_mapping())
+            commit  = self._git.commit(hexsha)
+            if commit is None:
+                continue
+            else:
+                parent_map[revision_id] = [self.get_mapping().revision_id_foreign_to_bzr(p) for p in commit.parents]
+        return parent_map
+
+    def get_ancestry(self, revision_id, topo_sorted=True):
+        """See Repository.get_ancestry().
+        """
+        if revision_id is None:
+            return self._all_revision_ids()
+        assert isinstance(revision_id, str)
+        ancestry = []
+        graph = self.get_graph()
+        for rev, parents in graph.iter_ancestry([revision_id]):
+            if rev == revision.NULL_REVISION:
+                rev = None
+            ancestry.append(rev)
+        ancestry.reverse()
+        return ancestry
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
@@ -124,28 +139,20 @@ class GitRepository(ForeignRepository):
     def get_mapping(self):
         return default_mapping
 
-    def get_parent_map(self, revision_ids):
-        ret = {}
-        for revid in revision_ids:
-            if revid == revision.NULL_REVISION:
-                ret[revid] = ()
-            else:
-                git_commit_id = self.lookup_git_revid(revid, self.get_mapping())
-                commit = self._git.commit(git_commit_id)
-                ret[revid] = tuple([self.get_mapping().revision_id_foreign_to_bzr(p.id) for p in commit.parents])
-        return ret
-
     def lookup_git_revid(self, bzr_revid, mapping):
         try:
             return mapping.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
-            raise errors.NoSuchRevision(bzr_revid, self)
+            raise errors.NoSuchRevision(self, bzr_revid)
 
     def get_revision(self, revision_id):
         git_commit_id = self.lookup_git_revid(revision_id, self.get_mapping())
         commit = self._git.commit(git_commit_id)
         # print "fetched revision:", git_commit_id
+        if commit is None:
+            raise errors.NoSuchRevision(self, revision_id)
         revision = self._parse_rev(commit, self.get_mapping())
+        assert revision is not None
         return revision
 
     def has_revision(self, revision_id):
@@ -156,8 +163,8 @@ class GitRepository(ForeignRepository):
         else:
             return True
 
-    def get_revisions(self, revisions):
-        return [self.get_revision(r) for r in revisions]
+    def get_revisions(self, revids):
+        return (self.get_revision(r) for r in revids)
 
     @classmethod
     def _parse_rev(klass, commit, mapping):

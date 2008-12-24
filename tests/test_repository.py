@@ -134,9 +134,8 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.git_repo = Repository.open(self.test_dir)
 
     def test_supports_rich_root(self):
-        # GitRepository.supports_rich_root is False, at least for now.
         repo = self.git_repo
-        self.assertEqual(repo.supports_rich_root(), False)
+        self.assertEqual(repo.supports_rich_root(), True)
 
     def test_get_signature_text(self):
         self.assertRaises(errors.NoSuchRevision, self.git_repo.get_signature_text, revision.NULL_REVISION)
