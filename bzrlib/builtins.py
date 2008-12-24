@@ -147,6 +147,18 @@ def safe_relpath_files(tree, file_list, apply_view=True):
     return new_list
 
 
+def _get_view_info_for_change_reporter(tree):
+    """Get the view information from a tree for change reporting."""
+    view_info = None
+    try:
+        current_view = tree.views.get_view_info()[0]
+        if current_view is not None:
+            view_info = (current_view, tree.views.lookup_view())
+    except errors.ViewsNotSupported:
+        pass
+    return view_info
+
+
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of
@@ -808,8 +820,9 @@ class cmd_pull(Command):
         branch_to.lock_write()
         try:
             if tree_to is not None:
+                view_info = _get_view_info_for_change_reporter(tree_to)
                 change_reporter = delta._ChangeReporter(
-                    unversioned_filter=tree_to.is_ignored)
+                    unversioned_filter=tree_to.is_ignored, view_info=view_info)
                 result = tree_to.pull(branch_from, overwrite, revision_id,
                                       change_reporter,
                                       possible_transports=possible_transports)
@@ -1170,9 +1183,10 @@ class cmd_update(Command):
                     revno = tree.branch.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
+            view_info = _get_view_info_for_change_reporter(tree)
             conflicts = tree.update(
-                delta._ChangeReporter(unversioned_filter=tree.is_ignored),
-                possible_transports=possible_transports)
+                delta._ChangeReporter(unversioned_filter=tree.is_ignored,
+                view_info=view_info), possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
             note('Updated to revision %d.' % (revno,))
@@ -3045,8 +3059,9 @@ class cmd_merge(Command):
         allow_pending = True
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
+        view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
-            unversioned_filter=tree.is_ignored)
+            unversioned_filter=tree.is_ignored, view_info=view_info)
         cleanups = []
         try:
             pb = ui.ui_factory.nested_progress_bar()
