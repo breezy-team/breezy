@@ -14,6 +14,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * Progress bars now show the rate of activity for some sftp 
+     operations, and they are drawn different.  (Martin Pool, #172741)
+
   BUG FIXES:
   
    * Allow BzrDir implementation to implement backing up of 
@@ -38,6 +41,9 @@ IN DEVELOPMENT
   TESTING:
 
   INTERNALS:
+
+    * The progress and UI classes have changed; the main APIs remain the
+      same.  (Martin Pool)
 
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.

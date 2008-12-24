@@ -1,4 +1,3 @@
-# Copyright (C) 2005 Aaron Bentley <aaron.bentley@utoronto.ca>
 # Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -32,6 +31,7 @@ bzrlib it really is best to use bzrlib.ui.ui_factory.
 import sys
 import time
 import os
+import warnings
 
 
 from bzrlib import (
@@ -65,27 +65,40 @@ class ProgressTask(object):
 
     Most code that needs to indicate progress should update one of these, 
     and it will in turn update the display, if one is present.
+
+    Code updating the task may also set fields as hints about how to display
+    it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
+    will not necessarily respect all these fields.
     """
 
-    def __init__(self, parent_task=None):
+    def __init__(self, parent_task=None, ui_factory=None):
         self._parent_task = parent_task
         self._last_update = 0
         self.total_cnt = None
         self.current_cnt = None
         self.msg = ''
+        self.ui_factory = ui_factory
+        self.show_pct = False
+        self.show_spinner = True
+        self.show_eta = False,
+        self.show_count = True
+        self.show_bar = True
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         self.msg = msg
         self.current_cnt = current_cnt
         if total_cnt:
             self.total_cnt = total_cnt
-        ui.ui_factory.show_progress(self)
+        self.ui_factory.show_progress(self)
+
+    def tick(self):
+        self.update(self.msg)
 
     def finished(self):
-        ui.ui_factory.progress_finished(self)
+        self.ui_factory.progress_finished(self)
 
     def make_sub_task(self):
-        return ProgressTask(parent_task=self)
+        return ProgressTask(self, self.ui_factory)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
@@ -102,15 +115,14 @@ class ProgressTask(object):
                 own_fraction = 0.0
             return self._parent_task._overall_completion_fraction(own_fraction)
 
-    def note(self, fmt_string, *args, **kwargs):
+    def note(self, fmt_string, *args):
         """Record a note without disrupting the progress bar."""
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        ui.ui_factory.clear_term()
-        trace.note(fmt_string % args)
+        self.ui_factory.note(fmt_string % args)
 
     def clear(self):
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        ui.ui_factory.clear_term()
+        self.ui_factory.clear_term()
 
 
 def ProgressBar(to_file=None, **kwargs):
@@ -134,99 +146,6 @@ def ProgressBar(to_file=None, **kwargs):
             raise errors.InvalidProgressBarType(requested_bar_type,
                                                 _progress_bar_types.keys())
         return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
-
-
-
-class TextProgressView(object):
-    """Display of progress bar and other information on a tty.
-    
-    This shows one line of text, including possibly a network indicator, spinner, 
-    progress bar, message, etc.
-
-    One instance of this is created and held by the UI, and fed updates when a
-    task wants to be painted.
-    """
-
-    def __init__(self, term_file):
-        self._term_file = term_file
-        # true when there's output on the screen we may need to clear
-        self._have_output = False
-        self._width = osutils.terminal_width()
-        self._last_transport_msg = ''
-        self._spin_pos = 0
-        self._last_update = 0
-        self._transport_update_time = 0
-        self._task_fraction = None
-        self._last_task = None
-
-    def _show_line(self, s):
-        n = self._width - 1
-        self._term_file.write('\r%-*.*s\r' % (n, n, s))
-
-    def clear(self):
-        if self._have_output:
-            self._show_line('')
-        self._have_output = False
-
-    def _render_bar(self):
-        # return a string for the progress bar itself
-        spin_str =  r'/-\|'[self._spin_pos % 4]
-        self._spin_pos += 1
-        f = self._task_fraction or 0
-        cols = 20
-        # number of markers highlighted in bar
-        markers = int(round(float(cols) * f)) - 1
-        bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
-        return bar_str
-
-    def _format_task(self, task):
-        if task.total_cnt is not None:
-            s = ' %d/%d' % (task.current_cnt, task.total_cnt)
-        elif task.current_cnt is not None:
-            s = ' %d' % (task.current_cnt)
-        else:
-            s = ''
-        self._task_fraction = task._overall_completion_fraction()
-        # compose all the parent messages
-        t = task
-        m = task.msg
-        while t._parent_task:
-            t = t._parent_task
-            if t.msg:
-                m = t.msg + ':' + m
-        return m + s
-
-    def _repaint(self):
-        now = time.time()
-        if now < self._last_update + 0.1:
-            return
-        if now > self._transport_update_time + 5:
-            # no recent activity; expire it
-            self._last_transport_msg = ''
-        self._last_update = now
-        bar_string = self._render_bar()
-        if self._last_task:
-            task_msg = self._format_task(self._last_task)
-        else:
-            task_msg = ''
-        trans = self._last_transport_msg
-        if trans:
-            trans += ' | '
-        s = (bar_string
-             + trans
-             + task_msg
-             )
-        self._show_line(s)
-        self._have_output = True
-
-    def show_progress(self, task):
-        self._last_task = task
-        self._repaint()
-
-    def show_transport_activity(self, msg):
-        self._last_transport_msg = msg
-        self._transport_update_time = time.time()
-        self._repaint()
 
 
 class ProgressBarStack(object):
@@ -288,8 +207,9 @@ class ProgressBarStack(object):
     def return_pb(self, bar):
         """Return bar after its been used."""
         if bar is not self._stack[-1]:
-            raise errors.MissingProgressBarFinish()
-        self._stack.pop()
+            warnings.warn("%r is not currently active" % (bar,))
+        else:
+            self._stack.pop()
 
  
 class _BaseProgressBar(object):
@@ -347,6 +267,7 @@ class DummyProgress(_BaseProgressBar):
 
     This can be used as the default argument for methods that
     take an optional progress indicator."""
+
     def tick(self):
         pass
 
@@ -423,13 +344,11 @@ class TTYProgressBar(_BaseProgressBar):
         from bzrlib.osutils import terminal_width
         _BaseProgressBar.__init__(self, **kwargs)
         self.spin_pos = 0
-        # XXX: We could listen for SIGWINCH and update the terminal width...
         self.width = terminal_width()
         self.last_updates = []
         self._max_last_updates = 10
         self.child_fraction = 0
         self._have_output = False
-        self._last_transport_msg = ''
     
     def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
@@ -467,12 +386,9 @@ class TTYProgressBar(_BaseProgressBar):
         self.tick()
 
     def update(self, msg, current_cnt=None, total_cnt=None,
-               child_fraction=0, transport_msg=None):
+            child_fraction=0):
         """Update and redraw progress bar.
-        
-        :param transport_msg: A short message inserted into the string to 
-            show the state of network activity.
-            """
+        """
         if msg is None:
             msg = self.last_msg
 
@@ -498,8 +414,6 @@ class TTYProgressBar(_BaseProgressBar):
         ##     self.child_fraction == child_fraction):
         ##     return
 
-        if transport_msg is None:
-            transport_msg = self._last_transport_msg
         if msg is None:
             msg = ''
 
@@ -553,7 +467,7 @@ class TTYProgressBar(_BaseProgressBar):
         if self.show_bar:
             # progress bar, if present, soaks up all remaining space
             cols = self.width - 1 - len(self.last_msg) - len(spin_str) - len(pct_str) \
-                   - len(eta_str) - len(count_str) - 3 - len(transport_msg)
+                   - len(eta_str) - len(count_str) - 3
 
             if self.last_total:
                 # number of markers highlighted in bar
@@ -572,7 +486,7 @@ class TTYProgressBar(_BaseProgressBar):
         else:
             bar_str = ''
 
-        m = spin_str + transport_msg + bar_str + self.last_msg + count_str \
+        m = spin_str + bar_str + self.last_msg + count_str \
             + pct_str + eta_str
         self.to_file.write('\r%-*.*s' % (self.width - 1, self.width - 1, m))
         self._have_output = True

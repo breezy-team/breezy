@@ -26,7 +26,9 @@ Set the ui_factory member to define the behaviour.  The default
 displays no output.
 """
 
+import os
 import sys
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -49,7 +51,6 @@ class UIFactory(object):
     """
 
     def __init__(self):
-        super(UIFactory, self).__init__()
         self._task_stack = []
 
     def get_password(self, prompt='', **kwargs):
@@ -74,16 +75,17 @@ class UIFactory(object):
         bar.finished().
         """
         if self._task_stack:
-            t = progress.ProgressTask(self._task_stack[-1])
+            t = progress.ProgressTask(self._task_stack[-1], self)
         else:
-            t = progress.ProgressTask()
+            t = progress.ProgressTask(None, self)
         self._task_stack.append(t)
         return t
 
     def progress_finished(self, task):
         if task != self._task_stack[-1]:
-            raise AssertionError()
-        del self._task_stack[-1]
+            warnings.warn("%r is not currently active" % (task,))
+        else:
+            del self._task_stack[-1]
 
     def clear_term(self):
         """Prepare the terminal for output.
@@ -125,11 +127,15 @@ class UIFactory(object):
 
 
 class CLIUIFactory(UIFactory):
-    """Common behaviour for command line UI factories."""
+    """Common behaviour for command line UI factories.
+    
+    This is suitable for dumb terminals that can't repaint existing text."""
 
-    def __init__(self):
-        super(CLIUIFactory, self).__init__()
-        self.stdin = sys.stdin
+    def __init__(self, stdin=None, stdout=None, stderr=None):
+        UIFactory.__init__(self)
+        self.stdin = stdin or sys.stdin
+        self.stdout = stdout or sys.stdout
+        self.stderr = stderr or sys.stderr
 
     def get_boolean(self, prompt):
         self.clear_term()
@@ -186,8 +192,15 @@ class SilentUIFactory(CLIUIFactory):
     This is the default UI, if another one is never registered.
     """
 
+    def __init__(self):
+        CLIUIFactory.__init__(self)
+
     def get_password(self, prompt='', **kwargs):
         return None
+
+
+    def note(self, msg):
+        pass
 
 
 def clear_decorator(func, *args, **kwargs):
@@ -199,3 +212,23 @@ def clear_decorator(func, *args, **kwargs):
 ui_factory = SilentUIFactory()
 """IMPORTANT: never import this symbol directly. ONLY ever access it as 
 ui.ui_factory."""
+
+
+def make_ui_for_terminal(stdin, stdout, stderr):
+    """Construct and return a suitable UIFactory for a text mode program.
+
+    If stdout is a smart terminal, this gets a smart UIFactory with 
+    progress indicators, etc.  If it's a dumb terminal, just plain text output.
+    """
+    isatty = getattr(stdin, 'isatty', None)
+    if isatty is None:
+        cls = CLIUIFactory
+    elif not isatty():
+        cls = CLIUIFactory
+    elif os.environ.get('TERM') in (None, 'dumb', ''):
+        # e.g. emacs compile window
+        cls = CLIUIFactory
+    else:
+        from bzrlib.ui.text import TextUIFactory
+        cls = TextUIFactory
+    return cls(stdin=stdin, stdout=stdout, stderr=stderr)
