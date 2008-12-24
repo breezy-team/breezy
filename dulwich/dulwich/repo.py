@@ -158,11 +158,11 @@ class Repo(object):
         continue
       i = 0
       for known_commit in history:
-        if known_commit.commit_time() > commit.commit_time():
+        if known_commit.commit_time > commit.commit_time:
           break
         i += 1
       history.insert(i, commit)
-      parents = commit.parents()
+      parents = commit.parents
       pending_commits += parents
     history.reverse()
     return history

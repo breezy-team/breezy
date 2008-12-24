@@ -60,15 +60,13 @@ class GitRepository(ForeignRepository):
     _serializer = None
 
     def __init__(self, gitdir, lockfiles):
+        ForeignRepository.__init__(self, GitFormat(), gitdir, lockfiles)
         self.base = gitdir.root_transport.base
         self.bzrdir = gitdir
-        self.control_files = lockfiles
         self._git = gitdir._git
         self.texts = None
         self.signatures = versionedfiles.VirtualSignatureTexts(self)
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
-        self._format = GitFormat()
-        self._fallback_repositories = []
         self.tags = GitTags(self._git.get_tags())
 
     def _all_revision_ids(self):
@@ -174,7 +172,7 @@ class GitRepository(ForeignRepository):
         rev.message = commit.message.decode("utf-8", "replace")
         rev.committer = str(commit.committer).decode("utf-8", "replace")
         rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
-        rev.timestamp = time.mktime(commit.committed_date)
+        rev.timestamp = commit.commit_time
         rev.timezone = 0
         return rev
 
@@ -227,9 +225,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if entry.kind == 'directory': return ""
         return self._repository._git.blob(entry.text_id).data
 
-    def _build_inventory(self, tree, ie, path):
+    def _build_inventory(self, tree_id, ie, path):
         assert isinstance(path, str)
-        for name, mode, hexsha in tree.entries():
+        tree = self._repository._git.get_tree(tree_id)
+        for mode, name, hexsha in tree.entries():
             basename = name.decode("utf-8")
             if path == "":
                 child_path = name

@@ -57,11 +57,12 @@ class GitLock(object):
 class GitLockableFiles(lockable_files.LockableFiles):
     """Git specific lockable files abstraction."""
 
-    def __init__(self, lock):
+    def __init__(self, transport, lock):
         self._lock = lock
         self._transaction = None
         self._lock_mode = None
         self._lock_count = 0
+        self._transport = transport
 
 
 class GitDir(bzrdir.BzrDir):
@@ -148,7 +149,7 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
             gitrepo = git.repo.Repo(transport.local_abspath("."))
         except errors.bzr_errors.NotLocalUrl:
             raise errors.bzr_errors.NotBranchError(path=transport.base)
-        lockfiles = GitLockableFiles(GitLock())
+        lockfiles = GitLockableFiles(transport, GitLock())
         return self._gitdir_class(transport, lockfiles, gitrepo, self)
 
     @classmethod
