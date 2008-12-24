@@ -462,7 +462,6 @@ class LeafNode(Node):
             elements = line.split('\x00', width)
             items[tuple(elements[:-1])] = elements[-1]
         if len(items) != length:
-            import pdb; pdb.set_trace()
             raise AssertionError("item count (%d) mismatch for key %s,"
                 " bytes %r" % (length, key, bytes))
         result._items = items
