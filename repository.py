@@ -73,6 +73,8 @@ class GitRepository(ForeignRepository):
         self.signatures = versionedfiles.VirtualSignatureTexts(self)
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self.tags = GitTags(self._git.get_tags())
+        from bzrlib.plugins.git import fetch
+        repository.InterRepository.register_optimiser(fetch.InterFromGitRepository)
 
     def all_revision_ids(self):
         ret = set([revision.NULL_REVISION])
