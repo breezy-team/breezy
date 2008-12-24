@@ -222,6 +222,7 @@ class _SFTPReadvHelper(object):
             if len(data) != length:
                 raise errors.ShortReadvError(self.relpath,
                     start, length, len(data))
+            self._report_activity(length, 'read')
             if last_end is None:
                 # This is the first request, just buffer it
                 buffered_data = [data]
@@ -269,7 +270,6 @@ class _SFTPReadvHelper(object):
                     # Move the start-of-buffer pointer
                     input_start += cur_size
                     # Yield the requested data
-                    self._report_activity(len(cur_data), 'read')
                     yield cur_offset, cur_data
                     cur_offset, cur_size = offset_iter.next()
                 # at this point, we've consumed as much of buffered as we can,
@@ -316,7 +316,6 @@ class _SFTPReadvHelper(object):
                     raise AssertionError('We must have miscalulated.'
                         ' We expected %d bytes, but only found %d'
                         % (cur_size, len(data)))
-                self._report_activity(len(data), 'read')
                 yield cur_offset, data
                 cur_offset, cur_size = offset_iter.next()
 
