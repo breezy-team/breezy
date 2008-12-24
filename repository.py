@@ -151,7 +151,7 @@ class GitRepository(ForeignRepository):
     def has_revision(self, revision_id):
         try:
             self.get_revision(revision_id)
-        except NoSuchRevision:
+        except errors.NoSuchRevision:
             return False
         else:
             return True
@@ -223,7 +223,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def get_file_text(self, file_id):
         entry = self._inventory[file_id]
         if entry.kind == 'directory': return ""
-        return self._repository._git.blob(entry.text_id).data
+        return self._repository._git.get_blob(entry.text_id).data
 
     def _build_inventory(self, tree_id, ie, path):
         assert isinstance(path, str)
@@ -235,28 +235,32 @@ class GitRevisionTree(revisiontree.RevisionTree):
             else:
                 child_path = urlutils.join(path, name)
             file_id = escape_file_id(child_path.encode('utf-8'))
-            if mode[0] == '0':
+            entry_kind = (mode & 0700000) / 0100000
+            if entry_kind == 0:
                 child_ie = inventory.InventoryDirectory(file_id, basename, ie.file_id)
-            elif mode[0] == '1':
-                if mode[1] == '0':
+            elif entry_kind == 1:
+                file_kind = (mode & 070000) / 010000
+                b = self._repository._git.get_blob(hexsha)
+                if file_kind == 0:
                     child_ie = inventory.InventoryFile(file_id, basename, ie.file_id)
                     child_ie.text_sha1 = osutils.sha_string(b.data)
-                elif mode[1] == '2':
+                elif file_kind == 2:
                     child_ie = inventory.InventoryLink(file_id, basename, ie.file_id)
                     child_ie.text_sha1 = osutils.sha_string("")
                 else:
                     raise AssertionError(
-                        "Unknown file kind, perms=%r." % (mode,))
+                        "Unknown file kind, perms=%o." % (mode,))
                 child_ie.text_id = b.id
-                child_ie.text_size = b.size
+                child_ie.text_size = len(b.data)
             else:
                 raise AssertionError(
                     "Unknown blob kind, perms=%r." % (mode,))
-            child_ie.executable = bool(int(mode[3:], 8) & 0111)
+            fs_mode = mode & 0777
+            child_ie.executable = bool(fs_mode & 0111)
             child_ie.revision = self.revision_id
             self._inventory.add(child_ie)
-            if mode[0] == '0':
-                self._build_inventory(b, child_ie, child_path)
+            if entry_kind == 0:
+                self._build_inventory(hexsha, child_ie, child_path)
 
 
 class GitFormat(object):

@@ -53,6 +53,9 @@ class GitLock(object):
     def peek(self):
         pass
 
+    def validate_token(self, token):
+        pass
+
 
 class GitLockableFiles(lockable_files.LockableFiles):
     """Git specific lockable files abstraction."""
