@@ -167,16 +167,6 @@ class CLIUIFactory(UIFactory):
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
 
-
-class SilentUIFactory(CLIUIFactory):
-    """A UI Factory which never prints anything.
-
-    This is the default UI, if another one is never registered.
-    """
-
-    def get_password(self, prompt='', **kwargs):
-        return None
-
     def clear_term(self):
         pass
 
@@ -188,6 +178,17 @@ class SilentUIFactory(CLIUIFactory):
 
     def progress_finished(self, task):
         pass
+
+
+class SilentUIFactory(CLIUIFactory):
+    """A UI Factory which never prints anything.
+
+    This is the default UI, if another one is never registered.
+    """
+
+    def get_password(self, prompt='', **kwargs):
+        return None
+
 
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""
