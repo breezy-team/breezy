@@ -35,9 +35,10 @@ a pointer in to the corresponding packfile.
 
 from collections import defaultdict
 import hashlib
-from itertools import izip
+from itertools import imap, izip
 import mmap
 import os
+import sha
 import struct
 import sys
 import zlib
@@ -71,6 +72,13 @@ def read_zlib(data, offset, dec_size):
     assert len(x) == dec_size
     comp_len = fed-len(obj.unused_data)
     return x, comp_len
+
+
+def iter_sha1(iter):
+    sha = hashlib.sha1()
+    for name in iter:
+        sha.update(name)
+    return sha.hexdigest()
 
 
 def hex_to_sha(hex):
@@ -144,7 +152,7 @@ def resolve_object(offset, type, obj, get_ref, get_offset):
      (basename, delta) = obj
      assert isinstance(basename, str) and len(basename) == 20
      assert isinstance(delta, str)
-     type, base_obj= get_ref(basename)
+     type, base_obj = get_ref(basename)
      assert isinstance(type, int)
   type, base_text = resolve_object(offset, type, base_obj, get_ref, get_offset)
   return type, apply_delta(base_text, delta)
@@ -241,8 +249,14 @@ class PackIndex(object):
                                   self._crc32_table_offset + i * 4)[0]
 
   def __iter__(self):
+      return imap(sha_to_hex, self._itersha())
+
+  def _itersha(self):
     for i in range(len(self)):
-        yield sha_to_hex(self._unpack_name(i))
+        yield self._unpack_name(i)
+
+  def objects_sha1(self):
+    return iter_sha1(self._itersha())
 
   def iterentries(self):
     """Iterate over the entries in this pack index.
@@ -348,6 +362,7 @@ class PackData(object):
     self._filename = filename
     assert os.path.exists(filename), "%s is not a packfile" % filename
     self._size = os.path.getsize(filename)
+    assert self._size >= 12, "%s is too small for a packfile" % filename
     self._header_size = self._read_header()
 
   def _read_header(self):
@@ -388,30 +403,48 @@ class PackData(object):
 
   def iterentries(self):
     found = {}
-    postponed = list(self.iterobjects())
-    while postponed:
-      (offset, type, obj) = postponed.pop(0)
+    at = {}
+    postponed = defaultdict(list)
+    class Postpone(Exception):
+        """Raised to postpone delta resolving."""
+        
+    def get_ref_text(sha):
+        if sha in found:
+            return found[sha]
+        raise Postpone, (sha, )
+    todo = list(self.iterobjects())
+    while todo:
+      (offset, type, obj) = todo.pop(0)
+      at[offset] = (type, obj)
       assert isinstance(offset, int)
       assert isinstance(type, int)
       assert isinstance(obj, tuple) or isinstance(obj, str)
       try:
-        type, obj = resolve_object(offset, type, obj, found.__getitem__, 
-            self.get_object_at)
-      except KeyError:
-        postponed.append((offset, type, obj))
+        type, obj = resolve_object(offset, type, obj, get_ref_text,
+            at.__getitem__)
+      except Postpone, (sha, ):
+        postponed[sha].append((offset, type, obj))
       else:
         shafile = ShaFile.from_raw_string(type, obj)
         sha = shafile.sha().digest()
         found[sha] = (type, obj)
         yield sha, offset, shafile.crc32()
+        todo += postponed.get(sha, [])
+    if postponed:
+        raise KeyError([sha_to_hex(h) for h in postponed.keys()])
+
+  def sorted_entries(self):
+    ret = list(self.iterentries())
+    ret.sort()
+    return ret
 
   def create_index_v1(self, filename):
-    entries = list(self.iterentries())
+    entries = self.sorted_entries()
     write_pack_index_v1(filename, entries, self.calculate_checksum())
 
   def create_index_v2(self, filename):
-    entries = list(self.iterentries())
-    write_pack_index_v1(filename, entries, self.calculate_checksum())
+    entries = self.sorted_entries()
+    write_pack_index_v2(filename, entries, self.calculate_checksum())
 
   def get_stored_checksum(self):
     return self._stored_checksum
@@ -479,10 +512,14 @@ class SHA1Writer(object):
         self.sha1.update(data)
         self.f.write(data)
 
-    def close(self):
+    def write_sha(self):
         sha = self.sha1.digest()
         assert len(sha) == 20
         self.f.write(sha)
+        return sha
+
+    def close(self):
+        sha = self.write_sha()
         self.f.close()
         return sha
 
@@ -524,24 +561,28 @@ def write_pack_object(f, type, object):
     return f.tell()
 
 
-def write_pack(filename, objects):
-    entries, data_sum = write_pack_data(filename + ".pack", objects)
+def write_pack(filename, objects, num_objects):
+    f = open(filename + ".pack", 'w')
+    try:
+        entries, data_sum = write_pack_data(f, objects, num_objects)
+    except:
+        f.close()
+    entries.sort()
     write_pack_index_v2(filename + ".idx", entries, data_sum)
 
 
-def write_pack_data(filename, objects):
+def write_pack_data(f, objects, num_objects):
     """Write a new pack file.
 
     :param filename: The filename of the new pack file.
     :param objects: List of objects to write.
     :return: List with (name, offset, crc32 checksum) entries, pack checksum
     """
-    f = open(filename, 'w')
     entries = []
     f = SHA1Writer(f)
     f.write("PACK")               # Pack header
     f.write(struct.pack(">L", 2)) # Pack version
-    f.write(struct.pack(">L", len(objects))) # Number of objects in pack
+    f.write(struct.pack(">L", num_objects)) # Number of objects in pack
     for o in objects:
         sha1 = o.sha().digest()
         crc32 = o.crc32()
@@ -549,7 +590,7 @@ def write_pack_data(filename, objects):
         t, o = o.as_raw_string()
         offset = write_pack_object(f, t, o)
         entries.append((sha1, offset, crc32))
-    return entries, f.close()
+    return entries, f.write_sha()
 
 
 def write_pack_index_v1(filename, entries, pack_checksum):
@@ -560,9 +601,6 @@ def write_pack_index_v1(filename, entries, pack_checksum):
             crc32_checksum.
     :param pack_checksum: Checksum of the pack file.
     """
-    # Sort entries first
-
-    entries = sorted(entries)
     f = open(filename, 'w')
     f = SHA1Writer(f)
     fan_out_table = defaultdict(lambda: 0)
@@ -644,8 +682,6 @@ def write_pack_index_v2(filename, entries, pack_checksum):
             crc32_checksum.
     :param pack_checksum: Checksum of the pack file.
     """
-    # Sort entries first
-    entries = sorted(entries)
     f = open(filename, 'w')
     f = SHA1Writer(f)
     f.write('\377tOc')
@@ -660,7 +696,7 @@ def write_pack_index_v2(filename, entries, pack_checksum):
     for (name, offset, entry_checksum) in entries:
         f.write(name)
     for (name, offset, entry_checksum) in entries:
-        f.write(struct.pack(">L", entry_checksum))
+        f.write(struct.pack(">l", entry_checksum))
     for (name, offset, entry_checksum) in entries:
         # FIXME: handle if MSBit is set in offset
         f.write(struct.pack(">L", offset))
@@ -674,13 +710,18 @@ class Pack(object):
 
     def __init__(self, basename):
         self._basename = basename
+        self._data_path = self._basename + ".pack"
+        self._idx_path = self._basename + ".idx"
         self._data = None
         self._idx = None
+
+    def name(self):
+        return self.idx.objects_sha1()
 
     @property
     def data(self):
         if self._data is None:
-            self._data = PackData(self._basename + ".pack")
+            self._data = PackData(self._data_path)
             assert len(self.idx) == len(self._data)
             assert self.idx.get_stored_checksums()[0] == self._data.get_stored_checksum()
         return self._data
@@ -688,7 +729,7 @@ class Pack(object):
     @property
     def idx(self):
         if self._idx is None:
-            self._idx = PackIndex(self._basename + ".idx")
+            self._idx = PackIndex(self._idx_path)
         return self._idx
 
     def close(self):
@@ -747,5 +788,5 @@ def load_packs(path):
     if not os.path.exists(path):
         return
     for name in os.listdir(path):
-        if name.endswith(".pack"):
+        if name.startswith("pack-") and name.endswith(".pack"):
             yield Pack(os.path.join(path, name[:-len(".pack")]))

@@ -162,7 +162,7 @@ class TestPack(PackTests):
 
     def test_copy(self):
         p = self.get_pack(pack1_sha)
-        write_pack("testcopy", list(p.iterobjects()))
+        write_pack("testcopy", p.iterobjects(), len(p))
         self.assertEquals(p, Pack("testcopy"))
 
     def test_commit_obj(self):
@@ -170,6 +170,10 @@ class TestPack(PackTests):
         commit = p[commit_sha]
         self.assertEquals("James Westby <jw+debian@jameswestby.net>", commit.author)
         self.assertEquals([], commit.parents)
+
+    def test_name(self):
+        p = self.get_pack(pack1_sha)
+        self.assertEquals(pack1_sha, p.name())
 
 
 class TestHexToSha(unittest.TestCase):
@@ -194,6 +198,7 @@ class TestPackIndexWriting(object):
     def test_single(self):
         pack_checksum = 'r\x19\x80\xe8f\xaf\x9a_\x93\xadgAD\xe1E\x9b\x8b\xa3\xe7\xb7'
         my_entries = [('og\x0c\x0f\xb5?\x94cv\x0br\x95\xfb\xb8\x14\xe9e\xfb \xc8', 178, 42)]
+        my_entries.sort()
         self._write_fn("single.idx", my_entries, pack_checksum)
         idx = PackIndex("single.idx")
         self.assertEquals(idx.version, self._expected_version)

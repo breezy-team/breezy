@@ -26,7 +26,8 @@ from objects import (ShaFile,
                      Tree,
                      Blob,
                      )
-from pack import load_packs
+from pack import load_packs, iter_sha1, PackData, write_pack_index_v2
+import tempfile
 
 OBJECTDIR = 'objects'
 PACKDIR = 'pack'
@@ -65,6 +66,21 @@ class Repo(object):
   def pack_dir(self):
     return os.path.join(self.object_dir(), PACKDIR)
 
+  def add_pack(self):
+    fd, path = tempfile.mkstemp(dir=self.pack_dir(), suffix=".pack")
+    f = os.fdopen(fd, 'w')
+    def commit():
+       if os.path.getsize(path) > 0:
+           self._move_in_pack(path)
+    return f, commit
+
+  def _move_in_pack(self, path):
+    p = PackData(path)
+    entries = p.sorted_entries()
+    basename = os.path.join(self.pack_dir(), "pack-%s" % iter_sha1(entry[0] for entry in entries))
+    write_pack_index_v2(basename+".idx", entries, p.calculate_checksum())
+    os.rename(path, basename + ".pack")
+
   def _get_packs(self):
     if self._packs is None:
         self._packs = list(load_packs(self.pack_dir()))
@@ -89,6 +105,16 @@ class Repo(object):
       file = os.path.join(self.basedir(), dir, name)
       if os.path.exists(file):
         return self._get_ref(file)
+
+  def set_ref(self, name, value):
+    file = os.path.join(self.basedir(), name)
+    open(file, 'w').write(value+"\n")
+
+  def remove_ref(self, name):
+    file = os.path.join(self.basedir(), name)
+    if os.path.exists(file):
+      os.remove(file)
+      return
 
   def get_tags(self):
     ret = {}
@@ -125,10 +151,13 @@ class Repo(object):
   def get_object(self, sha):
     return self._get_object(sha, ShaFile)
 
+  def get_parents(self, sha):
+    return self.commit(sha).parents
+
   def commit(self, sha):
     return self._get_object(sha, Commit)
 
-  def get_tree(self, sha):
+  def tree(self, sha):
     return self._get_object(sha, Tree)
 
   def get_blob(self, sha):
