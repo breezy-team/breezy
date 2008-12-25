@@ -182,6 +182,9 @@ class GitRepository(ForeignRepository):
     def get_revisions(self, revids):
         return [self.get_revision(r) for r in revids]
 
+    def fetch_pack(self, determine_wants, graph_walker, pack_write):
+        raise NotImplemented(self.fetch_pack)
+
     @classmethod
     def _parse_rev(klass, commit, mapping):
         """Convert a git commit to a bzr revision.
