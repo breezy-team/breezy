@@ -27,6 +27,7 @@ do
 	cd _playground
 	log="../$i.d-f-e-$(git describe).log"
 	sh -c 'time d2x -f git sandbox' 2>&1 |tee $log
+	darcs show repo --repodir sandbox |egrep -v 'Root|Cache|Default' >> $log
 	if diff_git sandbox >/dev/null; then
 		echo "ok, the result is correct" >> $log
 	else
