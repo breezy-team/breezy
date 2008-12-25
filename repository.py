@@ -251,7 +251,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _build_inventory(self, tree_id, ie, path):
         assert isinstance(path, str)
-        tree = self._repository._git.get_tree(tree_id)
+        tree = self._repository._git.tree(tree_id)
         for mode, name, hexsha in tree.entries():
             basename = name.decode("utf-8")
             if path == "":
