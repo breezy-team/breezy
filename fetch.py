@@ -14,9 +14,49 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.errors import InvalidRevisionId
 from bzrlib.repository import InterRepository
+from bzrlib.trace import info
 
 from bzrlib.plugins.git.repository import GitRepository, GitFormat
+
+from cStringIO import StringIO
+
+
+class BzrFetchGraphWalker(object):
+
+    def __init__(self, repository, mapping):
+        self.repository = repository
+        self.mapping = mapping
+        self.done = set()
+        self.heads = set(repository.all_revision_ids())
+        self.parents = {}
+
+    def ack(self, sha):
+        revid = self.mapping.revision_id_foreign_to_bzr(sha)
+        self.remove(revid)
+
+    def remove(self, revid):
+        self.done.add(revid)
+        if ref in self.heads:
+            self.heads.remove(revid)
+        if revid in self.parents:
+            for p in self.parents[revid]:
+                self.remove(p)
+
+    def next(self):
+        while self.heads:
+            ret = self.heads.pop()
+            ps = self.repository.get_parent_map([ret])[ret]
+            self.parents[ret] = ps
+            self.heads.update([p for p in ps if not p in self.done])
+            try:
+                self.done.add(ret)
+                return self.mapping.revision_id_bzr_to_foreign(ret)
+            except InvalidRevisionId:
+                pass
+        return None
+
 
 class InterFromGitRepository(InterRepository):
 
@@ -32,7 +72,28 @@ class InterFromGitRepository(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
               mapping=None):
-        raise NotImplementedError(self.fetch)
+        def progress(text):
+            if pb is not None:
+                pb.note("git: %s" % text)
+            else:
+                info("git: %s" % text)
+        self.lock_write()
+        try:
+            mapping = self.source.get_mapping()
+            def determine_wants(heads):
+                if revision_id is None:
+                    ret = heads.values()
+                else:
+                    ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
+                return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(revision_id))]
+
+            stream = StringIO()
+            self.source.fetch_pack(determine_wants, BzrFetchGraphWalker(self.target, mapping),
+                                   stream.write, progress)
+            # FIXME: Interpret stream
+            import pdb; pdb.set_trace()
+        finally:
+            self.unlock()
 
     @staticmethod
     def is_compatible(source, target):

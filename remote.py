@@ -100,8 +100,8 @@ class RemoteGitRepository(GitRepository):
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data):
-        self._transport.fetch_pack(determine_wants, graph_walker, pack_data)
+    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+        self._transport.fetch_pack(determine_wants, graph_walker, pack_data, progress)
 
 
 class RemoteGitBranch(GitBranch):
@@ -114,4 +114,4 @@ class RemoteGitBranch(GitBranch):
         super(RemoteGitBranch, self).__init__(bzrdir, repository, name, self._ref, lockfiles)
 
     def last_revision(self):
-        return self._ref
+        return self.mapping.revision_id_foreign_to_bzr(self._ref)
