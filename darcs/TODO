@@ -4,5 +4,3 @@ not enabled, etc.
 parse the patches manually so we can avoid re-adding existing files manually.
 
 avoid darcs apply.
-
-evaluate darcs-to-git.

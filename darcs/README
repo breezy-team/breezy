@@ -164,6 +164,10 @@ if you're interested.
   big-zoo - see http://progetti.arstecnica.it/tailor/ticket/171[this
   ticket].
 
+- http://git.sanityinc.com/?p=darcs-to-git.git[darcs-to-git] is similar
+  to darcs2git, but it fails for the testcases found in the testsuite of
+  darcs-fast-export.
+
 - http://github.com/freshtonic/undarcs/tree/master[undarcs] claims to be
   fast, but it produces incorrect result in case the repo contains
   conflicts, which is almost always true.
