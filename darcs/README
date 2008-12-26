@@ -11,8 +11,7 @@ It exhibits the following _features:_
 
 Fast::
 	darcs-fast-export provides a fast darcs backend for fast-import.
-	Converting GHC's huge repo to git (19057 patches, repo size 145M)
-	completed in just 3-4 hours on quite modest (~ $500 USD) hardware.
+	See link:t/bench-results/[here] for exact details.
 
 Independent::
 	Ideally it should work with any fast importer, but actually it has been
