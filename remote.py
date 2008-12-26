@@ -19,7 +19,7 @@ from bzrlib import urlutils
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import NoSuchFile, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
-from bzrlib.repository import Repository
+from bzrlib.repository import InterRepository, Repository
 from bzrlib.trace import info
 from bzrlib.transport import Transport
 
@@ -99,6 +99,8 @@ class RemoteGitRepository(GitRepository):
 
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
+        from bzrlib.plugins.git import fetch
+        InterRepository.register_optimiser(fetch.InterFromRemoteGitRepository)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         self._transport.fetch_pack(determine_wants, graph_walker, pack_data, progress)
@@ -115,3 +117,6 @@ class RemoteGitBranch(GitBranch):
 
     def last_revision(self):
         return self.mapping.revision_id_foreign_to_bzr(self._ref)
+
+
+

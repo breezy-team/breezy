@@ -18,7 +18,8 @@ from bzrlib.errors import InvalidRevisionId
 from bzrlib.repository import InterRepository
 from bzrlib.trace import info
 
-from bzrlib.plugins.git.repository import GitRepository, GitFormat
+from bzrlib.plugins.git.repository import LocalGitRepository, GitRepository, GitFormat
+from bzrlib.plugins.git.remote import RemoteGitRepository
 
 from cStringIO import StringIO
 
@@ -58,13 +59,11 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-class InterFromGitRepository(InterRepository):
+def import_git_pack(repo, pack):
+    raise NotImplementedError(import_git_pack)
 
-    _matching_repo_format = GitFormat()
 
-    @staticmethod
-    def _get_repo_format_to_test():
-        return None
+class InterGitRepository(InterRepository):
 
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
@@ -72,34 +71,68 @@ class InterFromGitRepository(InterRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
               mapping=None):
+        if mapping is None:
+            mapping = self.source.get_mapping()
         def progress(text):
             if pb is not None:
                 pb.note("git: %s" % text)
             else:
                 info("git: %s" % text)
-        self.lock_write()
-        try:
-            mapping = self.source.get_mapping()
-            def determine_wants(heads):
-                if revision_id is None:
-                    ret = heads.values()
-                else:
-                    ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
-                return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(revision_id))]
+        def determine_wants(heads):
+            if revision_id is None:
+                ret = heads.values()
+            else:
+                ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
+            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(revision_id))]
+        self._fetch_packs(determine_wants, BzrFetchGraphWalker(self.target, mapping), progress)
 
+
+class InterFromLocalGitRepository(InterGitRepository):
+
+    _matching_repo_format = GitFormat()
+
+    @staticmethod
+    def _get_repo_format_to_test():
+        return None
+
+    def _fetch_packs(self, determine_wants, graph_walker, progress):
+        self.target.lock_write()
+        try:
             stream = StringIO()
-            self.source.fetch_pack(determine_wants, BzrFetchGraphWalker(self.target, mapping),
-                                   stream.write, progress)
-            # FIXME: Interpret stream
-            import pdb; pdb.set_trace()
+            self.source.fetch_pack(determine_wants, graph_walker, stream.write, progress)
+            import_git_pack(self.target, stream)
         finally:
-            self.unlock()
+            self.target.unlock()
 
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
-        return isinstance(source, GitRepository) and target.supports_rich_root()
+        return isinstance(source, LocalGitRepository) and target.supports_rich_root()
+
+
+class InterFromRemoteGitRepository(InterGitRepository):
+
+    _matching_repo_format = GitFormat()
+
+    @staticmethod
+    def _get_repo_format_to_test():
+        return None
+
+    def _fetch_packs(self, determine_wants, graph_walker, progress):
+        self.target.lock_write()
+        try:
+            stream = StringIO()
+            self.source.fetch_pack(determine_wants, graph_walker, stream.write, progress)
+            import_git_pack(self.target, stream)
+        finally:
+            self.target.unlock()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with GitRepository."""
+        # FIXME: Also check target uses VersionedFile
+        return isinstance(source, RemoteGitRepository) and target.supports_rich_root()
 
 
  
