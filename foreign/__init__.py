@@ -49,42 +49,7 @@ class ForeignBranch(Branch):
         :param source: Source branch
         :param stop_revision: Revision to pull, defaults to last revision.
         """
-        raise NotImplementedError(self.pull)
-
-
-class ForeignRepository(Repository):
-
-    def has_foreign_revision(self, foreign_revid):
-        raise NotImplementedError(self.has_foreign_revision)
-
-    def all_revision_ids(self, mapping=None):
-        raise NotImplementedError(self.all_revision_ids)
-
-    def get_mapping(self):
-        raise NotImplementedError(self.get_mapping)
-
-    def get_inventory_xml(self, revision_id):
-        """See Repository.get_inventory_xml()."""
-        return self.serialise_inventory(self.get_inventory(revision_id))
-
-    def get_inventory_sha1(self, revision_id):
-        """Get the sha1 for the XML representation of an inventory.
-
-        :param revision_id: Revision id of the inventory for which to return 
-         the SHA1.
-        :return: XML string
-        """
-
-        return osutils.sha_string(self.get_inventory_xml(revision_id))
-
-    def get_revision_xml(self, revision_id):
-        """Return the XML representation of a revision.
-
-        :param revision_id: Revision for which to return the XML.
-        :return: XML string
-        """
-        return self._serializer.write_revision_to_string(self.get_revision(revision_id))
-
+        raise NotImplementedError(self.dpull)
 
 
 class FakeControlFiles(object):

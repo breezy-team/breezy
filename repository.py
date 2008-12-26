@@ -33,13 +33,13 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.foreign import (
+        ForeignRepository,
         ForeignRevision,
         )
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.git.foreign import (
-    ForeignRepository,
     versionedfiles,
     )
 from bzrlib.plugins.git.mapping import default_mapping
