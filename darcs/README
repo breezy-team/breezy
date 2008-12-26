@@ -13,6 +13,12 @@ Fast::
 	darcs-fast-export provides a fast darcs backend for fast-import.
 	See link:t/bench-results/[here] for exact details.
 
+Correct::
+	darcs-fast-export produces correct results in any extreme cases.
+	It has been tested with a collection of large darcs repos (called
+	http://code.haskell.org/darcs/big-zoo/[big-zoo]). And several testcases
+	under the `t/` directory.
+
 Independent::
 	Ideally it should work with any fast importer, but actually it has been
 	tested with git fast-import, bzr fast-import and hg fastimport. (These
@@ -154,8 +160,9 @@ if you're interested.
   incremental conversions, either.
 
 - http://progetti.arstecnica.it/tailor[tailor] is an any2any VCS
-  converter, but it can produce corrupted results, for example see
-  http://progetti.arstecnica.it/tailor/ticket/171[this ticket].
+  converter, but it produces corrupted results when converting the
+  big-zoo - see http://progetti.arstecnica.it/tailor/ticket/171[this
+  ticket].
 
 - http://github.com/freshtonic/undarcs/tree/master[undarcs] claims to be
   fast, but it produces incorrect result in case the repo contains
