@@ -157,7 +157,9 @@ if you're interested.
 - http://repo.or.cz/w/darcs2git.git[darcs2git] tries to find conflict
   resolutions (to map them to merge commits), but it's rather slow
   because of this. It does not support the darcs2 format and/or
-  incremental conversions, either.
+  incremental conversions, either. darcs-fast-export may support mapping
+  to merge commits later, but not before
+  http://bugs.darcs.net/issue1261[this issue] is addressed.
 
 - http://progetti.arstecnica.it/tailor[tailor] is an any2any VCS
   converter, but it produces corrupted results when converting the
