@@ -169,8 +169,9 @@ if you're interested.
   darcs-fast-export.
 
 - http://github.com/freshtonic/undarcs/tree/master[undarcs] claims to be
-  fast, but it produces incorrect result in case the repo contains
-  conflicts, which is almost always true.
+  fast, but its own README says it produces incorrect results. When I
+  tried, it did not handle the darcs2 format, binary files and incremental
+  support.
 
 == Thanks
 
