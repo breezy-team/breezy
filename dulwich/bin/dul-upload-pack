@@ -1,6 +1,6 @@
 #!/usr/bin/python
-# dumppack - Simple pack dumper for dulwich
-# Copyright (C) 2008 Jelmer Vernooij <jelmer@samba.org>
+# dul-upload-pack - git-upload-pack in python
+# Copyright (C) 2008 John Carr <john.carr@unrouted.co.uk>
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -17,21 +17,18 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA  02110-1301, USA.
 
-
-from dulwich.errors import ApplyDeltaError
-from dulwich.pack import Pack, sha_to_hex
 import sys
+from dulwich.server import GitBackend, UploadPackHandler
 
-basename = sys.argv[1]
-x = Pack(basename)
-print "Checksum: %s" % sha_to_hex(x.get_stored_checksum())
-if not x.check():
-    print "CHECKSUM DOES NOT MATCH"
-print "Length: %d" % len(x)
-for name in x:
-    try:
-        print "\t%s: %s" % (name, x[name])
-    except KeyError, k:
-        print "\t%s: Unable to resolve base %s" % (name, k)
-    except ApplyDeltaError, e:
-        print "\t%s: Unable to apply delta: %r" % (name, e)
+def send_fn(data):
+    sys.stdout.write(data)
+    sys.stdout.flush()
+
+if __name__ == "__main__":
+    gitdir = None
+    if len(sys.argv) > 1:
+        gitdir = sys.argv[1]
+
+    backend = GitBackend(gitdir)
+    handler = UploadPackHandler(backend, sys.stdin.read, send_fn)
+    handler.handle()
