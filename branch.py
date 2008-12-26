@@ -68,17 +68,37 @@ class GitBranchFormat(branch.BranchFormat):
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
-    def __init__(self, bzrdir, repository, head, base, lockfiles):
+    def __init__(self, bzrdir, repository, name, head, lockfiles):
         self.repository = repository
         super(GitBranch, self).__init__(default_mapping)
         self.control_files = lockfiles
         self.bzrdir = bzrdir
+        self.name = name
         self.head = head
-        self.base = base
         self._format = GitBranchFormat()
 
     def lock_write(self):
         self.control_files.lock_write()
+
+    def get_stacked_on_url(self):
+        # Git doesn't do stacking (yet...)
+        return None
+
+    def get_parent(self):
+        """See Branch.get_parent()."""
+        return None
+
+    def lock_read(self):
+        self.control_files.lock_read()
+
+    def unlock(self):
+        self.control_files.unlock()
+
+    def get_physical_lock_status(self):
+        return False
+
+ 
+class LocalGitBranch(GitBranch):
 
     @needs_read_lock
     def last_revision(self):
@@ -90,13 +110,6 @@ class GitBranch(ForeignBranch):
     def _make_tags(self):
         return GitTagDict(self)
 
-    def get_parent(self):
-        """See Branch.get_parent()."""
-        return None
-
-    def get_stacked_on_url(self):
-        return None
-
     def _gen_revision_history(self):
         if self.head is None:
             return []
@@ -106,15 +119,6 @@ class GitBranch(ForeignBranch):
 
     def get_config(self):
         return GitBranchConfig(self)
-
-    def lock_read(self):
-        self.control_files.lock_read()
-
-    def unlock(self):
-        self.control_files.unlock()
-
-    def get_physical_lock_status(self):
-        return False
 
     def get_push_location(self):
         """See Branch.get_push_location."""

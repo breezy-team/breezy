@@ -26,8 +26,7 @@ except ImportError:
     import dulwich as git
 from bzrlib import bzrdir
 from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
-from bzrlib.plugins.git.dir import LocalGitBzrDirFormat
-from bzrlib.plugins.git.remote import RemoteGitBzrDirFormat
+from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
 from bzrlib.transport import register_lazy_transport
 
 bzrdir.format_registry.register(

@@ -71,7 +71,7 @@ class GitLockableFiles(lockable_files.LockableFiles):
 class GitDir(bzrdir.BzrDir):
     """An adapter to the '.git' dir used by git."""
 
-    _gitrepository_class = repository.GitRepository
+    _gitrepository_class = repository.LocalGitRepository
 
     def __init__(self, transport, lockfiles, gitrepo, format):
         self._format = format
@@ -103,8 +103,7 @@ class GitDir(bzrdir.BzrDir):
             head = None
         else:
             head = repo._git.head()
-        return branch.GitBranch(self, repo, head, 
-                                    self.root_transport.base, self._lockfiles)
+        return branch.LocalGitBranch(self, repo, "HEAD", head, self._lockfiles)
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
@@ -188,6 +187,62 @@ class LocalGitBzrDirFormat(bzrdir.BzrDirFormat):
 
         git.repo.Repo.create(transport.local_abspath(".")) 
         return self.open(transport)
+
+    def is_supported(self):
+        return True
+
+
+class RemoteGitBzrDirFormat(bzrdir.BzrDirFormat):
+    """The .git directory control format."""
+
+    _lock_class = TransportLock
+
+    @classmethod
+    def _known_formats(self):
+        return set([RemoteGitBzrDirFormat()])
+
+    def open(self, transport, _found=None):
+        """Open this directory.
+
+        """
+        from bzrlib.plugins.git.remote import RemoteGitDir, GitSmartTransport
+        if not isinstance(transport, GitSmartTransport):
+            raise errors.bzr_errors.NotBranchError(transport.base)
+        # we dont grok readonly - git isn't integrated with transport.
+        url = transport.base
+        if url.startswith('readonly+'):
+            url = url[len('readonly+'):]
+
+        lockfiles = GitLockableFiles(transport, GitLock())
+        return RemoteGitDir(transport, lockfiles, self)
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Our format is present if the transport ends in '.not/'."""
+        # little ugly, but works
+        format = klass()
+        from bzrlib.plugins.git.remote import GitSmartTransport
+        if not isinstance(transport, GitSmartTransport):
+            raise errors.bzr_errors.NotBranchError(transport.base)
+        # The only way to know a path exists and contains a valid repository 
+        # is to do a request against it:
+        try:
+            transport.fetch_pack(lambda x: [], None, lambda x: None, 
+                                 lambda x: mutter("git: %s" % x))
+        except GitProtocolException, e:
+            raise errors.bzr_errors.NotBranchError(path=transport.base)
+        else:
+            return format
+        raise errors.bzr_errors.NotBranchError(path=transport.base)
+
+    def get_format_description(self):
+        return "Remote Git Repository"
+
+    def get_format_string(self):
+        return "Remote Git Repository"
+
+    def initialize_on_transport(self, transport):
+        raise errors.bzr_errors.UninitializableFormat(self)
 
     def is_supported(self):
         return True

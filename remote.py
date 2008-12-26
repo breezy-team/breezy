@@ -14,17 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import bzrlib
+from bzrlib import urlutils
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.errors import NotLocalUrl
-from bzrlib.foreign import ForeignRepository
+from bzrlib.errors import NoSuchFile, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
-
-from bzrlib.plugins.git import git
-from bzrlib.plugins.git.repository import GitFormat
+from bzrlib.repository import Repository
 from bzrlib.trace import info
 from bzrlib.transport import Transport
 
-from git.client import TCPGitClient, TCP_GIT_PORT
+from bzrlib.plugins.git import git
+from bzrlib.plugins.git.branch import GitBranch
+from bzrlib.plugins.git.foreign import ForeignBranch
+from bzrlib.plugins.git.repository import GitFormat, GitRepository
 
 import urllib
 import urlparse
@@ -32,28 +34,42 @@ import urlparse
 
 class GitSmartTransport(Transport):
 
-    def __init__(self, url):
+    def __init__(self, url, _client=None):
         Transport.__init__(self, url)
-        (scheme, netloc, self._path, _, _) = urlparse.urlsplit(url)
+        (scheme, _, loc, _, _) = urlparse.urlsplit(url)
         assert scheme == "git"
-        (self._host, self._port) = urllib.splitnport(netloc, TCP_GIT_PORT)
-        self._client = TCPGitClient(self._host, self._port)
+        hostport, self._path = urllib.splithost(loc)
+        (self._host, self._port) = urllib.splitnport(hostport, git.protocol.TCP_GIT_PORT)
+        if _client is not None:
+            self._client = _client
+        else:
+            self._client = git.client.TCPGitClient(self._host, self._port)
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data):
-        def progress(text):
-            info("git: %s" % text)
+    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
+        if progress is None:
+            def progress(text):
+                info("git: %s" % text)
         self._client.fetch_pack(self._path, determine_wants, graph_walker, 
                 pack_data, progress)
+
+    def get(self, path):
+        raise NoSuchFile(path)
+
+    def clone(self, offset=None):
+        """See Transport.clone()."""
+        if offset is None:
+            newurl = self.base
+        else:
+            newurl = urlutils.join(self.base, offset)
+
+        return GitSmartTransport(newurl, self._client)
 
 
 class RemoteGitDir(BzrDir):
 
-    _gitrepository_class = RemoteGitRepository
-
-    def __init__(self, transport, lockfiles, gitrepo, format):
+    def __init__(self, transport, lockfiles, format):
         self._format = format
         self.root_transport = transport
-        self._git = gitrepo
         self.transport = transport
         self._lockfiles = lockfiles
 
@@ -66,80 +82,36 @@ class RemoteGitDir(BzrDir):
     def open_branch(self):
         repo = self.open_repository()
         # TODO: Support for multiple branches in one bzrdir in bzrlib!
-        return RemoteGitBranch(repo, "HEAD")
+        return RemoteGitBranch(self, repo, "HEAD", self._lockfiles)
 
     def open_workingtree(self):
         raise NotLocalUrl(self.transport.base)
 
+    def cloning_metadir(self, stacked=False):
+        """Produce a metadir suitable for cloning with."""
+        if stacked:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("1.6.1-rich-root")
+        else:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("rich-root-pack")
 
-class RemoteGitRepository(ForeignRepository):
+
+class RemoteGitRepository(GitRepository):
 
     def __init__(self, gitdir, lockfiles):
-        Repository.__init__(self, GitFormat(), gitdir, lockfiles)
+        GitRepository.__init__(self, gitdir, lockfiles)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data):
         self._transport.fetch_pack(determine_wants, graph_walker, pack_data)
 
 
-def RemoteGitBranch(ForeignBranch):
+class RemoteGitBranch(GitBranch):
 
-    def __init__(self, repository, name):
-        super(RemoteGitBranch, self).__init__(repository.get_mapping())
-        self.repository = repository
-        self.name = name
+    def __init__(self, bzrdir, repository, name, lockfiles):
+        def determine_wants(heads):
+            self._ref = heads[name]
+        bzrdir.root_transport.fetch_pack(determine_wants, None, lambda x: None, 
+                             lambda x: mutter("git: %s" % x))
+        super(RemoteGitBranch, self).__init__(bzrdir, repository, name, self._ref, lockfiles)
 
-
-class RemoteGitBzrDirFormat(BzrDirFormat):
-    """The .git directory control format."""
-
-    _gitdir_class = RemoteGitDir
-    _lock_class = TransportLock
-
-    @classmethod
-    def _known_formats(self):
-        return set([GitBzrDirFormat()])
-
-    def open(self, transport, _found=None):
-        """Open this directory.
-
-        """
-        from bzrlib.plugins.git import git
-        # we dont grok readonly - git isn't integrated with transport.
-        url = transport.base
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
-
-        try:
-            gitrepo = git.repo.Repo(transport.local_abspath("."))
-        except errors.bzr_errors.NotLocalUrl:
-            raise errors.bzr_errors.NotBranchError(path=transport.base)
-        lockfiles = GitLockableFiles(transport, GitLock())
-        return self._gitdir_class(transport, lockfiles, gitrepo, self)
-
-    @classmethod
-    def probe_transport(klass, transport):
-        """Our format is present if the transport ends in '.not/'."""
-        # little ugly, but works
-        format = klass()
-        # delegate to the main opening code. This pays a double rtt cost at the
-        # moment, so perhaps we want probe_transport to return the opened thing
-        # rather than an openener ? or we could return a curried thing with the
-        # dir to open already instantiated ? Needs more thought.
-        try:
-            format.open(transport)
-            return format
-        except Exception, e:
-            raise errors.bzr_errors.NotBranchError(path=transport.base)
-        raise errors.bzr_errors.NotBranchError(path=transport.base)
-
-    def get_format_description(self):
-        return "Remote Git Repository"
-
-    def get_format_string(self):
-        return "Remote Git Repository"
-
-    def initialize_on_transport(self, transport):
-        raise UninitializableFormat(self)
-
-    def is_supported(self):
-        return True
+    def last_revision(self):
+        return self._ref

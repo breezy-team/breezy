@@ -51,7 +51,7 @@ class TestGitDirFormat(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestGitDirFormat, self).setUp()
-        self.format = dir.GitBzrDirFormat()
+        self.format = dir.LocalGitBzrDirFormat()
 
     def test_get_format_description(self):
         self.assertEquals("Local Git Repository",

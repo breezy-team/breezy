@@ -62,19 +62,38 @@ class GitRepository(ForeignRepository):
     _serializer = None
 
     def __init__(self, gitdir, lockfiles):
+        ForeignRepository.__init__(self, GitFormat(), gitdir, lockfiles)
+        from bzrlib.plugins.git import fetch
+        repository.InterRepository.register_optimiser(fetch.InterFromGitRepository)
+
+    def is_shared(self):
+        return True
+
+    def supports_rich_root(self):
+        return True
+
+    def _warn_if_deprecated(self):
+        # This class isn't deprecated
+        pass
+
+    def get_mapping(self):
+        return default_mapping
+
+
+
+class LocalGitRepository(GitRepository):
+
+    def __init__(self, gitdir, lockfiles):
         # FIXME: This also caches negatives. Need to be more careful 
         # about this once we start writing to git
         self._parents_provider = graph.CachingParentsProvider(self)
-        ForeignRepository.__init__(self, GitFormat(), gitdir, lockfiles)
+        GitRepository.__init__(self, gitdir, lockfiles)
         self.base = gitdir.root_transport.base
-        self.bzrdir = gitdir
         self._git = gitdir._git
         self.texts = None
         self.signatures = versionedfiles.VirtualSignatureTexts(self)
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self.tags = GitTags(self._git.get_tags())
-        from bzrlib.plugins.git import fetch
-        repository.InterRepository.register_optimiser(fetch.InterFromGitRepository)
 
     def all_revision_ids(self):
         ret = set([revision.NULL_REVISION])
@@ -86,12 +105,6 @@ class GitRepository(ForeignRepository):
         for rev, parents in graph.iter_ancestry(bzr_heads):
             ret.add(rev)
         return ret
-
-    def is_shared(self):
-        return True
-
-    def supports_rich_root(self):
-        return True
 
     #def get_revision_delta(self, revision_id):
     #    parent_revid = self.get_revision(revision_id).parent_ids[0]
@@ -133,10 +146,6 @@ class GitRepository(ForeignRepository):
         ancestry.reverse()
         return ancestry
 
-    def _warn_if_deprecated(self):
-        # This class isn't deprecated
-        pass
-
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
@@ -151,9 +160,6 @@ class GitRepository(ForeignRepository):
 
     def has_signature_for_revision_id(self, revision_id):
         return False
-
-    def get_mapping(self):
-        return default_mapping
 
     def lookup_git_revid(self, bzr_revid, mapping):
         try:
@@ -254,7 +260,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def _build_inventory(self, tree_id, ie, path):
         assert isinstance(path, str)
-        tree = self._repository._git.get_tree(tree_id)
+        tree = self._repository._git.tree(tree_id)
         for mode, name, hexsha in tree.entries():
             basename = name.decode("utf-8")
             if path == "":
