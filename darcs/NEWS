@@ -1,5 +1,8 @@
 VERSION         DESCRIPTION
 -----------------------------------------------------------------------------
+0.8           - revert the "not exporting unchanged files multiple
+		times" optimization, it causes corrupted results in some
+                cases.
 0.7           - new darcs-fast-export option: --progress
               - massive speedup in darcs-fast-export due to not
 		exporting unchanged files multiple times and reading
