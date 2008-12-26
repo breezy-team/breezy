@@ -86,7 +86,7 @@ class GitDir(bzrdir.BzrDir):
     def get_branch_transport(self, branch_format):
         if branch_format is None:
             return self.transport
-        if isinstance(branch_format, GitBzrDirFormat):
+        if isinstance(branch_format, LocalGitBzrDirFormat):
             return self.transport
         raise errors.bzr_errors.IncompatibleFormat(branch_format, self._format)
 
@@ -128,7 +128,7 @@ class GitDir(bzrdir.BzrDir):
         return self.open_repository()
 
 
-class GitBzrDirFormat(bzrdir.BzrDirFormat):
+class LocalGitBzrDirFormat(bzrdir.BzrDirFormat):
     """The .git directory control format."""
 
     _gitdir_class = GitDir
@@ -136,7 +136,7 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
     @classmethod
     def _known_formats(self):
-        return set([GitBzrDirFormat()])
+        return set([LocalGitBzrDirFormat()])
 
     def open(self, transport, _found=None):
         """Open this directory.
@@ -191,6 +191,3 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
     def is_supported(self):
         return True
-
-
-bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)

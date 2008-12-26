@@ -221,6 +221,9 @@ class GitRepository(ForeignRepository):
     def set_make_working_trees(self, trees):
         pass
 
+    def fetch_pack(self, determine_wants, graph_walker, pack_data):
+        raise NotImplementedError(self.fetch_pack)
+
 
 def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')

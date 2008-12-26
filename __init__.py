@@ -26,15 +26,21 @@ except ImportError:
     import dulwich as git
 from bzrlib import bzrdir
 from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
-from bzrlib.plugins.git.dir import GitBzrDirFormat
+from bzrlib.plugins.git.dir import LocalGitBzrDirFormat
+from bzrlib.plugins.git.remote import RemoteGitBzrDirFormat
+from bzrlib.transport import register_lazy_transport
 
 bzrdir.format_registry.register(
-    'git', GitBzrDirFormat,
+    'git', LocalGitBzrDirFormat,
     help='GIT repository.', 
     native=False, experimental=True,
     )
 
-bzrdir.BzrDirFormat.register_control_format(GitBzrDirFormat)
+bzrdir.BzrDirFormat.register_control_format(LocalGitBzrDirFormat)
+bzrdir.BzrDirFormat.register_control_format(RemoteGitBzrDirFormat)
+
+register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
+                        'GitSmartTransport')
 
 
 class ForeignGit(ForeignVcs):
