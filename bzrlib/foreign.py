@@ -258,3 +258,115 @@ class ForeignBranch(Branch):
         :param stop_revision: Revision to pull, defaults to last revision.
         """
         raise NotImplementedError(self.dpull)
+
+
+def determine_fileid_renames(old_tree, new_tree):
+    for old_file_id in old_tree:
+        new_file_id = new_tree.path2id(old_tree.id2path(old_file_id))
+        if old_file_id == new_file_id:
+            continue
+        if new_file_id is not None:
+            yield new_tree.id2path(new_file_id), old_file_id, new_file_id
+
+
+def update_workingtree_fileids(wt, old_tree, new_tree):
+    """Update all file ids in wt according to old_tree/new_tree. 
+
+    old_tree and new_tree should be two RevisionTree's that differ only
+    in file ids.
+    """
+    fileid_renames = dict([(path, (old_fileid, new_fileid)) for (path, old_fileid, new_fileid) in determine_fileid_renames(old_tree, new_tree)])
+    old_fileids = []
+    new_fileids = []
+    new_root_id = None
+    # Adjust file ids in working tree
+    for path in sorted(fileid_renames.keys(), reverse=True):
+        if path != "":
+            old_fileids.append(fileid_renames[path][0])
+            new_fileids.append((path, fileid_renames[path][1]))
+        else:
+            new_root_id = fileid_renames[path][1]
+    new_fileids.reverse()
+    wt.unversion(old_fileids)
+    if new_root_id is not None:
+        wt.set_root_id(new_root_id)
+    wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
+    wt.set_last_revision(new_tree.get_revision_id())
+
+
+class cmd_dpush(Command):
+    """Push diffs into a foreign version control system without any 
+    Bazaar-specific metadata.
+
+    This will afterwards rebase the local Bazaar branch on the remote
+    branch unless the --no-rebase option is used, in which case 
+    the two branches will be out of sync. 
+    """
+    takes_args = ['location?']
+    takes_options = ['remember', Option('directory',
+            help='Branch to push from, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+            Option('no-rebase', help="Don't rebase after push")]
+
+    def run(self, location=None, remember=False, directory=None, 
+            no_rebase=False):
+        from bzrlib import urlutils
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.trace import info
+        from bzrlib.workingtree import WorkingTree
+
+        if directory is None:
+            directory = "."
+        try:
+            source_wt = WorkingTree.open_containing(directory)[0]
+            source_branch = source_wt.branch
+        except NoWorkingTree:
+            source_branch = Branch.open_containing(directory)[0]
+            source_wt = None
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
+        target_branch = bzrdir.open_branch()
+        target_branch.lock_write()
+        try:
+            if not isinstance(target_branch, ForeignBranch):
+                info("target branch is not a foreign branch, using regular push.")
+                target_branch.pull(source_branch)
+                no_rebase = True
+            else:
+                revid_map = target_branch.dpull(source_branch)
+            # We successfully created the target, remember it
+            if source_branch.get_push_location() is None or remember:
+                source_branch.set_push_location(target_branch.base)
+            if not no_rebase:
+                _, old_last_revid = source_branch.last_revision_info()
+                new_last_revid = revid_map[old_last_revid]
+                if source_wt is not None:
+                    source_wt.pull(target_branch, overwrite=True, 
+                                   stop_revision=new_last_revid)
+                    source_wt.lock_write()
+                    try:
+                        update_workingtree_fileids(source_wt, 
+                            source_wt.branch.repository.revision_tree(old_last_revid),
+                            source_wt.branch.repository.revision_tree(new_last_revid))
+                    finally:
+                        source_wt.unlock()
+                else:
+                    source_branch.pull(target_branch, overwrite=True, 
+                                       stop_revision=new_last_revid)
+        finally:
+            target_branch.unlock()
+
+
