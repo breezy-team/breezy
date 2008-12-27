@@ -227,8 +227,8 @@ class LocalGitRepository(GitRepository):
     def set_make_working_trees(self, trees):
         pass
 
-    def fetch_objects(self, determine_wants, graph_walker, pack_data):
-        raise NotImplementedError(self.fetch_objects)
+    def fetch_objects(self, determine_wants, graph_walker, progress=None):
+        return self._git.fetch_objects(determine_wants, graph_walker, progress)
 
 
 def escape_file_id(file_id):
