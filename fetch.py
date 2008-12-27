@@ -59,11 +59,17 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_pack(repo, pack):
-    raise NotImplementedError(import_git_pack)
+def import_git_object(repo, object):
+    raise NotImplementedError(import_git_object)
 
 
 class InterGitRepository(InterRepository):
+
+    _matching_repo_format = GitFormat()
+
+    @staticmethod
+    def _get_repo_format_to_test():
+        return None
 
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
@@ -84,23 +90,11 @@ class InterGitRepository(InterRepository):
             else:
                 ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(revision_id))]
-        self._fetch_packs(determine_wants, BzrFetchGraphWalker(self.target, mapping), progress)
-
-
-class InterFromLocalGitRepository(InterGitRepository):
-
-    _matching_repo_format = GitFormat()
-
-    @staticmethod
-    def _get_repo_format_to_test():
-        return None
-
-    def _fetch_packs(self, determine_wants, graph_walker, progress):
+        graph_walker = BzrFetchGraphWalker(self.target, mapping)
         self.target.lock_write()
         try:
-            stream = StringIO()
-            self.source.fetch_pack(determine_wants, graph_walker, stream.write, progress)
-            import_git_pack(self.target, stream)
+            for o in self.source.fetch_objects(determine_wants, graph_walker, progress):
+                import_git_object(o)
         finally:
             self.target.unlock()
 
@@ -109,30 +103,3 @@ class InterFromLocalGitRepository(InterGitRepository):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
         return isinstance(source, LocalGitRepository) and target.supports_rich_root()
-
-
-class InterFromRemoteGitRepository(InterGitRepository):
-
-    _matching_repo_format = GitFormat()
-
-    @staticmethod
-    def _get_repo_format_to_test():
-        return None
-
-    def _fetch_packs(self, determine_wants, graph_walker, progress):
-        self.target.lock_write()
-        try:
-            stream = StringIO()
-            self.source.fetch_pack(determine_wants, graph_walker, stream.write, progress)
-            import_git_pack(self.target, stream)
-        finally:
-            self.target.unlock()
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with GitRepository."""
-        # FIXME: Also check target uses VersionedFile
-        return isinstance(source, RemoteGitRepository) and target.supports_rich_root()
-
-
- 

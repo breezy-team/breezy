@@ -19,7 +19,7 @@ from bzrlib import urlutils
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import NoSuchFile, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
-from bzrlib.repository import InterRepository, Repository
+from bzrlib.repository import Repository
 from bzrlib.trace import info
 from bzrlib.transport import Transport
 
@@ -30,6 +30,8 @@ from bzrlib.plugins.git.repository import GitFormat, GitRepository
 
 import urllib
 import urlparse
+
+from dulwich.pack import PackData
 
 
 class GitSmartTransport(Transport):
@@ -51,6 +53,17 @@ class GitSmartTransport(Transport):
                 info("git: %s" % text)
         self._client.fetch_pack(self._path, determine_wants, graph_walker, 
                 pack_data, progress)
+
+    def fetch_objects(self, determine_wants, graph_walker, progress=None):
+        fd, path = tempfile.mkstemp(dir=self.pack_dir(), suffix=".pack")
+        self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
+        os.close(fd)
+        try:
+            p = PackData(path)
+            for o in p.iterobjects():
+                yield o
+        finally:
+            os.remove(path)
 
     def get(self, path):
         raise NoSuchFile(path)
@@ -99,8 +112,6 @@ class RemoteGitRepository(GitRepository):
 
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
-        from bzrlib.plugins.git import fetch
-        InterRepository.register_optimiser(fetch.InterFromRemoteGitRepository)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         self._transport.fetch_pack(determine_wants, graph_walker, pack_data, progress)

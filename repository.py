@@ -63,6 +63,8 @@ class GitRepository(ForeignRepository):
 
     def __init__(self, gitdir, lockfiles):
         ForeignRepository.__init__(self, GitFormat(), gitdir, lockfiles)
+        from bzrlib.plugins.git import fetch
+        repository.InterRepository.register_optimiser(fetch.InterGitRepository)
 
     def is_shared(self):
         return True
@@ -92,8 +94,6 @@ class LocalGitRepository(GitRepository):
         self.signatures = versionedfiles.VirtualSignatureTexts(self)
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self.tags = GitTags(self._git.get_tags())
-        from bzrlib.plugins.git import fetch
-        repository.InterRepository.register_optimiser(fetch.InterFromLocalGitRepository)
 
     def all_revision_ids(self):
         ret = set([revision.NULL_REVISION])
@@ -227,8 +227,8 @@ class LocalGitRepository(GitRepository):
     def set_make_working_trees(self, trees):
         pass
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data):
-        raise NotImplementedError(self.fetch_pack)
+    def fetch_objects(self, determine_wants, graph_walker, pack_data):
+        raise NotImplementedError(self.fetch_objects)
 
 
 def escape_file_id(file_id):

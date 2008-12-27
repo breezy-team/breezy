@@ -75,6 +75,7 @@ class GitBranch(ForeignBranch):
         self.bzrdir = bzrdir
         self.name = name
         self.head = head
+        self.base = bzrdir.transport.base
         self._format = GitBranchFormat()
 
     def lock_write(self):
