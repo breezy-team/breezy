@@ -29,7 +29,7 @@ class TestGitDir(tests.TestCaseInTempDir):
         tests.run_git('init')
 
         gd = bzrdir.BzrDir.open('.')
-        self.assertIsInstance(gd, dir.GitDir)
+        self.assertIsInstance(gd, dir.LocalGitDir)
 
     def test_open_workingtree(self):
         tests.run_git('init')

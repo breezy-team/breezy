@@ -25,6 +25,7 @@ from bzrlib.transport import Transport
 
 from bzrlib.plugins.git import git
 from bzrlib.plugins.git.branch import GitBranch
+from bzrlib.plugins.git.dir import GitDir
 from bzrlib.plugins.git.foreign import ForeignBranch
 from bzrlib.plugins.git.repository import GitFormat, GitRepository
 
@@ -78,16 +79,13 @@ class GitSmartTransport(Transport):
         return GitSmartTransport(newurl, self._client)
 
 
-class RemoteGitDir(BzrDir):
+class RemoteGitDir(GitDir):
 
     def __init__(self, transport, lockfiles, format):
         self._format = format
         self.root_transport = transport
         self.transport = transport
         self._lockfiles = lockfiles
-
-    def is_supported(self):
-        return True
 
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)

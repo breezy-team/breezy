@@ -71,6 +71,13 @@ class GitLockableFiles(lockable_files.LockableFiles):
 class GitDir(bzrdir.BzrDir):
     """An adapter to the '.git' dir used by git."""
 
+    def is_supported(self):
+        return True
+
+
+class LocalGitDir(GitDir):
+    """An adapter to the '.git' dir used by git."""
+
     _gitrepository_class = repository.LocalGitRepository
 
     def __init__(self, transport, lockfiles, gitrepo, format):
@@ -92,9 +99,6 @@ class GitDir(bzrdir.BzrDir):
 
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
-
-    def is_supported(self):
-        return True
 
     def open_branch(self, ignored=None):
         """'create' a branch for this dir."""
@@ -126,7 +130,7 @@ class GitDir(bzrdir.BzrDir):
 class LocalGitBzrDirFormat(bzrdir.BzrDirFormat):
     """The .git directory control format."""
 
-    _gitdir_class = GitDir
+    _gitdir_class = LocalGitDir
     _lock_class = TransportLock
 
     @classmethod
