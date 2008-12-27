@@ -239,3 +239,22 @@ class ForeignRepository(Repository):
             self.get_revision(revision_id))
 
 
+class ForeignBranch(Branch):
+    """Branch that exists in a foreign version control system."""
+
+    def __init__(self, mapping):
+        self.mapping = mapping
+        super(ForeignBranch, self).__init__()
+
+    def dpull(self, source, stop_revision=None):
+        """Pull deltas from another branch.
+
+        :note: This does not, like pull, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param source: Source branch
+        :param stop_revision: Revision to pull, defaults to last revision.
+        """
+        raise NotImplementedError(self.dpull)
