@@ -113,24 +113,27 @@ class cmd_dpush(Command):
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
-        if not isinstance(target_branch, ForeignBranch):
-            info("target branch is not a foreign branch, using regular push.")
-            target_branch.pull(source_branch)
-            no_rebase = True
-        else:
-            revid_map = target_branch.dpull(source_branch)
-        # We successfully created the target, remember it
-        if source_branch.get_push_location() is None or remember:
-            source_branch.set_push_location(target_branch.base)
-        if not no_rebase:
-            _, old_last_revid = source_branch.last_revision_info()
-            new_last_revid = revid_map[old_last_revid]
-            if source_wt is not None:
-                source_wt.pull(target_branch, overwrite=True, 
-                               stop_revision=new_last_revid)
+        try:
+            if not isinstance(target_branch, ForeignBranch):
+                info("target branch is not a foreign branch, using regular push.")
+                target_branch.pull(source_branch)
+                no_rebase = True
             else:
-                source_branch.pull(target_branch, overwrite=True, 
+                revid_map = target_branch.dpull(source_branch)
+            # We successfully created the target, remember it
+            if source_branch.get_push_location() is None or remember:
+                source_branch.set_push_location(target_branch.base)
+            if not no_rebase:
+                _, old_last_revid = source_branch.last_revision_info()
+                new_last_revid = revid_map[old_last_revid]
+                if source_wt is not None:
+                    source_wt.pull(target_branch, overwrite=True, 
                                    stop_revision=new_last_revid)
+                else:
+                    source_branch.pull(target_branch, overwrite=True, 
+                                       stop_revision=new_last_revid)
+        finally:
+            target_branch.unlock()
 
 def test_suite():
     from unittest import TestSuite
