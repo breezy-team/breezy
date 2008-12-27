@@ -42,12 +42,13 @@ class ForeignBranch(Branch):
         """Pull deltas from another branch.
 
         :note: This does not, like pull, retain the revision ids from 
-        the source branch and will, rather than adding bzr-specific metadata,
-        push only those semantics of the revision that can be natively 
-        represented in this branch.
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented in this branch.
 
         :param source: Source branch
         :param stop_revision: Revision to pull, defaults to last revision.
+        :return: Revision id map and file id map
         """
         raise NotImplementedError(self.dpull)
 
@@ -91,6 +92,7 @@ class cmd_dpush(Command):
         from bzrlib.errors import BzrCommandError, NoWorkingTree
         from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
+        from upgrade import update_workingtree_fileids
 
         if directory is None:
             directory = "."
@@ -129,6 +131,13 @@ class cmd_dpush(Command):
                 if source_wt is not None:
                     source_wt.pull(target_branch, overwrite=True, 
                                    stop_revision=new_last_revid)
+                    source_wt.lock_write()
+                    try:
+                        update_workingtree_fileids(source_wt, 
+                            source_wt.branch.repository.revision_tree(old_last_revid),
+                            source_wt.branch.repository.revision_tree(new_last_revid))
+                    finally:
+                        source_wt.unlock()
                 else:
                     source_branch.pull(target_branch, overwrite=True, 
                                        stop_revision=new_last_revid)
