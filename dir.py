@@ -99,11 +99,7 @@ class GitDir(bzrdir.BzrDir):
     def open_branch(self, ignored=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
-        if repo._git.heads == []:
-            head = None
-        else:
-            head = repo._git.head()
-        return branch.LocalGitBranch(self, repo, "HEAD", head, self._lockfiles)
+        return branch.LocalGitBranch(self, repo, "HEAD", repo._git.head(), self._lockfiles)
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""

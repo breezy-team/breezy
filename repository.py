@@ -79,6 +79,8 @@ class GitRepository(ForeignRepository):
     def get_mapping(self):
         return default_mapping
 
+    def make_working_trees(self):
+        return True
 
 
 class LocalGitRepository(GitRepository):
@@ -169,10 +171,11 @@ class LocalGitRepository(GitRepository):
 
     def get_revision(self, revision_id):
         git_commit_id = self.lookup_git_revid(revision_id, self.get_mapping())
-        commit = self._git.commit(git_commit_id)
-        # print "fetched revision:", git_commit_id
-        if commit is None:
+        try:
+            commit = self._git.commit(git_commit_id)
+        except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
+        # print "fetched revision:", git_commit_id
         revision = self._parse_rev(commit, self.get_mapping())
         assert revision is not None
         return revision

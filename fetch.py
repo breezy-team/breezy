@@ -89,7 +89,7 @@ class InterGitRepository(InterRepository):
                 ret = heads.values()
             else:
                 ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
-            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(revision_id))]
+            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
         self.target.lock_write()
         try:
