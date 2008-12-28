@@ -130,10 +130,30 @@ def import_git_objects(repo, mapping, object_iter):
         # path; this may involve adding them more than once.
         inv = Inventory()
         def lookup_object(sha):
-            # TODO: need to lookup bzr objects as sha..
-            return objects[sha]
+            if sha in objects:
+                return objects[sha]
+            return reconstruct_git_object(repo, mapping, sha)
         import_git_tree(repo, mapping, "", tree, inv, lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
+
+
+def reconstruct_git_commit(repo, rev):
+    raise NotImplementedError(self.reconstruct_git_commit)
+
+
+def reconstruct_git_object(repo, mapping, sha):
+    # Commit
+    revid = mapping.revision_id_foreign_to_bzr(sha)
+    try:
+        rev = repo.get_revision(revid)
+    except NoSuchRevision:
+        pass
+    else:
+        return reconstruct_git_commit(rev)
+
+    # TODO: Tree
+    # TODO: Blob
+    raise KeyError("No such object %s" % sha)
 
 
 class InterGitRepository(InterRepository):

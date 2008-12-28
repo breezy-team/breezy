@@ -224,9 +224,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self.mapping = mapping
         git_id = repository.lookup_git_revid(revision_id, self.mapping)
         try:
-            self.tree = repository._git.commit(git_id).tree
-        except KeyError:
+            commit = repository._git.commit(git_id)
+        except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
+        self.tree = commit.tree
         self._inventory = inventory.Inventory(revision_id=revision_id)
         self._inventory.root.revision = revision_id
         self._build_inventory(self.tree, self._inventory.root, "")
