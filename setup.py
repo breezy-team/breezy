@@ -550,8 +550,12 @@ elif 'py2exe' in sys.argv:
     for root, dirs, files in os.walk('bzrlib/plugins'):
         if root == 'bzrlib/plugins':
             plugins = set(dirs)
-            # py2exe may find references to part of the plugin (eg, the tests)
-            # so we tell py2exe to leave the plugins out of the .zip file
+            # We ship plugins as normal files on the file-system - however,
+            # the build process can cause *some* of these plugin files to end
+            # up in library.zip. Thus, we saw (eg) "plugins/svn/test" in
+            # library.zip, and then saw import errors related to that as the
+            # rest of the svn plugin wasn't. So we tell py2exe to leave the
+            # plugins out of the .zip file
             excludes.extend(["bzrlib.plugins." + d for d in dirs])
         x = []
         for i in files:
