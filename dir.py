@@ -75,10 +75,7 @@ class GitDir(bzrdir.BzrDir):
         return True
 
     def cloning_metadir(self, stacked=False):
-        if stacked:
-            return bzrlib.bzrdir.format_registry.make_bzrdir("pack-0.92")
-        else:
-            return bzrlib.bzrdir.format_registry.make_bzrdir("1.6")
+        return bzrlib.bzrdir.format_registry.make_bzrdir("1.9-rich-root")
 
 
 class LocalGitDir(GitDir):
