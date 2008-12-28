@@ -288,7 +288,7 @@ def update_workinginv_fileids(wt, old_inv, new_inv):
     old_tree and new_tree should be two RevisionTree's that differ only
     in file ids.
     """
-    fileid_renames = determine_fileid_renames(old_tree.inventory, new_tree.inventory)
+    fileid_renames = determine_fileid_renames(old_inv, new_inv)
     old_fileids = []
     new_fileids = []
     new_root_id = None
@@ -305,7 +305,7 @@ def update_workinginv_fileids(wt, old_inv, new_inv):
     if new_root_id is not None:
         wt.set_root_id(new_root_id)
     wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
-    wt.set_last_revision(new_tree.get_revision_id())
+    wt.set_last_revision(new_inv.revision_id)
 
 
 class cmd_dpush(Command):

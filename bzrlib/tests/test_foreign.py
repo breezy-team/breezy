@@ -20,7 +20,7 @@
 from bzrlib import errors, foreign
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class DummyForeignVcsMapping(foreign.VcsMapping):
@@ -121,7 +121,7 @@ class ShowForeignPropertiesTests(TestCase):
                           foreign.show_foreign_properties(rev))
 
 
-class WorkingTreeFileIdUpdateTests(TestCase):
+class WorkingTreeFileUpdateTests(TestCaseWithTransport):
     """Tests for determine_fileid_renames()."""
 
     def test_det_renames_same(self):
@@ -148,3 +148,18 @@ class WorkingTreeFileIdUpdateTests(TestCase):
         self.assertEquals(
                 {"": ("bla-a", "bla-b")},
                 foreign.determine_fileid_renames(a, b))
+
+    def test_update_workinginv(self):
+        a = Inventory()
+        a.add_path("bla", "directory", "bla-a")
+        b = Inventory()
+        b.add_path("bla", "directory", "bla-b")
+        wt = self.make_branch_and_tree('br1')
+        self.build_tree_contents([('br1/bla', 'original contents\n')])
+        wt.add('bla', 'bla-a')
+        foreign.update_workinginv_fileids(wt, a, b)
+        wt.lock_read()
+        try:
+            self.assertEquals(["TREE_ROOT", "bla-b"], list(wt.inventory))
+        finally:
+            wt.unlock()
