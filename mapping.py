@@ -19,6 +19,14 @@
 from bzrlib import errors, foreign
 
 
+def escape_file_id(file_id):
+    return file_id.replace('_', '__').replace(' ', '_s')
+
+
+def unescape_file_id(file_id):
+    return file_id.replace("_s", " ").replace("__", "_")
+
+
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
@@ -35,6 +43,9 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def show_foreign_revid(self, foreign_revid):
         return { "git commit": foreign_revid }
+
+    def generate_file_id(self, path):
+        return escape_file_id(path.encode('utf-8'))
 
 
 class BzrGitMappingExperimental(BzrGitMapping):

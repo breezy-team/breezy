@@ -221,7 +221,7 @@ class LocalGitRepository(GitRepository):
             inv.revision_id = revision_id
             return revisiontree.RevisionTree(self, inv, revision_id)
 
-        return GitRevisionTree(self, revision_id)
+        return GitRevisionTree(self, self.get_mapping(), revision_id)
 
     def get_inventory(self, revision_id):
         assert revision_id != None
@@ -234,21 +234,14 @@ class LocalGitRepository(GitRepository):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
 
 
-def escape_file_id(file_id):
-    return file_id.replace('_', '__').replace(' ', '_s')
-
-
-def unescape_file_id(file_id):
-    return file_id.replace("_s", " ").replace("__", "_")
-
-
 class GitRevisionTree(revisiontree.RevisionTree):
 
-    def __init__(self, repository, revision_id):
+    def __init__(self, repository, mapping, revision_id):
         self._repository = repository
         self.revision_id = revision_id
         assert isinstance(revision_id, str)
-        git_id = repository.lookup_git_revid(revision_id, repository.get_mapping())
+        self.mapping = mapping
+        git_id = repository.lookup_git_revid(revision_id, self.mapping)
         try:
             self.tree = repository._git.commit(git_id).tree
         except KeyError:
@@ -274,7 +267,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 child_path = name
             else:
                 child_path = urlutils.join(path, name)
-            file_id = escape_file_id(child_path.encode('utf-8'))
+            file_id = mapping.generate_file_id(child_path
             entry_kind = (mode & 0700000) / 0100000
             if entry_kind == 0:
                 child_ie = inventory.InventoryDirectory(file_id, basename, ie.file_id)
