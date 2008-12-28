@@ -247,8 +247,12 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def __init__(self, repository, revision_id):
         self._repository = repository
         self.revision_id = revision_id
+        assert isinstance(revision_id, str)
         git_id = repository.lookup_git_revid(revision_id, repository.get_mapping())
-        self.tree = repository._git.commit(git_id).tree
+        try:
+            self.tree = repository._git.commit(git_id).tree
+        except KeyError:
+            raise errors.NoSuchRevision(repository, revision_id)
         self._inventory = inventory.Inventory(revision_id=revision_id)
         self._inventory.root.revision = revision_id
         self._build_inventory(self.tree, self._inventory.root, "")
