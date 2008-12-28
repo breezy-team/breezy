@@ -98,21 +98,16 @@ class RemoteGitDir(GitDir):
     def open_workingtree(self):
         raise NotLocalUrl(self.transport.base)
 
-    def cloning_metadir(self, stacked=False):
-        """Produce a metadir suitable for cloning with."""
-        if stacked:
-            return bzrlib.bzrdir.format_registry.make_bzrdir("1.6.1-rich-root")
-        else:
-            return bzrlib.bzrdir.format_registry.make_bzrdir("rich-root-pack")
-
 
 class RemoteGitRepository(GitRepository):
 
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
-        self._transport.fetch_pack(determine_wants, graph_walker, pack_data, progress)
+    def fetch_pack(self, determine_wants, graph_walker, pack_data, 
+                   progress=None):
+        self._transport.fetch_pack(determine_wants, graph_walker, pack_data, 
+            progress)
 
 
 class RemoteGitBranch(GitBranch):
@@ -126,6 +121,4 @@ class RemoteGitBranch(GitBranch):
 
     def last_revision(self):
         return self.mapping.revision_id_foreign_to_bzr(self._ref)
-
-
 

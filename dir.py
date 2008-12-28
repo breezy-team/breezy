@@ -74,6 +74,12 @@ class GitDir(bzrdir.BzrDir):
     def is_supported(self):
         return True
 
+    def cloning_metadir(self, stacked=False):
+        if stacked:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("pack-0.92")
+        else:
+            return bzrlib.bzrdir.format_registry.make_bzrdir("1.6")
+
 
 class LocalGitDir(GitDir):
     """An adapter to the '.git' dir used by git."""
@@ -117,21 +123,21 @@ class LocalGitDir(GitDir):
             return workingtree.GitWorkingTree(self, self.open_repository(), 
                                                   self.open_branch())
 
-    def cloning_metadir(self, stacked=False):
-        if stacked:
-            return bzrlib.bzrdir.format_registry.make_bzrdir("pack-0.92")
-        else:
-            return bzrlib.bzrdir.format_registry.make_bzrdir("1.6")
-
     def create_repository(self, shared=False):
         return self.open_repository()
 
 
-class LocalGitBzrDirFormat(bzrdir.BzrDirFormat):
+class GitBzrDirFormat(bzrdir.BzrDirFormat):
+    _lock_class = TransportLock
+
+    def is_supported(self):
+        return True
+
+
+class LocalGitBzrDirFormat(GitBzrDirFormat):
     """The .git directory control format."""
 
     _gitdir_class = LocalGitDir
-    _lock_class = TransportLock
 
     @classmethod
     def _known_formats(self):
@@ -157,6 +163,7 @@ class LocalGitBzrDirFormat(bzrdir.BzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport ends in '.not/'."""
+        from bzrlib.plugins.git import git
         # little ugly, but works
         format = klass()
         # delegate to the main opening code. This pays a double rtt cost at the
@@ -166,7 +173,7 @@ class LocalGitBzrDirFormat(bzrdir.BzrDirFormat):
         try:
             format.open(transport)
             return format
-        except Exception, e:
+        except git.errors.NotGitRepository, e:
             raise errors.bzr_errors.NotBranchError(path=transport.base)
         raise errors.bzr_errors.NotBranchError(path=transport.base)
 
@@ -192,10 +199,8 @@ class LocalGitBzrDirFormat(bzrdir.BzrDirFormat):
         return True
 
 
-class RemoteGitBzrDirFormat(bzrdir.BzrDirFormat):
+class RemoteGitBzrDirFormat(GitBzrDirFormat):
     """The .git directory control format."""
-
-    _lock_class = TransportLock
 
     @classmethod
     def _known_formats(self):
@@ -244,5 +249,3 @@ class RemoteGitBzrDirFormat(bzrdir.BzrDirFormat):
     def initialize_on_transport(self, transport):
         raise errors.bzr_errors.UninitializableFormat(self)
 
-    def is_supported(self):
-        return True
