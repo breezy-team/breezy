@@ -17,6 +17,9 @@
 """Converters, etc for going between Bazaar and Git ids."""
 
 from bzrlib import errors, foreign
+from bzrlib.foreign import (
+        ForeignRevision,
+        )
 
 
 def escape_file_id(file_id):

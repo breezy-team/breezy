@@ -34,7 +34,6 @@ from bzrlib import (
     )
 from bzrlib.foreign import (
         ForeignRepository,
-        ForeignRevision,
         )
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -249,7 +248,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 child_path = name
             else:
                 child_path = urlutils.join(path, name)
-            file_id = mapping.generate_file_id(child_path
+            file_id = self.mapping.generate_file_id(child_path)
             entry_kind = (mode & 0700000) / 0100000
             if entry_kind == 0:
                 child_ie = inventory.InventoryDirectory(file_id, basename, ie.file_id)
