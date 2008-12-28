@@ -14,12 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib import osutils
 from bzrlib.errors import InvalidRevisionId
+from bzrlib.inventory import Inventory
 from bzrlib.repository import InterRepository
 from bzrlib.trace import info
 
+from bzrlib.plugins.git import git
 from bzrlib.plugins.git.repository import LocalGitRepository, GitRepository, GitFormat
 from bzrlib.plugins.git.remote import RemoteGitRepository
+
+from dulwich.objects import Commit
 
 from cStringIO import StringIO
 
@@ -59,8 +64,76 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_object(repo, object):
-    raise NotImplementedError(import_git_object)
+def import_git_blob(repo, mapping, path, blob):
+    """Import a git blob object into a bzr repository.
+
+    :param repo: bzr repository
+    :param path: Path in the tree
+    :param blob: A git blob
+    """
+    file_id = mapping.generate_file_id(path)
+    repo.texts.add_lines((file_id, blob.id),
+        [], #FIXME 
+        osutils.split_lines(blob.data))
+    inv.add_path(path, "file", file_id)
+
+
+def import_git_tree(repo, mapping, path, tree, inv, lookup_object):
+    """Import a git tree object into a bzr repository.
+
+    :param repo: A Bzr repository object
+    :param path: Path in the tree
+    :param tree: A git tree object
+    :param inv: Inventory object
+    """
+    file_id = mapping.generate_file_id(path)
+    repo.texts.add_lines((file_id, tree.id),
+        [], #FIXME 
+        [])
+    inv.add_path(path, "directory", file_id)
+    for mode, name, hexsha in tree.entries():
+        entry_kind = (mode & 0700000) / 0100000
+        basename = name.decode("utf-8")
+        if path == "":
+            child_path = name
+        else:
+            child_path = urlutils.join(path, name)
+        if entry_kind == 0:
+            import_git_tree(repo, mapping, child_path, lookup_object, inv)
+        elif entry_kind == 1:
+            import_git_blob(repo, mapping, child_path, lookup_object, inv)
+        else:
+            raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
+
+
+def import_git_objects(repo, mapping, object_iter):
+    """Import a set of git objects into a bzr repository.
+
+    :param repo: Bazaar repository
+    :param mapping: Mapping to use
+    :param object_iter: Iterator over Git objects.
+    """
+    # TODO: a more (memory-)efficient implementation of this
+    objects = {}
+    for o in object_iter:
+        objects[o.id] = o
+    root_trees = {}
+    # Find and convert commit objects
+    for o in objects.iterkeys():
+        if isinstance(o, Commit):
+            rev = mapping.import_commit(o)
+            root_trees[rev] = objects[o.tree_sha]
+    # Create the inventory objects
+    for rev, root_tree in root_trees.iteritems():
+        # We have to do this here, since we have to walk the tree and 
+        # we need to make sure to import the blobs / trees with the riht 
+        # path; this may involve adding them more than once.
+        inv = Inventory()
+        def lookup_object(sha):
+            # TODO: need to lookup bzr objects as sha..
+            return objects[sha]
+        import_git_tree(repo, mapping, "", tree, inv, lookup_object)
+        repo.add_revision(rev.revision_id, rev, inv)
 
 
 class InterGitRepository(InterRepository):
@@ -93,8 +166,9 @@ class InterGitRepository(InterRepository):
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
         self.target.lock_write()
         try:
-            for o in self.source.fetch_objects(determine_wants, graph_walker, progress):
-                import_git_object(o)
+            import_git_objects(self.target, mapping,
+                self.source.fetch_objects(determine_wants, graph_walker, 
+                    progress))
         finally:
             self.target.unlock()
 
@@ -102,4 +176,5 @@ class InterGitRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
-        return isinstance(source, LocalGitRepository) and target.supports_rich_root()
+        return (isinstance(source, LocalGitRepository) and 
+                target.supports_rich_root())

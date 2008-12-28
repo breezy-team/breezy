@@ -176,7 +176,7 @@ class LocalGitRepository(GitRepository):
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         # print "fetched revision:", git_commit_id
-        revision = self._parse_rev(commit, self.get_mapping())
+        revision = self.get_mapping().import_commit(commit)
         assert revision is not None
         return revision
 
@@ -190,24 +190,6 @@ class LocalGitRepository(GitRepository):
 
     def get_revisions(self, revids):
         return [self.get_revision(r) for r in revids]
-
-    @classmethod
-    def _parse_rev(klass, commit, mapping):
-        """Convert a git commit to a bzr revision.
-
-        :return: a `bzrlib.revision.Revision` object.
-        """
-        if commit is None:
-            raise AssertionError("Commit object can't be None")
-        rev = ForeignRevision(commit.id, mapping, mapping.revision_id_foreign_to_bzr(commit.id))
-        rev.parent_ids = tuple([mapping.revision_id_foreign_to_bzr(p) for p in commit.parents])
-        rev.message = commit.message.decode("utf-8", "replace")
-        rev.committer = str(commit.committer).decode("utf-8", "replace")
-        if commit.committer != commit.author:
-            rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
-        rev.timestamp = commit.commit_time
-        rev.timezone = 0
-        return rev
 
     def revision_trees(self, revids):
         for revid in revids:

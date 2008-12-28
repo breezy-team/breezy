@@ -47,6 +47,23 @@ class BzrGitMapping(foreign.VcsMapping):
     def generate_file_id(self, path):
         return escape_file_id(path.encode('utf-8'))
 
+    def import_commit(self, commit):
+        """Convert a git commit to a bzr revision.
+
+        :return: a `bzrlib.revision.Revision` object.
+        """
+        if commit is None:
+            raise AssertionError("Commit object can't be None")
+        rev = ForeignRevision(commit.id, self, self.revision_id_foreign_to_bzr(commit.id))
+        rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
+        rev.message = commit.message.decode("utf-8", "replace")
+        rev.committer = str(commit.committer).decode("utf-8", "replace")
+        if commit.committer != commit.author:
+            rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
+        rev.timestamp = commit.commit_time
+        rev.timezone = 0
+        return rev
+
 
 class BzrGitMappingExperimental(BzrGitMapping):
     revid_prefix = 'git-experimental'
