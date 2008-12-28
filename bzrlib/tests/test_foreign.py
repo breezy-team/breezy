@@ -18,6 +18,7 @@
 """Tests for foreign VCS utility code."""
 
 from bzrlib import errors, foreign
+from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
 from bzrlib.tests import TestCase
 
@@ -118,3 +119,32 @@ class ShowForeignPropertiesTests(TestCase):
                                       "roundtrip-revid")
         self.assertEquals({ "dummy ding": "some/foreign\\revid" },
                           foreign.show_foreign_properties(rev))
+
+
+class WorkingTreeFileIdUpdateTests(TestCase):
+    """Tests for determine_fileid_renames()."""
+
+    def test_det_renames_same(self):
+        a = Inventory()
+        a.add_path("bla", "directory", "bla-a")
+        b = Inventory()
+        b.add_path("bla", "directory", "bla-a")
+        self.assertEquals( {}, foreign.determine_fileid_renames(a, b))
+
+    def test_det_renames_simple(self):
+        a = Inventory()
+        a.add_path("bla", "directory", "bla-a")
+        b = Inventory()
+        b.add_path("bla", "directory", "bla-b")
+        self.assertEquals(
+                {"bla": ("bla-a", "bla-b")},
+                foreign.determine_fileid_renames(a, b))
+
+    def test_det_renames_root(self):
+        a = Inventory()
+        a.add_path("", "directory", "bla-a")
+        b = Inventory()
+        b.add_path("", "directory", "bla-b")
+        self.assertEquals(
+                {"": ("bla-a", "bla-b")},
+                foreign.determine_fileid_renames(a, b))
