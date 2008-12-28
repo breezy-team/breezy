@@ -22,6 +22,7 @@ import re
 
 from bzrlib import (
     errors,
+    transport,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -30,7 +31,6 @@ from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.http_server import HttpServer
-from bzrlib.transport import register_transport, unregister_transport
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.uncommit import uncommit
 from bzrlib.urlutils import local_path_from_url
@@ -350,20 +350,59 @@ class TestPush(ExternalBase):
         self.assertContainsRe(err,
                               'Using default stacking branch stack_on at .*')
 
+    def test_push_doesnt_create_broken_branch(self):
+        """Pushing a new standalone branch works even when there's a default
+        stacking policy at the destination.
+
+        The new branch will preserve the repo format (even if it isn't the
+        default for the branch), and will be stacked when the repo format
+        allows (which means that the branch format isn't necessarly preserved).
+        """
+        self.make_repository('repo', shared=True, format='1.6')
+        builder = self.make_branch_builder('repo/local', format='pack-0.92')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.build_snapshot('rev-3', ['rev-2'],
+            [('modify', ('f-id', 'new-content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        # Push rev-1 to "trunk", so that we can stack on it.
+        self.run_bzr('push -d repo/local trunk -r 1')
+        # Set a default stacking policy so that new branches will automatically
+        # stack on trunk.
+        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
+        out, err = self.run_bzr('push -d repo/local remote -r 2')
+        self.assertContainsRe(
+            err, 'Using default stacking branch trunk at .*')
+        # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
+        # fulltext record for f-id @ rev-1, then this will fail.
+        out, err = self.run_bzr('push -d repo/local remote -r 3')
+
 
 class RedirectingMemoryTransport(MemoryTransport):
 
-    def mkdir(self, path, mode=None):
-        path = self.abspath(path)[len(self._scheme):]
-        if path == '/source':
-            raise errors.RedirectRequested(
-                path, self._scheme + '/target', is_permanent=True)
-        elif path == '/infinite-loop':
-            raise errors.RedirectRequested(
-                path, self._scheme + '/infinite-loop', is_permanent=True)
+    def mkdir(self, relpath, mode=None):
+        from bzrlib.trace import mutter
+        mutter('cwd: %r, rel: %r, abs: %r' % (self._cwd, relpath, abspath))
+        if self._cwd == '/source/':
+            raise errors.RedirectRequested(self.abspath(relpath),
+                                           self.abspath('../target'),
+                                           is_permanent=True)
+        elif self._cwd == '/infinite-loop/':
+            raise errors.RedirectRequested(self.abspath(relpath),
+                                           self.abspath('../infinite-loop'),
+                                           is_permanent=True)
         else:
             return super(RedirectingMemoryTransport, self).mkdir(
-                path, mode)
+                relpath, mode)
+
+    def _redirected_to(self, source, target):
+        # We do accept redirections
+        return transport.get_transport(target)
 
 
 class RedirectingMemoryServer(MemoryServer):
@@ -373,7 +412,7 @@ class RedirectingMemoryServer(MemoryServer):
         self._files = {}
         self._locks = {}
         self._scheme = 'redirecting-memory+%s:///' % id(self)
-        register_transport(self._scheme, self._memory_factory)
+        transport.register_transport(self._scheme, self._memory_factory)
 
     def _memory_factory(self, url):
         result = RedirectingMemoryTransport(url)
@@ -383,7 +422,7 @@ class RedirectingMemoryServer(MemoryServer):
         return result
 
     def tearDown(self):
-        unregister_transport(self._scheme, self._memory_factory)
+        transport.unregister_transport(self._scheme, self._memory_factory)
 
 
 class TestPushRedirect(ExternalBase):
@@ -406,10 +445,8 @@ class TestPushRedirect(ExternalBase):
         This is added primarily to handle lp:/ URI support, so that users can
         push to new branches by specifying lp:/ URIs.
         """
-        os.chdir('tree')
         destination_url = self.memory_server.get_url() + 'source'
-        self.run_bzr('push %s' % destination_url)
-        os.chdir('..')
+        self.run_bzr(['push', '-d', 'tree', destination_url])
 
         local_revision = Branch.open('tree').last_revision()
         remote_revision = Branch.open(
@@ -420,11 +457,9 @@ class TestPushRedirect(ExternalBase):
         """Push fails gracefully if the mkdir generates a large number of
         redirects.
         """
-        os.chdir('tree')
         destination_url = self.memory_server.get_url() + 'infinite-loop'
         out, err = self.run_bzr_error(
             ['Too many redirections trying to make %s\\.\n'
              % re.escape(destination_url)],
-            'push %s' % destination_url, retcode=3)
-        os.chdir('..')
+            ['push', '-d', 'tree', destination_url], retcode=3)
         self.assertEqual('', out)

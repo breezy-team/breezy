@@ -1558,8 +1558,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """Assert that storage_kind is a valid storage_kind."""
         self.assertSubset([storage_kind],
             ['mpdiff', 'knit-annotated-ft', 'knit-annotated-delta',
-             'knit-ft', 'knit-delta', 'fulltext', 'knit-annotated-ft-gz',
-             'knit-annotated-delta-gz', 'knit-ft-gz', 'knit-delta-gz'])
+             'knit-ft', 'knit-delta', 'chunked', 'fulltext',
+             'knit-annotated-ft-gz', 'knit-annotated-delta-gz', 'knit-ft-gz',
+             'knit-delta-gz'])
 
     def capture_stream(self, f, entries, on_seen, parents):
         """Capture a stream for testing."""
@@ -1636,9 +1637,11 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 [None, files.get_sha1s([factory.key])[factory.key]])
             self.assertEqual(parent_map[factory.key], factory.parents)
             # self.assertEqual(files.get_text(factory.key),
-            self.assertIsInstance(factory.get_bytes_as('fulltext'), str)
-            self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
-                str)
+            ft_bytes = factory.get_bytes_as('fulltext')
+            self.assertIsInstance(ft_bytes, str)
+            chunked_bytes = factory.get_bytes_as('chunked')
+            self.assertEqualDiff(ft_bytes, ''.join(chunked_bytes))
+
         self.assertStreamOrder(sort_order, seen, keys)
 
     def assertStreamOrder(self, sort_order, seen, keys):
@@ -2210,8 +2213,9 @@ class VirtualVersionedFilesTests(TestCase):
         self._lines["A"] = ["FOO", "BAR"]
         it = self.texts.get_record_stream([("A",)], "unordered", True)
         record = it.next()
-        self.assertEquals("fulltext", record.storage_kind)
+        self.assertEquals("chunked", record.storage_kind)
         self.assertEquals("FOOBAR", record.get_bytes_as("fulltext"))
+        self.assertEquals(["FOO", "BAR"], record.get_bytes_as("chunked"))
 
     def test_get_record_stream_absent(self):
         it = self.texts.get_record_stream([("A",)], "unordered", True)

@@ -323,7 +323,8 @@ class RemoteTransport(transport.ConnectedTransport):
         sorted_offsets = sorted(offsets)
         coalesced = list(self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
-                               fudge_factor=self._bytes_to_read_before_seek))
+                               fudge_factor=self._bytes_to_read_before_seek,
+                               max_size=self._max_readv_bytes))
 
         # now that we've coallesced things, avoid making enormous requests
         requests = []
@@ -566,6 +567,17 @@ class RemoteHTTPTransport(RemoteTransport):
         return RemoteHTTPTransport(abs_url,
                                    _from_transport=self,
                                    http_transport=self._http_transport)
+
+    def _redirected_to(self, source, target):
+        """See transport._redirected_to"""
+        redirected = self._http_transport._redirected_to(source, target)
+        if (redirected is not None
+            and isinstance(redirected, type(self._http_transport))):
+            return RemoteHTTPTransport('bzr+' + redirected.external_url(),
+                                       http_transport=redirected)
+        else:
+            # Either None or a transport for a different protocol
+            return redirected
 
 
 def get_test_permutations():

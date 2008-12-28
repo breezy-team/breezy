@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from itertools import izip
@@ -555,7 +557,8 @@ class AggregateIndex(object):
 class Packer(object):
     """Create a pack from packs."""
 
-    def __init__(self, pack_collection, packs, suffix, revision_ids=None):
+    def __init__(self, pack_collection, packs, suffix, revision_ids=None,
+                 reload_func=None):
         """Create a Packer.
 
         :param pack_collection: A RepositoryPackCollection object where the
@@ -563,6 +566,9 @@ class Packer(object):
         :param packs: The packs to combine.
         :param suffix: The suffix to use on the temporary files for the pack.
         :param revision_ids: Revision ids to limit the pack to.
+        :param reload_func: A function to call if a pack file/index goes
+            missing. The side effect of calling this function should be to
+            update self.packs. See also AggregateIndex
         """
         self.packs = packs
         self.suffix = suffix
@@ -570,6 +576,7 @@ class Packer(object):
         # The pack object we are creating.
         self.new_pack = None
         self._pack_collection = pack_collection
+        self._reload_func = reload_func
         # The index layer keys for the revisions being copied. None for 'all
         # objects'.
         self._revision_keys = None
@@ -629,8 +636,9 @@ class Packer(object):
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
-            raise errors.BzrError('call to create_pack_from_packs while '
-                'another pack is being written.')
+            raise errors.BzrError('call to %s.pack() while another pack is'
+                                  ' being written.'
+                                  % (self.__class__.__name__,))
         if self.revision_ids is not None:
             if len(self.revision_ids) == 0:
                 # silly fetch request.
@@ -861,8 +869,13 @@ class Packer(object):
             # copy the data
             pack_obj = index_map[index]
             transport, path = pack_obj.access_tuple()
-            reader = pack.make_readv_reader(transport, path,
-                [offset[0:2] for offset in pack_readv_requests])
+            try:
+                reader = pack.make_readv_reader(transport, path,
+                    [offset[0:2] for offset in pack_readv_requests])
+            except errors.NoSuchFile:
+                if self._reload_func is not None:
+                    self._reload_func()
+                raise
             for (names, read_func), (_1, _2, (key, eol_flag)) in \
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
@@ -906,7 +919,12 @@ class Packer(object):
             # copy the data
             pack_obj = index_map[index]
             transport, path = pack_obj.access_tuple()
-            reader = pack.make_readv_reader(transport, path, readv_vector)
+            try:
+                reader = pack.make_readv_reader(transport, path, readv_vector)
+            except errors.NoSuchFile:
+                if self._reload_func is not None:
+                    self._reload_func()
+                raise
             for (names, read_func), (key, eol_flag, references) in \
                 izip(reader.iter_records(), node_vector):
                 raw_data = read_func(None)
@@ -1275,6 +1293,15 @@ class RepositoryPackCollection(object):
 
         :return: True if packing took place.
         """
+        while True:
+            try:
+                return self._do_autopack()
+            except errors.RetryAutopack, e:
+                # If we get a RetryAutopack exception, we should abort the
+                # current action, and retry.
+                pass
+
+    def _do_autopack(self):
         # XXX: Should not be needed when the management of indices is sane.
         total_revisions = self.revision_index.combined_index.key_count()
         total_packs = len(self._names)
@@ -1309,10 +1336,12 @@ class RepositoryPackCollection(object):
             'containing %d revisions. Packing %d files into %d affecting %d'
             ' revisions', self, total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
-        self._execute_pack_operations(pack_operations)
+        self._execute_pack_operations(pack_operations,
+                                      reload_func=self._restart_autopack)
         return True
 
-    def _execute_pack_operations(self, pack_operations, _packer_class=Packer):
+    def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
+                                 reload_func=None):
         """Execute a series of pack operations.
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
@@ -1323,7 +1352,18 @@ class RepositoryPackCollection(object):
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            _packer_class(self, packs, '.autopack').pack()
+            packer = _packer_class(self, packs, '.autopack',
+                                   reload_func=reload_func)
+            try:
+                packer.pack()
+            except errors.RetryWithNewPacks:
+                # An exception is propagating out of this context, make sure
+                # this packer has cleaned up. Packer() doesn't set its new_pack
+                # state into the RepositoryPackCollection object, so we only
+                # have access to it directly here.
+                if packer.new_pack is not None:
+                    packer.new_pack.abort()
+                raise
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
@@ -1709,6 +1749,14 @@ class RepositoryPackCollection(object):
         if removed or added or modified:
             return True
         return False
+
+    def _restart_autopack(self):
+        """Reload the pack names list, and restart the autopack code."""
+        if not self.reload_pack_names():
+            # Re-raise the original exception, because something went missing
+            # and a restart didn't find it
+            raise
+        raise errors.RetryAutopack(self.repo, False, sys.exc_info())
 
     def _clear_obsolete_packs(self):
         """Delete everything from the obsolete-packs directory.
@@ -2313,8 +2361,10 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return xml7.serializer_v7
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir(
+        matching = bzrdir.format_registry.make_bzrdir(
             '1.6.1-rich-root')
+        matching.repository_format = self
+        return matching
 
     def _ignore_setting_bzrdir(self, format):
         pass

@@ -812,6 +812,7 @@ def splitpath(p):
             rps.append(f)
     return rps
 
+
 def joinpath(p):
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
@@ -819,8 +820,28 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+try:
+    from bzrlib._chunks_to_lines_pyx import chunks_to_lines
+except ImportError:
+    from bzrlib._chunks_to_lines_py import chunks_to_lines
+
+
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
+    # Trivially convert a fulltext into a 'chunked' representation, and let
+    # chunks_to_lines do the heavy lifting.
+    if isinstance(s, str):
+        # chunks_to_lines only supports 8-bit strings
+        return chunks_to_lines([s])
+    else:
+        return _split_lines(s)
+
+
+def _split_lines(s):
+    """Split s into lines, but without removing the newline characters.
+
+    This supports Unicode or plain string objects.
+    """
     lines = s.split('\n')
     result = [line + '\n' for line in lines[:-1]]
     if lines[-1]:
