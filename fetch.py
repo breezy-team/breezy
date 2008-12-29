@@ -65,7 +65,7 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_blob(repo, mapping, path, blob, inv, parent_invs):
+def import_git_blob(repo, mapping, path, blob, inv, parent_invs, executable):
     """Import a git blob object into a bzr repository.
 
     :param repo: bzr repository
@@ -81,7 +81,7 @@ def import_git_blob(repo, mapping, path, blob, inv, parent_invs):
     ie.revision = text_revision
     ie.text_size = len(blob.data)
     ie.text_sha1 = osutils.sha_string(blob.data)
-    # FIXME: ie.executable
+    ie.executable = executable
 
 
 def import_git_tree(repo, mapping, path, tree, inv, parent_invs, lookup_object):
@@ -111,7 +111,8 @@ def import_git_tree(repo, mapping, path, tree, inv, parent_invs, lookup_object):
             import_git_tree(repo, mapping, child_path, tree, inv, parent_invs, lookup_object)
         elif entry_kind == 1:
             blob = lookup_object(hexsha)
-            import_git_blob(repo, mapping, child_path, blob, inv, parent_invs)
+            fs_mode = mode & 0777
+            import_git_blob(repo, mapping, child_path, blob, inv, parent_invs, bool(fs_mode & 0111))
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
 
