@@ -20,13 +20,25 @@
 import os
 
 from commit import Commit
-from errors import MissingCommitError, NotBlobError, NotTreeError, NotCommitError, NotGitRepository
-from objects import (ShaFile,
-                     Commit,
-                     Tree,
-                     Blob,
-                     )
-from pack import load_packs, iter_sha1, PackData, write_pack_index_v2
+from errors import (
+        MissingCommitError, 
+        NotBlobError, 
+        NotCommitError, 
+        NotGitRepository,
+        NotTreeError, 
+        )
+from objects import (
+        ShaFile,
+        Commit,
+        Tree,
+        Blob,
+        )
+from pack import (
+        iter_sha1, 
+        load_packs, 
+        write_pack_index_v2,
+        PackData, 
+        )
 import tempfile
 
 OBJECTDIR = 'objects'
@@ -61,12 +73,22 @@ class Repo(object):
   def controldir(self):
     return self._controldir
 
-  def fetch_objects(self, determine_wants, graph_walker, progress):
+  def find_missing_objects(self, determine_wants, graph_walker, progress):
+    """Fetch the missing objects required for a set of revisions.
+
+    :param determine_wants: Function that takes a dictionary with heads 
+        and returns the list of heads to fetch.
+    :param graph_walker: Object that can iterate over the list of revisions 
+        to fetch and has an "ack" method that will be called to acknowledge 
+        that a revision is present.
+    :param progress: Simple progress function that will be called with 
+        updated progress strings.
+    """
     wants = determine_wants(self.heads())
-    commits_to_send = []
+    commits_to_send = set(wants)
     ref = graph_walker.next()
     while ref:
-        commits_to_send.append(ref)
+        commits_to_send.add(ref)
         if ref in self.object_store:
             graph_walker.ack(ref)
         ref = graph_walker.next()
@@ -76,6 +98,7 @@ class Repo(object):
             continue
 
         c = self.commit(sha)
+        assert isinstance(c, Commit)
         sha_done.add(sha)
 
         def parse_tree(tree, sha_done):
@@ -86,7 +109,7 @@ class Repo(object):
                         sha_done.add(x)
                         parse_tree(t, sha_done)
                     except:
-                        sha_done.append(x)
+                        sha_done.add(x)
 
         treesha = c.tree
         if treesha not in sha_done:
@@ -95,9 +118,22 @@ class Repo(object):
             parse_tree(t, sha_done)
 
         progress("counting objects: %d\r" % len(sha_done))
+    return sha_done
 
-        for sha in sha_done:
-            yield self.get_object(sha)
+  def fetch_objects(self, determine_wants, graph_walker, progress):
+    """Fetch the missing objects required for a set of revisions.
+
+    :param determine_wants: Function that takes a dictionary with heads 
+        and returns the list of heads to fetch.
+    :param graph_walker: Object that can iterate over the list of revisions 
+        to fetch and has an "ack" method that will be called to acknowledge 
+        that a revision is present.
+    :param progress: Simple progress function that will be called with 
+        updated progress strings.
+    """
+    shas = self.find_missing_objects(determine_wants, graph_walker, progress)
+    for sha in shas:
+        yield self.get_object(sha)
 
   def object_dir(self):
     return os.path.join(self.controldir(), OBJECTDIR)

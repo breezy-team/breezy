@@ -17,6 +17,7 @@
 """Converters, etc for going between Bazaar and Git ids."""
 
 from bzrlib import errors, foreign
+from bzrlib.inventory import ROOT_ID
 from bzrlib.foreign import (
         ForeignRevision,
         )
@@ -48,6 +49,8 @@ class BzrGitMapping(foreign.VcsMapping):
         return { "git commit": foreign_revid }
 
     def generate_file_id(self, path):
+        if path == "":
+            return ROOT_ID
         return escape_file_id(path.encode('utf-8'))
 
     def import_commit(self, commit):

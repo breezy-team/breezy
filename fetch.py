@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import osutils
+from bzrlib import osutils, urlutils
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.inventory import Inventory
 from bzrlib.repository import InterRepository
@@ -64,7 +64,7 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_blob(repo, mapping, path, blob):
+def import_git_blob(repo, mapping, path, blob, inv):
     """Import a git blob object into a bzr repository.
 
     :param repo: bzr repository
@@ -75,7 +75,7 @@ def import_git_blob(repo, mapping, path, blob):
     repo.texts.add_lines((file_id, blob.id),
         [], #FIXME 
         osutils.split_lines(blob.data))
-    inv.add_path(path, "file", file_id)
+    ie = inv.add_path(path, "file", file_id)
 
 
 def import_git_tree(repo, mapping, path, tree, inv, lookup_object):
@@ -99,9 +99,11 @@ def import_git_tree(repo, mapping, path, tree, inv, lookup_object):
         else:
             child_path = urlutils.join(path, name)
         if entry_kind == 0:
-            import_git_tree(repo, mapping, child_path, lookup_object, inv)
+            tree = lookup_object(hexsha)
+            import_git_tree(repo, mapping, child_path, tree, inv, lookup_object)
         elif entry_kind == 1:
-            import_git_blob(repo, mapping, child_path, lookup_object, inv)
+            blob = lookup_object(hexsha)
+            import_git_blob(repo, mapping, child_path, blob, inv)
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
 
@@ -119,21 +121,22 @@ def import_git_objects(repo, mapping, object_iter):
         objects[o.id] = o
     root_trees = {}
     # Find and convert commit objects
-    for o in objects.iterkeys():
+    for o in objects.itervalues():
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
-            root_trees[rev] = objects[o.tree_sha]
+            root_trees[rev] = objects[o.tree]
     # Create the inventory objects
     for rev, root_tree in root_trees.iteritems():
         # We have to do this here, since we have to walk the tree and 
         # we need to make sure to import the blobs / trees with the riht 
         # path; this may involve adding them more than once.
         inv = Inventory()
+        inv.revision_id = rev.revision_id
         def lookup_object(sha):
             if sha in objects:
                 return objects[sha]
             return reconstruct_git_object(repo, mapping, sha)
-        import_git_tree(repo, mapping, "", tree, inv, lookup_object)
+        import_git_tree(repo, mapping, "", root_tree, inv, lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
 
 
@@ -186,9 +189,13 @@ class InterGitRepository(InterRepository):
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
         self.target.lock_write()
         try:
-            import_git_objects(self.target, mapping,
-                self.source.fetch_objects(determine_wants, graph_walker, 
-                    progress))
+            self.target.start_write_group()
+            try:
+                import_git_objects(self.target, mapping,
+                    iter(self.source.fetch_objects(determine_wants, graph_walker, 
+                        progress)))
+            finally:
+                self.target.commit_write_group()
         finally:
             self.target.unlock()
 
