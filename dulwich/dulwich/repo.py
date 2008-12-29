@@ -86,20 +86,23 @@ class Repo(object):
     """
     wants = determine_wants(self.heads())
     commits_to_send = set(wants)
+    sha_done = set()
     ref = graph_walker.next()
     while ref:
-        commits_to_send.add(ref)
+        sha_done.add(ref)
         if ref in self.object_store:
             graph_walker.ack(ref)
         ref = graph_walker.next()
-    sha_done = set()
-    for sha in commits_to_send:
+    while commits_to_send:
+        sha = commits_to_send.pop()
         if sha in sha_done:
             continue
 
         c = self.commit(sha)
         assert isinstance(c, Commit)
         sha_done.add(sha)
+
+        commits_to_send.update([p for p in c.parents if not p in sha_done])
 
         def parse_tree(tree, sha_done):
             for mode, name, x in tree.entries():

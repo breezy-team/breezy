@@ -14,11 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import osutils, urlutils
+from bzrlib import osutils, ui, urlutils
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.inventory import Inventory
 from bzrlib.repository import InterRepository
 from bzrlib.trace import info
+from bzrlib.tsort import topo_sort
 
 from bzrlib.plugins.git import git
 from bzrlib.plugins.git.repository import LocalGitRepository, GitRepository, GitFormat
@@ -64,7 +65,7 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_blob(repo, mapping, path, blob, inv):
+def import_git_blob(repo, mapping, path, blob, inv, parent_invs):
     """Import a git blob object into a bzr repository.
 
     :param repo: bzr repository
@@ -72,13 +73,18 @@ def import_git_blob(repo, mapping, path, blob, inv):
     :param blob: A git blob
     """
     file_id = mapping.generate_file_id(path)
-    repo.texts.add_lines((file_id, blob.id),
-        [], #FIXME 
+    text_revision = inv.revision_id
+    repo.texts.add_lines((file_id, text_revision),
+        [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
         osutils.split_lines(blob.data))
     ie = inv.add_path(path, "file", file_id)
+    ie.revision = text_revision
+    ie.text_size = len(blob.data)
+    ie.text_sha1 = osutils.sha_string(blob.data)
+    # FIXME: ie.executable
 
 
-def import_git_tree(repo, mapping, path, tree, inv, lookup_object):
+def import_git_tree(repo, mapping, path, tree, inv, parent_invs, lookup_object):
     """Import a git tree object into a bzr repository.
 
     :param repo: A Bzr repository object
@@ -87,10 +93,12 @@ def import_git_tree(repo, mapping, path, tree, inv, lookup_object):
     :param inv: Inventory object
     """
     file_id = mapping.generate_file_id(path)
-    repo.texts.add_lines((file_id, tree.id),
-        [], #FIXME 
+    text_revision = inv.revision_id
+    repo.texts.add_lines((file_id, text_revision),
+        [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
         [])
-    inv.add_path(path, "directory", file_id)
+    ie = inv.add_path(path, "directory", file_id)
+    ie.revision = text_revision
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
@@ -100,15 +108,15 @@ def import_git_tree(repo, mapping, path, tree, inv, lookup_object):
             child_path = urlutils.join(path, name)
         if entry_kind == 0:
             tree = lookup_object(hexsha)
-            import_git_tree(repo, mapping, child_path, tree, inv, lookup_object)
+            import_git_tree(repo, mapping, child_path, tree, inv, parent_invs, lookup_object)
         elif entry_kind == 1:
             blob = lookup_object(hexsha)
-            import_git_blob(repo, mapping, child_path, blob, inv)
+            import_git_blob(repo, mapping, child_path, blob, inv, parent_invs)
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
 
 
-def import_git_objects(repo, mapping, object_iter):
+def import_git_objects(repo, mapping, object_iter, pb=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Bazaar repository
@@ -117,16 +125,27 @@ def import_git_objects(repo, mapping, object_iter):
     """
     # TODO: a more (memory-)efficient implementation of this
     objects = {}
-    for o in object_iter:
+    for i, o in enumerate(object_iter):
+        if pb is not None:
+            pb.update("fetching objects", i) 
         objects[o.id] = o
+    graph = []
     root_trees = {}
+    revisions = {}
     # Find and convert commit objects
     for o in objects.itervalues():
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
-            root_trees[rev] = objects[o.tree]
+            root_trees[rev.revision_id] = objects[o.tree]
+            revisions[rev.revision_id] = rev
+            graph.append((rev.revision_id, rev.parent_ids))
+    # Order the revisions
     # Create the inventory objects
-    for rev, root_tree in root_trees.iteritems():
+    for i, revid in enumerate(topo_sort(graph)):
+        if pb is not None:
+            pb.update("fetching revisions", i, len(graph))
+        root_tree = root_trees[revid]
+        rev = revisions[revid]
         # We have to do this here, since we have to walk the tree and 
         # we need to make sure to import the blobs / trees with the riht 
         # path; this may involve adding them more than once.
@@ -136,7 +155,8 @@ def import_git_objects(repo, mapping, object_iter):
             if sha in objects:
                 return objects[sha]
             return reconstruct_git_object(repo, mapping, sha)
-        import_git_tree(repo, mapping, "", root_tree, inv, lookup_object)
+        parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
+        import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
 
 
@@ -193,7 +213,7 @@ class InterGitRepository(InterRepository):
             try:
                 import_git_objects(self.target, mapping,
                     iter(self.source.fetch_objects(determine_wants, graph_walker, 
-                        progress)))
+                        progress)), pb)
             finally:
                 self.target.commit_write_group()
         finally:
