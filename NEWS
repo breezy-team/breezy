@@ -50,6 +50,9 @@ IN DEVELOPMENT
       that's in a stackable shared repository to a location with default
       stack-on location.  (Andrew Bennetts, #291046)
 
+    * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
+      (Ben Jansen, Vincent Ladeuil, #300347)
+
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
 
