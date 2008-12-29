@@ -69,6 +69,9 @@ class GitSmartTransport(Transport):
     def get(self, path):
         raise NoSuchFile(path)
 
+    def abspath(self, relpath):
+        return urlutils.join(self.base, relpath)
+
     def clone(self, offset=None):
         """See Transport.clone()."""
         if offset is None:
