@@ -1041,7 +1041,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     def get_user_password(self, auth):
         """Ask user for a password if none is already available.
 
-        :param auth: authentication headers from the HTTP response
+        :param auth: authentication info gathered so far (from the initial url
+            and then during dialog with the server).
         """
         auth_conf = config.AuthenticationConfig()
         user = auth['user']
