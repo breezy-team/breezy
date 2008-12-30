@@ -197,10 +197,7 @@ class InterGitRepository(InterRepository):
         if mapping is None:
             mapping = self.source.get_mapping()
         def progress(text):
-            if pb is not None:
-                pb.note("git: %s" % text)
-            else:
-                info("git: %s" % text)
+            pb.note("git: %s", text)
         def determine_wants(heads):
             if revision_id is None:
                 ret = heads.values()
@@ -208,21 +205,28 @@ class InterGitRepository(InterRepository):
                 ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
-        self.target.lock_write()
+        create_pb = None
+        if pb is None:
+            create_pb = pb = ui.ui_factory.nested_progress_bar()
         try:
-            self.target.start_write_group()
+            self.target.lock_write()
             try:
-                import_git_objects(self.target, mapping,
-                    iter(self.source.fetch_objects(determine_wants, graph_walker, 
-                        progress)), pb)
+                self.target.start_write_group()
+                try:
+                    import_git_objects(self.target, mapping,
+                        iter(self.source.fetch_objects(determine_wants, graph_walker, 
+                            progress)), pb)
+                finally:
+                    self.target.commit_write_group()
             finally:
-                self.target.commit_write_group()
+                self.target.unlock()
         finally:
-            self.target.unlock()
+            if create_pb:
+                create_pb.finished()
 
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
-        return (isinstance(source, LocalGitRepository) and 
+        return (isinstance(source, GitRepository) and 
                 target.supports_rich_root())

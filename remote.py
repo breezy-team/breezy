@@ -30,10 +30,12 @@ from bzrlib.plugins.git.dir import GitDir
 from bzrlib.plugins.git.foreign import ForeignBranch
 from bzrlib.plugins.git.repository import GitFormat, GitRepository
 
+import os
+import tempfile
 import urllib
 import urlparse
 
-from dulwich.pack import PackData
+from dulwich.pack import PackData, Pack
 
 
 class GitSmartTransport(Transport):
@@ -59,17 +61,6 @@ class GitSmartTransport(Transport):
                 info("git: %s" % text)
         self._get_client().fetch_pack(self._path, determine_wants, 
             graph_walker, pack_data, progress)
-
-    def fetch_objects(self, determine_wants, graph_walker, progress=None):
-        fd, path = tempfile.mkstemp(dir=self.pack_dir(), suffix=".pack")
-        self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
-        os.close(fd)
-        try:
-            p = PackData(path)
-            for o in p.iterobjects():
-                yield o
-        finally:
-            os.remove(path)
 
     def get(self, path):
         raise NoSuchFile(path)
@@ -116,6 +107,19 @@ class RemoteGitRepository(GitRepository):
                    progress=None):
         self._transport.fetch_pack(determine_wants, graph_walker, pack_data, 
             progress)
+
+    def fetch_objects(self, determine_wants, graph_walker, progress=None):
+        fd, path = tempfile.mkstemp(suffix=".pack")
+        self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
+        os.close(fd)
+        try:
+            basename = path[:-len(".pack")]
+            p = PackData(path)
+            p.create_index_v2(basename+".idx")
+            for o in Pack(basename).iterobjects():
+                yield o
+        finally:
+            os.remove(path)
 
 
 class RemoteGitBranch(GitBranch):
