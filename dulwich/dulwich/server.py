@@ -19,7 +19,7 @@
 import SocketServer
 from dulwich.protocol import Protocol, ProtocolFile, TCP_GIT_PORT, extract_capabilities
 from dulwich.repo import Repo
-from dulwich.pack import PackData, Pack, write_pack_data, generate_pack_contents
+from dulwich.pack import PackData, Pack, write_pack_data
 import os, sha, tempfile
 
 class Backend(object):
@@ -59,9 +59,8 @@ class GitBackend(Backend):
             Repo.create(self.gitdir)
 
         self.repo = Repo(self.gitdir)
-
-    def get_refs(self):
-        return self.repo.get_refs()
+        self.fetch_objects = self.repo.fetch_objects
+        self.get_refs = self.repo.get_refs
 
     def apply_pack(self, refs, read):
         # store the incoming pack in the repository
@@ -83,9 +82,6 @@ class GitBackend(Backend):
                 self.repo.set_ref(ref, sha)
 
         print "pack applied"
-
-    def fetch_objects(self, determine_wants, graph_walker, progress):
-        return iter(self.repo.fetch_objects(determine_wants, graph_walker, progress))
 
 
 class Handler(object):
