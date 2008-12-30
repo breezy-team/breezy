@@ -28,6 +28,8 @@ from bzrlib import bzrdir
 from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
 from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
 from bzrlib.transport import register_lazy_transport
+from bzrlib.commands import Command, register_command
+from bzrlib.option import Option
 
 bzrdir.format_registry.register(
     'git', LocalGitBzrDirFormat,
@@ -51,6 +53,45 @@ git_mapping_registry.register_lazy('git-experimental', "bzrlib.plugins.git.mappi
                                    "BzrGitMappingExperimental")
 foreign_vcs_registry.register("git", ForeignGit(git_mapping_registry), 
                                       "Stupid content tracker")
+
+
+class cmd_git_serve(Command):
+    """Provide access to a Bazaar branch using the git protocol.
+
+    This command is experimental and doesn't do much yet.
+    """
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode)
+    ]
+
+    def run(self, inet=None, port=None, directory=None):
+        from dulwich.server import TCPGitServer
+        from bzrlib.plugins.git.server import BzrBackend
+        from bzrlib.trace import warning
+        import os
+
+        warning("server support in bzr-git is experimental.")
+
+        if directory is None:
+            directory = os.getcwd()
+
+        backend = BzrBackend(directory)
+
+        if inet:
+            #def send_fn(data):
+            #    sys.stdout.write(data)
+            #    sys.stdout.flush()
+            #server = GitServer(sys.stdin.read, send_fn)
+            raise NotImplementedError
+        else:
+            server = TCPGitServer(backend, 'localhost')
+            server.serve_forever()
+
+register_command(cmd_git_serve)
 
 
 def test_suite():
