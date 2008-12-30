@@ -161,7 +161,8 @@ def import_git_objects(repo, mapping, object_iter, pb=None):
                 return objects[sha]
             return reconstruct_git_object(repo, mapping, sha)
         parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
-        import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, lookup_object)
+        import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, 
+            lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
 
 
