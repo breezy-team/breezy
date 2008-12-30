@@ -44,17 +44,21 @@ class GitSmartTransport(Transport):
         assert scheme == "git"
         hostport, self._path = urllib.splithost(loc)
         (self._host, self._port) = urllib.splitnport(hostport, git.protocol.TCP_GIT_PORT)
-        if _client is not None:
-            self._client = _client
-        else:
-            self._client = git.client.TCPGitClient(self._host, self._port)
+        self._client = _client
+
+    def _get_client(self):
+        if self._client is not None:
+            ret = self._client
+            self._client = None
+            return ret
+        return git.client.TCPGitClient(self._host, self._port)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
             def progress(text):
                 info("git: %s" % text)
-        self._client.fetch_pack(self._path, determine_wants, graph_walker, 
-                pack_data, progress)
+        self._get_client().fetch_pack(self._path, determine_wants, 
+            graph_walker, pack_data, progress)
 
     def fetch_objects(self, determine_wants, graph_walker, progress=None):
         fd, path = tempfile.mkstemp(dir=self.pack_dir(), suffix=".pack")
