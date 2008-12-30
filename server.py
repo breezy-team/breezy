@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.bzrdir import BzrDir
+from bzrlib.repository import InterRepository
+
 from dulwich.server import Backend
 
 class BzrBackend(Backend):
@@ -27,7 +30,18 @@ class BzrBackend(Backend):
 
     def apply_pack(self, refs, read):
         """ apply pack from client to current repository """
+
         self.read()
+
+        source_dir = BzrDir.open(self.directory)
+        source_repos = source_dir.open_repository()
+
+        source_repos.lock_read()
+        try:
+            inter = InterRepository.get(source_repos, target_repos)
+            inter.fetch()
+        finally:
+            source_repos.unlock()
 
     def fetch_objects(self, determine_wants, graph_walker, progress):
         """ yield git objects to send to client """
