@@ -30,7 +30,7 @@ import sys
 import gzip
 import time
 import shutil
-import popen2
+import subprocess
 import optparse
 
 sys = reload(sys)
@@ -277,11 +277,11 @@ for i in patches:
 	sock = os.popen("darcs changes --context")
 	buf.append(sock.read())
 	sock.close()
-	pout, pin = popen2.popen2("darcs apply --allow-conflicts")
-	pin.write("".join(buf))
-	pin.close()
-	log("Applying %s:\n%s" % (hash, pout.read()))
-	pout.close()
+	sock = subprocess.Popen(["darcs", "apply", "--allow-conflicts"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+	sock.stdin.write("".join(buf))
+	sock.stdin.close()
+	log("Applying %s:\n%s" % (hash, sock.stdout.read()))
+	sock.stdout.close()
 	message = get_patchname(i)
 	# export the commit
 	print "commit %s" % git_branch
