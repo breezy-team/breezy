@@ -18,6 +18,10 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import InterRepository
 
 from dulwich.server import Backend
+from dulwich.repo import Repo
+
+#FIXME: Shouldnt need these imports
+import tempfile
 
 class BzrBackend(Backend):
 
@@ -31,10 +35,20 @@ class BzrBackend(Backend):
     def apply_pack(self, refs, read):
         """ apply pack from client to current repository """
 
-        self.read()
+        # FIXME: Until we have a VirtualGitRepository, lets just stash it on disk
+        source_path = tempfile.mkdtemp()
+        Repo.init_bare(target_path)
+        repo = Repo(target_path)
+        f, commit = repo.object_store.add_pack()
+        f.write(self.read())
+        f.close()
+        commit(()
+        for oldsha, sha, ref in refs:
+            repo.set_ref(ref, sha)
+        source_repos = Repository.open(target_path)
+        # END FIXME
 
-        source_dir = BzrDir.open(self.directory)
-        source_repos = source_dir.open_repository()
+        target_repos = Repository.open(self.directory)
 
         source_repos.lock_read()
         try:
