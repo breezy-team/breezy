@@ -85,9 +85,7 @@ class GitBackend(Backend):
         print "pack applied"
 
     def fetch_objects(self, determine_wants, graph_walker, progress):
-        shas = self.repo.find_missing_objects(determine_wants, graph_walker, progress)
-        for sha in shas:
-            yield self.repo.get_object(sha)
+        return iter(self.repo.fetch_objects(determine_wants, graph_walker, progress))
 
 
 class Handler(object):
