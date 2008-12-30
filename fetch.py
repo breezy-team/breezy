@@ -22,7 +22,11 @@ from bzrlib.trace import info
 from bzrlib.tsort import topo_sort
 
 from bzrlib.plugins.git import git
-from bzrlib.plugins.git.repository import LocalGitRepository, GitRepository, GitFormat
+from bzrlib.plugins.git.repository import (
+        LocalGitRepository, 
+        GitRepository, 
+        GitFormat,
+        )
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
 from dulwich.objects import Commit

@@ -231,7 +231,7 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
         try:
             transport.fetch_pack(lambda x: [], None, lambda x: None, 
                                  lambda x: mutter("git: %s" % x))
-        except GitProtocolException, e:
+        except errors.git_errors.GitProtocolError:
             raise errors.bzr_errors.NotBranchError(path=transport.base)
         else:
             return format

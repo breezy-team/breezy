@@ -136,3 +136,7 @@ class RemoteGitBranch(GitBranch):
     def last_revision(self):
         return self.mapping.revision_id_foreign_to_bzr(self._ref)
 
+    def _synchronize_history(self, destination, revision_id):
+        """See Branch._synchronize_history()."""
+        destination.generate_revision_history(self.last_revision())
+ 
