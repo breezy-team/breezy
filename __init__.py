@@ -53,6 +53,45 @@ foreign_vcs_registry.register("git", ForeignGit(git_mapping_registry),
                                       "Stupid content tracker")
 
 
+class cmd_git_serve(Command):
+    """Provide access to a Bazaar branch using the git protocol.
+
+    This command is experimental and doesn't do much yet.
+    """
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode)
+    ]
+
+    def run(self, inet=None, port=None, directory=None):
+        from dulwich.server import TCPGitServer
+        from bzrlib.plugins.git.server import BzrBackend
+        from bzrlib.trace import warning
+        import os
+
+        warning("server support in bzr-git is experimental.")
+
+        if directory is None:
+            directory = os.getcwd()
+
+        backend = BzrBackend(directory)
+
+        if inet:
+            #def send_fn(data):
+            #    sys.stdout.write(data)
+            #    sys.stdout.flush()
+            #server = GitServer(sys.stdin.read, send_fn)
+            raise NotImplementedError
+        else:
+            server = TCPGitServer(('localhost', port))
+            server.serve_forever()
+
+register_command(cmd_git_serve)
+
+
 def test_suite():
     from bzrlib.plugins.git import tests
     return tests.test_suite()
