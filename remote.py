@@ -25,6 +25,7 @@ from bzrlib.transport import Transport
 
 from bzrlib.plugins.git import git
 from bzrlib.plugins.git.branch import GitBranch
+from bzrlib.plugins.git.errors import NoSuchRef
 from bzrlib.plugins.git.dir import GitDir
 from bzrlib.plugins.git.foreign import ForeignBranch
 from bzrlib.plugins.git.repository import GitFormat, GitRepository
@@ -117,6 +118,8 @@ class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
         def determine_wants(heads):
+            if not name in heads:
+                raise NoSuchRef(name)
             self._ref = heads[name]
         bzrdir.root_transport.fetch_pack(determine_wants, None, lambda x: None, 
                              lambda x: mutter("git: %s" % x))
