@@ -15,15 +15,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.repository import Repository, InterRepository
+from bzrlib.repository import Repository
 
+from bzrlib.plugins.git.fetch import import_git_objects
 from bzrlib.plugins.git.mapping import default_mapping
 
 from dulwich.server import Backend
-from dulwich.repo import Repo
+from dulwich.pack import Pack, PackData, write_pack_index_v2
+from dulwich.objects import ShaFile
 
-#FIXME: Shouldnt need these imports
-import tempfile
+import os, tempfile
 
 class BzrBackend(Backend):
 
@@ -38,27 +39,31 @@ class BzrBackend(Backend):
     def apply_pack(self, refs, read):
         """ apply pack from client to current repository """
 
-        # FIXME: Until we have a VirtualGitRepository, lets just stash it on disk
-        source_path = tempfile.mkdtemp()
-        Repo.init_bare(source_path)
-        repo = Repo(source_path)
-        f, commit = repo.object_store.add_pack()
+        fd, path = tempfile.mkstemp(suffix=".pack")
+        f = os.fdopen(fd, 'w')
         f.write(read())
         f.close()
-        commit()
-        for oldsha, sha, ref in refs:
-            repo.set_ref(ref, sha)
-        source_repos = Repository.open(source_path)
-        # END FIXME
 
-        target_repos = Repository.open(self.directory)
+        p = PackData(path)
+        entries = p.sorted_entries()
+        write_pack_index_v2(path[:-5]+".idx", entries, p.calculate_checksum())
 
-        source_repos.lock_read()
+        def get_objects():
+            pack = Pack(path[:-5])
+            for obj in pack.iterobjects():
+                yield obj
+
+        target = Repository.open(self.directory)
+
+        target.lock_write()
         try:
-            inter = InterRepository.get(source_repos, target_repos)
-            inter.fetch()
+            target.start_write_group()
+            try:
+                import_git_objects(target, self.mapping, iter(get_objects()))
+            finally:
+                target.commit_write_group()
         finally:
-            source_repos.unlock()
+            target.unlock()
 
         for oldsha, sha, ref in refs:
             if ref[:11] == 'refs/heads/':
