@@ -22,7 +22,11 @@ from bzrlib.trace import info
 from bzrlib.tsort import topo_sort
 
 from bzrlib.plugins.git import git
-from bzrlib.plugins.git.repository import LocalGitRepository, GitRepository, GitFormat
+from bzrlib.plugins.git.repository import (
+        LocalGitRepository, 
+        GitRepository, 
+        GitFormat,
+        )
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
 from dulwich.objects import Commit
@@ -157,7 +161,8 @@ def import_git_objects(repo, mapping, object_iter, pb=None):
                 return objects[sha]
             return reconstruct_git_object(repo, mapping, sha)
         parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
-        import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, lookup_object)
+        import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, 
+            lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
 
 
@@ -197,10 +202,7 @@ class InterGitRepository(InterRepository):
         if mapping is None:
             mapping = self.source.get_mapping()
         def progress(text):
-            if pb is not None:
-                pb.note("git: %s" % text)
-            else:
-                info("git: %s" % text)
+            pb.note("git: %s", text)
         def determine_wants(heads):
             if revision_id is None:
                 ret = heads.values()
@@ -208,21 +210,28 @@ class InterGitRepository(InterRepository):
                 ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
-        self.target.lock_write()
+        create_pb = None
+        if pb is None:
+            create_pb = pb = ui.ui_factory.nested_progress_bar()
         try:
-            self.target.start_write_group()
+            self.target.lock_write()
             try:
-                import_git_objects(self.target, mapping,
-                    iter(self.source.fetch_objects(determine_wants, graph_walker, 
-                        progress)), pb)
+                self.target.start_write_group()
+                try:
+                    import_git_objects(self.target, mapping,
+                        iter(self.source.fetch_objects(determine_wants, graph_walker, 
+                            progress)), pb)
+                finally:
+                    self.target.commit_write_group()
             finally:
-                self.target.commit_write_group()
+                self.target.unlock()
         finally:
-            self.target.unlock()
+            if create_pb:
+                create_pb.finished()
 
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
-        return (isinstance(source, LocalGitRepository) and 
+        return (isinstance(source, GitRepository) and 
                 target.supports_rich_root())

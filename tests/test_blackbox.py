@@ -53,9 +53,8 @@ class TestGitBlackBox(ExternalBase):
 
         os.chdir("..")
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
-        self.assertEqual(error, 'git: counting objects: 3\r\n' +
-                'Branched 1 revision(s).\n')
-        self.assertEqual(output, '')
+        self.assertEqual(error, 'Branched 1 revision(s).\n')
+        self.assertEqual(output, 'git: counting objects: 3\r\n')
 
     def test_branch_ls(self):
         self.simple_commit()

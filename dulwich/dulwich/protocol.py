@@ -17,6 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA  02110-1301, USA.
 
+from errors import HangupException
+
 TCP_GIT_PORT = 9418
 
 class ProtocolFile(object):
@@ -50,7 +52,7 @@ class Protocol(object):
         """
         sizestr = self.read(4)
         if not sizestr:
-            return None
+            raise HangupException()
         size = int(sizestr, 16)
         if size == 0:
             return None
@@ -80,12 +82,12 @@ class Protocol(object):
         :param channel: int specifying which channel to write to
         :param blob: a blob of data (as a string) to send on this channel
         """
-        # a pktline can be a max of 65535. a sideband line can therefore be
-        # 65535-5 = 65530
+        # a pktline can be a max of 65520. a sideband line can therefore be
+        # 65520-5 = 65515
         # WTF: Why have the len in ASCII, but the channel in binary.
         while blob:
-            self.write_pkt_line("%s%s" % (chr(channel), blob[:65530]))
-            blob = blob[65530:]
+            self.write_pkt_line("%s%s" % (chr(channel), blob[:65515]))
+            blob = blob[65515:]
 
     def send_cmd(self, cmd, *args):
         """

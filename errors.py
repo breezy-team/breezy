@@ -17,6 +17,7 @@
 """A grouping of Exceptions for bzr-git"""
 
 from bzrlib import errors as bzr_errors
+from dulwich import errors as git_errors
 
 
 class BzrGitError(bzr_errors.BzrError):
@@ -32,3 +33,12 @@ class GitCommandError(BzrGitError):
         self.command = command
         self.returncode = returncode
         self.stderr = stderr
+
+
+class NoSuchRef(BzrGitError):
+    """Raised when a ref can not be found.""" 
+
+    _fmt = "The ref %(ref)s was not found."
+    
+    def __init__(self, ref):
+        self.ref = ref

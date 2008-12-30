@@ -40,7 +40,7 @@ class Backend(object):
         """
         raise NotImplementedError
 
-    def fetch_objects(self, determine_wants, graph_waker, progress):
+    def fetch_objects(self, determine_wants, graph_walker, progress):
         """
         Yield the objects required for a list of commits.
 
@@ -59,9 +59,8 @@ class GitBackend(Backend):
             Repo.create(self.gitdir)
 
         self.repo = Repo(self.gitdir)
-
-    def get_refs(self):
-        return self.repo.get_refs()
+        self.fetch_objects = self.repo.fetch_objects
+        self.get_refs = self.repo.get_refs
 
     def apply_pack(self, refs, read):
         # store the incoming pack in the repository
@@ -104,9 +103,9 @@ class UploadPackHandler(Handler):
         def determine_wants(heads):
             keys = heads.keys()
             if keys:
-                self.proto.write_pkt_line("%s %s\x00%s\n" % (keys[0], heads[keys[0]], self.capabilities()))
+                self.proto.write_pkt_line("%s %s\x00%s\n" % ( heads[keys[0]], keys[0], self.capabilities()))
                 for k in keys[1:]:
-                    self.proto.write_pkt_line("%s %s\n" % (k, heads[k]))
+                    self.proto.write_pkt_line("%s %s\n" % (heads[k], k))
 
             # i'm done..
             self.proto.write("0000")
@@ -121,17 +120,17 @@ class UploadPackHandler(Handler):
 
             want_revs = []
             while want and want[:4] == 'want':
-                want_rev = want[5:45]
-                # FIXME: This check probably isnt needed?
-                want_revs.append(want_rev)
+                want_revs.append(want[5:45])
                 want = self.proto.read_pkt_line()
             return want_revs
 
         progress = lambda x: self.proto.write_sideband(2, x)
+        write = lambda x: self.proto.write_sideband(1, x)
 
         class ProtocolGraphWalker(object):
 
-            def __init__(self):
+            def __init__(self, proto):
+                self.proto = proto
                 self._last_sha = None
 
             def ack(self, have_ref):
@@ -142,8 +141,8 @@ class UploadPackHandler(Handler):
                 if have[:4] == 'have':
                     return have[5:45]
 
-                if have[:4] == 'done':
-                    return None
+                #if have[:4] == 'done':
+                #    return None
 
                 if self._last_sha:
                     # Oddness: Git seems to resend the last ACK, without the "continue" statement
@@ -152,6 +151,7 @@ class UploadPackHandler(Handler):
                 # The exchange finishes with a NAK
                 self.proto.write_pkt_line("NAK\n")
 
+        graph_walker = ProtocolGraphWalker(self.proto)
         objects = list(self.backend.fetch_objects(determine_wants, graph_walker, progress))
         progress("dul-daemon says what\n")
         progress("counting objects: %d, done.\n" % len(objects))

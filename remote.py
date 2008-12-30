@@ -25,14 +25,17 @@ from bzrlib.transport import Transport
 
 from bzrlib.plugins.git import git
 from bzrlib.plugins.git.branch import GitBranch
+from bzrlib.plugins.git.errors import NoSuchRef
 from bzrlib.plugins.git.dir import GitDir
 from bzrlib.plugins.git.foreign import ForeignBranch
 from bzrlib.plugins.git.repository import GitFormat, GitRepository
 
+import os
+import tempfile
 import urllib
 import urlparse
 
-from dulwich.pack import PackData
+from dulwich.pack import PackData, Pack
 
 
 class GitSmartTransport(Transport):
@@ -43,31 +46,27 @@ class GitSmartTransport(Transport):
         assert scheme == "git"
         hostport, self._path = urllib.splithost(loc)
         (self._host, self._port) = urllib.splitnport(hostport, git.protocol.TCP_GIT_PORT)
-        if _client is not None:
-            self._client = _client
-        else:
-            self._client = git.client.TCPGitClient(self._host, self._port)
+        self._client = _client
+
+    def _get_client(self):
+        if self._client is not None:
+            ret = self._client
+            self._client = None
+            return ret
+        return git.client.TCPGitClient(self._host, self._port)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
             def progress(text):
                 info("git: %s" % text)
-        self._client.fetch_pack(self._path, determine_wants, graph_walker, 
-                pack_data, progress)
-
-    def fetch_objects(self, determine_wants, graph_walker, progress=None):
-        fd, path = tempfile.mkstemp(dir=self.pack_dir(), suffix=".pack")
-        self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
-        os.close(fd)
-        try:
-            p = PackData(path)
-            for o in p.iterobjects():
-                yield o
-        finally:
-            os.remove(path)
+        self._get_client().fetch_pack(self._path, determine_wants, 
+            graph_walker, pack_data, progress)
 
     def get(self, path):
         raise NoSuchFile(path)
+
+    def abspath(self, relpath):
+        return urlutils.join(self.base, relpath)
 
     def clone(self, offset=None):
         """See Transport.clone()."""
@@ -109,11 +108,26 @@ class RemoteGitRepository(GitRepository):
         self._transport.fetch_pack(determine_wants, graph_walker, pack_data, 
             progress)
 
+    def fetch_objects(self, determine_wants, graph_walker, progress=None):
+        fd, path = tempfile.mkstemp(suffix=".pack")
+        self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
+        os.close(fd)
+        try:
+            basename = path[:-len(".pack")]
+            p = PackData(path)
+            p.create_index_v2(basename+".idx")
+            for o in Pack(basename).iterobjects():
+                yield o
+        finally:
+            os.remove(path)
+
 
 class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
         def determine_wants(heads):
+            if not name in heads:
+                raise NoSuchRef(name)
             self._ref = heads[name]
         bzrdir.root_transport.fetch_pack(determine_wants, None, lambda x: None, 
                              lambda x: mutter("git: %s" % x))
@@ -122,3 +136,7 @@ class RemoteGitBranch(GitBranch):
     def last_revision(self):
         return self.mapping.revision_id_foreign_to_bzr(self._ref)
 
+    def _synchronize_history(self, destination, revision_id):
+        """See Branch._synchronize_history()."""
+        destination.generate_revision_history(self.last_revision())
+ 
