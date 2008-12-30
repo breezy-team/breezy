@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.bzrdir import BzrDir
-from bzrlib.repository import InterRepository
+from bzrlib.repository import Repository, InterRepository
 
 from dulwich.server import Backend
 from dulwich.repo import Repo
@@ -37,15 +36,15 @@ class BzrBackend(Backend):
 
         # FIXME: Until we have a VirtualGitRepository, lets just stash it on disk
         source_path = tempfile.mkdtemp()
-        Repo.init_bare(target_path)
-        repo = Repo(target_path)
+        Repo.init_bare(source_path)
+        repo = Repo(source_path)
         f, commit = repo.object_store.add_pack()
-        f.write(self.read())
+        f.write(read())
         f.close()
-        commit(()
+        commit()
         for oldsha, sha, ref in refs:
             repo.set_ref(ref, sha)
-        source_repos = Repository.open(target_path)
+        source_repos = Repository.open(source_path)
         # END FIXME
 
         target_repos = Repository.open(self.directory)
