@@ -28,6 +28,8 @@ from bzrlib import bzrdir
 from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
 from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
 from bzrlib.transport import register_lazy_transport
+from bzrlib.commands import Command, register_command
+from bzrlib.option import Option
 
 bzrdir.format_registry.register(
     'git', LocalGitBzrDirFormat,
@@ -86,7 +88,7 @@ class cmd_git_serve(Command):
             #server = GitServer(sys.stdin.read, send_fn)
             raise NotImplementedError
         else:
-            server = TCPGitServer(('localhost', port))
+            server = TCPGitServer(backend, 'localhost')
             server.serve_forever()
 
 register_command(cmd_git_serve)

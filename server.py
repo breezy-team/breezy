@@ -18,6 +18,9 @@ from dulwich.server import Backend
 
 class BzrBackend(Backend):
 
+    def __init__(self, directory):
+        self.directory = directory
+
     def get_refs(self):
         """ return a dict of all tags and branches in repository (and shas) """
         return {}
