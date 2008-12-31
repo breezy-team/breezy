@@ -3457,6 +3457,7 @@ class cmd_missing(Command):
             'log-format',
             'show-ids',
             'verbose',
+            'revision',
             Option('include-merges', 'Show merged revisions.'),
             ]
     encoding_type = 'replace'
@@ -3466,7 +3467,7 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False):
+            include_merges=False, revision=None):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
@@ -3500,6 +3501,14 @@ class cmd_missing(Command):
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
+                
+        revisionid_range = [None, None]
+        if revision is not None:
+            for i, rev in enumerate(revision):
+                branch = revision_specs[i].get_branch()
+                if branch == None:
+                    branch = local_branch
+                revisionid_range[i] = revision_specs[i].as_revision_id(branch)
         local_branch.lock_read()
         try:
             remote_branch.lock_read()
@@ -3507,7 +3516,8 @@ class cmd_missing(Command):
                 local_extra, remote_extra = find_unmerged(
                     local_branch, remote_branch, restrict,
                     backward=not reverse,
-                    include_merges=include_merges)
+                    include_merges=include_merges,
+                    revid_range=revisionid_range)
 
                 if log_format is None:
                     registry = log.log_formatter_registry
