@@ -1447,7 +1447,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def _testing_pycurl(self):
         return pycurl_present and self._transport == PyCurlTransport
 
-    def get_user_url(self, user=None, password=None):
+    def get_user_url(self, user, password):
         """Build an url embedding user and password"""
         url = '%s://' % self.server._url_protocol
         if user is not None:
@@ -1458,12 +1458,12 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         url += '%s:%s/' % (self.server.host, self.server.port)
         return url
 
-    def get_user_transport(self, user=None, password=None):
+    def get_user_transport(self, user, password):
         return self._transport(self.get_user_url(user, password))
 
     def test_no_user(self):
         self.server.add_user('joe', 'foo')
-        t = self.get_user_transport()
+        t = self.get_user_transport(None, None)
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
@@ -1557,6 +1557,25 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
+    def test_user_from_auth_conf(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl does not support authentication.conf')
+        user = 'joe'
+        password = 'foo'
+        self.server.add_user(user, password)
+        # Create a minimal config file with the right password
+        conf = config.AuthenticationConfig()
+        conf._get_config().update(
+            {'httptest': {'scheme': 'http', 'port': self.server.port,
+                          'user': user, 'password': password}})
+        conf._save()
+        t = self.get_user_transport(None, None)
+        # Issue a request to the server to connect
+        self.assertEqual('contents of a\n', t.get('a').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
     def test_changing_nonce(self):
         if self._auth_scheme != 'digest':
             raise tests.TestNotApplicable('HTTP auth digest only test')
@@ -1608,7 +1627,7 @@ class TestProxyAuth(TestAuth):
                 protocol_version=self._protocol_version)
         return server
 
-    def get_user_transport(self, user=None, password=None):
+    def get_user_transport(self, user, password):
         self._install_env({'all_proxy': self.get_user_url(user, password)})
         return self._transport(self.server.get_url())
 
