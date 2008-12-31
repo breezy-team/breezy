@@ -175,17 +175,21 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     return revline
 
 
-def _get_revid_in_bounds(branch, graph, revid_range, revision_id):
+def _get_revid_in_range(branch, graph, revid_range, revision_id):
     """Force revision_id inside bounds"""
     if revid_range is not None:
         revid1, revid2 = revid_range
     else:
         revid1 = revid2 = None
-    #check if older than lower bound
-    if revid1 is not None and graph.is_ancestor(revision_id, revid1):
+
+    # check if older than lower bound
+    if (revid1 is not None and graph.is_ancestor(revision_id, revid1)
+        and revid1 in branch.revision_history()):
+        # is there a cheaper way to check if a revid is present in a branch?
         revision_id = revid1
-    #check if younger than upper bound
-    if revid2 is not None and graph.is_ancestor(revid2, revision_id):
+    # check if younger than upper bound
+    if (revid2 is not None and graph.is_ancestor(revid2, revision_id)
+        and revid2 in branch.revision_history()):
         revision_id = revid2
     return branch.revision_id_to_revno(revision_id), revision_id
 
@@ -203,9 +207,9 @@ def _find_unmerged(local_branch, remote_branch, restrict,
         return [], []
     graph = local_branch.repository.get_graph(remote_branch.repository)
 
-    local_revno, local_revision_id = _get_revid_in_bounds(local_branch,
+    local_revno, local_revision_id = _get_revid_in_range(local_branch,
         graph, revid_range, local_revision_id)
-    remote_revno, remote_revision_id = _get_revid_in_bounds(remote_branch,
+    remote_revno, remote_revision_id = _get_revid_in_range(remote_branch,
         graph, revid_range, remote_revision_id)
     if restrict == 'remote':
         local_extra = None
