@@ -61,14 +61,12 @@ class cmd_git_serve(Command):
     This command is experimental and doesn't do much yet.
     """
     takes_options = [
-        Option('inet',
-               help='serve on stdin/out for use from inetd or sshd'),
         Option('directory',
                help='serve contents of directory',
                type=unicode)
     ]
 
-    def run(self, inet=None, port=None, directory=None):
+    def run(self, directory=None):
         from dulwich.server import TCPGitServer
         from bzrlib.plugins.git.server import BzrBackend
         from bzrlib.trace import warning
@@ -81,15 +79,8 @@ class cmd_git_serve(Command):
 
         backend = BzrBackend(directory)
 
-        if inet:
-            #def send_fn(data):
-            #    sys.stdout.write(data)
-            #    sys.stdout.flush()
-            #server = GitServer(sys.stdin.read, send_fn)
-            raise NotImplementedError
-        else:
-            server = TCPGitServer(backend, 'localhost')
-            server.serve_forever()
+        server = TCPGitServer(backend, 'localhost')
+        server.serve_forever()
 
 register_command(cmd_git_serve)
 
