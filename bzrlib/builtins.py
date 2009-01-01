@@ -56,7 +56,7 @@ from bzrlib.workingtree import WorkingTree
 
 from bzrlib.commands import Command, display_command
 from bzrlib.option import ListOption, Option, RegistryOption, custom_help
-from bzrlib.trace import mutter, note, warning, is_quiet
+from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -1841,30 +1841,13 @@ class cmd_log(Command):
 
         b.lock_read()
         try:
-            if revision is None:
-                rev1 = None
-                rev2 = None
-            elif len(revision) == 1:
-                rev1 = rev2 = revision[0].in_history(b)
-            elif len(revision) == 2:
-                if revision[1].get_branch() != revision[0].get_branch():
-                    # b is taken from revision[0].get_branch(), and
-                    # show_log will use its revision_history. Having
-                    # different branches will lead to weird behaviors.
-                    raise errors.BzrCommandError(
-                        "Log doesn't accept two revisions in different"
-                        " branches.")
-                rev1 = revision[0].in_history(b)
-                rev2 = revision[1].in_history(b)
-            else:
-                raise errors.BzrCommandError(
-                    'bzr log --revision takes one or two values.')
-
+            rev1, rev2 = _get_revision_range(revision, b, self.name())
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
 
             lf = log_format(show_ids=show_ids, to_file=self.outf,
-                            show_timezone=timezone)
+                            show_timezone=timezone,
+                            delta_format=get_verbosity_level())
 
             show_log(b,
                      lf,
@@ -1878,6 +1861,32 @@ class cmd_log(Command):
         finally:
             b.unlock()
 
+def _get_revision_range(revisionspec_list, branch, command_name):
+    """Take the input of a revision option and turn it into a revision range.
+
+    It returns RevisionInfo objects which can be used to obtain the rev_id's
+    of the desired revisons. It does some user input validations.
+    """
+    if revisionspec_list is None:
+        rev1 = None
+        rev2 = None
+    elif len(revisionspec_list) == 1:
+        rev1 = rev2 = revisionspec_list[0].in_history(branch)
+    elif len(revisionspec_list) == 2:
+        if revisionspec_list[1].get_branch() != revisionspec_list[0
+                ].get_branch():
+            # b is taken from revision[0].get_branch(), and
+            # show_log will use its revision_history. Having
+            # different branches will lead to weird behaviors.
+            raise errors.BzrCommandError(
+                "bzr %s doesn't accept two revisions in different"
+                " branches." % command_name)
+        rev1 = revisionspec_list[0].in_history(branch)
+        rev2 = revisionspec_list[1].in_history(branch)
+    else:
+        raise errors.BzrCommandError(
+            'bzr %s --revision takes one or two values.' % command_name)
+    return rev1, rev2
 
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
@@ -4220,7 +4229,7 @@ class cmd_merge_directive(Command):
 
 
 class cmd_send(Command):
-    """Mail or create a merge-directive for submiting changes.
+    """Mail or create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -4418,7 +4427,7 @@ class cmd_send(Command):
 
 class cmd_bundle_revisions(cmd_send):
 
-    """Create a merge-directive for submiting changes.
+    """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -4568,6 +4577,7 @@ class cmd_tags(Command):
             time='Sort tags chronologically.',
             ),
         'show-ids',
+        'revision',
     ]
 
     @display_command
@@ -4575,11 +4585,28 @@ class cmd_tags(Command):
             directory='.',
             sort='alpha',
             show_ids=False,
+            revision=None,
             ):
         branch, relpath = Branch.open_containing(directory)
+
         tags = branch.tags.get_tag_dict().items()
         if not tags:
             return
+
+        if revision:
+            branch.lock_read()
+            try:
+                graph = branch.repository.get_graph()
+                rev1, rev2 = _get_revision_range(revision, branch, self.name())
+                revid1, revid2 = rev1.rev_id, rev2.rev_id
+                # only show revisions between revid1 and revid2 (inclusive)
+                tags = [(tag, revid) for tag, revid in tags if
+                     (revid2 is None or
+                         graph.is_ancestor(revid, revid2)) and
+                     (revid1 is None or
+                         graph.is_ancestor(revid1, revid))]
+            finally:
+                branch.unlock()
         if sort == 'alpha':
             tags.sort()
         elif sort == 'time':

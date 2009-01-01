@@ -28,6 +28,7 @@ from bzrlib import (
     remote,
     repository,
     )
+from bzrlib.branch import BzrBranchFormat6
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.repofmt.weaverepo import (
@@ -785,6 +786,35 @@ class TestRepository(TestCaseWithRepository):
                 "Cannot lock_read old formats like AllInOne over HPSS.")
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    def test_clone_unstackable_branch_preserves_stackable_repo_format(self):
+        """Cloning an unstackable branch format to a somewhere with a default
+        stack-on branch preserves the repository format.  (i.e. if the source
+        repository is stackable, the branch format is upgraded but the
+        repository format is preserved.)
+        """
+        try:
+            repo = self.make_repository('repo', shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable('Cannot make a shared repository')
+        # Make a source branch in 'repo' in an unstackable branch format
+        bzrdir_format = self.repository_format._matchingbzrdir
+        transport = self.get_transport('repo/branch')
+        transport.mkdir('.')
+        target_bzrdir = bzrdir_format.initialize_on_transport(transport)
+        branch = BzrBranchFormat6().initialize(target_bzrdir)
+        #branch = self.make_branch('repo/branch', format='pack-0.92')
+        self.make_branch('stack-on-me')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on-me')
+        target = branch.bzrdir.clone(self.get_url('target'))
+        # The target branch supports stacking if the source repository does.
+        self.assertEqual(repo._format.supports_external_lookups,
+                         target.open_branch()._format.supports_stacking())
+        if isinstance(repo, remote.RemoteRepository):
+            repo._ensure_real()
+            repo = repo._real_repository
+        # The repository format is preserved.
+        self.assertEqual(repo._format, target.open_repository()._format)
 
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns

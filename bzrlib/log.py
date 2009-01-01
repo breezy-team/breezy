@@ -147,31 +147,25 @@ def show_log(branch,
              limit=None):
     """Write out human-readable log of commits to this branch.
 
-    lf
-        LogFormatter object to show the output.
+    :param lf: The LogFormatter object showing the output.
 
-    specific_fileid
-        If true, list only the commits affecting the specified
-        file, rather than all commits.
+    :param specific_fileid: If not None, list only the commits affecting the
+        specified file, rather than all commits.
 
-    verbose
-        If true show added/changed/deleted/renamed files.
+    :param verbose: If True show added/changed/deleted/renamed files.
 
-    direction
-        'reverse' (default) is latest to earliest;
-        'forward' is earliest to latest.
+    :param direction: 'reverse' (default) is latest to earliest; 'forward' is
+        earliest to latest.
 
-    start_revision
-        If not None, only show revisions >= start_revision
+    :param start_revision: If not None, only show revisions >= start_revision
 
-    end_revision
-        If not None, only show revisions <= end_revision
+    :param end_revision: If not None, only show revisions <= end_revision
 
-    search
-        If not None, only show revisions with matching commit messages
+    :param search: If not None, only show revisions with matching commit
+        messages
 
-    limit
-        If not None or 0, only show limit revisions
+    :param limit: If set, shows only 'limit' revisions, all revisions are shown
+        if None or 0.
     """
     branch.lock_read()
     try:
@@ -398,7 +392,8 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev, delta).
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
     """
     repository = branch.repository
     num = 9
@@ -649,7 +644,8 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
-    for sequence, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
+    for (sequence, rev_id, merge_depth, revno, end_of_merge
+         ) in merge_sorted_revisions:
         yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
@@ -713,7 +709,10 @@ class LogFormatter(object):
     to indicate which LogRevision attributes it supports:
 
     - supports_delta must be True if this log formatter supports delta.
-        Otherwise the delta attribute may not be populated.
+        Otherwise the delta attribute may not be populated.  The 'delta_format'
+        attribute describes whether the 'short_status' format (1) or the long
+        one (2) sould be used.
+ 
     - supports_merge_revisions must be True if this log formatter supports 
         merge revisions.  If not, and if supports_single_merge_revisions is
         also not True, then only mainline revisions will be passed to the 
@@ -732,10 +731,15 @@ class LogFormatter(object):
             # to be shown
     """
 
-    def __init__(self, to_file, show_ids=False, show_timezone='original'):
+    def __init__(self, to_file, show_ids=False, show_timezone='original',
+                 delta_format=None):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
+        if delta_format is None:
+            # Ensures backward compatibility
+            delta_format = 2 # long format
+        self.delta_format = delta_format
 
 # TODO: uncomment this block after show() has been removed.
 # Until then defining log_revision would prevent _show_log calling show() 
@@ -813,7 +817,9 @@ class LongLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 to_file.write(indent + '  %s\n' % (l,))
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids, indent=indent)
+            # We don't respect delta_format for compatibility
+            revision.delta.show(to_file, self.show_ids, indent=indent,
+                                short_status=False)
 
 
 class ShortLogFormatter(LogFormatter):
@@ -834,7 +840,8 @@ class ShortLogFormatter(LogFormatter):
                             show_offset=False),
                 is_merge))
         if self.show_ids:
-            to_file.write('      revision-id:%s\n' % (revision.rev.revision_id,))
+            to_file.write('      revision-id:%s\n'
+                          % (revision.rev.revision_id,))
         if not revision.rev.message:
             to_file.write('      (no message)\n')
         else:
@@ -842,10 +849,9 @@ class ShortLogFormatter(LogFormatter):
             for l in message.split('\n'):
                 to_file.write('      %s\n' % (l,))
 
-        # TODO: Why not show the modified files in a shorter form as
-        # well? rewrap them single lines of appropriate length
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids)
+            revision.delta.show(to_file, self.show_ids,
+                                short_status=self.delta_format==1)
         to_file.write('\n')
 
 

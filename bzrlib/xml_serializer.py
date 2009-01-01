@@ -59,7 +59,8 @@ class Serializer(object):
     def write_inventory_to_string(self, inv):
         raise NotImplementedError(self.write_inventory_to_string)
 
-    def read_inventory_from_string(self, xml_string, revision_id=None):
+    def read_inventory_from_string(self, xml_string, revision_id=None,
+                                   entry_cache=None):
         """Read xml_string into an inventory object.
 
         :param xml_string: The xml to read.
@@ -70,9 +71,13 @@ class Serializer(object):
             serialised without a revision identifier can be given the right
             revision id (but not for working tree inventories where users can
             edit the data without triggering checksum errors or anything).
+        :param entry_cache: An optional cache of InventoryEntry objects. If
+            supplied we will look up entries via (file_id, revision_id) which
+            should map to a valid InventoryEntry (File/Directory/etc) object.
         """
         try:
-            return self._unpack_inventory(fromstring(xml_string), revision_id)
+            return self._unpack_inventory(fromstring(xml_string), revision_id,
+                                          entry_cache=entry_cache)
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
