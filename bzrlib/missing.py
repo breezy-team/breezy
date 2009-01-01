@@ -181,24 +181,11 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     return revline
 
 
-def _get_revid_in_range(branch, graph, revid_range, revision_id):
-    """Force revision_id inside bounds"""
-    if revid_range is not None:
-        revid1, revid2 = revid_range
-    else:
-        revid1 = revid2 = None
-    print branch.nick, revid_range, branch.revision_id_to_revno(revision_id), revision_id 
-    # check if older than lower bound
-    if (revid1 is not None and graph.is_ancestor(revision_id, revid1)
-        and revid1 in branch.revision_history()):
-        # is there a cheaper way to check if a revid is present in a branch?
-        revision_id = revid1
-    # check if younger than upper bound
-    if (revid2 is not None and graph.is_ancestor(revid2, revision_id)
-        and revid2 in branch.revision_history()):
-        revision_id = revid2
-    print "--> ", branch.revision_id_to_revno(revision_id), revision_id 
-    return branch.revision_id_to_revno(revision_id), revision_id
+def _filter_revs(graph, revs, revid_range):
+    if revid_range is None:
+        return revs
+    return [(revno, revision_id) for revno, revision_id in revs
+        if graph.is_between(revision_id, revid_range[0], revid_range[1])]
 
 
 def _find_unmerged(local_branch, remote_branch, restrict,
@@ -214,11 +201,6 @@ def _find_unmerged(local_branch, remote_branch, restrict,
         # A simple shortcut when the tips are at the same point
         return [], []
     graph = local_branch.repository.get_graph(remote_branch.repository)
-
-    local_revno, local_revision_id = _get_revid_in_range(local_branch,
-        graph, local_revid_range, local_revision_id)
-    remote_revno, remote_revision_id = _get_revid_in_range(remote_branch,
-        graph, remote_revid_range, remote_revision_id)
     if restrict == 'remote':
         local_extra = None
         remote_extra = graph.find_unique_ancestors(remote_revision_id,
@@ -233,7 +215,6 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                              ' "remote": %r' % (restrict,))
         local_extra, remote_extra = graph.find_difference(local_revision_id,
                                                           remote_revision_id)
-    #Todo: filter extra revisions to be in the range  
     if include_merges:
         locals = _enumerate_with_merges(local_branch, local_extra,
                                         graph, local_revno,
@@ -248,7 +229,8 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                                      local_revision_id, backward)
         remotes = _enumerate_mainline(remote_extra, graph, remote_revno,
                                       remote_revision_id, backward)
-    return locals, remotes
+    return _filter_revs(graph, locals, local_revid_range), _filter_revs(graph,
+        remotes, remote_revid_range)
 
 
 def sorted_revisions(revisions, history_map):
