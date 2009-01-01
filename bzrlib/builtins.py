@@ -49,6 +49,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
+from bzrlib.option import _parse_revision_str
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
@@ -1895,6 +1896,16 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             'bzr %s --revision takes one or two values.' % command_name)
     return rev1, rev2
 
+
+def _revision_range_to_revid_range(revision_range):
+    rev_id1 = None
+    rev_id2 = None
+    if revision_range[0] is not None:
+        rev_id1 = revision_range[0].rev_id
+    if revision_range[1] is not None:
+        rev_id2 = revision_range[1].rev_id
+    return rev_id1, rev_id2
+
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
     if long:
@@ -3457,7 +3468,14 @@ class cmd_missing(Command):
             'log-format',
             'show-ids',
             'verbose',
-            'revision',
+             custom_help('revision',
+                 help='Filter on local branch revisions. '
+                    'See "help revisionspec" for details.'),
+             Option('other-revision',
+               type=_parse_revision_str,
+               short_name='o',
+               help='Filter on other branch revisions. '
+                'See "help revisionspec" for details.'),
             Option('include-merges', 'Show merged revisions.'),
             ]
     encoding_type = 'replace'
@@ -3467,7 +3485,7 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, revision=None):
+            include_merges=False, revision=None, other_revision=None):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
@@ -3501,14 +3519,15 @@ class cmd_missing(Command):
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
-                
-        revisionid_range = [None, None]
-        if revision is not None:
-            for i, rev in enumerate(revision):
-                branch = revision_specs[i].get_branch()
-                if branch == None:
-                    branch = local_branch
-                revisionid_range[i] = revision_specs[i].as_revision_id(branch)
+
+        local_revid_range = _revision_range_to_revid_range(
+            _get_revision_range(revision, local_branch,
+                self.name()))#Todo singlerev_mode='right' 
+
+        remote_revid_range = _revision_range_to_revid_range(
+            _get_revision_range(other_revision,
+                remote_branch, self.name()))#Todo singlerev_mode='right' 
+
         local_branch.lock_read()
         try:
             remote_branch.lock_read()
@@ -3517,7 +3536,8 @@ class cmd_missing(Command):
                     local_branch, remote_branch, restrict,
                     backward=not reverse,
                     include_merges=include_merges,
-                    revid_range=revisionid_range)
+                    local_revid_range=local_revid_range,
+                    remote_revid_range= remote_revid_range)
 
                 if log_format is None:
                     registry = log.log_formatter_registry

@@ -53,7 +53,8 @@ def iter_log_revisions(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all',
-                  include_merges=False, backward=False, revid_range=None):
+                  include_merges=False, backward=False,
+                  local_revid_range=None, remote_revid_range=None):
     """Find revisions from each side that have not been merged.
 
     :param local_branch: Compare the history of local_branch
@@ -78,7 +79,8 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
             return _find_unmerged(
                 local_branch, remote_branch, restrict=restrict,
                 include_merges=include_merges, backward=backward,
-                revid_range=revid_range)
+                local_revid_range=local_revid_range,
+                remote_revid_range= remote_revid_range)
         finally:
             remote_branch.unlock()
     finally:
@@ -181,7 +183,7 @@ def _get_revid_in_range(branch, graph, revid_range, revision_id):
         revid1, revid2 = revid_range
     else:
         revid1 = revid2 = None
-
+    print branch.nick, revid_range, branch.revision_id_to_revno(revision_id), revision_id 
     # check if older than lower bound
     if (revid1 is not None and graph.is_ancestor(revision_id, revid1)
         and revid1 in branch.revision_history()):
@@ -191,11 +193,13 @@ def _get_revid_in_range(branch, graph, revid_range, revision_id):
     if (revid2 is not None and graph.is_ancestor(revid2, revision_id)
         and revid2 in branch.revision_history()):
         revision_id = revid2
+    print "--> ", branch.revision_id_to_revno(revision_id), revision_id 
     return branch.revision_id_to_revno(revision_id), revision_id
 
 
 def _find_unmerged(local_branch, remote_branch, restrict,
-                   include_merges, backward, revid_range=None):
+                   include_merges, backward,
+                   local_revid_range=None, remote_revid_range=None):
     """See find_unmerged.
 
     The branches should already be locked before entering.
@@ -208,9 +212,9 @@ def _find_unmerged(local_branch, remote_branch, restrict,
     graph = local_branch.repository.get_graph(remote_branch.repository)
 
     local_revno, local_revision_id = _get_revid_in_range(local_branch,
-        graph, revid_range, local_revision_id)
+        graph, local_revid_range, local_revision_id)
     remote_revno, remote_revision_id = _get_revid_in_range(remote_branch,
-        graph, revid_range, remote_revision_id)
+        graph, remote_revid_range, remote_revision_id)
     if restrict == 'remote':
         local_extra = None
         remote_extra = graph.find_unique_ancestors(remote_revision_id,
@@ -225,6 +229,7 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                              ' "remote": %r' % (restrict,))
         local_extra, remote_extra = graph.find_difference(local_revision_id,
                                                           remote_revision_id)
+    #Todo: filter extra revisions to be in the range  
     if include_merges:
         locals = _enumerate_with_merges(local_branch, local_extra,
                                         graph, local_revno,
