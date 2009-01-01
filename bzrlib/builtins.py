@@ -4638,10 +4638,7 @@ class cmd_tags(Command):
                 revid1, revid2 = rev1.rev_id, rev2.rev_id
                 # only show revisions between revid1 and revid2 (inclusive)
                 tags = [(tag, revid) for tag, revid in tags if
-                     (revid2 is None or
-                         graph.is_ancestor(revid, revid2)) and
-                     (revid1 is None or
-                         graph.is_ancestor(revid1, revid))]
+                    graph.is_between(revid, revid1, revid2)]
             finally:
                 branch.unlock()
         if sort == 'alpha':
