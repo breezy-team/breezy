@@ -16,6 +16,7 @@
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
+from bzrlib.osutils import relpath
 
 from bzrlib.plugins.git.fetch import import_git_objects
 from bzrlib.plugins.git.mapping import default_mapping
@@ -34,7 +35,13 @@ class BzrBackend(Backend):
 
     def get_refs(self):
         """ return a dict of all tags and branches in repository (and shas) """
-        return {}
+        ret = {}
+        repo_dir = BzrDir.open(self.directory)
+        repo = repo_dir.open_repository()
+        for branch in repo.find_branches(using=True):
+            #FIXME: Need to get branch path relative to its repository and use this instead of nick
+            ret["refs/heads/"+branch.nick] = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
+        return ret
 
     def apply_pack(self, refs, read):
         """ apply pack from client to current repository """
@@ -84,4 +91,4 @@ class BzrBackend(Backend):
 
     def fetch_objects(self, determine_wants, graph_walker, progress):
         """ yield git objects to send to client """
-
+        wants = determine_wants(self.get_refs())
