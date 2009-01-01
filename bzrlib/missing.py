@@ -67,7 +67,11 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
     :param include_merges: Show mainline revisions only if False,
         all revisions otherwise.
     :param backward: Show oldest versions first when True, newest versions
-        first when False. 
+        first when False.
+    :param local_revid_range: Revision-id range for filtering local_branch
+        revisions (lower bound, upper bound)
+    :param remote_revid_range: Revision-id range for filtering remote_branch
+        revisions (lower bound, upper bound)
 
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
@@ -80,7 +84,7 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
                 local_branch, remote_branch, restrict=restrict,
                 include_merges=include_merges, backward=backward,
                 local_revid_range=local_revid_range,
-                remote_revid_range= remote_revid_range)
+                remote_revid_range=remote_revid_range)
         finally:
             remote_branch.unlock()
     finally:

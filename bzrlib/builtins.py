@@ -3458,26 +3458,26 @@ class cmd_missing(Command):
     _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [
-            Option('reverse', 'Reverse the order of revisions.'),
-            Option('mine-only',
-                   'Display changes in the local branch only.'),
-            Option('this' , 'Same as --mine-only.'),
-            Option('theirs-only',
-                   'Display changes in the remote branch only.'),
-            Option('other', 'Same as --theirs-only.'),
-            'log-format',
-            'show-ids',
-            'verbose',
-             custom_help('revision',
-                 help='Filter on local branch revisions. '
-                    'See "help revisionspec" for details.'),
-             Option('other-revision',
-               type=_parse_revision_str,
-               short_name='o',
-               help='Filter on other branch revisions. '
+        Option('reverse', 'Reverse the order of revisions.'),
+        Option('mine-only',
+               'Display changes in the local branch only.'),
+        Option('this' , 'Same as --mine-only.'),
+        Option('theirs-only',
+               'Display changes in the remote branch only.'),
+        Option('other', 'Same as --theirs-only.'),
+        'log-format',
+        'show-ids',
+        'verbose',
+        custom_help('revision',
+             help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-            Option('include-merges', 'Show merged revisions.'),
-            ]
+        Option('other-revision',
+            type=_parse_revision_str,
+            short_name='o',
+            help='Filter on other branch revisions (inclusive). '
+                'See "help revisionspec" for details.'),
+        Option('include-merges', 'Show merged revisions.'),
+        ]
     encoding_type = 'replace'
 
     @display_command
@@ -3537,7 +3537,7 @@ class cmd_missing(Command):
                     backward=not reverse,
                     include_merges=include_merges,
                     local_revid_range=local_revid_range,
-                    remote_revid_range= remote_revid_range)
+                    remote_revid_range=remote_revid_range)
 
                 if log_format is None:
                     registry = log.log_formatter_registry
