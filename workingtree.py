@@ -27,6 +27,8 @@ from bzrlib import (
     workingtree,
     )
 
+from dulwich.index import Index
+
 class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
 
@@ -49,6 +51,9 @@ class GitWorkingTree(workingtree.WorkingTree):
             transport.get_transport(self.controldir), 'lock', lockdir.LockDir)
 
         self._format = GitWorkingTreeFormat()
+
+        self.index = Index(os.path.join(self.repository._git.controldir(), 
+            "index"))
 
     def lock_read(self):
         pass

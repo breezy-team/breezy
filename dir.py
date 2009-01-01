@@ -113,12 +113,12 @@ class LocalGitDir(GitDir):
         return self._gitrepository_class(self, self._lockfiles)
 
     def open_workingtree(self, recommend_upgrade=True):
-        if self._git.bare:
-            loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
-            raise errors.bzr_errors.NoWorkingTree(loc)
-        else:
+        if (not self._git.bare and 
+            os.path.exists(os.path.join(self._git.controldir(), "index"))):
             return workingtree.GitWorkingTree(self, self.open_repository(), 
                                                   self.open_branch())
+        loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
+        raise errors.bzr_errors.NoWorkingTree(loc)
 
     def create_repository(self, shared=False):
         return self.open_repository()
