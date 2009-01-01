@@ -182,10 +182,10 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
 
 
 def _filter_revs(graph, revs, revid_range):
-    if revid_range is None:
+    if revid_range is None or revs is None:
         return revs
-    return [(revno, revision_id) for revno, revision_id in revs
-        if graph.is_between(revision_id, revid_range[0], revid_range[1])]
+    return [rev for rev in revs
+        if graph.is_between(rev[1], revid_range[0], revid_range[1])]
 
 
 def _find_unmerged(local_branch, remote_branch, restrict,
