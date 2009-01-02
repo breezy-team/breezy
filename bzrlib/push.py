@@ -171,14 +171,15 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                                     '  Try using "merge" and then "push".')
     if push_result is not None:
         push_result.report(to_file)
-    elif verbose:
+        old_revid = push_result.old_revid
+        old_revno = push_result.old_revno
+    else:
+        old_revid = _mod_revision.NULL_REVISION
+        old_revno = 0
+    if verbose:
         br_to.lock_read()
         try:
             from bzrlib.log import show_branch_change
-            show_branch_change(br_to, to_file, 0, _mod_revision.NULL_REVISION)
+            show_branch_change(br_to, to_file, old_revno, old_revid)
         finally:
             br_to.unlock()
-    else:
-        # we probably did a clone rather than a push, so a message was
-        # emitted above
-        pass
