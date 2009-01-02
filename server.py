@@ -17,6 +17,7 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
 from bzrlib.inventory import InventoryDirectory, InventoryFile
+from bzrlib.osutils import splitpath
 
 from bzrlib.plugins.git.fetch import import_git_objects
 from bzrlib.plugins.git.mapping import default_mapping
@@ -127,6 +128,7 @@ class BzrBackend(Backend):
 
 def revision_to_commit(rev):
     commit = Commit()
+    commit.serialize()
     return commit
 
 def inventory_to_tree_and_blobs(inv):
@@ -136,9 +138,11 @@ def inventory_to_tree_and_blobs(inv):
 
     for path, entry in inv.iter_entries():
         while stack and not path.startswith(cur):
-            cur, tree = stack.pop()
             tree.serialize()
             yield tree
+            t = (0, splitpath(cur)[:-1], tree.sha().hexdigest())
+            cur, tree = stack.pop()
+            tree.append(t)
 
         if type(entry) == InventoryDirectory:
             stack.append((cur, tree))
@@ -150,8 +154,14 @@ def inventory_to_tree_and_blobs(inv):
             blob._text = "file contents k thx"
             yield blob
 
+            name = splitpath(path)[:-1]
+            mode = 0 # FIXME: Arrrgh crap - bzr cant hold this?
+            tree.add((0, name, blob.sha().hexdigest()))
+
     while stack:
-        cur, tree = stack.pop()
         tree.serialize()
         yield tree
+        t = (0, splitpath(cur)[:-1], tree.sha().hexdigest())
+        cur, tree = stack.pop()
+        tree.append(t)
 
