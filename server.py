@@ -16,14 +16,14 @@
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repository import Repository
-from bzrlib.osutils import relpath
+from bzrlib.inventory import InventoryDirectory, InventoryFile
 
 from bzrlib.plugins.git.fetch import import_git_objects
 from bzrlib.plugins.git.mapping import default_mapping
 
 from dulwich.server import Backend
 from dulwich.pack import Pack, PackData, write_pack_index_v2
-from dulwich.objects import ShaFile
+from dulwich.objects import ShaFile, Commit
 
 import os, tempfile
 
@@ -107,13 +107,50 @@ class BzrBackend(Backend):
                 have = graph_walker.next()
 
             while commits_to_send:
-                commit = commits_to_send.pop(0)
+                commit = commits_to_send.pop()
                 if commit in rev_done:
                     continue
                 rev_done.add(commit)
 
-                commits_to_send.update([rev for rev in commit.parent_ids if not rev in rev_done])
+                rev = repo.get_revision(commit)
 
-                # generate and yield blob, tree and commit objects now.
+                commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
+
+                inventory_to_tree_and_blobs(repo, commit)
+
+                yield revision_to_commit(commit)
+
         finally:
             repo.unlock()
+
+
+def revision_to_commit(rev):
+    commit = Commit()
+    return commit
+
+def inventory_to_tree_and_blobs(repo, revision_id):
+    dirstack = []
+    dircur = ""
+    inv = repo.get_inventory(revision_id)
+
+    for path, entry in inv.iter_entries():
+        while dirstack and not path.startswith(dircur):
+            print "leaving:", dircur
+            dircur = dirstack.pop()
+            # yield Tree
+
+        if type(entry) == InventoryDirectory:
+            # we are now in a child dir
+            dirstack.append(dircur)
+            dircur = path
+            print "entering:", dircur
+
+        if type(entry) == InventoryFile:
+            # yield Blob
+            pass
+
+    while dirstack:
+        print "leaving:", dircur
+        dircur = dirstack.pop()
+        # yield Tree
+
