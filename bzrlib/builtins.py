@@ -49,14 +49,19 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
-from bzrlib.option import _parse_revision_str
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import ListOption, Option, RegistryOption, custom_help
+from bzrlib.option import (
+    ListOption,
+    Option,
+    RegistryOption,
+    custom_help,
+    _parse_revision_str,
+    )
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
@@ -3522,11 +3527,11 @@ class cmd_missing(Command):
 
         local_revid_range = _revision_range_to_revid_range(
             _get_revision_range(revision, local_branch,
-                self.name()))#Todo singlerev_mode='right' 
+                self.name()))
 
         remote_revid_range = _revision_range_to_revid_range(
             _get_revision_range(other_revision,
-                remote_branch, self.name()))#Todo singlerev_mode='right' 
+                remote_branch, self.name()))
 
         local_branch.lock_read()
         try:

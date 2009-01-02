@@ -270,6 +270,8 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         self.assertUnmerged(local_extra, [('2', rrevid2)],
             local.branch, remote.branch, remote_revid_range=(rrevid2, rrevid2))
         self.assertUnmerged(local_extra, [('2', rrevid2), ('3', rrevid3)],
+            local.branch, remote.branch, remote_revid_range=(None, rrevid3))
+        self.assertUnmerged(local_extra, [('2', rrevid2), ('3', rrevid3)],
             local.branch, remote.branch, remote_revid_range=(rrevid2, rrevid3))
         self.assertUnmerged(local_extra, [('3', rrevid3)],
             local.branch, remote.branch, remote_revid_range=(rrevid3, rrevid3))
