@@ -116,7 +116,7 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                inventory_to_tree_and_blobs(repo, commit)
+                inventory_to_tree_and_blobs(repo.get_inventory(commit))
 
                 yield revision_to_commit(commit)
 
@@ -128,10 +128,9 @@ def revision_to_commit(rev):
     commit = Commit()
     return commit
 
-def inventory_to_tree_and_blobs(repo, revision_id):
+def inventory_to_tree_and_blobs(inv):
     dirstack = []
     dircur = ""
-    inv = repo.get_inventory(revision_id)
 
     for path, entry in inv.iter_entries():
         while dirstack and not path.startswith(dircur):
