@@ -130,29 +130,28 @@ def revision_to_commit(rev):
     return commit
 
 def inventory_to_tree_and_blobs(inv):
-    dirstack = []
-    dircur = ""
+    stack = []
+    cur = ""
+    tree = Tree()
 
     for path, entry in inv.iter_entries():
-        while dirstack and not path.startswith(dircur):
-            print "leaving:", dircur
-            dircur = dirstack.pop()
-            # yield Tree
+        while stack and not path.startswith(cur):
+            cur, tree = stack.pop()
+            tree.serialize()
+            yield tree
 
         if type(entry) == InventoryDirectory:
-            # we are now in a child dir
-            dirstack.append(dircur)
-            dircur = path
-            print "entering:", dircur
+            stack.append((cur, tree))
+            cur = path
+            tree = Tree()
 
         if type(entry) == InventoryFile:
             blob = Blob()
-            blob._num_type = 3
             blob._text = "file contents k thx"
             yield blob
 
-    while dirstack:
-        print "leaving:", dircur
-        dircur = dirstack.pop()
-        # yield Tree
+    while stack:
+        cur, tree = stack.pop()
+        tree.serialize()
+        yield tree
 
