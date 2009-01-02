@@ -23,7 +23,7 @@ from bzrlib.plugins.git.mapping import default_mapping
 
 from dulwich.server import Backend
 from dulwich.pack import Pack, PackData, write_pack_index_v2
-from dulwich.objects import ShaFile, Commit
+from dulwich.objects import ShaFile, Commit, Tree, Blob
 
 import os, tempfile
 
@@ -116,7 +116,8 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                inventory_to_tree_and_blobs(repo.get_inventory(commit))
+                for obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
+                    yield obj
 
                 yield revision_to_commit(commit)
 
@@ -145,8 +146,8 @@ def inventory_to_tree_and_blobs(inv):
             print "entering:", dircur
 
         if type(entry) == InventoryFile:
-            # yield Blob
-            pass
+            blob = Blob()
+            yield blob
 
     while dirstack:
         print "leaving:", dircur
