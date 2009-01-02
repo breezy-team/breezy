@@ -147,6 +147,8 @@ def inventory_to_tree_and_blobs(inv):
 
         if type(entry) == InventoryFile:
             blob = Blob()
+            blob._num_type = 3
+            blob._text = "file contents k thx"
             yield blob
 
     while dirstack:
