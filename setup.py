@@ -15,5 +15,6 @@ setup(name='bzr-git',
       Git branches in Bazaar.
       """,
       package_dir={'bzrlib.plugins.git':'.'},
-      packages=['bzrlib.plugins.git']
+      packages=['bzrlib.plugins.git'],
+      scripts=['git-receive-pack', 'git-upload-pack'],
       )
