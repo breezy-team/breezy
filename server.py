@@ -86,9 +86,9 @@ class BzrBackend(Backend):
                     target_branch = target_dir.open_branch()
                 except:
                     target_branch = target_dir.create_branch()
-               
+
                 rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
-                target_branch.generate_revision_history(rev_id) 
+                target_branch.generate_revision_history(rev_id)
 
     def fetch_objects(self, determine_wants, graph_walker, progress):
         """ yield git objects to send to client """
@@ -97,7 +97,7 @@ class BzrBackend(Backend):
         rev_done = set()
 
         repo = Repository.open(self.directory)
-        
+
         repo.lock_read()
         try:
             have = graph_walker.next()
