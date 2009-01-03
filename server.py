@@ -128,6 +128,15 @@ class BzrBackend(Backend):
 
 def revision_to_commit(rev):
     commit = Commit()
+    for p in rev.parent_ids:
+        commit._parents.add(self.revision_id_bzr_to_foreign(p))
+    commit._message = rev.message
+    commit._committer = rev.committer
+    if 'author' in rev.properties:
+        commit._author = rev.properties['author']
+    else:
+        commit._author = rev.committer
+    commit._commit_timestamp = rev.timestamp
     commit.serialize()
     return commit
 
