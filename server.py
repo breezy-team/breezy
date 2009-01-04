@@ -117,10 +117,10 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                #for obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
-                #    yield obj
+                for sha, obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
+                    yield obj
 
-                yield revision_to_commit(rev, self.mapping, "0"*40)
+                yield revision_to_commit(rev, self.mapping, sha)
 
         finally:
             repo.unlock()
@@ -144,6 +144,7 @@ def revision_to_commit(rev, mapping, tree_sha):
         commit._author = rev.committer
     commit._commit_time = rev.timestamp
     commit.serialize()
+    print commit.sha().hexdigest()
     return commit
 
 def inventory_to_tree_and_blobs(inv):
@@ -154,10 +155,11 @@ def inventory_to_tree_and_blobs(inv):
     for path, entry in inv.iter_entries():
         while stack and not path.startswith(cur):
             tree.serialize()
-            yield tree
-            t = (0, splitpath(cur)[:-1], tree.sha().hexdigest())
+            sha = tree.sha().hexdigest()
+            yield sha, tree
+            t = (0, splitpath(cur)[:-1], sha)
             cur, tree = stack.pop()
-            tree.append(t)
+            tree.append(*t)
 
         if type(entry) == InventoryDirectory:
             stack.append((cur, tree))
@@ -167,16 +169,21 @@ def inventory_to_tree_and_blobs(inv):
         if type(entry) == InventoryFile:
             blob = Blob()
             blob._text = "file contents k thx"
-            yield blob
+            sha = blob.sha().hexdigest()
+            yield sha, blob
 
             name = splitpath(path)[:-1]
             mode = 0 # FIXME: Arrrgh crap - bzr cant hold this?
-            tree.add((0, name, blob.sha().hexdigest()))
+            tree.add(0, name, sha)
 
-    while stack:
+    while len(stack) > 1:
         tree.serialize()
-        yield tree
-        t = (0, splitpath(cur)[:-1], tree.sha().hexdigest())
+        sha = tree.sha().hexdigest()
+        yield sha, tree
+        t = (0, splitpath(cur)[:-1], sha)
         cur, tree = stack.pop()
-        tree.append(t)
+        tree.append(*t)
+
+    tree.serialize()
+    yield tree.sha().hexdigest(), tree
 
