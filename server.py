@@ -159,7 +159,7 @@ def inventory_to_tree_and_blobs(inv):
             yield sha, tree
             t = (0, splitpath(cur)[:-1], sha)
             cur, tree = stack.pop()
-            tree.append(*t)
+            tree.add(*t)
 
         if type(entry) == InventoryDirectory:
             stack.append((cur, tree))
@@ -182,7 +182,7 @@ def inventory_to_tree_and_blobs(inv):
         yield sha, tree
         t = (0, splitpath(cur)[:-1], sha)
         cur, tree = stack.pop()
-        tree.append(*t)
+        tree.add(*t)
 
     tree.serialize()
     yield tree.sha().hexdigest(), tree
