@@ -117,17 +117,23 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                for obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
-                    yield obj
+                #for obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
+                #    yield obj
 
-                yield revision_to_commit(commit)
+                yield revision_to_commit(commit, "0"*40)
 
         finally:
             repo.unlock()
 
 
-def revision_to_commit(rev):
+def revision_to_commit(rev, mapping, tree_sha):
+    """
+    Turn a Bazaar revision in to a Git commit
+    :param tree_sha: HACK parameter (until we can retrieve this from the mapping)
+    :return dulwich.objects.Commit represent the revision:
+    """
     commit = Commit()
+    self._tree = tree_sha
     for p in rev.parent_ids:
         commit._parents.add(self.revision_id_bzr_to_foreign(p))
     commit._message = rev.message
