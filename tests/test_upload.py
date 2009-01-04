@@ -31,6 +31,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.smart import server as smart_server
+from bzrlib.builtins import cmd_push
 
 from bzrlib.tests import (
     test_transport_implementations,
@@ -564,7 +565,9 @@ class TestUploadFromRemote(TestUploadMixin):
     def do_full_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
         
-        self.run_bzr(['push', up_url, '--directory=branch'])
+        push = cmd_push()
+        push._setup_outf()
+        push.run(location=up_url, directory='branch')
         
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
@@ -576,7 +579,9 @@ class TestUploadFromRemote(TestUploadMixin):
     def do_incremental_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
         
-        self.run_bzr(['push', up_url, '--directory=branch'])
+        push = cmd_push()
+        push._setup_outf()
+        push.run(location=up_url, directory='branch')
         
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
