@@ -120,7 +120,7 @@ class BzrBackend(Backend):
                 #for obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
                 #    yield obj
 
-                yield revision_to_commit(commit, "0"*40)
+                yield revision_to_commit(rev, self.mapping, "0"*40)
 
         finally:
             repo.unlock()
@@ -133,16 +133,16 @@ def revision_to_commit(rev, mapping, tree_sha):
     :return dulwich.objects.Commit represent the revision:
     """
     commit = Commit()
-    self._tree = tree_sha
+    commit._tree = tree_sha
     for p in rev.parent_ids:
-        commit._parents.add(self.revision_id_bzr_to_foreign(p))
+        commit._parents.append(mapping.revision_id_bzr_to_foreign(p))
     commit._message = rev.message
     commit._committer = rev.committer
     if 'author' in rev.properties:
         commit._author = rev.properties['author']
     else:
         commit._author = rev.committer
-    commit._commit_timestamp = rev.timestamp
+    commit._commit_time = rev.timestamp
     commit.serialize()
     return commit
 
