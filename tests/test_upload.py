@@ -95,7 +95,9 @@ def load_tests(standard_tests, module, loader):
 
     is_testing_for_transports = tests.condition_isinstance(
         (TestFullUpload,
-         TestIncrementalUpload,))
+         TestIncrementalUpload,
+         TestFullUploadFromRemote,
+         TestIncrementalUploadFromRemote))
     transport_adapter = TransportAdapter()
 
     is_testing_for_branches = tests.condition_isinstance(
@@ -149,6 +151,7 @@ class TestUploadMixin(object):
 
     upload_dir = 'upload/'
     branch_dir = 'branch/'
+    
 
     def make_local_branch(self):
         t = transport.get_transport('branch')
@@ -556,6 +559,39 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.assertUpFileEqual('bar', 'hello')
 
+class TestUploadFromRemote(TestUploadMixin):
+    
+    def do_full_upload(self, *args, **kwargs):
+        up_url = self.get_transport(self.upload_dir).external_url()
+        
+        self.run_bzr(['push', up_url, '--directory=branch'])
+        
+        upload = self._get_cmd_upload()
+        if kwargs.get('directory', None) is None:
+            kwargs['directory'] = up_url
+        kwargs['full'] = True
+        kwargs['quiet'] = True
+        upload.run(up_url, *args, **kwargs)
+
+    def do_incremental_upload(self, *args, **kwargs):
+        up_url = self.get_transport(self.upload_dir).external_url()
+        
+        self.run_bzr(['push', up_url, '--directory=branch'])
+        
+        upload = self._get_cmd_upload()
+        if kwargs.get('directory', None) is None:
+            kwargs['directory'] = up_url
+        kwargs['quiet'] = True
+        upload.run(up_url, *args, **kwargs)
+
+class TestFullUploadFromRemote(tests.TestCaseWithTransport, TestUploadFromRemote):
+    
+    do_upload = TestUploadFromRemote.do_full_upload
+
+class TestIncrementalUploadFromRemote(tests.TestCaseWithTransport, TestUploadFromRemote):
+    
+    do_upload = TestUploadFromRemote.do_incremental_upload
+    
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
 
