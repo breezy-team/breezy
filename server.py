@@ -95,6 +95,7 @@ class BzrBackend(Backend):
         wants = determine_wants(self.get_refs())
         commits_to_send = set([self.mapping.revision_id_foreign_to_bzr(w) for w in wants])
         rev_done = set()
+        obj_sent = set()
 
         repo = Repository.open(self.directory)
 
@@ -118,7 +119,9 @@ class BzrBackend(Backend):
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
                 for sha, obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
-                    yield obj
+                    if sha not in obj_sent:
+                        obj_sent.add(sha)
+                        yield obj
 
                 yield revision_to_commit(rev, self.mapping, sha)
 
