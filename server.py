@@ -28,6 +28,14 @@ from dulwich.objects import ShaFile, Commit, Tree, Blob
 
 import os, tempfile
 
+# FIXME: Remove this in favor of something in the mapping...
+_mode = -1
+def get_umask():
+    if _mode == -1:
+        _mode = os.umask(0)
+        os.umask(_mode)
+    return _mode
+
 class BzrBackend(Backend):
 
     def __init__(self, directory):
@@ -160,7 +168,7 @@ def inventory_to_tree_and_blobs(inv):
             tree.serialize()
             sha = tree.sha().hexdigest()
             yield sha, tree
-            t = (0, splitpath(cur)[:-1], sha)
+            t = (get_umask(), splitpath(cur)[:-1], sha)
             cur, tree = stack.pop()
             tree.add(*t)
 
@@ -176,14 +184,14 @@ def inventory_to_tree_and_blobs(inv):
             yield sha, blob
 
             name = splitpath(path)[:-1]
-            mode = 0 # FIXME: Arrrgh crap - bzr cant hold this?
+            mode = get_umask()
             tree.add(0, name, sha)
 
     while len(stack) > 1:
         tree.serialize()
         sha = tree.sha().hexdigest()
         yield sha, tree
-        t = (0, splitpath(cur)[:-1], sha)
+        t = (get_umask(), splitpath(cur)[:-1], sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
