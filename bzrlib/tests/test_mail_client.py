@@ -20,6 +20,9 @@ from bzrlib import (
     tests,
     urlutils,
     )
+from bzrlib.tests.test_config import (
+    InstrumentedConfig,
+    )
 
 class TestMutt(tests.TestCase):
 
@@ -174,6 +177,46 @@ class TestKMail(tests.TestCase):
             u'Hi there!', u'file%')
         self.assertEqual(
             ['-s', 'Hi there!', '--attach', 'file%', 'jrandom@example.org'],
+            cmdline)
+        for item in cmdline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
+
+
+class TestClaws(tests.TestCase):
+
+    def test_commandline(self):
+        claws = mail_client.Claws(None)
+        commandline = claws._get_compose_commandline(None, None, 'file%')
+        self.assertEqual(['--compose', '?attach=file%25'], commandline)
+        commandline = claws._get_compose_commandline(
+            'jrandom@example.org', 'Hi there!', None)
+        self.assertEqual(
+            ['--compose', 'jrandom@example.org?subject=Hi%20there%21'],
+            commandline)
+
+    def test_commandline_with_config(self):
+        claws = mail_client.Claws(InstrumentedConfig())
+        commandline = claws._get_compose_commandline(None, None, 'file%')
+        self.assertEqual(
+            ['--compose', ('?attach=file%25&from=Robert%20Collins%20'
+                           '%3Crobert.collins%40example.org%3E')],
+            commandline)
+        commandline = claws._get_compose_commandline(
+            'jrandom@example.org', 'Hi there!', None)
+        self.assertEqual(
+            ['--compose', ('jrandom@example.org?subject=Hi%20there%21'
+                           '&from=Robert%20Collins%20'
+                           '%3Crobert.collins%40example.org%3E')],
+            commandline)
+
+    def test_commandline_is_8bit(self):
+        claws = mail_client.Claws(None)
+        cmdline = claws._get_compose_commandline(
+            u'jrandom@example.org', u'Hi there!', u'file%')
+        self.assertEqual(
+            ['--compose',
+             'jrandom@example.org?subject=Hi%20there%21&attach=file%25'],
             cmdline)
         for item in cmdline:
             self.assertFalse(isinstance(item, unicode),
