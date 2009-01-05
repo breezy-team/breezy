@@ -183,9 +183,8 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         if type(entry) == InventoryFile:
             #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
             # and having all these objects in memory at once
-            _, bytes_iter = repo.iter_files_bytes([(mapping.generate_file_id(path), revision_id, path)]).next()
             blob = Blob()
-            blob._text = "".join(x for x in bytes_iter)
+            _, blob._text = repo.iter_files_bytes([(mapping.generate_file_id(path), revision_id, path)]).next()
             sha = blob.sha().hexdigest()
             yield sha, blob
 
