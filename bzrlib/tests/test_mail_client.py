@@ -20,9 +20,6 @@ from bzrlib import (
     tests,
     urlutils,
     )
-from bzrlib.tests.test_config import (
-    InstrumentedConfig,
-    )
 
 class TestMutt(tests.TestCase):
 
