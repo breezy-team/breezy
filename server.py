@@ -31,6 +31,7 @@ import os, tempfile
 # FIXME: Remove this in favor of something in the mapping...
 _mode = -1
 def get_umask():
+    global _mode
     if _mode == -1:
         _mode = os.umask(0)
         os.umask(_mode)
@@ -182,9 +183,9 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         if type(entry) == InventoryFile:
             #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
             # and having all these objects in memory at once
-            _, bytes_iter = repo.iter_files_bytes([(mapping.generate_file_id(path), revision_id, path)])
+            _, bytes_iter = repo.iter_files_bytes([(mapping.generate_file_id(path), revision_id, path)]).next()
             blob = Blob()
-            blob._text = "".join(x for x in bytes_iter())
+            blob._text = "".join(x for x in bytes_iter)
             sha = blob.sha().hexdigest()
             yield sha, blob
 
