@@ -317,10 +317,11 @@ class Claws(ExternalMailClient):
         if attach_path is not None:
             options.append(
                 ('attach', self._encode_path(attach_path, 'attachment')))
-        username = self.config.username()
-        if username is not None:
-            options.append(
-                ('from', self._encode_safe(username)))
+        if self.config is not None:
+            username = self.config.username()
+            if username is not None:
+                options.append(
+                    ('from', self._encode_safe(username)))
         # Doesn't use urllib.urlencode because it uses quote_plus, and
         # Claws doesn't seem to recognise spaces encoded as "+".
         option_string = '&'.join(
