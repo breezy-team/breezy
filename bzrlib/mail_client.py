@@ -310,26 +310,21 @@ class Claws(ExternalMailClient):
 
     def _get_compose_commandline(self, to, subject, attach_path):
         """See ExternalMailClient._get_compose_commandline"""
-        options = []
+        compose_url = ['mailto:']
+        if to is not None:
+            compose_url.append(self._encode_safe(to))
+        compose_url.append('?')
         if subject is not None:
-            options.append(
-                ('subject', self._encode_safe(subject)))
+            # Don't use urllib.quote_plus because Claws doesn't seem
+            # to recognise spaces encoded as "+".
+            compose_url.append(
+                'subject=%s' % urllib.quote(self._encode_safe(subject)))
+        # Collect command-line options.
+        message_options = ['--compose', ''.join(compose_url)]
         if attach_path is not None:
-            options.append(
-                ('attach', self._encode_path(attach_path, 'attachment')))
-        if self.config is not None:
-            username = self.config.username()
-            if username is not None:
-                options.append(
-                    ('from', self._encode_safe(username)))
-        # Doesn't use urllib.urlencode because it uses quote_plus, and
-        # Claws doesn't seem to recognise spaces encoded as "+".
-        option_string = '&'.join(
-            '%s=%s' % (urllib.quote(key), urllib.quote(value))
-            for (key, value) in options)
-        if to is None:
-            to = ''
-        return ['--compose', '%s?%s' % (self._encode_safe(to), option_string)]
+            message_options.extend(
+                ['--attach', self._encode_path(attach_path, 'attachment')])
+        return message_options
 mail_client_registry.register('claws', Claws,
                               help=Claws.__doc__)
 
