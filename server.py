@@ -126,7 +126,7 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                for sha, obj in inventory_to_tree_and_blobs(repo.get_inventory(commit)):
+                for sha, obj in inventory_to_tree_and_blobs(repo, self.mapping, commit):
                     if sha not in obj_sent:
                         obj_sent.add(sha)
                         yield obj
@@ -158,10 +158,12 @@ def revision_to_commit(rev, mapping, tree_sha):
     print commit.sha().hexdigest()
     return commit
 
-def inventory_to_tree_and_blobs(inv):
+def inventory_to_tree_and_blobs(repo, mapping, revision_id):
     stack = []
     cur = ""
     tree = Tree()
+
+    inv = repo.get_inventory(revision_id)
 
     for path, entry in inv.iter_entries():
         while stack and not path.startswith(cur):
@@ -178,8 +180,11 @@ def inventory_to_tree_and_blobs(inv):
             tree = Tree()
 
         if type(entry) == InventoryFile:
+            #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
+            # and having all these objects in memory at once
+            _, bytes_iter = repo.iter_files_bytes([(mapping.generate_file_id(path), revision_id, None)])
             blob = Blob()
-            blob._text = "file contents k thx"
+            blob._text = "".join(x for x in bytes_iter())
             sha = blob.sha().hexdigest()
             yield sha, blob
 
