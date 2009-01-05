@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib
 
 import bzrlib
 from bzrlib import (
@@ -300,6 +301,36 @@ class KMail(ExternalMailClient):
         return message_options
 mail_client_registry.register('kmail', KMail,
                               help=KMail.__doc__)
+
+
+class Claws(ExternalMailClient):
+    """Claws mail client."""
+
+    _client_commands = ['claws-mail']
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        """See ExternalMailClient._get_compose_commandline"""
+        options = []
+        if subject is not None:
+            options.append(
+                ('subject', self._encode_safe(subject)))
+        if attach_path is not None:
+            options.append(
+                ('attach', self._encode_path(attach_path, 'attachment')))
+        username = self.config.username()
+        if username is not None:
+            options.append(
+                ('from', self._encode_safe(username)))
+        # Doesn't use urllib.urlencode because it uses quote_plus, and
+        # Claws doesn't seem to recognise spaces encoded as "+".
+        option_string = '&'.join(
+            '%s=%s' % (urllib.quote(key), urllib.quote(value))
+            for (key, value) in options)
+        if to is None:
+            to = ''
+        return ['--compose', '%s?%s' % (self._encode_safe(to), option_string)]
+mail_client_registry.register('claws', Claws,
+                              help=Claws.__doc__)
 
 
 class XDGEmail(ExternalMailClient):
