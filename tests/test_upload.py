@@ -18,7 +18,7 @@ import os
 import stat
 import sys
 
-
+from cStringIO import StringIO
 from bzrlib import (
     branch,
     bzrdir,
@@ -29,9 +29,10 @@ from bzrlib import (
     tests,
     transport,
     workingtree,
+    trace,
     )
 from bzrlib.smart import server as smart_server
-from bzrlib.builtins import cmd_push
+from bzrlib.push import _show_push_branch
 
 from bzrlib.tests import (
     test_transport_implementations,
@@ -157,11 +158,11 @@ class TestUploadMixin(object):
     def make_local_branch(self):
         t = transport.get_transport('branch')
         t.ensure_base()
-        branch = bzrdir.BzrDir.create_branch_convenience(
+        self.branch = bzrdir.BzrDir.create_branch_convenience(
             t.base,
             format=bzrdir.format_registry.make_bzrdir('default'),
             force_new_tree=False)
-        self.tree = branch.bzrdir.create_workingtree()
+        self.tree = self.branch.bzrdir.create_workingtree()
         self.tree.commit('initial empty tree')
 
     def assertUpFileEqual(self, content, path, base=upload_dir):
@@ -565,9 +566,9 @@ class TestUploadFromRemote(TestUploadMixin):
     def do_full_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
         
-        push = cmd_push()
-        push._setup_outf()
-        push.run(location=up_url, directory='branch')
+        rev_id = self.branch.last_revision()
+        output = StringIO()
+        _show_push_branch(self.branch, rev_id, up_url, output)
         
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
@@ -579,9 +580,9 @@ class TestUploadFromRemote(TestUploadMixin):
     def do_incremental_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
         
-        push = cmd_push()
-        push._setup_outf()
-        push.run(location=up_url, directory='branch')
+        rev_id = self.branch.last_revision()
+        output = StringIO()
+        _show_push_branch(self.branch, rev_id, up_url, output)
         
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
