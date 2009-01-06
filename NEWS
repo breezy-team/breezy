@@ -136,6 +136,11 @@ IN DEVELOPMENT
       cost of not preserving the 'active' set as well as an ``LRUCache``.
       (John Arbash Meinel)
 
+    * ``bzrlib.patience_diff.unified_diff`` now properly uses a tab
+      character to separate the filename from the date stamp, and doesn't
+      add trailing whitespace when a date stamp is not supplied.
+      (Adeodato Simó, John Arbash Meinel)
+
     * ``DirStateWorkingTree`` and ``DirStateWorkingTreeFormat`` added
       as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
       respectively. (Ian Clatworthy)
