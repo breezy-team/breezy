@@ -34,6 +34,9 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
+    * ``bzr init`` will now print a little less verbose output.
+      (Marius Kruger)
+
   BUG FIXES:
   
     * Fix a problem with CIFS client/server lag on windows colliding with
