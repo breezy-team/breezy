@@ -75,8 +75,8 @@ class Shelver(object):
         tree, path = workingtree.WorkingTree.open_containing(directory)
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
-        return klass(tree, target_tree, diff_writer, all, all, file_list,
-                     message)
+        files = builtins.safe_relpath_files(tree, file_list)
+        return klass(tree, target_tree, diff_writer, all, all, files, message)
 
     def run(self):
         """Interactively shelve the changes."""

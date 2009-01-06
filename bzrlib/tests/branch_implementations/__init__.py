@@ -101,6 +101,12 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
         except errors.UninitializableFormat:
             raise tests.TestSkipped('Uninitializable branch format')
 
+    def make_branch_builder(self, relpath, format=None):
+        if format is None:
+            format = self.branch_format._matchingbzrdir
+        return super(TestCaseWithBranch, self).make_branch_builder(
+            relpath, format=format)
+
     def make_repository(self, relpath, shared=False, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)

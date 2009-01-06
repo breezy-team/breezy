@@ -79,6 +79,8 @@ lazy_import(globals(), """
 from bzrlib import tsort
 """)
 from bzrlib import (
+    errors,
+    osutils,
     progress,
     )
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
@@ -88,7 +90,6 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         WeaveRevisionAlreadyPresent,
         WeaveRevisionNotPresent,
         )
-import bzrlib.errors as errors
 from bzrlib.osutils import dirname, sha, sha_strings, split_lines
 import bzrlib.patiencediff
 from bzrlib.revision import NULL_REVISION
@@ -122,6 +123,8 @@ class WeaveContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
             return self._weave.get_text(self.key[-1])
+        elif storage_kind == 'chunked':
+            return self._weave.get_lines(self.key[-1])
         else:
             raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
 
@@ -357,9 +360,10 @@ class Weave(VersionedFile):
                 raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             parents = [parent[0] for parent in record.parents]
-            if record.storage_kind == 'fulltext':
+            if (record.storage_kind == 'fulltext'
+                or record.storage_kind == 'chunked'):
                 self.add_lines(record.key[0], parents,
-                    split_lines(record.get_bytes_as('fulltext')))
+                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 try:

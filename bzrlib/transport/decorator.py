@@ -46,16 +46,14 @@ class TransportDecorator(Transport):
         """
         prefix = self._get_url_prefix()
         if not url.startswith(prefix):
-            raise ValueError(
-                "url %r doesn't start with decorator prefix %r" % \
-                (url, prefix))
-        decorated_url = url[len(prefix):]
+            raise ValueError("url %r doesn't start with decorator prefix %r" %
+                             (url, prefix))
+        not_decorated_url = url[len(prefix):]
         if _decorated is None:
-            self._decorated = get_transport(decorated_url)
+            self._decorated = get_transport(not_decorated_url)
         else:
             self._decorated = _decorated
-        super(TransportDecorator, self).__init__(
-            prefix + self._decorated.base)
+        super(TransportDecorator, self).__init__(prefix + self._decorated.base)
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
@@ -169,6 +167,14 @@ class TransportDecorator(Transport):
     def lock_write(self, relpath):
         """See Transport.lock_write."""
         return self._decorated.lock_write(relpath)
+
+    def _redirected_to(self, source, target):
+        redirected = self._decorated._redirected_to(source, target)
+        if redirected is not None:
+            return self.__class__(self._get_url_prefix() + redirected.base,
+                                  redirected)
+        else:
+            return None
 
 
 class DecoratorServer(Server):

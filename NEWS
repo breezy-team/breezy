@@ -9,18 +9,52 @@ IN DEVELOPMENT
 --------------
 
   CHANGES:
+  
+    * Formats using Knit-based repository formats are now explicitly
+      marked as deprecated. (Ian Clatworthy)
+
+    * ``LRUCache(after_cleanup_size)`` was renamed to
+      ``after_cleanup_count`` and the old name deprecated. The new name is
+      used for clarity, and to avoid confusion with
+      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
   NEW FEATURES:
 
+    * ``shelve --list`` can now be used to list shelved changes.
+      (Aaron Bentley)
+
+    * Add support for `bzr tags -r 1..2`, that is we now support showing
+      tags applicable for a specified revision range. (Marius Kruger)
+
   IMPROVEMENTS:
+
+    * Add trailing slash to directories in all output of ``bzr ls``, except
+      ``bzr ls --null``. (Gordon P. Hemsley, #306424)
+
+    * ``bzr revision-info`` now supports a -d option to specify an
+      alternative branch. (Michael Hudson)
 
   BUG FIXES:
   
+    * Fix a problem with CIFS client/server lag on windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
 
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
+
+    * Don't make a broken branch when pushing an unstackable-format branch
+      that's in a stackable shared repository to a location with default
+      stack-on location.  (Andrew Bennetts, #291046)
+
+    * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
+      (Ben Jansen, Vincent Ladeuil, #300347)
+
+    * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
+      (Jari Aalto)
 
     * Fix SystemError in ``_patiencediff_c`` module by calling
       PyErr_NoMemory() before returning NULL in PatienceSequenceMatcher_new.
@@ -29,24 +63,116 @@ IN DEVELOPMENT
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
 
+    * Handle EACCES (permission denied) errors when launching a message
+      editor, and emit warnings when a configured editor cannot be
+      started. (Andrew Bennetts)
+
+    * Preserve transport decorators while following redirections.
+      (Vincent Ladeuil, #245964, #270863)
+
+    * Provides a finer and more robust filter for accepted redirections.
+      (Vincent Ladeuil, #303959, #265070)
+
+    * ``shelve`` paths are now interpreted relative to the current working
+      tree.  (Aaron Bentley)
+
     * ``Transport.readv()`` defaults to not reading more than 100MB in a
       single array. Further ``RemoteTransport.readv`` sets this to 5MB to
       work better with how it splits its requests.
       (John Arbash Meinel, #303538)
 
+    * Pack repositories are now able to reload the pack listing and retry
+      the current operation if another action causes the data to be
+      repacked.  (John Arbash Meinel, #153786)
+
+    * ``pull -v`` now respects the log_format configuration variable.
+      (Aaron Bentley)
+
+    * Use the short status format when the short format is used for log.
+      (Vincent Ladeuil, #87179)
+
   DOCUMENTATION:
+
+    * Improved the formats help topic to explain why multiple formats
+      exist and to provide guidelines in selecting one. Introduced
+      two new supporting help topics: current-formats and other-formats.
+      (Ian Clatworthy)
 
   API CHANGES:
 
+    * New ``ForeignRepository`` base class, to help with foreign branch 
+      support (e.g. svn).  (Jelmer Vernooij)
+
+    * ``node_distances`` and ``select_farthest`` can no longer be imported
+      from ``bzrlib.graph``.  They can still be imported from
+      ``bzrlib.deprecated_graph``, which has been the preferred way to
+      import them since before 1.0.  (Andrew Bennetts)
+      
+    * The logic in commit now delegates inventory basis calculations to
+      the ``CommitBuilder`` object; this requires that the commit builder
+      in use has been updated to support the new ``recording_deletes`` and
+      ``record_delete`` methods. (Robert Collins)
+
   TESTING:
 
+    * ``bzr selftest`` now fails if new trailing white space is added to
+      the bazaar sources. It only checks changes not committed yet. This
+      means that PQM will now reject changes that introduce new trailing
+      whitespace. (Marius Kruger)
+
+    * Introduced new experimental formats called ``1.12-preview`` and
+      ``1.12-preview-rich-root`` to enable testing of related pending
+      features, namely content filtering and filtered views.
+      (Ian Clatworthy)
+
   INTERNALS:
+
+    * Added an ``InventoryEntry`` cache when deserializing inventories.
+      Can cut the time to iterate over multiple RevisionsTrees in half.
+      (John Arbash Meinel)
+
+    * Added ``bzrlib.fifo_cache.FIFOCache`` which is designed to have
+      minimal overhead versus using a plain dict for cache hits, at the
+      cost of not preserving the 'active' set as well as an ``LRUCache``.
+      (John Arbash Meinel)
+
+    * ``bzrlib.patience_diff.unified_diff`` now properly uses a tab
+      character to separate the filename from the date stamp, and doesn't
+      add trailing whitespace when a date stamp is not supplied.
+      (Adeodato Simó, John Arbash Meinel)
+
+    * ``DirStateWorkingTree`` and ``DirStateWorkingTreeFormat`` added
+      as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
+      respectively. (Ian Clatworthy)
 
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
       Previously the order was fully random, now the records should be
       returned from each pack in turn, in forward I/O order.
       (John Arbash Meinel)
+
+    * New method ``bzrlib.repository.Repository.add_inventory_by_delta``
+      allows adding an inventory via an inventory delta, which can be
+      more efficient for some repository types. (Robert Collins)
+
+    * Repository ``CommitBuilder`` objects can now accumulate an inventory
+      delta. To enable this functionality call ``builder.recording_deletes``
+      and additionally call ``builder.record_delete`` when a delete
+      against the basis occurs. (Robert Collins)
+
+    * The default http handler has been changed from pycurl to urllib.
+      The default is still pycurl for https connections. (The only
+      advantage of pycurl is that it checks ssl certificates.)
+      (John Arbash Meinel)
+
+    * ``VersionedFiles.get_record_stream()`` can now return objects with a
+      storage_kind of ``chunked``. This is a collection (list/tuple) of
+      strings. You can use ``osutils.chunks_to_lines()`` to turn them into
+      guaranteed 'lines' or you can use ``''.join(chunks)`` to turn it
+      into a fulltext. This allows for some very good memory savings when
+      asking for many texts that share ancestry, as the individual chunks
+      can be shared between versions of the file. (John Arbash Meinel)
+
 
 
 bzr 1.10 2008-12-05
@@ -2103,7 +2229,7 @@ bzr 1.3rc1 2008-03-16
       filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable
       is not defined but BZR_HOME is defined then default location
       for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
-      (Alexander Belchenko)
+      (Alexander Belchenko, #106117)
 
     * ``launchpad`` builtin plugin now shipped as separate part in standalone
       bzr.exe, installed to ``C:\Program Files\Bazaar\plugins`` directory,
