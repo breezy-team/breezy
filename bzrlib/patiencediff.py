@@ -76,11 +76,16 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
         import difflib
         sequencematcher = difflib.SequenceMatcher
 
+    if fromfiledate:
+        fromfiledate = ' ' + str(fromfiledate)
+    if tofiledate:
+        tofiledate = ' ' + str(tofiledate)
+
     started = False
     for group in sequencematcher(None,a,b).get_grouped_opcodes(n):
         if not started:
-            yield '--- %s %s%s' % (fromfile, fromfiledate, lineterm)
-            yield '+++ %s %s%s' % (tofile, tofiledate, lineterm)
+            yield '--- %s%s%s' % (fromfile, fromfiledate, lineterm)
+            yield '+++ %s%s%s' % (tofile, tofiledate, lineterm)
             started = True
         i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
         yield "@@ -%d,%d +%d,%d @@%s" % (i1+1, i2-i1, j1+1, j2-j1, lineterm)
