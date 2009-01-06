@@ -89,6 +89,9 @@ class GitBranch(ForeignBranch):
         """See Branch.get_parent()."""
         return None
 
+    def set_parent(self, url):
+        pass
+
     def lock_read(self):
         self.control_files.lock_read()
 

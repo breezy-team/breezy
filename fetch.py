@@ -29,6 +29,7 @@ from bzrlib.plugins.git.repository import (
         )
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
+from dulwich.client import SimpleFetchGraphWalker
 from dulwich.objects import Commit
 
 from cStringIO import StringIO
@@ -185,7 +186,7 @@ def reconstruct_git_object(repo, mapping, sha):
     raise KeyError("No such object %s" % sha)
 
 
-class InterGitRepository(InterRepository):
+class InterGitNonGitRepository(InterRepository):
 
     _matching_repo_format = GitFormat()
 
@@ -234,4 +235,47 @@ class InterGitRepository(InterRepository):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
         return (isinstance(source, GitRepository) and 
-                target.supports_rich_root())
+                target.supports_rich_root() and
+                not isinstance(target, GitRepository))
+
+
+class InterGitRepository(InterRepository):
+
+    _matching_repo_format = GitFormat()
+
+    @staticmethod
+    def _get_repo_format_to_test():
+        return None
+
+    def copy_content(self, revision_id=None, pb=None):
+        """See InterRepository.copy_content."""
+        self.fetch(revision_id, pb, find_ghosts=False)
+
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
+              mapping=None):
+        if mapping is None:
+            mapping = self.source.get_mapping()
+        def progress(text):
+            info("git: %s", text)
+        r = self.target._git
+        if revision_id is None:
+            determine_wants = lambda x: [y for y in x.values() if not y in r.object_store]
+        else:
+            args = [mapping.revision_id_bzr_to_foreign(revision_id)]
+            determine_wants = lambda x: [y for y in args if not y in r.object_store]
+
+        graphwalker = SimpleFetchGraphWalker(r.heads().values(), r.get_parents)
+        f, commit = r.object_store.add_pack()
+        try:
+            self.source._git.fetch_pack(path, determine_wants, graphwalker, f.write, progress)
+            f.close()
+            commit()
+        except:
+            f.close()
+            raise
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with GitRepository."""
+        return (isinstance(source, GitRepository) and 
+                isinstance(target, GitRepository))
