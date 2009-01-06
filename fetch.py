@@ -50,7 +50,7 @@ class BzrFetchGraphWalker(object):
 
     def remove(self, revid):
         self.done.add(revid)
-        if ref in self.heads:
+        if revid in self.heads:
             self.heads.remove(revid)
         if revid in self.parents:
             for p in self.parents[revid]:
