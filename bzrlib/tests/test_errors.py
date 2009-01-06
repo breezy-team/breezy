@@ -560,6 +560,17 @@ class TestErrors(TestCaseWithTransport):
         err = errors.UnknownErrorFromSmartServer(orig_err)
         self.assertEquals(
             "Server sent an unexpected error: ('error', 'tuple')", str(err))
+    
+    def test_smart_message_handler_error(self):
+        # Make an exc_info tuple.
+        try:
+            raise Exception("example error")
+        except Exception:
+            exc_info = sys.exc_info()
+        err = errors.SmartMessageHandlerError(exc_info)
+        self.assertStartsWith(
+            str(err), "The message handler raised an exception:\n")
+        self.assertEndsWith(str(err), "Exception: example error\n")
 
 
 class PassThroughError(errors.BzrError):
