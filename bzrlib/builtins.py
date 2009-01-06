@@ -4236,7 +4236,7 @@ class cmd_merge_directive(Command):
 
 
 class cmd_send(Command):
-    """Mail or create a merge-directive for submiting changes.
+    """Mail or create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -4434,7 +4434,7 @@ class cmd_send(Command):
 
 class cmd_bundle_revisions(cmd_send):
 
-    """Create a merge-directive for submiting changes.
+    """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 
