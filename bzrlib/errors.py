@@ -1580,13 +1580,15 @@ class UnknownSmartMethod(InternalBzrError):
 class SmartMessageHandlerError(InternalBzrError):
 
     _fmt = ("The message handler raised an exception:\n"
-            "%(traceback_text)s%(exc_value)s")
+            "%(traceback_text)s")
 
     def __init__(self, exc_info):
         import traceback
         self.exc_type, self.exc_value, self.exc_tb = exc_info
         self.exc_info = exc_info
-        self.traceback_text = ''.join(traceback.format_tb(self.exc_tb))
+        traceback_strings = traceback.format_exception(
+                self.exc_type, self.exc_value, self.exc_tb)
+        self.traceback_text = ''.join(traceback_strings)
 
 
 # A set of semi-meaningful errors which can be thrown
