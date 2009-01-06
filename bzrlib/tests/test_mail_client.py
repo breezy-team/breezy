@@ -198,10 +198,10 @@ class TestClaws(tests.TestCase):
     def test_commandline_is_8bit(self):
         claws = mail_client.Claws(None)
         cmdline = claws._get_compose_commandline(
-            u'jrandom@example.org', u'Hi there!', u'file%')
+            u'jrandom@example.org', u'\xb5cosm of fun!', u'file%')
         self.assertEqual(
             ['--compose',
-             'mailto:jrandom@example.org?subject=Hi%20there%21',
+             'mailto:jrandom@example.org?subject=%C2%B5cosm%20of%20fun%21',
              '--attach',
              'file%'],
             cmdline)
