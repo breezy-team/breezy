@@ -77,9 +77,9 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
         sequencematcher = difflib.SequenceMatcher
 
     if fromfiledate:
-        fromfiledate = ' ' + str(fromfiledate)
+        fromfiledate = '\t' + str(fromfiledate)
     if tofiledate:
-        tofiledate = ' ' + str(tofiledate)
+        tofiledate = '\t' + str(tofiledate)
 
     started = False
     for group in sequencematcher(None,a,b).get_grouped_opcodes(n):

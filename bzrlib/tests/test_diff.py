@@ -1137,8 +1137,8 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         unified_diff = bzrlib.patiencediff.unified_diff
         psm = self._PatienceSequenceMatcher
-        self.assertEquals(['--- a 2008-08-08\n',
-                           '+++ b 2008-09-09\n',
+        self.assertEquals(['--- a\t2008-08-08\n',
+                           '+++ b\t2008-09-09\n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
                            '-world\n',
