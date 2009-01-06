@@ -410,37 +410,47 @@ class TestUploadMixin(object):
 
         self.assertUpPathModeEqual('hello', 0775)
 
+    
+    def get_upload_auto(self):
+        return get_upload_auto(self.tree.branch)
+    
     def test_upload_auto(self):
         """Test that upload --auto sets the upload_auto option"""
         self.make_local_branch()
         self.add_file('hello', 'foo')
-        self.assertFalse(get_upload_auto(self.tree.branch))
+        try:
+            self.assertFalse(self.get_upload_auto())
+        except errors.NotBranchError:
+            pass
         self.do_full_upload(auto=True)
         self.assertUpFileEqual('foo', 'hello')
-        self.assertTrue(get_upload_auto(self.tree.branch))
+        self.assertTrue(self.get_upload_auto())
         # and check that it stays set until it is unset
         self.add_file('bye', 'bar')
         self.do_full_upload()
         self.assertUpFileEqual('bar', 'bye')
-        self.assertTrue(get_upload_auto(self.tree.branch))
+        self.assertTrue(self.get_upload_auto())
 
     def test_upload_noauto(self):
         """Test that upload --no-auto unsets the upload_auto option"""
         self.make_local_branch()
         self.add_file('hello', 'foo')
-        self.assertFalse(get_upload_auto(self.tree.branch))
+        try:
+            self.assertFalse(self.get_upload_auto())
+        except errors.NotBranchError:
+            pass        
         self.do_full_upload(auto=True)
         self.assertUpFileEqual('foo', 'hello')
-        self.assertTrue(get_upload_auto(self.tree.branch))
+        self.assertTrue(self.get_upload_auto())
         self.add_file('bye', 'bar')
         self.do_full_upload(auto=False)
         self.assertUpFileEqual('bar', 'bye')
-        self.assertFalse(get_upload_auto(self.tree.branch))
+        self.assertFalse(self.get_upload_auto())
         # and check that it stays unset until it is set
         self.add_file('again', 'baz')
         self.do_full_upload()
         self.assertUpFileEqual('baz', 'again')
-        self.assertFalse(get_upload_auto(self.tree.branch))
+        self.assertFalse(self.get_upload_auto())
 
     def test_upload_from_subdir(self):
         self.make_local_branch()
@@ -589,6 +599,21 @@ class TestUploadFromRemote(TestUploadMixin):
             kwargs['directory'] = up_url
         kwargs['quiet'] = True
         upload.run(up_url, *args, **kwargs)
+    
+    def test_no_upload_when_changes(self):
+        raise tests.TestNotApplicable()
+
+    def test_no_upload_when_conflicts(self):
+        raise tests.TestNotApplicable()
+    
+    remote_branch = None
+    def get_upload_auto(self):
+        if not self.remote_branch:
+            self.remote_branch = branch.Branch.open_from_transport(\
+                self.get_transport(self.upload_dir))
+        
+        return get_upload_auto(self.remote_branch)
+
 
 class TestFullUploadFromRemote(tests.TestCaseWithTransport, TestUploadFromRemote):
     
