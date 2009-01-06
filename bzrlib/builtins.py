@@ -1454,8 +1454,23 @@ class cmd_init(Command):
                 raise errors.BzrCommandError('This branch format cannot be set'
                     ' to append-revisions-only.  Try --experimental-branch6')
         if not is_quiet():
-            from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(a_bzrdir, verbose=0, outfile=self.outf)
+            from bzrlib.info import describe_layout, describe_format
+            try:
+                tree = a_bzrdir.open_workingtree(recommend_upgrade=False)
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                tree = None
+            repository = branch.repository
+            layout = describe_layout(repository, branch, tree).lower()
+            format = describe_format(a_bzrdir, repository, branch, tree)
+            self.outf.write("Created a %s (format: %s)\n" % (layout, format))
+            if repository.is_shared():
+                #XXX: maybe this can be refactored into transport.path_or_url()
+                url = repository.bzrdir.root_transport.external_url()
+                try:
+                    url = urlutils.local_path_from_url(url)
+                except errors.InvalidURL:
+                    pass
+                self.outf.write("Using shared repository: %s\n" % url)
 
 
 class cmd_init_repository(Command):
