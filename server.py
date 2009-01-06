@@ -171,7 +171,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             tree.serialize()
             sha = tree.sha().hexdigest()
             yield sha, tree
-            t = (get_umask(), splitpath(cur)[:-1], sha)
+            t = (get_umask(), splitpath(cur)[-1:][0].encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
 
@@ -188,15 +188,15 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             sha = blob.sha().hexdigest()
             yield sha, blob
 
-            name = splitpath(path)[:-1]
+            name = splitpath(path)[-1:][0].encode('UTF-8')
             mode = get_umask()
-            tree.add(0, name, sha)
+            tree.add(mode, name, sha)
 
     while len(stack) > 1:
         tree.serialize()
         sha = tree.sha().hexdigest()
         yield sha, tree
-        t = (get_umask(), splitpath(cur)[:-1], sha)
+        t = (get_umask(), splitpath(cur)[-1:][0].encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
