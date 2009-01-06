@@ -34,6 +34,12 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
+    * Support the Claws mail client directly, rather than via
+      xdg-email. This prevents the display of an unnecessary modal
+      dialog in Claws, informing the user that a file has been
+      attached to the message, and works around bug #291847 in
+      xdg-utils which corrupts the destination address.
+
   BUG FIXES:
   
     * Fix a problem with CIFS client/server lag on windows colliding with
