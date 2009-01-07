@@ -588,24 +588,85 @@ class TestMap(TestCaseWithStore):
         self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
 
-        aab_key = chkmap._root_node._items['aab'].key()
-        aab_bytes = chk_map._page_cache[aab_key]
-        aac_key = chkmap._root_node._items['aac'].key()
-        aac_bytes = chk_map._page_cache[aac_key]
-
-        # Start again from the beginning
+    def test_unmap_pages_in_from_page_cache(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'val')
+        chkmap.map(('aab',), 'val')
+        chkmap.map(('aac',), 'val')
+        root_key = chkmap._save()
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, root_key)
+        chkmap.map(('aad',), 'val')
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaa' LeafNode\n"
+                             "      ('aaa',) 'val'\n"
+                             "  'aab' LeafNode\n"
+                             "      ('aab',) 'val'\n"
+                             "  'aac' LeafNode\n"
+                             "      ('aac',) 'val'\n"
+                             "  'aad' LeafNode\n"
+                             "      ('aad',) 'val'\n",
+                             chkmap._dump_tree())
+        # Save everything to the map, start over after _dump_tree
         chkmap = CHKMap(store, root_key)
         chkmap.map(('aad',), 'v')
-
+        # At this point, the previous nodes should not be paged in, but the
+        # newly added node would be
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         # Now clear the page cache, and only include 2 of the children in the
         # cache
+        aab_key = chkmap._root_node._items['aab']
+        aab_bytes = chk_map._page_cache[aab_key]
+        aac_key = chkmap._root_node._items['aac']
+        aac_bytes = chk_map._page_cache[aac_key]
         chk_map._page_cache.clear()
         chk_map._page_cache[aab_key] = aab_bytes
         chk_map._page_cache[aac_key] = aac_bytes
+
+        # Unmapping the new node will check the nodes from the page cache
+        # first, and not have to read in 'aaa'
         chkmap.unmap(('aad',))
         self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
         self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
+
+    def test_unmap_uses_existing_items(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'val')
+        chkmap.map(('aab',), 'val')
+        chkmap.map(('aac',), 'val')
+        root_key = chkmap._save()
+        # Save everything to the map, and start over
+        chkmap = CHKMap(store, root_key)
+        chkmap.map(('aad',), 'val')
+        chkmap.map(('aae',), 'val')
+        chkmap.map(('aaf',), 'val')
+        # At this point, the previous nodes should not be paged in, but the
+        # newly added node would be
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aaf'], LeafNode)
+
+        # Unmapping a new node will see the other nodes that are already in
+        # memory, and not need to page in anything else
+        chkmap.unmap(('aad',))
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aaf'], LeafNode)
 
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
