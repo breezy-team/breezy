@@ -18,7 +18,7 @@
 
 from itertools import izip
 
-from bzrlib import chk_map
+from bzrlib import chk_map, osutils
 from bzrlib.chk_map import (
     CHKMap,
     InternalNode,
@@ -50,7 +50,10 @@ class TestCaseWithStore(TestCaseWithTransport):
 
     def read_bytes(self, chk_bytes, key):
         stream = chk_bytes.get_record_stream([key], 'unordered', True)
-        return stream.next().get_bytes_as("fulltext")
+        record = stream.next()
+        if record.storage_kind == 'absent':
+            self.fail('Store does not contain the key %s' % (key,))
+        return record.get_bytes_as("fulltext")
 
     def to_dict(self, node, *args):
         return dict(node.iteritems(*args))
@@ -59,15 +62,19 @@ class TestCaseWithStore(TestCaseWithTransport):
 class TestMap(TestCaseWithStore):
 
     def assertHasABMap(self, chk_bytes):
-        root_key = ('sha1:f14dd34def95036bc06bb5c0ed95437d7383a04a',)
-        self.assertEqual(
-            'chkleaf:\n0\n1\n1\na\x00b\n',
-            self.read_bytes(chk_bytes, root_key))
+        ab_leaf_bytes = 'chkleaf:\n0\n1\n1\na\x00b\n'
+        ab_sha1 = osutils.sha_string(ab_leaf_bytes)
+        self.assertEqual('f14dd34def95036bc06bb5c0ed95437d7383a04a', ab_sha1)
+        root_key = ('sha1:' + ab_sha1,)
+        self.assertEqual(ab_leaf_bytes, self.read_bytes(chk_bytes, root_key))
         return root_key
 
     def assertHasEmptyMap(self, chk_bytes):
-        root_key = ('sha1:4e6482a3a5cb2d61699971ac77befe11a0ec5779',)
-        self.assertEqual("chkleaf:\n0\n1\n0\n", self.read_bytes(chk_bytes, root_key))
+        empty_leaf_bytes = 'chkleaf:\n0\n1\n0\n'
+        empty_sha1 = osutils.sha_string(empty_leaf_bytes)
+        self.assertEqual('4e6482a3a5cb2d61699971ac77befe11a0ec5779', empty_sha1)
+        root_key = ('sha1:' + empty_sha1,)
+        self.assertEqual(empty_leaf_bytes, self.read_bytes(chk_bytes, root_key))
         return root_key
 
     def assertMapLayoutEqual(self, map_one, map_two):
@@ -82,8 +89,8 @@ class TestMap(TestCaseWithStore):
             if node_one.__class__ != node_two.__class__:
                 self.assertEqualDiff(map_one._dump_tree(),
                                      map_two._dump_tree())
-            self.assertEqual(node_one._lookup_prefix,
-                             node_two._lookup_prefix)
+            self.assertEqual(node_one._search_prefix,
+                             node_two._search_prefix)
             if isinstance(node_one, InternalNode):
                 # Internal nodes must have identical references
                 self.assertEqual(sorted(node_one._items.keys()),
@@ -758,7 +765,7 @@ class TestMap(TestCaseWithStore):
         self.assertEqual(1, chkmap._root_node._key_width)
         # There should be two child nodes, and prefix of 2(bytes):
         self.assertEqual(2, len(chkmap._root_node._items))
-        self.assertEqual("k", chkmap._root_node._compute_lookup_prefix())
+        self.assertEqual("k", chkmap._root_node._compute_search_prefix())
         # The actual nodes pointed at will change as serialisers change; so
         # here we test that the key prefix is correct; then load the nodes and
         # check they have the right pointed at key; whether they have the
@@ -1000,12 +1007,12 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_unique_serialised_prefix_empty_new(self):
         node = LeafNode()
-        self.assertEqual("", node._compute_lookup_prefix())
+        self.assertEqual("", node._compute_search_prefix())
 
     def test_unique_serialised_prefix_one_item_new(self):
         node = LeafNode()
         node.map(None, ("foo bar", "baz"), "baz quux")
-        self.assertEqual("foo bar\x00baz", node._compute_lookup_prefix())
+        self.assertEqual("foo bar\x00baz", node._compute_search_prefix())
 
     def test_unmap_missing(self):
         node = LeafNode()
@@ -1023,19 +1030,19 @@ class TestLeafNode(TestCaseWithStore):
         node = LeafNode()
         node._key_width = 2
         node.map(None, ("foo bar", "baz"), "baz quux")
-        self.assertEqual('foo bar\x00baz', node._lookup_prefix)
+        self.assertEqual('foo bar\x00baz', node._search_prefix)
         self.assertEqual('foo bar\x00baz', node._common_serialised_prefix)
         node.map(None, ("foo bar", "bing"), "baz quux")
-        self.assertEqual('foo bar\x00b', node._lookup_prefix)
+        self.assertEqual('foo bar\x00b', node._search_prefix)
         self.assertEqual('foo bar\x00b', node._common_serialised_prefix)
         node.map(None, ("fool", "baby"), "baz quux")
-        self.assertEqual('foo', node._lookup_prefix)
+        self.assertEqual('foo', node._search_prefix)
         self.assertEqual('foo', node._common_serialised_prefix)
         node.map(None, ("foo bar", "baz"), "replaced")
-        self.assertEqual('foo', node._lookup_prefix)
+        self.assertEqual('foo', node._search_prefix)
         self.assertEqual('foo', node._common_serialised_prefix)
         node.map(None, ("very", "different"), "value")
-        self.assertEqual('', node._lookup_prefix)
+        self.assertEqual('', node._search_prefix)
         self.assertEqual('', node._common_serialised_prefix)
 
     def test_unmap_maintains_common_prefixes(self):
@@ -1045,19 +1052,19 @@ class TestLeafNode(TestCaseWithStore):
         node.map(None, ("foo bar", "bing"), "baz quux")
         node.map(None, ("fool", "baby"), "baz quux")
         node.map(None, ("very", "different"), "value")
-        self.assertEqual('', node._lookup_prefix)
+        self.assertEqual('', node._search_prefix)
         self.assertEqual('', node._common_serialised_prefix)
         node.unmap(None, ("very", "different"))
-        self.assertEqual("foo", node._lookup_prefix)
+        self.assertEqual("foo", node._search_prefix)
         self.assertEqual("foo", node._common_serialised_prefix)
         node.unmap(None, ("fool", "baby"))
-        self.assertEqual('foo bar\x00b', node._lookup_prefix)
+        self.assertEqual('foo bar\x00b', node._search_prefix)
         self.assertEqual('foo bar\x00b', node._common_serialised_prefix)
         node.unmap(None, ("foo bar", "baz"))
-        self.assertEqual('foo bar\x00bing', node._lookup_prefix)
+        self.assertEqual('foo bar\x00bing', node._search_prefix)
         self.assertEqual('foo bar\x00bing', node._common_serialised_prefix)
         node.unmap(None, ("foo bar", "bing"))
-        self.assertEqual('', node._lookup_prefix)
+        self.assertEqual('', node._search_prefix)
         self.assertEqual('', node._common_serialised_prefix)
 
 

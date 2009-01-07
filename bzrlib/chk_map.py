@@ -404,8 +404,8 @@ class Node(object):
         self._raw_size = 0
         # The pointers/values this node has - meaning defined by child classes.
         self._items = {}
-        # The common lookup prefix
-        self._lookup_prefix = None
+        # The common search prefix
+        self._search_prefix = None
 
     def __repr__(self):
         items_str = sorted(self._items)
@@ -413,7 +413,7 @@ class Node(object):
             items_str = items_str[16] + '...]'
         return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
             self.__class__.__name__, self._key, self._len, self._raw_size,
-            self._maximum_size, self._lookup_prefix, items_str)
+            self._maximum_size, self._search_prefix, items_str)
 
     def key(self):
         return self._key
@@ -542,7 +542,7 @@ class LeafNode(Node):
         result._key_width = width
         result._raw_size = (sum(map(len, lines[5:])) # the length of the suffix
             + (length)*(len(prefix)+1)) # prefix + '\n'
-        result._compute_lookup_prefix()
+        result._compute_search_prefix()
         result._compute_serialised_prefix()
         if len(bytes) != result._current_size():
             import pdb; pdb.set_trace()
@@ -595,12 +595,12 @@ class LeafNode(Node):
         else:
             self._common_serialised_prefix = self.common_prefix(
                 self._common_serialised_prefix, serialised_key)
-        lookup_key = self._lookup_key(key)
-        if self._lookup_prefix is None:
-            self._lookup_prefix = lookup_key
+        search_key = self._search_key(key)
+        if self._search_prefix is None:
+            self._search_prefix = search_key
         else:
-            self._lookup_prefix = self.common_prefix(
-                self._lookup_prefix, lookup_key)
+            self._search_prefix = self.common_prefix(
+                self._search_prefix, search_key)
         if (self._len > 1
             and self._maximum_size
             and self._current_size() > self._maximum_size):
@@ -615,12 +615,12 @@ class LeafNode(Node):
 
         :return: (common_serialised_prefix, [(node_serialised_prefix, node)])
         """
-        common_prefix = self._lookup_prefix
+        common_prefix = self._search_prefix
         split_at = len(common_prefix) + 1
         result = {}
         for key, value in self._items.iteritems():
-            lookup_key = self._lookup_key(key)
-            prefix = lookup_key[:split_at]
+            search_key = self._search_key(key)
+            prefix = search_key[:split_at]
             # TODO: Generally only 1 key can be exactly the right length,
             #       which means we can only have 1 key in the node pointed
             #       at by the 'prefix\0' key. We might want to consider
@@ -650,7 +650,7 @@ class LeafNode(Node):
         if self._map_no_split(key, value):
             return self._split(store)
         else:
-            return self._lookup_prefix, [("", self)]
+            return self._search_prefix, [("", self)]
 
     def serialise(self, store):
         """Serialise the tree to store.
@@ -680,23 +680,23 @@ class LeafNode(Node):
         _page_cache.add(self._key, bytes)
         return [self._key]
 
-    def _lookup_key(self, key):
-        """Return the lookup key for a key in this node."""
+    def _search_key(self, key):
+        """Return the search key for a key in this node."""
         return '\x00'.join(key)
 
     def refs(self):
         """Return the references to other CHK's held by this node."""
         return []
 
-    def _compute_lookup_prefix(self):
-        """Determine the common lookup prefix for all keys in this node.
+    def _compute_search_prefix(self):
+        """Determine the common search prefix for all keys in this node.
 
-        :return: A bytestring of the longest lookup key prefix that is
+        :return: A bytestring of the longest search key prefix that is
             unique within this node.
         """
-        lookup_keys = [self._lookup_key(key) for key in self._items]
-        self._lookup_prefix = self.common_prefix_for_keys(lookup_keys)
-        return self._lookup_prefix
+        search_keys = [self._search_key(key) for key in self._items]
+        self._search_prefix = self.common_prefix_for_keys(search_keys)
+        return self._search_prefix
 
     def _compute_serialised_prefix(self):
         """Determine the common prefix for serialised keys in this node.
@@ -715,7 +715,7 @@ class LeafNode(Node):
         del self._items[key]
         self._key = None
         # Recompute from scratch
-        self._compute_lookup_prefix()
+        self._compute_search_prefix()
         self._compute_serialised_prefix()
         return self
 
@@ -723,7 +723,7 @@ class LeafNode(Node):
 class InternalNode(Node):
     """A node that contains references to other nodes.
 
-    An InternalNode is responsible for mapping lookup key prefixes to child
+    An InternalNode is responsible for mapping search key prefixes to child
     nodes.
 
     :ivar _items: serialised_key => node dictionary. node may be a tuple,
@@ -735,7 +735,7 @@ class InternalNode(Node):
         # The size of an internalnode with default values and no children.
         # How many octets key prefixes within this node are.
         self._node_width = 0
-        self._lookup_prefix = prefix
+        self._search_prefix = prefix
 
     def __repr__(self):
         items_str = sorted(self._items)
@@ -743,21 +743,21 @@ class InternalNode(Node):
             items_str = items_str[16] + '...]'
         return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
             self.__class__.__name__, self._key, self._len, self._raw_size,
-            self._maximum_size, self._lookup_prefix, items_str)
+            self._maximum_size, self._search_prefix, items_str)
 
     def add_node(self, prefix, node):
         """Add a child node with prefix prefix, and node node.
 
-        :param prefix: The lookup key prefix for node.
+        :param prefix: The search key prefix for node.
         :param node: The node being added.
         """
-        assert self._lookup_prefix is not None
-        assert prefix.startswith(self._lookup_prefix)
-        assert len(prefix) == len(self._lookup_prefix) + 1
+        assert self._search_prefix is not None
+        assert prefix.startswith(self._search_prefix)
+        assert len(prefix) == len(self._search_prefix) + 1
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
-        assert self._node_width == len(self._lookup_prefix) + 1
+        assert self._node_width == len(self._search_prefix) + 1
         self._items[prefix] = node
         self._key = None
 
@@ -796,7 +796,7 @@ class InternalNode(Node):
         #      change if we add prefix compression
         result._raw_size = None # len(bytes)
         result._node_width = len(prefix)
-        result._compute_lookup_prefix()
+        result._compute_search_prefix()
         return result
 
     def iteritems(self, store, key_filter=None):
@@ -827,10 +827,10 @@ class InternalNode(Node):
             # XXX defaultdict ?
             length_filters = {}
             for key in key_filter:
-                lookup_key = self._lookup_prefix_filter(key)
-                length_filter = length_filters.setdefault(len(lookup_key),
-                    set())
-                length_filter.add(lookup_key)
+                search_key = self._search_prefix_filter(key)
+                length_filter = length_filters.setdefault(
+                                    len(search_key), set())
+                length_filter.add(search_key)
             length_filters = length_filters.items()
             for prefix, node in self._items.iteritems():
                 for length, length_filter in length_filters:
@@ -880,18 +880,18 @@ class InternalNode(Node):
         """Map key to value."""
         if not len(self._items):
             raise AssertionError("cant map in an empty InternalNode.")
-        lookup_key = self._lookup_key(key)
-        assert self._node_width == len(self._lookup_prefix) + 1
-        if not lookup_key.startswith(self._lookup_prefix):
+        search_key = self._search_key(key)
+        assert self._node_width == len(self._search_prefix) + 1
+        if not search_key.startswith(self._search_prefix):
             # This key doesn't fit in this index, so we need to split at the
             # point where it would fit, insert self into that internal node,
             # and then map this key into that node.
-            new_prefix = self.common_prefix(self._lookup_prefix,
-                                            lookup_key)
+            new_prefix = self.common_prefix(self._search_prefix,
+                                            search_key)
             new_parent = InternalNode(new_prefix)
             new_parent.set_maximum_size(self._maximum_size)
             new_parent._key_width = self._key_width
-            new_parent.add_node(self._lookup_prefix[:len(new_prefix)+1],
+            new_parent.add_node(self._search_prefix[:len(new_prefix)+1],
                                 self)
             return new_parent.map(store, key, value)
         children = list(self._iter_nodes(store, key_filter=[key]))
@@ -899,7 +899,7 @@ class InternalNode(Node):
             child = children[0]
         else:
             # new child needed:
-            child = self._new_child(lookup_key, LeafNode)
+            child = self._new_child(search_key, LeafNode)
         old_len = len(child)
         if isinstance(child, LeafNode):
             old_size = child._current_size()
@@ -910,7 +910,7 @@ class InternalNode(Node):
             # child may have shrunk, or might be a new node
             child = node_details[0][1]
             self._len = self._len - old_len + len(child)
-            self._items[lookup_key] = child
+            self._items[search_key] = child
             self._key = None
             new_node = self
             if (isinstance(child, LeafNode)
@@ -920,26 +920,26 @@ class InternalNode(Node):
                 # at this level. Or the LeafNode has shrunk in size, so we need
                 # to check that as well.
                 new_node = self._check_remap(store)
-            assert new_node._lookup_prefix is not None
-            return new_node._lookup_prefix, [('', new_node)]
+            assert new_node._search_prefix is not None
+            return new_node._search_prefix, [('', new_node)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
         # to refer to more bytes of every child (which would give us
         # multiple pointers to child nodes, but less intermediate nodes)
-        child = self._new_child(lookup_key, InternalNode)
-        child._lookup_prefix = prefix
+        child = self._new_child(search_key, InternalNode)
+        child._search_prefix = prefix
         for split, node in node_details:
             child.add_node(split, node)
         self._len = self._len - old_len + len(child)
         self._key = None
-        return self._lookup_prefix, [("", self)]
+        return self._search_prefix, [("", self)]
 
-    def _new_child(self, lookup_key, klass):
+    def _new_child(self, search_key, klass):
         """Create a new child node of type klass."""
         child = klass()
         child.set_maximum_size(self._maximum_size)
         child._key_width = self._key_width
-        self._items[lookup_key] = child
+        self._items[search_key] = child
         return child
 
     def serialise(self, store):
@@ -961,32 +961,32 @@ class InternalNode(Node):
         lines.append("%d\n" % self._maximum_size)
         lines.append("%d\n" % self._key_width)
         lines.append("%d\n" % self._len)
-        assert self._lookup_prefix is not None
-        lines.append('%s\n' % (self._lookup_prefix,))
-        prefix_len = len(self._lookup_prefix)
+        assert self._search_prefix is not None
+        lines.append('%s\n' % (self._search_prefix,))
+        prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
             if type(node) == tuple:
                 key = node[0]
             else:
                 key = node._key[0]
             serialised = "%s\x00%s\n" % (prefix, key)
-            assert serialised.startswith(self._lookup_prefix)
+            assert serialised.startswith(self._search_prefix)
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
         _page_cache.add(self._key, ''.join(lines))
         yield self._key
 
-    def _lookup_key(self, key):
+    def _search_key(self, key):
         """Return the serialised key for key in this node."""
-        # lookup keys are fixed width. All will be self._node_width wide, so we
+        # search keys are fixed width. All will be self._node_width wide, so we
         # pad as necessary.
         return ('\x00'.join(key) + '\x00'*self._node_width)[:self._node_width]
 
-    def _lookup_prefix_filter(self, key):
+    def _search_prefix_filter(self, key):
         """Serialise key for use as a prefix filter in iteritems."""
         if len(key) == self._key_width:
-            return self._lookup_key(key)
+            return self._search_key(key)
         return '\x00'.join(key)[:self._node_width]
 
     def _split(self, offset):
@@ -1016,14 +1016,14 @@ class InternalNode(Node):
                 refs.append(value.key())
         return refs
 
-    def _compute_lookup_prefix(self, extra_key=None):
+    def _compute_search_prefix(self, extra_key=None):
         """Return the unique key prefix for this node.
 
-        :return: A bytestring of the longest lookup key prefix that is
+        :return: A bytestring of the longest search key prefix that is
             unique within this node.
         """
-        self._lookup_prefix = self.common_prefix_for_keys(self._items)
-        return self._lookup_prefix
+        self._search_prefix = self.common_prefix_for_keys(self._items)
+        return self._search_prefix
 
     def unmap(self, store, key):
         """Remove key from this node and it's children."""
@@ -1037,14 +1037,14 @@ class InternalNode(Node):
         self._len -= 1
         unmapped = child.unmap(store, key)
         self._key = None
-        lookup_key = self._lookup_key(key)
+        search_key = self._search_key(key)
         if len(unmapped) == 0:
             # All child nodes are gone, remove the child:
-            del self._items[lookup_key]
+            del self._items[search_key]
             unmapped = None
         else:
             # Stash the returned node
-            self._items[lookup_key] = unmapped
+            self._items[search_key] = unmapped
         if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
