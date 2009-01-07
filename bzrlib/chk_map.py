@@ -43,11 +43,14 @@ from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import versionedfile
 """)
-from bzrlib.lru_cache import LRUCache
+from bzrlib import lru_cache
 
 # approx 2MB
-_PAGE_CACHE_SIZE = 2*1024*1024 / 4*1024
-_page_cache = LRUCache(_PAGE_CACHE_SIZE)
+# If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
+# out, it takes 3.1MB to cache the layer.
+_PAGE_CACHE_SIZE = 4*1024*1024
+# We are caching bytes so len(value) is perfectly accurate
+_page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
 
 class CHKMap(object):
@@ -461,7 +464,8 @@ class LeafNode(Node):
             elements = line.split('\x00', width)
             items[tuple(elements[:-1])] = elements[-1]
         if len(items) != length:
-            raise AssertionError("item count mismatch")
+            raise AssertionError("item count (%d) mismatch for key %s,"
+                " bytes %r" % (length, key, bytes))
         result._items = items
         result._len = length
         result._maximum_size = maximum_size
@@ -684,22 +688,25 @@ class InternalNode(Node):
             for item in node.iteritems(store, key_filter=key_filter):
                 yield item
 
-    def _iter_nodes(self, store, key_filter=None):
+    def _iter_nodes(self, store, key_filter=None, batch_size=None):
         """Iterate over node objects which match key_filter.
 
         :param store: A store to use for accessing content.
         :param key_filter: A key filter to filter nodes. Only nodes that might
             contain a key in key_filter will be returned.
-        :return: An iterable of nodes.
+        :param batch_size: If not None, then we will return the nodes that had
+            to be read using get_record_stream in batches, rather than reading
+            them all at once.
+        :return: An iterable of nodes. This function does not have to be fully
+            consumed.  (There will be no pending I/O when items are being returned.)
         """
-        nodes = []
         keys = {}
         if key_filter is None:
             for prefix, node in self._items.iteritems():
                 if type(node) == tuple:
                     keys[node] = prefix
                 else:
-                    nodes.append(node)
+                    yield node
         else:
             # XXX defaultdict ?
             length_filters = {}
@@ -715,7 +722,7 @@ class InternalNode(Node):
                         if type(node) == tuple:
                             keys[node] = prefix
                         else:
-                            nodes.append(node)
+                            yield node
                         break
         if keys:
             # Look in the page cache for some more bytes
@@ -727,21 +734,31 @@ class InternalNode(Node):
                     continue
                 else:
                     node = _deserialise(bytes, key)
-                    nodes.append(node)
                     self._items[keys[key]] = node
                     found_keys.add(key)
+                    yield node
             for key in found_keys:
                 del keys[key]
         if keys:
             # demand load some pages.
-            stream = store.get_record_stream(keys, 'unordered', True)
-            for record in stream:
-                bytes = record.get_bytes_as('fulltext')
-                node = _deserialise(bytes, record.key)
-                nodes.append(node)
-                self._items[keys[record.key]] = node
-                _page_cache.add(record.key, bytes)
-        return nodes
+            if batch_size is None:
+                # Read all the keys in
+                batch_size = len(keys)
+            key_order = list(keys)
+            for batch_start in range(0, len(key_order), batch_size):
+                batch = key_order[batch_start:batch_start + batch_size]
+                # We have to fully consume the stream so there is no pending
+                # I/O, so we buffer the nodes for now.
+                stream = store.get_record_stream(batch, 'unordered', True)
+                nodes = []
+                for record in stream:
+                    bytes = record.get_bytes_as('fulltext')
+                    node = _deserialise(bytes, record.key)
+                    nodes.append(node)
+                    self._items[keys[record.key]] = node
+                    _page_cache.add(record.key, bytes)
+                for node in nodes:
+                    yield node
 
     def map(self, store, key, value):
         """Map key to value."""
@@ -760,7 +777,7 @@ class InternalNode(Node):
             new_parent.add_node(self._prefix[:len(new_prefix)+1], self)
             assert new_parent._node_width == len(new_parent._prefix) + 1
             return new_parent.map(store, key, value)
-        children = self._iter_nodes(store, key_filter=[key])
+        children = list(self._iter_nodes(store, key_filter=[key]))
         if children:
             child = children[0]
             # if isinstance(child, InternalNode):
@@ -907,7 +924,7 @@ class InternalNode(Node):
         """Remove key from this node and it's children."""
         if not len(self._items):
             raise AssertionError("cant unmap in an empty InternalNode.")
-        children = self._iter_nodes(store, key_filter=[key])
+        children = list(self._iter_nodes(store, key_filter=[key]))
         if children:
             child = children[0]
         else:
@@ -961,52 +978,20 @@ class InternalNode(Node):
         new_leaf = LeafNode()
         new_leaf.set_maximum_size(self._maximum_size)
         new_leaf._key_width = self._key_width
-        keys = {}
-        # There is some overlap with _iter_nodes here, but not a lot, and it
-        # allows us to do quick evaluation without paging everything in
-        for prefix, node in self._items.iteritems():
-            if type(node) == tuple:
-                keys[node] = prefix
-            else:
-                if isinstance(node, InternalNode):
-                    # Without looking at any leaf nodes, we are sure
+        # A batch_size of 16 was chosen because:
+        #   a) In testing, a 4k page held 14 times. So if we have more than 16
+        #      leaf nodes we are unlikely to hold them in a single new leaf
+        #      node. This still allows for 1 round trip
+        #   b) With 16-way fan out, we can still do a single round trip
+        #   c) With 255-way fan out, we don't want to read all 255 and destroy
+        #      the page cache, just to determine that we really don't need it.
+        for node in self._iter_nodes(store, batch_size=16):
+            if isinstance(node, InternalNode):
+                # Without looking at any leaf nodes, we are sure
+                return self
+            for key, value in node._items.iteritems():
+                if new_leaf._map_no_split(key, value):
                     return self
-                for key, value in node._items.iteritems():
-                    if new_leaf._map_no_split(key, value):
-                        # Adding this key would cause a split, so we know we
-                        # don't need to collapse
-                        return self
-        # So far, everything fits. Page in the rest of the nodes, and see if it
-        # holds true.
-        if keys:
-            # TODO: Consider looping over a limited set of keys (like 25 or so
-            #       at a time). If we have to read more than 25 we almost
-            #       certainly won't fit them all into a single new LeafNode, so
-            #       reading the extra nodes is a waste.
-            #       This will probably matter more with hash serialised keys,
-            #       as we will get InternalNodes with more references.
-            #       The other argument is that unmap() is uncommon, so we don't
-            #       need to optimize it. But map() with a slightly shorter
-            #       value may happen a lot.
-            stream = store.get_record_stream(keys, 'unordered', True)
-            nodes = []
-            # Fully consume the stream, even if we could determine that we
-            # don't need to continue. We requested the bytes, we may as well
-            # use them
-            for record in stream:
-                node = _deserialise(record.get_bytes_as('fulltext'), record.key)
-                self._items[keys[record.key]] = node
-                nodes.append(node)
-            for node in nodes:
-                if isinstance(node, InternalNode):
-                    # We know we won't fit
-                    return self
-                for key, value in node._items.iteritems():
-                    if new_leaf._map_no_split(key, value):
-                        return self
-
-        # We have gone to every child, and everything fits in a single leaf
-        # node, we no longer need this internal node
         return new_leaf
 
 
