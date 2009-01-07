@@ -839,7 +839,7 @@ class TestMap(TestCaseWithStore):
                              "      ('aab',) 'value2'\n"
                              "  'b' LeafNode\n"
                              "      ('bbb',) 'value3'\n",
-                             chkmap._dump_tree(include_keys=False))
+                             chkmap._dump_tree())
         self.assertEqualDiff("'' InternalNode\n"
                              "  'a' InternalNode\n"
                              "    'aaa' LeafNode\n"
@@ -1214,7 +1214,7 @@ class TestInternalNode(TestCaseWithStore):
                              "      ('k1',) 'foo'\n"
                              "  'k2' LeafNode\n"
                              "      ('k22',) 'bar'\n"
-                             , chkmap._dump_tree(include_keys=False))
+                             , chkmap._dump_tree())
         # _dump_tree pages everything in, so reload using just the root
         chkmap = CHKMap(chkmap._store, chkmap._root_node)
         chkmap._ensure_root()
@@ -1260,14 +1260,20 @@ class TestInternalNode(TestCaseWithStore):
                              "      ('k22',) 'bar'\n"
                              "    'k23' LeafNode\n"
                              "      ('k23',) 'quux'\n"
-                             , chkmap._dump_tree(include_keys=False))
+                             , chkmap._dump_tree())
 
     def test_unmap_k23_from_k1_k22_k23_gives_k1_k22_tree_new(self):
         chkmap = self._get_map(
             {('k1',):'foo', ('k22',):'bar', ('k23',): 'quux'}, maximum_size=10)
         # Check we have the expected tree.
-        self.assertEqual(('sha1:d68cd97c95e847d3dc58c05537aa5fdcdf2cf5da',),
-            chkmap._root_node)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'k1' LeafNode\n"
+                             "      ('k1',) 'foo'\n"
+                             "  'k2' LeafNode\n"
+                             "      ('k22',) 'bar'\n"
+                             "      ('k23',) 'bar'\n"
+                             , chkmap._dump_tree())
+        chkmap = CHKMap(chkmap._store, chkmap._root_node)
         chkmap._ensure_root()
         node = chkmap._root_node
         # unmapping k23 should give us a root, with k1 and k22 as direct
@@ -1292,9 +1298,17 @@ class TestInternalNode(TestCaseWithStore):
     def test_unmap_k1_from_k1_k22_k23_gives_k22_k23_tree_new(self):
         chkmap = self._get_map(
             {('k1',):'foo', ('k22',):'bar', ('k23',): 'quux'}, maximum_size=10)
-        # Check we have the expected tree.
-        self.assertEqual(('sha1:d68cd97c95e847d3dc58c05537aa5fdcdf2cf5da',),
-            chkmap._root_node)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'k1' LeafNode\n"
+                             "      ('k1',) 'foo'\n"
+                             "  'k2' InternalNode\n"
+                             "    'k22' LeafNode\n"
+                             "      ('k22',) 'bar'\n"
+                             "    'k23' LeafNode\n"
+                             "      ('k23',) 'quux'\n"
+                             , chkmap._dump_tree())
+        orig_root = chkmap._root_node
+        chkmap = CHKMap(chkmap._store, orig_root)
         chkmap._ensure_root()
         node = chkmap._root_node
         k2_ptr = node._items['k2']
@@ -1302,6 +1316,16 @@ class TestInternalNode(TestCaseWithStore):
         # children, and should not have needed to page in the subtree.
         result = node.unmap(chkmap._store, ('k1',))
         self.assertEqual(k2_ptr, result)
+        chkmap = CHKMap(chkmap._store, orig_root)
+        # Unmapping at the CHKMap level should switch to the new root
+        chkmap.unmap(('k1',))
+        self.assertEqual(k2_ptr, chkmap._root_node)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'k22' LeafNode\n"
+                             "      ('k22',) 'bar'\n"
+                             "  'k23' LeafNode\n"
+                             "      ('k23',) 'quux'\n"
+                             , chkmap._dump_tree())
 
 
 # leaf:
