@@ -405,7 +405,6 @@ class TestPluginHelp(TestCaseInTempDir):
         help = {}
         current = None
         out, err = self.run_bzr('--no-plugins help commands')
-        print err
         for line in out.splitlines():
             if not line.startswith(' '):
                 current = line.split()[0]
