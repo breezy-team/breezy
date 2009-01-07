@@ -1410,10 +1410,6 @@ class TestCase(unittest.TestCase):
         stdout.encoding = encoding
         stderr.encoding = encoding
 
-        if bzrlib.plugins.__path__ == []:
-            # "bzr selftest" was run with --no-plugins, so run the subprocess
-            # with --no-plugins as well.
-            args = ['--no-plugins'] + args
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
