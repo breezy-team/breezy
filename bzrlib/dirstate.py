@@ -415,12 +415,24 @@ class DirState(object):
             raise AssertionError(
                 "must be a utf8 file_id not %s" % (type(file_id), ))
         # Make sure the file_id does not exist in this tree
-        file_id_entry = self._get_entry(0, fileid_utf8=file_id)
+        rename_from = None
+        file_id_entry = self._get_entry(0, fileid_utf8=file_id, include_deleted=True)
         if file_id_entry != (None, None):
-            path = osutils.pathjoin(file_id_entry[0][0], file_id_entry[0][1])
-            kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
-            info = '%s:%s' % (kind, path)
-            raise errors.DuplicateFileId(file_id, info)
+            if file_id_entry[1][0][0] == 'a':
+                if file_id_entry[0] != (dirname, basename, file_id):
+                    # set the old name's current operation to rename
+                    self.update_minimal(file_id_entry[0],
+                        'r',
+                        path_utf8='',
+                        packed_stat='',
+                        fingerprint=utf8path
+                    )
+                    rename_from = file_id_entry[0][0:2]
+            else:
+                path = osutils.pathjoin(file_id_entry[0][0], file_id_entry[0][1])
+                kind = DirState._minikind_to_kind[file_id_entry[1][0][0]]
+                info = '%s:%s' % (kind, path)
+                raise errors.DuplicateFileId(file_id, info)
         first_key = (dirname, basename, '')
         block_index, present = self._find_block_index_from_key(first_key)
         if present:
@@ -453,6 +465,12 @@ class DirState(object):
             packed_stat = pack_stat(stat)
         parent_info = self._empty_parent_info()
         minikind = DirState._kind_to_minikind[kind]
+        if rename_from:
+            if rename_from[0]:
+                old_path_utf8 = '%s/%s' % rename_from
+            else:
+                old_path_utf8 = rename_from[1]
+            parent_info[0] = ('r', old_path_utf8, 0, False, '')
         if kind == 'file':
             entry_data = entry_key, [
                 (minikind, fingerprint, size, False, packed_stat),
@@ -1722,7 +1740,7 @@ class DirState(object):
             entry_index += 1
         return block_index, entry_index, True, False
 
-    def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None):
+    def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None, include_deleted=False):
         """Get the dirstate entry for path in tree tree_index.
 
         If either file_id or path is supplied, it is used as the key to lookup.
@@ -1782,6 +1800,8 @@ class DirState(object):
                         return entry
                     if entry[1][tree_index][0] == 'a':
                         # there is no home for this entry in this tree
+                        if include_deleted:
+                            return entry
                         return None, None
                     if entry[1][tree_index][0] != 'r':
                         raise AssertionError(
