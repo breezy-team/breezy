@@ -1269,9 +1269,11 @@ class TestInternalNode(TestCaseWithStore):
         self.assertEqualDiff("'' InternalNode\n"
                              "  'k1' LeafNode\n"
                              "      ('k1',) 'foo'\n"
-                             "  'k2' LeafNode\n"
+                             "  'k2' InternalNode\n"
+                             "    'k22' LeafNode\n"
                              "      ('k22',) 'bar'\n"
-                             "      ('k23',) 'bar'\n"
+                             "    'k23' LeafNode\n"
+                             "      ('k23',) 'quux'\n"
                              , chkmap._dump_tree())
         chkmap = CHKMap(chkmap._store, chkmap._root_node)
         chkmap._ensure_root()
@@ -1293,7 +1295,13 @@ class TestInternalNode(TestCaseWithStore):
         # serialising should only serialise the new data - the root node.
         keys = list(node.serialise(chkmap._store))
         self.assertEqual([keys[-1]], keys)
-        self.assertEqual(('sha1:d3f06fc03d8f50845894d8d04cc5a3f47e62948d',), keys[-1])
+        chkmap = CHKMap(chkmap._store, keys[-1])
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'k1' LeafNode\n"
+                             "      ('k1',) 'foo'\n"
+                             "  'k2' LeafNode\n"
+                             "      ('k22',) 'bar'\n"
+                             , chkmap._dump_tree())
 
     def test_unmap_k1_from_k1_k22_k23_gives_k22_k23_tree_new(self):
         chkmap = self._get_map(
