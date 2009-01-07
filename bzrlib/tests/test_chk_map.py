@@ -62,17 +62,17 @@ class TestCaseWithStore(TestCaseWithTransport):
 class TestMap(TestCaseWithStore):
 
     def assertHasABMap(self, chk_bytes):
-        ab_leaf_bytes = 'chkleaf:\n0\n1\n1\na\x00b\n'
+        ab_leaf_bytes = 'chkleaf:\n0\n1\n1\n\na\x00b\n'
         ab_sha1 = osutils.sha_string(ab_leaf_bytes)
-        self.assertEqual('f14dd34def95036bc06bb5c0ed95437d7383a04a', ab_sha1)
+        self.assertEqual('e9a209c6d7af8bac47eb305ae3cd71b10f0cafa9', ab_sha1)
         root_key = ('sha1:' + ab_sha1,)
         self.assertEqual(ab_leaf_bytes, self.read_bytes(chk_bytes, root_key))
         return root_key
 
     def assertHasEmptyMap(self, chk_bytes):
-        empty_leaf_bytes = 'chkleaf:\n0\n1\n0\n'
+        empty_leaf_bytes = 'chkleaf:\n0\n1\n0\n\n'
         empty_sha1 = osutils.sha_string(empty_leaf_bytes)
-        self.assertEqual('4e6482a3a5cb2d61699971ac77befe11a0ec5779', empty_sha1)
+        self.assertEqual('8571e09bf1bcc5b9621ce31b3d4c93d6e9a1ed26', empty_sha1)
         root_key = ('sha1:' + empty_sha1,)
         self.assertEqual(empty_leaf_bytes, self.read_bytes(chk_bytes, root_key))
         return root_key
