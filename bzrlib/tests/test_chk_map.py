@@ -571,11 +571,12 @@ class TestMap(TestCaseWithStore):
         self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
         self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         # Unmapping the new node will check the existing nodes to see if they
-        # would fit, and find out that they do not
+        # would fit, and find out that they do not, but it can also find out
+        # before reading all of them.
         chkmap.unmap(('aad',))
         self.assertIsInstance(chkmap._root_node._items['aaa'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
-        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
 
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
