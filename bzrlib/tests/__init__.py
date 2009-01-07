@@ -76,6 +76,7 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
+import bzrlib.plugins
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -1409,7 +1410,10 @@ class TestCase(unittest.TestCase):
         stdout.encoding = encoding
         stderr.encoding = encoding
 
-        args = ['--no-plugins'] + args
+        if bzrlib.plugins.__path__ == []:
+            # "bzr selftest" was run with --no-plugins, so run the subprocess
+            # with --no-plugins as well.
+            args = ['--no-plugins'] + args
         self.log('run bzr: %r', args)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
