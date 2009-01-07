@@ -524,7 +524,11 @@ class LeafNode(Node):
         :param key: The key that the serialised node has.
         """
         result = LeafNode()
-        lines = bytes.splitlines()
+        # Splitlines can split on '\r' so don't use it, split('\n') adds an
+        # extra '' if the bytes ends in a final newline.
+        lines = bytes.split('\n')
+        assert lines[-1] == ''
+        lines.pop(-1)
         items = {}
         if lines[0] != 'chkleaf:':
             raise ValueError("not a serialised leaf node: %r" % bytes)
@@ -780,7 +784,12 @@ class InternalNode(Node):
         :return: An InternalNode instance.
         """
         result = InternalNode()
-        lines = bytes.splitlines()
+        # Splitlines can split on '\r' so don't use it, remove the extra ''
+        # from the result of split('\n') because we should have a trailing
+        # newline
+        lines = bytes.split('\n')
+        assert lines[-1] == ''
+        lines.pop(-1)
         items = {}
         if lines[0] != 'chknode:':
             raise ValueError("not a serialised internal node: %r" % bytes)

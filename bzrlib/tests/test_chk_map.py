@@ -261,6 +261,37 @@ class TestMap(TestCaseWithStore):
         self.assertCanonicalForm(chkmap)
         self.assertIsInstance(chkmap._root_node, InternalNode)
 
+    def test_with_linefeed_in_key(self):
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Should fit 1 key per LeafNode
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('a\ra',), 'val1')
+        chkmap.map(('a\rb',), 'val2')
+        chkmap.map(('ac',), 'val3')
+        self.assertCanonicalForm(chkmap)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'a\\r' InternalNode\n"
+                             "    'a\\ra' LeafNode\n"
+                             "      ('a\\ra',) 'val1'\n"
+                             "    'a\\rb' LeafNode\n"
+                             "      ('a\\rb',) 'val2'\n"
+                             "  'ac' LeafNode\n"
+                             "      ('ac',) 'val3'\n",
+                             chkmap._dump_tree())
+        # We should also successfully serialise and deserialise these items
+        root_key = chkmap._save()
+        chkmap = CHKMap(store, root_key)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'a\\r' InternalNode\n"
+                             "    'a\\ra' LeafNode\n"
+                             "      ('a\\ra',) 'val1'\n"
+                             "    'a\\rb' LeafNode\n"
+                             "      ('a\\rb',) 'val2'\n"
+                             "  'ac' LeafNode\n"
+                             "      ('ac',) 'val3'\n",
+                             chkmap._dump_tree())
+
     def test_deep_splitting(self):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)
