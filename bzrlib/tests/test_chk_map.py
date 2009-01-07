@@ -1438,17 +1438,17 @@ class TestIterInterestingNodes(TestCaseWithStore):
                                    ('b',): 'other content',
                                    ('c',): 'content',
                                   })
-        # Is there a way to get this more directly?
+        target_map = CHKMap(self.get_chk_bytes(), target)
         self.assertEqualDiff(
-            "'' InternalNode sha1:c63dac651190eea7a007be36839278f735b4becc\n"
-            "  'a' LeafNode sha1:1453ef6a21f11c1de1cff0ecb999dfc818dababa\n"
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
             "      ('a',) 'content'\n"
-            "  'b' LeafNode sha1:257fef763ee52c55b028cd11943f360c3f7210b3\n"
+            "  'b' LeafNode\n"
             "      ('b',) 'other content'\n"
-            "  'c' LeafNode sha1:9bfdd265fd646ecbadac17cc13b1904fb076a4ac\n"
+            "  'c' LeafNode\n"
             "      ('c',) 'content'\n",
-            CHKMap(self.get_chk_bytes(), target)._dump_tree(include_keys=True))
-        b_key = ('sha1:257fef763ee52c55b028cd11943f360c3f7210b3',)
+            target_map._dump_tree())
+        b_key = target_map._root_node._items['b'].key()
         # This should return the root node, and the node for the 'b' key
         self.assertIterInteresting(
             [([target], []),
@@ -1463,20 +1463,21 @@ class TestIterInterestingNodes(TestCaseWithStore):
                                    ('aab',): 'new',
                                    ('c',): 'common',
                                   })
+        target_map = CHKMap(self.get_chk_bytes(), target)
         self.assertEqualDiff(
-            "'' InternalNode sha1:cd82eddbea91d0a02203bf9d9413503200add991\n"
-            "  'a' InternalNode sha1:3887409b475e873d0a9a4041464653134bc5ab82\n"
-            "    'aaa' LeafNode sha1:5c98c677712af97cd7aebc4351379bb2ea734aaa\n"
+            "'' InternalNode\n"
+            "  'a' InternalNode\n"
+            "    'aaa' LeafNode\n"
             "      ('aaa',) 'common'\n"
-            "    'aab' LeafNode sha1:217e1ef4733b625480989efc53eaeeb0ca3872f4\n"
+            "    'aab' LeafNode\n"
             "      ('aab',) 'new'\n"
-            "  'c' LeafNode sha1:877818f50693c171781ae5a343e4ebd5b9a7ff00\n"
+            "  'c' LeafNode\n"
             "      ('c',) 'common'\n",
-            CHKMap(self.get_chk_bytes(), target)._dump_tree(include_keys=True))
+            target_map._dump_tree())
         # The key for the internal aa node
-        a_key = ('sha1:3887409b475e873d0a9a4041464653134bc5ab82',)
+        a_key = target_map._root_node._items['a'].key()
         # The key for the leaf aab node
-        aab_key = ('sha1:217e1ef4733b625480989efc53eaeeb0ca3872f4',)
+        aab_key = target_map._root_node._items['a']._items['aab'].key()
         self.assertIterInteresting(
             [([target], []),
              ([a_key], []),
