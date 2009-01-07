@@ -1499,18 +1499,41 @@ class TestIterInterestingNodes(TestCaseWithStore):
                                     ('bba',): 'target2',
                                     ('bbb',): 'common',
                                    })
-        # The key for the target1 internal aa node
-        aa_key = ('sha1:4c6b1e3e6ecb68fe039d2b00c9091bc037ebf203',)
+        target1_map = CHKMap(self.get_chk_bytes(), target1)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' InternalNode\n"
+            "    'aaa' LeafNode\n"
+            "      ('aaa',) 'common'\n"
+            "    'aac' LeafNode\n"
+            "      ('aac',) 'target1'\n"
+            "  'b' LeafNode\n"
+            "      ('bbb',) 'common'\n",
+            target1_map._dump_tree())
+        # The key for the target1 internal a node
+        a_key = target1_map._root_node._items['a'].key()
         # The key for the leaf aac node
-        aac_key = ('sha1:8089f6b4f3bd2a058c41be199ef5af0c5b9a0c4f',)
+        aac_key = target1_map._root_node._items['a']._items['aac'].key()
+
+        target2_map = CHKMap(self.get_chk_bytes(), target2)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('aaa',) 'common'\n"
+            "  'b' InternalNode\n"
+            "    'bba' LeafNode\n"
+            "      ('bba',) 'target2'\n"
+            "    'bbb' LeafNode\n"
+            "      ('bbb',) 'common'\n",
+            target2_map._dump_tree())
         # The key for the target2 internal bb node
-        bb_key = ('sha1:bcc229e6bd1d606ef4630073dc15756e60508365',)
+        b_key = target2_map._root_node._items['b'].key()
         # The key for the leaf bba node
-        bba_key = ('sha1:5ce6a69a21060222bb0a5b48fdbfcca586cc9183',)
+        bba_key = target2_map._root_node._items['b']._items['bba'].key()
         self.assertIterInteresting(
             [([target1, target2], []),
-             ([aa_key], []),
-             ([bb_key], []),
+             ([a_key], []),
+             ([b_key], []),
              ([aac_key], [(('aac',), 'target1')]),
              ([bba_key], [(('bba',), 'target2')]),
             ], [target1, target2], [basis1, basis2])
