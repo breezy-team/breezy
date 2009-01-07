@@ -21,16 +21,15 @@ import md5
 import time
 
 from bzrlib import debug, errors, pack, repository
+from bzrlib.btree_index import (
+    BTreeBuilder,
+    BTreeGraphIndex,
+    )
 from bzrlib.index import GraphIndex, GraphIndexBuilder
 from bzrlib.repository import InterPackRepo
 from bzrlib.plugins.groupcompress.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
-    )
-from bzrlib.plugins.index2.btree_index import (
-    BTreeBuilder,
-    BTreeGraphIndex,
-    FixedMemoryGraphIndex,
     )
 from bzrlib.osutils import rand_chars
 from bzrlib.repofmt.pack_repo import (
@@ -38,8 +37,8 @@ from bzrlib.repofmt.pack_repo import (
     NewPack,
     KnitPackRepository,
     RepositoryPackCollection,
-    RepositoryFormatPackDevelopment0,
-    RepositoryFormatPackDevelopment0Subtree,
+    RepositoryFormatPackDevelopment2,
+    RepositoryFormatPackDevelopment2Subtree,
     RepositoryFormatKnitPack1,
     RepositoryFormatKnitPack3,
     RepositoryFormatKnitPack4,
@@ -241,7 +240,7 @@ class GCPackRepository(KnitPackRepository):
         self._reconcile_backsup_inventory = False
 
 
-class RepositoryFormatPackGCPlain(RepositoryFormatPackDevelopment0):
+class RepositoryFormatPackGCPlain(RepositoryFormatPackDevelopment2):
     """A B+Tree index using pack repository."""
 
     repository_class = GCPackRepository
@@ -273,7 +272,7 @@ class RepositoryFormatPackGCRichRoot(RepositoryFormatKnitPack4):
             ", interoperates with rich-root-pack\n")
 
 
-class RepositoryFormatPackGCSubtrees(RepositoryFormatPackDevelopment0Subtree):
+class RepositoryFormatPackGCSubtrees(RepositoryFormatPackDevelopment2Subtree):
     """A B+Tree index using pack repository."""
 
     repository_class = GCPackRepository

@@ -39,7 +39,7 @@ from bzrlib.osutils import (
     sha_strings,
     split_lines,
     )
-from bzrlib.plugins.index2.btree_index import BTreeBuilder
+from bzrlib.btree_index import BTreeBuilder
 from bzrlib.plugins.groupcompress import equivalence_table
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
