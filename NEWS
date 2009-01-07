@@ -50,6 +50,9 @@ IN DEVELOPMENT
       that's in a stackable shared repository to a location with default
       stack-on location.  (Andrew Bennetts, #291046)
 
+    * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
+      (Ben Jansen, Vincent Ladeuil, #300347)
+
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
 
@@ -134,6 +137,11 @@ IN DEVELOPMENT
       minimal overhead versus using a plain dict for cache hits, at the
       cost of not preserving the 'active' set as well as an ``LRUCache``.
       (John Arbash Meinel)
+
+    * ``bzrlib.patience_diff.unified_diff`` now properly uses a tab
+      character to separate the filename from the date stamp, and doesn't
+      add trailing whitespace when a date stamp is not supplied.
+      (Adeodato Simó, John Arbash Meinel)
 
     * ``DirStateWorkingTree`` and ``DirStateWorkingTreeFormat`` added
       as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
