@@ -53,6 +53,9 @@ IN DEVELOPMENT
     * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
       (Ben Jansen, Vincent Ladeuil, #300347)
 
+    * Fix bogus setUp signature in UnavailableFTPServer.
+      (Gary van der Merwe, #313498)
+
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
 
