@@ -87,8 +87,8 @@ class TestMap(TestCaseWithStore):
             node_one = node_one_stack.pop()
             node_two = node_two_stack.pop()
             if node_one.__class__ != node_two.__class__:
-                self.assertEqualDiff(map_one._dump_tree(),
-                                     map_two._dump_tree())
+                self.assertEqualDiff(map_one._dump_tree(include_keys=True),
+                                     map_two._dump_tree(include_keys=True))
             self.assertEqual(node_one._search_prefix,
                              node_two._search_prefix)
             if isinstance(node_one, InternalNode):
@@ -203,7 +203,8 @@ class TestMap(TestCaseWithStore):
                              (None, ('bba',), 'target2'),
                              (None, ('aaa',), 'common')])
         root_key2 = chkmap2._save()
-        self.assertEqualDiff(chkmap1._dump_tree(), chkmap2._dump_tree())
+        self.assertEqualDiff(chkmap1._dump_tree(include_keys=True),
+                             chkmap2._dump_tree(include_keys=True))
         self.assertEqual(root_key1, root_key2)
         self.assertCanonicalForm(chkmap2)
 
@@ -213,11 +214,11 @@ class TestMap(TestCaseWithStore):
         # Should fit 2 keys per LeafNode
         chkmap._root_node.set_maximum_size(30)
         chkmap.map(('aaa',), 'v')
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aab',), 'v')
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aab',) 'v'\n",
                              chkmap._dump_tree())
@@ -225,27 +226,27 @@ class TestMap(TestCaseWithStore):
 
         # Creates a new internal node, and splits the others into leaves
         chkmap.map(('aac',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "  'aab' LeafNode None\n"
+                             "  'aab' LeafNode\n"
                              "      ('aab',) 'v'\n"
-                             "  'aac' LeafNode None\n"
+                             "  'aac' LeafNode\n"
                              "      ('aac',) 'v'\n",
                              chkmap._dump_tree())
         self.assertCanonicalForm(chkmap)
 
         # Splits again, because it can't fit in the current structure
         chkmap.map(('bbb',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'a' InternalNode None\n"
-                             "    'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'a' InternalNode\n"
+                             "    'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "    'aab' LeafNode None\n"
+                             "    'aab' LeafNode\n"
                              "      ('aab',) 'v'\n"
-                             "    'aac' LeafNode None\n"
+                             "    'aac' LeafNode\n"
                              "      ('aac',) 'v'\n"
-                             "  'b' LeafNode None\n"
+                             "  'b' LeafNode\n"
                              "      ('bbb',) 'v'\n",
                              chkmap._dump_tree())
         self.assertCanonicalForm(chkmap)
@@ -267,81 +268,81 @@ class TestMap(TestCaseWithStore):
         chkmap._root_node.set_maximum_size(40)
         chkmap.map(('aaaaaaaa',), 'v')
         chkmap.map(('aaaaabaa',), 'v')
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaaaaaaa',) 'v'\n"
                              "      ('aaaaabaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aaabaaaa',), 'v')
         chkmap.map(('aaababaa',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaaa' LeafNode\n"
                              "      ('aaaaaaaa',) 'v'\n"
                              "      ('aaaaabaa',) 'v'\n"
-                             "  'aaab' LeafNode None\n"
+                             "  'aaab' LeafNode\n"
                              "      ('aaabaaaa',) 'v'\n"
                              "      ('aaababaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aaabacaa',), 'v')
         chkmap.map(('aaabadaa',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaaa' LeafNode\n"
                              "      ('aaaaaaaa',) 'v'\n"
                              "      ('aaaaabaa',) 'v'\n"
-                             "  'aaab' InternalNode None\n"
-                             "    'aaabaa' LeafNode None\n"
+                             "  'aaab' InternalNode\n"
+                             "    'aaabaa' LeafNode\n"
                              "      ('aaabaaaa',) 'v'\n"
-                             "    'aaabab' LeafNode None\n"
+                             "    'aaabab' LeafNode\n"
                              "      ('aaababaa',) 'v'\n"
-                             "    'aaabac' LeafNode None\n"
+                             "    'aaabac' LeafNode\n"
                              "      ('aaabacaa',) 'v'\n"
-                             "    'aaabad' LeafNode None\n"
+                             "    'aaabad' LeafNode\n"
                              "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aaababba',), 'v')
         chkmap.map(('aaababca',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaaa' LeafNode\n"
                              "      ('aaaaaaaa',) 'v'\n"
                              "      ('aaaaabaa',) 'v'\n"
-                             "  'aaab' InternalNode None\n"
-                             "    'aaabaa' LeafNode None\n"
+                             "  'aaab' InternalNode\n"
+                             "    'aaabaa' LeafNode\n"
                              "      ('aaabaaaa',) 'v'\n"
-                             "    'aaabab' InternalNode None\n"
-                             "      'aaababa' LeafNode None\n"
+                             "    'aaabab' InternalNode\n"
+                             "      'aaababa' LeafNode\n"
                              "      ('aaababaa',) 'v'\n"
-                             "      'aaababb' LeafNode None\n"
+                             "      'aaababb' LeafNode\n"
                              "      ('aaababba',) 'v'\n"
-                             "      'aaababc' LeafNode None\n"
+                             "      'aaababc' LeafNode\n"
                              "      ('aaababca',) 'v'\n"
-                             "    'aaabac' LeafNode None\n"
+                             "    'aaabac' LeafNode\n"
                              "      ('aaabacaa',) 'v'\n"
-                             "    'aaabad' LeafNode None\n"
+                             "    'aaabad' LeafNode\n"
                              "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
         # Now we add a node that should fit around an existing InternalNode,
         # but has a slightly different key prefix, which causes a new
         # InternalNode split
         chkmap.map(('aaabDaaa',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaaa' LeafNode\n"
                              "      ('aaaaaaaa',) 'v'\n"
                              "      ('aaaaabaa',) 'v'\n"
-                             "  'aaab' InternalNode None\n"
-                             "    'aaabD' LeafNode None\n"
+                             "  'aaab' InternalNode\n"
+                             "    'aaabD' LeafNode\n"
                              "      ('aaabDaaa',) 'v'\n"
-                             "    'aaaba' InternalNode None\n"
-                             "      'aaabaa' LeafNode None\n"
+                             "    'aaaba' InternalNode\n"
+                             "      'aaabaa' LeafNode\n"
                              "      ('aaabaaaa',) 'v'\n"
-                             "      'aaabab' InternalNode None\n"
-                             "        'aaababa' LeafNode None\n"
+                             "      'aaabab' InternalNode\n"
+                             "        'aaababa' LeafNode\n"
                              "      ('aaababaa',) 'v'\n"
-                             "        'aaababb' LeafNode None\n"
+                             "        'aaababb' LeafNode\n"
                              "      ('aaababba',) 'v'\n"
-                             "        'aaababc' LeafNode None\n"
+                             "        'aaababc' LeafNode\n"
                              "      ('aaababca',) 'v'\n"
-                             "      'aaabac' LeafNode None\n"
+                             "      'aaabac' LeafNode\n"
                              "      ('aaabacaa',) 'v'\n"
-                             "      'aaabad' LeafNode None\n"
+                             "      'aaabad' LeafNode\n"
                              "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
 
@@ -352,16 +353,16 @@ class TestMap(TestCaseWithStore):
         chkmap._root_node.set_maximum_size(30)
         chkmap.map(('aaa',), 'v')
         chkmap.map(('aab',), 'very long value that splits')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "  'aab' LeafNode None\n"
+                             "  'aab' LeafNode\n"
                              "      ('aab',) 'very long value that splits'\n",
                              chkmap._dump_tree())
         self.assertCanonicalForm(chkmap)
         # Now changing the value to something small should cause a rebuild
         chkmap.map(('aab',), 'v')
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aab',) 'v'\n",
                              chkmap._dump_tree())
@@ -375,18 +376,18 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aaa',), 'v')
         chkmap.map(('aab',), 'very long value that splits')
         chkmap.map(('abc',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aa' InternalNode None\n"
-                             "    'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aa' InternalNode\n"
+                             "    'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "    'aab' LeafNode None\n"
+                             "    'aab' LeafNode\n"
                              "      ('aab',) 'very long value that splits'\n"
-                             "  'ab' LeafNode None\n"
+                             "  'ab' LeafNode\n"
                              "      ('abc',) 'v'\n",
                              chkmap._dump_tree())
         chkmap.map(('aab',), 'v')
         self.assertCanonicalForm(chkmap)
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aab',) 'v'\n"
                              "      ('abc',) 'v'\n",
@@ -399,25 +400,25 @@ class TestMap(TestCaseWithStore):
         chkmap._root_node.set_maximum_size(30)
         chkmap.map(('aaa',), 'v')
         chkmap.map(('aab',), 'v')
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aab',) 'v'\n",
                              chkmap._dump_tree())
         # Creates a new internal node, and splits the others into leaves
         chkmap.map(('aac',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "  'aab' LeafNode None\n"
+                             "  'aab' LeafNode\n"
                              "      ('aab',) 'v'\n"
-                             "  'aac' LeafNode None\n"
+                             "  'aac' LeafNode\n"
                              "      ('aac',) 'v'\n",
                              chkmap._dump_tree())
         self.assertCanonicalForm(chkmap)
         # Now lets unmap one of the keys, and assert that we collapse the
         # structures.
         chkmap.unmap(('aac',))
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aab',) 'v'\n",
                              chkmap._dump_tree())
@@ -432,20 +433,20 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aaab',), 'v')
         chkmap.map(('aab',), 'very long value')
         chkmap.map(('abc',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aa' InternalNode None\n"
-                             "    'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aa' InternalNode\n"
+                             "    'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aaab',) 'v'\n"
-                             "    'aab' LeafNode None\n"
+                             "    'aab' LeafNode\n"
                              "      ('aab',) 'very long value'\n"
-                             "  'ab' LeafNode None\n"
+                             "  'ab' LeafNode\n"
                              "      ('abc',) 'v'\n",
                              chkmap._dump_tree())
         # Removing the 'aab' key should cause everything to collapse back to a
         # single node
         chkmap.unmap(('aab',))
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aaab',) 'v'\n"
                              "      ('abc',) 'v'\n",
@@ -460,20 +461,20 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aab',), 'long value')
         chkmap.map(('aabb',), 'v')
         chkmap.map(('abc',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aa' InternalNode None\n"
-                             "    'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aa' InternalNode\n"
+                             "    'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "    'aab' LeafNode None\n"
+                             "    'aab' LeafNode\n"
                              "      ('aab',) 'long value'\n"
                              "      ('aabb',) 'v'\n"
-                             "  'ab' LeafNode None\n"
+                             "  'ab' LeafNode\n"
                              "      ('abc',) 'v'\n",
                              chkmap._dump_tree())
         # Removing the 'aab' key should cause everything to collapse back to a
         # single node
         chkmap.unmap(('aab',))
-        self.assertEqualDiff("'' LeafNode None\n"
+        self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n"
                              "      ('aabb',) 'v'\n"
                              "      ('abc',) 'v'\n",
@@ -489,17 +490,17 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aac',), 'v')
         chkmap.map(('abc',), 'v')
         chkmap.map(('acd',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aa' InternalNode None\n"
-                             "    'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aa' InternalNode\n"
+                             "    'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "    'aab' LeafNode None\n"
+                             "    'aab' LeafNode\n"
                              "      ('aab',) 'v'\n"
-                             "    'aac' LeafNode None\n"
+                             "    'aac' LeafNode\n"
                              "      ('aac',) 'v'\n"
-                             "  'ab' LeafNode None\n"
+                             "  'ab' LeafNode\n"
                              "      ('abc',) 'v'\n"
-                             "  'ac' LeafNode None\n"
+                             "  'ac' LeafNode\n"
                              "      ('acd',) 'v'\n",
                              chkmap._dump_tree())
         # Save everything to the map, and start over
@@ -523,10 +524,10 @@ class TestMap(TestCaseWithStore):
         chkmap._root_node.set_maximum_size(20)
         chkmap.map(('aaa',), 'v')
         chkmap.map(('aab',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "  'aab' LeafNode None\n"
+                             "  'aab' LeafNode\n"
                              "      ('aab',) 'v'\n",
                              chkmap._dump_tree())
         # Save everything to the map, and start over
@@ -560,12 +561,12 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aaa',), 'v')
         chkmap.map(('aab',), 'v')
         chkmap.map(('aac',), 'v')
-        self.assertEqualDiff("'' InternalNode None\n"
-                             "  'aaa' LeafNode None\n"
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'aaa' LeafNode\n"
                              "      ('aaa',) 'v'\n"
-                             "  'aab' LeafNode None\n"
+                             "  'aab' LeafNode\n"
                              "      ('aab',) 'v'\n"
-                             "  'aac' LeafNode None\n"
+                             "  'aac' LeafNode\n"
                              "      ('aac',) 'v'\n",
                              chkmap._dump_tree())
         # Save everything to the map, and start over
@@ -1430,7 +1431,7 @@ class TestIterInterestingNodes(TestCaseWithStore):
             "      ('aab',) 'new'\n"
             "  'c' LeafNode sha1:263208de2fce0a8f9db614c1ca39e8f6de8b3802\n"
             "      ('c',) 'common'\n",
-            CHKMap(self.get_chk_bytes(), target)._dump_tree())
+            CHKMap(self.get_chk_bytes(), target)._dump_tree(include_keys=True))
         # The key for the internal aa node
         aa_key = ('sha1:2ce01860338a614b93883a5bbeb89920137ac7ef',)
         # The key for the leaf aab node
