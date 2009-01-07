@@ -479,8 +479,6 @@ class Node(object):
                 # if common_prefix is the empty string, then we know it won't
                 # change further
                 return ''
-        if common_prefix is None:
-            return ''
         return common_prefix
 
 

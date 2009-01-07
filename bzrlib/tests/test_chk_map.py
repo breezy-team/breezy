@@ -62,9 +62,9 @@ class TestCaseWithStore(TestCaseWithTransport):
 class TestMap(TestCaseWithStore):
 
     def assertHasABMap(self, chk_bytes):
-        ab_leaf_bytes = 'chkleaf:\n0\n1\n1\n\na\x00b\n'
+        ab_leaf_bytes = 'chkleaf:\n0\n1\n1\na\n\x00b\n'
         ab_sha1 = osutils.sha_string(ab_leaf_bytes)
-        self.assertEqual('e9a209c6d7af8bac47eb305ae3cd71b10f0cafa9', ab_sha1)
+        self.assertEqual('ffb046e740d93f2108f1c54ae52035578c99fa45', ab_sha1)
         root_key = ('sha1:' + ab_sha1,)
         self.assertEqual(ab_leaf_bytes, self.read_bytes(chk_bytes, root_key))
         return root_key
@@ -154,7 +154,7 @@ class TestMap(TestCaseWithStore):
 
     def test_from_dict_ab(self):
         chk_bytes = self.get_chk_bytes()
-        root_key = CHKMap.from_dict(chk_bytes, {"a":"b"})
+        root_key = CHKMap.from_dict(chk_bytes, {"a": "b"})
         # Check the data was saved and inserted correctly.
         expected_root_key = self.assertHasABMap(chk_bytes)
         self.assertEqual(expected_root_key, root_key)
@@ -914,6 +914,8 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual(0, len(node))
         self.assertEqual(10, node.maximum_size)
         self.assertEqual(("sha1:1234",), node.key())
+        self.assertIs(None, node._search_prefix)
+        self.assertIs(None, node._common_serialised_prefix)
 
     def test_deserialise_items(self):
         node = LeafNode.deserialise(
@@ -952,6 +954,8 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo", "1"), "bar\x00baz"), (("foo", "2"), "blarh")],
             sorted(node.iteritems(None)))
+        self.assertEqual('foo\x00', node._search_prefix)
+        self.assertEqual('foo\x00', node._common_serialised_prefix)
 
     def test_key_new(self):
         node = LeafNode()
@@ -1044,7 +1048,7 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_unique_serialised_prefix_empty_new(self):
         node = LeafNode()
-        self.assertEqual("", node._compute_search_prefix())
+        self.assertIs(None, node._compute_search_prefix())
 
     def test_unique_serialised_prefix_one_item_new(self):
         node = LeafNode()
@@ -1101,8 +1105,8 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual('foo bar\x00bing', node._search_prefix)
         self.assertEqual('foo bar\x00bing', node._common_serialised_prefix)
         node.unmap(None, ("foo bar", "bing"))
-        self.assertEqual('', node._search_prefix)
-        self.assertEqual('', node._common_serialised_prefix)
+        self.assertEqual(None, node._search_prefix)
+        self.assertEqual(None, node._common_serialised_prefix)
 
 
 class TestInternalNode(TestCaseWithStore):
