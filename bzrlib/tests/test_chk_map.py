@@ -557,20 +557,21 @@ class TestMap(TestCaseWithStore):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)
         # Should fit 2 keys per LeafNode
-        chkmap._root_node.set_maximum_size(20)
-        chkmap.map(('aaa',), 'v')
-        chkmap.map(('aab',), 'v')
-        chkmap.map(('aac',), 'v')
+        chkmap._root_node.set_maximum_size(30)
+        chkmap.map(('aaa',), 'val')
+        chkmap.map(('aab',), 'val')
+        chkmap.map(('aac',), 'val')
         self.assertEqualDiff("'' InternalNode\n"
                              "  'aaa' LeafNode\n"
-                             "      ('aaa',) 'v'\n"
+                             "      ('aaa',) 'val'\n"
                              "  'aab' LeafNode\n"
-                             "      ('aab',) 'v'\n"
+                             "      ('aab',) 'val'\n"
                              "  'aac' LeafNode\n"
-                             "      ('aac',) 'v'\n",
+                             "      ('aac',) 'val'\n",
                              chkmap._dump_tree())
+        root_key = chkmap._save()
         # Save everything to the map, and start over
-        chkmap = CHKMap(store, chkmap._save())
+        chkmap = CHKMap(store, root_key)
         chkmap.map(('aad',), 'v')
         # At this point, the previous nodes should not be paged in, but the
         # newly added node would be
@@ -579,12 +580,32 @@ class TestMap(TestCaseWithStore):
         self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
         self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         # Unmapping the new node will check the existing nodes to see if they
-        # would fit, and find out that they do not, but it can also find out
-        # before reading all of them.
+        # would fit.
+        # Clear the page cache so we ensure we have to read all the children
+        chk_map._page_cache.clear()
         chkmap.unmap(('aad',))
         self.assertIsInstance(chkmap._root_node._items['aaa'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
-        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
+
+        aab_key = chkmap._root_node._items['aab'].key()
+        aab_bytes = chk_map._page_cache[aab_key]
+        aac_key = chkmap._root_node._items['aac'].key()
+        aac_bytes = chk_map._page_cache[aac_key]
+
+        # Start again from the beginning
+        chkmap = CHKMap(store, root_key)
+        chkmap.map(('aad',), 'v')
+
+        # Now clear the page cache, and only include 2 of the children in the
+        # cache
+        chk_map._page_cache.clear()
+        chk_map._page_cache[aab_key] = aab_bytes
+        chk_map._page_cache[aac_key] = aac_bytes
+        chkmap.unmap(('aad',))
+        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
+        self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
 
     def test_iter_changes_empty_ab(self):
         # Asking for changes between an empty dict to a dict with keys returns
