@@ -113,26 +113,33 @@ class CHKMap(object):
         stream = self._store.get_record_stream([key], 'unordered', True)
         return stream.next().get_bytes_as('fulltext')
 
-    def _dump_tree(self):
+    def _dump_tree(self, include_keys=True):
         """Return the tree in a string representation."""
         self._ensure_root()
-        res = self._dump_tree_node(self._root_node, prefix='', indent='')
+        res = self._dump_tree_node(self._root_node, prefix='', indent='',
+                                   include_keys=include_keys)
         res.append('') # Give a trailing '\n'
         return '\n'.join(res)
 
-    def _dump_tree_node(self, node, prefix, indent):
+    def _dump_tree_node(self, node, prefix, indent, include_keys=True):
         """For this node and all children, generate a string representation."""
         result = []
-        node_key = node.key()
-        if node_key is not None:
-            node_key = node_key[0]
-        result.append('%s%r %s %s' % (indent, prefix, node.__class__.__name__,
-                                        node_key))
+        if not include_keys:
+            key_str = ''
+        else:
+            node_key = node.key()
+            if node_key is not None:
+                key_str = ' %s' % (node_key[0],)
+            else:
+                key_str = ' None'
+        result.append('%s%r %s%s' % (indent, prefix, node.__class__.__name__,
+                                     key_str))
         if isinstance(node, InternalNode):
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
             for prefix, sub in sorted(node._items.iteritems()):
-                result.extend(self._dump_tree_node(sub, prefix, indent + '  '))
+                result.extend(self._dump_tree_node(sub, prefix, indent + '  ',
+                                                   include_keys=include_keys))
         else:
             for key, value in sorted(node._items.iteritems()):
                 result.append('      %r %r' % (key, value))

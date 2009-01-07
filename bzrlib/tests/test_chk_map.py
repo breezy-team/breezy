@@ -647,7 +647,7 @@ class TestMap(TestCaseWithStore):
         # aab - common altered
         # b - basis only
         # at - target only
-        # we expect: 
+        # we expect:
         # aaa to be not loaded (later test)
         # aab, b, at to be returned.
         # basis splits at byte 0,1,2, aaa is commonb is basis only
@@ -671,7 +671,7 @@ class TestMap(TestCaseWithStore):
         # aab - common altered
         # b - basis only
         # at - target only
-        # we expect: 
+        # we expect:
         # aaa to be not loaded
         # aaa not to be in result.
         basis_dict = {('aaa',): 'foo bar',
@@ -1089,7 +1089,7 @@ class TestInternalNode(TestCaseWithStore):
         keys = list(node.serialise(chk_bytes))
         child_key = child.serialise(chk_bytes)[0]
         self.assertEqual(
-            [child_key, ('sha1:db23b260c2bf46bf7446c39f91668900a2491610',)],
+            [child_key, ('sha1:72dda40e7c70d00cde178f6f79560d36f3264ba5',)],
             keys)
         # We should be able to access deserialised content.
         bytes = self.read_bytes(chk_bytes, keys[1])
@@ -1181,8 +1181,14 @@ class TestInternalNode(TestCaseWithStore):
     def test_map_to_child_child_splits_new(self):
         chkmap = self._get_map({('k1',):'foo', ('k22',):'bar'}, maximum_size=10)
         # Check for the canonical root value for this tree:
-        self.assertEqual(('sha1:d3f06fc03d8f50845894d8d04cc5a3f47e62948d',),
-            chkmap._root_node)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'k1' LeafNode\n"
+                             "      ('k1',) 'foo'\n"
+                             "  'k2' LeafNode\n"
+                             "      ('k22',) 'bar'\n"
+                             , chkmap._dump_tree(include_keys=False))
+        # _dump_tree pages everything in, so reload using just the root
+        chkmap = CHKMap(chkmap._store, chkmap._root_node)
         chkmap._ensure_root()
         node = chkmap._root_node
         # Ensure test validity: nothing paged in below the root.
@@ -1217,9 +1223,16 @@ class TestInternalNode(TestCaseWithStore):
         child_key = child._key
         k22_key = child._items['k22']._key
         k23_key = child._items['k23']._key
-        self.assertEqual([k22_key, k23_key, child_key, keys[-1]], keys)
-        self.assertEqual(('sha1:d68cd97c95e847d3dc58c05537aa5fdcdf2cf5da',),
-            keys[-1])
+        self.assertEqual([k22_key, k23_key, child_key, node.key()], keys)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'k1' LeafNode\n"
+                             "      ('k1',) 'foo'\n"
+                             "  'k2' InternalNode\n"
+                             "    'k22' LeafNode\n"
+                             "      ('k22',) 'bar'\n"
+                             "    'k23' LeafNode\n"
+                             "      ('k23',) 'quux'\n"
+                             , chkmap._dump_tree(include_keys=False))
 
     def test_unmap_k23_from_k1_k22_k23_gives_k1_k22_tree_new(self):
         chkmap = self._get_map(
@@ -1257,7 +1270,7 @@ class TestInternalNode(TestCaseWithStore):
         chkmap._ensure_root()
         node = chkmap._root_node
         k2_ptr = node._items['k2']
-        # unmapping k21 should give us a root, with k22 and k23 as direct
+        # unmapping k1 should give us a root, with k22 and k23 as direct
         # children, and should not have needed to page in the subtree.
         result = node.unmap(chkmap._store, ('k1',))
         self.assertEqual(k2_ptr, result)
@@ -1275,7 +1288,7 @@ class TestInternalNode(TestCaseWithStore):
 #          otherwise as soon as the sum of serialised values exceeds the split threshold
 #          we know we can't combine - stop.
 # unmap -> key return data - space in node, common prefix length? and key count
-# internal: 
+# internal:
 # variable length prefixes? -> later start with fixed width to get something going
 # map -> fits - update pointer to leaf
 #        return [prefix and node] - seems sound.
@@ -1290,7 +1303,7 @@ class TestInternalNode(TestCaseWithStore):
 # map - unmap - if empty, use empty leafnode (avoids special cases in driver
 # code)
 # map inits as empty leafnode.
-# tools: 
+# tools:
 # visualiser
 
 
@@ -1301,7 +1314,7 @@ class TestInternalNode(TestCaseWithStore):
 # single byte fanout - A,B,   AA,AB,AC,AD,     BA
 # build order's:
 # BA
-# AB - split, but we want to end up with AB, BA, in one node, with 
+# AB - split, but we want to end up with AB, BA, in one node, with
 # 1-4K get0
 
 
