@@ -148,6 +148,11 @@ IN DEVELOPMENT
       as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
       respectively. (Ian Clatworthy)
 
+    * ``KnitVersionedFiles._check_should_delta()`` now uses the
+      ``get_build_details`` api to avoid multiple hits to the index, and
+      to properly follow the ``compression_parent`` rather than assuming
+      it is the left-hand parent. (John Arbash Meinel)
+
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
       Previously the order was fully random, now the records should be
