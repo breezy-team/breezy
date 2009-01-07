@@ -46,7 +46,9 @@ from bzrlib import versionedfile
 from bzrlib import lru_cache
 
 # approx 2MB
-_PAGE_CACHE_SIZE = 2*1024*1024
+# If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
+# out, it takes 3.1MB to cache the layer.
+_PAGE_CACHE_SIZE = 4*1024*1024
 # We are caching bytes so len(value) is perfectly accurate
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
@@ -1009,37 +1011,45 @@ class InternalNode(Node):
         # So far, everything fits. Page in the rest of the nodes, and see if it
         # holds true.
         if keys:
-            # TODO: Consider looping over a limited set of keys (like 25 or so
-            #       at a time). If we have to read more than 25 we almost
-            #       certainly won't fit them all into a single new LeafNode, so
-            #       reading the extra nodes is a waste.
-            #       This will probably matter more with hash serialised keys,
-            #       as we will get InternalNodes with more references.
-            #       The other argument is that unmap() is uncommon, so we don't
-            #       need to optimize it. But map() with a slightly shorter
-            #       value may happen a lot.
-            stream = store.get_record_stream(keys, 'unordered', True)
-            nodes = []
-            # Fully consume the stream, even if we could determine that we
-            # don't need to continue. We requested the bytes, we may as well
-            # use them
-            for record in stream:
-                bytes = record.get_bytes_as('fulltext')
-                node = _deserialise(bytes, record.key)
-                self._items[keys[record.key]] = node
-                _page_cache[record.key] = bytes
-                nodes.append(node)
-            for node in nodes:
-                if isinstance(node, InternalNode):
-                    # We know we won't fit
-                    def stream_is_internal(): pass
-                    stream_is_internal()
-                    return self
-                for key, value in node._items.iteritems():
-                    if new_leaf._map_no_split(key, value):
-                        def stream_causes_split(): pass
-                        stream_causes_split()
+            # We loop over a limited number of child nodes at a time. 16 is
+            # arbitrary, but the basic ideas are:
+            #   a) In a 4k page, we generally can only fit 14 items before we
+            #      are too full. We would like to fill up in a single request
+            #      if we have it.
+            #   b) If we have 16-way fan out, we can still read everything in
+            #      one go
+            #   c) But if we have 255-way fan out, we aren't reading all 255
+            #      nodes and overflowing our page cache just to find out we are
+            #      full after the first 10 nodes.
+            #   d) Different page sizes and fan out will have different
+            #      results, but our fan-out is likely to be a near multiple of
+            #      16 anyway.
+            batch_size = 16
+            key_order = list(keys)
+            for batch_start in range(0, len(key_order), batch_size):
+                batch = key_order[batch_start:batch_start + batch_size]
+                stream = store.get_record_stream(batch, 'unordered', True)
+                nodes = []
+                # Fully consume the stream, even if we could determine that we
+                # don't need to continue. We requested the bytes, we may as well
+                # use them
+                for record in stream:
+                    bytes = record.get_bytes_as('fulltext')
+                    node = _deserialise(bytes, record.key)
+                    self._items[keys[record.key]] = node
+                    _page_cache[record.key] = bytes
+                    nodes.append(node)
+                for node in nodes:
+                    if isinstance(node, InternalNode):
+                        # We know we won't fit
+                        def stream_is_internal(): pass
+                        stream_is_internal()
                         return self
+                    for key, value in node._items.iteritems():
+                        if new_leaf._map_no_split(key, value):
+                            def stream_causes_split(): pass
+                            stream_causes_split()
+                            return self
 
         # We have gone to every child, and everything fits in a single leaf
         # node, we no longer need this internal node
