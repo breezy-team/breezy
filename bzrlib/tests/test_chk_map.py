@@ -298,8 +298,8 @@ class TestMap(TestCaseWithStore):
                              "    'aaabad' LeafNode\n"
                              "      ('aaabadaa',) 'v'\n",
                              chkmap._dump_tree())
-        chkmap.map(('aaababba',), 'v')
-        chkmap.map(('aaababca',), 'v')
+        chkmap.map(('aaababba',), 'val')
+        chkmap.map(('aaababca',), 'val')
         self.assertEqualDiff("'' InternalNode\n"
                              "  'aaaa' LeafNode\n"
                              "      ('aaaaaaaa',) 'v'\n"
@@ -311,9 +311,9 @@ class TestMap(TestCaseWithStore):
                              "      'aaababa' LeafNode\n"
                              "      ('aaababaa',) 'v'\n"
                              "      'aaababb' LeafNode\n"
-                             "      ('aaababba',) 'v'\n"
+                             "      ('aaababba',) 'val'\n"
                              "      'aaababc' LeafNode\n"
-                             "      ('aaababca',) 'v'\n"
+                             "      ('aaababca',) 'val'\n"
                              "    'aaabac' LeafNode\n"
                              "      ('aaabacaa',) 'v'\n"
                              "    'aaabad' LeafNode\n"
@@ -337,9 +337,9 @@ class TestMap(TestCaseWithStore):
                              "        'aaababa' LeafNode\n"
                              "      ('aaababaa',) 'v'\n"
                              "        'aaababb' LeafNode\n"
-                             "      ('aaababba',) 'v'\n"
+                             "      ('aaababba',) 'val'\n"
                              "        'aaababc' LeafNode\n"
-                             "      ('aaababca',) 'v'\n"
+                             "      ('aaababca',) 'val'\n"
                              "      'aaabac' LeafNode\n"
                              "      ('aaabacaa',) 'v'\n"
                              "      'aaabad' LeafNode\n"
