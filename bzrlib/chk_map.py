@@ -113,7 +113,7 @@ class CHKMap(object):
         stream = self._store.get_record_stream([key], 'unordered', True)
         return stream.next().get_bytes_as('fulltext')
 
-    def _dump_tree(self, include_keys=True):
+    def _dump_tree(self, include_keys=False):
         """Return the tree in a string representation."""
         self._ensure_root()
         res = self._dump_tree_node(self._root_node, prefix='', indent='',
