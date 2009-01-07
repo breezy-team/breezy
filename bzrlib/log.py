@@ -1015,7 +1015,7 @@ def get_history_change(old_revision_id, new_revision_id, repository):
 
     :param old_revision_id: The original revision id.
     :param new_revision_id: The new revision id.
-    :param repository: The repository to use for the calcualtion.
+    :param repository: The repository to use for the calculation.
 
     return old_history, new_history
     """
