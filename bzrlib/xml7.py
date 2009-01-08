@@ -28,7 +28,7 @@ class Serializer_v7(xml6.Serializer_v6):
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
     format_num = '7'
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, entry_cache=None):
         kind = elt.tag
         if not kind in self.supported_kinds:
             raise AssertionError('unsupported entry kind %s' % kind)

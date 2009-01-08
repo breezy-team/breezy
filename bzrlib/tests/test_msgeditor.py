@@ -26,6 +26,7 @@ from bzrlib import (
     msgeditor,
     osutils,
     tests,
+    trace,
     )
 from bzrlib.branch import Branch
 from bzrlib.config import ensure_config_dir_exists, config_filename
@@ -110,19 +111,21 @@ added:
   hell\u00d8
 """.encode('utf8') in template)
 
-    def test_run_editor(self):
+    def make_do_nothing_editor(self):
         if sys.platform == "win32":
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            os.environ['BZR_EDITOR'] = 'fed.bat'
+            return 'fed.bat'
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            os.environ['BZR_EDITOR'] = './fed.sh'
+            return './fed.sh'
 
+    def test_run_editor(self):
+        os.environ['BZR_EDITOR'] = self.make_do_nothing_editor()
         self.assertEqual(True, msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
@@ -217,6 +220,7 @@ if len(sys.argv) == 2:
             f.close()
 
             editors = list(msgeditor._get_editor())
+            editors = [editor for (editor, cfg_src) in editors]
 
             self.assertEqual(['bzr_editor', 'config_editor', 'visual',
                               'editor'], editors[:4])
@@ -241,6 +245,29 @@ if len(sys.argv) == 2:
                 del os.environ['EDITOR']
             else:
                 os.environ['EDITOR'] = editor
+
+    def test__run_editor_EACCES(self):
+        """If running a configured editor raises EACESS, the user is warned."""
+        os.environ['BZR_EDITOR'] = 'eacces.py'
+        f = file('eacces.py', 'wb')
+        f.write('# Not a real editor')
+        f.close()
+        # Make the fake editor unreadable (and unexecutable)
+        os.chmod('eacces.py', 0)
+        # Set $EDITOR so that _run_editor will terminate before trying real
+        # editors.
+        os.environ['EDITOR'] = self.make_do_nothing_editor()
+        # Call _run_editor, capturing mutter.warning calls.
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        _warning = trace.warning
+        trace.warning = warning
+        try:
+            msgeditor._run_editor('')
+        finally:
+            trace.warning = _warning
+        self.assertStartsWith(warnings[0], 'Could not start editor "eacces.py"')
 
     def test__create_temp_file_with_commit_template(self):
         # check that commit template written properly
