@@ -465,7 +465,7 @@ class DirState(object):
             packed_stat = pack_stat(stat)
         parent_info = self._empty_parent_info()
         minikind = DirState._kind_to_minikind[kind]
-        if rename_from:
+        if rename_from is not None:
             if rename_from[0]:
                 old_path_utf8 = '%s/%s' % rename_from
             else:
@@ -1754,6 +1754,9 @@ class DirState(object):
             trees.
         :param fileid_utf8: A utf8 file_id to look up.
         :param path_utf8: An utf8 path to be looked up.
+        :param include_deleted: If True, and performing a lookup via
+            fileid_utf8 rather than path_utf8, return an entry for deleted
+            (absent) paths.
         :return: The dirstate entry tuple for path, or (None, None)
         """
         self._read_dirblocks_if_needed()

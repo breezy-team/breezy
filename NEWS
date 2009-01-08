@@ -91,6 +91,9 @@ IN DEVELOPMENT
     * Use the short status format when the short format is used for log.
       (Vincent Ladeuil, #87179)
 
+    * Allow files to be renamed or moved via remove + add-by-id. (Charles
+      Duffy, #314251)
+
   DOCUMENTATION:
 
     * Improved the formats help topic to explain why multiple formats
