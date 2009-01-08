@@ -22,6 +22,14 @@ from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
+# This is the dummy foreign revision control system, used 
+# mainly here in the testsuite to test the foreign VCS infrastructure.
+# It is basically standard Bazaar with some minor modifications to 
+# make it "foreign". 
+# 
+# It has the following differences to "regular" Bazaar:
+# - The revision ids are tuples, not strings.
+
 
 class DummyForeignVcsMapping(foreign.VcsMapping):
     """A simple mapping for the dummy Foreign VCS, for use with testing."""
