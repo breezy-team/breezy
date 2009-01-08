@@ -388,12 +388,14 @@ class TestReconfigure(tests.TestCaseWithTransport):
         reconfiguration = reconfigure.Reconfigure.set_repository_trees(
             repo.bzrdir, True)
         reconfiguration.apply()
+        self.assertIs(True, repo.make_working_trees())
 
     def test_make_without_trees(self):
         repo = self.make_repository_with_without_trees(True)
         reconfiguration = reconfigure.Reconfigure.set_repository_trees(
             repo.bzrdir, False)
         reconfiguration.apply()
+        self.assertIs(False, repo.make_working_trees())
 
     def test_make_with_trees_already_with_trees(self):
         repo = self.make_repository_with_without_trees(True)
