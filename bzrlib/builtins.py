@@ -4260,9 +4260,9 @@ class cmd_send(Command):
     
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "evolution", "kmail", "mutt", and "thunderbird";
-    generic options are "default", "editor", "emacsclient", "mapi", and
-    "xdg-email".  Plugins may also add supported clients.
+    specific clients are "claws", "evolution", "kmail", "mutt", and
+    "thunderbird"; generic options are "default", "editor", "emacsclient",
+    "mapi", and "xdg-email".  Plugins may also add supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
