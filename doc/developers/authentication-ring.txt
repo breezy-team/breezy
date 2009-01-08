@@ -90,7 +90,7 @@ can be ignored [#ignored_realm]_ as long as it is still presented to the user
 when prompting for the password (unless someone found a way to declare two
 different realms for the same path). 
 
-``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitely
+``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly
 specifying the appropriate port.
 
 .. [#ignored_realm] The true purpose of realms is to allow the same credentials
@@ -160,10 +160,10 @@ Encoding passwords in ``base64``, while weak, provides protection against
 accidental reading (if an administrator have to look into the file, he will not
 see the passwords in clear).(Not implemented yet).
 
-This specification intend to ease the authentication providing, not to secure
+This specification intends to ease the authentication providing, not to secure
 it in the best possible way.
 
-Plugins can provide additional password encodings, the provided
+Plugins can provide additional password encodings. The provided
 ``netrc_credential_store`` plugin can be used as an example implementation.
 
 Future versions of this specification may provide additional
@@ -173,8 +173,8 @@ encodings [#password_encoding]_.
    that will rely on external means to store the password which, in these
    cases, will not appear anymore in the definition. It is assumed that
    additional password encodings will provide a storage outside of the file
-   described here. The ``netrc`` encoding for example provide passwords by
-   retrieving them in the ``.netrc`` file.
+   described here. The ``netrc`` encoding, for example, provides passwords by
+   retrieving them from the ``.netrc`` file.
 
 File format
 -----------
@@ -192,7 +192,7 @@ reasons:
     generally servers. The same authentification definition can even be used
     for several schemes for servers providing those schemes.
 
-``~/.bazaar/authentication.conf`` will use the same file format than
+``~/.bazaar/authentication.conf`` will use the same file format as
 ``~/.bazaar/bazaar.conf``.
 
 Each section describes an authentication definition.

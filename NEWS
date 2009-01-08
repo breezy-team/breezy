@@ -62,9 +62,9 @@ IN DEVELOPMENT
     * Give proper error message for diff with non-existent dotted revno.
       (Marius Kruger, #301969)
 
-    * ``$HOME/.netrc`` file is now recognize as a read-only credential store
+    * ``$HOME/.netrc`` file is now recognized as a read-only credential store
       if configured in ``authentication.conf`` with 'password_encoding=netrc'
-      if the appropriate sections.
+      in the appropriate sections.
       (Vincent Ladeuil, #103029)
 
     * Preserve transport decorators while following redirections.
