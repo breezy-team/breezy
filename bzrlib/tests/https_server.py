@@ -42,6 +42,7 @@ class TestingHTTPSServerMixin:
                                   certfile=self.cert_file)
         return sslconn, addr
 
+
 class TestingHTTPSServer(TestingHTTPSServerMixin,
                          http_server.TestingHTTPServer):
 
