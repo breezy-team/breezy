@@ -91,6 +91,8 @@ IN DEVELOPMENT
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
 
+    * ``push -v`` now works on non-initial pushes.  (Aaron Bentley)
+
     * Use the short status format when the short format is used for log.
       (Vincent Ladeuil, #87179)
 
@@ -180,6 +182,9 @@ IN DEVELOPMENT
       into a fulltext. This allows for some very good memory savings when
       asking for many texts that share ancestry, as the individual chunks
       can be shared between versions of the file. (John Arbash Meinel)
+
+    * ``pull -v`` and ``push -v`` use new function
+      ``bzrlib.log.show_branch_change`` (Aaron Bentley)
 
 
 
