@@ -4666,7 +4666,11 @@ class cmd_reconfigure(Command):
                      ' checkout (with no local history).',
                      standalone='Reconfigure to be a standalone branch '
                         '(i.e. stop using shared repository).',
-                     use_shared='Reconfigure to use a shared repository.'),
+                     use_shared='Reconfigure to use a shared repository.',
+                     with_trees='Reconfigure repository to create '
+                        'working trees on branches by default',
+                     with_no_trees='Reconfigure repository to not create '
+                        'working trees on branches by default'),
                      Option('bind-to', help='Branch to bind checkout to.',
                             type=str),
                      Option('force',
@@ -4692,6 +4696,12 @@ class cmd_reconfigure(Command):
             reconfiguration = reconfigure.Reconfigure.to_use_shared(directory)
         elif target_type == 'standalone':
             reconfiguration = reconfigure.Reconfigure.to_standalone(directory)
+        elif target_type == 'with-trees':
+            reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+                directory, True)
+        elif target_type == 'with-no-trees':
+            reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+                directory, False)
         reconfiguration.apply(force)
 
 
