@@ -1010,6 +1010,101 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  search=None)
 
 
+def get_history_change(old_revision_id, new_revision_id, repository):
+    """Calculate the uncommon lefthand history between two revisions.
+
+    :param old_revision_id: The original revision id.
+    :param new_revision_id: The new revision id.
+    :param repository: The repository to use for the calculation.
+
+    return old_history, new_history
+    """
+    old_history = []
+    old_revisions = set()
+    new_history = []
+    new_revisions = set()
+    new_iter = repository.iter_reverse_revision_history(new_revision_id)
+    old_iter = repository.iter_reverse_revision_history(old_revision_id)
+    stop_revision = None
+    do_old = True
+    do_new = True
+    while do_new or do_old:
+        if do_new:
+            try:
+                new_revision = new_iter.next()
+            except StopIteration:
+                do_new = False
+            else:
+                new_history.append(new_revision)
+                new_revisions.add(new_revision)
+                if new_revision in old_revisions:
+                    stop_revision = new_revision
+                    break
+        if do_old:
+            try:
+                old_revision = old_iter.next()
+            except StopIteration:
+                do_old = False
+            else:
+                old_history.append(old_revision)
+                old_revisions.add(old_revision)
+                if old_revision in new_revisions:
+                    stop_revision = old_revision
+                    break
+    new_history.reverse()
+    old_history.reverse()
+    if stop_revision is not None:
+        new_history = new_history[new_history.index(stop_revision) + 1:]
+        old_history = old_history[old_history.index(stop_revision) + 1:]
+    return old_history, new_history
+
+
+def show_branch_change(branch, output, old_revno, old_revision_id):
+    """Show the changes made to a branch.
+
+    :param branch: The branch to show changes about.
+    :param output: A file-like object to write changes to.
+    :param old_revno: The revno of the old tip.
+    :param old_revision_id: The revision_id of the old tip.
+    """
+    new_revno, new_revision_id = branch.last_revision_info()
+    old_history, new_history = get_history_change(old_revision_id,
+                                                  new_revision_id,
+                                                  branch.repository)
+    if old_history == [] and new_history == []:
+        output.write('Nothing seems to have changed\n')
+        return
+
+    log_format = log_formatter_registry.get_default(branch)
+    lf = log_format(show_ids=False, to_file=output, show_timezone='original')
+    if old_history != []:
+        output.write('*'*60)
+        output.write('\nRemoved Revisions:\n')
+        show_flat_log(branch.repository, old_history, old_revno, lf)
+        output.write('*'*60)
+        output.write('\n\n')
+    if new_history != []:
+        output.write('Added Revisions:\n')
+        start_revno = new_revno - len(new_history) + 1
+        show_log(branch, lf, None, verbose=False, direction='forward',
+                 start_revision=start_revno,)
+
+
+def show_flat_log(repository, history, last_revno, lf):
+    """Show a simple log of the specified history.
+
+    :param repository: The repository to retrieve revisions from.
+    :param history: A list of revision_ids indicating the lefthand history.
+    :param last_revno: The revno of the last revision_id in the history.
+    :param lf: The log formatter to use.
+    """
+    start_revno = last_revno - len(history) + 1
+    revisions = repository.get_revisions(history)
+    for i, rev in enumerate(revisions):
+        lr = LogRevision(rev, i + last_revno, 0, None)
+        lf.log_revision(lr)
+
+
 properties_handler_registry = registry.Registry()
 properties_handler_registry.register_lazy("foreign",
                                           "bzrlib.foreign",
