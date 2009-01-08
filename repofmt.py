@@ -50,9 +50,8 @@ from bzrlib import ui
 
 
 def open_pack(self):
-    return self._pack_collection.pack_factory(self._pack_collection._upload_transport,
-        self._pack_collection._index_transport,
-        self._pack_collection._pack_transport, upload_suffix=self.suffix,
+    return self._pack_collection.pack_factory(self._pack_collection,
+        upload_suffix=self.suffix,
         file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
 
@@ -61,8 +60,7 @@ Packer.open_pack = open_pack
 
 class GCPack(NewPack):
 
-    def __init__(self, upload_transport, index_transport, pack_transport,
-        upload_suffix='', file_mode=None):
+    def __init__(self, pack_collection, upload_suffix='', file_mode=None):
         """Create a NewPack instance.
 
         :param upload_transport: A writable transport for the pack to be
@@ -78,24 +76,28 @@ class GCPack(NewPack):
         """
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
+        index_builder_class = pack_collection._index_builder_class
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
-            BTreeBuilder(reference_lists=1),
+            index_builder_class(reference_lists=1),
             # Inventory: compressed, with graph for compatibility with other
             # existing bzrlib code.
-            BTreeBuilder(reference_lists=1),
+            index_builder_class(reference_lists=1),
             # Texts: per file graph:
-            BTreeBuilder(reference_lists=1, key_elements=2),
+            index_builder_class(reference_lists=1, key_elements=2),
             # Signatures: Just blobs to store, no compression, no parents
             # listing.
-            BTreeBuilder(reference_lists=0),
+            index_builder_class(reference_lists=0),
             )
+        self._pack_collection = pack_collection
+        # When we make readonly indices, we need this.
+        self.index_class = pack_collection._index_class
         # where should the new pack be opened
-        self.upload_transport = upload_transport
+        self.upload_transport = pack_collection._upload_transport
         # where are indices written out to
-        self.index_transport = index_transport
+        self.index_transport = pack_collection._index_transport
         # where is the pack renamed to when it is finished?
-        self.pack_transport = pack_transport
+        self.pack_transport = pack_collection._pack_transport
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
@@ -146,12 +148,6 @@ class GCPack(NewPack):
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
 
-    def _replace_index_with_readonly(self, index_type):
-        setattr(self, index_type + '_index',
-            BTreeGraphIndex(self.index_transport,
-                self.index_name(index_type, self.name),
-                self.index_sizes[self.index_offset(index_type)]))
-
 
 RepositoryPackCollection.pack_factory = NewPack
 
@@ -171,8 +167,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = self.pack_factory(self._upload_transport, self._index_transport,
-            self._pack_transport, upload_suffix='.pack',
+        self._new_pack = self.pack_factory(self, upload_suffix='.pack',
             file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
@@ -204,7 +199,9 @@ class GCPackRepository(KnitPackRepository):
         self._pack_collection = GCRepositoryPackCollection(self,
             self._transport, index_transport,
             self._transport.clone('upload'),
-            self._transport.clone('packs'))
+            self._transport.clone('packs'),
+            _format.index_builder_class,
+            _format.index_class)
         self.inventories = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
