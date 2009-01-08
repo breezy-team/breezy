@@ -912,26 +912,25 @@ class KnitVersionedFiles(VersionedFiles):
         delta_size = 0
         fulltext_size = None
         for count in xrange(self._max_delta_chain):
-            # XXX: Collapse these two queries:
             try:
                 # Note that this only looks in the index of this particular
                 # KnitVersionedFiles, not in the fallbacks.  This ensures that
                 # we won't store a delta spanning physical repository
                 # boundaries.
-                method = self._index.get_method(parent)
-            except RevisionNotPresent:
-                # Some basis is not locally present: always delta
+                build_details = self._index.get_build_details([parent])
+                parent_details = build_details[parent]
+            except RevisionNotPresent, KeyError:
+                # Some basis is not locally present: always fulltext
                 return False
-            index, pos, size = self._index.get_position(parent)
-            if method == 'fulltext':
+            index_memo, compression_parent, _, _ = parent_details
+            _, _, size = index_memo
+            if compression_parent is None:
                 fulltext_size = size
                 break
             delta_size += size
             # We don't explicitly check for presence because this is in an
             # inner loop, and if it's missing it'll fail anyhow.
-            # TODO: This should be asking for compression parent, not graph
-            # parent.
-            parent = self._index.get_parent_map([parent])[parent][0]
+            parent = compression_parent
         else:
             # We couldn't find a fulltext, so we must create a new one
             return False
@@ -2594,7 +2593,8 @@ class _DirectPackAccess(object):
                     # If we don't have a _reload_func there is nothing that can
                     # be done
                     raise
-                raise errors.RetryWithNewPacks(reload_occurred=True,
+                raise errors.RetryWithNewPacks(index,
+                                               reload_occurred=True,
                                                exc_info=sys.exc_info())
             try:
                 reader = pack.make_readv_reader(transport, path, offsets)
@@ -2605,7 +2605,8 @@ class _DirectPackAccess(object):
                 # missing on disk, we need to trigger a reload, and start over.
                 if self._reload_func is None:
                     raise
-                raise errors.RetryWithNewPacks(reload_occurred=False,
+                raise errors.RetryWithNewPacks(transport.abspath(path),
+                                               reload_occurred=False,
                                                exc_info=sys.exc_info())
 
     def set_writer(self, writer, index, transport_packname):
