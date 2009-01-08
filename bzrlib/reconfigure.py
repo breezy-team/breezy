@@ -24,9 +24,10 @@ from bzrlib import (
 
 class Reconfigure(object):
 
-    def __init__(self, bzrdir, new_bound_location=None):
+    def __init__(self, bzrdir, new_bound_location=None, with_trees=None):
         self.bzrdir = bzrdir
         self.new_bound_location = new_bound_location
+        self.with_trees = with_trees
         try:
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
@@ -62,6 +63,8 @@ class Reconfigure(object):
         self._create_tree = False
         self._create_repository = False
         self._destroy_repository = False
+        self._set_with_trees = False
+        self._set_with_no_trees = False
 
     @staticmethod
     def to_branch(bzrdir):
@@ -140,14 +143,31 @@ class Reconfigure(object):
             raise errors.AlreadyStandalone(bzrdir)
         return reconfiguration
 
+    @classmethod
+    def set_repository_trees(klass, bzrdir, with_trees):
+        """Convert a repository branch into a standalone branch"""
+        reconfiguration = klass(bzrdir, with_trees=with_trees)
+        reconfiguration._plan_changes(want_tree=False, want_branch=False,
+                                      want_bound=False, want_reference=False,
+                                      want_shared_repository=True)
+        if not reconfiguration.changes_planned():
+            if with_trees:
+                raise errors.AlreadyWithTrees(bzrdir)
+            else:
+                raise errors.AlreadyWithNoTrees(bzrdir)
+        return reconfiguration
+
     def _plan_changes(self, want_tree, want_branch, want_bound,
-                      want_reference):
+                      want_reference, want_shared_repository=False):
         """Determine which changes are needed to assume the configuration"""
-        if not want_branch and not want_reference:
+        if not want_branch and not want_reference and \
+            not want_shared_repository:
             raise errors.ReconfigurationNotSupported(self.bzrdir)
         if want_branch and want_reference:
             raise errors.ReconfigurationNotSupported(self.bzrdir)
         if self.repository is None:
+            if want_shared_repository:
+                raise errors.ReconfigurationNotSupported(self.bzrdir)
             if not want_reference:
                 self._create_repository = True
         else:
@@ -155,6 +175,16 @@ class Reconfigure(object):
                                    == self.bzrdir.root_transport.base):
                 if not self.repository.is_shared():
                     self._destroy_repository = True
+            if want_shared_repository:
+                if not self.repository.is_shared():
+                    raise errors.ReconfigurationNotSupported(self.bzrdir)
+                else:
+                    if self.with_trees is True and \
+                        not self.repository.make_working_trees():
+                        self._set_with_trees = True
+                    elif self.with_trees is False and \
+                        self.repository.make_working_trees():
+                        self._set_with_no_trees = True
         if self.referenced_branch is None:
             if want_reference:
                 self._create_reference = True
@@ -195,7 +225,8 @@ class Reconfigure(object):
         return (self._unbind or self._bind or self._destroy_tree
                 or self._create_tree or self._destroy_reference
                 or self._create_branch or self._create_repository
-                or self._create_reference or self._destroy_repository)
+                or self._create_reference or self._destroy_repository
+                or self._set_with_trees or self._set_with_no_trees)
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
@@ -302,3 +333,7 @@ class Reconfigure(object):
             local_branch.bind(branch.Branch.open(bind_location))
         if self._destroy_repository:
             self.bzrdir.destroy_repository()
+        if self._set_with_trees:
+            self.repository.set_make_working_trees(True)
+        if self._set_with_no_trees:
+            self.repository.set_make_working_trees(False)
