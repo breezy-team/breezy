@@ -218,6 +218,9 @@ class BzrDir(object):
             make_working_trees = local_repo.make_working_trees()
             result_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
+            if not require_stacking and repository_policy._require_stacking:
+                require_stacking = True
+                result._format.require_stacking()
             result_repo.fetch(local_repo, revision_id=revision_id)
         else:
             result_repo = None
@@ -1035,25 +1038,8 @@ class BzrDir(object):
                 return format
             tree_format = repository._format._matchingbzrdir.workingtree_format
             format.workingtree_format = tree_format.__class__()
-        if (require_stacking and not
-            format.get_branch_format().supports_stacking()):
-            # We need to make a stacked branch, but the default format for the
-            # target doesn't support stacking.  So force a branch that *can*
-            # support stacking.
-            from bzrlib.branch import BzrBranchFormat7
-            format._branch_format = BzrBranchFormat7()
-            mutter("using %r for stacking" % (format._branch_format,))
-            from bzrlib.repofmt import pack_repo
-            if format.repository_format.rich_root_data:
-                bzrdir_format_name = '1.6.1-rich-root'
-                repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
-            else:
-                bzrdir_format_name = '1.6'
-                repo_format = pack_repo.RepositoryFormatKnitPack5()
-            note('Source format does not support stacking, using format:'
-                 ' \'%s\'\n  %s\n',
-                 bzrdir_format_name, repo_format.get_format_description())
-            format.repository_format = repo_format
+        if require_stacking:
+            format.require_stacking()
         return format
 
     def checkout_metadir(self):
@@ -2026,6 +2012,26 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def set_branch_format(self, format):
         self._branch_format = format
 
+    def require_stacking(self):
+        if not self.get_branch_format().supports_stacking():
+            # We need to make a stacked branch, but the default format for the
+            # target doesn't support stacking.  So force a branch that *can*
+            # support stacking.
+            from bzrlib.branch import BzrBranchFormat7
+            self._branch_format = BzrBranchFormat7()
+            mutter("using %r for stacking" % (self._branch_format,))
+            from bzrlib.repofmt import pack_repo
+            if self.repository_format.rich_root_data:
+                bzrdir_format_name = '1.6.1-rich-root'
+                repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+            else:
+                bzrdir_format_name = '1.6'
+                repo_format = pack_repo.RepositoryFormatKnitPack5()
+            note('Source format does not support stacking, using format:'
+                 ' \'%s\'\n  %s\n',
+                 bzrdir_format_name, repo_format.get_format_description())
+            self.repository_format = repo_format
+
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         if format is None:
@@ -2586,10 +2592,15 @@ class ConvertMetaToMeta(Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups
             if (isinstance(tree, workingtree.WorkingTree3) and
-                not isinstance(tree, workingtree_4.WorkingTree4) and
+                not isinstance(tree, workingtree_4.DirStateWorkingTree) and
                 isinstance(self.target_format.workingtree_format,
-                    workingtree_4.WorkingTreeFormat4)):
+                    workingtree_4.DirStateWorkingTreeFormat)):
                 workingtree_4.Converter3to4().convert(tree)
+            if (isinstance(tree, workingtree_4.DirStateWorkingTree) and
+                not isinstance(tree, workingtree_4.WorkingTree5) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_4.WorkingTreeFormat5)):
+                workingtree_4.Converter4to5().convert(tree)
         return to_convert
 
 
@@ -2906,6 +2917,8 @@ class RepositoryAcquisitionPolicy(object):
         except errors.UnstackableRepositoryFormat:
             if self._require_stacking:
                 raise
+        else:
+            self._require_stacking = True
 
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Acquire a repository for this bzrdir.
@@ -3087,6 +3100,21 @@ format_registry.register_metadir('1.9-rich-root',
          '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('1.12-preview',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    help='A working-tree format that supports views and content filtering.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    experimental=True,
+    )
+format_registry.register_metadir('1.12-preview-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    help='A variant of 1.12-preview that supports rich-root data '
+         '(needed for bzr-svn).',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    experimental=True,
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',

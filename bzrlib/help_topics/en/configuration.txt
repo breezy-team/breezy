@@ -333,6 +333,7 @@ will try ``xdg-email``. If either of these fails, it will fall back to
 
 Supported values for specific clients:
 
+:claws: Use Claws.  This skips a dialog for attaching files.
 :evolution: Use Evolution.
 :kmail: Use KMail.
 :mutt: Use Mutt.

@@ -599,7 +599,7 @@ def get_test_permutations():
         # side-effects (tearDown is never called).
         class UnavailableFTPServer(object):
 
-            def setUp(self):
+            def setUp(self, vfs_server=None):
                 pass
 
             def tearDown(self):
