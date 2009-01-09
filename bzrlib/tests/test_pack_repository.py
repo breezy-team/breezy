@@ -420,6 +420,35 @@ class TestPackRepository(TestCaseWithTransport):
         finally:
             tree.unlock()
 
+    def test_concurrent_pack_during_get_record_reloads(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        try:
+            rev1 = tree.commit('one')
+            rev2 = tree.commit('two')
+            keys = [(rev1,), (rev2,)]
+            r2 = repository.Repository.open('tree')
+            r2.lock_read()
+            try:
+                # At this point, we will start grabbing a record stream, and
+                # trigger a repack mid-way
+                packed = False
+                result = {}
+                record_stream = r2.revisions.get_record_stream(keys,
+                                    'unordered', False)
+                for record in record_stream:
+                    result[record.key] = record
+                    if not packed:
+                        tree.branch.repository.pack()
+                        packed = True
+                # The first record will be found in the original location, but
+                # after the pack, we have to reload to find the next record
+                self.assertEqual(sorted(keys), sorted(result.keys()))
+            finally:
+                r2.unlock()
+        finally:
+            tree.unlock()
+
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo.lock_write()

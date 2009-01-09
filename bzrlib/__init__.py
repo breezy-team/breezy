@@ -50,11 +50,11 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 10, 0, 'dev', 0)
+version_info = (1, 11, 0, 'dev', 0)
 
 
-# API compatibility version: bzrlib is currently API compatible with 1.7.
-api_minimum_version = (1, 7, 0)
+# API compatibility version: bzrlib is currently API compatible with 1.11.
+api_minimum_version = (1, 11, 0)
 
 
 def _format_version_tuple(version_info):
@@ -86,23 +86,23 @@ def _format_version_tuple(version_info):
     if len(version_info) <= 3:
         return main_version
 
-    __release_type = version_info[3]
-    __sub = version_info[4]
+    release_type = version_info[3]
+    sub = version_info[4]
 
     # check they're consistent
-    if __release_type == 'final' and __sub == 0:
-        __sub_string = ''
-    elif __release_type == 'dev' and __sub == 0:
-        __sub_string = 'dev'
-    elif __release_type in ('alpha', 'beta'):
-        __sub_string = __release_type[0] + str(__sub)
-    elif __release_type == 'candidate':
-        __sub_string = 'rc' + str(__sub)
+    if release_type == 'final' and sub == 0:
+        sub_string = ''
+    elif release_type == 'dev' and sub == 0:
+        sub_string = 'dev'
+    elif release_type in ('alpha', 'beta'):
+        sub_string = release_type[0] + str(sub)
+    elif release_type == 'candidate':
+        sub_string = 'rc' + str(sub)
     else:
         raise ValueError("version_info %r not valid" % (version_info,))
 
     version_string = '%d.%d.%d.%s.%d' % version_info
-    return main_version + __sub_string
+    return main_version + sub_string
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__

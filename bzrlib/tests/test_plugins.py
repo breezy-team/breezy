@@ -404,7 +404,8 @@ class TestPluginHelp(TestCaseInTempDir):
     def split_help_commands(self):
         help = {}
         current = None
-        for line in self.run_bzr('help commands')[0].splitlines():
+        out, err = self.run_bzr('--no-plugins help commands')
+        for line in out.splitlines():
             if not line.startswith(' '):
                 current = line.split()[0]
             help[current] = help.get(current, '') + line
@@ -632,12 +633,21 @@ class TestModuleHelpTopic(tests.TestCase):
 
 
 def clear_plugins(test_case):
+    # Save the attributes that we're about to monkey-patch.
     old_plugins_path = bzrlib.plugins.__path__
+    old_loaded = plugin._loaded
+    old_load_from_path = plugin.load_from_path
+    # Change bzrlib.plugin to think no plugins have been loaded yet.
     bzrlib.plugins.__path__ = []
     plugin._loaded = False
+    # Monkey-patch load_from_path to stop it from actually loading anything.
+    def load_from_path(dirs):
+        pass
+    plugin.load_from_path = load_from_path
     def restore_plugins():
         bzrlib.plugins.__path__ = old_plugins_path
-        plugin._loaded = False
+        plugin._loaded = old_loaded
+        plugin.load_from_path = old_load_from_path
     test_case.addCleanup(restore_plugins)
 
 

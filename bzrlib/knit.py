@@ -64,6 +64,7 @@ from cStringIO import StringIO
 from itertools import izip, chain
 import operator
 import os
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -109,7 +110,7 @@ from bzrlib.versionedfile import (
     adapter_registry,
     ConstantMapper,
     ContentFactory,
-    FulltextContentFactory,
+    ChunkedContentFactory,
     VersionedFile,
     VersionedFiles,
     )
@@ -195,7 +196,8 @@ class DeltaAnnotatedToFullText(KnitAdapter):
             [compression_parent], 'unordered', True).next()
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_lines = split_lines(basis_entry.get_bytes_as('fulltext'))
+        basis_chunks = basis_entry.get_bytes_as('chunked')
+        basis_lines = osutils.chunks_to_lines(basis_chunks)
         # Manually apply the delta because we have one annotated content and
         # one plain.
         basis_content = PlainKnitContent(basis_lines, compression_parent)
@@ -228,7 +230,8 @@ class DeltaPlainToFullText(KnitAdapter):
             [compression_parent], 'unordered', True).next()
         if basis_entry.storage_kind == 'absent':
             raise errors.RevisionNotPresent(compression_parent, self._basis_vf)
-        basis_lines = split_lines(basis_entry.get_bytes_as('fulltext'))
+        basis_chunks = basis_entry.get_bytes_as('chunked')
+        basis_lines = osutils.chunks_to_lines(basis_chunks)
         basis_content = PlainKnitContent(basis_lines, compression_parent)
         # Manually apply the delta because we have one annotated content and
         # one plain.
@@ -275,11 +278,13 @@ class KnitContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             return self._raw_record
-        if storage_kind == 'fulltext' and self._knit is not None:
-            return self._knit.get_text(self.key[0])
-        else:
-            raise errors.UnavailableRepresentation(self.key, storage_kind,
-                self.storage_kind)
+        if self._knit is not None:
+            if storage_kind == 'chunked':
+                return self._knit.get_lines(self.key[0])
+            elif storage_kind == 'fulltext':
+                return self._knit.get_text(self.key[0])
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
 
 
 class KnitContent(object):
@@ -707,7 +712,7 @@ class KnitVersionedFiles(VersionedFiles):
     """
 
     def __init__(self, index, data_access, max_delta_chain=200,
-        annotated=False):
+                 annotated=False, reload_func=None):
         """Create a KnitVersionedFiles with index and data_access.
 
         :param index: The index for the knit data.
@@ -717,6 +722,9 @@ class KnitVersionedFiles(VersionedFiles):
             insertion. Set to 0 to prohibit the use of deltas.
         :param annotated: Set to True to cause annotations to be calculated and
             stored during insertion.
+        :param reload_func: An function that can be called if we think we need
+            to reload the pack listing and try again. See
+            'bzrlib.repofmt.pack_repo.AggregateIndex' for the signature.
         """
         self._index = index
         self._access = data_access
@@ -726,6 +734,7 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
+        self._reload_func = reload_func
 
     def __repr__(self):
         return "%s(%r, %r)" % (
@@ -903,26 +912,25 @@ class KnitVersionedFiles(VersionedFiles):
         delta_size = 0
         fulltext_size = None
         for count in xrange(self._max_delta_chain):
-            # XXX: Collapse these two queries:
             try:
                 # Note that this only looks in the index of this particular
                 # KnitVersionedFiles, not in the fallbacks.  This ensures that
                 # we won't store a delta spanning physical repository
                 # boundaries.
-                method = self._index.get_method(parent)
-            except RevisionNotPresent:
-                # Some basis is not locally present: always delta
+                build_details = self._index.get_build_details([parent])
+                parent_details = build_details[parent]
+            except RevisionNotPresent, KeyError:
+                # Some basis is not locally present: always fulltext
                 return False
-            index, pos, size = self._index.get_position(parent)
-            if method == 'fulltext':
+            index_memo, compression_parent, _, _ = parent_details
+            _, _, size = index_memo
+            if compression_parent is None:
                 fulltext_size = size
                 break
             delta_size += size
             # We don't explicitly check for presence because this is in an
             # inner loop, and if it's missing it'll fail anyhow.
-            # TODO: This should be asking for compression parent, not graph
-            # parent.
-            parent = self._index.get_parent_map([parent])[parent][0]
+            parent = compression_parent
         else:
             # We couldn't find a fulltext, so we must create a new one
             return False
@@ -1015,7 +1023,7 @@ class KnitVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'absent':
                     continue
                 missing_keys.remove(record.key)
-                lines = split_lines(record.get_bytes_as('fulltext'))
+                lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
                 text_map[record.key] = lines
                 content_map[record.key] = PlainKnitContent(lines, record.key)
                 if record.key in keys:
@@ -1109,17 +1117,28 @@ class KnitVersionedFiles(VersionedFiles):
         :param allow_missing: If some records are missing, rather than 
             error, just return the data that could be generated.
         """
-        position_map = self._get_components_positions(keys,
-            allow_missing=allow_missing)
-        # key = component_id, r = record_details, i_m = index_memo, n = next
-        records = [(key, i_m) for key, (r, i_m, n)
-                             in position_map.iteritems()]
-        record_map = {}
-        for key, record, digest in \
-                self._read_records_iter(records):
-            (record_details, index_memo, next) = position_map[key]
-            record_map[key] = record, record_details, digest, next
-        return record_map
+        # This retries the whole request if anything fails. Potentially we
+        # could be a bit more selective. We could track the keys whose records
+        # we have successfully found, and then only request the new records
+        # from there. However, _get_components_positions grabs the whole build
+        # chain, which means we'll likely try to grab the same records again
+        # anyway. Also, can the build chains change as part of a pack
+        # operation? We wouldn't want to end up with a broken chain.
+        while True:
+            try:
+                position_map = self._get_components_positions(keys,
+                    allow_missing=allow_missing)
+                # key = component_id, r = record_details, i_m = index_memo,
+                # n = next
+                records = [(key, i_m) for key, (r, i_m, n)
+                                       in position_map.iteritems()]
+                record_map = {}
+                for key, record, digest in self._read_records_iter(records):
+                    (record_details, index_memo, next) = position_map[key]
+                    record_map[key] = record, record_details, digest, next
+                return record_map
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
 
     def _split_by_prefix(self, keys):
         """For the given keys, split them up based on their prefix.
@@ -1160,6 +1179,22 @@ class KnitVersionedFiles(VersionedFiles):
         if not self._index.has_graph:
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
+
+        remaining_keys = keys
+        while True:
+            try:
+                keys = set(remaining_keys)
+                for content_factory in self._get_remaining_record_stream(keys,
+                                            ordering, include_delta_closure):
+                    remaining_keys.discard(content_factory.key)
+                    yield content_factory
+                return
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
+
+    def _get_remaining_record_stream(self, keys, ordering,
+                                     include_delta_closure):
+        """This function is the 'retry' portion for get_record_stream."""
         if include_delta_closure:
             positions = self._get_components_positions(keys, allow_missing=True)
         else:
@@ -1230,6 +1265,13 @@ class KnitVersionedFiles(VersionedFiles):
                 for key in parent_map:
                     present_keys.append(key)
                     source_keys[-1][1].append(key)
+            # We have been requested to return these records in an order that
+            # suits us. So we ask the index to give us an optimally sorted
+            # order.
+            for source, sub_keys in source_keys:
+                if source is parent_maps[0]:
+                    # Only sort the keys for this VF
+                    self._index._sort_keys_by_io(sub_keys, positions)
         absent_keys = keys - set(global_map)
         for key in absent_keys:
             yield AbsentContentFactory(key)
@@ -1249,9 +1291,8 @@ class KnitVersionedFiles(VersionedFiles):
                 text_map, _ = self._get_content_maps(keys, non_local)
                 for key in keys:
                     lines = text_map.pop(key)
-                    text = ''.join(lines)
-                    yield FulltextContentFactory(key, global_map[key], None,
-                                                 text)
+                    yield ChunkedContentFactory(key, global_map[key], None,
+                                                lines)
         else:
             for source, keys in source_keys:
                 if source is parent_maps[0]:
@@ -1301,6 +1342,7 @@ class KnitVersionedFiles(VersionedFiles):
                 adapter = adapter_factory(self)
                 adapters[adapter_key] = adapter
                 return adapter
+        delta_types = set()
         if self._factory.annotated:
             # self is annotated, we need annotated knits to use directly.
             annotated = "annotated-"
@@ -1310,11 +1352,13 @@ class KnitVersionedFiles(VersionedFiles):
             annotated = ""
             convertibles = set(["knit-annotated-ft-gz"])
             if self._max_delta_chain:
+                delta_types.add("knit-annotated-delta-gz")
                 convertibles.add("knit-annotated-delta-gz")
         # The set of types we can cheaply adapt without needing basis texts.
         native_types = set()
         if self._max_delta_chain:
             native_types.add("knit-%sdelta-gz" % annotated)
+            delta_types.add("knit-%sdelta-gz" % annotated)
         native_types.add("knit-%sft-gz" % annotated)
         knit_types = native_types.union(convertibles)
         adapters = {}
@@ -1333,14 +1377,20 @@ class KnitVersionedFiles(VersionedFiles):
         buffered_index_entries = {}
         for record in stream:
             parents = record.parents
+            if record.storage_kind in delta_types:
+                # TODO: eventually the record itself should track
+                #       compression_parent
+                compression_parent = parents[0]
+            else:
+                compression_parent = None
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise RevisionNotPresent([record.key], self)
             elif ((record.storage_kind in knit_types)
-                  and (not parents
+                  and (compression_parent is None
                        or not self._fallback_vfs
-                       or not self._index.missing_keys(parents)
-                       or self.missing_keys(parents))):
+                       or self._index.has_key(compression_parent)
+                       or not self.has_key(compression_parent))):
                 # we can insert the knit record literally if either it has no
                 # compression parent OR we already have its basis in this kvf
                 # OR the basis is not present even in the fallbacks.  In the
@@ -1388,21 +1438,25 @@ class KnitVersionedFiles(VersionedFiles):
                     #
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
-                    compression_parent = parents[0]
-                    if self.missing_keys([compression_parent]):
+                    if not self._index.has_key(compression_parent):
                         pending = buffered_index_entries.setdefault(
                             compression_parent, [])
                         pending.append(index_entry)
                         buffered = True
                 if not buffered:
                     self._index.add_records([index_entry])
+            elif record.storage_kind == 'chunked':
+                self.add_lines(record.key, parents,
+                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
             elif record.storage_kind == 'fulltext':
                 self.add_lines(record.key, parents,
                     split_lines(record.get_bytes_as('fulltext')))
             else:
                 # Not a fulltext, and not suitable for direct insertion as a
-                # delta, either because it's not the right format, or because
-                # it depends on a base only present in the fallback kvfs.
+                # delta, either because it's not the right format, or this
+                # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
+                # 0) or because it depends on a base only present in the
+                # fallback kvfs.
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 lines = split_lines(adapter.get_bytes(
@@ -1455,30 +1509,39 @@ class KnitVersionedFiles(VersionedFiles):
             pb = progress.DummyProgress()
         keys = set(keys)
         total = len(keys)
-        # we don't care about inclusions, the caller cares.
-        # but we need to setup a list of records to visit.
-        # we need key, position, length
-        key_records = []
-        build_details = self._index.get_build_details(keys)
-        for key, details in build_details.iteritems():
-            if key in keys:
-                key_records.append((key, details[0]))
-                keys.remove(key)
-        records_iter = enumerate(self._read_records_iter(key_records))
-        for (key_idx, (key, data, sha_value)) in records_iter:
-            pb.update('Walking content.', key_idx, total)
-            compression_parent = build_details[key][1]
-            if compression_parent is None:
-                # fulltext
-                line_iterator = self._factory.get_fulltext_content(data)
-            else:
-                # Delta 
-                line_iterator = self._factory.get_linedelta_content(data)
-            # XXX: It might be more efficient to yield (key,
-            # line_iterator) in the future. However for now, this is a simpler
-            # change to integrate into the rest of the codebase. RBC 20071110
-            for line in line_iterator:
-                yield line, key
+        done = False
+        while not done:
+            try:
+                # we don't care about inclusions, the caller cares.
+                # but we need to setup a list of records to visit.
+                # we need key, position, length
+                key_records = []
+                build_details = self._index.get_build_details(keys)
+                for key, details in build_details.iteritems():
+                    if key in keys:
+                        key_records.append((key, details[0]))
+                records_iter = enumerate(self._read_records_iter(key_records))
+                for (key_idx, (key, data, sha_value)) in records_iter:
+                    pb.update('Walking content.', key_idx, total)
+                    compression_parent = build_details[key][1]
+                    if compression_parent is None:
+                        # fulltext
+                        line_iterator = self._factory.get_fulltext_content(data)
+                    else:
+                        # Delta 
+                        line_iterator = self._factory.get_linedelta_content(data)
+                    # Now that we are yielding the data for this key, remove it
+                    # from the list
+                    keys.remove(key)
+                    # XXX: It might be more efficient to yield (key,
+                    # line_iterator) in the future. However for now, this is a
+                    # simpler change to integrate into the rest of the
+                    # codebase. RBC 20071110
+                    for line in line_iterator:
+                        yield line, key
+                done = True
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
         # If there are still keys we've not yet found, we look in the fallback
         # vfs, and hope to find them there.  Note that if the keys are found
         # but had no changes or no content, the fallback may not return
@@ -1891,7 +1954,6 @@ class _KndxIndex(object):
                 extra information about the content which needs to be passed to
                 Factory.parse_record
         """
-        prefixes = self._partition_keys(keys)
         parent_map = self.get_parent_map(keys)
         result = {}
         for key in keys:
@@ -2078,6 +2140,26 @@ class _KndxIndex(object):
             self._mode = 'w'
         else:
             self._mode = 'r'
+
+    def _sort_keys_by_io(self, keys, positions):
+        """Figure out an optimal order to read the records for the given keys.
+
+        Sort keys, grouped by index and sorted by position.
+
+        :param keys: A list of keys whose records we want to read. This will be
+            sorted 'in-place'.
+        :param positions: A dict, such as the one returned by
+            _get_components_positions()
+        :return: None
+        """
+        def get_sort_key(key):
+            index_memo = positions[key][1]
+            # Group by prefix and position. index_memo[0] is the key, so it is
+            # (file_id, revision_id) and we don't want to sort on revision_id,
+            # index_memo[1] is the position, and index_memo[2] is the size,
+            # which doesn't matter for the sort
+            return index_memo[0][:-1], index_memo[1]
+        return keys.sort(key=get_sort_key)
 
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
@@ -2338,6 +2420,26 @@ class _KnitGraphIndex(object):
         bits = node[2][1:].split(' ')
         return node[0], int(bits[0]), int(bits[1])
 
+    def _sort_keys_by_io(self, keys, positions):
+        """Figure out an optimal order to read the records for the given keys.
+
+        Sort keys, grouped by index and sorted by position.
+
+        :param keys: A list of keys whose records we want to read. This will be
+            sorted 'in-place'.
+        :param positions: A dict, such as the one returned by
+            _get_components_positions()
+        :return: None
+        """
+        def get_index_memo(key):
+            # index_memo is at offset [1]. It is made up of (GraphIndex,
+            # position, size). GI is an object, which will be unique for each
+            # pack file. This causes us to group by pack file, then sort by
+            # position. Size doesn't matter, but it isn't worth breaking up the
+            # tuple.
+            return positions[key][1]
+        return keys.sort(key=get_index_memo)
+
 
 class _KnitKeyAccess(object):
     """Access to records in .knit files."""
@@ -2417,15 +2519,19 @@ class _KnitKeyAccess(object):
 class _DirectPackAccess(object):
     """Access to data in one or more packs with less translation."""
 
-    def __init__(self, index_to_packs):
+    def __init__(self, index_to_packs, reload_func=None):
         """Create a _DirectPackAccess object.
 
         :param index_to_packs: A dict mapping index objects to the transport
             and file names for obtaining data.
+        :param reload_func: A function to call if we determine that the pack
+            files have moved and we need to reload our caches. See
+            bzrlib.repo_fmt.pack_repo.AggregateIndex for more details.
         """
         self._container_writer = None
         self._write_index = None
         self._indices = index_to_packs
+        self._reload_func = reload_func
 
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
@@ -2477,10 +2583,31 @@ class _DirectPackAccess(object):
         if current_index is not None:
             request_lists.append((current_index, current_list))
         for index, offsets in request_lists:
-            transport, path = self._indices[index]
-            reader = pack.make_readv_reader(transport, path, offsets)
-            for names, read_func in reader.iter_records():
-                yield read_func(None)
+            try:
+                transport, path = self._indices[index]
+            except KeyError:
+                # A KeyError here indicates that someone has triggered an index
+                # reload, and this index has gone missing, we need to start
+                # over.
+                if self._reload_func is None:
+                    # If we don't have a _reload_func there is nothing that can
+                    # be done
+                    raise
+                raise errors.RetryWithNewPacks(index,
+                                               reload_occurred=True,
+                                               exc_info=sys.exc_info())
+            try:
+                reader = pack.make_readv_reader(transport, path, offsets)
+                for names, read_func in reader.iter_records():
+                    yield read_func(None)
+            except errors.NoSuchFile:
+                # A NoSuchFile error indicates that a pack file has gone
+                # missing on disk, we need to trigger a reload, and start over.
+                if self._reload_func is None:
+                    raise
+                raise errors.RetryWithNewPacks(transport.abspath(path),
+                                               reload_occurred=False,
+                                               exc_info=sys.exc_info())
 
     def set_writer(self, writer, index, transport_packname):
         """Set a writer to use for adding data."""
@@ -2488,6 +2615,35 @@ class _DirectPackAccess(object):
             self._indices[index] = transport_packname
         self._container_writer = writer
         self._write_index = index
+
+    def reload_or_raise(self, retry_exc):
+        """Try calling the reload function, or re-raise the original exception.
+
+        This should be called after _DirectPackAccess raises a
+        RetryWithNewPacks exception. This function will handle the common logic
+        of determining when the error is fatal versus being temporary.
+        It will also make sure that the original exception is raised, rather
+        than the RetryWithNewPacks exception.
+
+        If this function returns, then the calling function should retry
+        whatever operation was being performed. Otherwise an exception will
+        be raised.
+
+        :param retry_exc: A RetryWithNewPacks exception.
+        """
+        is_error = False
+        if self._reload_func is None:
+            is_error = True
+        elif not self._reload_func():
+            # The reload claimed that nothing changed
+            if not retry_exc.reload_occurred:
+                # If there wasn't an earlier reload, then we really were
+                # expecting to find changes. We didn't find them, so this is a
+                # hard error
+                is_error = True
+        if is_error:
+            exc_class, exc_value, exc_traceback = retry_exc.exc_info
+            raise exc_class, exc_value, exc_traceback
 
 
 # Deprecated, use PatienceSequenceMatcher instead
@@ -2767,11 +2923,17 @@ class _KnitAnnotator(object):
         if len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
-        records = self._get_build_graph(key)
-        if key in self._ghosts:
-            raise errors.RevisionNotPresent(key, self._knit)
-        self._annotate_records(records)
-        return self._annotated_lines[key]
+        while True:
+            try:
+                records = self._get_build_graph(key)
+                if key in self._ghosts:
+                    raise errors.RevisionNotPresent(key, self._knit)
+                self._annotate_records(records)
+                return self._annotated_lines[key]
+            except errors.RetryWithNewPacks, e:
+                self._knit._access.reload_or_raise(e)
+                # The cached build_details are no longer valid
+                self._all_build_details.clear()
 
     def _simple_annotate(self, key):
         """Return annotated fulltext, rediffing from the full texts.
@@ -2797,7 +2959,7 @@ class _KnitAnnotator(object):
         reannotate = annotate.reannotate
         for record in self._knit.get_record_stream(keys, 'topological', True):
             key = record.key
-            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            fulltext = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parents = parent_map[key]
             if parents is not None:
                 parent_lines = [parent_cache[parent] for parent in parent_map[key]]
