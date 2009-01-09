@@ -52,7 +52,7 @@ def decode_list(x, f):
     while x[f] != 'e':
         v, f = decode_func[x[f]](x, f)
         r.append(v)
-    return (r, f + 1)
+    return (tuple(r), f + 1)
 
 def decode_dict(x, f):
     r, f = {}, f+1
@@ -133,9 +133,12 @@ encode_func[DictType] = encode_dict
 
 try:
     from types import BooleanType
-    encode_func[BooleanType] = encode_int
 except ImportError:
     pass
+else:
+    def encode_bool(x,r):
+        encode_int(int(x), r)
+    encode_func[BooleanType] = encode_bool
 
 def bencode(x):
     r = []

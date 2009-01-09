@@ -655,6 +655,14 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
         self._last_verb = args[0]
+    
+    def call_with_body_stream(self, args, stream):
+        # Protocols v1 and v2 don't support body streams.  So it's safe to
+        # assume that a v1/v2 server doesn't support whatever method we're
+        # trying to call with a body stream.
+        self._request.finished_writing()
+        self._request.finished_reading()
+        raise errors.UnknownSmartMethod(args[0])
 
     def cancel_read_body(self):
         """After expecting a body, a response code may indicate one otherwise.
@@ -1214,6 +1222,27 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
         self._write_prefixed_body(readv_bytes)
+        self._write_end()
+        self._medium_request.finished_writing()
+
+    def call_with_body_stream(self, args, stream):
+        if 'hpss' in debug.debug_flags:
+            mutter('hpss call w/body stream: %r', args)
+            path = getattr(self._medium_request._medium, '_path', None)
+            if path is not None:
+                mutter('                  (to %s)', path)
+            self._request_start_time = time.time()
+        self._write_protocol_version()
+        self._write_headers(self._headers)
+        self._write_structure(args)
+        # XXX: handle errors while iterating the body stream
+        # XXX: notice if the server has sent an early error reply before we
+        #      have finished sending the stream.  We would notice at the end
+        #      anyway, but if the medium can deliver it early then it's good to
+        #      short-circuit the whole request...
+        for part in stream:
+            self._write_prefixed_body(part)
+            self.flush()
         self._write_end()
         self._medium_request.finished_writing()
 
