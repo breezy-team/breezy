@@ -765,8 +765,8 @@ class TestChunksToLines(TestCase):
                          osutils.chunks_to_lines(['foo\n', 'bar\n', 'baz\n']))
 
     def test_is_compiled(self):
-        from bzrlib.tests.test__chunks_to_lines import CompiledChunksToLinesFeature
-        if CompiledChunksToLinesFeature:
+        from bzrlib.tests import test__chunks_to_lines
+        if test__chunks_to_lines.CompiledChunksToLinesFeature.available():
             from bzrlib._chunks_to_lines_pyx import chunks_to_lines
         else:
             from bzrlib._chunks_to_lines_py import chunks_to_lines
