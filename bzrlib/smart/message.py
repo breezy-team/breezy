@@ -138,8 +138,8 @@ class ConventionalRequestHandler(MessageHandler):
 
     def end_received(self):
         if self.expecting not in ['body', 'end']:
-            raise AssertionError(
-                'Message handler state %s not in [body, end]'
+            raise errors.SmartProtocolError(
+                'End of message received prematurely (while expecting %s)'
                 % (self.expecting,))
         self.expecting = 'nothing'
         self.request_handler.end_received()
