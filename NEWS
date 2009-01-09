@@ -10,6 +10,13 @@ IN DEVELOPMENT
 
   CHANGES:
   
+
+   * Add connection to a C++ implementation of the Windows Shell Extension
+     which is able to fully replace the current Python implemented one.
+     Advantages include 64bit support and reduction in overhead for
+     processes which drag in shell extensions.
+     (Mark Hammond)
+
     * Formats using Knit-based repository formats are now explicitly
       marked as deprecated. (Ian Clatworthy)
 
