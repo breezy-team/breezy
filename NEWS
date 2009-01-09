@@ -46,6 +46,12 @@ IN DEVELOPMENT
       attached to the message, and works around bug #291847 in
       xdg-utils which corrupts the destination address.
 
+    * When working on a case-insensitive case-preserving file-system, as
+      commonly found with Windows, bzr will often ignore the case of the
+      arguments specified by the user in preference to the case of an existing
+      item on the file-system or in the inventory to help prevent
+      counter-intuitive behaviour on Windows. (Mark Hammond)
+
   BUG FIXES:
   
     * Fix a problem with CIFS client/server lag on windows colliding with

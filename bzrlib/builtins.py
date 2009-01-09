@@ -59,9 +59,9 @@ from bzrlib.option import ListOption, Option, RegistryOption, custom_help
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
-def tree_files(file_list, default_branch=u'.'):
+def tree_files(file_list, default_branch=u'.', canonicalize=True):
     try:
-        return internal_tree_files(file_list, default_branch)
+        return internal_tree_files(file_list, default_branch, canonicalize)
     except errors.FileInWrongBranch, e:
         raise errors.BzrCommandError("%s is not in the same branch as %s" %
                                      (e.path, file_list[0]))
@@ -86,7 +86,7 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
 
 # XXX: Bad function name; should possibly also be a class method of
 # WorkingTree rather than a function.
-def internal_tree_files(file_list, default_branch=u'.'):
+def internal_tree_files(file_list, default_branch=u'.', canonicalize=True):
     """Convert command-line paths to a WorkingTree and relative paths.
 
     This is typically used for command-line processors that take one or
@@ -104,10 +104,10 @@ def internal_tree_files(file_list, default_branch=u'.'):
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
-    return tree, safe_relpath_files(tree, file_list)
+    return tree, safe_relpath_files(tree, file_list, canonicalize)
 
 
-def safe_relpath_files(tree, file_list):
+def safe_relpath_files(tree, file_list, canonicalize=True):
     """Convert file_list into a list of relpaths in tree.
 
     :param tree: A tree to operate on.
@@ -119,9 +119,15 @@ def safe_relpath_files(tree, file_list):
     if file_list is None:
         return None
     new_list = []
+    # tree.relpath exists as a "thunk" to osutils, but canonical_relpath
+    # doesn't - fix that up here before we enter the loop.
+    if canonicalize:
+        fixer = lambda p: osutils.canonical_relpath(tree.basedir, p)
+    else:
+        fixer = tree.relpath
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(osutils.dereference_path(filename)))
+            new_list.append(fixer(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return new_list
@@ -655,7 +661,7 @@ class cmd_mv(Command):
 
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
-        tree, rel_names = tree_files(names_list)
+        tree, rel_names = tree_files(names_list, canonicalize=False)
         tree.lock_write()
         try:
             self._run(tree, names_list, rel_names, after)
@@ -675,13 +681,18 @@ class cmd_mv(Command):
                 into_existing = False
             else:
                 inv = tree.inventory
-                from_id = tree.path2id(rel_names[0])
+                # 'fix' the case of a potential 'from'
+                from_id = tree.path2id(
+                            tree.get_canonical_inventory_path(rel_names[0]))
                 if (not osutils.lexists(names_list[0]) and
                     from_id and inv.get_file_kind(from_id) == "directory"):
                     into_existing = False
         # move/rename
         if into_existing:
             # move into existing directory
+            # All entries reference existing inventory items, so fix them up
+            # for cicp file-systems.
+            rel_names = tree.get_canonical_inventory_paths(rel_names)
             for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
         else:
@@ -689,8 +700,51 @@ class cmd_mv(Command):
                 raise errors.BzrCommandError('to mv multiple files the'
                                              ' destination must be a versioned'
                                              ' directory')
-            tree.rename_one(rel_names[0], rel_names[1], after=after)
-            self.outf.write("%s => %s\n" % (rel_names[0], rel_names[1]))
+
+            # for cicp file-systems: the src references an existing inventory
+            # item:
+            src = tree.get_canonical_inventory_path(rel_names[0])
+            # Find the canonical version of the destination:  In all cases, the
+            # parent of the target must be in the inventory, so we fetch the
+            # canonical version from there (we do not always *use* the
+            # canonicalized tail portion - we may be attempting to rename the
+            # case of the tail)
+            canon_dest = tree.get_canonical_inventory_path(rel_names[1])
+            dest_parent = osutils.dirname(canon_dest)
+            spec_tail = osutils.basename(rel_names[1])
+            # For a CICP file-system, we need to avoid creating 2 inventory
+            # entries that differ only by case.  So regardless of the case
+            # we *want* to use (ie, specified by the user or the file-system),
+            # we must always choose to use the case of any existing inventory
+            # items.  The only exception to this is when we are attempting a
+            # case-only rename (ie, canonical versions of src and dest are
+            # the same)
+            dest_id = tree.path2id(canon_dest)
+            if dest_id is None or tree.path2id(src) == dest_id:
+                # No existing item we care about, so work out what case we
+                # are actually going to use.
+                if after:
+                    # If 'after' is specified, the tail must refer to a file on disk.
+                    if dest_parent:
+                        dest_parent_fq = osutils.pathjoin(tree.basedir, dest_parent)
+                    else:
+                        # pathjoin with an empty tail adds a slash, which breaks
+                        # relpath :(
+                        dest_parent_fq = tree.basedir
+    
+                    dest_tail = osutils.canonical_relpath(
+                                    dest_parent_fq,
+                                    osutils.pathjoin(dest_parent_fq, spec_tail))
+                else:
+                    # not 'after', so case as specified is used
+                    dest_tail = spec_tail
+            else:
+                # Use the existing item so 'mv' fails with AlreadyVersioned.
+                dest_tail = os.path.basename(canon_dest)
+            dest = osutils.pathjoin(dest_parent, dest_tail)
+            mutter("attempting to move %s => %s", src, dest)
+            tree.rename_one(src, dest, after=after)
+            self.outf.write("%s => %s\n" % (src, dest))
 
 
 class cmd_pull(Command):
