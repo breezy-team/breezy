@@ -85,6 +85,45 @@ class cmd_git_serve(Command):
 register_command(cmd_git_serve)
 
 
+class cmd_git_import(Command):
+    """Import all branches from a git repository.
+
+    """
+
+    takes_args = ["src_location", "dest_location"]
+
+    def run(self, src_location, dest_location):
+        from bzrlib.bzrdir import BzrDir, format_registry
+        from bzrlib.errors import NoRepositoryPresent, NotBranchError
+        from bzrlib.repository import Repository
+        source_repo = Repository.open(src_location)
+        format = format_registry.make_bzrdir('rich-root-pack')
+        try:
+            target_bzrdir = BzrDir.open(dest_location)
+        except NotBranchError:
+            target_bzrdir = BzrDir.create(dest_location, format=format)
+        try:
+            target_repo = target_bzrdir.open_repository()
+        except NoRepositoryPresent:
+            target_repo = target_bzrdir.create_repository(shared=True)
+
+        target_repo.fetch(source_repo)
+        for name, ref in source_repo._git.heads().iteritems():
+            head_loc = os.path.join(dest_location, name)
+            try:
+                head_bzrdir = BzrDir.open(head_loc)
+            except NotBranchError:
+                head_bzrdir = BzrDir.create(head_loc, format=format)
+            try:
+                head_branch = head_bzrdir.open_branch()
+            except NotBranchError:
+                head_branch = head_bzrdir.create_branch()
+            head_branch.generate_revision_history(source_repo.get_mapping().revision_id_foreign_to_bzr(ref))
+
+
+register_command(cmd_git_import)
+
+
 def test_suite():
     from bzrlib.plugins.git import tests
     return tests.test_suite()
