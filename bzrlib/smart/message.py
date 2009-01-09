@@ -113,8 +113,6 @@ class ConventionalRequestHandler(MessageHandler):
                 raise errors.SmartProtocolError(
                     'Non-success status byte in request body: %r' % (byte,))
             self.expecting = 'end'
-            self._should_finish_body = True
-            self._body_finished()
         else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: byte(%r)' % (byte,))
@@ -130,29 +128,25 @@ class ConventionalRequestHandler(MessageHandler):
             self.responder.send_response(self.request_handler.response)
             self.expecting = 'end'
 
-    def _body_finished(self):
-        if not self._should_finish_body:
-            return
-        self._should_finish_body = False
-        self.request_handler.end_of_body()
-        if not self.request_handler.finished_reading:
-            raise errors.SmartProtocolError(
-                "Conventional request body was received, but request "
-                "handler has not finished reading.")
-        
     def bytes_part_received(self, bytes):
         if self.expecting == 'body':
             self._should_finish_body = True
             self.request_handler.accept_body(bytes)
-            #self.request_handler.body_chunk_received(bytes)
         else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: bytes(%r)' % (bytes,))
 
     def end_received(self):
+        if self.expecting not in ['body', 'end']:
+            raise AssertionError(
+                'Message handler state %s not in [body, end]'
+                % (self.expecting,))
         self.expecting = 'nothing'
-        self._body_finished()
         self.request_handler.end_received()
+        if not self.request_handler.finished_reading:
+            raise errors.SmartProtocolError(
+                "Complete conventional request was received, but request "
+                "handler has not finished reading.")
         if not self._response_sent:
             self.responder.send_response(self.request_handler.response)
 

@@ -70,6 +70,7 @@ class SmartServerRequest(object):
             if not root_client_path.endswith('/'):
                 root_client_path += '/'
         self._root_client_path = root_client_path
+        self._body_bytes = ''
 
     def _check_enabled(self):
         """Raises DisabledMethod if this method is disabled."""
@@ -110,11 +111,13 @@ class SmartServerRequest(object):
 
         The do() method is still called, and must have returned None.
         """
-        raise NotImplementedError(self.do_chunk)
+        self._body_bytes += chunk_bytes
 
     def do_end(self):
         """Called when the end of the request has been received."""
-        pass
+        body_bytes = self._body_bytes
+        self._body_bytes = None
+        return self.do_body(body_bytes)
     
     def translate_client_path(self, client_path):
         """Translate a path received from a network client into a local
@@ -229,25 +232,17 @@ class SmartServerRequestHandler(object):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
         self._commands = commands
-        self._body_bytes = ''
         self.response = None
         self.finished_reading = False
         self._command = None
 
     def accept_body(self, bytes):
         """Accept body data."""
-
-        # TODO: This should be overriden for each command that desired body data
-        # to handle the right format of that data, i.e. plain bytes, a bundle,
-        # etc.  The deserialisation into that format should be done in the
-        # Protocol object.
-
-        # default fallback is to accumulate bytes.
-        self._body_bytes += bytes
+        self._run_handler_code(self._command.do_chunk, (bytes,), {})
         
     def end_of_body(self):
         """No more body data will be received."""
-        self._run_handler_code(self._command.do_body, (self._body_bytes,), {})
+        self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
 
@@ -337,15 +332,6 @@ class SmartServerRequestHandler(object):
             raise errors.UnknownSmartMethod(cmd)
         self._command = command(self._backing_transport)
         self._run_handler_code(self._command.execute, args, {})
-
-    def prefixed_body_received(self, body_bytes):
-        """No more body data will be received."""
-        self._run_handler_code(self._command.do_body, (body_bytes,), {})
-        # cannot read after this.
-        self.finished_reading = True
-
-    def body_chunk_received(self, chunk_bytes):
-        self._run_handler_code(self._command.do_chunk, (chunk_bytes,), {})
 
     def end_received(self):
         self._run_handler_code(self._command.do_end, (), {})

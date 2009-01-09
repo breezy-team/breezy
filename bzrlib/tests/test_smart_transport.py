@@ -1489,12 +1489,12 @@ class TestSmartProtocol(tests.TestCase):
         smart_protocol._has_dispatched = True
         smart_protocol.request = _mod_request.SmartServerRequestHandler(
             None, _mod_request.request_handlers, '/')
-        class FakeCommand(object):
-            def do_body(cmd, body_bytes):
+        class FakeCommand(_mod_request.SmartServerRequest):
+            def do_body(self_cmd, body_bytes):
                 self.end_received = True
                 self.assertEqual('abcdefg', body_bytes)
                 return _mod_request.SuccessfulSmartServerResponse(('ok', ))
-        smart_protocol.request._command = FakeCommand()
+        smart_protocol.request._command = FakeCommand(None)
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
         # interface to work with that will not cause this inconsistency.
@@ -2538,14 +2538,8 @@ class InstrumentedRequestHandler(object):
         self.calls = []
         self.finished_reading = False
 
-    def body_chunk_received(self, chunk_bytes):
-        self.calls.append(('body_chunk_received', chunk_bytes))
-
     def no_body_received(self):
         self.calls.append(('no_body_received',))
-
-    def prefixed_body_received(self, body_bytes):
-        self.calls.append(('prefixed_body_received', body_bytes))
 
     def end_received(self):
         self.calls.append(('end_received',))
