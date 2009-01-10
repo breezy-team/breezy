@@ -57,12 +57,6 @@ The easiest way to enable this is to run upload with the --auto option.
 will enable the hook for this branch. If you were to do a commit in this branch
 now you would see it trigger the upload automatically.
 
-If you keep push branch to the remote location that you upload to, and you only
-want to upload when the tip of the remote branch changes, you can set the hook
-on the remote branch.
-
-     bzr upload ftp://host/ --directory=ftp://host/ --auto 
-
 If you wish to disable this for a branch again then you can use the --no-auto
 option.
 
@@ -70,6 +64,19 @@ option.
 
 will disable the feature for that branch.
 
+
+Upload from Remote Location
+---------------------------
+
+If you push your branch to the remote location that you upload to, and you only
+want to upload when you push to the remote branch, or do any action that changes
+the tip of the remote branch, you can set bzr-upload to automatically upload
+from the tip of the remote branch.
+
+     bzr upload ftp://host/ --directory=ftp://host/ --auto
+
+Note that the tree that upload creates is not a working tree. As such, you can
+not do operations such as commit, or merge on the tree.
 
 Collaborating
 -------------
