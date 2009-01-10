@@ -353,13 +353,13 @@ class cmd_upload(commands.Command):
             ):
         if directory is None:
             directory = u'.'
-        
+
         wt, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(directory)
-        
+
         if wt:
             changes = wt.changes_from(wt.basis_tree())
-    
+
             if revision is None and  changes.has_changed():
                 raise errors.UncommittedChanges(wt)
 

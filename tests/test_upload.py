@@ -153,7 +153,6 @@ class TestUploadMixin(object):
 
     upload_dir = 'upload/'
     branch_dir = 'branch/'
-    
 
     def make_local_branch(self):
         t = transport.get_transport('branch')
@@ -410,10 +409,9 @@ class TestUploadMixin(object):
 
         self.assertUpPathModeEqual('hello', 0775)
 
-    
     def get_upload_auto(self):
         return get_upload_auto(self.tree.branch)
-    
+
     def test_upload_auto(self):
         """Test that upload --auto sets the upload_auto option"""
         self.make_local_branch()
@@ -438,7 +436,7 @@ class TestUploadMixin(object):
         try:
             self.assertFalse(self.get_upload_auto())
         except errors.NotBranchError:
-            pass        
+            pass
         self.do_full_upload(auto=True)
         self.assertUpFileEqual('foo', 'hello')
         self.assertTrue(self.get_upload_auto())
@@ -575,11 +573,11 @@ class TestUploadFromRemote(TestUploadMixin):
     
     def do_full_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
-        
+
         rev_id = self.branch.last_revision()
         output = StringIO()
         _show_push_branch(self.branch, rev_id, up_url, output)
-        
+
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = up_url
@@ -589,40 +587,38 @@ class TestUploadFromRemote(TestUploadMixin):
 
     def do_incremental_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
-        
+
         rev_id = self.branch.last_revision()
         output = StringIO()
         _show_push_branch(self.branch, rev_id, up_url, output)
-        
+
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = up_url
         kwargs['quiet'] = True
         upload.run(up_url, *args, **kwargs)
-    
+
     def test_no_upload_when_changes(self):
         raise tests.TestNotApplicable()
 
     def test_no_upload_when_conflicts(self):
         raise tests.TestNotApplicable()
-    
+
     remote_branch = None
     def get_upload_auto(self):
         if not self.remote_branch:
             self.remote_branch = branch.Branch.open_from_transport(\
                 self.get_transport(self.upload_dir))
-        
+
         return get_upload_auto(self.remote_branch)
 
-
 class TestFullUploadFromRemote(tests.TestCaseWithTransport, TestUploadFromRemote):
-    
+
     do_upload = TestUploadFromRemote.do_full_upload
 
 class TestIncrementalUploadFromRemote(tests.TestCaseWithTransport, TestUploadFromRemote):
-    
+
     do_upload = TestUploadFromRemote.do_incremental_upload
-    
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
 
