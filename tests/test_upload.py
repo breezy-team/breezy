@@ -29,7 +29,6 @@ from bzrlib import (
     tests,
     transport,
     workingtree,
-    trace,
     )
 from bzrlib.smart import server as smart_server
 from bzrlib.push import _show_push_branch
