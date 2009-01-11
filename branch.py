@@ -40,7 +40,7 @@ class GitTagDict(tag.BasicTags):
         return ret
 
     def set_tag(self, name, revid):
-        raise NotImplementedError(self.set_tag)
+        self.repository._git.tags[name] = revid
 
 
 class GitBranchConfig(config.BranchConfig):

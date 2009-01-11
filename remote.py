@@ -37,6 +37,11 @@ import urlparse
 
 from dulwich.pack import PackData, Pack
 
+# Don't run any tests on GitSmartTransport as it is not intended to be 
+# a full implementation of Transport
+def get_test_permutations():
+    return []
+
 
 class GitSmartTransport(Transport):
 

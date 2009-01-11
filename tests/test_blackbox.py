@@ -103,11 +103,10 @@ class TestGitBlackBox(ExternalBase):
         self.assertEquals(output, "foo                  1\n")
 
     def test_tag(self):
-        raise KnownFailure("setting tags not supported by git-python yet")
         self.simple_commit()
 
         output, error = self.run_bzr(["tag", "bar"])
 
         self.assertEquals(error, '')
-        self.assertEquals(output, '')
+        self.assertEquals(output, 'Created tag bar.\n')
 
