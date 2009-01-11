@@ -39,26 +39,20 @@ OBJECTDIR = 'objects'
 SYMREF = 'ref: '
 
 
-class Tag(object):
-
-    def __init__(self, name, ref):
-        self.name = name
-        self.ref = ref
-
-
 class Tags(object):
 
     def __init__(self, tags):
         self.tags = tags
 
     def __getitem__(self, name):
-        for n in self.tags:
-            if n.name == name:
-                return n.ref
-        raise KeyError(name)
+        return self.tags[name]
 
     def __len__(self):
         return len(self.tags)
+
+    def iteritems(self):
+        for k in self.tags:
+            yield k, self[k]
 
 
 class Repo(object):
