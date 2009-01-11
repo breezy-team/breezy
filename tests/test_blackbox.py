@@ -40,7 +40,7 @@ class TestGitBlackBox(ExternalBase):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Repository tree (format: git)" in output)
+        self.assertTrue("Repository branch (format: git)" in output)
 
     def test_branch(self):
         os.mkdir("gitbranch")
