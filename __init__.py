@@ -323,6 +323,8 @@ class BzrUploader(object):
         finally:
             self.tree.unlock()
 
+class CannotUploadToWT(errors.BzrCommandError):
+    pass
 
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
@@ -376,6 +378,20 @@ class cmd_upload(commands.Command):
                 location = stored_loc
 
         to_transport = transport.get_transport(location)
+
+        # Check that we are not uploading to a existing working tree.
+        try:
+            to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
+            has_wt = to_bzr_dir.has_workingtree()
+        except errors.NotBranchError:
+            has_wt = False
+        except errors.NotLocalUrl:
+            has_wt = True
+
+        if has_wt:
+            raise CannotUploadToWT('Cannot upload to %s as it has a'
+                                          ' working directory.' % (location))
+
         if revision is None:
             rev_id = branch.last_revision()
         else:

@@ -40,7 +40,12 @@ from bzrlib.tests import (
     )
 
 
-from bzrlib.plugins.upload import cmd_upload, BzrUploader, get_upload_auto
+from bzrlib.plugins.upload import (
+    cmd_upload,
+    BzrUploader,
+    get_upload_auto,
+    CannotUploadToWT,
+    )
 
 
 class TransportAdapter(
@@ -456,6 +461,19 @@ class TestUploadMixin(object):
         self.tree.add(['foo/', 'foo/bar'])
         self.tree.commit("Add directory")
         self.do_full_upload(directory='branch/foo')
+
+    def test_no_upload_remote_wt(self):
+        self.make_local_branch()
+        self.add_file('hello', 'foo')
+
+        #Create branch in remote tree to create wt
+        t = transport.get_transport(self.upload_dir)
+        self.branch = bzrdir.BzrDir.create_branch_convenience(
+            t.base,
+            format=bzrdir.format_registry.make_bzrdir('default'),
+            force_new_tree=True)
+
+        self.assertRaises(CannotUploadToWT, self.do_upload)
 
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
