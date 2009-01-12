@@ -2759,6 +2759,30 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             'e', # end
             output.getvalue())
 
+    def test_call_with_body_stream_error(self):
+        """call_with_body_stream will abort the streamed body with an
+        error if the stream raises an error during iteration.
+        
+        The resulting request will still be a complete message.
+        """
+        requester, output = self.make_client_encoder_and_output()
+        requester.set_headers({})
+        def stream_that_fails():
+            yield 'aaa'
+            yield 'bbb'
+            raise Exception('Boom!')
+        requester.call_with_body_stream(('one arg',), stream_that_fails())
+        self.assertEquals(
+            'bzr message 3 (bzr 1.6)\n' # protocol version
+            '\x00\x00\x00\x02de' # headers
+            's\x00\x00\x00\x0bl7:one arge' # args
+            'b\x00\x00\x00\x03aaa' # body
+            'b\x00\x00\x00\x03bbb' # more body
+            'oE' # error flag
+            's\x00\x00\x00\x09l5:errore' # error args: ('error',)
+            'e', # end
+            output.getvalue())
+
 
 class StubMediumRequest(object):
     """A stub medium request that tracks the number of times accept_bytes is
