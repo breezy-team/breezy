@@ -53,19 +53,27 @@ _PAGE_CACHE_SIZE = 4*1024*1024
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
 
+
+
 class CHKMap(object):
     """A persistent map from string to string backed by a CHK store."""
 
-    def __init__(self, store, root_key):
+    def __init__(self, store, root_key, search_key_func=None):
         """Create a CHKMap object.
 
         :param store: The store the CHKMap is stored in.
         :param root_key: The root key of the map. None to create an empty
             CHKMap.
+        :param search_key_func: A function mapping a key => bytes. These bytes
+            are then used by the internal nodes to split up leaf nodes into
+            multiple pages.
         """
         self._store = store
+        if search_key_func is None:
+            search_key_func = '\x00'.join
+        self._search_key_func = search_key_func
         if root_key is None:
-            self._root_node = LeafNode()
+            self._root_node = LeafNode(search_key_func=search_key_func)
         else:
             self._root_node = self._node_key(root_key)
 
@@ -92,6 +100,8 @@ class CHKMap(object):
         if type(self._root_node) == tuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
+            # XXX: Shouldn't this be put into _deserialize?
+            self._root_node._search_key_func = self._search_key_func
 
     def _get_node(self, node):
         """Get a node.
@@ -359,7 +369,8 @@ class CHKMap(object):
         if len(node_details) == 1:
             self._root_node = node_details[0][1]
         else:
-            self._root_node = InternalNode(prefix)
+            self._root_node = InternalNode(prefix,
+                                search_key_func=self._search_key_func)
             self._root_node.set_maximum_size(node_details[0][1].maximum_size)
             self._root_node._key_width = node_details[0][1]._key_width
             for split, node in node_details:
@@ -490,11 +501,15 @@ class LeafNode(Node):
         the key/value pairs.
     """
 
-    def __init__(self):
+    def __init__(self, search_key_func=None):
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
         self._serialise_key = '\x00'.join
+        if search_key_func is None:
+            self._search_key_func = self._serialise_key
+        else:
+            self._search_key_func = search_key_func
 
     def _current_size(self):
         """Answer the current serialised size of this node.
@@ -587,6 +602,9 @@ class LeafNode(Node):
         #       then that can be done via the C extension
         return 2 + len(self._serialise_key(key)) + len(value)
 
+    def _search_key(self, key):
+        return self._search_key_func(key)
+
     def _map_no_split(self, key, value):
         """Map a key to a value.
 
@@ -641,7 +659,7 @@ class LeafNode(Node):
             if len(prefix) < split_at:
                 prefix += '\x00'*(split_at - len(prefix))
             if prefix not in result:
-                node = LeafNode()
+                node = LeafNode(search_key_func=self._search_key_func)
                 node.set_maximum_size(self._maximum_size)
                 node._key_width = self._key_width
                 result[prefix] = node
@@ -689,10 +707,6 @@ class LeafNode(Node):
         _page_cache.add(self._key, bytes)
         return [self._key]
 
-    def _search_key(self, key):
-        """Return the search key for a key in this node."""
-        return '\x00'.join(key)
-
     def refs(self):
         """Return the references to other CHK's held by this node."""
         return []
@@ -739,12 +753,16 @@ class InternalNode(Node):
         LeafNode or InternalNode.
     """
 
-    def __init__(self, prefix=''):
+    def __init__(self, prefix='', search_key_func=None):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
         # How many octets key prefixes within this node are.
         self._node_width = 0
         self._search_prefix = prefix
+        if search_key_func is None:
+            self._search_key_func = '\x00'.join
+        else:
+            self._search_key_func = search_key_func
 
     def __repr__(self):
         items_str = sorted(self._items)
@@ -902,7 +920,8 @@ class InternalNode(Node):
             # and then map this key into that node.
             new_prefix = self.common_prefix(self._search_prefix,
                                             search_key)
-            new_parent = InternalNode(new_prefix)
+            # new_parent = InternalNode(new_prefix,
+            #     search_key_func=self._search_key_func)
             new_parent.set_maximum_size(self._maximum_size)
             new_parent._key_width = self._key_width
             new_parent.add_node(self._search_prefix[:len(new_prefix)+1],
@@ -995,7 +1014,7 @@ class InternalNode(Node):
         """Return the serialised key for key in this node."""
         # search keys are fixed width. All will be self._node_width wide, so we
         # pad as necessary.
-        return ('\x00'.join(key) + '\x00'*self._node_width)[:self._node_width]
+        return (self._search_key_func(key) + '\x00'*self._node_width)[:self._node_width]
 
     def _search_prefix_filter(self, key):
         """Serialise key for use as a prefix filter in iteritems."""
