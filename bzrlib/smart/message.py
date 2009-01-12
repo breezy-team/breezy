@@ -108,25 +108,39 @@ class ConventionalRequestHandler(MessageHandler):
 
     def byte_part_received(self, byte):
         if self.expecting == 'body':
-            # XXX: handle post-body error status
-            if byte != 'S':
+            if byte == 'S':
+                # Success.  Nothing more to come except the end of message.
+                self.expecting = 'end'
+            elif byte == 'E':
+                # Error.  Expect an error structure.
+                self.expecting = 'error'
+            else:
                 raise errors.SmartProtocolError(
                     'Non-success status byte in request body: %r' % (byte,))
-            self.expecting = 'end'
         else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: byte(%r)' % (byte,))
 
     def structure_part_received(self, structure):
-        if self.expecting != 'args':
+        if self.expecting == 'args':
+            self._args_received(structure)
+        elif self.expecting == 'error':
+            self._error_received(structure)
+        else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: structure(%r)' % (structure,))
+
+    def _args_received(self, args):
         self.expecting = 'body'
-        self.request_handler.dispatch_command(structure[0], structure[1:])
+        self.request_handler.dispatch_command(args[0], args[1:])
         if self.request_handler.finished_reading:
             self._response_sent = True
             self.responder.send_response(self.request_handler.response)
             self.expecting = 'end'
+
+    def _error_received(self, error_args):
+        self.expecting = 'end'
+        self.request_handler.post_body_error_received(error_args)
 
     def bytes_part_received(self, bytes):
         if self.expecting == 'body':

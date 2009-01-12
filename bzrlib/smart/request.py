@@ -336,6 +336,10 @@ class SmartServerRequestHandler(object):
     def end_received(self):
         self._run_handler_code(self._command.do_end, (), {})
 
+    def post_body_error_received(self, error_args):
+        # Just a no-op at the moment.
+        pass
+
 
 class HelloRequest(SmartServerRequest):
     """Answer a version request with the highest protocol version this server

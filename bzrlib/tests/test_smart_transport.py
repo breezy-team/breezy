@@ -2487,6 +2487,20 @@ class TestConventionalRequestHandlerBodyStream(tests.TestCase):
         self.assertEqual(
             ['Some bytes\n', 'More bytes'], accept_body_calls)
 
+    def test_error_flag_after_body(self):
+        body_then_error = (
+            's\0\0\0\x07l3:fooe' # request args
+            'b\0\0\0\x0bSome bytes\n' # some bytes
+            'b\0\0\0\x0aMore bytes' # more bytes
+            'oE' # error flag
+            's\0\0\0\x07l3:bare' # error args
+            'e' # message end
+            )
+        request_handler = self.make_request_handler(body_then_error)
+        self.assertEqual(
+            [('post_body_error_received', ('bar',)), ('end_received',)],
+            request_handler.calls[-2:])
+
 
 class TestMessageHandlerErrors(tests.TestCase):
     """Tests for v3 that unrecognised (but well-formed) requests/responses are
@@ -2554,6 +2568,9 @@ class InstrumentedRequestHandler(object):
     def end_of_body(self):
         self.calls.append(('end_of_body',))
         self.finished_reading = True
+
+    def post_body_error_received(self, error_args):
+        self.calls.append(('post_body_error_received', error_args))
 
 
 class StubRequest(object):
