@@ -1639,12 +1639,13 @@ def file_kind(f, _lstat=os.lstat):
 
 
 def until_no_eintr(f, *a, **kw):
+    """Run f(*a, **kw), retrying if an EINTR error occurs."""
     # Borrowed from Twisted's twisted.python.util.untilConcludes function.
     while True:
         try:
             return f(*a, **kw)
         except (IOError, OSError), e:
-            if e.args[0] == errno.EINTR:
+            if e.errno == errno.EINTR:
                 continue
             raise
 
