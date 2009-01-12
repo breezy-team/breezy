@@ -2444,10 +2444,13 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
             list(response_handler.read_streamed_body()))
 
 
-class DummyResponder(object):
+class FakeResponder(object):
+
     response_sent = False
+
     def send_error(self, exc):
         raise exc
+
     def send_response(self, response):
         pass
 
@@ -2462,7 +2465,7 @@ class TestConventionalRequestHandlerBodyStream(tests.TestCase):
         from bzrlib.smart.message import ConventionalRequestHandler
         request_handler = InstrumentedRequestHandler()
         request_handler.response = _mod_request.SuccessfulSmartServerResponse(('arg', 'arg'))
-        responder = DummyResponder()
+        responder = FakeResponder()
         message_handler = ConventionalRequestHandler(request_handler, responder)
         protocol_decoder = protocol.ProtocolThreeDecoder(message_handler)
         # put decoder in desired state (waiting for message parts)
