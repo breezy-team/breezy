@@ -1549,7 +1549,7 @@ def recv_all(socket, bytes):
     """
     b = ''
     while len(b) < bytes:
-        new = socket.recv(bytes - len(b))
+        new = until_no_eintr(socket.recv, bytes - len(b))
         if new == '':
             break # eof
         b += new
@@ -1564,7 +1564,7 @@ def send_all(socket, bytes):
     """
     chunk_size = 2**16
     for pos in xrange(0, len(bytes), chunk_size):
-        socket.sendall(bytes[pos:pos+chunk_size])
+        until_no_eintr(socket.sendall, bytes[pos:pos+chunk_size])
 
 
 def dereference_path(path):
@@ -1636,6 +1636,19 @@ def file_kind(f, _lstat=os.lstat):
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
+
+
+def until_no_eintr(f, *a, **kw):
+    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
+    while True:
+        try:
+            return f(*a, **kw)
+        except (IOError, OSError), e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
+
 
 if sys.platform == "win32":
     import msvcrt

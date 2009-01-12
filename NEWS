@@ -90,6 +90,11 @@ IN DEVELOPMENT
       in the appropriate sections.
       (Vincent Ladeuil, #103029)
 
+    * Many socket operations now handle EINTR by retrying the operation.
+      Previously EINTR was treated as an unrecoverable failure.  There is
+      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
+      (Andrew Bennetts)
+
     * Opening a stacked branch now properly shares the connection, rather
       than opening a new connection for the stacked-on branch.
       (John Arbash meinel)
