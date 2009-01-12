@@ -1,3 +1,9 @@
+bzr-svn 0.4.17	2008-01-13
+
+  BUG FIXES
+
+   * Mark as compatible with Bazaar 1.11.
+
 bzr-svn 0.4.16	2008-12-06
 
   BUG FIXES
