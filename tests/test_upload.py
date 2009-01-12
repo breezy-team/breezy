@@ -419,35 +419,37 @@ class TestUploadMixin(object):
     def test_upload_auto(self):
         """Test that upload --auto sets the upload_auto option"""
         self.make_local_branch()
+
         self.add_file('hello', 'foo')
-        try:
-            self.assertFalse(self.get_upload_auto())
-        except errors.NotBranchError:
-            pass
-        self.do_full_upload(auto=True)
-        self.assertUpFileEqual('foo', 'hello')
-        self.assertTrue(self.get_upload_auto())
-        # and check that it stays set until it is unset
-        self.add_file('bye', 'bar')
         self.do_full_upload()
+        self.assertUpFileEqual('foo', 'hello')
+        self.assertFalse(self.get_upload_auto())
+
+        self.add_file('bye', 'bar')
+        self.do_full_upload(auto=True)
         self.assertUpFileEqual('bar', 'bye')
+        self.assertTrue(self.get_upload_auto())
+
+        # and check that it stays set until it is unset
+        self.add_file('again', 'baz')
+        self.do_full_upload()
+        self.assertUpFileEqual('baz', 'again')
         self.assertTrue(self.get_upload_auto())
 
     def test_upload_noauto(self):
         """Test that upload --no-auto unsets the upload_auto option"""
         self.make_local_branch()
+
         self.add_file('hello', 'foo')
-        try:
-            self.assertFalse(self.get_upload_auto())
-        except errors.NotBranchError:
-            pass
         self.do_full_upload(auto=True)
         self.assertUpFileEqual('foo', 'hello')
         self.assertTrue(self.get_upload_auto())
+
         self.add_file('bye', 'bar')
         self.do_full_upload(auto=False)
         self.assertUpFileEqual('bar', 'bye')
         self.assertFalse(self.get_upload_auto())
+
         # and check that it stays unset until it is set
         self.add_file('again', 'baz')
         self.do_full_upload()
