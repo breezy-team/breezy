@@ -96,18 +96,7 @@ from bzrlib.tree import Tree
 from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
 
 
-class WorkingTree4(WorkingTree3):
-    """This is the Format 4 working tree.
-
-    This differs from WorkingTree3 by:
-     - Having a consolidated internal dirstate, stored in a
-       randomly-accessible sorted file on disk.
-     - Not having a regular inventory attribute.  One can be synthesized 
-       on demand but this is expensive and should be avoided.
-
-    This is new in bzr 0.15.
-    """
-
+class DirStateWorkingTree(WorkingTree3):
     def __init__(self, basedir,
                  branch,
                  _control_files=None,
@@ -894,7 +883,8 @@ class WorkingTree4(WorkingTree3):
         for tree in trees:
             if not (isinstance(tree, DirStateRevisionTree) and tree._revision_id in
                 parents):
-                return super(WorkingTree4, self).paths2ids(paths, trees, require_versioned)
+                return super(DirStateWorkingTree, self).paths2ids(paths,
+                    trees, require_versioned)
         search_indexes = [0] + [1 + parents.index(tree._revision_id) for tree in trees]
         # -- make all paths utf8 --
         paths_utf8 = set()
@@ -1291,30 +1281,32 @@ class WorkingTree4(WorkingTree3):
         self.flush()
 
 
-class WorkingTreeFormat4(WorkingTreeFormat3):
-    """The first consolidated dirstate working tree format.
+class WorkingTree4(DirStateWorkingTree):
+    """This is the Format 4 working tree.
 
-    This format:
-        - exists within a metadir controlling .bzr
-        - includes an explicit version marker for the workingtree control
-          files, separate from the BzrDir format
-        - modifies the hash cache format
-        - is new in bzr 0.15
-        - uses a LockDir to guard access to it.
+    This differs from WorkingTree3 by:
+     - Having a consolidated internal dirstate, stored in a
+       randomly-accessible sorted file on disk.
+     - Not having a regular inventory attribute.  One can be synthesized 
+       on demand but this is expensive and should be avoided.
+
+    This is new in bzr 0.15.
     """
 
-    upgrade_recommended = False
 
-    _tree_class = WorkingTree4
+class WorkingTree5(DirStateWorkingTree):
+    """This is the Format 5 working tree.
 
-    def get_format_string(self):
-        """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
+    This differs from WorkingTree4 by:
+     - Supporting content filtering.
+     - Supporting a current view that may mask the set of files in a tree
+       impacted by most user operations.
 
-    def get_format_description(self):
-        """See WorkingTreeFormat.get_format_description()."""
-        return "Working tree format 4"
+    This is new in bzr 1.11.
+    """
 
+
+class DirStateWorkingTreeFormat(WorkingTreeFormat3):
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
@@ -1433,6 +1425,58 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             'dirstate-with-subtree')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
+
+
+class WorkingTreeFormat4(DirStateWorkingTreeFormat):
+    """The first consolidated dirstate working tree format.
+
+    This format:
+        - exists within a metadir controlling .bzr
+        - includes an explicit version marker for the workingtree control
+          files, separate from the BzrDir format
+        - modifies the hash cache format
+        - is new in bzr 0.15
+        - uses a LockDir to guard access to it.
+    """
+
+    upgrade_recommended = False
+
+    _tree_class = WorkingTree4
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar Working Tree Format 4 (bzr 0.15)\n"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 4"
+
+
+class WorkingTreeFormat5(DirStateWorkingTreeFormat):
+    """WorkingTree format supporting views.
+    """
+
+    upgrade_recommended = False
+
+    _tree_class = WorkingTree5
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar Working Tree Format 5 (bzr 1.11)\n"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 5"
+
+    def _init_custom_control_files(self, wt):
+        """Subclasses with custom control files should override this method."""
+        wt._transport.put_bytes('views', '', mode=wt.bzrdir._get_file_mode())
+
+    def supports_content_filtering(self):
+        return True
+
+    def supports_views(self):
+        return True
 
 
 class DirStateRevisionTree(Tree):
@@ -1950,9 +1994,9 @@ class InterDirStateTree(InterTree):
     @staticmethod
     def is_compatible(source, target):
         # the target must be a dirstate working tree
-        if not isinstance(target, WorkingTree4):
+        if not isinstance(target, DirStateWorkingTree):
             return False
-        # the source must be a revtreee or dirstate rev tree.
+        # the source must be a revtree or dirstate rev tree.
         if not isinstance(source,
             (revisiontree.RevisionTree, DirStateRevisionTree)):
             return False
@@ -2004,6 +2048,35 @@ class Converter3to4(object):
             except errors.NoSuchFile:
                 # some files are optional - just deal.
                 pass
+
+    def update_format(self, tree):
+        """Change the format marker."""
+        tree._transport.put_bytes('format',
+            self.target_format.get_format_string(),
+            mode=tree.bzrdir._get_file_mode())
+
+
+class Converter4to5(object):
+    """Perform an in-place upgrade of format 4 to format 5 trees."""
+
+    def __init__(self):
+        self.target_format = WorkingTreeFormat5()
+
+    def convert(self, tree):
+        # lock the control files not the tree, so that we don't get tree
+        # on-unlock behaviours, and so that no-one else diddles with the 
+        # tree during upgrade.
+        tree._control_files.lock_write()
+        try:
+            self.init_custom_control_files(tree)
+            self.update_format(tree)
+        finally:
+            tree._control_files.unlock()
+
+    def init_custom_control_files(self, tree):
+        """Initialize custom control files."""
+        tree._transport.put_bytes('views', '',
+            mode=tree.bzrdir._get_file_mode())
 
     def update_format(self, tree):
         """Change the format marker."""

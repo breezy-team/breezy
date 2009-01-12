@@ -801,15 +801,8 @@ class cmd_pull(Command):
 
             result.report(self.outf)
             if verbose and result.old_revid != result.new_revid:
-                old_rh = list(
-                    branch_to.repository.iter_reverse_revision_history(
-                    result.old_revid))
-                old_rh.reverse()
-                new_rh = branch_to.revision_history()
-                log_format = branch_to.get_config().log_format()
-                log.show_changed_revisions(branch_to, old_rh, new_rh,
-                                           to_file=self.outf,
-                                           log_format=log_format)
+                log.show_branch_change(branch_to, self.outf, result.old_revno,
+                                       result.old_revid)
         finally:
             branch_to.unlock()
 
@@ -4236,7 +4229,7 @@ class cmd_merge_directive(Command):
 
 
 class cmd_send(Command):
-    """Mail or create a merge-directive for submiting changes.
+    """Mail or create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -4267,9 +4260,9 @@ class cmd_send(Command):
     
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "evolution", "kmail", "mutt", and "thunderbird";
-    generic options are "default", "editor", "emacsclient", "mapi", and
-    "xdg-email".  Plugins may also add supported clients.
+    specific clients are "claws", "evolution", "kmail", "mutt", and
+    "thunderbird"; generic options are "default", "editor", "emacsclient",
+    "mapi", and "xdg-email".  Plugins may also add supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
@@ -4434,7 +4427,7 @@ class cmd_send(Command):
 
 class cmd_bundle_revisions(cmd_send):
 
-    """Create a merge-directive for submiting changes.
+    """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 

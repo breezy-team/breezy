@@ -180,10 +180,17 @@ class TestFormatRegistry(TestCase):
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True, alias=True)
         self.assertEqual(frozenset(['weavealias']), a_registry.aliases())
-    
+
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
+
+    def __init__(self, dir):
+        self.bzrdir = dir
+
+
+class SampleRepository(bzrlib.repository.Repository):
+    """A dummy repo."""
 
     def __init__(self, dir):
         self.bzrdir = dir
@@ -198,7 +205,7 @@ class SampleBzrDir(bzrdir.BzrDir):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        return "A repository"
+        return SampleRepository(self)
 
     def create_branch(self):
         """See BzrDir.create_branch."""

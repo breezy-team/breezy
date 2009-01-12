@@ -2592,10 +2592,15 @@ class ConvertMetaToMeta(Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups
             if (isinstance(tree, workingtree.WorkingTree3) and
-                not isinstance(tree, workingtree_4.WorkingTree4) and
+                not isinstance(tree, workingtree_4.DirStateWorkingTree) and
                 isinstance(self.target_format.workingtree_format,
-                    workingtree_4.WorkingTreeFormat4)):
+                    workingtree_4.DirStateWorkingTreeFormat)):
                 workingtree_4.Converter3to4().convert(tree)
+            if (isinstance(tree, workingtree_4.DirStateWorkingTree) and
+                not isinstance(tree, workingtree_4.WorkingTree5) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_4.WorkingTreeFormat5)):
+                workingtree_4.Converter4to5().convert(tree)
         return to_convert
 
 
@@ -2897,12 +2902,13 @@ class RepositoryAcquisitionPolicy(object):
         else:
             return urlutils.join(self._stack_on_pwd, self._stack_on)
 
-    def _add_fallback(self, repository):
+    def _add_fallback(self, repository, possible_transports=None):
         """Add a fallback to the supplied repository, if stacking is set."""
         stack_on = self._get_full_stack_on()
         if stack_on is None:
             return
-        stacked_dir = BzrDir.open(stack_on)
+        stacked_dir = BzrDir.open(stack_on,
+                                  possible_transports=possible_transports)
         try:
             stacked_repo = stacked_dir.open_branch().repository
         except errors.NotBranchError:
@@ -2950,7 +2956,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         Creates the desired repository in the bzrdir we already have.
         """
         repository = self._bzrdir.create_repository(shared=shared)
-        self._add_fallback(repository)
+        self._add_fallback(repository,
+                           possible_transports=[self._bzrdir.transport])
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository
@@ -2977,7 +2984,8 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 
         Returns an existing repository to use
         """
-        self._add_fallback(self._repository)
+        self._add_fallback(self._repository,
+                       possible_transports=[self._repository.bzrdir.transport])
         return self._repository
 
 
@@ -3095,6 +3103,21 @@ format_registry.register_metadir('1.9-rich-root',
          '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    )
+format_registry.register_metadir('1.12-preview',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    help='A working-tree format that supports views and content filtering.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    experimental=True,
+    )
+format_registry.register_metadir('1.12-preview-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    help='A variant of 1.12-preview that supports rich-root data '
+         '(needed for bzr-svn).',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    experimental=True,
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',

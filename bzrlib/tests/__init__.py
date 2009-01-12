@@ -2138,7 +2138,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
-            self.assert_(isinstance(name, basestring))
+            self.assertIsInstance(name, basestring)
             if name[-1] == '/':
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
@@ -3294,7 +3294,29 @@ class _FTPServerFeature(Feature):
     def feature_name(self):
         return 'FTPServer'
 
+
 FTPServerFeature = _FTPServerFeature()
+
+
+class _HTTPSServerFeature(Feature):
+    """Some tests want an https Server, check if one is available.
+
+    Right now, the only way this is available is under python2.6 which provides
+    an ssl module.
+    """
+
+    def _probe(self):
+        try:
+            import ssl
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'HTTPSServer'
+
+
+HTTPSServerFeature = _HTTPSServerFeature()
 
 
 class _UnicodeFilename(Feature):
