@@ -1238,16 +1238,20 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
-        self._write_chunked_body_start()
-        # XXX: handle errors while iterating the body stream
-        # XXX: notice if the server has sent an early error reply before we
-        #      have finished sending the stream.  We would notice at the end
-        #      anyway, but if the medium can deliver it early then it's good to
-        #      short-circuit the whole request...
-        for part in stream:
-            self._write_prefixed_body(part)
-            self.flush()
-        self._write_success_status()
+        # TODO: notice if the server has sent an early error reply before we
+        #       have finished sending the stream.  We would notice at the end
+        #       anyway, but if the medium can deliver it early then it's good
+        #       to short-circuit the whole request...
+        try:
+            for part in stream:
+                self._write_prefixed_body(part)
+                self.flush()
+        except Exception:
+            # Iterating the stream failed.  Cleanly abort the request.
+            self._write_error_status()
+            # Currently the client unconditionally sends ('error',) as the
+            # error args.
+            self._write_structure(('error',))
         self._write_end()
         self._medium_request.finished_writing()
 

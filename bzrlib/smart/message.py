@@ -107,55 +107,60 @@ class ConventionalRequestHandler(MessageHandler):
         self.responder.send_error(exception)
 
     def byte_part_received(self, byte):
-        if self.expecting == 'body' and byte == 'C':
-            self.expecting = 'chunk'
-        elif self.expecting == 'chunk':
-            if byte != 'S':
+        if self.expecting == 'body':
+            if byte == 'S':
+                # Success.  Nothing more to come except the end of message.
+                self.expecting = 'end'
+            elif byte == 'E':
+                # Error.  Expect an error structure.
+                self.expecting = 'error'
+            else:
                 raise errors.SmartProtocolError(
                     'Non-success status byte in request body: %r' % (byte,))
-            self.expecting = 'end'
-            self._should_finish_body = True
-            self._body_finished()
         else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: byte(%r)' % (byte,))
 
     def structure_part_received(self, structure):
-        if self.expecting != 'args':
+        if self.expecting == 'args':
+            self._args_received(structure)
+        elif self.expecting == 'error':
+            self._error_received(structure)
+        else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: structure(%r)' % (structure,))
+
+    def _args_received(self, args):
         self.expecting = 'body'
-        self.request_handler.dispatch_command(structure[0], structure[1:])
+        self.request_handler.dispatch_command(args[0], args[1:])
         if self.request_handler.finished_reading:
             self._response_sent = True
             self.responder.send_response(self.request_handler.response)
             self.expecting = 'end'
 
-    def _body_finished(self):
-        if not self._should_finish_body:
-            return
-        self._should_finish_body = False
-        self.request_handler.end_of_body()
-        if not self.request_handler.finished_reading:
-            raise errors.SmartProtocolError(
-                "Conventional request body was received, but request "
-                "handler has not finished reading.")
-        
+    def _error_received(self, error_args):
+        self.expecting = 'end'
+        self.request_handler.post_body_error_received(error_args)
+
     def bytes_part_received(self, bytes):
         if self.expecting == 'body':
-            self.expecting == 'end'
             self._should_finish_body = True
             self.request_handler.accept_body(bytes)
-        elif self.expecting == 'chunk':
-            self.request_handler.body_chunk_received(bytes)
         else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: bytes(%r)' % (bytes,))
 
     def end_received(self):
+        if self.expecting not in ['body', 'end']:
+            raise errors.SmartProtocolError(
+                'End of message received prematurely (while expecting %s)'
+                % (self.expecting,))
         self.expecting = 'nothing'
-        self._body_finished()
         self.request_handler.end_received()
+        if not self.request_handler.finished_reading:
+            raise errors.SmartProtocolError(
+                "Complete conventional request was received, but request "
+                "handler has not finished reading.")
         if not self._response_sent:
             self.responder.send_response(self.request_handler.response)
 
