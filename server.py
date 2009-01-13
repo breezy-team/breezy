@@ -151,7 +151,7 @@ def revision_to_commit(rev, mapping, tree_sha):
         commit._author = rev.properties['author']
     else:
         commit._author = rev.committer
-    commit._commit_time = rev.timestamp
+    commit._commit_time = long(rev.timestamp)
     commit.serialize()
     return commit
 
