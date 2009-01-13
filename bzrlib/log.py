@@ -238,7 +238,8 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     :param search: If not None, only show revisions with matching commit
         messages.
     :param generate_merge_revisions: If False, show only mainline revisions.
-    :param allow_single_merge_revision: ????
+    :param allow_single_merge_revision: If True, logging of a single
+        revision off the mainline is to be allowed
     :param generate_delta: Whether to generate a delta for each revision.
 
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
@@ -246,10 +247,8 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     """
     # Intial implementation - call existing functions
     view_revisions = calculate_view_revisions(branch, start_revision,
-                                              end_revision, direction,
-                                              specific_fileid,
-                                              generate_merge_revisions,
-                                              allow_single_merge_revision)
+        end_revision, direction, specific_fileid, generate_merge_revisions,
+        allow_single_merge_revision)
     return make_log_rev_iterator(branch, view_revisions, generate_delta, search)
 
 
@@ -489,8 +488,6 @@ def _get_mainline_revs(branch, start_revision, end_revision):
         raise errors.BzrCommandError("Start revision must be older than "
                                      "the end revision.")
 
-    if end_revno < start_revno:
-        return None, None, None, None
     cur_revno = branch_revno
     rev_nos = {}
     mainline_revs = []
@@ -737,10 +734,10 @@ class LogFormatter(object):
     - supports_delta must be True if this log formatter supports delta.
         Otherwise the delta attribute may not be populated.  The 'delta_format'
         attribute describes whether the 'short_status' format (1) or the long
-        one (2) sould be used.
+        one (2) should be used.
  
     - supports_merge_revisions must be True if this log formatter supports 
-        merge revisions.  If not, and if supports_single_merge_revisions is
+        merge revisions.  If not, and if supports_single_merge_revision is
         also not True, then only mainline revisions will be passed to the 
         formatter.
     - supports_single_merge_revision must be True if this log formatter
