@@ -213,20 +213,24 @@ def _show_log(branch,
     generate_delta = verbose and getattr(lf, 'supports_delta', False)
 
     # Find and print the interesting revisions
-    log_count = 0
-    revision_iterator = _create_log_revision_iterator(branch, start_revision,
-        end_revision, direction, specific_fileid, search,
-        generate_merge_revisions, allow_single_merge_revision, generate_delta,
-        strict)
-    for revs in revision_iterator:
-        for (rev_id, revno, merge_depth), rev, delta in revs:
-            lr = LogRevision(rev, revno, merge_depth, delta,
-                             rev_tag_dict.get(rev_id))
-            lf.log_revision(lr)
-            if limit:
-                log_count += 1
-                if log_count >= limit:
-                    return
+    try:
+        log_count = 0
+        revision_iterator = _create_log_revision_iterator(branch,
+            start_revision, end_revision, direction, specific_fileid, search,
+            generate_merge_revisions, allow_single_merge_revision,
+            generate_delta, strict)
+        for revs in revision_iterator:
+            for (rev_id, revno, merge_depth), rev, delta in revs:
+                lr = LogRevision(rev, revno, merge_depth, delta,
+                                 rev_tag_dict.get(rev_id))
+                lf.log_revision(lr)
+                if limit:
+                    log_count += 1
+                    if log_count >= limit:
+                        return
+    except _NonMainlineRevisionLimit:
+        raise errors.BzrCommandError('Selected log formatter only supports'
+            ' mainline revisions.')
 
 
 def _create_log_revision_iterator(branch, start_revision, end_revision,
@@ -259,6 +263,10 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     return make_log_rev_iterator(branch, view_revisions, generate_delta, search)
 
 
+class _NonMainlineRevisionLimit(Exception):
+    """Raised when a revision limit is not on the mainline."""
+
+
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision, strict=True):
@@ -274,10 +282,13 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
 
     # If we only want to see mainline revisions, we can iterate ...
     # NOTE: The specific_fileid check will go once _mainline_view_revisions()
-    # supports filtering by that parameter
+    # supports filtering by that parameter or fileid filtering is moved to
+    # the layer above
     generate_single_revision = (start_rev_id and start_rev_id == end_rev_id)
     if (not generate_merge_revisions and not generate_single_revision
-        and not strict and specific_fileid is None):
+        and specific_fileid is None):
+        # Note: mainline_view_revisions() returns an iterator so we can't
+        # trap the _NonMainlineRevisionLimits exception here
         result = _mainline_view_revisions(branch, rev_limits)
         if direction == 'forward':
             result = reversed(list(result))
@@ -291,7 +302,14 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         return []
 
     # If a single revision is requested and it's not on the mainline,
-    # make sure the log formatter handles that
+    # generate the merge revisions
+    #if (not generate_merge_revisions and generate_single_revision
+    #    and ((start_rev_id and (start_rev_id not in rev_nos))
+    #        or (end_rev_id and (end_rev_id not in rev_nos)))):
+    #    if allow_single_merge_revision:
+    #        generate_merge_revisions = True
+    #    else:
+    #        raise _NonMainlineRevisionLimit()
     generate_single_revision = False
     if (not generate_merge_revisions
         and ((start_rev_id and (start_rev_id not in rev_nos))
@@ -299,8 +317,7 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         generate_single_revision = ((start_rev_id == end_rev_id)
             and allow_single_merge_revision)
         if not generate_single_revision:
-            raise errors.BzrCommandError('Selected log formatter only supports'
-                ' mainline revisions.')
+            raise _NonMainlineRevisionLimit()
         generate_merge_revisions = True
 
     # Do the filtering
@@ -332,16 +349,34 @@ def _mainline_view_revisions(branch, revision_limits):
 
     :param revision_limits: a tuple as returned by _get_revision_limits()
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
+    :raises _NonMainlineRevisionLimit: if a start_rev_id and/or end_rev_id
+      is specified and not found
     """
-    br_revno, br_rev_id, start_revno, _, end_revno, _ = revision_limits
+    br_revno, br_rev_id, start_revno, start_rev_id, end_revno, end_rev_id = \
+        revision_limits
     repo = branch.repository
     cur_revno = br_revno
-    for revision_id in repo.iter_reverse_revision_history(br_rev_id):
-        if cur_revno < start_revno:
-            break
-        if cur_revno <= end_revno:
+    rev_iter = repo.iter_reverse_revision_history(br_rev_id)
+    if start_rev_id is None and end_rev_id is None:
+        for revision_id in rev_iter:
             yield revision_id, str(cur_revno), 0
-        cur_revno -= 1
+            cur_revno -= 1
+    else:
+        found_start = start_rev_id is None
+        found_end = end_rev_id is None
+        for revision_id in rev_iter:
+            if cur_revno < start_revno:
+                break
+            if cur_revno <= end_revno:
+                if not found_start and revision_id == start_rev_id:
+                    found_start = True
+                if not found_end and revision_id == end_rev_id:
+                    found_end = True
+                yield revision_id, str(cur_revno), 0
+            cur_revno -= 1
+        else:
+            if not found_start or not found_end:
+                raise _NonMainlineRevisionLimit()
 
 
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
