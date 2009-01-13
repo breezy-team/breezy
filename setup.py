@@ -16,5 +16,5 @@ setup(name='bzr-git',
       """,
       package_dir={'bzrlib.plugins.git':'.'},
       packages=['bzrlib.plugins.git'],
-      scripts=['git-receive-pack', 'git-upload-pack'],
+      scripts=['bzr-receive-pack', 'bzr-upload-pack'],
       )
