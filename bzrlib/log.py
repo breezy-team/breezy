@@ -144,7 +144,8 @@ def show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             strict=False):
     """Write out human-readable log of commits to this branch.
 
     :param lf: The LogFormatter object showing the output.
@@ -166,6 +167,9 @@ def show_log(branch,
 
     :param limit: If set, shows only 'limit' revisions, all revisions are shown
         if None or 0.
+
+    :param strict: If True, check that revision limits are on the mainline if
+       the LogFormatter requires this
     """
     branch.lock_read()
     try:
@@ -173,7 +177,7 @@ def show_log(branch,
             lf.begin_log()
 
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search, limit)
+                  start_revision, end_revision, search, limit, strict)
 
         if getattr(lf, 'end_log', None):
             lf.end_log()
@@ -189,7 +193,8 @@ def _show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             strict=False):
     """Worker function for show_log - see show_log."""
     if not isinstance(lf, LogFormatter):
         warn("not a LogFormatter instance: %r" % lf)
@@ -211,7 +216,8 @@ def _show_log(branch,
     log_count = 0
     revision_iterator = _create_log_revision_iterator(branch, start_revision,
         end_revision, direction, specific_fileid, search,
-        generate_merge_revisions, allow_single_merge_revision, generate_delta)
+        generate_merge_revisions, allow_single_merge_revision, generate_delta,
+        strict)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
             lr = LogRevision(rev, revno, merge_depth, delta,
@@ -225,7 +231,7 @@ def _show_log(branch,
 
 def _create_log_revision_iterator(branch, start_revision, end_revision,
     direction, specific_fileid, search, generate_merge_revisions,
-    allow_single_merge_revision, generate_delta):
+    allow_single_merge_revision, generate_delta, strict):
     """Create a revision iterator for log.
 
     :param branch: The branch being logged.
@@ -241,33 +247,53 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     :param allow_single_merge_revision: If True, logging of a single
         revision off the mainline is to be allowed
     :param generate_delta: Whether to generate a delta for each revision.
+    :param strict: If True, check that revision limits are on the mainline if
+       the LogFormatter requires this
 
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    # Intial implementation - call existing functions
     view_revisions = calculate_view_revisions(branch, start_revision,
         end_revision, direction, specific_fileid, generate_merge_revisions,
-        allow_single_merge_revision)
+        allow_single_merge_revision, strict)
     return make_log_rev_iterator(branch, view_revisions, generate_delta, search)
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
-                             allow_single_merge_revision):
-    if (not generate_merge_revisions
-        and start_revision is end_revision is None
-        and direction == 'reverse'
-        and specific_fileid is None):
-        return _linear_view_revisions(branch)
+                             allow_single_merge_revision, strict=True):
+    """Calculate the revisions to view.
 
+    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
+             a list of the same tuples.
+    """
+    rev_limits = _get_revision_limits(branch, start_revision, end_revision)
+    br_revno, _, start_revno, start_rev_id, end_revno, end_rev_id = rev_limits
+    if br_revno == 0:
+        return []
+
+    # If we only want to see mainline revisions, we can iterate ...
+    # NOTE: The specific_fileid check will go once _mainline_view_revisions()
+    # supports filtering by that parameter
+    if not strict and not generate_merge_revisions and specific_fileid is None:
+        result = _mainline_view_revisions(branch, rev_limits)
+        if direction == 'forward':
+            result = reversed(list(result))
+        return result
+
+    # Otherwise, the algorithm is O(history) for now ...
+
+    # Get the revision history and limits, if any
+    # TODO ... pass rev_limits
     mainline_revs, rev_nos, start_rev_id, end_rev_id = _get_mainline_revs(
         branch, start_revision, end_revision)
     if not mainline_revs:
         return []
 
+    # If a single revision is requested and it's not on the mainline,
+    # make sure we're generating the merge revisions (unless we can't)
     generate_single_revision = False
-    if ((not generate_merge_revisions)
+    if (strict and not generate_merge_revisions
         and ((start_rev_id and (start_rev_id not in rev_nos))
             or (end_rev_id and (end_rev_id not in rev_nos)))):
         generate_single_revision = ((start_rev_id == end_rev_id)
@@ -275,10 +301,11 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         if not generate_single_revision:
             raise errors.BzrCommandError('Selected log formatter only supports'
                 ' mainline revisions.')
-        generate_merge_revisions = generate_single_revision
+        generate_merge_revisions = True
+
+    # Do the filtering
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
-
     if direction == 'reverse':
         start_rev_id, end_rev_id = end_rev_id, start_rev_id
     view_revisions = _filter_revision_range(list(view_revs_iter),
@@ -291,7 +318,7 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
                                                             specific_fileid,
                                                             view_revisions)
 
-    # rebase merge_depth - unless there are no revisions or 
+    # Rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
     if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
         min_depth = min([d for r,n,d in view_revisions])
@@ -300,12 +327,21 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     return view_revisions
 
 
-def _linear_view_revisions(branch):
-    start_revno, start_revision_id = branch.last_revision_info()
+def _mainline_view_revisions(branch, revision_limits):
+    """Calculate the mainline revisions to view, newest to oldest.
+
+    :param revision_limits: a tuple as returned by _get_revision_limits()
+    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
+    """
+    br_revno, br_rev_id, start_revno, _, end_revno, _ = revision_limits
     repo = branch.repository
-    revision_ids = repo.iter_reverse_revision_history(start_revision_id)
-    for num, revision_id in enumerate(revision_ids):
-        yield revision_id, str(start_revno - num), 0
+    cur_revno = br_revno
+    for revision_id in repo.iter_reverse_revision_history(br_rev_id):
+        if cur_revno < start_revno:
+            break
+        if cur_revno <= end_revno:
+            yield revision_id, str(cur_revno), 0
+        cur_revno -= 1
 
 
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
@@ -432,11 +468,9 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
             num = min(int(num * 1.5), 200)
 
 
-def _get_mainline_revs(branch, start_revision, end_revision):
-    """Get the mainline revisions from the branch.
-    
-    Generates the list of mainline revisions for the branch.
-    
+def _get_revision_limits(branch, start_revision, end_revision):
+    """Get and check revision limits.
+
     :param  branch: The branch containing the revisions. 
 
     :param  start_revision: The first revision to be logged.
@@ -447,18 +481,10 @@ def _get_mainline_revs(branch, start_revision, end_revision):
             For backwards compatibility this may be a mainline integer revno,
             but for merge revision support a RevisionInfo is expected.
 
-    :return: A (mainline_revs, rev_nos, start_rev_id, end_rev_id) tuple.
+    :return: (br_revno, br_rev_id, start_revno, start_rev_id, end_revno,
+        end_rev_id) tuple.
     """
-    branch_revno, branch_last_revision = branch.last_revision_info()
-    if branch_revno == 0:
-        return None, None, None, None
-
-    # For mainline generation, map start_revision and end_revision to 
-    # mainline revnos. If the revision is not on the mainline choose the 
-    # appropriate extreme of the mainline instead - the extra will be 
-    # filtered later.
-    # Also map the revisions to rev_ids, to be used in the later filtering
-    # stage.
+    branch_revno, branch_rev_id = branch.last_revision_info()
     start_rev_id = None
     if start_revision is None:
         start_revno = 1
@@ -487,12 +513,38 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if start_revno > end_revno:
         raise errors.BzrCommandError("Start revision must be older than "
                                      "the end revision.")
+    return (branch_revno, branch_rev_id, start_revno, start_rev_id, end_revno,
+        end_rev_id)
 
-    cur_revno = branch_revno
+
+def _get_mainline_revs(branch, start_revision, end_revision):
+    """Get the mainline revisions from the branch.
+    
+    Generates the list of mainline revisions for the branch. Also map the
+    revisions to rev_ids, to be used in the later filtering stage.
+    
+    :param  branch: The branch containing the revisions. 
+
+    :param  start_revision: The first revision to be logged.
+            For backwards compatibility this may be a mainline integer revno,
+            but for merge revision support a RevisionInfo is expected.
+
+    :param  end_revision: The last revision to be logged.
+            For backwards compatibility this may be a mainline integer revno,
+            but for merge revision support a RevisionInfo is expected.
+
+    :return: A (mainline_revs, rev_nos, start_rev_id, end_rev_id) tuple.
+    """
+    (br_revno, br_rev_id, start_revno, start_rev_id, end_revno, end_rev_id) = \
+        _get_revision_limits(branch, start_revision, end_revision)
+    if br_revno == 0:
+        return None, None, None, None
+
+    cur_revno = br_revno
     rev_nos = {}
     mainline_revs = []
     for revision_id in branch.repository.iter_reverse_revision_history(
-                        branch_last_revision):
+                        br_rev_id):
         if cur_revno < start_revno:
             # We have gone far enough, but we always add 1 more revision
             rev_nos[revision_id] = cur_revno

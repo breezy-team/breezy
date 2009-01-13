@@ -397,9 +397,9 @@ message:
         err_msg = 'Selected log formatter only supports mainline revisions.'
         # The single revision case is tested in the core tests
         # since all standard formatters support single merge revisions.
-        out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
+        out,err = self.run_bzr('log --short --strict -r1..1.1.2', retcode=3)
         self.assertContainsRe(err, err_msg)
-        out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
+        out,err = self.run_bzr('log --short --strict -r1.1.1..1.1.2', retcode=3)
         self.assertContainsRe(err, err_msg)
 
 
