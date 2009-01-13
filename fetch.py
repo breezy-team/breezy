@@ -203,7 +203,7 @@ class InterGitNonGitRepository(InterRepository):
         if mapping is None:
             mapping = self.source.get_mapping()
         def progress(text):
-            pb.note("git: %s", text)
+            pb.update("git: %s" % text.rstrip("\r\n"), 0, 0)
         def determine_wants(heads):
             if revision_id is None:
                 ret = heads.values()
