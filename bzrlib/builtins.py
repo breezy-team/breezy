@@ -179,7 +179,7 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision', 'change',
+    takes_options = ['show-ids', 'revision', 'change', 'verbose',
                      Option('short', help='Use short status indicators.',
                             short_name='S'),
                      Option('versioned', help='Only show versioned files.',
@@ -194,7 +194,7 @@ class cmd_status(Command):
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False, no_pending=False):
+            versioned=False, no_pending=False, verbose=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -214,7 +214,7 @@ class cmd_status(Command):
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
                          to_file=self.outf, short=short, versioned=versioned,
-                         show_pending=(not no_pending))
+                         show_pending=(not no_pending), verbose=verbose)
 
 
 class cmd_cat_revision(Command):
