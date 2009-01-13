@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -120,6 +120,7 @@ def load_tests(standard_tests, module, loader):
     t_adapter = TransportAdapter()
     t_classes= (TestHttpTransportRegistration,
                 TestHttpTransportUrls,
+                Test_redirected_to,
                 )
     is_testing_for_transports = tests.condition_isinstance(t_classes)
 
@@ -1263,7 +1264,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
                                   ('bundle',
                                   '# Bazaar revision bundle v0.9\n#\n')
                                   ],)
-
+        # The requests to the old server will be redirected to the new server
         self.old_transport = self._transport(self.old_server.get_url())
 
     def test_redirected(self):
@@ -1446,7 +1447,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     def _testing_pycurl(self):
         return pycurl_present and self._transport == PyCurlTransport
 
-    def get_user_url(self, user=None, password=None):
+    def get_user_url(self, user, password):
         """Build an url embedding user and password"""
         url = '%s://' % self.server._url_protocol
         if user is not None:
@@ -1457,12 +1458,12 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         url += '%s:%s/' % (self.server.host, self.server.port)
         return url
 
-    def get_user_transport(self, user=None, password=None):
+    def get_user_transport(self, user, password):
         return self._transport(self.get_user_url(user, password))
 
     def test_no_user(self):
         self.server.add_user('joe', 'foo')
-        t = self.get_user_transport()
+        t = self.get_user_transport(None, None)
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'a')
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
@@ -1556,6 +1557,25 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
+    def test_user_from_auth_conf(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl does not support authentication.conf')
+        user = 'joe'
+        password = 'foo'
+        self.server.add_user(user, password)
+        # Create a minimal config file with the right password
+        conf = config.AuthenticationConfig()
+        conf._get_config().update(
+            {'httptest': {'scheme': 'http', 'port': self.server.port,
+                          'user': user, 'password': password}})
+        conf._save()
+        t = self.get_user_transport(None, None)
+        # Issue a request to the server to connect
+        self.assertEqual('contents of a\n', t.get('a').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
     def test_changing_nonce(self):
         if self._auth_scheme != 'digest':
             raise tests.TestNotApplicable('HTTP auth digest only test')
@@ -1607,7 +1627,7 @@ class TestProxyAuth(TestAuth):
                 protocol_version=self._protocol_version)
         return server
 
-    def get_user_transport(self, user=None, password=None):
+    def get_user_transport(self, user, password):
         self._install_env({'all_proxy': self.get_user_url(user, password)})
         return self._transport(self.server.get_url())
 
@@ -1743,3 +1763,47 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
                           t.get_smart_medium().send_http_smart_request,
                           'whatever')
 
+class Test_redirected_to(tests.TestCase):
+
+    def test_redirected_to_subdir(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/foo/subdir')
+        self.assertIsInstance(r, type(t))
+        # Both transports share the some connection
+        self.assertEquals(t._get_connection(), r._get_connection())
+
+    def test_redirected_to_self_with_slash(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://www.example.com/foo/')
+        self.assertIsInstance(r, type(t))
+        # Both transports share the some connection (one can argue that we
+        # should return the exact same transport here, but that seems
+        # overkill).
+        self.assertEquals(t._get_connection(), r._get_connection())
+
+    def test_redirected_to_host(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'http://foo.example.com/foo/subdir')
+        self.assertIsInstance(r, type(t))
+
+    def test_redirected_to_same_host_sibling_protocol(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https://www.example.com/foo')
+        self.assertIsInstance(r, type(t))
+
+    def test_redirected_to_same_host_different_protocol(self):
+        t = self._transport('http://www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'ftp://www.example.com/foo')
+        self.assertNotEquals(type(r), type(t))
+
+    def test_redirected_to_different_host_same_user(self):
+        t = self._transport('http://joe@www.example.com/foo')
+        r = t._redirected_to('http://www.example.com/foo',
+                             'https://foo.example.com/foo')
+        self.assertIsInstance(r, type(t))
+        self.assertEquals(t._user, r._user)

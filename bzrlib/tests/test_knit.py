@@ -423,7 +423,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         try:
             raise _TestException('foobar')
         except _TestException, e:
-            retry_exc = errors.RetryWithNewPacks(reload_occurred=False,
+            retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
         return retry_exc
 
@@ -658,6 +658,44 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         self.assertListRaises(errors.NoSuchFile,
             vf.iter_lines_added_or_present_in_keys, keys)
         self.assertEqual([2, 1, 1], reload_counter)
+
+    def test_get_record_stream_yields_disk_sorted_order(self):
+        # if we get 'unordered' pick a semi-optimal order for reading. The
+        # order should be grouped by pack file, and then by position in file
+        repo = self.make_repository('test', format='pack-0.92')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        vf = repo.texts
+        vf.add_lines(('f-id', 'rev-5'), [('f-id', 'rev-4')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-1'), [], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-2'), [('f-id', 'rev-1')], ['lines\n'])
+        repo.commit_write_group()
+        # We inserted them as rev-5, rev-1, rev-2, we should get them back in
+        # the same order
+        stream = vf.get_record_stream([('f-id', 'rev-1'), ('f-id', 'rev-5'),
+                                       ('f-id', 'rev-2')], 'unordered', False)
+        keys = [r.key for r in stream]
+        self.assertEqual([('f-id', 'rev-5'), ('f-id', 'rev-1'),
+                          ('f-id', 'rev-2')], keys)
+        repo.start_write_group()
+        vf.add_lines(('f-id', 'rev-4'), [('f-id', 'rev-3')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-3'), [('f-id', 'rev-2')], ['lines\n'])
+        vf.add_lines(('f-id', 'rev-6'), [('f-id', 'rev-5')], ['lines\n'])
+        repo.commit_write_group()
+        # Request in random order, to make sure the output order isn't based on
+        # the request
+        request_keys = set(('f-id', 'rev-%d' % i) for i in range(1, 7))
+        stream = vf.get_record_stream(request_keys, 'unordered', False)
+        keys = [r.key for r in stream]
+        # We want to get the keys back in disk order, but it doesn't matter
+        # which pack we read from first. So this can come back in 2 orders
+        alt1 = [('f-id', 'rev-%d' % i) for i in [4, 3, 6, 5, 1, 2]]
+        alt2 = [('f-id', 'rev-%d' % i) for i in [5, 1, 2, 4, 3, 6]]
+        if keys != alt1 and keys != alt2:
+            self.fail('Returned key order did not match either expected order.'
+                      ' expected %s or %s, not %s'
+                      % (alt1, alt2, keys))
 
 
 class LowLevelKnitDataTests(TestCase):

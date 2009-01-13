@@ -51,6 +51,14 @@ from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
 
+class TestTestCaseWithBranch(TestCaseWithBranch):
+
+    def test_branch_format_matches_bzrdir_branch_format(self):
+        bzrdir_branch_format = self.bzrdir_format.get_branch_format()
+        self.assertIs(self.branch_format.__class__,
+                      bzrdir_branch_format.__class__)
+
+
 class TestBranch(TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
@@ -503,7 +511,7 @@ class ChrootedTests(TestCaseWithBranch):
         self.assertEqual('', relpath)
         branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
-        
+
 
 class InstrumentedTransaction(object):
 

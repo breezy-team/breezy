@@ -219,6 +219,34 @@ Long Form
    <https://launchpad.net/~bzr-beta-ppa/+archive/+builds>.
 
 
+Packaging bzr-svn
+~~~~~~~~~~~~~~~~~
+
+bzr-svn uses bzr-builddeb in "split" mode, where the packaging branch
+contains both the source and the ``debian/`` directory, and the
+``orig.tar.gz`` is split off when building the packgae.
+
+To build bzr-svn:
+
+#. Get a checkout of ``lp:~bzr/bzr-svn/hardy-ppa/``
+
+#. Merge from ``http://bzr.debian.org/pkg-bazaar/bzr-svn/experimental/``
+  
+   This should bring in both upstream and packaging changes for the new
+   release, and it's updated as part of the bzr-svn release process.
+
+#. ``export UPSTREAM_VERSION=bzr-svn-0.4.15`` or similar
+
+#. Run ``dch -v 0.4.15-1~bazaar1-hardy1 -D hardy`` or similar
+
+#. Run ``bzr builddeb --source``
+
+   bzr-builddeb will automatically check out the appropriate tag from the
+   main branch of bzr-svn, build, and package it.
+
+#. ``dput bzr-beta-ppa ../bzr-svn_0.4.15-1~bazaar1~hardy1_source.changes``
+
+
 Monitoring the contents of PPAs
 -------------------------------
 

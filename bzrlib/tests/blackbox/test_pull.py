@@ -340,3 +340,21 @@ class TestPull(ExternalBase):
         self.addCleanup(lambda: directories.remove('foo:'))
         self.run_bzr('pull foo:bar -d target')
         self.assertEqual(source_last, target.last_revision())
+
+    def test_pull_verbose_defaults_to_long(self):
+        tree = self.example_branch('source')
+        target = self.make_branch_and_tree('target')
+        out = self.run_bzr('pull -v source -d target')[0]
+        self.assertContainsRe(out,
+                              r'revno: 1\ncommitter: .*\nbranch nick: source')
+        self.assertNotContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
+
+    def test_pull_verbose_uses_default_log(self):
+        tree = self.example_branch('source')
+        target = self.make_branch_and_tree('target')
+        target_config = target.branch.get_config()
+        target_config.set_user_option('log_format', 'short')
+        out = self.run_bzr('pull -v source -d target')[0]
+        self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
+        self.assertNotContainsRe(
+            out, r'revno: 1\ncommitter: .*\nbranch nick: source')

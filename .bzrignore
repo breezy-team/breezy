@@ -39,6 +39,7 @@ build
 doc/**/*.html
 doc/developers/performance.png
 bzrlib/_btree_serializer_c.c
+bzrlib/_chunks_to_lines_pyx.c
 bzrlib/_dirstate_helpers_c.c
 bzrlib/_knit_load_data_c.c
 bzrlib/_readdir_pyx.c
