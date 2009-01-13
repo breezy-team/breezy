@@ -28,6 +28,7 @@ from dulwich.objects import ShaFile, Commit, Tree, Blob
 
 import os, tempfile
 
+import stat
 S_IFREG = 32768
 S_IFLNK = 40960
 S_IFDIR = 16384
@@ -192,6 +193,8 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
 
             name = splitpath(path)[-1:][0].encode('UTF-8')
             mode = S_IFREG | 0655
+            if mode & stat.S_IXUSR:
+                mode |= 0100
             tree.add(mode, name, sha)
 
     while len(stack) > 1:
