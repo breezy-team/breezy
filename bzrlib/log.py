@@ -193,29 +193,25 @@ def _show_log(branch,
     """Worker function for show_log - see show_log."""
     if not isinstance(lf, LogFormatter):
         warn("not a LogFormatter instance: %r" % lf)
-
     if specific_fileid:
         trace.mutter('get log for file_id %r', specific_fileid)
+
+    # Consult the LogFormatter about what it needs and can handle
     generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
     allow_single_merge_revision = getattr(lf,
         'supports_single_merge_revision', False)
-    view_revisions = calculate_view_revisions(branch, start_revision,
-                                              end_revision, direction,
-                                              specific_fileid,
-                                              generate_merge_revisions,
-                                              allow_single_merge_revision)
-    rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
-    if generate_tags:
-        if branch.supports_tags():
-            rev_tag_dict = branch.tags.get_reverse_tag_dict()
-
+    if generate_tags and branch.supports_tags():
+        rev_tag_dict = branch.tags.get_reverse_tag_dict()
+    else:
+        rev_tag_dict = {}
     generate_delta = verbose and getattr(lf, 'supports_delta', False)
 
-    # now we just print all the revisions
+    # Find and print the interesting revisions
     log_count = 0
-    revision_iterator = make_log_rev_iterator(branch, view_revisions,
-        generate_delta, search)
+    revision_iterator = _create_log_revision_iterator(branch, start_revision,
+        end_revision, direction, specific_fileid, search,
+        generate_merge_revisions, allow_single_merge_revision, generate_delta)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
             lr = LogRevision(rev, revno, merge_depth, delta,
@@ -227,10 +223,40 @@ def _show_log(branch,
                     return
 
 
+def _create_log_revision_iterator(branch, start_revision, end_revision,
+    direction, specific_fileid, search, generate_merge_revisions,
+    allow_single_merge_revision, generate_delta):
+    """Create a revision iterator for log.
+
+    :param branch: The branch being logged.
+    :param start_revision: If not None, only show revisions >= start_revision
+    :param end_revision: If not None, only show revisions <= end_revision
+    :param direction: 'reverse' (default) is latest to earliest; 'forward' is
+        earliest to latest.
+    :param specific_fileid: If not None, list only the commits affecting the
+        specified file.
+    :param search: If not None, only show revisions with matching commit
+        messages.
+    :param generate_merge_revisions: If False, show only mainline revisions.
+    :param allow_single_merge_revision: ????
+    :param generate_delta: Whether to generate a delta for each revision.
+
+    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+        delta).
+    """
+    # Intial implementation - call existing functions
+    view_revisions = calculate_view_revisions(branch, start_revision,
+                                              end_revision, direction,
+                                              specific_fileid,
+                                              generate_merge_revisions,
+                                              allow_single_merge_revision)
+    return make_log_rev_iterator(branch, view_revisions, generate_delta, search)
+
+
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision):
-    if (    not generate_merge_revisions
+    if (not generate_merge_revisions
         and start_revision is end_revision is None
         and direction == 'reverse'
         and specific_fileid is None):
