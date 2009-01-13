@@ -10,6 +10,11 @@ IN DEVELOPMENT
 
   CHANGES:
   
+    * By default, ``bzr status`` after a merge now shows just the pending
+      merge tip revisions. This improves the signal-to-noise ratio after
+      merging from trunk and completes much faster. To see all merged
+      revisions, use the new ``-v`` flag.  (Ian Clatworthy)
+
     * Formats using Knit-based repository formats are now explicitly
       marked as deprecated. (Ian Clatworthy)
 

@@ -172,6 +172,11 @@ class cmd_status(Command):
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
 
+    Before merges are committed, the pending merge tip revisions are
+    shown. To see all pending merge revisions, use the -v option.
+    To skip the display of pending merge information altogether, use
+    the no-pending option or specify a file/directory.
+
     If a revision argument is given, the status is calculated against
     that revision, or between two revisions if two are provided.
     """
