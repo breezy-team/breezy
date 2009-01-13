@@ -283,10 +283,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
 
     # Otherwise, the algorithm is O(history) for now ...
 
-    # Get the revision history and limits, if any
-    # TODO ... pass rev_limits
-    mainline_revs, rev_nos, start_rev_id, end_rev_id = _get_mainline_revs(
-        branch, start_revision, end_revision)
+    # Get the revision history, if any
+    mainline_revs, rev_nos = _get_mainline_revs(branch, rev_limits)
     if not mainline_revs:
         return []
 
@@ -507,39 +505,30 @@ def _get_revision_limits(branch, start_revision, end_revision):
             branch.check_real_revno(end_revision)
             end_revno = end_revision
 
-    if ((start_rev_id == _mod_revision.NULL_REVISION)
-        or (end_rev_id == _mod_revision.NULL_REVISION)):
-        raise errors.BzrCommandError('Logging revision 0 is invalid.')
-    if start_revno > end_revno:
-        raise errors.BzrCommandError("Start revision must be older than "
-                                     "the end revision.")
+    if branch_revno != 0:
+        if (start_rev_id == _mod_revision.NULL_REVISION
+            or end_rev_id == _mod_revision.NULL_REVISION):
+            raise errors.BzrCommandError('Logging revision 0 is invalid.')
+        if start_revno > end_revno:
+            raise errors.BzrCommandError("Start revision must be older than "
+                                         "the end revision.")
     return (branch_revno, branch_rev_id, start_revno, start_rev_id, end_revno,
         end_rev_id)
 
 
-def _get_mainline_revs(branch, start_revision, end_revision):
+def _get_mainline_revs(branch, revision_limits):
     """Get the mainline revisions from the branch.
     
     Generates the list of mainline revisions for the branch. Also map the
     revisions to rev_ids, to be used in the later filtering stage.
     
     :param  branch: The branch containing the revisions. 
+    :param revision_limits: a tuple as returned by _get_revision_limits()
 
-    :param  start_revision: The first revision to be logged.
-            For backwards compatibility this may be a mainline integer revno,
-            but for merge revision support a RevisionInfo is expected.
-
-    :param  end_revision: The last revision to be logged.
-            For backwards compatibility this may be a mainline integer revno,
-            but for merge revision support a RevisionInfo is expected.
-
-    :return: A (mainline_revs, rev_nos, start_rev_id, end_rev_id) tuple.
+    :return: A (mainline_revs, rev_nos) tuple.
     """
     (br_revno, br_rev_id, start_revno, start_rev_id, end_revno, end_rev_id) = \
-        _get_revision_limits(branch, start_revision, end_revision)
-    if br_revno == 0:
-        return None, None, None, None
-
+        revision_limits
     cur_revno = br_revno
     rev_nos = {}
     mainline_revs = []
@@ -561,7 +550,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     mainline_revs.reverse()
 
     # override the mainline to look like the revision history.
-    return mainline_revs, rev_nos, start_rev_id, end_rev_id
+    return mainline_revs, rev_nos
 
 
 def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
