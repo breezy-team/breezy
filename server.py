@@ -29,15 +29,9 @@ from dulwich.objects import ShaFile, Commit, Tree, Blob
 import os, tempfile
 
 import stat
-S_IFREG = 32768
-S_IFLNK = 40960
-S_IFDIR = 16384
 S_IFGITLINK = 0160000
 
-#S_IFREG | 0755
-#S_IFREG | 0655
-#(a bit dodgey)
-#S_IFREG | 0664
+#S_IFREG | 0664 # *Might* see this; would fail fsck --strict
 
 
 class BzrBackend(Backend):
@@ -159,7 +153,6 @@ def revision_to_commit(rev, mapping, tree_sha):
         commit._author = rev.committer
     commit._commit_time = rev.timestamp
     commit.serialize()
-    print commit.sha().hexdigest()
     return commit
 
 def inventory_to_tree_and_blobs(repo, mapping, revision_id):
@@ -174,7 +167,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             tree.serialize()
             sha = tree.sha().hexdigest()
             yield sha, tree
-            t = (S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+            t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
 
@@ -192,16 +185,16 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             yield sha, blob
 
             name = splitpath(path)[-1:][0].encode('UTF-8')
-            mode = S_IFREG | 0655
-            if mode & stat.S_IXUSR:
-                mode |= 0100
+            mode = stat.S_IFREG | 0644
+            if entry.executable:
+                mode |= 0111
             tree.add(mode, name, sha)
 
     while len(stack) > 1:
         tree.serialize()
         sha = tree.sha().hexdigest()
         yield sha, tree
-        t = (S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+        t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
