@@ -28,14 +28,16 @@ from dulwich.objects import ShaFile, Commit, Tree, Blob
 
 import os, tempfile
 
-# FIXME: Remove this in favor of something in the mapping...
-_mode = -1
-def get_umask():
-    global _mode
-    if _mode == -1:
-        _mode = os.umask(0)
-        os.umask(_mode)
-    return _mode
+S_IFREG = 32768
+S_IFLNK = 40960
+S_IFDIR = 16384
+S_IFGITLINK = 0160000
+
+#S_IFREG | 0755
+#S_IFREG | 0655
+#(a bit dodgey)
+#S_IFREG | 0664
+
 
 class BzrBackend(Backend):
 
@@ -171,7 +173,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             tree.serialize()
             sha = tree.sha().hexdigest()
             yield sha, tree
-            t = (get_umask(), splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+            t = (S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
 
@@ -189,14 +191,14 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             yield sha, blob
 
             name = splitpath(path)[-1:][0].encode('UTF-8')
-            mode = get_umask()
+            mode = S_IFREG | 0655
             tree.add(mode, name, sha)
 
     while len(stack) > 1:
         tree.serialize()
         sha = tree.sha().hexdigest()
         yield sha, tree
-        t = (get_umask(), splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+        t = (S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
