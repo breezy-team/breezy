@@ -965,10 +965,6 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             raise KeyError('%s not found' % self.auth_required_header)
 
         auth = self.get_auth(request)
-        if auth.get('user', None) is None:
-            # Without a known user, we can't authenticate
-            return None
-
         auth['modified'] = False
         if self.auth_match(server_header, auth):
             # auth_match may have modified auth (by adding the
@@ -976,6 +972,10 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             if (request.get_header(self.auth_header, None) is not None
                 and not auth['modified']):
                 # We already tried that, give up
+                return None
+
+            if auth.get('user', None) is None:
+                # Without a known user, we can't authenticate
                 return None
 
             # Housekeeping
@@ -1039,21 +1039,21 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         self._retry_count = None
 
     def get_user_password(self, auth):
-        """Ask user for a password if none is already available."""
+        """Ask user for a password if none is already available.
+
+        :param auth: authentication info gathered so far (from the initial url
+            and then during dialog with the server).
+        """
         auth_conf = config.AuthenticationConfig()
         user = auth['user']
         password = auth['password']
         realm = auth['realm']
 
         if user is None:
-            user = auth.get_user(auth['protocol'], auth['host'],
-                                 port=auth['port'], path=auth['path'],
-                                 realm=realm)
-            if user is None:
-                # Default to local user
-                user = getpass.getuser()
-
-        if password is None:
+            user = auth_conf.get_user(auth['protocol'], auth['host'],
+                                      port=auth['port'], path=auth['path'],
+                                      realm=realm)
+        if user is not None and password is None:
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
                 path=auth['path'], realm=realm,

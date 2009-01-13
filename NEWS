@@ -4,6 +4,13 @@ Bazaar Release Notes
 
 .. contents::
 
+IN DEVELOPMENT
+--------------
+
+  IMPROVEMENTS:
+
+    * Progress bars now show the rate of activity for some sftp 
+      operations, and they are drawn different.  (Martin Pool, #172741)
 
 IN DEVELOPMENT
 --------------
@@ -20,11 +27,17 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
-    * ``shelve --list`` can now be used to list shelved changes.
-      (Aaron Bentley)
-
     * Add support for `bzr tags -r 1..2`, that is we now support showing
       tags applicable for a specified revision range. (Marius Kruger)
+
+    * ``authentication.conf`` now accepts pluggable read-only credential
+      stores. Such a plugin (``netrc_credential_store``) is now included,
+      handles the ``$HOME/.netrc`` file and can server as an example to
+      implement other plugins.
+      (Vincent Ladeuil)
+
+    * ``shelve --list`` can now be used to list shelved changes.
+      (Aaron Bentley)
 
   IMPROVEMENTS:
 
@@ -34,17 +47,19 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
-    * Progress bars now show the rate of activity for some sftp 
-      operations, and they are drawn different.  (Martin Pool, #172741)
+    * Support the Claws mail client directly, rather than via
+      xdg-email. This prevents the display of an unnecessary modal
+      dialog in Claws, informing the user that a file has been
+      attached to the message, and works around bug #291847 in
+      xdg-utils which corrupts the destination address.
 
   BUG FIXES:
   
-    * Fix a problem with CIFS client/server lag on windows colliding with
-      an invariant-per-process algorithm for generating AtomicFile names
-      (Adrian Wilkins, #304023)
-
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
+
+    * ``bzr push`` creating a new stacked branch will now only open a
+      single connection to the target machine. (John Arbash Meinel)
 
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
@@ -52,6 +67,16 @@ IN DEVELOPMENT
     * Don't make a broken branch when pushing an unstackable-format branch
       that's in a stackable shared repository to a location with default
       stack-on location.  (Andrew Bennetts, #291046)
+
+    * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
+      (Ben Jansen, Vincent Ladeuil, #300347)
+
+    * Fix a problem with CIFS client/server lag on windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
+    * Fix bogus setUp signature in UnavailableFTPServer.
+      (Gary van der Merwe, #313498)
 
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
@@ -66,6 +91,20 @@ IN DEVELOPMENT
     * Handle EACCES (permission denied) errors when launching a message
       editor, and emit warnings when a configured editor cannot be
       started. (Andrew Bennetts)
+
+    * ``$HOME/.netrc`` file is now recognized as a read-only credential store
+      if configured in ``authentication.conf`` with 'password_encoding=netrc'
+      in the appropriate sections.
+      (Vincent Ladeuil, #103029)
+
+    * Many socket operations now handle EINTR by retrying the operation.
+      Previously EINTR was treated as an unrecoverable failure.  There is
+      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
+      (Andrew Bennetts)
+
+    * Opening a stacked branch now properly shares the connection, rather
+      than opening a new connection for the stacked-on branch.
+      (John Arbash meinel)
 
     * Preserve transport decorators while following redirections.
       (Vincent Ladeuil, #245964, #270863)
@@ -88,8 +127,13 @@ IN DEVELOPMENT
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
 
+    * ``push -v`` now works on non-initial pushes.  (Aaron Bentley)
+
     * Use the short status format when the short format is used for log.
       (Vincent Ladeuil, #87179)
+
+    * Allow files to be renamed or moved via remove + add-by-id. (Charles
+      Duffy, #314251)
 
   DOCUMENTATION:
 
@@ -115,6 +159,10 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * An HTTPS server is now available (it requires python-2.6). Future bzr
+      versions will allow the use of the python-2.6 ssl module that can be
+      installed for 2.5 and 2.4.
+
     * ``bzr selftest`` now fails if new trailing white space is added to
       the bazaar sources. It only checks changes not committed yet. This
       means that PQM will now reject changes that introduce new trailing
@@ -136,15 +184,28 @@ IN DEVELOPMENT
       cost of not preserving the 'active' set as well as an ``LRUCache``.
       (John Arbash Meinel)
 
+    * ``bzrlib.patience_diff.unified_diff`` now properly uses a tab
+      character to separate the filename from the date stamp, and doesn't
+      add trailing whitespace when a date stamp is not supplied.
+      (Adeodato Simó, John Arbash Meinel)
+
     * ``DirStateWorkingTree`` and ``DirStateWorkingTreeFormat`` added
       as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
       respectively. (Ian Clatworthy)
+
+    * ``KnitVersionedFiles._check_should_delta()`` now uses the
+      ``get_build_details`` api to avoid multiple hits to the index, and
+      to properly follow the ``compression_parent`` rather than assuming
+      it is the left-hand parent. (John Arbash Meinel)
 
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
       Previously the order was fully random, now the records should be
       returned from each pack in turn, in forward I/O order.
       (John Arbash Meinel)
+    
+    * ``mutter()`` will now flush the ``~/.bzr.log`` if it has been more
+      than 2s since the last time it flushed. (John Arbash Meinel)
 
     * New method ``bzrlib.repository.Repository.add_inventory_by_delta``
       allows adding an inventory via an inventory delta, which can be
@@ -171,6 +232,9 @@ IN DEVELOPMENT
       into a fulltext. This allows for some very good memory savings when
       asking for many texts that share ancestry, as the individual chunks
       can be shared between versions of the file. (John Arbash Meinel)
+
+    * ``pull -v`` and ``push -v`` use new function
+      ``bzrlib.log.show_branch_change`` (Aaron Bentley)
 
 
 
