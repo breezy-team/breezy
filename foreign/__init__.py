@@ -42,12 +42,13 @@ class ForeignBranch(Branch):
         """Pull deltas from another branch.
 
         :note: This does not, like pull, retain the revision ids from 
-        the source branch and will, rather than adding bzr-specific metadata,
-        push only those semantics of the revision that can be natively 
-        represented in this branch.
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented in this branch.
 
         :param source: Source branch
         :param stop_revision: Revision to pull, defaults to last revision.
+        :return: Revision id map and file id map
         """
         raise NotImplementedError(self.dpull)
 
@@ -91,6 +92,7 @@ class cmd_dpush(Command):
         from bzrlib.errors import BzrCommandError, NoWorkingTree
         from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
+        from upgrade import update_workingtree_fileids
 
         if directory is None:
             directory = "."
@@ -113,24 +115,34 @@ class cmd_dpush(Command):
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
-        if not isinstance(target_branch, ForeignBranch):
-            info("target branch is not a foreign branch, using regular push.")
-            target_branch.pull(source_branch)
-            no_rebase = True
-        else:
-            revid_map = target_branch.dpull(source_branch)
-        # We successfully created the target, remember it
-        if source_branch.get_push_location() is None or remember:
-            source_branch.set_push_location(target_branch.base)
-        if not no_rebase:
-            _, old_last_revid = source_branch.last_revision_info()
-            new_last_revid = revid_map[old_last_revid]
-            if source_wt is not None:
-                source_wt.pull(target_branch, overwrite=True, 
-                               stop_revision=new_last_revid)
+        try:
+            if not isinstance(target_branch, ForeignBranch):
+                info("target branch is not a foreign branch, using regular push.")
+                target_branch.pull(source_branch)
+                no_rebase = True
             else:
-                source_branch.pull(target_branch, overwrite=True, 
+                revid_map = target_branch.dpull(source_branch)
+            # We successfully created the target, remember it
+            if source_branch.get_push_location() is None or remember:
+                source_branch.set_push_location(target_branch.base)
+            if not no_rebase:
+                _, old_last_revid = source_branch.last_revision_info()
+                new_last_revid = revid_map[old_last_revid]
+                if source_wt is not None:
+                    source_wt.pull(target_branch, overwrite=True, 
                                    stop_revision=new_last_revid)
+                    source_wt.lock_write()
+                    try:
+                        update_workingtree_fileids(source_wt, 
+                            source_wt.branch.repository.revision_tree(old_last_revid),
+                            source_wt.branch.repository.revision_tree(new_last_revid))
+                    finally:
+                        source_wt.unlock()
+                else:
+                    source_branch.pull(target_branch, overwrite=True, 
+                                       stop_revision=new_last_revid)
+        finally:
+            target_branch.unlock()
 
 def test_suite():
     from unittest import TestSuite

@@ -1,5 +1,7 @@
 # Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
+#          Jelmer Vernooij <jelmer@samba.org>
+#          John Carr <john.carr@unrouted.co.uk>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

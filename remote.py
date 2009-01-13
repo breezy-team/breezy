@@ -37,6 +37,11 @@ import urlparse
 
 from dulwich.pack import PackData, Pack
 
+# Don't run any tests on GitSmartTransport as it is not intended to be 
+# a full implementation of Transport
+def get_test_permutations():
+    return []
+
 
 class GitSmartTransport(Transport):
 
@@ -112,14 +117,12 @@ class RemoteGitRepository(GitRepository):
         fd, path = tempfile.mkstemp(suffix=".pack")
         self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
         os.close(fd)
-        try:
-            basename = path[:-len(".pack")]
-            p = PackData(path)
-            p.create_index_v2(basename+".idx")
-            for o in Pack(basename).iterobjects():
-                yield o
-        finally:
-            os.remove(path)
+        basename = path[:-len(".pack")]
+        p = PackData(path)
+        p.create_index_v2(basename+".idx")
+        for o in Pack(basename).iterobjects():
+            yield o
+        os.remove(path)
 
 
 class RemoteGitBranch(GitBranch):
