@@ -37,6 +37,7 @@ from bzrlib.osutils import (
         pathjoin,
         pumpfile,
         pump_string_file,
+        canonical_relpath,
         )
 from bzrlib.tests import (
         adapt_tests,
@@ -45,6 +46,7 @@ from bzrlib.tests import (
         split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
+        CaseInsCasePresFilenameFeature,
         TestCase,
         TestCaseInTempDir,
         TestScenarioApplier,
@@ -354,6 +356,24 @@ class TestOSUtils(TestCaseInTempDir):
 
     def test_host_os_dereferences_symlinks(self):
         osutils.host_os_dereferences_symlinks()
+
+
+class TestCanonicalRelPath(TestCaseInTempDir):
+
+    _test_needs_features = [CaseInsCasePresFilenameFeature]
+
+    def test_canonical_relpath_simple(self):
+        f = file('MixedCaseName', 'w')
+        f.close()
+        self.failUnlessEqual(
+            canonical_relpath(self.test_base_dir, 'mixedcasename'),
+            'work/MixedCaseName')
+
+    def test_canonical_relpath_missing_tail(self):
+        os.mkdir('MixedCaseParent')
+        self.failUnlessEqual(
+            canonical_relpath(self.test_base_dir, 'mixedcaseparent/nochild'),
+            'work/MixedCaseParent/nochild')
 
 
 class TestPumpFile(TestCase):
