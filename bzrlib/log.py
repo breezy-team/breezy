@@ -275,7 +275,9 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     # If we only want to see mainline revisions, we can iterate ...
     # NOTE: The specific_fileid check will go once _mainline_view_revisions()
     # supports filtering by that parameter
-    if not strict and not generate_merge_revisions and specific_fileid is None:
+    generate_single_revision = (start_rev_id and start_rev_id == end_rev_id)
+    if (not generate_merge_revisions and not generate_single_revision
+        and not strict and specific_fileid is None):
         result = _mainline_view_revisions(branch, rev_limits)
         if direction == 'forward':
             result = reversed(list(result))
@@ -289,9 +291,9 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         return []
 
     # If a single revision is requested and it's not on the mainline,
-    # make sure we're generating the merge revisions (unless we can't)
+    # make sure the log formatter handles that
     generate_single_revision = False
-    if (strict and not generate_merge_revisions
+    if (not generate_merge_revisions
         and ((start_rev_id and (start_rev_id not in rev_nos))
             or (end_rev_id and (end_rev_id not in rev_nos)))):
         generate_single_revision = ((start_rev_id == end_rev_id)
