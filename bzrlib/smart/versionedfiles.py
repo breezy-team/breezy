@@ -69,6 +69,8 @@ class SmartServerVersionedFilesInsertRecordStream(SmartServerVersionedFilesReque
         self.versioned_files = versioned_files
 
     def do_chunk(self, stream_chunk):
+        # XXX: we shouldn't rely on one stream_chunk corresponding exactly to a
+        # single serialised record.
         record = deserialise_record(stream_chunk)
 #        trace.mutter('inserting record %s (kind: %s, parents: %r)',
 #            record.key, record.storage_kind, record.parents)
