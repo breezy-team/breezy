@@ -176,9 +176,6 @@ class CLIUIFactory(UIFactory):
     def clear_term(self):
         pass
 
-    def recommend_upgrade(self, *args):
-        pass
-
     def show_progress(self, task):
         pass
 
