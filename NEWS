@@ -20,11 +20,17 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
-    * ``shelve --list`` can now be used to list shelved changes.
-      (Aaron Bentley)
-
     * Add support for `bzr tags -r 1..2`, that is we now support showing
       tags applicable for a specified revision range. (Marius Kruger)
+
+    * ``authentication.conf`` now accepts pluggable read-only credential
+      stores. Such a plugin (``netrc_credential_store``) is now included,
+      handles the ``$HOME/.netrc`` file and can server as an example to
+      implement other plugins.
+      (Vincent Ladeuil)
+
+    * ``shelve --list`` can now be used to list shelved changes.
+      (Aaron Bentley)
 
   IMPROVEMENTS:
 
@@ -33,6 +39,12 @@ IN DEVELOPMENT
 
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
+
+    * Support the Claws mail client directly, rather than via
+      xdg-email. This prevents the display of an unnecessary modal
+      dialog in Claws, informing the user that a file has been
+      attached to the message, and works around bug #291847 in
+      xdg-utils which corrupts the destination address.
 
   BUG FIXES:
   
@@ -69,6 +81,11 @@ IN DEVELOPMENT
     * Handle EACCES (permission denied) errors when launching a message
       editor, and emit warnings when a configured editor cannot be
       started. (Andrew Bennetts)
+
+    * ``$HOME/.netrc`` file is now recognized as a read-only credential store
+      if configured in ``authentication.conf`` with 'password_encoding=netrc'
+      in the appropriate sections.
+      (Vincent Ladeuil, #103029)
 
     * Preserve transport decorators while following redirections.
       (Vincent Ladeuil, #245964, #270863)
