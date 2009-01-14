@@ -467,6 +467,21 @@ class Branch(object):
         else:
             return (0, _mod_revision.NULL_REVISION)
 
+    def _get_mainline_revno(self, revision_id):
+        """Get the mainline revision number for a revision-id, if any.
+
+        :return: the mainline revision number or 0 if not on the mainline.
+        """
+        last_revno, last_revision_id = self.last_revision_info()
+        revno = last_revno
+        for rev_id in self.repository.iter_reverse_revision_history(
+                last_revision_id):
+            if rev_id == revision_id:
+                return revno
+            revno -= 1
+        else:
+            return 0
+
     @deprecated_method(deprecated_in((1, 6, 0)))
     def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.

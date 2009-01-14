@@ -287,9 +287,22 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
     if br_revno == 0:
         return []
 
-    # If we only want to see mainline revisions, we can iterate ...
+    # If a single revision is requested, check we can handle it
     generate_single_revision = (start_rev_id and start_rev_id == end_rev_id)
-    if not generate_merge_revisions and not generate_single_revision:
+    if generate_single_revision:
+        if generate_merge_revisions:
+            generate_single_revision = False
+        else:
+            revno = branch._get_mainline_revno(start_rev_id)
+            if revno != 0:
+                return [(start_rev_id, revno, 0)]
+            elif allow_single_merge_revision:
+                generate_merge_revisions = True
+            else:
+                raise _NonMainlineRevisionLimit()
+
+    # If we only want to see mainline revisions, we can iterate ...
+    if not generate_merge_revisions:
         # Note: mainline_view_revisions() returns an iterator so we can't
         # trap the _NonMainlineRevisionLimits exception here
         result = _mainline_view_revisions(branch, rev_limits)
@@ -299,23 +312,8 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
 
     # Otherwise, the algorithm is O(history) for now ...
 
-    # Get the revision history, if any
-    mainline_revs, rev_nos = _get_mainline_revs(branch, rev_limits)
-    if not mainline_revs:
-        return []
-
-    # If a single revision is requested, check we can handle it
-    if generate_single_revision:
-        if generate_merge_revisions:
-            generate_single_revision = False
-        elif ((start_rev_id and (start_rev_id not in rev_nos))
-            or (end_rev_id and (end_rev_id not in rev_nos))):
-            if allow_single_merge_revision:
-                generate_merge_revisions = True
-            else:
-                raise _NonMainlineRevisionLimit()
-
     # Do the filtering
+    mainline_revs, rev_nos = _get_mainline_revs(branch, rev_limits)
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=generate_merge_revisions)
     if direction == 'reverse':
