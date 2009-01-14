@@ -8,7 +8,12 @@ Bazaar Release Notes
 NOT RELEASED YET
 ----------------
 
-  COMPATABILITY BREAKS:
+  COMPATIBILITY BREAKS:
+
+    * By default, ``bzr status`` after a merge now shows just the pending
+      merge tip revisions. This improves the signal-to-noise ratio after
+      merging from trunk and completes much faster. To see all merged
+      revisions, use the new ``-v`` flag.  (Ian Clatworthy)
 
   NEW FEATURES:
 
