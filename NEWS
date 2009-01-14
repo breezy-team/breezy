@@ -68,12 +68,11 @@ occur when there are concurrent writes to a pack repository.
 
   BUG FIXES:
   
-    * Fix a problem with CIFS client/server lag on Windows colliding with
-      an invariant-per-process algorithm for generating AtomicFile names
-      (Adrian Wilkins, #304023)
-
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
+
+    * ``bzr push`` creating a new stacked branch will now only open a
+      single connection to the target machine. (John Arbash Meinel)
 
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
@@ -84,6 +83,10 @@ occur when there are concurrent writes to a pack repository.
 
     * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
       (Ben Jansen, Vincent Ladeuil, #300347)
+
+    * Fix a problem with CIFS client/server lag on windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
 
     * Fix bogus setUp signature in UnavailableFTPServer.
       (Gary van der Merwe, #313498)
@@ -106,6 +109,10 @@ occur when there are concurrent writes to a pack repository.
       if configured in ``authentication.conf`` with 'password_encoding=netrc'
       in the appropriate sections.
       (Vincent Ladeuil, #103029)
+
+    * Opening a stacked branch now properly shares the connection, rather
+      than opening a new connection for the stacked-on branch.
+      (John Arbash meinel)
 
     * Preserve transport decorators while following redirections.
       (Vincent Ladeuil, #245964, #270863)

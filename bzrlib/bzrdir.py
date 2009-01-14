@@ -2902,12 +2902,13 @@ class RepositoryAcquisitionPolicy(object):
         else:
             return urlutils.join(self._stack_on_pwd, self._stack_on)
 
-    def _add_fallback(self, repository):
+    def _add_fallback(self, repository, possible_transports=None):
         """Add a fallback to the supplied repository, if stacking is set."""
         stack_on = self._get_full_stack_on()
         if stack_on is None:
             return
-        stacked_dir = BzrDir.open(stack_on)
+        stacked_dir = BzrDir.open(stack_on,
+                                  possible_transports=possible_transports)
         try:
             stacked_repo = stacked_dir.open_branch().repository
         except errors.NotBranchError:
@@ -2955,7 +2956,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         Creates the desired repository in the bzrdir we already have.
         """
         repository = self._bzrdir.create_repository(shared=shared)
-        self._add_fallback(repository)
+        self._add_fallback(repository,
+                           possible_transports=[self._bzrdir.transport])
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository
@@ -2982,7 +2984,8 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 
         Returns an existing repository to use
         """
-        self._add_fallback(self._repository)
+        self._add_fallback(self._repository,
+                       possible_transports=[self._repository.bzrdir.transport])
         return self._repository
 
 
