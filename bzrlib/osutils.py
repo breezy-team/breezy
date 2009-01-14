@@ -962,6 +962,64 @@ def relpath(base, path):
         return ''
 
 
+def _cicp_canonical_relpath(base, path):
+    """Return the canonical path relative to base.
+
+    Like relpath, but on case-insensitive-case-preserving file-systems, this
+    will return the relpath as stored on the file-system rather than in the
+    case specified in the input string, for all existing portions of the path.
+
+    This will cause O(N) behaviour if called for every path in a tree; if you
+    have a number of paths to convert, you should use canonical_relpaths().
+    """
+    # TODO: it should be possible to optimize this for Windows by using the
+    # win32 API FindFiles function to look for the specified name - but using
+    # os.listdir() still gives us the correct, platform agnostic semantics in
+    # the short term.
+
+    rel = relpath(base, path)
+    # '.' will have been turned into ''
+    if not rel:
+        return rel
+
+    abs_base = abspath(base)
+    current = abs_base
+    _listdir = os.listdir
+
+    # use an explicit iterator so we can easily consume the rest on early exit.
+    bit_iter = iter(rel.split('/'))
+    for bit in bit_iter:
+        lbit = bit.lower()
+        for look in _listdir(current):
+            if lbit == look.lower():
+                current = pathjoin(current, look)
+                break
+        else:
+            # got to the end, nothing matched, so we just return the
+            # non-existing bits as they were specified (the filename may be
+            # the target of a move, for example).
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
+    return current[len(abs_base)+1:]
+
+# XXX - TODO - we need better detection/integration of case-insensitive
+# file-systems; Linux often sees FAT32 devices, for example, so could
+# probably benefit from the same basic support there.  For now though, only
+# Windows gets that support, and it gets it for *all* file-systems!
+if sys.platform == "win32":
+    canonical_relpath = _cicp_canonical_relpath
+else:
+    canonical_relpath = relpath
+
+def canonical_relpaths(base, paths):
+    """Create an iterable to canonicalize a sequence of relative paths.
+
+    The intent is for this implementation to use a cache, vastly speeding
+    up multiple transformations in the same directory.
+    """
+    # but for now, we haven't optimized...
+    return [canonical_relpath(base, p) for p in paths]
+
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
@@ -1549,7 +1607,7 @@ def recv_all(socket, bytes):
     """
     b = ''
     while len(b) < bytes:
-        new = socket.recv(bytes - len(b))
+        new = until_no_eintr(socket.recv, bytes - len(b))
         if new == '':
             break # eof
         b += new
@@ -1564,7 +1622,7 @@ def send_all(socket, bytes):
     """
     chunk_size = 2**16
     for pos in xrange(0, len(bytes), chunk_size):
-        socket.sendall(bytes[pos:pos+chunk_size])
+        until_no_eintr(socket.sendall, bytes[pos:pos+chunk_size])
 
 
 def dereference_path(path):
@@ -1636,6 +1694,19 @@ def file_kind(f, _lstat=os.lstat):
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
+
+
+def until_no_eintr(f, *a, **kw):
+    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
+    while True:
+        try:
+            return f(*a, **kw)
+        except (IOError, OSError), e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
+
 
 if sys.platform == "win32":
     import msvcrt
