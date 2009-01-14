@@ -274,7 +274,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _read_bytes(self, desired_count):
         # We ignore the desired_count because on sockets it's more efficient to
         # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        return self.socket.recv(_MAX_READ_SIZE)
+        return osutils.until_no_eintr(self.socket.recv, _MAX_READ_SIZE)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing

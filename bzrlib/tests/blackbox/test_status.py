@@ -45,22 +45,23 @@ from bzrlib.workingtree import WorkingTree
 class BranchStatus(TestCaseWithTransport):
     
     def assertStatus(self, expected_lines, working_tree,
-        revision=None, short=False, pending=True):
+        revision=None, short=False, pending=True, verbose=False):
         """Run status in working_tree and look for output.
         
         :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
         output_string = self.status_string(working_tree, revision, short,
-                pending)
+                pending, verbose)
         self.assertEqual(expected_lines, output_string.splitlines(True))
     
-    def status_string(self, wt, revision=None, short=False, pending=True):
+    def status_string(self, wt, revision=None, short=False, pending=True,
+        verbose=False):
         # use a real file rather than StringIO because it doesn't handle
         # Unicode very well.
         tof = codecs.getwriter('utf-8')(TemporaryFile())
         show_tree_status(wt, to_file=tof, revision=revision, short=short,
-                show_pending=pending)
+                show_pending=pending, verbose=verbose)
         tof.seek(0)
         return tof.read().decode('utf-8')
 
@@ -95,10 +96,18 @@ class BranchStatus(TestCaseWithTransport):
                 'unknown:\n',
                 '  bye.c\n',
                 '  hello.c\n',
-                'pending merges:\n',
+                'pending merge tips: (use -v to see all merge revisions)\n',
                 '  (ghost) pending@pending-0-0\n',
             ],
             wt)
+        self.assertStatus([
+                'unknown:\n',
+                '  bye.c\n',
+                '  hello.c\n',
+                'pending merges:\n',
+                '  (ghost) pending@pending-0-0\n',
+            ],
+            wt, verbose=True)
         self.assertStatus([
                 '?   bye.c\n',
                 '?   hello.c\n',
@@ -159,7 +168,7 @@ class BranchStatus(TestCaseWithTransport):
         wt2 = b_2_dir.open_workingtree()
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         wt2.merge_from_branch(wt.branch)
-        message = self.status_string(wt2)
+        message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
         self.assertEndsWith(message, "Empty commit 2\n")
         wt2.commit("merged")
@@ -167,7 +176,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.commit("Empty commit 3 " +
                    "blah blah blah blah " * 100)
         wt2.merge_from_branch(wt.branch)
-        message = self.status_string(wt2)
+        message = self.status_string(wt2, verbose=True)
         self.assertStartsWith(message, "pending merges:\n")
         self.assert_("Empty commit 3" in message)
         self.assertEndsWith(message, "...\n")
@@ -470,9 +479,9 @@ class TestStatus(TestCaseWithTransport):
         tree.merge_from_branch(alt.branch)
         output = self.make_utf8_encoded_stringio()
         show_tree_status(tree, to_file=output)
-        self.assertContainsRe(output.getvalue(), 'pending merges:')
+        self.assertContainsRe(output.getvalue(), 'pending merge')
         out, err = self.run_bzr('status tree/a')
-        self.assertNotContainsRe(out, 'pending merges:')
+        self.assertNotContainsRe(out, 'pending merge')
 
 
 class TestStatusEncodings(TestCaseWithTransport):
