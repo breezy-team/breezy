@@ -101,7 +101,7 @@ def show_tree_status(wt, show_unchanged=None,
         new.lock_read()
         try:
             specific_files, nonexistents \
-                = filter_nonexistent(specific_files, old, new)
+                = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
             if short:
                 changes = new.iter_changes(old, show_unchanged, specific_files,
@@ -259,7 +259,7 @@ def show_pending_merges(new, to_file, short=False):
             to_file.write(sub_prefix + log_message + '\n')
 
 
-def filter_nonexistent(orig_paths, old_tree, new_tree):
+def _filter_nonexistent(orig_paths, old_tree, new_tree):
     """Convert orig_paths to two lists and return them.
 
     The first is orig_paths paths minus the items in the second list,
