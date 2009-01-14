@@ -1788,9 +1788,6 @@ class cmd_log(Command):
                    help='Limit the output to the first N revisions.',
                    argname='N',
                    type=_parse_limit),
-            Option('strict',
-                   help='Error if formatter only supports mainline revisions.',
-                   ),
             ]
     encoding_type = 'replace'
 
@@ -1803,8 +1800,7 @@ class cmd_log(Command):
             change=None,
             log_format=None,
             message=None,
-            limit=None,
-            strict=False):
+            limit=None):
         from bzrlib.log import show_log
         direction = (forward and 'forward') or 'reverse'
 
@@ -1861,8 +1857,7 @@ class cmd_log(Command):
                      start_revision=rev1,
                      end_revision=rev2,
                      search=message,
-                     limit=limit,
-                     strict=strict)
+                     limit=limit)
         finally:
             b.unlock()
 

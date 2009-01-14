@@ -223,7 +223,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wtb)
         self.assertRaises(errors.BzrCommandError, log.show_log, wtb, lf,
-                          start_revision=rev, end_revision=rev, strict=True)
+                          start_revision=rev, end_revision=rev)
 
 
 def make_commits_with_trailing_newlines(wt):

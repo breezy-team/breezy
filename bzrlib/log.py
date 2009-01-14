@@ -144,8 +144,7 @@ def show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None,
-             strict=False):
+             limit=None):
     """Write out human-readable log of commits to this branch.
 
     :param lf: The LogFormatter object showing the output.
@@ -167,9 +166,6 @@ def show_log(branch,
 
     :param limit: If set, shows only 'limit' revisions, all revisions are shown
         if None or 0.
-
-    :param strict: If True, check that revision limits are on the mainline if
-       the LogFormatter requires this
     """
     branch.lock_read()
     try:
@@ -177,7 +173,7 @@ def show_log(branch,
             lf.begin_log()
 
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search, limit, strict)
+                  start_revision, end_revision, search, limit)
 
         if getattr(lf, 'end_log', None):
             lf.end_log()
@@ -193,8 +189,7 @@ def _show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None,
-             strict=False):
+             limit=None):
     """Worker function for show_log - see show_log."""
     if not isinstance(lf, LogFormatter):
         warn("not a LogFormatter instance: %r" % lf)
@@ -218,7 +213,7 @@ def _show_log(branch,
         revision_iterator = _create_log_revision_iterator(branch,
             start_revision, end_revision, direction, specific_fileid, search,
             generate_merge_revisions, allow_single_merge_revision,
-            generate_delta, strict)
+            generate_delta)
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 lr = LogRevision(rev, revno, merge_depth, delta,
@@ -235,7 +230,7 @@ def _show_log(branch,
 
 def _create_log_revision_iterator(branch, start_revision, end_revision,
     direction, specific_fileid, search, generate_merge_revisions,
-    allow_single_merge_revision, generate_delta, strict):
+    allow_single_merge_revision, generate_delta):
     """Create a revision iterator for log.
 
     :param branch: The branch being logged.
@@ -251,15 +246,13 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     :param allow_single_merge_revision: If True, logging of a single
         revision off the mainline is to be allowed
     :param generate_delta: Whether to generate a delta for each revision.
-    :param strict: If True, check that revision limits are on the mainline if
-       the LogFormatter requires this
 
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
     view_revisions = calculate_view_revisions(branch, start_revision,
         end_revision, direction, specific_fileid, generate_merge_revisions,
-        allow_single_merge_revision, strict)
+        allow_single_merge_revision)
     return make_log_rev_iterator(branch, view_revisions, generate_delta, search)
 
 
@@ -268,16 +261,14 @@ class _NonMainlineRevisionLimit(Exception):
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
-        specific_fileid, generate_merge_revisions, allow_single_merge_revision,
-        strict=True):
+        specific_fileid, generate_merge_revisions, allow_single_merge_revision):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
     view_revisions = _calc_view_revisions(branch, start_revision, end_revision,
-        direction, generate_merge_revisions, allow_single_merge_revision,
-        strict)
+        direction, generate_merge_revisions, allow_single_merge_revision)
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
             specific_fileid, view_revisions)
@@ -285,7 +276,7 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
 
 
 def _calc_view_revisions(branch, start_revision, end_revision, direction,
-        generate_merge_revisions, allow_single_merge_revision, strict=True):
+        generate_merge_revisions, allow_single_merge_revision):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
