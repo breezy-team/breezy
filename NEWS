@@ -5,18 +5,26 @@ Bazaar Release Notes
 .. contents::
 
 
-IN DEVELOPMENT
---------------
+bzr 1.11rc1 "Eyes up!" 2009-01-09
+---------------------------------
+
+This first monthly release of Bazaar for 2009 improves Bazaar's operation
+in Windows, Mac OS X, and other situations where file names are matched
+without regard to capitalization: Bazaar tries to match the case of an
+existing file.  This release of Bazaar also improves the efficiency of
+Tortoise Windows Shell integration and lets it work on 64-bit platforms.
+
+The UI through which Bazaar supports historic formats has been improved,
+so 'bzr help formats' now gives a simpler and shorter list, with clear
+advice.
+
+This release also fixes a number of bugs, particularly a glitch that can
+occur when there are concurrent writes to a pack repository.
 
   CHANGES:
-  
+
     * Formats using Knit-based repository formats are now explicitly
       marked as deprecated. (Ian Clatworthy)
-
-    * ``LRUCache(after_cleanup_size)`` was renamed to
-      ``after_cleanup_count`` and the old name deprecated. The new name is
-      used for clarity, and to avoid confusion with
-      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
   NEW FEATURES:
 
@@ -40,11 +48,23 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
+    * Add connection to a C++ implementation of the Windows Shell Extension
+      which is able to fully replace the current Python implemented one.
+      Advantages include 64bit support and reduction in overhead for
+      processes which drag in shell extensions.
+      (Mark Hammond)
+
     * Support the Claws mail client directly, rather than via
       xdg-email. This prevents the display of an unnecessary modal
       dialog in Claws, informing the user that a file has been
       attached to the message, and works around bug #291847 in
       xdg-utils which corrupts the destination address.
+
+    * When working on a case-insensitive case-preserving file-system, as
+      commonly found with Windows, bzr will often ignore the case of the
+      arguments specified by the user in preference to the case of an existing
+      item on the file-system or in the inventory to help prevent
+      counter-intuitive behaviour on Windows. (Mark Hammond)
 
   BUG FIXES:
   
@@ -120,6 +140,9 @@ IN DEVELOPMENT
     * Use the short status format when the short format is used for log.
       (Vincent Ladeuil, #87179)
 
+    * Allow files to be renamed or moved via remove + add-by-id. (Charles
+      Duffy, #314251)
+
   DOCUMENTATION:
 
     * Improved the formats help topic to explain why multiple formats
@@ -128,6 +151,11 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
   API CHANGES:
+
+    * ``LRUCache(after_cleanup_size)`` was renamed to
+      ``after_cleanup_count`` and the old name deprecated. The new name is
+      used for clarity, and to avoid confusion with
+      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
     * New ``ForeignRepository`` base class, to help with foreign branch 
       support (e.g. svn).  (Jelmer Vernooij)
@@ -143,6 +171,10 @@ IN DEVELOPMENT
       ``record_delete`` methods. (Robert Collins)
 
   TESTING:
+
+    * An HTTPS server is now available (it requires python-2.6). Future bzr
+      versions will allow the use of the python-2.6 ssl module that can be
+      installed for 2.5 and 2.4.
 
     * ``bzr selftest`` now fails if new trailing white space is added to
       the bazaar sources. It only checks changes not committed yet. This
@@ -184,6 +216,9 @@ IN DEVELOPMENT
       Previously the order was fully random, now the records should be
       returned from each pack in turn, in forward I/O order.
       (John Arbash Meinel)
+    
+    * ``mutter()`` will now flush the ``~/.bzr.log`` if it has been more
+      than 2s since the last time it flushed. (John Arbash Meinel)
 
     * New method ``bzrlib.repository.Repository.add_inventory_by_delta``
       allows adding an inventory via an inventory delta, which can be

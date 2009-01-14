@@ -3292,7 +3292,29 @@ class _FTPServerFeature(Feature):
     def feature_name(self):
         return 'FTPServer'
 
+
 FTPServerFeature = _FTPServerFeature()
+
+
+class _HTTPSServerFeature(Feature):
+    """Some tests want an https Server, check if one is available.
+
+    Right now, the only way this is available is under python2.6 which provides
+    an ssl module.
+    """
+
+    def _probe(self):
+        try:
+            import ssl
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'HTTPSServer'
+
+
+HTTPSServerFeature = _HTTPSServerFeature()
 
 
 class _UnicodeFilename(Feature):
@@ -3326,12 +3348,41 @@ class _UTF8Filesystem(Feature):
 UTF8Filesystem = _UTF8Filesystem()
 
 
-class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlying filesystem is case-insensitive
-    (e.g. on Windows, Cygwin, MacOS)
-    """
+class _CaseInsCasePresFilenameFeature(Feature):
+    """Is the file-system case insensitive, but case-preserving?"""
 
     def _probe(self):
+        fileno, name = tempfile.mkstemp(prefix='MixedCase')
+        try:
+            # first check truly case-preserving for created files, then check
+            # case insensitive when opening existing files.
+            name = osutils.normpath(name)
+            base, rel = osutils.split(name)
+            found_rel = osutils.canonical_relpath(base, name)
+            return (found_rel == rel
+                    and os.path.isfile(name.upper())
+                    and os.path.isfile(name.lower()))
+        finally:
+            os.close(fileno)
+            os.remove(name)
+
+    def feature_name(self):
+        return "case-insensitive case-preserving filesystem"
+
+CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
+
+
+class _CaseInsensitiveFilesystemFeature(Feature):
+    """Check if underlying filesystem is case-insensitive but *not* case
+    preserving.
+    """
+    # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
+    # more likely to be case preserving, so this case is rare.
+
+    def _probe(self):
+        if CaseInsCasePresFilenameFeature.available():
+            return False
+
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
             TestCaseWithMemoryTransport.TEST_ROOT = root

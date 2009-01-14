@@ -43,6 +43,16 @@ class TestMove(TestCaseWithWorkingTree):
         actual = self.get_tree_layout(tree)
         self.assertEqual(expected, actual)
 
+    def test_move_via_rm_and_add(self):
+        """Move by remove and add-with-id"""
+        self.build_tree(['a1', 'b1'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1'], ids=['a1-id'])
+        tree.commit('initial commit')
+        tree.remove('a1', force=True, keep_files=False)
+        tree.add(['b1'], ids=['a1-id'])
+        tree._validate()
+
     def test_move_correct_call_named(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.

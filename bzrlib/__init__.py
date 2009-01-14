@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ IGNORE_FILENAME = ".bzrignore"
 user_encoding = get_user_encoding()
 
 
-__copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
+__copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -50,7 +50,7 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 11, 0, 'dev', 0)
+version_info = (1, 11, 0, 'candidate', 1)
 
 
 # API compatibility version: bzrlib is currently API compatible with 1.11.
