@@ -304,24 +304,16 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
     if not mainline_revs:
         return []
 
-    # If a single revision is requested and it's not on the mainline,
-    # generate the merge revisions
-    #if (not generate_merge_revisions and generate_single_revision
-    #    and ((start_rev_id and (start_rev_id not in rev_nos))
-    #        or (end_rev_id and (end_rev_id not in rev_nos)))):
-    #    if allow_single_merge_revision:
-    #        generate_merge_revisions = True
-    #    else:
-    #        raise _NonMainlineRevisionLimit()
-    generate_single_revision = False
-    if (not generate_merge_revisions
-        and ((start_rev_id and (start_rev_id not in rev_nos))
-            or (end_rev_id and (end_rev_id not in rev_nos)))):
-        generate_single_revision = ((start_rev_id == end_rev_id)
-            and allow_single_merge_revision)
-        if not generate_single_revision:
-            raise _NonMainlineRevisionLimit()
-        generate_merge_revisions = True
+    # If a single revision is requested, check we can handle it
+    if generate_single_revision:
+        if generate_merge_revisions:
+            generate_single_revision = False
+        elif ((start_rev_id and (start_rev_id not in rev_nos))
+            or (end_rev_id and (end_rev_id not in rev_nos))):
+            if allow_single_merge_revision:
+                generate_merge_revisions = True
+            else:
+                raise _NonMainlineRevisionLimit()
 
     # Do the filtering
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
