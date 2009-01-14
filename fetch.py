@@ -222,7 +222,7 @@ class InterGitNonGitRepository(InterRepository):
                 try:
                     (num_objects, objects_iter) = \
                             self.source.fetch_objects(determine_wants, 
-                                graph_walker, progress))
+                                graph_walker, progress)
                     import_git_objects(self.target, mapping, num_objects, 
                                        objects_iter, pb)
                 finally:
