@@ -42,7 +42,8 @@ def find_fullnames(lst):
         fullname = config.parse_username(committer)[0]
         counts.setdefault(fullname, 0)
         counts[fullname] += 1
-    return sorted(((count, name) for name,count in counts.iteritems()), reverse=True)
+    return sorted(((count, name) for name,count in counts.iteritems()),
+        reverse=True)
 
 
 def collapse_by_person(committers):
@@ -101,11 +102,15 @@ def sort_by_committer(a_repo, revids):
         revisions = a_repo.get_revisions(revids)
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(revids))
-            email = config.parse_username(rev.get_apparent_author())[1]
+            username = config.parse_username(rev.get_apparent_author())
+            if username[1] == '':
+                email = username[0]
+            else:
+                email = username[1]
             committers.setdefault(email, []).append(rev)
     finally:
         pb.finished()
-    
+
     return committers
 
 
@@ -127,7 +132,7 @@ def get_info(a_repo, revision):
 
 def get_diff_info(a_repo, start_rev, end_rev):
     """Get only the info for new revisions between the two revisions
-    
+
     This lets us figure out what has actually changed between 2 revisions.
     """
     pb = ui.ui_factory.nested_progress_bar()
@@ -168,9 +173,15 @@ def display_info(info, to_file, gather_class_stats=None):
         sorted_fullnames = sorted(((count, fullname)
                                   for fullname,count in fullnames.iteritems()),
                                   reverse=True)
-        to_file.write('%4d %s <%s>\n'
-                      % (count, sorted_fullnames[0][1],
-                         sorted_emails[0][1]))
+        # There is a chance sometimes with svn imports that the full name and
+        # email can BOTH be blank.
+        if sorted_fullnames[0][1] == '':
+            to_file.write('%4d %s\n'
+                          % (count, 'Unknown'))
+        else:
+            to_file.write('%4d %s <%s>\n'
+                          % (count, sorted_fullnames[0][1],
+                             sorted_emails[0][1]))
         if len(sorted_fullnames) > 1:
             print '     Other names:'
             for count, fname in sorted_fullnames[1:]:
