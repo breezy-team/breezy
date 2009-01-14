@@ -158,7 +158,7 @@ def display_info(info, to_file, gather_class_stats=None):
         sorted_fullnames = sorted(((count, fullname)
                                   for fullname,count in fullnames.iteritems()),
                                   reverse=True)
-        # There is a chanch sometimes with svn imports that the full name and
+        # There is a chance sometimes with svn imports that the full name and
         # email can BOTH be blank.
         if sorted_fullnames[0][1] == '':
             to_file.write('%4d %s\n'
