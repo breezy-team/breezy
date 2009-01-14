@@ -268,8 +268,24 @@ class _NonMainlineRevisionLimit(Exception):
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
-                             specific_fileid, generate_merge_revisions,
-                             allow_single_merge_revision, strict=True):
+        specific_fileid, generate_merge_revisions, allow_single_merge_revision,
+        strict=True):
+    """Calculate the revisions to view.
+
+    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
+             a list of the same tuples.
+    """
+    view_revisions = _calc_view_revisions(branch, start_revision, end_revision,
+        direction, generate_merge_revisions, allow_single_merge_revision,
+        strict)
+    if specific_fileid:
+        view_revisions = _filter_revisions_touching_file_id(branch,
+            specific_fileid, view_revisions)
+    return view_revisions
+
+
+def _calc_view_revisions(branch, start_revision, end_revision, direction,
+        generate_merge_revisions, allow_single_merge_revision, strict=True):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
@@ -281,12 +297,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         return []
 
     # If we only want to see mainline revisions, we can iterate ...
-    # NOTE: The specific_fileid check will go once _mainline_view_revisions()
-    # supports filtering by that parameter or fileid filtering is moved to
-    # the layer above
     generate_single_revision = (start_rev_id and start_rev_id == end_rev_id)
-    if (not generate_merge_revisions and not generate_single_revision
-        and specific_fileid is None):
+    if not generate_merge_revisions and not generate_single_revision:
         # Note: mainline_view_revisions() returns an iterator so we can't
         # trap the _NonMainlineRevisionLimits exception here
         result = _mainline_view_revisions(branch, rev_limits)
@@ -330,10 +342,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
                                             end_rev_id)
     if view_revisions and generate_single_revision:
         view_revisions = view_revisions[0:1]
-    if specific_fileid:
-        view_revisions = _filter_revisions_touching_file_id(branch,
-                                                            specific_fileid,
-                                                            view_revisions)
 
     # Rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
