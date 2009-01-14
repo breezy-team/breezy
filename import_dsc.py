@@ -1448,6 +1448,11 @@ class DistributionBranch(object):
                 self.pull_upstream_from_branch(pull_branch, version)
             else:
                 assert False, "Can't find the needed upstream part"
+        if (native and self.upstream_branch.last_revision() == NULL_REVISION
+            and pull_branch.upstream_branch.last_revision() != NULL_REVISION):
+            # in case the package wasn't native before then we pull
+            # the upstream. These checks may be a bit restrictive.
+            self.upstream_tree.pull(pull_branch.upstream_branch)
         elif native:
             mutter("Not checking for upstream as it is a native package")
         else:
