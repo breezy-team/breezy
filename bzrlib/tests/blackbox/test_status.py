@@ -96,7 +96,7 @@ class BranchStatus(TestCaseWithTransport):
                 'unknown:\n',
                 '  bye.c\n',
                 '  hello.c\n',
-                'pending merge tips:\n',
+                'pending merge tips: (use -v to see all merge revisions)\n',
                 '  (ghost) pending@pending-0-0\n',
             ],
             wt)

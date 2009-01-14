@@ -63,10 +63,11 @@ class TestStatus(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         show_pending_merges(tree, output)
         # 2b doesn't appear because it's an ancestor of 3b
-        self.assertEqualDiff('pending merge tips:\n'
-                             '  Joe Foo 2007-12-04 commit 3b\n'
-                             '  Joe Foo 2007-12-04 commit 3c\n',
-                             output.getvalue())
+        self.assertEqualDiff(
+            'pending merge tips: (use -v to see all merge revisions)\n'
+            '  Joe Foo 2007-12-04 commit 3b\n'
+            '  Joe Foo 2007-12-04 commit 3c\n',
+            output.getvalue())
 
     def test_multiple_pending_verbose(self):
         tree = self.make_multiple_pending_tree()
@@ -91,9 +92,10 @@ class TestStatus(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         output = StringIO()
         show_pending_merges(tree, output)
-        self.assertEqualDiff('pending merge tips:\n'
-                             '  (ghost) a-ghost-revision\n',
-                             output.getvalue())
+        self.assertEqualDiff(
+            'pending merge tips: (use -v to see all merge revisions)\n'
+            '  (ghost) a-ghost-revision\n',
+            output.getvalue())
 
     def test_pending_with_ghosts(self):
         """Test when a pending merge's ancestry includes ghosts."""
