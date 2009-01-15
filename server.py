@@ -126,12 +126,12 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                for sha, obj in inventory_to_tree_and_blobs(repo, self.mapping, commit):
+                for sha, obj, path in inventory_to_tree_and_blobs(repo, self.mapping, commit):
                     if sha not in obj_sent:
                         obj_sent.add(sha)
-                        objects.add(obj)
+                        objects.add((obj, path))
 
-                objects.add(revision_to_commit(rev, self.mapping, sha))
+                objects.add((revision_to_commit(rev, self.mapping, sha), None))
 
         finally:
             repo.unlock()
@@ -170,7 +170,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         while stack and not path.startswith(cur):
             tree.serialize()
             sha = tree.sha().hexdigest()
-            yield sha, tree
+            yield sha, tree, path
             t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
@@ -186,7 +186,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             blob = Blob()
             _, blob._text = repo.iter_files_bytes([(entry.file_id, revision_id, path)]).next()
             sha = blob.sha().hexdigest()
-            yield sha, blob
+            yield sha, blob, path
 
             name = splitpath(path)[-1:][0].encode('UTF-8')
             mode = stat.S_IFREG | 0644
@@ -197,11 +197,11 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
     while len(stack) > 1:
         tree.serialize()
         sha = tree.sha().hexdigest()
-        yield sha, tree
+        yield sha, tree, path
         t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
     tree.serialize()
-    yield tree.sha().hexdigest(), tree
+    yield tree.sha().hexdigest(), tree, path
 
