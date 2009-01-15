@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -140,15 +139,18 @@ class _SFTPReadvHelper(object):
     # See _get_requests for an explanation.
     _max_request_size = 32768
 
-    def __init__(self, original_offsets, relpath):
+    def __init__(self, original_offsets, relpath, _report_activity):
         """Create a new readv helper.
 
         :param original_offsets: The original requests given by the caller of
             readv()
         :param relpath: The name of the file (if known)
+        :param _report_activity: A Transport._report_activity bound method,
+            to be called as data arrives.
         """
         self.original_offsets = list(original_offsets)
         self.relpath = relpath
+        self._report_activity = _report_activity
 
     def _get_requests(self):
         """Break up the offsets into individual requests over sftp.
@@ -219,6 +221,7 @@ class _SFTPReadvHelper(object):
             if len(data) != length:
                 raise errors.ShortReadvError(self.relpath,
                     start, length, len(data))
+            self._report_activity(length, 'read')
             if last_end is None:
                 # This is the first request, just buffer it
                 buffered_data = [data]
@@ -405,8 +408,7 @@ class SFTPTransport(ConnectedTransport):
             return False
 
     def get(self, relpath):
-        """
-        Get the file at the given relative path.
+        """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
@@ -419,6 +421,16 @@ class SFTPTransport(ConnectedTransport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving',
                 failure_exc=errors.ReadError)
+
+    def get_bytes(self, relpath):
+        # reimplement this here so that we can report how many bytes came back
+        f = self.get(relpath)
+        try:
+            bytes = f.read()
+            self._report_activity(len(bytes), 'read')
+            return bytes
+        finally:
+            f.close()
 
     def _readv(self, relpath, offsets):
         """See Transport.readv()"""
@@ -454,7 +466,7 @@ class SFTPTransport(ConnectedTransport):
         does not support ranges > 64K, so it caps the request size, and
         just reads until it gets all the stuff it wants
         """
-        helper = _SFTPReadvHelper(offsets, relpath)
+        helper = _SFTPReadvHelper(offsets, relpath, self._report_activity)
         return helper.request_and_yield_offsets(fp)
 
     def put_file(self, relpath, f, mode=None):
