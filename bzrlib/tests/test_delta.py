@@ -15,10 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib import (
     delta as _mod_delta,
+    revision as _mod_revision,
     tests,
     )
 
@@ -187,7 +188,7 @@ class TestReportChanges(tests.TestCase):
                            exe_change=False)
 
 
-class TestChangesFrom (tests.TestCaseWithTransport):
+class TestChangesFrom(tests.TestCaseWithTransport):
 
     def show_string(self, delta, *args,  **kwargs):
         to_file = StringIO()
@@ -238,3 +239,83 @@ class TestChangesFrom (tests.TestCaseWithTransport):
                            True, False)], delta.renamed)
         self.assertTrue(delta.has_changed())
         self.assertTrue(delta.touches_file_id('file-id'))
+
+
+class TestDeltaShow(tests.TestCaseWithTransport):
+
+    def _get_delta(self):
+        # We build the delta from a real tree to avoid depending on internal
+        # implementation details.
+        wt = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/f1', '1\n'),
+                                  ('branch/f2', '2\n'),
+                                  ('branch/f3', '3\n'),
+                                  ('branch/f4', '4\n'),
+                                  ('branch/dir/',),
+                                 ])
+        wt.add(['f1', 'f2', 'f3', 'f4', 'dir'],
+               ['f1-id', 'f2-id', 'f3-id', 'f4-id', 'dir-id'])
+        wt.commit('commit one', rev_id='1')
+
+        long_status = """added:
+  dir/
+  f1
+  f2
+  f3
+  f4
+"""
+        short_status = """A  dir/
+A  f1
+A  f2
+A  f3
+A  f4
+"""
+
+        repo = wt.branch.repository
+        d = wt.changes_from(repo.revision_tree(_mod_revision.NULL_REVISION))
+        return d, long_status, short_status
+
+    def test_delta_show_short_status_no_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        d.show(out, short_status=True)
+        self.assertEquals(short_status, out.getvalue())
+
+    def test_delta_show_long_status_no_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        d.show(out, short_status=False)
+        self.assertEquals(long_status, out.getvalue())
+
+    def test_delta_show_no_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def not_a_filter(path, file_id):
+            return True
+        d.show(out, short_status=True, filter=not_a_filter)
+        self.assertEquals(short_status, out.getvalue())
+
+    def test_delta_show_short_status_single_file_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def only_f2(path, file_id):
+            return path == 'f2'
+        d.show(out, short_status=True, filter=only_f2)
+        self.assertEquals("A  f2\n", out.getvalue())
+
+    def test_delta_show_long_status_single_file_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def only_f2(path, file_id):
+            return path == 'f2'
+        d.show(out, short_status=False, filter=only_f2)
+        self.assertEquals("added:\n  f2\n", out.getvalue())
+
+    def test_delta_show_short_status_single_file_id_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def only_f2_id(path, file_id):
+            return file_id == 'f2-id'
+        d.show(out, short_status=True, filter=only_f2_id)
+        self.assertEquals("A  f2\n", out.getvalue())
+
