@@ -283,8 +283,6 @@ class BranchStatus(TestCaseWithTransport):
         # should say so
         wt = self.make_branch_and_tree('.')
         out, err = self.run_bzr('status does-not-exist')
-        sys.stderr.write("KFF: '%s'\n" % out)
-        sys.stderr.flush()
         self.assertContainsRe(out, r'nonexistent.*\n.*does-not-exist')
 
     def test_status_out_of_date(self):
