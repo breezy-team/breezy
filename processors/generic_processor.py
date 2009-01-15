@@ -331,7 +331,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the branches
         self.note("Updating branch information ...")
         updater = GenericBranchUpdater(self.repo, self.branch, self.cache_mgr,
-            helpers.invert_dict(self.cache_mgr.heads),
+            helpers.invert_dictset(self.cache_mgr.heads),
             self.cache_mgr.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
@@ -544,9 +544,18 @@ class GenericProcessor(processor.ImportProcessor):
         """Process a ResetCommand."""
         if cmd.ref.startswith('refs/tags/'):
             self._set_tag(cmd.ref[len('refs/tags/'):], cmd.from_)
-        else:
-            self.warning("resets are not supported yet"
-                " - ignoring reset of '%s'", cmd.ref)
+	    return
+
+
+        if cmd.from_ is not None:
+            self.cache_mgr.last_ref = cmd.ref
+            self.cache_mgr.heads.setdefault(cmd.from_, set()).add(cmd.ref)
+            self.cache_mgr.last_ids[cmd.ref] = cmd.from_
+
+            updater = GenericBranchUpdater(self.repo, self.branch, self.cache_mgr,
+                helpers.invert_dictset(self.cache_mgr.heads),
+                self.cache_mgr.last_ref, self.tags)
+            updater.update()
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
@@ -587,7 +596,7 @@ class GenericCacheManager(object):
         # path -> file-ids - as generated
         self.file_ids = {}
 
-        # Head tracking: last ref, last id per ref & map of commit ids to ref
+        # Head tracking: last ref, last id per ref & map of commit ids to ref*s*
         self.last_ref = None
         self.last_ids = {}
         self.heads = {}
@@ -648,12 +657,12 @@ def _track_heads(cmd, cache_mgr):
     # Track the heads
     for parent in parents:
         try:
-            del cache_mgr.heads[parent]
+            del cache_mgr.heads[parent] # FIXME?
         except KeyError:
             # it's ok if the parent isn't there - another
             # commit may have already removed it
             pass
-    cache_mgr.heads[cmd.id] = cmd.ref
+    cache_mgr.heads.setdefault(cmd.id, set()).add(cmd.ref)
     cache_mgr.last_ids[cmd.ref] = cmd.id
     cache_mgr.last_ref = cmd.ref
     return parents
