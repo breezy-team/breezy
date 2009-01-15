@@ -1453,6 +1453,7 @@ class DistributionBranch(object):
             # in case the package wasn't native before then we pull
             # the upstream. These checks may be a bit restrictive.
             self.upstream_tree.pull(pull_branch.upstream_branch)
+            pull_branch.upstream_branch.tags.merge_to(self.upstream_branch.tags)
         elif native:
             mutter("Not checking for upstream as it is a native package")
         else:
@@ -1854,6 +1855,9 @@ class DistributionBranch(object):
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
                         last_revision=revid)
+                if self.upstream_branch.last_revision() == NULL_REVISION:
+                    self.upstream_tree.pull(branch.upstream_branch)
+                    branch.upstream_branch.tags.merge_to(self.upstream_branch.tags)
         for branch in self.get_greater_branches():
             merged, missing_versions = \
                 branch.contained_versions(missing_versions)
@@ -1866,6 +1870,9 @@ class DistributionBranch(object):
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
                         last_revision=revid)
+                if self.upstream_branch.last_revision() == NULL_REVISION:
+                    self.upstream_tree.pull(branch.upstream_branch)
+                    branch.upstream_branch.tags.merge_to(self.upstream_branch.tags)
         return parents
 
 
