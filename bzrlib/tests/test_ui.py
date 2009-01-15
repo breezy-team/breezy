@@ -144,9 +144,9 @@ class UITests(TestCase):
         ui = TextUIFactory(None, None, None)
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
-        # this raises a warning, but has no other effect
+        # We no longer warn about finishing unnested progress bars.
         warnings, _ = self.callCatchWarnings(pb1.finished)
-        self.assertEqual(len(warnings), 1)
+        self.assertEqual(len(warnings), 0)
         pb2.finished()
         pb1.finished()
 
