@@ -214,12 +214,6 @@ class BranchStatus(TestCaseWithTransport):
                 wt, short=True)
 
         tof = StringIO()
-        self.assertRaises(errors.PathsDoNotExist,
-                          show_tree_status,
-                          wt, specific_files=['bye.c','test.c','absent.c'], 
-                          to_file=tof)
-        
-        tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
@@ -277,10 +271,12 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
-        # should give an error
+        # should say so
         wt = self.make_branch_and_tree('.')
-        out, err = self.run_bzr('status does-not-exist', retcode=3)
-        self.assertContainsRe(err, r'do not exist.*does-not-exist')
+        out, err = self.run_bzr('status does-not-exist')
+        sys.stderr.write("KFF: '%s'\n" % out)
+        sys.stderr.flush()
+        self.assertContainsRe(out, r'nonexistent.*\n.*does-not-exist')
 
     def test_status_out_of_date(self):
         """Simulate status of out-of-date tree after remote push"""
