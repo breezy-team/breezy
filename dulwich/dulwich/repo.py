@@ -145,10 +145,11 @@ class Repo(object):
         that a revision is present.
     :param progress: Simple progress function that will be called with 
         updated progress strings.
+    :return: tuple with number of objects, iterator over objects
     """
     shas = self.find_missing_objects(determine_wants, graph_walker, progress)
-    for sha in shas:
-        yield self.get_object(sha)
+    object_gen = (self.get_object(sha) for sha in shas)
+    return (len(shas), object_gen)
 
   def object_dir(self):
     return os.path.join(self.controldir(), OBJECTDIR)

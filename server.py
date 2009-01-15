@@ -105,6 +105,8 @@ class BzrBackend(Backend):
 
         repo = Repository.open(self.directory)
 
+        objects = set()
+
         repo.lock_read()
         try:
             have = graph_walker.next()
@@ -127,12 +129,14 @@ class BzrBackend(Backend):
                 for sha, obj in inventory_to_tree_and_blobs(repo, self.mapping, commit):
                     if sha not in obj_sent:
                         obj_sent.add(sha)
-                        yield obj
+                        objects.add(obj)
 
-                yield revision_to_commit(rev, self.mapping, sha)
+                objects.add(revision_to_commit(rev, self.mapping, sha))
 
         finally:
             repo.unlock()
+
+        return (len(objects), iter(objects))
 
 
 def revision_to_commit(rev, mapping, tree_sha):

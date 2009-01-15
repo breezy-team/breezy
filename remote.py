@@ -120,9 +120,9 @@ class RemoteGitRepository(GitRepository):
         basename = path[:-len(".pack")]
         p = PackData(path)
         p.create_index_v2(basename+".idx")
-        for o in Pack(basename).iterobjects():
-            yield o
+        pack = Pack(basename)
         os.remove(path)
+        return (len(p), pack.iterobjects())
 
 
 class RemoteGitBranch(GitBranch):
