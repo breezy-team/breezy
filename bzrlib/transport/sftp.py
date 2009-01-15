@@ -1,4 +1,3 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
