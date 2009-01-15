@@ -583,42 +583,56 @@ class TestLogFile(TestCaseWithTransport):
         # We test using --line in preference to --short because matching
         # revnos in the output of --line is more reliable.
         self.prepare_tree()
+
+        # full history of file1
         log = self.run_bzr('log --line file1')[0]
         self.assertContainsRe(log, '^1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^2:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+        # full history of file2
         log = self.run_bzr('log --line file2')[0]
         self.assertNotContainsRe(log, '^1:', re.MULTILINE)
         self.assertContainsRe(log, '^2:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertContainsRe(log, '^4:', re.MULTILINE)
+
+        # full history of file3
         log = self.run_bzr('log --line file3')[0]
         self.assertNotContainsRe(log, '^1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^2:', re.MULTILINE)
         self.assertContainsRe(log, '^3:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+        # file in a merge revision
         log = self.run_bzr('log --line -r3.1.1 file2')[0]
         self.assertNotContainsRe(log, '^1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^2:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3:', re.MULTILINE)
         self.assertContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+        # file in a mainline revision
         log = self.run_bzr('log --line -r4 file2')[0]
         self.assertNotContainsRe(log, '^1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^2:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertContainsRe(log, '^4:', re.MULTILINE)
+
+        # file since a revision
         log = self.run_bzr('log --line -r3.. file2')[0]
         self.assertNotContainsRe(log, '^1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^2:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertContainsRe(log, '^4:', re.MULTILINE)
+
+        # file up to a revision
         log = self.run_bzr('log --line -r..3 file2')[0]
         self.assertNotContainsRe(log, '^1:', re.MULTILINE)
         self.assertContainsRe(log, '^2:', re.MULTILINE)

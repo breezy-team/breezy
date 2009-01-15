@@ -264,7 +264,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = view_revisions[0:1]
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
-            specific_fileid, view_revisions, generate_merge_revisions)
+            specific_fileid, view_revisions,
+            include_merges=generate_merge_revisions)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.

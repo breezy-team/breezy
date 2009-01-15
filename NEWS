@@ -33,7 +33,7 @@ NOT RELEASED YET
 
     * ``bzr log FILE`` now correctly shows mainline revisions merging
       a change to FILE when the ``--short`` and ``--line`` log formats
-      are used. (Ian Clatworthy)
+      are used. (Ian Clatworthy, #317417)
 
   DOCUMENTATION:
 
