@@ -18,7 +18,7 @@
 
 """Black-box tests for bzr log."""
 
-import os
+import os, re
 
 from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
@@ -515,8 +515,7 @@ class TestLogFile(TestCaseWithTransport):
         tree.bzrdir.destroy_workingtree()
         self.run_bzr('log tree/file')
 
-    def test_log_file(self):
-        """The log for a particular file should only list revs for that file"""
+    def prepare_tree(self):
         tree = self.make_branch_and_tree('parent')
         self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
         tree.add('file1')
@@ -531,6 +530,10 @@ class TestLogFile(TestCaseWithTransport):
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
         os.chdir('parent')
+
+    def test_log_file(self):
+        """The log for a particular file should only list revs for that file"""
+        self.prepare_tree()
         log = self.run_bzr('log file1')[0]
         self.assertContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
@@ -573,3 +576,52 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
         self.assertNotContainsRe(log, 'revno: 4\n')
+
+    def test_line_log_file(self):
+        """The line log for a file should only list relevant mainline revs"""
+        # Note: this also implicitly  covers the short logging case.
+        # We test using --line in preference to --short because matching
+        # revnos in the output of --line is more reliable.
+        self.prepare_tree()
+        log = self.run_bzr('log --line file1')[0]
+        self.assertContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+        log = self.run_bzr('log --line file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertContainsRe(log, '^4:', re.MULTILINE)
+        log = self.run_bzr('log --line file3')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+        log = self.run_bzr('log --line -r3.1.1 file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+        log = self.run_bzr('log --line -r4 file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertContainsRe(log, '^4:', re.MULTILINE)
+        log = self.run_bzr('log --line -r3.. file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertContainsRe(log, '^4:', re.MULTILINE)
+        log = self.run_bzr('log --line -r..3 file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
