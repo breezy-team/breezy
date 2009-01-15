@@ -868,8 +868,8 @@ def display_command(func):
 
 def main(argv):
     import bzrlib.ui
-    from bzrlib.ui.text import TextUIFactory
-    bzrlib.ui.ui_factory = TextUIFactory()
+    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
+        sys.stdin, sys.stdout, sys.stderr)
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':

@@ -4,17 +4,41 @@ Bazaar Release Notes
 
 .. contents::
 
+IN DEVELOPMENT
+--------------
+
+  IMPROVEMENTS:
+
+    * Progress bars now show the rate of activity for some sftp 
+      operations, and they are drawn different.  (Martin Pool, #172741)
 
 NOT RELEASED YET
 ----------------
 
-  COMPATABILITY BREAKS:
+  COMPATIBILITY BREAKS:
+
+    * By default, ``bzr status`` after a merge now shows just the pending
+      merge tip revisions. This improves the signal-to-noise ratio after
+      merging from trunk and completes much faster. To see all merged
+      revisions, use the new ``-v`` flag.  (Ian Clatworthy)
 
   NEW FEATURES:
 
   IMPROVEMENTS:
 
+    * ``bzr init`` will now print a little less verbose output.
+      (Marius Kruger)
+
   BUG FIXES:
+
+    * Fix a problem with CIFS client/server lag on Windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
+    * Many socket operations now handle EINTR by retrying the operation.
+      Previously EINTR was treated as an unrecoverable failure.  There is
+      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
+      (Andrew Bennetts)
 
   DOCUMENTATION:
 
@@ -24,6 +48,9 @@ NOT RELEASED YET
 
   INTERNALS:
 
+    * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
+      formatters to retrict the output.
+      (Vincent Ladeuil)
 
 bzr 1.11rc1 "Eyes up!" 2009-01-09
 ---------------------------------
@@ -88,10 +115,6 @@ occur when there are concurrent writes to a pack repository.
 
   BUG FIXES:
   
-    * Fix a problem with CIFS client/server lag on Windows colliding with
-      an invariant-per-process algorithm for generating AtomicFile names
-      (Adrian Wilkins, #304023)
-
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
 
@@ -133,11 +156,6 @@ occur when there are concurrent writes to a pack repository.
       if configured in ``authentication.conf`` with 'password_encoding=netrc'
       in the appropriate sections.
       (Vincent Ladeuil, #103029)
-
-    * Many socket operations now handle EINTR by retrying the operation.
-      Previously EINTR was treated as an unrecoverable failure.  There is
-      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
-      (Andrew Bennetts)
 
     * Opening a stacked branch now properly shares the connection, rather
       than opening a new connection for the stacked-on branch.
@@ -262,6 +280,10 @@ occur when there are concurrent writes to a pack repository.
       The default is still pycurl for https connections. (The only
       advantage of pycurl is that it checks ssl certificates.)
       (John Arbash Meinel)
+
+    * The progress and UI classes have changed; the main APIs remain the
+      same but code that provides a new UI or progress bar class may
+      need to be updated.  (Martin Pool)
 
     * ``VersionedFiles.get_record_stream()`` can now return objects with a
       storage_kind of ``chunked``. This is a collection (list/tuple) of

@@ -178,6 +178,11 @@ class cmd_status(Command):
     files or directories is reported.  If a directory is given, status
     is reported for everything inside that directory.
 
+    Before merges are committed, the pending merge tip revisions are
+    shown. To see all pending merge revisions, use the -v option.
+    To skip the display of pending merge information altogether, use
+    the no-pending option or specify a file/directory.
+
     If a revision argument is given, the status is calculated against
     that revision, or between two revisions if two are provided.
     """
@@ -185,7 +190,7 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision', 'change',
+    takes_options = ['show-ids', 'revision', 'change', 'verbose',
                      Option('short', help='Use short status indicators.',
                             short_name='S'),
                      Option('versioned', help='Only show versioned files.',
@@ -200,7 +205,7 @@ class cmd_status(Command):
     
     @display_command
     def run(self, show_ids=False, file_list=None, revision=None, short=False,
-            versioned=False, no_pending=False):
+            versioned=False, no_pending=False, verbose=False):
         from bzrlib.status import show_tree_status
 
         if revision and len(revision) > 2:
@@ -220,7 +225,7 @@ class cmd_status(Command):
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=relfile_list, revision=revision,
                          to_file=self.outf, short=short, versioned=versioned,
-                         show_pending=(not no_pending))
+                         show_pending=(not no_pending), verbose=verbose)
 
 
 class cmd_cat_revision(Command):
@@ -1501,8 +1506,23 @@ class cmd_init(Command):
                 raise errors.BzrCommandError('This branch format cannot be set'
                     ' to append-revisions-only.  Try --experimental-branch6')
         if not is_quiet():
-            from bzrlib.info import show_bzrdir_info
-            show_bzrdir_info(a_bzrdir, verbose=0, outfile=self.outf)
+            from bzrlib.info import describe_layout, describe_format
+            try:
+                tree = a_bzrdir.open_workingtree(recommend_upgrade=False)
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                tree = None
+            repository = branch.repository
+            layout = describe_layout(repository, branch, tree).lower()
+            format = describe_format(a_bzrdir, repository, branch, tree)
+            self.outf.write("Created a %s (format: %s)\n" % (layout, format))
+            if repository.is_shared():
+                #XXX: maybe this can be refactored into transport.path_or_url()
+                url = repository.bzrdir.root_transport.external_url()
+                try:
+                    url = urlutils.local_path_from_url(url)
+                except errors.InvalidURL:
+                    pass
+                self.outf.write("Using shared repository: %s\n" % url)
 
 
 class cmd_init_repository(Command):
