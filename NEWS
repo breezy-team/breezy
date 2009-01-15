@@ -19,6 +19,9 @@ NOT RELEASED YET
 
   IMPROVEMENTS:
 
+    * ``bzr init`` will now print a little less verbose output.
+      (Marius Kruger)
+
   BUG FIXES:
 
   DOCUMENTATION:
