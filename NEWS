@@ -31,6 +31,10 @@ NOT RELEASED YET
 
   BUG FIXES:
 
+    * ``bzr log FILE`` now correctly shows mainline revisions merging
+      a change to FILE when the ``--short`` and ``--line`` log formats
+      are used. (Ian Clatworthy)
+
   DOCUMENTATION:
 
   API CHANGES:
