@@ -1873,6 +1873,9 @@ class DistributionBranch(object):
                 if self.upstream_branch.last_revision() == NULL_REVISION:
                     self.upstream_tree.pull(branch.upstream_branch)
                     branch.upstream_branch.tags.merge_to(self.upstream_branch.tags)
+        if (self.branch.last_revision() != NULL_REVISION
+                and not self.branch.last_revision() in parents):
+            parents.insert(0, self.branch.last_revision())
         return parents
 
 
