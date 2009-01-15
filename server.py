@@ -45,9 +45,13 @@ class BzrBackend(Backend):
         ret = {}
         repo_dir = BzrDir.open(self.directory)
         repo = repo_dir.open_repository()
+        branch = None
         for branch in repo.find_branches(using=True):
+            #FIXME: Look for 'master' or 'trunk' in here, and set HEAD accordingly...
             #FIXME: Need to get branch path relative to its repository and use this instead of nick
             ret["refs/heads/"+branch.nick] = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
+        if 'HEAD' not in ret and branch:
+            ret['HEAD'] = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
         return ret
 
     def apply_pack(self, refs, read):
