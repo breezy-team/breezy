@@ -5,6 +5,19 @@ Bazaar Release Notes
 .. contents::
 
 
+bzr 1.11final NOT RELEASED YET
+------------------------------
+
+  BUG FIXES:
+
+    * Fix failing test when CompiledChunksToLines is not available.
+      (Vincent Ladeuil)
+
+    * So stacked branches don't open multiple connections.
+      (John Arbash Meinel)
+
+
+
 bzr 1.11rc1 "Eyes up!" 2009-01-09
 ---------------------------------
 
