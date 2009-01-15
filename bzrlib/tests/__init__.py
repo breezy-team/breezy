@@ -909,9 +909,9 @@ class TestCase(unittest.TestCase):
         if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
-    def assertContainsRe(self, haystack, needle_re):
+    def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
-        if not re.search(needle_re, haystack):
+        if not re.search(needle_re, haystack, flags):
             if '\n' in haystack or len(haystack) > 60:
                 # a long string, format it in a more readable way
                 raise AssertionError(
@@ -921,9 +921,9 @@ class TestCase(unittest.TestCase):
                 raise AssertionError('pattern "%s" not found in "%s"'
                         % (needle_re, haystack))
 
-    def assertNotContainsRe(self, haystack, needle_re):
+    def assertNotContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a does not match a regular expression"""
-        if re.search(needle_re, haystack):
+        if re.search(needle_re, haystack, flags):
             raise AssertionError('pattern "%s" found in "%s"'
                     % (needle_re, haystack))
 
