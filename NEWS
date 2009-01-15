@@ -48,6 +48,9 @@ NOT RELEASED YET
 
   INTERNALS:
 
+    * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
+      formatters to retrict the output.
+      (Vincent Ladeuil)
 
 bzr 1.11rc1 "Eyes up!" 2009-01-09
 ---------------------------------
