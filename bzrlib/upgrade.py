@@ -16,10 +16,8 @@
 
 """bzr upgrade logic."""
 
-# change upgrade from .bzr to create a '.bzr-new', then do a bait and switch.
 
-
-from bzrlib.bzrdir import ConvertBzrDir4To5, ConvertBzrDir5To6, BzrDir, BzrDirFormat4, BzrDirFormat5, BzrDirFormat
+from bzrlib.bzrdir import BzrDir, BzrDirFormat
 import bzrlib.errors as errors
 from bzrlib.remote import RemoteBzrDir
 from bzrlib.transport import get_transport
