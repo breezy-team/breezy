@@ -199,7 +199,7 @@ def _show_log(branch,
     # Consult the LogFormatter about what it needs and can handle
     generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
     allow_single_merge_revision = getattr(lf,
-        'supports_single_merge_revision', False)
+        'supports_single_merge_revision', generate_merge_revisions)
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags and branch.supports_tags():
         rev_tag_dict = branch.tags.get_reverse_tag_dict()
@@ -226,6 +226,9 @@ def _show_log(branch,
     except _NonMainlineRevisionLimit:
         raise errors.BzrCommandError('Selected log formatter only supports'
             ' mainline revisions.')
+    except _StartNotLinearAncestor:
+        raise errors.BzrCommandError('Start revision not found in left-hand'
+            ' history of end revision.')
 
 
 def _create_log_revision_iterator(branch, start_revision, end_revision,
@@ -260,6 +263,10 @@ class _NonMainlineRevisionLimit(Exception):
     """Raised when a revision limit is not on the mainline."""
 
 
+class _StartNotLinearAncestor(Exception):
+    """Raised when a start revision is not found walking left-hand history."""
+
+
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
         specific_fileid, generate_merge_revisions, allow_single_merge_revision):
     """Calculate the revisions to view.
@@ -285,29 +292,44 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
              a list of the same tuples.
     """
     rev_limits = _get_revision_limits(branch, start_revision, end_revision)
-    br_revno, _, start_revno, start_rev_id, end_revno, end_rev_id = rev_limits
+    br_revno, br_rev_id, start_revno, start_rev_id, end_revno, end_rev_id = \
+        rev_limits
     if br_revno == 0:
         return []
 
     # If a single revision is requested, check we can handle it
     generate_single_revision = (start_rev_id and start_rev_id == end_rev_id)
     if generate_single_revision:
-        if generate_merge_revisions:
-            generate_single_revision = False
-        else:
+        if start_rev_id == br_rev_id:
+            # It's the tip
+            if (not generate_merge_revisions or
+                not _has_merges(branch, br_rev_id)):
+                return [(br_rev_id, br_revno, 0)]
+            else:
+                # We need the merge revisions as well
+                generate_single_revision = False
+        elif (not generate_merge_revisions or
+            not _has_merges(branch, start_rev_id)):
             revno = branch._get_mainline_revno(start_rev_id)
             if revno != 0:
+                # We found it on the mainline
                 return [(start_rev_id, revno, 0)]
             elif allow_single_merge_revision:
-                generate_merge_revisions = True
+                # It's a merge revision and the log formatter isn't
+                # completely brain dead.
+                revno = branch.get_revision_id_to_revno_map().get(start_rev_id)
+                revno_str = '.'.join(str(n) for n in revno)
+                return [(start_rev_id, revno_str, 0)]
             else:
                 raise _NonMainlineRevisionLimit()
+        else:
+            generate_single_revision = False
 
-    # If we only want to see mainline revisions, we can iterate ...
+    # If we only want to see linear revisions, we can iterate ...
     if not generate_merge_revisions:
-        # Note: mainline_view_revisions() returns an iterator so we can't
+        # Note: _linear_view_revisions() returns an iterator so we can't
         # trap the _NonMainlineRevisionLimits exception here
-        result = _mainline_view_revisions(branch, rev_limits)
+        result = _linear_view_revisions(branch, rev_limits)
         if direction == 'forward':
             result = reversed(list(result))
         return result
@@ -335,39 +357,50 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
     return view_revisions
 
 
-def _mainline_view_revisions(branch, revision_limits):
-    """Calculate the mainline revisions to view, newest to oldest.
+def _has_merges(branch, rev_id):
+    """Does a revision have multiple parents or not?"""
+    return len(branch.repository.get_revision(rev_id).parent_ids) > 1
+
+
+def _linear_view_revisions(branch, revision_limits):
+    """Calculate a sequence of revisions to view, newest to oldest.
 
     :param revision_limits: a tuple as returned by _get_revision_limits()
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
-    :raises _NonMainlineRevisionLimit: if a start_rev_id and/or end_rev_id
-      is specified and not found
+    :raises _StartNotLinearAncestor: if a start_rev_id is specified but
+      is not found walking the left-hand history
     """
     br_revno, br_rev_id, start_revno, start_rev_id, end_revno, end_rev_id = \
         revision_limits
     repo = branch.repository
-    cur_revno = br_revno
-    rev_iter = repo.iter_reverse_revision_history(br_rev_id)
     if start_rev_id is None and end_rev_id is None:
-        for revision_id in rev_iter:
+        cur_revno = br_revno
+        for revision_id in repo.iter_reverse_revision_history(br_rev_id):
             yield revision_id, str(cur_revno), 0
             cur_revno -= 1
-    else:
+    elif end_rev_id:
+        cur_revno = branch._get_mainline_revno(end_rev_id)
+        # If we're starting on the mainline, we can calculate revnos.
+        # Otherwise, we need to look them up.
+        lookup_revnos = cur_revno == 0
+        if lookup_revnos:
+            revno_map = branch.get_revision_id_to_revno_map()
         found_start = start_rev_id is None
-        found_end = end_rev_id is None
-        for revision_id in rev_iter:
-            if cur_revno < start_revno:
+        for revision_id in repo.iter_reverse_revision_history(end_rev_id):
+            if lookup_revnos:
+                revno_str = revno_map.get(revision_id)
+            else:
+                revno_str = str(cur_revno)
+            if not found_start and revision_id == start_rev_id:
+                yield revision_id, revno_str, 0
+                found_start = True
                 break
-            if cur_revno <= end_revno:
-                if not found_start and revision_id == start_rev_id:
-                    found_start = True
-                if not found_end and revision_id == end_rev_id:
-                    found_end = True
-                yield revision_id, str(cur_revno), 0
-            cur_revno -= 1
+            else:
+                yield revision_id, revno_str, 0
+                cur_revno -= 1
         else:
-            if not found_start or not found_end:
-                raise _NonMainlineRevisionLimit()
+            if not found_start:
+                raise _StartNotLinearAncestor()
 
 
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search):

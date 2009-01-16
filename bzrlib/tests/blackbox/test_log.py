@@ -22,7 +22,7 @@ import os, re
 
 from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
+from bzrlib.tests import KnownFailure, TestCaseInTempDir, TestCaseWithTransport
 from bzrlib.tests.test_log import (
     normalize_log,
     )
@@ -393,6 +393,10 @@ message:
 """)
 
     def test_merges_nonsupporting_formatter(self):
+        # This "feature" of log formatters is madness. If a log
+        # formatter cannot display a dotted-revno, it ought to ignore it.
+        # Otherwise, a linear sequence is always expected to be handled now.
+        raise KnownFailure('log formatters must support linear sequences now')
         self._prepare()
         err_msg = 'Selected log formatter only supports mainline revisions.'
         # The single revision case is tested in the core tests
