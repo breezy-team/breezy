@@ -2171,11 +2171,6 @@ class LocalRequiresBoundBranch(BzrError):
     _fmt = "Cannot perform local-only commits on unbound branches."
 
 
-class MissingProgressBarFinish(BzrError):
-
-    _fmt = "A nested progress bar was not 'finished' correctly."
-
-
 class InvalidProgressBarType(BzrError):
 
     _fmt = ("Environment variable BZR_PROGRESS_BAR='%(bar_type)s"

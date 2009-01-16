@@ -268,10 +268,12 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
              a list of the same tuples.
     """
     view_revisions = _calc_view_revisions(branch, start_revision, end_revision,
-        direction, generate_merge_revisions, allow_single_merge_revision)
+        direction, generate_merge_revisions or specific_fileid,
+        allow_single_merge_revision)
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
-            specific_fileid, view_revisions)
+            specific_fileid, view_revisions,
+            include_merges=generate_merge_revisions)
     return view_revisions
 
 
@@ -622,7 +624,8 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
+    include_merges=True):
     r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
@@ -654,6 +657,8 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
         tuples. This is the list of revisions which will be filtered. It is
         assumed that view_revisions is in merge_sort order (i.e. newest
         revision first ).
+
+    :param include_merges: include merge revisions in the result or not
 
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
@@ -694,8 +699,9 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
             for idx in xrange(len(current_merge_stack)):
                 node = current_merge_stack[idx]
                 if node is not None:
-                    result.append(node)
-                    current_merge_stack[idx] = None
+                    if include_merges or node[2] == 0:
+                        result.append(node)
+                        current_merge_stack[idx] = None
     return result
 
 

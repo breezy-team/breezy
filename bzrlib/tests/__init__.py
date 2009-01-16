@@ -909,9 +909,9 @@ class TestCase(unittest.TestCase):
         if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
-    def assertContainsRe(self, haystack, needle_re):
+    def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
-        if not re.search(needle_re, haystack):
+        if not re.search(needle_re, haystack, flags):
             if '\n' in haystack or len(haystack) > 60:
                 # a long string, format it in a more readable way
                 raise AssertionError(
@@ -921,9 +921,9 @@ class TestCase(unittest.TestCase):
                 raise AssertionError('pattern "%s" not found in "%s"'
                         % (needle_re, haystack))
 
-    def assertNotContainsRe(self, haystack, needle_re):
+    def assertNotContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a does not match a regular expression"""
-        if re.search(needle_re, haystack):
+        if re.search(needle_re, haystack, flags):
             raise AssertionError('pattern "%s" found in "%s"'
                     % (needle_re, haystack))
 
@@ -3348,12 +3348,41 @@ class _UTF8Filesystem(Feature):
 UTF8Filesystem = _UTF8Filesystem()
 
 
-class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlying filesystem is case-insensitive
-    (e.g. on Windows, Cygwin, MacOS)
-    """
+class _CaseInsCasePresFilenameFeature(Feature):
+    """Is the file-system case insensitive, but case-preserving?"""
 
     def _probe(self):
+        fileno, name = tempfile.mkstemp(prefix='MixedCase')
+        try:
+            # first check truly case-preserving for created files, then check
+            # case insensitive when opening existing files.
+            name = osutils.normpath(name)
+            base, rel = osutils.split(name)
+            found_rel = osutils.canonical_relpath(base, name)
+            return (found_rel == rel
+                    and os.path.isfile(name.upper())
+                    and os.path.isfile(name.lower()))
+        finally:
+            os.close(fileno)
+            os.remove(name)
+
+    def feature_name(self):
+        return "case-insensitive case-preserving filesystem"
+
+CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
+
+
+class _CaseInsensitiveFilesystemFeature(Feature):
+    """Check if underlying filesystem is case-insensitive but *not* case
+    preserving.
+    """
+    # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
+    # more likely to be case preserving, so this case is rare.
+
+    def _probe(self):
+        if CaseInsCasePresFilenameFeature.available():
+            return False
+
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
             TestCaseWithMemoryTransport.TEST_ROOT = root
