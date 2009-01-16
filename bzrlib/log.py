@@ -270,14 +270,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     return view_revisions
 
 
-def _linear_view_revisions(branch):
-    start_revno, start_revision_id = branch.last_revision_info()
-    repo = branch.repository
-    revision_ids = repo.iter_reverse_revision_history(start_revision_id)
-    for num, revision_id in enumerate(revision_ids):
-        yield revision_id, str(start_revno - num), 0
-
-
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
     """Create a revision iterator for log.
 
