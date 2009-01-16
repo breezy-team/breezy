@@ -248,7 +248,12 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     """
     rev_limits = _get_revision_limits(branch, start_revision, end_revision)
     _, _, _, start_rev_id, _, end_rev_id = rev_limits
-    # Decide how file-ids are matched: delta-filtering or per-file graph
+    # Decide how file-ids are matched: delta-filtering or per-file graph.
+    # Delta filtering allows revisions to be displayed incrementally
+    # though the total time might be slower, at least until the split
+    # inventory format arrives. Delta filtering should give more
+    # accurate results (e.g. inclusion of FILE deletions) so perhaps
+    # it should always be used if we have a file-id?
     use_deltas_for_matching = specific_fileid and (not generate_merge_revisions
         or generate_delta or start_rev_id or end_rev_id)
     if use_deltas_for_matching:
@@ -256,8 +261,8 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
             direction, generate_merge_revisions, allow_single_merge_revision)
         def only_the_file(path, file_id):
             return file_id == specific_fileid
-        return make_log_rev_iterator(branch, view_revisions, True, search,
-            delta_entry_filter=only_the_file)
+        return make_log_rev_iterator(branch, view_revisions, generate_delta,
+            search, delta_entry_filter=only_the_file)
     else:
         view_revisions = _calc_view_revisions(branch, rev_limits,
             direction, generate_merge_revisions or specific_fileid,
