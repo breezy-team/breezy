@@ -135,33 +135,13 @@ class BzrBackend(Backend):
                         obj_sent.add(sha)
                         objects.add((obj, path))
 
-                objects.add((revision_to_commit(rev, self.mapping, sha), None))
+                objects.add((mapping.export_commit(rev, sha), None))
 
         finally:
             repo.unlock()
 
         return (len(objects), iter(objects))
 
-
-def revision_to_commit(rev, mapping, tree_sha):
-    """
-    Turn a Bazaar revision in to a Git commit
-    :param tree_sha: HACK parameter (until we can retrieve this from the mapping)
-    :return dulwich.objects.Commit represent the revision:
-    """
-    commit = Commit()
-    commit._tree = tree_sha
-    for p in rev.parent_ids:
-        commit._parents.append(mapping.revision_id_bzr_to_foreign(p))
-    commit._message = rev.message
-    commit._committer = rev.committer
-    if 'author' in rev.properties:
-        commit._author = rev.properties['author']
-    else:
-        commit._author = rev.committer
-    commit._commit_time = long(rev.timestamp)
-    commit.serialize()
-    return commit
 
 def inventory_to_tree_and_blobs(repo, mapping, revision_id):
     stack = []

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ from bzrlib.inventory import ROOT_ID
 from bzrlib.foreign import (
         ForeignRevision,
         )
+
+from dulwich.objects import Commit
 
 
 def escape_file_id(file_id):
@@ -69,6 +71,26 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.timestamp = commit.commit_time
         rev.timezone = 0
         return rev
+
+    def export_commit(self, rev, tree_sha):
+        """Turn a Bazaar revision in to a Git commit
+
+        :param tree_sha: HACK parameter (until we can retrieve this from the mapping)
+        :return dulwich.objects.Commit represent the revision:
+        """
+        commit = Commit()
+        commit._tree = tree_sha
+        for p in rev.parent_ids:
+            commit._parents.append(self.revision_id_bzr_to_foreign(p))
+        commit._message = rev.message
+        commit._committer = rev.committer
+        if 'author' in rev.properties:
+            commit._author = rev.properties['author']
+        else:
+            commit._author = rev.committer
+        commit._commit_time = long(rev.timestamp)
+        commit.serialize()
+        return commit
 
 
 class BzrGitMappingExperimental(BzrGitMapping):
