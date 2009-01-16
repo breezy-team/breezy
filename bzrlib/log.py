@@ -212,7 +212,7 @@ def _show_log(branch,
     revision_iterator = _create_log_revision_iterator(branch,
         start_revision, end_revision, direction, specific_fileid, search,
         generate_merge_revisions, allow_single_merge_revision,
-        generate_delta)
+        generate_delta, limit)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
             lr = LogRevision(rev, revno, merge_depth, delta,
@@ -226,7 +226,8 @@ def _show_log(branch,
 
 def _create_log_revision_iterator(branch, start_revision, end_revision,
     direction, specific_fileid, search, generate_merge_revisions,
-    allow_single_merge_revision, generate_delta):
+    allow_single_merge_revision, generate_delta,
+    force_incremental_matching):
     """Create a revision iterator for log.
 
     :param branch: The branch being logged.
@@ -242,6 +243,8 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     :param allow_single_merge_revision: If True, logging of a single
         revision off the mainline is to be allowed
     :param generate_delta: Whether to generate a delta for each revision.
+    :param force_incremental_matching: if there's a file_id, use deltas
+        to match it unconditionally
 
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
@@ -254,8 +257,9 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     # inventory format arrives. Delta filtering should give more
     # accurate results (e.g. inclusion of FILE deletions) so perhaps
     # it should always be used if we have a file-id?
-    use_deltas_for_matching = specific_fileid and (not generate_merge_revisions
-        or generate_delta or start_rev_id or end_rev_id)
+    use_deltas_for_matching = specific_fileid and (force_incremental_matching
+        or generate_delta or start_rev_id or end_rev_id
+        or not generate_merge_revisions)
     if use_deltas_for_matching:
         view_revisions = _calc_view_revisions(branch, rev_limits,
             direction, generate_merge_revisions, allow_single_merge_revision)
@@ -325,8 +329,10 @@ def _calc_view_revisions(branch, rev_limits, direction,
     # If we only want to see linear revisions, we can iterate ...
     if not generate_merge_revisions:
         result = _linear_view_revisions(branch, rev_limits)
-        # If a start limit was given, check it before outputting anything
-        if start_rev_id:
+        # If a start limit was given and it's not obviously an
+        # ancestor of the end limit, check it before outputting anything
+        if start_rev_id and not (_on_mainline(branch, start_rev_id) and
+            _on_mainline(branch, end_rev_id)):
             try:
                 result = list(result)
             except _StartNotLinearAncestor:
@@ -379,6 +385,16 @@ def _calc_view_revisions(branch, rev_limits, direction,
 def _has_merges(branch, rev_id):
     """Does a revision have multiple parents or not?"""
     return len(branch.repository.get_revision(rev_id).parent_ids) > 1
+
+
+def _on_mainline(branch, rev_id):
+    """Is rev_id on the mainline of a branch?"""
+    if rev_id:
+        try:
+            branch.revision_id_to_revno(rev_id)
+        except errors.NoSuchRevision:
+            return False
+    return True
 
 
 def _linear_view_revisions(branch, revision_limits):
