@@ -230,12 +230,6 @@ def _show_log(branch,
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
                              specific_fileid, generate_merge_revisions,
                              allow_single_merge_revision):
-    if (    not generate_merge_revisions
-        and start_revision is end_revision is None
-        and direction == 'reverse'
-        and specific_fileid is None):
-        return _linear_view_revisions(branch)
-
     mainline_revs, rev_nos, start_rev_id, end_rev_id = _get_mainline_revs(
         branch, start_revision, end_revision)
     if not mainline_revs:

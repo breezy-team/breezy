@@ -301,8 +301,8 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
         wt.commit('rev-merged', rev_id='rev-2a',
                   timestamp=1132586700, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
-        wt.branch.set_last_revision_info(1, 'rev-1')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
+        wt.branch.set_last_revision_info(1, 'rev-1')
         wt.commit('rev-2', rev_id='rev-2b',
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
