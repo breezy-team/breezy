@@ -208,27 +208,20 @@ def _show_log(branch,
     generate_delta = verbose and getattr(lf, 'supports_delta', False)
 
     # Find and print the interesting revisions
-    try:
-        log_count = 0
-        revision_iterator = _create_log_revision_iterator(branch,
-            start_revision, end_revision, direction, specific_fileid, search,
-            generate_merge_revisions, allow_single_merge_revision,
-            generate_delta)
-        for revs in revision_iterator:
-            for (rev_id, revno, merge_depth), rev, delta in revs:
-                lr = LogRevision(rev, revno, merge_depth, delta,
-                                 rev_tag_dict.get(rev_id))
-                lf.log_revision(lr)
-                if limit:
-                    log_count += 1
-                    if log_count >= limit:
-                        return
-    except _NonMainlineRevisionLimit:
-        raise errors.BzrCommandError('Selected log formatter only supports'
-            ' mainline revisions.')
-    except _StartNotLinearAncestor:
-        raise errors.BzrCommandError('Start revision not found in left-hand'
-            ' history of end revision.')
+    log_count = 0
+    revision_iterator = _create_log_revision_iterator(branch,
+        start_revision, end_revision, direction, specific_fileid, search,
+        generate_merge_revisions, allow_single_merge_revision,
+        generate_delta)
+    for revs in revision_iterator:
+        for (rev_id, revno, merge_depth), rev, delta in revs:
+            lr = LogRevision(rev, revno, merge_depth, delta,
+                             rev_tag_dict.get(rev_id))
+            lf.log_revision(lr)
+            if limit:
+                log_count += 1
+                if log_count >= limit:
+                    return
 
 
 def _create_log_revision_iterator(branch, start_revision, end_revision,
@@ -267,23 +260,6 @@ class _StartNotLinearAncestor(Exception):
     """Raised when a start revision is not found walking left-hand history."""
 
 
-def calculate_view_revisions(branch, start_revision, end_revision, direction,
-        specific_fileid, generate_merge_revisions, allow_single_merge_revision):
-    """Calculate the revisions to view.
-
-    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
-             a list of the same tuples.
-    """
-    view_revisions = _calc_view_revisions(branch, start_revision, end_revision,
-        direction, generate_merge_revisions or specific_fileid,
-        allow_single_merge_revision)
-    if specific_fileid:
-        view_revisions = _filter_revisions_touching_file_id(branch,
-            specific_fileid, view_revisions,
-            include_merges=generate_merge_revisions)
-    return view_revisions
-
-
 def _calc_view_revisions(branch, start_revision, end_revision, direction,
         generate_merge_revisions, allow_single_merge_revision):
     """Calculate the revisions to view.
@@ -310,18 +286,21 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
                 generate_single_revision = False
         elif (not generate_merge_revisions or
             not _has_merges(branch, start_rev_id)):
-            revno = branch._get_mainline_revno(start_rev_id)
-            if revno != 0:
+            try:
+                revno = branch.revision_id_to_revno(start_rev_id)
                 # We found it on the mainline
                 return [(start_rev_id, revno, 0)]
-            elif allow_single_merge_revision:
-                # It's a merge revision and the log formatter isn't
-                # completely brain dead.
-                revno = branch.get_revision_id_to_revno_map().get(start_rev_id)
-                revno_str = '.'.join(str(n) for n in revno)
-                return [(start_rev_id, revno_str, 0)]
-            else:
-                raise _NonMainlineRevisionLimit()
+            except errors.NoSuchRevision:
+                if allow_single_merge_revision:
+                    # It's a merge revision and the log formatter isn't
+                    # completely brain dead.
+                    revnos = branch.get_revision_id_to_revno_map()
+                    revno = revnos.get(start_rev_id)
+                    revno_str = '.'.join(str(n) for n in revno)
+                    return [(start_rev_id, revno_str, 0)]
+                else:
+                    raise errors.BzrCommandError('Selected log formatter only'
+                        ' supports mainline revisions.')
         else:
             generate_single_revision = False
 
@@ -330,6 +309,13 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
         # Note: _linear_view_revisions() returns an iterator so we can't
         # trap the _NonMainlineRevisionLimits exception here
         result = _linear_view_revisions(branch, rev_limits)
+        # If a start limit was given, check it before outputting anything
+        if start_rev_id:
+            try:
+                result = list(result)
+            except _StartNotLinearAncestor:
+                raise errors.BzrCommandError('Start revision not found in'
+                    ' left-hand history of end revision.')
         if direction == 'forward':
             result = reversed(list(result))
         return result
@@ -345,8 +331,6 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
     view_revisions = _filter_revision_range(list(view_revs_iter),
                                             start_rev_id,
                                             end_rev_id)
-    if view_revisions and generate_single_revision:
-        view_revisions = view_revisions[0:1]
 
     # Rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -379,10 +363,13 @@ def _linear_view_revisions(branch, revision_limits):
             yield revision_id, str(cur_revno), 0
             cur_revno -= 1
     elif end_rev_id:
-        cur_revno = branch._get_mainline_revno(end_rev_id)
         # If we're starting on the mainline, we can calculate revnos.
         # Otherwise, we need to look them up.
-        lookup_revnos = cur_revno == 0
+        try:
+            cur_revno = branch.revision_id_to_revno(end_rev_id)
+            lookup_revnos = False
+        except errors.NoSuchRevision:
+            lookup_revnos = True
         if lookup_revnos:
             revno_map = branch.get_revision_id_to_revno_map()
         found_start = start_rev_id is None
@@ -401,6 +388,24 @@ def _linear_view_revisions(branch, revision_limits):
         else:
             if not found_start:
                 raise _StartNotLinearAncestor()
+
+
+def calculate_view_revisions(branch, start_revision, end_revision, direction,
+        specific_fileid, generate_merge_revisions, allow_single_merge_revision):
+    """Calculate the revisions to view.
+
+    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
+             a list of the same tuples.
+    """
+    # This method is likely to be deprecated soon - IGC 20090116
+    view_revisions = _calc_view_revisions(branch, start_revision, end_revision,
+        direction, generate_merge_revisions or specific_fileid,
+        allow_single_merge_revision)
+    if specific_fileid:
+        view_revisions = _filter_revisions_touching_file_id(branch,
+            specific_fileid, view_revisions,
+            include_merges=generate_merge_revisions)
+    return view_revisions
 
 
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
