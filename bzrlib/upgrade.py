@@ -63,18 +63,12 @@ class Convert(object):
                            self.bzrdir._format)
         self.bzrdir.check_conversion_target(self.format)
         self.pb.note('starting upgrade of %s', self.transport.base)
-        self._backup_control_dir()
+        self.bzrdir.backup_bzrdir()
         while self.bzrdir.needs_format_conversion(self.format):
             converter = self.bzrdir._format.get_converter(self.format)
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
         self.pb.note("finished")
 
-    def _backup_control_dir(self):
-        self.pb.note('making backup of tree history')
-        old_path, new_path = self.bzrdir.backup_bzrdir()
-        self.pb.note('%s has been backed up to %s', old_path, new_path)
-        self.pb.note('if conversion fails, you can move this directory back to .bzr')
-        self.pb.note('if it succeeds, you can remove this directory if you wish')
 
 def upgrade(url, format=None):
     """Upgrade to format, or the default bzrdir format if not supplied."""
