@@ -389,6 +389,8 @@ We use 4 space indents for blocks, and never use tab characters.  (In vim,
 
 No trailing white space is allowed.
 
+Unix style newlines (LF) are used.
+
 Lines should be no more than 79 characters if at all possible.
 Lines that continue a long statement may be indented in either of 
 two ways:

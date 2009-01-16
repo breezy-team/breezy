@@ -262,46 +262,56 @@ class TestSource(TestSourceHelper):
 
             self.fail('\n'.join(help_text))
 
+    def _push_file(self, dict_, fname, line_no):
+        if fname not in dict_:
+            dict_[fname] = [line_no]
+        else:
+            dict_[fname].append(line_no)
+
+    def _format_message(self, dict_, message):
+        files = ["%s: %s" % (f, ', '.join([str(i+1) for i in lines]))
+                for f, lines in dict_.items()]
+        return message + '\n\n    %s' % ('\n    '.join(files))
+
     def test_coding_style(self):
         """Check if bazaar code conforms to some coding style conventions.
 
         Currently we check for:
          * any tab characters
          * trailing white space
+         * non-unix newlines
 
         Planned checks:
          * no newline at end of files
          * lines longer than 79 chars (print a warning only)
         """
-        tabs = []
+        tabs = {}
         trailing_ws = {}
+        illegal_newlines = {}
         for fname, text in self.get_source_file_contents():
             if not self.is_our_code(fname):
                 continue
-            if '\t' in text:
-                tabs.append(fname)
-            lines = text.splitlines()
-            for i, line in enumerate(lines):
-                if line.endswith(' '):
-                    if fname not in trailing_ws:
-                        trailing_ws[fname] = [i]
-                    else:
-                        trailing_ws[fname].append(i)
+            lines = text.splitlines(True)
+            line_count = len(lines)
+            for line_no, line in enumerate(lines):
+                if '\t' in line:
+                    self._push_file(tabs, fname, line_no)
+                if not line.endswith('\n') or line.endswith('\r\n'):
+                    self._push_file(illegal_newlines, fname, line_no)
+                if line.endswith(' \n'):
+                    self._push_file(trailing_ws, fname, line_no)
 
         problems = []
         if tabs:
-            problems.append(
+            problems.append(self._format_message(tabs,
                 'Tab characters were found in the following source files.'
-                '\nThey should either be replaced by "\\t" or by spaces:'
-                '\n\n    %s'
-              % ('\n    '.join(incorrect)))
+                '\nThey should either be replaced by "\\t" or by spaces:'))
         if trailing_ws:
-            files = ["%s: %s" % (f, ', '.join([str(i+1) for i in lines]))
-                for f, lines in trailing_ws.items()]
-            problems.append(
-                'Trailing white space was found in the following files on the '
-                'indicated lines:\n\n    %s'
-                % ('\n    '.join(files)))
+            problems.append(self._format_message(trailing_ws,
+                'Trailing white space was found:'))
+        if illegal_newlines:
+            problems.append(self._format_message(illegal_newlines,
+                'Non-unix newlines were found:'))
         if problems:
             self.fail('\n'.join(problems))
 
