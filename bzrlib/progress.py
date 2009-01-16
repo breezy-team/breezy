@@ -118,7 +118,10 @@ class ProgressTask(object):
     def note(self, fmt_string, *args):
         """Record a note without disrupting the progress bar."""
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        self.ui_factory.note(fmt_string % args)
+        if args:
+            self.ui_factory.note(fmt_string % args)
+        else:
+            self.ui_factory.note(fmt_string)
 
     def clear(self):
         # XXX: shouldn't be here; put it in mutter or the ui instead
