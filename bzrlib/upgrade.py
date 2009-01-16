@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@ import bzrlib.ui as ui
 class Convert(object):
 
     def __init__(self, url, format):
+        if format is None:
+            format = BzrDirFormat.get_default_format()
         self.format = format
         self.bzrdir = BzrDir.open_unsupported(url)
         if isinstance(self.bzrdir, RemoteBzrDir):
@@ -59,11 +61,7 @@ class Convert(object):
         if not self.bzrdir.can_convert_format():
             raise errors.BzrError("cannot upgrade from bzrdir format %s" %
                            self.bzrdir._format)
-        if self.format is None:
-            target_format = BzrDirFormat.get_default_format()
-        else:
-            target_format = self.format
-        self.bzrdir.check_conversion_target(target_format)
+        self.bzrdir.check_conversion_target(self.format)
         self.pb.note('starting upgrade of %s', self.transport.base)
         self._backup_control_dir()
         while self.bzrdir.needs_format_conversion(self.format):
