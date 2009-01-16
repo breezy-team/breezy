@@ -306,8 +306,6 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
 
     # If we only want to see linear revisions, we can iterate ...
     if not generate_merge_revisions:
-        # Note: _linear_view_revisions() returns an iterator so we can't
-        # trap the _NonMainlineRevisionLimits exception here
         result = _linear_view_revisions(branch, rev_limits)
         # If a start limit was given, check it before outputting anything
         if start_rev_id:
@@ -319,6 +317,25 @@ def _calc_view_revisions(branch, start_revision, end_revision, direction,
         if direction == 'forward':
             result = reversed(list(result))
         return result
+
+    # If we're only looking at a limited linear range, we can skip
+    # generating merge revisions if there aren't any merges
+    if start_rev_id:
+        result = []
+        try:
+            for rev_id, revno, depth in \
+                _linear_view_revisions(branch, rev_limits):
+                if _has_merges(branch, rev_id):
+                    break
+                result.append((rev_id, revno, depth))
+            else:
+                # Success!
+                if direction == 'forward':
+                    result = reversed(result)
+                return result
+        except _StartNotLinearAncestor:
+            # Abort - we need the smart filtering below
+            pass
 
     # Otherwise, the algorithm is O(history) for now ...
 
