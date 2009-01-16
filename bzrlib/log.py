@@ -246,28 +246,41 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    view_revisions = calculate_view_revisions(branch, start_revision,
-        end_revision, direction, specific_fileid, generate_merge_revisions,
-        allow_single_merge_revision)
-    return make_log_rev_iterator(branch, view_revisions, generate_delta, search)
-
-
-class _NonMainlineRevisionLimit(Exception):
-    """Raised when a revision limit is not on the mainline."""
+    rev_limits = _get_revision_limits(branch, start_revision, end_revision)
+    _, _, _, start_rev_id, _, end_rev_id = rev_limits
+    # Decide how file-ids are matched: delta-filtering or per-file graph
+    use_deltas_for_matching = specific_fileid and (not generate_merge_revisions
+        or generate_delta or start_rev_id or end_rev_id)
+    if use_deltas_for_matching:
+        view_revisions = _calc_view_revisions(branch, rev_limits,
+            direction, generate_merge_revisions, allow_single_merge_revision)
+        def only_the_file(path, file_id):
+            return file_id == specific_fileid
+        return make_log_rev_iterator(branch, view_revisions, True, search,
+            delta_entry_filter=only_the_file)
+    else:
+        view_revisions = _calc_view_revisions(branch, rev_limits,
+            direction, generate_merge_revisions or specific_fileid,
+            allow_single_merge_revision)
+        if specific_fileid:
+            view_revisions = _filter_revisions_touching_file_id(branch,
+                specific_fileid, view_revisions,
+                include_merges=generate_merge_revisions)
+        return make_log_rev_iterator(branch, view_revisions, generate_delta,
+            search)
 
 
 class _StartNotLinearAncestor(Exception):
     """Raised when a start revision is not found walking left-hand history."""
 
 
-def _calc_view_revisions(branch, start_revision, end_revision, direction,
+def _calc_view_revisions(branch, rev_limits, direction,
         generate_merge_revisions, allow_single_merge_revision):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
-    rev_limits = _get_revision_limits(branch, start_revision, end_revision)
     br_revno, br_rev_id, start_revno, start_rev_id, end_revno, end_rev_id = \
         rev_limits
     if br_revno == 0:
@@ -416,8 +429,11 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
-    # This method is likely to be deprecated soon - IGC 20090116
-    view_revisions = _calc_view_revisions(branch, start_revision, end_revision,
+    # This method is no longer called by the main code path.
+    # It is retained for API compatibility and may be deprecated
+    # soon. IGC 20090116
+    rev_limits = _get_revision_limits(branch, start_revision, end_revision)
+    view_revisions = _calc_view_revisions(branch, rev_limits,
         direction, generate_merge_revisions or specific_fileid,
         allow_single_merge_revision)
     if specific_fileid:
@@ -427,13 +443,17 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     return view_revisions
 
 
-def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
+def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
+        delta_entry_filter=None):
     """Create a revision iterator for log.
 
     :param branch: The branch being logged.
     :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
+    :param delta_entry_filter: If set, a delta is always generated and
+      one of its entries must pass this filter for a revision to be kept.
+      The generated delta is only retained if generate_delta is True.
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
@@ -450,9 +470,35 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search):
                 yield (view, None, None)
         log_rev_iterator = iter([_convert()])
     for adapter in log_adapters:
-        log_rev_iterator = adapter(branch, generate_delta, search,
-            log_rev_iterator)
+        log_rev_iterator = adapter(branch, generate_delta or
+            delta_entry_filter, search, log_rev_iterator)
+    if delta_entry_filter:
+        log_rev_iterator = _filter_delta_items(log_rev_iterator,
+            delta_entry_filter, generate_delta)
     return log_rev_iterator
+
+
+def _filter_delta_items(log_rev_iterator, filter, retain_delta):
+    for revs in log_rev_iterator:
+        new_revs = []
+        for (rev_id, revno, merge_depth), rev, delta in revs:
+            if _delta_matches_filter(delta, filter):
+                if not retain_delta:
+                    delta = None
+                new_revs.append(((rev_id, revno, merge_depth), rev, delta))
+        yield new_revs
+
+
+def _delta_matches_filter(delta, filter):
+    """Check is a delta matches a filter."""
+    for l in (delta.modified, delta.added, delta.removed, delta.kind_changed):
+        for item in l:
+            if filter(item[0], item[1]):
+                return True
+    for item in delta.renamed:
+        if filter(item[0], item[2]) or filter(item[1], item[2]):
+            return True
+    return False
 
 
 def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
