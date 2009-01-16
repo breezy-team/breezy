@@ -301,8 +301,8 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
         wt.commit('rev-merged', rev_id='rev-2a',
                   timestamp=1132586700, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.commit('rev-2', rev_id='rev-2b',
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
@@ -315,6 +315,44 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
 
     1 Joe Foo\t2005-11-22
       rev-1
+
+""",
+                             logfile.getvalue())
+
+    def test_short_log_with_merges_and_range(self):
+        wt = self.make_branch_and_memory_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        wt.add('')
+        wt.commit('rev-1', rev_id='rev-1',
+                  timestamp=1132586655, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.commit('rev-merged', rev_id='rev-2a',
+                  timestamp=1132586700, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.set_parent_ids(['rev-1', 'rev-2a'])
+        wt.commit('rev-2b', rev_id='rev-2b',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.commit('rev-3a', rev_id='rev-3a',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.branch.set_last_revision_info(2, 'rev-2b')
+        wt.set_parent_ids(['rev-2b', 'rev-3a'])
+        wt.commit('rev-3b', rev_id='rev-3b',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile)
+        log.show_log(wt.branch, formatter,
+            start_revision=2, end_revision=3)
+        self.assertEqualDiff("""\
+    3 Joe Foo\t2005-11-22 [merge]
+      rev-3b
+
+    2 Joe Foo\t2005-11-22 [merge]
+      rev-2b
 
 """,
                              logfile.getvalue())
