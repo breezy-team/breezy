@@ -25,25 +25,19 @@ They are useful for testing code quality, checking coverage metric etc.
 import os
 import parser
 import re
-from cStringIO import StringIO
 import symbol
 import sys
 import token
 
 #import bzrlib specific imports here
 from bzrlib import (
-    diff,
     osutils,
-    patiencediff,
-    textfile,
     )
 import bzrlib.branch
 from bzrlib.tests import (
-    KnownFailure,
     TestCase,
     TestSkipped,
     )
-from bzrlib.workingtree import WorkingTree
 
 
 # Files which are listed here will be skipped when testing for Copyright (or
@@ -54,54 +48,6 @@ LICENSE_EXCEPTIONS = ['bzrlib/lsprof.py']
 # Technically, 'bzrlib/lsprof.py' should be 'bzrlib/util/lsprof.py',
 # (we do not check bzrlib/util/, since that is code bundled from elsewhere)
 # but for compatibility with previous releases, we don't want to move it.
-
-
-def check_coding_style(old_filename, oldlines, new_filename, newlines, to_file,
-                  allow_binary=False, sequence_matcher=None,
-                  path_encoding='utf8'):
-    """text_differ to be passed to diff.DiffText, which checks code style """
-    if allow_binary is False:
-        textfile.check_text_lines(oldlines)
-        textfile.check_text_lines(newlines)
-
-    if sequence_matcher is None:
-        sequence_matcher = patiencediff.PatienceSequenceMatcher
-
-    started = [False] #trick to access parent scoped variable
-    def start_if_needed():
-        if not started[0]:
-            to_file.write('+++ %s\n' % new_filename)
-            started[0] = True
-
-    def check_newlines(j1, j2):
-        for i, line in enumerate(newlines[j1:j2]):
-            bad_ws_match = re.match(r'^(([\t]*)(.*?)([\t ]*))(\r?\n)?$', line)
-            if bad_ws_match:
-                line_content = bad_ws_match.group(1)
-                has_leading_tabs = bool(bad_ws_match.group(2))
-                has_trailing_whitespace = bool(bad_ws_match.group(4))
-                if has_leading_tabs:
-                    start_if_needed()
-                    to_file.write('line %i has leading tabs: "%s"\n'% (
-                        i+1+j1, line_content))
-                if has_trailing_whitespace:
-                    start_if_needed()
-                    to_file.write('line %i has trailing whitespace: "%s"\n'% (
-                        i+1+j1, line_content))
-                if len(line_content) > 79:
-                    print (
-                        '\nFile %s\nline %i is longer than 79 characters:'
-                        '\n"%s"'% (new_filename, i+1+j1, line_content))
-
-    for group in sequence_matcher(None, oldlines, newlines
-            ).get_grouped_opcodes(0):
-        for tag, i1, i2, j1, j2 in group:
-            if tag == 'replace' or tag == 'insert':
-                check_newlines(j1, j2)
-
-    if len(newlines) == j2 and not newlines[j2-1].endswith('\n'):
-        start_if_needed()
-        to_file.write("\\ No newline at end of file\n")
 
 
 class TestSourceHelper(TestCase):
@@ -316,68 +262,48 @@ class TestSource(TestSourceHelper):
 
             self.fail('\n'.join(help_text))
 
-    def test_no_tabs(self):
-        """bzrlib source files should not contain any tab characters."""
-        incorrect = []
+    def test_coding_style(self):
+        """Check if bazaar code conforms to some coding style conventions.
 
+        Currently we check for:
+         * any tab characters
+         * trailing white space
+
+        Planned checks:
+         * no newline at end of files
+         * lines longer than 79 chars (print a warning only)
+        """
+        tabs = []
+        trailing_ws = {}
         for fname, text in self.get_source_file_contents():
             if not self.is_our_code(fname):
                 continue
             if '\t' in text:
-                incorrect.append(fname)
+                tabs.append(fname)
+            lines = text.splitlines()
+            for i, line in enumerate(lines):
+                if line.endswith(' '):
+                    if fname not in trailing_ws:
+                        trailing_ws[fname] = [i]
+                    else:
+                        trailing_ws[fname].append(i)
 
-        if incorrect:
-            self.fail('Tab characters were found in the following source files.'
-              '\nThey should either be replaced by "\\t" or by spaces:'
-              '\n\n    %s'
+        problems = []
+        if tabs:
+            problems.append(
+                'Tab characters were found in the following source files.'
+                '\nThey should either be replaced by "\\t" or by spaces:'
+                '\n\n    %s'
               % ('\n    '.join(incorrect)))
-
-    def test_coding_style(self):
-        """ Check if bazaar code conforms to some coding style conventions.
-
-        Currently we check all .py files for:
-         * new trailing white space
-         * new leading tabs
-         * new long lines (give warning only)
-         * no newline at end of files
-        """
-        bzr_dir = osutils.dirname(self.get_bzrlib_dir())
-        try:
-            wt = WorkingTree.open(bzr_dir)
-        except:
-            raise TestSkipped(
-                'Could not open bazaar working tree %s'
-                % bzr_dir)
-        diff_output = StringIO()
-        wt.lock_read()
-        try:
-            new_tree = wt
-            old_tree = new_tree.basis_tree()
-
-            old_tree.lock_read()
-            new_tree.lock_read()
-            try:
-                iterator = new_tree.iter_changes(old_tree)
-                for (file_id, paths, changed_content, versioned, parent,
-                    name, kind, executable) in iterator:
-                    if (changed_content and paths[1].endswith('.py')):
-                        if kind == ('file', 'file'):
-                            diff_text = diff.DiffText(old_tree, new_tree,
-                                to_file=diff_output,
-                                text_differ=check_coding_style)
-                            diff_text.diff(file_id, paths[0], paths[1],
-                                kind[0], kind[1])
-                        else:
-                            check_coding_style(name[0], (), name[1],
-                                new_tree.get_file(file_id).readlines(),
-                                diff_output)
-            finally:
-                old_tree.unlock()
-                new_tree.unlock()
-        finally:
-            wt.unlock()
-        if len(diff_output.getvalue()) > 0:
-            self.fail("Unacceptable coding style:\n" + diff_output.getvalue())
+        if trailing_ws:
+            files = ["%s: %s" % (f, ', '.join([str(i+1) for i in lines]))
+                for f, lines in trailing_ws.items()]
+            problems.append(
+                'Trailing white space was found in the following files on the '
+                'indicated lines:\n\n    %s'
+                % ('\n    '.join(files)))
+        if problems:
+            self.fail('\n'.join(problems))
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""
