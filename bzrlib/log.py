@@ -362,7 +362,9 @@ def _linear_view_revisions(branch, revision_limits):
         for revision_id in repo.iter_reverse_revision_history(br_rev_id):
             yield revision_id, str(cur_revno), 0
             cur_revno -= 1
-    elif end_rev_id:
+    else:
+        if end_rev_id is None:
+            end_rev_id = br_rev_id
         # If we're starting on the mainline, we can calculate revnos.
         # Otherwise, we need to look them up.
         try:
