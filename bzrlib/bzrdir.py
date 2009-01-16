@@ -1321,6 +1321,8 @@ class BzrDirPreSplitOut(BzrDir):
         # if the format is not the same as the system default,
         # an upgrade is needed.
         if format is None:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
+                % 'needs_format_conversion(format=None)')
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
@@ -1368,6 +1370,9 @@ class BzrDir4(BzrDirPreSplitOut):
 
     def needs_format_conversion(self, format=None):
         """Format 4 dirs are always in need of conversion."""
+        if format is None:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
+                % 'needs_format_conversion(format=None)')
         return True
 
     def open_repository(self):
@@ -1528,6 +1533,9 @@ class BzrDirMeta1(BzrDir):
 
     def needs_format_conversion(self, format=None):
         """See BzrDir.needs_format_conversion()."""
+        if format is None:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
+                % 'needs_format_conversion(format=None)')
         if format is None:
             format = BzrDirFormat.get_default_format()
         if not isinstance(self._format, format.__class__):
