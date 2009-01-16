@@ -29,6 +29,9 @@ NOT RELEASED YET
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
+    * ``bzr log --short`` and ``bzr log --line`` are now
+      much faster in many use cases. (Ian Clatworthy)
+
   BUG FIXES:
 
     * ``bzr log FILE`` now correctly shows mainline revisions merging
