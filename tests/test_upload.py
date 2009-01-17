@@ -589,14 +589,14 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.assertUpFileEqual('bar', 'hello')
 
 class TestUploadFromRemote(TestUploadMixin):
-    
+
     def do_full_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
-        
+
         push = cmd_push()
         push._setup_outf()
         push.run(location=up_url, directory='branch')
-        
+
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = up_url
@@ -606,11 +606,11 @@ class TestUploadFromRemote(TestUploadMixin):
 
     def do_incremental_upload(self, *args, **kwargs):
         up_url = self.get_transport(self.upload_dir).external_url()
-        
+
         push = cmd_push()
         push._setup_outf()
         push.run(location=up_url, directory='branch')
-        
+
         upload = self._get_cmd_upload()
         if kwargs.get('directory', None) is None:
             kwargs['directory'] = up_url
@@ -631,13 +631,18 @@ class TestUploadFromRemote(TestUploadMixin):
 
         return get_upload_auto(self.remote_branch)
 
-class TestFullUploadFromRemote(tests.TestCaseWithTransport, TestUploadFromRemote):
+
+class TestFullUploadFromRemote(tests.TestCaseWithTransport,
+                               TestUploadFromRemote):
 
     do_upload = TestUploadFromRemote.do_full_upload
 
-class TestIncrementalUploadFromRemote(tests.TestCaseWithTransport, TestUploadFromRemote):
+
+class TestIncrementalUploadFromRemote(tests.TestCaseWithTransport,
+                                      TestUploadFromRemote):
 
     do_upload = TestUploadFromRemote.do_incremental_upload
+
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
 
