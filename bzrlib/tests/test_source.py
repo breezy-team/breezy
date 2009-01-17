@@ -271,6 +271,7 @@ class TestSource(TestSourceHelper):
     def _format_message(self, dict_, message):
         files = ["%s: %s" % (f, ', '.join([str(i+1) for i in lines]))
                 for f, lines in dict_.items()]
+        files.sort()
         return message + '\n\n    %s' % ('\n    '.join(files))
 
     def test_coding_style(self):
@@ -292,7 +293,6 @@ class TestSource(TestSourceHelper):
             if not self.is_our_code(fname):
                 continue
             lines = text.splitlines(True)
-            line_count = len(lines)
             for line_no, line in enumerate(lines):
                 if '\t' in line:
                     self._push_file(tabs, fname, line_no)
