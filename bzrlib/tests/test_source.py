@@ -282,13 +282,13 @@ class TestSource(TestSourceHelper):
          * trailing white space
          * non-unix newlines
          * no newline at end of files
-
-        TODO: At some stage we might also want to check for
-              lines longer than 79 chars (print a warning only)
+         * lines longer than 79 chars
+           (only print how many files and lines are in violation)
         """
         tabs = {}
         trailing_ws = {}
         illegal_newlines = {}
+        long_lines = {}
         no_newline_at_eof = []
         for fname, text in self.get_source_file_contents():
             if not self.is_our_code(fname):
@@ -303,6 +303,8 @@ class TestSource(TestSourceHelper):
                         self._push_file(illegal_newlines, fname, line_no)
                 if line.endswith(' \n'):
                     self._push_file(trailing_ws, fname, line_no)
+                if len(line) > 80:
+                    self._push_file(long_lines, fname, line_no)
             if not lines[-1].endswith('\n'):
                 no_newline_at_eof.append(fname)
         problems = []
@@ -317,6 +319,10 @@ class TestSource(TestSourceHelper):
         if illegal_newlines:
             problems.append(self._format_message(illegal_newlines,
                 'Non-unix newlines were found in the following source files:'))
+        if long_lines:
+            print ("There are %i lines longer than 79 characters in %i files."
+                % (sum([len(lines) for f, lines in long_lines.items()]),
+                    len(long_lines)))
         if no_newline_at_eof:
             no_newline_at_eof.sort()
             problems.append("The following source files doesn't have a "
