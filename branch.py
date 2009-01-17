@@ -51,9 +51,9 @@ class GitBranchConfig(config.BranchConfig):
         # do not provide a BranchDataConfig
         self.option_sources = self.option_sources[0], self.option_sources[2]
 
-    def set_user_option(self, name, value, local=False):
+    def set_user_option(self, name, value, store=config.STORE_BRANCH, warn_masked=False):
         """Force local to True"""
-        config.BranchConfig.set_user_option(self, name, value, local=True)
+        config.BranchConfig.set_user_option(self, name, value, store=config.STORE_LOCATION, warn_masked=warn_masked)
 
 
 class GitBranchFormat(branch.BranchFormat):
@@ -132,7 +132,7 @@ class LocalGitBranch(GitBranch):
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self.get_config().set_user_option('push_location', location,
-                                          local=True)
+                                          store=config.STORE_LOCATION)
 
     def supports_tags(self):
         return True
