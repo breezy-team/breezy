@@ -1895,7 +1895,17 @@ class cmd_log(Command):
             tree, b, fp = bzrdir.BzrDir.open_containing_tree_or_branch(
                 location)
             if fp != '':
-                if tree is None:
+                # If a revision is given, get the file-id from the end tree
+                if revision is not None:
+                    if len(revision) == 1:
+                        tree = revision[0].as_tree(b)
+                    elif len(revision) == 2:
+                        rev_id = revision[1].as_revision_id(b)
+                        if rev_id is None:
+                            tree = b.basis_tree()
+                        else:
+                            tree = revision[1].as_tree(b)
+                elif tree is None:
                     tree = b.basis_tree()
                 file_id = tree.path2id(fp)
                 if file_id is None:

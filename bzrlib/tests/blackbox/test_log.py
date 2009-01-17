@@ -515,7 +515,7 @@ class TestLogFile(TestCaseWithTransport):
         tree.bzrdir.destroy_workingtree()
         self.run_bzr('log tree/file')
 
-    def prepare_tree(self):
+    def prepare_tree(self, complex=False):
         tree = self.make_branch_and_tree('parent')
         self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
         tree.add('file1')
@@ -529,6 +529,10 @@ class TestLogFile(TestCaseWithTransport):
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
+        # The complex configuration includes deletes and renames
+        if complex:
+            tree.remove('file1')
+            tree.rename_one('file3', 'file4')
         os.chdir('parent')
 
     def test_log_file(self):
@@ -574,6 +578,38 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
+        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
+        self.assertNotContainsRe(log, 'revno: 4\n')
+
+    def test_log_file_historical(self):
+        """File matched against end of revision range, not current name."""
+        self.prepare_tree(complex=True)
+        # Check logging a deleted file gives an error by default
+        err_msg = "Path does not have any revision history: file1"
+        err = self.run_bzr('log file1', retcode=3)[1]
+        self.assertContainsRe(err, err_msg)
+
+        # Check we can see a deleted file if we give the right end revision
+        log = self.run_bzr('log -r..4 file1')[0]
+        self.assertContainsRe(log, 'revno: 1\n')
+        self.assertNotContainsRe(log, 'revno: 2\n')
+        self.assertNotContainsRe(log, 'revno: 3\n')
+        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
+        self.assertNotContainsRe(log, 'revno: 4\n')
+
+    def test_log_file_renamed(self):
+        """File matched against end of revision range, not current name."""
+        self.prepare_tree(complex=True)
+        # Check logging a renamed file gives an error by default
+        err_msg = "Path does not have any revision history: file3"
+        err = self.run_bzr('log file3', retcode=3)[1]
+        self.assertContainsRe(err, err_msg)
+
+        # Check we can see a renamed file if we give the right end revision
+        log = self.run_bzr('log -r..4 file3')[0]
+        self.assertNotContainsRe(log, 'revno: 1\n')
+        self.assertNotContainsRe(log, 'revno: 2\n')
+        self.assertContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
         self.assertNotContainsRe(log, 'revno: 4\n')
 
