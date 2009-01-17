@@ -90,7 +90,7 @@ class TestDeprecationWarnings(TestCase):
             "TestDeprecationWarnings.deprecated_method "
             "was deprecated in version 0.7.", DeprecationWarning, 2)
         expected_docstring = ('Deprecated method docstring.\n'
-                              '        \n'
+                              '\n'
                               '        This might explain stuff.\n'
                               '        \n'
                               '        This method was deprecated in version 0.7.\n'

@@ -141,10 +141,10 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
     def test_blank_line(self):
         s = Stanza(none='', one='\n', two='\n\n')
         self.assertEqualDiff(s.to_string(), """\
-none:
-one:
+none:\x20
+one:\x20
 \t
-two:
+two:\x20
 \t
 \t
 """)
@@ -154,10 +154,10 @@ two:
     def test_whitespace_value(self):
         s = Stanza(space=' ', tabs='\t\t\t', combo='\n\t\t\n')
         self.assertEqualDiff(s.to_string(), """\
-combo:
+combo:\x20
 \t\t\t
 \t
-space:
+space:\x20\x20
 tabs: \t\t\t
 """)
         s2 = read_stanza(s.to_lines())
@@ -259,7 +259,7 @@ val: 129319
         tmpf.write('''\
 s: "one"
 
-s:
+s:\x20
 \t"one"
 \t
 
@@ -269,12 +269,12 @@ s: ""
 
 s: """
 
-s:
+s:\x20
 \t
 
 s: \\
 
-s:
+s:\x20
 \t\\
 \t\\\\
 \t

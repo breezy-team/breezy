@@ -1154,11 +1154,11 @@ class MergeCasesMixin(object):
             """
         result = """\
             start context
-<<<<<<<
+<<<<<<<\x20
             int a() {}
 =======
             int c() {}
->>>>>>>
+>>>>>>>\x20
             end context
             """
         self._test_merge_from_strings(base, a, b, result)
@@ -1218,13 +1218,13 @@ class MergeCasesMixin(object):
             """
         result = """\
             start context
-<<<<<<<
+<<<<<<<\x20
             base line 1
             a's replacement line 2
 =======
             b replaces
             both lines
->>>>>>>
+>>>>>>>\x20
             end context
             """
         self._test_merge_from_strings(base, a, b, result)
