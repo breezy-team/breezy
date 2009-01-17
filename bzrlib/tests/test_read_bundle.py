@@ -95,11 +95,11 @@ class TestReadBundleFromURL(TestTransportImplementation):
         if wt is None:
             return
 
-        self.assertRaises(errors.NotABundle, 
-            bzrlib.bundle.read_bundle_from_url, 
+        self.assertRaises(errors.NotABundle,
+            bzrlib.bundle.read_bundle_from_url,
             self.get_url('tree'))
-        self.assertRaises(errors.NotABundle, 
-            bzrlib.bundle.read_bundle_from_url, 
+        self.assertRaises(errors.NotABundle,
+            bzrlib.bundle.read_bundle_from_url,
             self.get_url('tree/a'))
 
     def test_read_mergeable_populates_possible_transports(self):

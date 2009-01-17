@@ -29,11 +29,11 @@ class ReadonlyTransportDecorator(TransportDecorator):
     def append_file(self, relpath, f, mode=None):
         """See Transport.append_file()."""
         raise TransportNotPossible('readonly transport')
-    
+
     def append_bytes(self, relpath, bytes, mode=None):
         """See Transport.append_bytes()."""
         raise TransportNotPossible('readonly transport')
-    
+
     @classmethod
     def _get_url_prefix(self):
         """Readonly transport decorators are invoked via 'readonly+'"""

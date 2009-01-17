@@ -50,26 +50,26 @@ class DummyForeignVcsMappingRegistry(foreign.VcsMappingRegistry):
 
 class DummyForeignVcs(foreign.ForeignVcs):
     """A dummy Foreign VCS, for use with testing.
-    
+
     It has revision ids that are a tuple with three strings.
     """
 
     def __init__(self):
         self.mapping_registry = DummyForeignVcsMappingRegistry()
-        self.mapping_registry.register("v1", DummyForeignVcsMapping(), 
+        self.mapping_registry.register("v1", DummyForeignVcsMapping(),
                                        "Version 1")
 
 
 class ForeignVcsRegistryTests(TestCase):
 
-    def test_parse_revision_id_no_dash(self):       
+    def test_parse_revision_id_no_dash(self):
         reg = foreign.ForeignVcsRegistry()
-        self.assertRaises(errors.InvalidRevisionId, 
+        self.assertRaises(errors.InvalidRevisionId,
                           reg.parse_revision_id, "invalid")
-        
-    def test_parse_revision_id_unknown_mapping(self):       
+
+    def test_parse_revision_id_unknown_mapping(self):
         reg = foreign.ForeignVcsRegistry()
-        self.assertRaises(errors.InvalidRevisionId, 
+        self.assertRaises(errors.InvalidRevisionId,
                           reg.parse_revision_id, "unknown-foreignrevid")
 
     def test_parse_revision_id(self):
@@ -84,7 +84,7 @@ class ForeignRevisionTests(TestCase):
 
     def test_create(self):
         mapp = DummyForeignVcsMapping()
-        rev = foreign.ForeignRevision(("a", "foreign", "revid"), 
+        rev = foreign.ForeignRevision(("a", "foreign", "revid"),
                                       mapp, "roundtripped-revid")
         self.assertEquals("", rev.inventory_sha1)
         self.assertEquals(("a", "foreign", "revid"), rev.foreign_revid)
@@ -96,7 +96,7 @@ class ShowForeignPropertiesTests(TestCase):
 
     def setUp(self):
         super(ShowForeignPropertiesTests, self).setUp()
-        foreign.foreign_vcs_registry.register("dummy", 
+        foreign.foreign_vcs_registry.register("dummy",
             DummyForeignVcs(), "Dummy VCS")
 
     def tearDown(self):
@@ -113,8 +113,8 @@ class ShowForeignPropertiesTests(TestCase):
                           foreign.show_foreign_properties(rev))
 
     def test_show_direct(self):
-        rev = foreign.ForeignRevision(("some", "foreign", "revid"), 
-                                      DummyForeignVcsMapping(), 
+        rev = foreign.ForeignRevision(("some", "foreign", "revid"),
+                                      DummyForeignVcsMapping(),
                                       "roundtrip-revid")
         self.assertEquals({ "dummy ding": "some/foreign\\revid" },
                           foreign.show_foreign_properties(rev))

@@ -59,7 +59,7 @@ class _SmartClient(object):
         params = CallHookParams(method, args, body, readv_body, self._medium)
         for hook in _SmartClient.hooks['call']:
             hook(params)
-            
+
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             expect_response_body=True):
         self._run_call_hooks(method, args, body, readv_body)
@@ -125,7 +125,7 @@ class _SmartClient(object):
 
     def call_expecting_body(self, method, *args):
         """Call a method and return the result and the protocol object.
-        
+
         The body can be read like so::
 
             result, smart_protocol = smart_client.call_expecting_body(...)
@@ -167,7 +167,7 @@ class _SmartClient(object):
 
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.
-        
+
         Note that the resulting remote path doesn't encode the host name or
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
@@ -181,12 +181,12 @@ class SmartClientHooks(hooks.Hooks):
         hooks.Hooks.__init__(self)
         self['call'] = []
 
-        
+
 _SmartClient.hooks = SmartClientHooks()
 
 
 class CallHookParams(object):
-    
+
     def __init__(self, method, args, body, readv_body, medium):
         self.method = method
         self.args = args

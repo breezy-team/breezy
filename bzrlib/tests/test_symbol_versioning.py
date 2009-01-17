@@ -50,11 +50,11 @@ class TestDeprecationWarnings(TestCase):
     def setUp(self):
         super(TestDeprecationWarnings, self).setUp()
         self._warnings = []
-    
+
     @symbol_versioning.deprecated_method(symbol_versioning.zero_seven)
     def deprecated_method(self):
         """Deprecated method docstring.
-        
+
         This might explain stuff.
         """
         return 1
@@ -188,7 +188,7 @@ class TestDeprecationWarnings(TestCase):
             self.assertTrue(deprecated_callable.is_deprecated)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
-    
+
     def test_deprecated_passed(self):
         self.assertEqual(True, symbol_versioning.deprecated_passed(None))
         self.assertEqual(True, symbol_versioning.deprecated_passed(True))

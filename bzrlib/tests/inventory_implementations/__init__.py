@@ -24,7 +24,7 @@ from bzrlib.tests import (
 def _inventory_test_scenarios():
     """Return a sequence of test scenarios.
 
-    Each scenario is (scenario_name_suffix, params).  The params are each 
+    Each scenario is (scenario_name_suffix, params).  The params are each
     set as attributes on the test case.
     """
     from bzrlib.inventory import (

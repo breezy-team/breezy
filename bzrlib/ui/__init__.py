@@ -95,7 +95,7 @@ class UIFactory(object):
         raise NotImplementedError(self.clear_term)
 
     def get_boolean(self, prompt):
-        """Get a boolean question answered from the user. 
+        """Get a boolean question answered from the user.
 
         :param prompt: a message to prompt the user with. Should be a single
         line without terminating \n.
@@ -118,7 +118,7 @@ class UIFactory(object):
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
-        
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
@@ -128,7 +128,7 @@ class UIFactory(object):
 
 class CLIUIFactory(UIFactory):
     """Common behaviour for command line UI factories.
-    
+
     This is suitable for dumb terminals that can't repaint existing text."""
 
     def __init__(self, stdin=None, stdout=None, stderr=None):
@@ -161,7 +161,7 @@ class CLIUIFactory(UIFactory):
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
-        :return: The password string, return None if the user 
+        :return: The password string, return None if the user
                  canceled the request.
         """
         prompt += ': '
@@ -207,14 +207,14 @@ def clear_decorator(func, *args, **kwargs):
 
 
 ui_factory = SilentUIFactory()
-"""IMPORTANT: never import this symbol directly. ONLY ever access it as 
+"""IMPORTANT: never import this symbol directly. ONLY ever access it as
 ui.ui_factory."""
 
 
 def make_ui_for_terminal(stdin, stdout, stderr):
     """Construct and return a suitable UIFactory for a text mode program.
 
-    If stdout is a smart terminal, this gets a smart UIFactory with 
+    If stdout is a smart terminal, this gets a smart UIFactory with
     progress indicators, etc.  If it's a dumb terminal, just plain text output.
     """
     isatty = getattr(stdin, 'isatty', None)

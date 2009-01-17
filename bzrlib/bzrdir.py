@@ -81,10 +81,10 @@ from bzrlib import (
 
 class BzrDir(object):
     """A .bzr control diretory.
-    
+
     BzrDir instances let you create or open any of the things that can be
     found within .bzr - checkouts, branches and repositories.
-    
+
     :ivar transport:
         the transport which this bzr dir is rooted at (i.e. file:///.../.bzr/)
     :ivar root_transport:
@@ -129,11 +129,11 @@ class BzrDir(object):
         basedir=None):
         """Give an error or warning on old formats.
 
-        :param format: may be any kind of format - workingtree, branch, 
+        :param format: may be any kind of format - workingtree, branch,
         or repository.
 
-        :param allow_unsupported: If true, allow opening 
-        formats that are strongly deprecated, and which may 
+        :param allow_unsupported: If true, allow opening
+        formats that are strongly deprecated, and which may
         have limited functionality.
 
         :param recommend_upgrade: If true (default), warn
@@ -247,10 +247,10 @@ class BzrDir(object):
     @classmethod
     def create(cls, base, format=None, possible_transports=None):
         """Create a new BzrDir at the url 'base'.
-        
+
         :param format: If supplied, the format of branch to create.  If not
             supplied, the default is used.
-        :param possible_transports: If supplied, a list of transports that 
+        :param possible_transports: If supplied, a list of transports that
             can be reused to share a remote connection.
         """
         if cls is not BzrDir:
@@ -356,7 +356,7 @@ class BzrDir(object):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This will use the current default BzrDirFormat unless one is
-        specified, and use whatever 
+        specified, and use whatever
         repository format that that uses via bzrdir.create_branch and
         create_repository. If a shared repository is available that is used
         preferentially.
@@ -450,7 +450,7 @@ class BzrDir(object):
         not.
 
         This will use the current default BzrDirFormat unless one is
-        specified, and use whatever 
+        specified, and use whatever
         repository format that that uses via bzrdir.create_branch and
         create_repository. If a shared repository is available that is used
         preferentially. Whatever repository is used, its tree creation policy
@@ -458,12 +458,12 @@ class BzrDir(object):
 
         The created Branch object is returned.
         If a working tree cannot be made due to base not being a file:// url,
-        no error is raised unless force_new_tree is True, in which case no 
+        no error is raised unless force_new_tree is True, in which case no
         data is created on disk and NotLocalUrl is raised.
 
         :param base: The URL to create the branch at.
         :param force_new_repo: If True a new repository is always created.
-        :param force_new_tree: If True or False force creation of a tree or 
+        :param force_new_tree: If True or False force creation of a tree or
                                prevent such creation respectively.
         :param format: Override for the bzrdir format to create.
         :param possible_transports: An optional reusable transports list.
@@ -491,7 +491,7 @@ class BzrDir(object):
         'base' must be a local path or a file:// url.
 
         This will use the current default BzrDirFormat unless one is
-        specified, and use whatever 
+        specified, and use whatever
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
@@ -509,7 +509,7 @@ class BzrDir(object):
     def create_workingtree(self, revision_id=None, from_branch=None,
         accelerator_tree=None, hardlink=False):
         """Create a working tree at this BzrDir.
-        
+
         :param revision_id: create it as of this revision id.
         :param from_branch: override bzrdir branch (for lightweight checkouts)
         :param accelerator_tree: A tree which can be used for retrieving file
@@ -521,7 +521,7 @@ class BzrDir(object):
 
     def backup_bzrdir(self):
         """Backup this bzr control directory.
-        
+
         :return: Tuple with old path name and new path name
         """
         self.root_transport.copy_tree('.bzr', 'backup.bzr')
@@ -638,7 +638,7 @@ class BzrDir(object):
         IncompatibleFormat if the branch format they are given has
         a format string, and vice versa.
 
-        If branch_format is None, the transport is returned with no 
+        If branch_format is None, the transport is returned with no
         checking. If it is not None, then the returned transport is
         guaranteed to point to an existing directory ready for use.
         """
@@ -687,7 +687,7 @@ class BzrDir(object):
         if not self._mode_check_done:
             self._find_creation_modes()
         return self._dir_mode
-        
+
     def get_repository_transport(self, repository_format):
         """Get the transport for use by repository format in this BzrDir.
 
@@ -695,12 +695,12 @@ class BzrDir(object):
         IncompatibleFormat if the repository format they are given has
         a format string, and vice versa.
 
-        If repository_format is None, the transport is returned with no 
+        If repository_format is None, the transport is returned with no
         checking. If it is not None, then the returned transport is
         guaranteed to point to an existing directory ready for use.
         """
         raise NotImplementedError(self.get_repository_transport)
-        
+
     def get_workingtree_transport(self, tree_format):
         """Get the transport for use by workingtree format in this BzrDir.
 
@@ -708,7 +708,7 @@ class BzrDir(object):
         IncompatibleFormat if the workingtree format they are given has a
         format string, and vice versa.
 
-        If workingtree_format is None, the transport is returned with no 
+        If workingtree_format is None, the transport is returned with no
         checking. If it is not None, then the returned transport is
         guaranteed to point to an existing directory ready for use.
         """
@@ -721,7 +721,7 @@ class BzrDir(object):
 
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
-        
+
         Only really common logic should reside here, concrete classes should be
         made with varying behaviours.
 
@@ -735,7 +735,7 @@ class BzrDir(object):
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for bzrdir's.
-        
+
         :param filename: A filename within the root transport of this bzrdir.
 
         This is true IF and ONLY IF the filename is part of the namespace reserved
@@ -744,9 +744,9 @@ class BzrDir(object):
         this in the future - for instance to make bzr talk with svn working
         trees.
         """
-        # this might be better on the BzrDirFormat class because it refers to 
-        # all the possible bzrdir disk formats. 
-        # This method is tested via the workingtree is_control_filename tests- 
+        # this might be better on the BzrDirFormat class because it refers to
+        # all the possible bzrdir disk formats.
+        # This method is tested via the workingtree is_control_filename tests-
         # it was extracted from WorkingTree.is_control_filename. If the method's
         # contract is extended beyond the current trivial implementation, please
         # add new tests for it to the appropriate place.
@@ -754,8 +754,8 @@ class BzrDir(object):
 
     def needs_format_conversion(self, format=None):
         """Return true if this bzrdir needs convert_format run on it.
-        
-        For instance, if the repository format is out of date but the 
+
+        For instance, if the repository format is out of date but the
         branch and working tree are not, this should return True.
 
         :param format: Optional parameter indicating a specific desired
@@ -767,11 +767,11 @@ class BzrDir(object):
     def open_unsupported(base):
         """Open a branch which is not supported."""
         return BzrDir.open(base, _unsupported=True)
-        
+
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
         """Open an existing bzrdir, rooted at 'base' (url).
-        
+
         :param _unsupported: a private parameter to the BzrDir class.
         """
         t = get_transport(base, possible_transports=possible_transports)
@@ -815,7 +815,7 @@ class BzrDir(object):
 
         If unsupported is True, then no longer supported branch formats can
         still be opened.
-        
+
         TODO: static convenience version of this?
         """
         raise NotImplementedError(self.open_branch)
@@ -823,13 +823,13 @@ class BzrDir(object):
     @staticmethod
     def open_containing(url, possible_transports=None):
         """Open an existing branch which contains url.
-        
+
         :param url: url to search from.
         See open_containing_from_transport for more detail.
         """
         transport = get_transport(url, possible_transports)
         return BzrDir.open_containing_from_transport(transport)
-    
+
     @staticmethod
     def open_containing_from_transport(a_transport):
         """Open an existing branch which contains a_transport.base.
@@ -838,11 +838,11 @@ class BzrDir(object):
 
         Basically we keep looking up until we find the control directory or
         run into the root.  If there isn't one, raises NotBranchError.
-        If there is one and it is either an unrecognised format or an unsupported 
+        If there is one and it is either an unrecognised format or an unsupported
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
 
-        :return: The BzrDir that contains the path, and a Unicode path 
+        :return: The BzrDir that contains the path, and a Unicode path
                 for the rest of the URL.
         """
         # this gets the normalised url back. I.e. '.' -> the full path.
@@ -956,10 +956,10 @@ class BzrDir(object):
 
     def has_branch(self):
         """Tell if this bzrdir contains a branch.
-        
+
         Note: if you're going to open the branch, you should just go ahead
-        and try, and not ask permission first.  (This method just opens the 
-        branch and discards it, and that's somewhat expensive.) 
+        and try, and not ask permission first.  (This method just opens the
+        branch and discards it, and that's somewhat expensive.)
         """
         try:
             self.open_branch()
@@ -972,10 +972,10 @@ class BzrDir(object):
 
         This will still raise an exception if the bzrdir has a workingtree that
         is remote & inaccessible.
-        
+
         Note: if you're going to open the working tree, you should just go ahead
-        and try, and not ask permission first.  (This method just opens the 
-        workingtree and discards it, and that's somewhat expensive.) 
+        and try, and not ask permission first.  (This method just opens the
+        workingtree and discards it, and that's somewhat expensive.)
         """
         try:
             self.open_workingtree(recommend_upgrade=False)
@@ -985,7 +985,7 @@ class BzrDir(object):
 
     def _cloning_metadir(self):
         """Produce a metadir suitable for cloning with.
-        
+
         :returns: (destination_bzrdir_format, source_repository)
         """
         result_format = self._format.__class__()
@@ -1241,7 +1241,7 @@ class BzrDirPreSplitOut(BzrDir):
         # and that will have set it for us, its only
         # specific uses of create_workingtree in isolation
         # that can do wonky stuff here, and that only
-        # happens for creating checkouts, which cannot be 
+        # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
         try:
             result = self.open_workingtree(recommend_upgrade=False)
@@ -1270,7 +1270,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def destroy_workingtree_metadata(self):
         """See BzrDir.destroy_workingtree_metadata."""
-        raise errors.UnsupportedOperation(self.destroy_workingtree_metadata, 
+        raise errors.UnsupportedOperation(self.destroy_workingtree_metadata,
                                           self)
 
     def get_branch_transport(self, branch_format):
@@ -1345,7 +1345,7 @@ class BzrDirPreSplitOut(BzrDir):
 
 class BzrDir4(BzrDirPreSplitOut):
     """A .bzr version 4 control object.
-    
+
     This is a deprecated format and may be removed after sept 2006.
     """
 
@@ -1406,8 +1406,8 @@ class BzrDir6(BzrDirPreSplitOut):
 
 class BzrDirMeta1(BzrDir):
     """A .bzr meta version 1 control object.
-    
-    This is the first control object where the 
+
+    This is the first control object where the
     individual aspects are really split out: there are separate repository,
     workingtree and branch subdirectories and any subset of the three can be
     present within a BzrDir.
@@ -1580,12 +1580,12 @@ class BzrDirFormat(object):
      * a format string,
      * an open routine.
 
-    Formats are placed in a dict by their format string for reference 
+    Formats are placed in a dict by their format string for reference
     during bzrdir opening. These should be subclasses of BzrDirFormat
     for consistency.
 
     Once a format is deprecated, just deprecate the initialize and open
-    methods on the format class. Do not deprecate the object, as the 
+    methods on the format class. Do not deprecate the object, as the
     object will be created every system load.
     """
 
@@ -1597,7 +1597,7 @@ class BzrDirFormat(object):
 
     _control_formats = []
     """The registered control formats - .bzr, ....
-    
+
     This is a list of BzrDirFormat objects.
     """
 
@@ -1662,14 +1662,14 @@ class BzrDirFormat(object):
         current default format. In the case of plugins we can/should provide
         some means for them to extend the range of returnable converters.
 
-        :param format: Optional format to override the default format of the 
+        :param format: Optional format to override the default format of the
                        library.
         """
         raise NotImplementedError(self.get_converter)
 
     def initialize(self, url, possible_transports=None):
         """Create a bzr control dir at this url and return an opened copy.
-        
+
         Subclasses should typically override initialize_on_transport
         instead of this method.
         """
@@ -1714,29 +1714,29 @@ class BzrDirFormat(object):
         """Is this format supported?
 
         Supported formats must be initializable and openable.
-        Unsupported formats may not support initialization or committing or 
+        Unsupported formats may not support initialization or committing or
         some other features depending on the reason for not being supported.
         """
         return True
 
     def same_model(self, target_format):
-        return (self.repository_format.rich_root_data == 
+        return (self.repository_format.rich_root_data ==
             target_format.rich_root_data)
 
     @classmethod
     def known_formats(klass):
         """Return all the known formats.
-        
+
         Concrete formats should override _known_formats.
         """
-        # There is double indirection here to make sure that control 
-        # formats used by more than one dir format will only be probed 
+        # There is double indirection here to make sure that control
+        # formats used by more than one dir format will only be probed
         # once. This can otherwise be quite expensive for remote connections.
         result = set()
         for format in klass._control_formats:
             result.update(format._known_formats())
         return result
-    
+
     @classmethod
     def _known_formats(klass):
         """Return the known format instances for this control format."""
@@ -1744,14 +1744,14 @@ class BzrDirFormat(object):
 
     def open(self, transport, _found=False):
         """Return an instance of this format for the dir transport points at.
-        
+
         _found is a private parameter, do not use it.
         """
         if not _found:
             found_format = BzrDirFormat.find_format(transport)
             if not isinstance(found_format, self.__class__):
                 raise AssertionError("%s was asked to open %s, but it seems to need "
-                        "format %s" 
+                        "format %s"
                         % (self, transport, found_format))
         return self._open(transport)
 
@@ -1772,7 +1772,7 @@ class BzrDirFormat(object):
         """Register a format that does not use '.bzr' for its control dir.
 
         TODO: This should be pulled up into a 'ControlDirFormat' base class
-        which BzrDirFormat can inherit from, and renamed to register_format 
+        which BzrDirFormat can inherit from, and renamed to register_format
         there. It has been done without that for now for simplicity of
         implementation.
         """
@@ -1834,7 +1834,7 @@ class BzrDirFormat4(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir4To5()
-        
+
     def initialize_on_transport(self, transport):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
@@ -1843,7 +1843,7 @@ class BzrDirFormat4(BzrDirFormat):
         """Format 4 is not supported.
 
         It is not supported because the model changed from 4 to 5 and the
-        conversion logic is expensive - so doing it on the fly was not 
+        conversion logic is expensive - so doing it on the fly was not
         feasible.
         """
         return False
@@ -1864,8 +1864,8 @@ class BzrDirFormat5(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - Format 2 working trees [always] 
-     - Format 4 branches [always] 
+     - Format 2 working trees [always]
+     - Format 4 branches [always]
      - Format 5 repositories [always]
        Unhashed stores in the repository.
     """
@@ -1891,10 +1891,10 @@ class BzrDirFormat5(BzrDirFormat):
 
     def _initialize_for_clone(self, url):
         return self.initialize_on_transport(get_transport(url), _cloning=True)
-        
+
     def initialize_on_transport(self, transport, _cloning=False):
         """Format 5 dirs always have working tree, branch and repository.
-        
+
         Except when they are being cloned.
         """
         from bzrlib.branch import BzrBranchFormat4
@@ -1922,8 +1922,8 @@ class BzrDirFormat6(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - Format 2 working trees [always] 
-     - Format 4 branches [always] 
+     - Format 2 working trees [always]
+     - Format 4 branches [always]
      - Format 6 repositories [always]
     """
 
@@ -1945,13 +1945,13 @@ class BzrDirFormat6(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir6ToMeta()
-        
+
     def _initialize_for_clone(self, url):
         return self.initialize_on_transport(get_transport(url), _cloning=True)
 
     def initialize_on_transport(self, transport, _cloning=False):
         """Format 6 dirs always have working tree, branch and repository.
-        
+
         Except when they are being cloned.
         """
         from bzrlib.branch import BzrBranchFormat4
@@ -2116,7 +2116,7 @@ class ConvertBzrDir4To5(Converter):
         self.absent_revisions = set()
         self.text_count = 0
         self.revisions = {}
-        
+
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
@@ -2228,7 +2228,7 @@ class ConvertBzrDir4To5(Converter):
                 revision_store.add_lines(key, None, osutils.split_lines(text))
         finally:
             self.pb.clear()
-            
+
     def _load_one_rev(self, rev_id):
         """Load a revision object into memory.
 
@@ -2308,7 +2308,7 @@ class ConvertBzrDir4To5(Converter):
         text_changed = False
         parent_candiate_entries = ie.parent_candidates(parent_invs)
         heads = graph.Graph(self).heads(parent_candiate_entries.keys())
-        # XXX: Note that this is unordered - and this is tolerable because 
+        # XXX: Note that this is unordered - and this is tolerable because
         # the previous code was also unordered.
         previous_entries = dict((head, parent_candiate_entries[head]) for head
             in heads)
@@ -2331,7 +2331,7 @@ class ConvertBzrDir4To5(Converter):
         # a call to:. This needs the path figured out. rather than a work_tree
         # a v4 revision_tree can be given, or something that looks enough like
         # one to give the file content to the entry if it needs it.
-        # and we need something that looks like a weave store for snapshot to 
+        # and we need something that looks like a weave store for snapshot to
         # save against.
         #ie.snapshot(rev, PATH, previous_revisions, REVISION_TREE, InMemoryWeaveStore(self.text_weaves))
         if len(previous_revisions) == 1:
@@ -2453,7 +2453,7 @@ class ConvertBzrDir6ToMeta(Converter):
         self.bzrdir.transport.mkdir('repository', mode=self.dir_mode)
         self.make_lock('repository')
         # we hard code the formats here because we are converting into
-        # the meta format. The meta format upgrader can take this to a 
+        # the meta format. The meta format upgrader can take this to a
         # future format within each component.
         self.put_format('repository', RepositoryFormat7())
         for entry in repository_names:
@@ -2613,7 +2613,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
     def get_format_description(self):
         return 'bzr remote bzrdir'
-    
+
     @classmethod
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""
@@ -2681,7 +2681,7 @@ class BzrDirFormatInfo(object):
 
 class BzrDirFormatRegistry(registry.Registry):
     """Registry of user-selectable BzrDir subformats.
-    
+
     Differs from BzrDirFormat._control_formats in that it provides sub-formats,
     e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
@@ -2746,7 +2746,7 @@ class BzrDirFormatRegistry(registry.Registry):
     def register(self, key, factory, help, native=True, deprecated=False,
                  hidden=False, experimental=False, alias=False):
         """Register a BzrDirFormat factory.
-        
+
         The factory must be a callable that takes one parameter: the key.
         It must produce an instance of the BzrDirFormat when called.
 
@@ -2769,7 +2769,7 @@ class BzrDirFormatRegistry(registry.Registry):
 
     def set_default(self, key):
         """Set the 'default' key to be a clone of the supplied key.
-        
+
         This method must be called once and only once.
         """
         registry.Registry.register(self, 'default', self.get(key),
@@ -2778,7 +2778,7 @@ class BzrDirFormatRegistry(registry.Registry):
 
     def set_default_repository(self, key):
         """Set the FormatRegistry default and Repository default.
-        
+
         This is a transitional method while Repository.set_default_format
         is deprecated.
         """
@@ -2807,8 +2807,8 @@ class BzrDirFormatRegistry(registry.Registry):
         def wrapped(key, help, info):
             if info.native:
                 help = '(native) ' + help
-            return ':%s:\n%s\n\n' % (key, 
-                    textwrap.fill(help, initial_indent='    ', 
+            return ':%s:\n%s\n\n' % (key,
+                    textwrap.fill(help, initial_indent='    ',
                     subsequent_indent='    '))
         if default_realkey is not None:
             output += wrapped(default_realkey, '(default) %s' % default_help,

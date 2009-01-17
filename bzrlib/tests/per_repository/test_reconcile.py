@@ -47,7 +47,7 @@ class TestReconcile(TestCaseWithRepository):
     def checkNoBackupInventory(self, aBzrDir):
         """Check that there is no backup inventory in aBzrDir."""
         repo = aBzrDir.open_repository()
-        # Remote repository, and possibly others, do not have 
+        # Remote repository, and possibly others, do not have
         # _transport.
         if getattr(repo, '_transport', None) is not None:
             for path in repo._transport.list_dir('.'):
@@ -58,7 +58,7 @@ class TestsNeedingReweave(TestReconcile):
 
     def setUp(self):
         super(TestsNeedingReweave, self).setUp()
-        
+
         t = get_transport(self.get_url())
         # an empty inventory with no revision for testing with.
         repo = self.make_repository('inventory_without_revision')
@@ -104,7 +104,7 @@ class TestsNeedingReweave(TestReconcile):
         # i.e. a ghost.
         repo = self.make_repository('inventory_one_ghost')
         add_commit(repo, 'ghost', ['the_ghost'])
-         
+
         # a inventory with a ghost that can be corrected now.
         t.copy_tree('inventory_one_ghost', 'inventory_ghost_present')
         bzrdir_url = self.get_url('inventory_ghost_present')
@@ -231,7 +231,7 @@ class TestsNeedingReweave(TestReconcile):
     def test_reweave_inventory_preserves_a_revision_with_ghosts(self):
         d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_one_ghost'))
         reconciler = d.open_repository().reconcile(thorough=True)
-        # no inconsistent parents should have been found: 
+        # no inconsistent parents should have been found:
         # the lack of a parent for ghost is normal
         self.assertEqual(0, reconciler.inconsistent_parents)
         # and one garbage inventories
@@ -240,7 +240,7 @@ class TestsNeedingReweave(TestReconcile):
         repo = d.open_repository()
         repo.get_inventory('ghost')
         self.assertEqual([None, 'ghost'], repo.get_ancestry('ghost'))
-        
+
     def test_reweave_inventory_fixes_ancestryfor_a_present_ghost(self):
         d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_ghost_present'))
         repo = d.open_repository()
@@ -275,7 +275,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
     def setUp(self):
         self.reduceLockdirTimeout()
         super(TestReconcileWithIncorrectRevisionCache, self).setUp()
-        
+
         t = get_transport(self.get_url())
         # we need a revision with two parents in the wrong order
         # which should trigger reinsertion.
@@ -286,7 +286,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         # there is no api to construct a broken knit repository at
         # this point. if we ever encounter a bad graph in a knit repo
         # we should add a lower level api to allow constructing such cases.
-        
+
         # first off the common logic:
         tree = self.make_branch_and_tree('wrong-first-parent')
         second_tree = self.make_branch_and_tree('reversed-secondary-parents')

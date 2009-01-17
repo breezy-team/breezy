@@ -24,7 +24,7 @@ from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
 
 
 class TestAdd(ExternalBase):
-        
+
     def test_add_reports(self):
         """add command prints the names of added files."""
         tree = self.make_branch_and_tree('.')
@@ -50,7 +50,7 @@ class TestAdd(ExternalBase):
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
-        tree = self.make_branch_and_tree('.') 
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr('add -q')[0]
         # the ordering is not defined at the moment
@@ -100,18 +100,18 @@ class TestAdd(ExternalBase):
         eq = self.assertEqual
         ass = self.assertTrue
         chdir = os.chdir
-        
+
         t = self.make_branch_and_tree('.')
         b = t.branch
         self.build_tree(['src/', 'README'])
-        
+
         eq(sorted(t.unknowns()),
            ['README', 'src'])
-        
+
         self.run_bzr('add src')
-        
+
         self.build_tree(['src/foo.c'])
-        
+
         # add with no arguments in a subdirectory gets only files below that
         # subdirectory
         chdir('src')
@@ -122,7 +122,7 @@ class TestAdd(ExternalBase):
         versioned = [path for path, entry in t.iter_entries_by_dir()]
         self.assertEquals(versioned,
             ['', 'src', 'src/foo.c'])
-                
+
         # add from the parent directory should pick up all file names
         chdir('..')
         self.run_bzr('add')

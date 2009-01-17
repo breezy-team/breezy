@@ -73,7 +73,7 @@ class cmd_sign_my_commits(Command):
                     rev = repo.get_revision(rev_id)
                     if rev.committer != committer:
                         continue
-                    # We have a revision without a signature who has a 
+                    # We have a revision without a signature who has a
                     # matching committer, start signing
                     print rev_id
                     count += 1

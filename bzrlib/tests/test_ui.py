@@ -151,7 +151,7 @@ class UITests(TestCase):
         pb1.finished()
 
     def test_progress_stack(self):
-        # test the progress bar stack which the default text factory 
+        # test the progress bar stack which the default text factory
         # uses.
         stderr = StringIO()
         stdout = StringIO()

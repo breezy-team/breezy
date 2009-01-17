@@ -37,7 +37,7 @@ class TransportTraceDecorator(TransportDecorator):
 
     def __init__(self, url, _decorated=None, _from_transport=None):
         """Set the 'base' path where files will be stored.
-        
+
         _decorated is a private parameter for cloning.
         """
         TransportDecorator.__init__(self, url, _decorated)
@@ -98,7 +98,7 @@ class TransportTraceDecorator(TransportDecorator):
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
         return self._decorated.put_file(relpath, f, mode)
-    
+
     def put_bytes(self, relpath, bytes, mode=None):
         """See Transport.put_bytes()."""
         self._trace(('put_bytes', relpath, len(bytes), mode))
@@ -111,7 +111,7 @@ class TransportTraceDecorator(TransportDecorator):
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive()."""
         return self._decorated.iter_files_recursive()
-    
+
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
@@ -131,7 +131,7 @@ class TransportTraceDecorator(TransportDecorator):
     def rename(self, rel_from, rel_to):
         self._activity.append(('rename', rel_from, rel_to))
         return self._decorated.rename(rel_from, rel_to)
-    
+
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)

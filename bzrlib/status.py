@@ -45,20 +45,20 @@ def show_tree_status(wt, show_unchanged=None,
                      versioned=False):
     """Display summary of changes.
 
-    By default this compares the working tree to a previous revision. 
-    If the revision argument is given, summarizes changes between the 
+    By default this compares the working tree to a previous revision.
+    If the revision argument is given, summarizes changes between the
     working tree and another, or between two revisions.
 
-    The result is written out as Unicode and to_file should be able 
+    The result is written out as Unicode and to_file should be able
     to encode that.
 
     If showing the status of a working tree, extra information is included
     about unknown files, conflicts, and pending merges.
 
-    :param show_unchanged: Deprecated parameter. If set, includes unchanged 
+    :param show_unchanged: Deprecated parameter. If set, includes unchanged
         files.
     :param specific_files: If set, a list of filenames whose status should be
-        shown.  It is an error to give a filename that is not in the working 
+        shown.  It is an error to give a filename that is not in the working
         tree, or in the working inventory or in the basis inventory.
     :param show_ids: If set, includes each file's id.
     :param to_file: If set, write to this file (default stdout.)
@@ -78,7 +78,7 @@ def show_tree_status(wt, show_unchanged=None,
 
     if to_file is None:
         to_file = sys.stdout
-    
+
     wt.lock_read()
     try:
         new_is_working_tree = True
@@ -257,9 +257,9 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
 def _raise_if_nonexistent(paths, old_tree, new_tree):
     """Complain if paths are not in either inventory or tree.
 
-    It's OK with the files exist in either tree's inventory, or 
+    It's OK with the files exist in either tree's inventory, or
     if they exist in the tree but are not versioned.
-    
+
     This can be used by operations such as bzr status that can accept
     unknown or ignored files.
     """

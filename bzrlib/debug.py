@@ -24,7 +24,7 @@ debug_flags = set()
 These are set with eg ``-Dlock`` on the bzr command line.
 
 Options include:
- 
+
  * auth - show authentication sections used
  * error - show stack traces for all top level exceptions
  * evil - capture call sites that do expensive or badly-scaling operations.

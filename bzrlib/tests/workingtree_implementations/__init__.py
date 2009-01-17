@@ -18,7 +18,7 @@
 """WorkingTree implementation tests for bzr.
 
 These test the conformance of all the workingtre variations to the expected API.
-Specific tests for individual formats are in the tests/test_workingtree file 
+Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/workingtree_implementations/*.py.
 """
 

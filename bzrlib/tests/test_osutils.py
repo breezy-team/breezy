@@ -171,7 +171,7 @@ class TestOSUtils(TestCaseInTempDir):
                          (['src'], 'src'),
                          ]:
             self.assert_(is_inside_or_parent_of_any(dirs, fn))
-            
+
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['srccontrol/foo.c'], 'src'),
                          (['src'], 'srccontrol/foo')]:
@@ -202,7 +202,7 @@ class TestOSUtils(TestCaseInTempDir):
         if osutils.has_symlinks():
             os.symlink('symlink', 'symlink')
             self.assertEquals('symlink', osutils.file_kind('symlink'))
-        
+
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
@@ -310,7 +310,7 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(bar_path, osutils.realpath('./bar'))
         os.symlink('bar', 'foo')
         self.assertEqual(bar_path, osutils.realpath('./foo'))
-        
+
         # Does not dereference terminal symlinks
         foo_path = osutils.pathjoin(cwd, 'foo')
         self.assertEqual(foo_path, osutils.dereference_path('./foo'))
@@ -664,7 +664,7 @@ class TestWin32Funcs(TestCase):
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
     """Test win32 functions that create files."""
-    
+
     def test_getcwd(self):
         if win32utils.winver == 'Windows 98':
             raise TestSkipped('Windows 98 cannot handle unicode filenames')
@@ -1302,7 +1302,7 @@ class TestWalkDirs(TestCaseInTempDir):
 
 
 class TestCopyTree(TestCaseInTempDir):
-    
+
     def test_copy_basic_tree(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         osutils.copy_tree('source', 'target')
@@ -1387,7 +1387,7 @@ class TestSetUnsetEnv(TestCase):
 
     def test_unicode(self):
         """Environment can only contain plain strings
-        
+
         So Unicode strings must be encoded.
         """
         uni_val, env_val = probe_unicode_in_user_encoding()
@@ -1470,7 +1470,7 @@ debug_flags = set()
 These are set with eg ``-Dlock`` on the bzr command line.
 
 Options include:
- 
+
  * auth - show authentication sections used
  * error - show stack traces for all top level exceptions
  * evil - capture call sites that do expensive or badly-scaling operations.

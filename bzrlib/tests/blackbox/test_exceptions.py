@@ -60,7 +60,7 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err,
                 r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'Please report a bug at')
-    
+
 
 class TestDeprecationWarning(TestCaseInTempDir):
 

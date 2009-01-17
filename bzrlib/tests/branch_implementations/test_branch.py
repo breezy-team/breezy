@@ -207,7 +207,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.com')
         branch.set_submit_branch('sftp://example.net')
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
-        
+
     def test_public_branch(self):
         """public location can be queried and set"""
         branch = self.make_branch('branch')
@@ -253,10 +253,10 @@ class TestBranch(TestCaseWithBranch):
                           None)
 
 # TODO 20051003 RBC:
-# compare the gpg-to-sign info for a commit with a ghost and 
+# compare the gpg-to-sign info for a commit with a ghost and
 #     an identical tree without a ghost
 # fetch missing should rewrite the TOC of weaves to list newly available parents.
-        
+
     def test_sign_existing_revision(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
@@ -347,7 +347,7 @@ class TestBranch(TestCaseWithBranch):
 
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
-        
+
         Nicknames are implicitly the name of the branch's directory, unless an
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.

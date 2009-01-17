@@ -37,7 +37,7 @@ from bzrlib.transport.memory import MemoryTransport
 
 class MemoryTree(mutabletree.MutableTree):
     """A MemoryTree is a specialisation of MutableTree.
-    
+
     It maintains nearly no state outside of read_lock and write_lock
     transactions. (it keeps a reference to the branch, and its last-revision
     only).
@@ -74,7 +74,7 @@ class MemoryTree(mutabletree.MutableTree):
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds.
-        
+
         This implementation does not care about the file kind of
         missing files, so is a no-op.
         """

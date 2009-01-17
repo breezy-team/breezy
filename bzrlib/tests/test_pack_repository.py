@@ -261,7 +261,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         pack = tree.branch.repository._pack_collection.get_pack_by_name(
             tree.branch.repository._pack_collection.names()[0])
-        # revision access tends to be tip->ancestor, so ordering that way on 
+        # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if key == ('1',):
@@ -558,7 +558,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
         if token is not None:
             repo.leave_lock_in_place()
-        
+
     def test_abort_write_group_does_raise_when_not_suppressed(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
@@ -571,7 +571,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertRaises(Exception, repo.abort_write_group)
         if token is not None:
             repo.leave_lock_in_place()
-        
+
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
 
@@ -579,7 +579,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable("%r doesn't support stacking" 
+            raise TestNotApplicable("%r doesn't support stacking"
                 % (self.format_name,))
         super(TestPackRepositoryStacking, self).setUp()
 

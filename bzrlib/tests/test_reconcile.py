@@ -46,7 +46,7 @@ class TestWorksWithSharedRepositories(TestCaseWithRepository):
 
 
 class TestReconciler(tests.TestCaseWithTransport):
-    
+
     def test_reconciler_with_no_branch(self):
         repo = self.make_repository('repo')
         reconciler = Reconciler(repo.bzrdir)

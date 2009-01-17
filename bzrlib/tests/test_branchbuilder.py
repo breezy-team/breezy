@@ -26,7 +26,7 @@ from bzrlib.branchbuilder import BranchBuilder
 
 
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
-    
+
     def test_create(self):
         """Test the constructor api."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
@@ -221,7 +221,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.addCleanup(builder.finish_series)
         builder.build_snapshot('B-id', ['A-id'],
             [('modify', ('a-id', 'new\ncontent\n'))])
-        builder.build_snapshot('C-id', ['A-id'], 
+        builder.build_snapshot('C-id', ['A-id'],
             [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
         # We should now have a graph:
         #   A
