@@ -281,26 +281,30 @@ class TestSource(TestSourceHelper):
          * any tab characters
          * trailing white space
          * non-unix newlines
-
-        Planned checks:
          * no newline at end of files
-         * lines longer than 79 chars (print a warning only)
+
+        TODO: At some stage we might also want to check for
+              lines longer than 79 chars (print a warning only)
         """
         tabs = {}
         trailing_ws = {}
         illegal_newlines = {}
+        no_newline_at_eof = []
         for fname, text in self.get_source_file_contents():
             if not self.is_our_code(fname):
                 continue
             lines = text.splitlines(True)
+            last_line_no = len(lines) - 1
             for line_no, line in enumerate(lines):
                 if '\t' in line:
                     self._push_file(tabs, fname, line_no)
                 if not line.endswith('\n') or line.endswith('\r\n'):
-                    self._push_file(illegal_newlines, fname, line_no)
+                    if line_no != last_line_no: # not no_newline_at_eof
+                        self._push_file(illegal_newlines, fname, line_no)
                 if line.endswith(' \n'):
                     self._push_file(trailing_ws, fname, line_no)
-
+            if not lines[-1].endswith('\n'):
+                no_newline_at_eof.append(fname)
         problems = []
         if tabs:
             problems.append(self._format_message(tabs,
@@ -308,12 +312,19 @@ class TestSource(TestSourceHelper):
                 '\nThey should either be replaced by "\\t" or by spaces:'))
         if trailing_ws:
             problems.append(self._format_message(trailing_ws,
-                'Trailing white space was found:'))
+                'Trailing white space was found in the following source files:'
+                ))
         if illegal_newlines:
             problems.append(self._format_message(illegal_newlines,
-                'Non-unix newlines were found:'))
+                'Non-unix newlines were found in the following source files:'))
+        if no_newline_at_eof:
+            no_newline_at_eof.sort()
+            problems.append("The following source files doesn't have a "
+                "newline at the end:"
+               '\n\n    %s'
+               % ('\n    '.join(no_newline_at_eof)))
         if problems:
-            self.fail('\n'.join(problems))
+            self.fail('\n\n'.join(problems))
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""
