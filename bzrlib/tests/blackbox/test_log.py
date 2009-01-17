@@ -188,7 +188,7 @@ class TestLog(ExternalBase):
         wt = self.make_branch_and_tree('.')
         out, err = self.run_bzr('log does-not-exist', retcode=3)
         self.assertContainsRe(
-            err, 'Path does not have any revision history: does-not-exist')
+            err, 'Path unknown at end of revision history: does-not-exist')
 
     def test_log_with_tags(self):
         tree = self._prepare(format='dirstate-tags')
@@ -585,7 +585,7 @@ class TestLogFile(TestCaseWithTransport):
         """File matched against end of revision range, not current name."""
         self.prepare_tree(complex=True)
         # Check logging a deleted file gives an error by default
-        err_msg = "Path does not have any revision history: file1"
+        err_msg = "Path unknown at end of revision history: file1"
         err = self.run_bzr('log file1', retcode=3)[1]
         self.assertContainsRe(err, err_msg)
 
@@ -601,7 +601,7 @@ class TestLogFile(TestCaseWithTransport):
         """File matched against end of revision range, not current name."""
         self.prepare_tree(complex=True)
         # Check logging a renamed file gives an error by default
-        err_msg = "Path does not have any revision history: file3"
+        err_msg = "Path unknown at end of revision history: file3"
         err = self.run_bzr('log file3', retcode=3)[1]
         self.assertContainsRe(err, err_msg)
 

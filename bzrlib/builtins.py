@@ -1910,7 +1910,7 @@ class cmd_log(Command):
                 file_id = tree.path2id(fp)
                 if file_id is None:
                     raise errors.BzrCommandError(
-                        "Path does not have any revision history: %s" %
+                        "Path unknown at end of revision history: %s" %
                         location)
         else:
             # local dir only
