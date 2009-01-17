@@ -267,7 +267,7 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
             specific_fileid, view_revisions,
             include_merges=generate_merge_revisions)
 
-    # rebase merge_depth - unless there are no revisions or 
+    # rebase merge_depth - unless there are no revisions or
     # either the first or last revision have merge_depth = 0.
     if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
         min_depth = min([d for r,n,d in view_revisions])
@@ -410,10 +410,10 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
 
 def _get_mainline_revs(branch, start_revision, end_revision):
     """Get the mainline revisions from the branch.
-    
+
     Generates the list of mainline revisions for the branch.
-    
-    :param  branch: The branch containing the revisions. 
+
+    :param  branch: The branch containing the revisions.
 
     :param  start_revision: The first revision to be logged.
             For backwards compatibility this may be a mainline integer revno,
@@ -429,9 +429,9 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if branch_revno == 0:
         return None, None, None, None
 
-    # For mainline generation, map start_revision and end_revision to 
-    # mainline revnos. If the revision is not on the mainline choose the 
-    # appropriate extreme of the mainline instead - the extra will be 
+    # For mainline generation, map start_revision and end_revision to
+    # mainline revnos. If the revision is not on the mainline choose the
+    # appropriate extreme of the mainline instead - the extra will be
     # filtered later.
     # Also map the revisions to rev_ids, to be used in the later filtering
     # stage.
@@ -493,7 +493,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
 def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     """Filter view_revisions based on revision ranges.
 
-    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth) 
+    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
             tuples to be filtered.
 
     :param start_rev_id: If not NONE specifies the first revision to be logged.
@@ -517,7 +517,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
                 end_index = revision_ids.index(end_rev_id)
             else:
                 end_index = len(view_revisions) - 1
-        # To include the revisions merged into the last revision, 
+        # To include the revisions merged into the last revision,
         # extend end_rev_id down to, but not including, the next rev
         # with the same or lesser merge_depth
         end_merge_depth = view_revisions[end_index][2]
@@ -689,7 +689,7 @@ class LogRevision(object):
     """A revision to be logged (by LogFormatter.log_revision).
 
     A simple wrapper for the attributes of a revision to be logged.
-    The attributes may or may not be populated, as determined by the 
+    The attributes may or may not be populated, as determined by the
     logging options and the log formatter capabilities.
     """
 
@@ -710,17 +710,17 @@ class LogFormatter(object):
     If the LogFormatter needs to be informed of the beginning or end of
     a log it should implement the begin_log and/or end_log hook methods.
 
-    A LogFormatter should define the following supports_XXX flags 
+    A LogFormatter should define the following supports_XXX flags
     to indicate which LogRevision attributes it supports:
 
     - supports_delta must be True if this log formatter supports delta.
         Otherwise the delta attribute may not be populated.  The 'delta_format'
         attribute describes whether the 'short_status' format (1) or the long
         one (2) sould be used.
- 
-    - supports_merge_revisions must be True if this log formatter supports 
+
+    - supports_merge_revisions must be True if this log formatter supports
         merge revisions.  If not, and if supports_single_merge_revisions is
-        also not True, then only mainline revisions will be passed to the 
+        also not True, then only mainline revisions will be passed to the
         formatter.
     - supports_single_merge_revision must be True if this log formatter
         supports logging only a single merge revision.  This flag is
@@ -732,7 +732,7 @@ class LogFormatter(object):
     the properties_handler_registry. The registered function
     must respect the following interface description:
         def my_show_properties(properties_dict):
-            # code that returns a dict {'name':'value'} of the properties 
+            # code that returns a dict {'name':'value'} of the properties
             # to be shown
     """
 
@@ -747,7 +747,7 @@ class LogFormatter(object):
         self.delta_format = delta_format
 
 # TODO: uncomment this block after show() has been removed.
-# Until then defining log_revision would prevent _show_log calling show() 
+# Until then defining log_revision would prevent _show_log calling show()
 # in legacy formatters.
 #    def log_revision(self, revision):
 #        """Log a revision.
@@ -770,7 +770,7 @@ class LogFormatter(object):
 
     def show_properties(self, revision, indent):
         """Displays the custom properties returned by each registered handler.
-        
+
         If a registered handler raises an error it is propagated.
         """
         for key, handler in properties_handler_registry.iteritems():

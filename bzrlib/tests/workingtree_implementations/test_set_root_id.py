@@ -37,7 +37,7 @@ class TestSetRootId(TestCaseWithWorkingTree):
             self.assertEqual(old_id, reference_tree.get_root_id())
         finally:
             tree.unlock()
-        # having unlocked the tree, the value should have been 
+        # having unlocked the tree, the value should have been
         # preserved into the next lock, which is an implicit read
         # lock around the get_root_id call.
         self.assertEqual(root_id, tree.get_root_id())

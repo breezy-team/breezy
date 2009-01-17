@@ -172,8 +172,8 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
             request.execute(''))
 
     def test_nonshared_repository(self):
-        # nonshared repositorys only allow 'find' to return a handle when the 
-        # path the repository is being searched on is the same as that that 
+        # nonshared repositorys only allow 'find' to return a handle when the
+        # path the repository is being searched on is the same as that that
         # the repository is at.
         backing = self.get_transport()
         request = self._request_class(backing)
@@ -250,7 +250,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         self.assertEqual(SmartServerResponse(('ok', )),
             request.execute(''))
         made_dir = bzrdir.BzrDir.open_from_transport(backing)
-        # no branch, tree or repository is expected with the current 
+        # no branch, tree or repository is expected with the current
         # default formart.
         self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
         self.assertRaises(errors.NotBranchError, made_dir.open_branch)
@@ -388,7 +388,7 @@ class TestSmartServerBranchRequestGetConfigFile(tests.TestCaseWithMemoryTranspor
     def test_with_content(self):
         # SmartServerBranchGetConfigFile should return the content from
         # branch.control_files.get('branch.conf') for now - in the future it may
-        # perform more complex processing. 
+        # perform more complex processing.
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchGetConfigFile(backing)
         branch = self.make_branch('.')
@@ -415,7 +415,7 @@ class SetLastRevisionTestBase(tests.TestCaseWithMemoryTransport):
 
     def unlock_branch(self):
         self.tree.branch.unlock()
-        
+
     def set_last_revision(self, revision_id, revno):
         branch_token, repo_token = self.lock_branch()
         response = self._set_last_revision(
@@ -427,7 +427,7 @@ class SetLastRevisionTestBase(tests.TestCaseWithMemoryTransport):
         response = self.set_last_revision(revision_id, revno)
         self.assertEqual(SuccessfulSmartServerResponse(('ok',)), response)
 
-        
+
 class TestSetLastRevisionVerbMixin(object):
     """Mixin test case for verbs that implement set_last_revision."""
 
@@ -538,7 +538,7 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.assertEqual(
             SuccessfulSmartServerResponse(('ok', revno, revision_id)),
             response)
-        
+
     def test_branch_last_revision_info_rewind(self):
         """A branch's tip can be set to a revision that is an ancestor of the
         current tip, but only if allow_overwrite_descendant is passed.
@@ -587,7 +587,7 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         # child-1.
         new_r2 = self.tree.commit('2nd commit', rev_id='child-2')
         self.tree.unlock()
-        
+
     def test_not_allow_diverged(self):
         """If allow_diverged is not passed, then setting a divergent history
         returns a Diverged error.
@@ -834,7 +834,7 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithMemoryTranspor
 
         self.assertEqual(SmartServerResponse(('ok', ), rev_id_utf8),
             request.execute('', rev_id_utf8))
-    
+
     def test_no_such_revision(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryGetRevisionGraph(backing)
@@ -1060,7 +1060,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         self.assertEqual(SmartServerResponse(('ok',)), response)
         repo._pack_collection.reload_pack_names()
         self.assertEqual(1, len(repo._pack_collection.names()))
-    
+
     def test_autopack_not_needed(self):
         tree = self.make_branch_and_tree('.', format='pack-0.92')
         repo = tree.branch.repository
@@ -1073,7 +1073,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         self.assertEqual(SmartServerResponse(('ok',)), response)
         repo._pack_collection.reload_pack_names()
         self.assertEqual(9, len(repo._pack_collection.names()))
-    
+
     def test_autopack_on_nonpack_format(self):
         """A request to autopack a non-pack repo is a no-op."""
         repo = self.make_repository('.', format='knit')
@@ -1082,7 +1082,7 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
             backing)
         response = request.execute('')
         self.assertEqual(SmartServerResponse(('ok',)), response)
-        
+
 
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""

@@ -81,7 +81,7 @@ class TestApiUsage(TestSourceHelper):
         # do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
-        # Note that this is an exact equality so that when the number drops, 
+        # Note that this is an exact equality so that when the number drops,
         #it is not given a buffer but rather has this test updated immediately.
         self.assertEqual(0, occurences)
 
@@ -111,7 +111,7 @@ class TestSource(TestSourceHelper):
 
     def get_source_files(self):
         """Yield all source files for bzr and bzrlib
-        
+
         :param our_files_only: If true, exclude files from included libraries
             or plugins.
         """

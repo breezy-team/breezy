@@ -41,7 +41,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
 
     def do(self, path, *args):
         """Execute a repository request.
-        
+
         All Repository requests take a path to the repository as their first
         argument.  The repository must be at the exact path given by the
         client - no searching is done.
@@ -106,10 +106,10 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     """Bzr 1.2+ - get parent data for revisions during a graph search."""
-    
+
     def do_repository_request(self, repository, *revision_ids):
         """Get parent details for some revisions.
-        
+
         All the parents for revision_ids are returned. Additionally up to 64KB
         of additional parent data found by performing a breadth first search
         from revision_ids is returned. The verb takes a body containing the
@@ -191,12 +191,12 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
-    
+
     def do_readlocked_repository_request(self, repository, revision_id):
         """Return the result of repository.get_revision_graph(revision_id).
 
         Deprecated as of bzr 1.4, but supported for older clients.
-        
+
         :param repository: The repository to query in.
         :param revision_id: The utf8 encoded revision_id to get a graph from.
         :return: A smart server response where the body contains an utf8
@@ -341,8 +341,8 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
     The returned tarball contains a .bzr control directory which in turn
     contains a repository.
-    
-    This takes one parameter, compression, which currently must be 
+
+    This takes one parameter, compression, which currently must be
     "", "gz", or "bz2".
 
     This is used to implement the Repository.copy_content_into operation.

@@ -25,12 +25,12 @@ class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
     You should use the serializer_v4 singleton.
-    
+
     v4 serialisation is no longer supported, only deserialisation.
     """
-    
+
     __slots__ = []
-    
+
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
@@ -134,10 +134,10 @@ class _Serializer_v4(Serializer):
                     p.set('revision_sha1', rev.parent_sha1s[i])
         return root
 
-    
+
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-        
+
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
             raise BzrError("unexpected tag in revision file: %r" % elt)

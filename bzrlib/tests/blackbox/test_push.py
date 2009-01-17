@@ -87,7 +87,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
         self.assertEquals(out,
-                          'Using saved push location: %s\n' 
+                          'Using saved push location: %s\n'
                           'Pushed up to revision 2.\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
@@ -98,7 +98,7 @@ class TestPush(ExternalBase):
         self.run_bzr('push ../branch_c --remember')
         self.assertEquals(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
-    
+
     def test_push_without_tree(self):
         # bzr push from a branch that does not have a checkout should work.
         b = self.make_branch('.')
@@ -109,8 +109,8 @@ class TestPush(ExternalBase):
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_new_branch_revision_count(self):
-        # bzr push of a branch with revisions to a new location 
-        # should print the number of revisions equal to the length of the 
+        # bzr push of a branch with revisions to a new location
+        # should print the number of revisions equal to the length of the
         # local branch.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
@@ -175,7 +175,7 @@ class TestPush(ExternalBase):
                 message='first commit')
         self.run_bzr('push -d from to-one')
         self.failUnlessExists('to-one')
-        self.run_bzr('push -d %s %s' 
+        self.run_bzr('push -d %s %s'
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.failUnlessExists('to-two')
 

@@ -53,7 +53,7 @@ class Convert(object):
                              branch.bzrdir.root_transport.base)
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
-            # might not be a format we can open without upgrading; see e.g. 
+            # might not be a format we can open without upgrading; see e.g.
             # https://bugs.launchpad.net/bzr/+bug/253891
             pass
         if not self.bzrdir.needs_format_conversion(self.format):

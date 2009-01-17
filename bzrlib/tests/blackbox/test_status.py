@@ -17,7 +17,7 @@
 """Tests of status command.
 
 Most of these depend on the particular formatting used.
-As such they really are blackbox tests even though some of the 
+As such they really are blackbox tests even though some of the
 tests are not using self.capture. If we add tests for the programmatic
 interface later, they will be non blackbox tests.
 """
@@ -43,18 +43,18 @@ from bzrlib.workingtree import WorkingTree
 
 
 class BranchStatus(TestCaseWithTransport):
-    
+
     def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False, pending=True, verbose=False):
         """Run status in working_tree and look for output.
-        
+
         :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
         output_string = self.status_string(working_tree, revision, short,
                 pending, verbose)
         self.assertEqual(expected_lines, output_string.splitlines(True))
-    
+
     def status_string(self, wt, revision=None, short=False, pending=True,
         verbose=False):
         # use a real file rather than StringIO because it doesn't handle
@@ -147,7 +147,7 @@ class BranchStatus(TestCaseWithTransport):
         self.build_tree(['more.c'])
         wt.add('more.c')
         wt.commit('Another test message')
-        
+
         revs.append(RevisionSpec.from_string('1'))
         self.assertStatus([
                 'added:\n',
@@ -206,7 +206,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('directory')
         wt.add('test.c')
         wt.commit('testing')
-        
+
         self.assertStatus([
                 'unknown:\n',
                 '  bye.c\n',
@@ -225,9 +225,9 @@ class BranchStatus(TestCaseWithTransport):
         tof = StringIO()
         self.assertRaises(errors.PathsDoNotExist,
                           show_tree_status,
-                          wt, specific_files=['bye.c','test.c','absent.c'], 
+                          wt, specific_files=['bye.c','test.c','absent.c'],
                           to_file=tof)
-        
+
         tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
@@ -330,7 +330,7 @@ class CheckoutStatus(BranchStatus):
         super(CheckoutStatus, self).setUp()
         mkdir('codir')
         chdir('codir')
-        
+
     def make_branch_and_tree(self, relpath):
         source = self.make_branch(pathjoin('..', relpath))
         checkout = bzrdir.BzrDirMetaFormat1().initialize(relpath)
@@ -485,7 +485,7 @@ class TestStatus(TestCaseWithTransport):
 
 
 class TestStatusEncodings(TestCaseWithTransport):
-    
+
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.user_encoding = osutils._cached_user_encoding

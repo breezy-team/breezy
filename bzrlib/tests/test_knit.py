@@ -297,7 +297,7 @@ class KnitRecordAccessTestsMixin(object):
         access = self.get_access()
         memos = access.add_raw_records([('key', 10)], '1234567890')
         self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
- 
+
     def test_add_several_raw_records(self):
         """add_raw_records with many records and read some back."""
         access = self.get_access()
@@ -1524,7 +1524,7 @@ class TestGraphIndexKnit(KnitTests):
             [('parent',)])])
         # but neither should have added data:
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_version_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
@@ -1538,7 +1538,7 @@ class TestGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
-        
+
     def test_add_versions_nodeltas(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
@@ -1586,7 +1586,7 @@ class TestGraphIndexKnit(KnitTests):
             [('parent',)])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
@@ -1704,7 +1704,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_version_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
@@ -1718,7 +1718,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
-        
+
     def test_add_versions(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
@@ -1756,7 +1756,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
@@ -1842,7 +1842,7 @@ class TestStacking(KnitTests):
 
     def test_check(self):
         # At the moment checking a stacked knit does implicitly check the
-        # fallback files.  
+        # fallback files.
         basis, test = self.get_basis_and_test_knit()
         test.check()
 
@@ -2083,7 +2083,7 @@ class TestStacking(KnitTests):
 
     def test_iter_lines_added_or_present_in_keys(self):
         # Lines from the basis are returned, and lines for a given key are only
-        # returned once. 
+        # returned once.
         key1 = ('foo1',)
         key2 = ('foo2',)
         # all sources are asked for keys:

@@ -91,7 +91,7 @@ class RangeFile(object):
 
     def set_boundary(self, boundary):
         """Define the boundary used in a multi parts message.
-        
+
         The file should be at the beginning of the body, the first range
         definition is read and taken into account.
         """
@@ -114,7 +114,7 @@ class RangeFile(object):
             # IIS 6 and 7 incorrectly wrap boundary strings in <>
             # together they make a beautiful bug, which we will be gracious
             # about here
-            if (self._unquote_boundary(boundary_line) != 
+            if (self._unquote_boundary(boundary_line) !=
                 '--' + self._boundary + '\r\n'):
                 raise errors.InvalidHttpResponse(
                     self._path,
@@ -288,7 +288,7 @@ def handle_response(url, code, msg, data):
     :param msg: An HTTPMessage containing the headers for the response
     :param data: A file-like object that can be read() to get the
                  requested data
-    :return: A file-like object that can seek()+read() the 
+    :return: A file-like object that can seek()+read() the
              ranges indicated by the headers.
     """
     rfile = RangeFile(url, data)

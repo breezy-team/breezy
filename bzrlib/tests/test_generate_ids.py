@@ -52,7 +52,7 @@ class TestFileIds(tests.TestCase):
         self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
         self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
 
-        # we remove unicode characters, and still don't end up with a 
+        # we remove unicode characters, and still don't end up with a
         # hidden file id
         self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
 

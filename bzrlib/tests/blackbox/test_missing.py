@@ -56,7 +56,7 @@ class TestMissing(TestCaseWithTransport):
         b_tree.commit(message='more')
 
         # run missing in a against b
-        # this should not require missing to take out a write lock on a 
+        # this should not require missing to take out a write lock on a
         # or b. So we take a write lock on both to test that at the same
         # time. This may let the test pass while the default branch is an
         # os-locking branch, but it will trigger failures with lockdir based
@@ -93,7 +93,7 @@ class TestMissing(TestCaseWithTransport):
         lines3 = self.run_bzr('missing ../b --theirs-only', retcode=0)[0]
         self.assertEqualDiff('Other branch is up to date.\n', lines3)
 
-        # relative to a, missing the 'merge' commit 
+        # relative to a, missing the 'merge' commit
         os.chdir('../b')
         lines = self.run_bzr('missing ../a', retcode=1)[0].splitlines()
         self.assertEqual(missing, lines[0])

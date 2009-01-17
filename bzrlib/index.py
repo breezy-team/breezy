@@ -56,7 +56,7 @@ _newline_null_re = re.compile('[\n\0]')
 def _has_key_from_parent_map(self, key):
     """Check if this index has one key.
 
-    If it's possible to check for multiple keys at once through 
+    If it's possible to check for multiple keys at once through
     calling get_parent_map that should be faster.
     """
     return (key in self.get_parent_map([key]))
@@ -68,9 +68,9 @@ def _missing_keys_from_parent_map(self, keys):
 
 class GraphIndexBuilder(object):
     """A builder that can build a GraphIndex.
-    
+
     The resulting graph has the structure:
-    
+
     _SIGNATURE OPTIONS NODES NEWLINE
     _SIGNATURE     := 'Bazaar Graph Index 1' NEWLINE
     OPTIONS        := 'node_ref_lists=' DIGITS NEWLINE
@@ -246,7 +246,7 @@ class GraphIndexBuilder(object):
         # one to pad all the data with reference-length and determine entry
         # addresses.
         # One to serialise.
-        
+
         # forward sorted by key. In future we may consider topological sorting,
         # at the cost of table scans for direct lookup, or a second index for
         # direct lookup
@@ -329,11 +329,11 @@ class GraphIndexBuilder(object):
 
 class GraphIndex(object):
     """An index for data with embedded graphs.
- 
+
     The index maps keys to a list of key reference lists, and a value.
     Each node has the same number of key reference lists. Each key reference
     list can be empty or an arbitrary length. The value is an opaque NULL
-    terminated string without any newlines. The storage of the index is 
+    terminated string without any newlines. The storage of the index is
     hidden in the interface: keys and key references are always tuples of
     bytestrings, never the internal representation (e.g. dictionary offsets).
 
@@ -502,11 +502,11 @@ class GraphIndex(object):
 
     def _resolve_references(self, references):
         """Return the resolved key references for references.
-        
+
         References are resolved by looking up the location of the key in the
         _keys_by_offset map and substituting the key name, preserving ordering.
 
-        :param references: An iterable of iterables of key locations. e.g. 
+        :param references: An iterable of iterables of key locations. e.g.
             [[123, 456], [123]]
         :return: A tuple of tuples of keys.
         """
@@ -670,7 +670,7 @@ class GraphIndex(object):
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
                     if type(value) == dict:
-                        # push keys 
+                        # push keys
                         dicts.extend(key_dict.itervalues())
                     else:
                         # yield keys
@@ -684,7 +684,7 @@ class GraphIndex(object):
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
-        
+
         For GraphIndex the estimate is exact.
         """
         if self._key_count is None:
@@ -706,7 +706,7 @@ class GraphIndex(object):
         # Possible improvements:
         #  - only bisect lookup each key once
         #  - sort the keys first, and use that to reduce the bisection window
-        # ----- 
+        # -----
         # this progresses in three parts:
         # read data
         # parse it
@@ -721,7 +721,7 @@ class GraphIndex(object):
                 # We have the key parsed.
                 continue
             index = self._parsed_key_index(key)
-            if (len(self._parsed_key_map) and 
+            if (len(self._parsed_key_map) and
                 self._parsed_key_map[index][0] <= key and
                 (self._parsed_key_map[index][1] >= key or
                  # end of the file has been parsed
@@ -731,7 +731,7 @@ class GraphIndex(object):
                 continue
             # - if we have examined this part of the file already - yes
             index = self._parsed_byte_index(location)
-            if (len(self._parsed_byte_map) and 
+            if (len(self._parsed_byte_map) and
                 self._parsed_byte_map[index][0] <= location and
                 self._parsed_byte_map[index][1] > location):
                 # the byte region has been parsed, so no read is needed.
@@ -992,7 +992,7 @@ class GraphIndex(object):
         # adjust offset and data to the parseable data.
         trimmed_data = data[trim_start:trim_end]
         if not (trimmed_data):
-            raise AssertionError('read unneeded data [%d:%d] from [%d:%d]' 
+            raise AssertionError('read unneeded data [%d:%d] from [%d:%d]'
                 % (trim_start, trim_end, offset, offset + len(data)))
         if trim_start:
             offset += trim_start
@@ -1143,7 +1143,7 @@ class GraphIndex(object):
 
 class CombinedGraphIndex(object):
     """A GraphIndex made up from smaller GraphIndices.
-    
+
     The backing indices must implement GraphIndex, and are presumed to be
     static data.
 
@@ -1173,7 +1173,7 @@ class CombinedGraphIndex(object):
     @symbol_versioning.deprecated_method(symbol_versioning.one_one)
     def get_parents(self, revision_ids):
         """See graph._StackedParentsProvider.get_parents.
-        
+
         This implementation thunks the graph.Graph.get_parents api across to
         GraphIndex.
 
@@ -1428,7 +1428,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     raise errors.BadIndexKey(key)
                 node = self._nodes[key]
                 if node[0]:
-                    continue 
+                    continue
                 if self.reference_lists:
                     yield self, key, node[2], node[1]
                 else:
@@ -1459,7 +1459,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
                     # can't be empty or would not exist
                     item, value = key_dict.iteritems().next()
                     if type(value) == dict:
-                        # push keys 
+                        # push keys
                         dicts.extend(key_dict.itervalues())
                     else:
                         # yield keys
@@ -1470,7 +1470,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
-        
+
         For InMemoryGraphIndex the estimate is exact.
         """
         return len(self._keys)
@@ -1484,7 +1484,7 @@ class GraphIndexPrefixAdapter(object):
 
     Queries against this will emit queries against the adapted Graph with the
     prefix added, queries for all items use iter_entries_prefix. The returned
-    nodes will have their keys and node references adjusted to remove the 
+    nodes will have their keys and node references adjusted to remove the
     prefix. Finally, an add_nodes_callback can be supplied - when called the
     nodes and references being added will have prefix prepended.
     """
@@ -1517,7 +1517,7 @@ class GraphIndexPrefixAdapter(object):
                     adjusted_references))
         except ValueError:
             # XXX: TODO add an explicit interface for getting the reference list
-            # status, to handle this bit of user-friendliness in the API more 
+            # status, to handle this bit of user-friendliness in the API more
             # explicitly.
             for (key, value) in nodes:
                 translated_nodes.append((self.prefix + key, value))
@@ -1595,7 +1595,7 @@ class GraphIndexPrefixAdapter(object):
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
-        
+
         For GraphIndexPrefixAdapter this is relatively expensive - key
         iteration with the prefix is done.
         """

@@ -41,7 +41,7 @@ class VcsMapping(object):
     # Whether this mapping supports exporting and importing all bzr semantics.
     roundtripping = False
 
-    # Prefix used when importing native foreign revisions (not roundtripped) 
+    # Prefix used when importing native foreign revisions (not roundtripped)
     # using this mapping.
     revid_prefix = None
 
@@ -63,7 +63,7 @@ class VcsMapping(object):
 
     def show_foreign_revid(self, foreign_revid):
         """Prepare a foreign revision id for formatting using bzr log.
-        
+
         :param foreign_revid: Foreign revision id.
         :return: Dictionary mapping string keys to string values.
         """
@@ -73,7 +73,7 @@ class VcsMapping(object):
 
 class VcsMappingRegistry(registry.Registry):
     """Registry for Bazaar<->foreign VCS mappings.
-    
+
     There should be one instance of this registry for every foreign VCS.
     """
 
@@ -104,7 +104,7 @@ class VcsMappingRegistry(registry.Registry):
 
 
 class ForeignRevision(Revision):
-    """A Revision from a Foreign repository. Remembers 
+    """A Revision from a Foreign repository. Remembers
     information about foreign revision id and mapping.
 
     """
@@ -146,9 +146,9 @@ class ForeignVcs(object):
 class ForeignVcsRegistry(registry.Registry):
     """Registry for Foreign VCSes.
 
-    There should be one entry per foreign VCS. Example entries would be 
+    There should be one entry per foreign VCS. Example entries would be
     "git", "svn", "hg", "darcs", etc.
-    
+
     """
 
     def register(self, key, foreign_vcs, help):
@@ -163,9 +163,9 @@ class ForeignVcsRegistry(registry.Registry):
         registry.Registry.register(self, key, foreign_vcs, help)
 
     def parse_revision_id(self, revid):
-        """Parse a bzr revision and return the matching mapping and foreign 
+        """Parse a bzr revision and return the matching mapping and foreign
         revid.
-        
+
         :param revid: The bzr revision id
         :return: tuple with foreign revid and vcs mapping
         """
@@ -184,7 +184,7 @@ foreign_vcs_registry = ForeignVcsRegistry()
 class ForeignRepository(Repository):
     """A Repository that exists in a foreign version control system.
 
-    The data in this repository can not be represented natively using 
+    The data in this repository can not be represented natively using
     Bazaars internal datastructures, but have to converted using a VcsMapping.
     """
 
@@ -194,7 +194,7 @@ class ForeignRepository(Repository):
     def has_foreign_revision(self, foreign_revid):
         """Check whether the specified foreign revision is present.
 
-        :param foreign_revid: A foreign revision id, in the format used 
+        :param foreign_revid: A foreign revision id, in the format used
                               by this Repository's VCS.
         """
         raise NotImplementedError(self.has_foreign_revision)
@@ -222,7 +222,7 @@ class ForeignRepository(Repository):
     def get_inventory_sha1(self, revision_id):
         """Get the sha1 for the XML representation of an inventory.
 
-        :param revision_id: Revision id of the inventory for which to return 
+        :param revision_id: Revision id of the inventory for which to return
          the SHA1.
         :return: XML string
         """

@@ -47,7 +47,7 @@ class TextUIFactory(CLIUIFactory):
                  stderr=None):
         """Create a TextUIFactory.
 
-        :param bar_type: The type of progress bar to create. It defaults to 
+        :param bar_type: The type of progress bar to create. It defaults to
                          letting the bzrlib.progress.ProgressBar factory auto
                          select.   Deprecated.
         """
@@ -62,7 +62,7 @@ class TextUIFactory(CLIUIFactory):
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
         self.stdout.write(prompt)
-        
+
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -71,7 +71,7 @@ class TextUIFactory(CLIUIFactory):
         # XXX: If this is preparing to write to stdout, but that's for example
         # directed into a file rather than to the terminal, and the progress
         # bar _is_ going to the terminal, we shouldn't need
-        # to clear it.  We might need to separately check for the case of 
+        # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
 
     def note(self, msg):
@@ -81,7 +81,7 @@ class TextUIFactory(CLIUIFactory):
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
-        
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
@@ -101,8 +101,8 @@ class TextUIFactory(CLIUIFactory):
 
 class TextProgressView(object):
     """Display of progress bar and other information on a tty.
-    
-    This shows one line of text, including possibly a network indicator, spinner, 
+
+    This shows one line of text, including possibly a network indicator, spinner,
     progress bar, message, etc.
 
     One instance of this is created and held by the UI, and fed updates when a
@@ -203,7 +203,7 @@ class TextProgressView(object):
 
     def show_transport_activity(self, byte_count):
         """Called by transports as they do IO.
-        
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """

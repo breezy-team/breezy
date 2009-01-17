@@ -128,7 +128,7 @@ class RepoFetcher(object):
     def __fetch(self):
         """Primary worker function.
 
-        This initialises all the needed variables, and then fetches the 
+        This initialises all the needed variables, and then fetches the
         requested revisions, finally clearing the progress bar.
         """
         self.count_total = 0
@@ -208,7 +208,7 @@ class RepoFetcher(object):
             if pb is not None:
                 pb.finished()
         self.count_copied += len(revs)
-        
+
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
@@ -285,7 +285,7 @@ class RepoFetcher(object):
 
 class Inter1and2Helper(object):
     """Helper for operations that convert data from model 1 and 2
-    
+
     This is for use by fetchers and converters.
     """
 
@@ -376,7 +376,7 @@ class Inter1and2Helper(object):
 
     def regenerate_inventory(self, revs):
         """Generate a new inventory versionedfile in target, convertin data.
-        
+
         The inventory is retrieved from the source, (deserializing it), and
         stored in the target (reserializing it in a different format).
         :param revs: The revisions to include

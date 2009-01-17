@@ -62,11 +62,11 @@ if '--profile-imports' in sys.argv:
 if sys.platform == 'darwin':
     # jameinel says this hack is to force python to honor the LANG setting,
     # even on Darwin.  Otherwise it is apparently hardcoded to Mac-Roman,
-    # which is incorrect for the normal Terminal.app which wants UTF-8.  
+    # which is incorrect for the normal Terminal.app which wants UTF-8.
     #
     # "It might be that I should be setting the "system locale" somewhere else
     # on the system, rather than setting LANG=en_US.UTF-8 in .bashrc.
-    # Switching to 'posix' and setting LANG worked for me." 
+    # Switching to 'posix' and setting LANG worked for me."
     #
     # So we can remove this if someone works out the right way to tell Mac
     # Python which encoding to use.  -- mbp 20080703

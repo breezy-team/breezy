@@ -82,8 +82,8 @@ class AllInOneRepository(Repository):
 
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
-            # or entirely uncompressed is tidy, but breaks upgrade from 
-            # some existing branches where there's a mixture; we probably 
+            # or entirely uncompressed is tidy, but breaks upgrade from
+            # some existing branches where there's a mixture; we probably
             # still want the option to look for both.
             relpath = self._escape(name)
             store = TextStore(a_bzrdir.transport.clone(relpath),
@@ -95,7 +95,7 @@ class AllInOneRepository(Repository):
         # not broken out yet because the controlweaves|inventory_store
         # and texts bits are still different.
         if isinstance(_format, RepositoryFormat4):
-            # cannot remove these - there is still no consistent api 
+            # cannot remove these - there is still no consistent api
             # which allows access to this old info.
             self.inventory_store = get_store('inventory-store')
             self._text_store = get_store('text-store')
@@ -112,9 +112,9 @@ class AllInOneRepository(Repository):
 
     @needs_read_lock
     def _all_revision_ids(self):
-        """Returns a list of all the revision ids in the repository. 
+        """Returns a list of all the revision ids in the repository.
 
-        These are in as much topological order as the underlying store can 
+        These are in as much topological order as the underlying store can
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
@@ -210,9 +210,9 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     @needs_read_lock
     def _all_revision_ids(self):
-        """Returns a list of all the revision ids in the repository. 
+        """Returns a list of all the revision ids in the repository.
 
-        These are in as much topological order as the underlying store can 
+        These are in as much topological order as the underlying store can
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
@@ -282,14 +282,14 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         if not _internal:
             # always initialized when the bzrdir is.
             return self.open(a_bzrdir, _found=True)
-        
+
         # Create an empty weave
         sio = StringIO()
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        
+
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(a_bzrdir.transport,
@@ -355,7 +355,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         """Format 4 is not supported.
 
         It is not supported because the model changed from 4 to 5 and the
-        conversion logic is expensive - so doing it on the fly was not 
+        conversion logic is expensive - so doing it on the fly was not
         feasible.
         """
         return False
@@ -528,16 +528,16 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)), 
+        files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         utf8_files = [('format', self.get_format_string())]
- 
+
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         return self.open(a_bzrdir=a_bzrdir, _found=True)
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
-        
+
         :param _override_transport: INTERNAL USE ONLY. Allows opening the
                                     repository at a slightly different url
                                     than normal. I.e. during 'upgrade'.
@@ -664,7 +664,7 @@ class RevisionTextStore(TextVersionedFiles):
                 continue
             result[key] = parents
         return result
-    
+
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         for key in keys:
             text, parents = self._load_text_parents(key)
@@ -704,7 +704,7 @@ class SignatureTextStore(TextVersionedFiles):
                 continue
             result[key] = None
         return result
-    
+
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         for key in keys:
             text = self._load_text(key)

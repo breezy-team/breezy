@@ -25,7 +25,7 @@ from bzrlib.bundle.bundle_data import BundleInfo
 
 class BundleSerializerV09(BundleSerializerV08):
     """Serializer for bzr bundle format 0.9
-    
+
     This format supports rich root data, for the nested-trees work, but also
     supports repositories that don't have rich root data.  It cannot be
     used to transfer from a knit2 repo into a knit1 repo, because that would
@@ -41,7 +41,7 @@ class BundleSerializerV09(BundleSerializerV08):
         f.write(_get_bundle_header('0.9') + '#\n')
 
     def _testament_sha1(self, revision_id):
-        return StrictTestament3.from_revision(self.source, 
+        return StrictTestament3.from_revision(self.source,
                                               revision_id).as_sha1()
 
     def read(self, f):
@@ -55,7 +55,7 @@ class BundleSerializerV09(BundleSerializerV08):
 
 class BundleInfo09(BundleInfo):
     """BundleInfo that uses StrictTestament3
-    
+
     This means that the root data is included in the testament.
     """
 
@@ -69,6 +69,6 @@ class BundleInfo09(BundleInfo):
 
 class BundleReaderV09(BundleReader):
     """BundleReader for 0.9 bundles"""
-    
+
     def _get_info(self):
         return BundleInfo09()

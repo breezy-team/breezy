@@ -48,7 +48,7 @@ Location:
 
     def test_init_repo_existing_dir(self):
         """Make repo in existing directory.
-        
+
         (Malone #38331)
         """
         out, err = self.run_bzr("init-repository .")

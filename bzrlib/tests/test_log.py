@@ -353,7 +353,7 @@ class TestLongLogFormatter(TestCaseWithoutPropsHandler):
 
     def test_verbose_log(self):
         """Verbose log includes changed files
-        
+
         bug #4676
         """
         wt = self.make_branch_and_tree('.')
@@ -561,7 +561,7 @@ message:
                              sio.getvalue())
 
     def test_properties_in_log(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -601,7 +601,7 @@ message:
                                  sio.getvalue())
 
     def test_error_in_properties_handler(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -667,7 +667,7 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
 
     def test_line_log(self):
         """Line log should show revno
-        
+
         bug #5162
         """
         wt = self.make_branch_and_tree('.')

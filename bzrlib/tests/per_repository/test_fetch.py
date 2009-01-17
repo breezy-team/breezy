@@ -31,7 +31,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
-        # it is defined as a convenience function with the underlying 
+        # it is defined as a convenience function with the underlying
         # functionality provided by an InterRepository
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])

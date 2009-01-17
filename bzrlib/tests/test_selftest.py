@@ -131,10 +131,10 @@ class TestTreeShape(TestCaseInTempDir):
 class TestTransportProviderAdapter(TestCase):
     """A group of tests that test the transport implementation adaption core.
 
-    This is a meta test that the tests are applied to all available 
+    This is a meta test that the tests are applied to all available
     transports.
 
-    This will be generalised in the future which is why it is in this 
+    This will be generalised in the future which is why it is in this
     test file even though it is specific to transport tests at the moment.
     """
 
@@ -163,7 +163,7 @@ class TestTransportProviderAdapter(TestCase):
         permutation_count = 0
         for module in modules:
             try:
-                permutation_count += len(reduce(getattr, 
+                permutation_count += len(reduce(getattr,
                     (module + ".get_test_permutations").split('.')[1:],
                      __import__(module))())
             except errors.DependencyNotPresent:
@@ -321,7 +321,7 @@ class TestTestScenarioApplier(TestCase):
             ("new id 2", {"bzrdir_format":None}))
         # input_test should have been altered.
         self.assertRaises(AttributeError, getattr, input_test, "bzrdir_format")
-        # the new tests are mutually incompatible, ensuring it has 
+        # the new tests are mutually incompatible, ensuring it has
         # made new ones, and unspecified elements in the scenario
         # should not have been altered.
         self.assertEqual("bzr_format", adapted_test1.bzrdir_format)
@@ -522,8 +522,8 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         """The test_home_dir for TestCaseWithMemoryTransport is missing.
 
         This is because TestCaseWithMemoryTransport is for tests that do not
-        need any disk resources: they should be hooked into bzrlib in such a 
-        way that no global settings are being changed by the test (only a 
+        need any disk resources: they should be hooked into bzrlib in such a
+        way that no global settings are being changed by the test (only a
         few tests should need to do that), and having a missing dir as home is
         an effective way to ensure that this is the case.
         """
@@ -531,7 +531,7 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
             self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
             self.test_home_dir)
         self.assertIsSameRealPath(self.test_home_dir, os.environ['HOME'])
-        
+
     def test_cwd_is_TEST_ROOT(self):
         self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
@@ -678,7 +678,7 @@ class TestTestCaseTransports(TestCaseWithTransport):
     def test_make_bzrdir_preserves_transport(self):
         t = self.get_transport()
         result_bzrdir = self.make_bzrdir('subdir')
-        self.assertIsInstance(result_bzrdir.transport, 
+        self.assertIsInstance(result_bzrdir.transport,
                               MemoryTransport)
         # should not be on disk, should only be in memory
         self.failIfExists('subdir')
@@ -746,7 +746,7 @@ class TestTestResult(TestCase):
                 time.sleep(0.003)
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
-        
+
     def test_assigned_benchmark_file_stores_date(self):
         output = StringIO()
         result = bzrlib.tests.TextTestResult(self._log_file,
@@ -779,10 +779,10 @@ class TestTestResult(TestCase):
         self.assertContainsRe(lines[1],
             " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
             "._time_hello_world_encoding")
- 
+
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
-        
+
         This is used to exercise the test framework.
         """
         self.time(unicode, 'hello', errors='replace')
@@ -806,13 +806,13 @@ class TestTestResult(TestCase):
         # execute the test, which should succeed and record profiles
         example_test_case.run(result)
         # lsprofile_something()
-        # if this worked we want 
+        # if this worked we want
         # LSProf output for <built in function unicode> (['hello'], {'errors': 'replace'})
         #    CallCount    Recursive    Total(ms)   Inline(ms) module:lineno(function)
         # (the lsprof header)
         # ... an arbitrary number of lines
         # and the function call which is time.sleep.
-        #           1        0            ???         ???       ???(sleep) 
+        #           1        0            ???         ???       ???(sleep)
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
         output = result_stream.getvalue()
@@ -953,7 +953,7 @@ class TestTestResult(TestCase):
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
         self.assertEqual(lines, ['NODEP                   0ms', "    The feature 'Feature' is not available."])
-    
+
     def test_text_report_unsupported(self):
         # text test output formatting
         pb = MockProgress()
@@ -982,7 +982,7 @@ class TestTestResult(TestCase):
             ('update', '[2 in 0s, 2 missing] passing_test', None, None),
             ],
             pb.calls[1:])
-    
+
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(ExtendedTestResult):
@@ -1011,7 +1011,7 @@ class TestTestResult(TestCase):
         result.addNotSupported(test, feature)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
- 
+
     def test_strict_with_known_failure(self):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
                                              verbosity=1)
@@ -1049,7 +1049,7 @@ class TestRunner(TestCase):
 
         This current saves and restores:
         TestCaseInTempDir.TEST_ROOT
-        
+
         There should be no tests in this file that use bzrlib.tests.TextTestRunner
         without using this convenience method, because of our use of global state.
         """
@@ -1358,7 +1358,7 @@ class TestTestCase(TestCase):
         orig_selftest_flags = tests.selftest_debug_flags
         self.addCleanup(self._restore_selftest_debug_flags, orig_selftest_flags)
         tests.selftest_debug_flags = set(new_flags)
-        
+
     def _restore_selftest_debug_flags(self, flags):
         tests.selftest_debug_flags = flags
 
@@ -1411,7 +1411,7 @@ class TestTestCase(TestCase):
         # should setup a new log, log content to it, setup a child case (B),
         # which should log independently, then case (A) should log a trailer
         # and return.
-        # we do two nested children so that we can verify the state of the 
+        # we do two nested children so that we can verify the state of the
         # logs after the outer child finishes is correct, which a bad clean
         # up routine in tearDown might trigger a fault in our test with only
         # one child, we should instead see the bad result inside our test with
@@ -1451,11 +1451,11 @@ class TestTestCase(TestCase):
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
-        
+
         Each self.time() call is individually and separately profiled.
         """
         self.requireFeature(test_lsprof.LSProfFeature)
-        # overrides the class member with an instance member so no cleanup 
+        # overrides the class member with an instance member so no cleanup
         # needed.
         self._gather_lsprof_in_benchmarks = True
         self.time(time.sleep, 0.000)
@@ -1487,7 +1487,7 @@ class TestTestCase(TestCase):
     def test_run_no_parameters(self):
         test = SampleTestCase('_test_pass')
         test.run()
-    
+
     def test_run_enabled_unittest_result(self):
         """Test we revert to regular behaviour when the test is enabled."""
         test = SampleTestCase('_test_pass')
@@ -1656,7 +1656,7 @@ class TestExtraAssertions(TestCase):
         self.assertEqual(2, self.applyDeprecated(zero_eleven,
             sample_deprecated_function))
         # calling a nested deprecation with the wrong deprecation version
-        # fails even if a deeper nested function was deprecated with the 
+        # fails even if a deeper nested function was deprecated with the
         # supplied version.
         self.assertRaises(AssertionError, self.applyDeprecated,
             zero_eleven, sample_object.sample_nested_deprecation)
@@ -1668,7 +1668,7 @@ class TestExtraAssertions(TestCase):
     def test_callDeprecated(self):
         def testfunc(be_deprecated, result=None):
             if be_deprecated is True:
-                symbol_versioning.warn('i am deprecated', DeprecationWarning, 
+                symbol_versioning.warn('i am deprecated', DeprecationWarning,
                                        stacklevel=1)
             return result
         result = self.callDeprecated(['i am deprecated'], testfunc, True)
@@ -1739,7 +1739,7 @@ class TestSelftest(TestCase):
             return TestSuite()
         out = StringIO()
         err = StringIO()
-        self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
+        self.apply_redirected(out, err, None, bzrlib.tests.selftest,
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
 

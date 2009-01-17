@@ -69,7 +69,7 @@ class MsgEditorTest(TestCaseWithTransport):
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         working_tree.add(filename)
         return working_tree
-    
+
     def test_commit_template(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
@@ -322,7 +322,7 @@ if len(sys.argv) == 2:
 
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()
-        self.assertIs(None, 
+        self.assertIs(None,
             msgeditor.generate_commit_message_template(commit_obj))
 
     def test_generate_commit_message_template_hook(self):
@@ -332,5 +332,5 @@ if len(sys.argv) == 2:
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         commit_obj = commit.Commit()
-        self.assertEquals("save me some typing\n", 
+        self.assertEquals("save me some typing\n",
             msgeditor.generate_commit_message_template(commit_obj))

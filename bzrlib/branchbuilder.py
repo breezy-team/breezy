@@ -17,7 +17,7 @@
 """Utility for create branches with particular contents."""
 
 from bzrlib import (
-    bzrdir, 
+    bzrdir,
     commit,
     errors,
     memorytree,
@@ -26,7 +26,7 @@ from bzrlib import (
 
 class BranchBuilder(object):
     r"""A BranchBuilder aids creating Branches with particular shapes.
-    
+
     The expected way to use BranchBuilder is to construct a
     BranchBuilder on the transport you want your branch on, and then call
     appropriate build_ methods on it to get the shape of history you want.
@@ -58,7 +58,7 @@ class BranchBuilder(object):
 
     def __init__(self, transport, format=None):
         """Construct a BranchBuilder on transport.
-        
+
         :param transport: The transport the branch should be created on.
             If the path of the transport does not exist but its parent does
             it will be created.
@@ -210,7 +210,7 @@ class BranchBuilder(object):
             tree.add(to_add_files, to_add_file_ids, to_add_kinds)
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
-            return self._do_commit(tree, message=message, rev_id=revision_id) 
+            return self._do_commit(tree, message=message, rev_id=revision_id)
         finally:
             tree.unlock()
 

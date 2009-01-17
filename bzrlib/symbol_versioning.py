@@ -135,7 +135,7 @@ def deprecated_function(deprecation_version):
 
     def function_decorator(callable):
         """This is the function python calls to perform the decoration."""
-        
+
         def decorated_function(*args, **kwargs):
             """This is the decorated function."""
             from bzrlib import trace
@@ -152,18 +152,18 @@ def deprecated_function(deprecation_version):
 def deprecated_method(deprecation_version):
     """Decorate a method so that use of it will trigger a warning.
 
-    To deprecate a static or class method, use 
+    To deprecate a static or class method, use
 
         @staticmethod
         @deprecated_function
         def ...
-    
+
     To deprecate an entire class, decorate __init__.
     """
 
     def method_decorator(callable):
         """This is the function python calls to perform the decoration."""
-        
+
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
             from bzrlib import trace
@@ -187,7 +187,7 @@ def deprecated_method(deprecation_version):
 
 def deprecated_passed(parameter_value):
     """Return True if parameter_value was used."""
-    # FIXME: it might be nice to have a parameter deprecation decorator. 
+    # FIXME: it might be nice to have a parameter deprecation decorator.
     # it would need to handle positional and *args and **kwargs parameters,
     # which means some mechanism to describe how the parameter was being
     # passed before deprecation, and some way to deprecate parameters that
@@ -213,7 +213,7 @@ def _decorate_docstring(callable, deprecation_version, label,
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
-        decorated_callable.__doc__ = (callable.__doc__ 
+        decorated_callable.__doc__ = (callable.__doc__
                                     + "\n"
                                     + "\n"
                                     + deprecation_version % ("This " + label)
@@ -267,7 +267,7 @@ class DeprecatedDict(dict):
             typically from deprecated_in()
         :param initial_value: The contents of the dict
         :param variable_name: This allows better warnings to be printed
-        :param advice: String of advice on what callers should do instead 
+        :param advice: String of advice on what callers should do instead
             of using this variable.
         """
         self._deprecation_version = deprecation_version
@@ -309,7 +309,7 @@ def deprecated_list(deprecation_version, variable_name,
         def _warn_deprecated(self, func, *args, **kwargs):
             warn(msg, DeprecationWarning, stacklevel=3)
             return func(self, *args, **kwargs)
-            
+
         def append(self, obj):
             """appending to %s is deprecated""" % (variable_name,)
             return self._warn_deprecated(list.append, obj)
@@ -339,7 +339,7 @@ def deprecated_list(deprecation_version, variable_name,
 
 def _check_for_filter(error_only):
     """Check if there is already a filter for deprecation warnings.
-    
+
     :param error_only: Only match an 'error' filter
     :return: True if a filter is found, False otherwise
     """
