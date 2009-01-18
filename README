@@ -68,15 +68,13 @@ will disable the feature for that branch.
 Upload from Remote Location
 ---------------------------
 
-If you push your branch to the remote location that you upload to, and you only
-want to upload when you push to the remote branch, or do any action that changes
-the tip of the remote branch, you can set bzr-upload to automatically upload
-from the tip of the remote branch.
+It is possible to upload to a remote location from another remote location by
+specifying it with --directory option:
 
-     bzr upload ftp://host/ --directory=ftp://host/ --auto
+    bzr upload ftp://public.example.com --directory sftp://private.example.com 
 
-Note that the tree that upload creates is not a working tree. As such, you can
-not do operations such as commit, or merge on the tree.
+Note that you will consume more bandwith this way than uploading from
+private.example.com.
 
 Collaborating
 -------------
