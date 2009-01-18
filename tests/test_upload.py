@@ -657,21 +657,33 @@ class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
 class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
                                  UploadUtilsMixin):
 
-    def test_no_upload_to_remote_working_tree(self):
+    remote_branch_dir = 'remote_branch'
+
+    def make_remote_branch_without_working_tree(self):
+        """Creates a branch without working tree to upload from.
+
+        It's created from the existing self.branch_dir one which still has its
+        working tree.
+        """
         self.make_branch_and_working_tree()
         self.add_file('hello', 'foo')
 
-        remote_branch_url = self.get_url('remote_branch')
+        remote_branch_url = self.get_url(self.remote_branch_dir)
         self.run_bzr(['push', remote_branch_url,
                       '--directory', self.branch_dir])
+        return remote_branch_url
 
-        # Now, let's try to upload from the just created remote branch into the
-        # branch (with has a working tree).
+    def test_no_upload_to_remote_working_tree(self):
+        remote_branch_url = self.make_remote_branch_without_working_tree()
         upload = self._get_cmd_upload()
         up_url = self.get_url(self.branch_dir)
+        # Let's try to upload from the just created remote branch into the
+        # branch (with has a working tree).
         self.assertRaises(CannotUploadToWT,
                           upload.run, up_url, directory=remote_branch_url)
 
-# Tests from remote branch:
-# - smoke test 
-# - works without a working tree
+    def test_upload_without_working_tree(self):
+        remote_branch_url = self.make_remote_branch_without_working_tree()
+        self.do_full_upload(directory=remote_branch_url)
+        self.assertUpFileEqual('foo', 'hello')
+
