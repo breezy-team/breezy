@@ -73,8 +73,11 @@ specifying it with --directory option:
 
     bzr upload ftp://public.example.com --directory sftp://private.example.com 
 
-Note that you will consume more bandwith this way than uploading from
-private.example.com.
+This, together with --auto, can be use to enable a hook that uploads when you
+push to your central branch, rather than when you commit to your local branch.
+
+Note that you will consume more bandwith this way than uploading from a local
+branch.
 
 Collaborating
 -------------
