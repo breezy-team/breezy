@@ -424,19 +424,15 @@ class TestUploadMixin(UploadUtilsMixin):
         self.make_branch_and_working_tree()
 
         self.add_file('hello', 'foo')
-        self.do_full_upload()
-        self.assertUpFileEqual('foo', 'hello')
         self.assertFalse(self.get_upload_auto())
-
-        self.add_file('bye', 'bar')
         self.do_full_upload(auto=True)
-        self.assertUpFileEqual('bar', 'bye')
+        self.assertUpFileEqual('foo', 'hello')
         self.assertTrue(self.get_upload_auto())
 
         # and check that it stays set until it is unset
-        self.add_file('again', 'baz')
+        self.add_file('bye', 'bar')
         self.do_full_upload()
-        self.assertUpFileEqual('baz', 'again')
+        self.assertUpFileEqual('bar', 'bye')
         self.assertTrue(self.get_upload_auto())
 
     def test_upload_noauto(self):
