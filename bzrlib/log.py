@@ -212,7 +212,7 @@ def _show_log(branch,
     revision_iterator = _create_log_revision_iterator(branch,
         start_revision, end_revision, direction, specific_fileid, search,
         generate_merge_revisions, allow_single_merge_revision,
-        generate_delta, limit)
+        generate_delta)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
             lr = LogRevision(rev, revno, merge_depth, delta,
@@ -227,7 +227,7 @@ def _show_log(branch,
 def _create_log_revision_iterator(branch, start_revision, end_revision,
     direction, specific_fileid, search, generate_merge_revisions,
     allow_single_merge_revision, generate_delta,
-    force_incremental_matching):
+    force_incremental_matching=False):
     """Create a revision iterator for log.
 
     :param branch: The branch being logged.
