@@ -403,6 +403,131 @@ message:
         self.assertContainsRe(err, err_msg)
 
 
+def subst_dates(string):
+    """Replace date strings with constant values."""
+    return re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [-\+]\d{4}',
+                  'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
+
+
+class TestLogDiff(TestCaseWithoutPropsHandler):
+
+    def _prepare(self):
+        parent_tree = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/file1', 'parent/file2'])
+        parent_tree.add('file1')
+        parent_tree.add('file2')
+        parent_tree.commit(message='first post',
+            timestamp=1132586655, timezone=36000,
+            committer='Lorem Ipsum <test@example.com>')
+        child_tree = parent_tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file2', 'hello\n')])
+        child_tree.commit(message='branch 1',
+            timestamp=1132586700, timezone=36000,
+            committer='Lorem Ipsum <test@example.com>')
+        parent_tree.merge_from_branch(child_tree.branch)
+        parent_tree.commit(message='merge branch 1',
+            timestamp=1132586800, timezone=36000,
+            committer='Lorem Ipsum <test@example.com>')
+        os.chdir('parent')
+
+    def test_log_show_diff_long(self):
+        self._prepare()
+        out,err = self.run_bzr('log --show-diff')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_dates(log), """\
+------------------------------------------------------------
+revno: 2
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  merge branch 1
+diff:
+  === modified file 'file2'
+  --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+  +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+  @@ -1,1 +1,1 @@
+  -contents of parent/file2
+  +hello
+    ------------------------------------------------------------
+    revno: 1.1.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: child
+    timestamp: Just now
+    message:
+      branch 1
+    diff:
+      === modified file 'file2'
+      --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      @@ -1,1 +1,1 @@
+      -contents of parent/file2
+      +hello
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  first post
+diff:
+  === added file 'file1'
+  --- file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
+  +++ file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
+  @@ -0,0 +1,1 @@
+  +contents of parent/file1
+  
+  === added file 'file2'
+  --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+  +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+  @@ -0,0 +1,1 @@
+  +contents of parent/file2
+""")
+
+    def test_log_show_diff_short(self):
+        self._prepare()
+        out,err = self.run_bzr('log --show-diff --short')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_dates(log), """\
+    2 Lorem Ipsum\t2005-11-22 [merge]
+      merge branch 1
+      === modified file 'file2'
+      --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      @@ -1,1 +1,1 @@
+      -contents of parent/file2
+      +hello
+
+    1 Lorem Ipsum\t2005-11-22
+      first post
+      === added file 'file1'
+      --- file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      +++ file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      @@ -0,0 +1,1 @@
+      +contents of parent/file1
+      
+      === added file 'file2'
+      --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      @@ -0,0 +1,1 @@
+      +contents of parent/file2
+
+""")
+
+    def test_log_show_diff_line(self):
+        self._prepare()
+        out,err = self.run_bzr('log --show-diff --line')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        # Not supported by this formatter so expect plain output
+        self.assertEqualDiff(subst_dates(log), """\
+2: Lorem Ipsum 2005-11-22 merge branch 1
+1: Lorem Ipsum 2005-11-22 first post
+""")
+
+
 class TestLogEncodings(TestCaseInTempDir):
 
     _mu = u'\xb5'
