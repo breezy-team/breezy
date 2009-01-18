@@ -432,7 +432,7 @@ class TestLogDiff(TestCaseWithoutPropsHandler):
 
     def test_log_show_diff_long(self):
         self._prepare()
-        out,err = self.run_bzr('log --show-diff')
+        out,err = self.run_bzr('log -p')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
@@ -487,7 +487,7 @@ diff:
 
     def test_log_show_diff_short(self):
         self._prepare()
-        out,err = self.run_bzr('log --show-diff --short')
+        out,err = self.run_bzr('log -p --short')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
@@ -518,7 +518,7 @@ diff:
 
     def test_log_show_diff_line(self):
         self._prepare()
-        out,err = self.run_bzr('log --show-diff --line')
+        out,err = self.run_bzr('log -p --line')
         self.assertEqual('', err)
         log = normalize_log(out)
         # Not supported by this formatter so expect plain output
@@ -530,7 +530,7 @@ diff:
     def test_log_show_diff_file(self):
         """Only the diffs for the given file are to be shown"""
         self._prepare()
-        out,err = self.run_bzr('log --show-diff --short file2')
+        out,err = self.run_bzr('log -p --short file2')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
@@ -552,7 +552,7 @@ diff:
       +contents of parent/file2
 
 """)
-        out,err = self.run_bzr('log --show-diff --short file1')
+        out,err = self.run_bzr('log -p --short file1')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\

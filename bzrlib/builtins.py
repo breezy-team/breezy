@@ -1863,7 +1863,8 @@ class cmd_log(Command):
                    argname='N',
                    type=_parse_limit),
             Option('show-diff',
-                   help='Show changes made in each revision.'),
+                   short_name='p',
+                   help='Show changes made in each revision as a patch.'),
             ]
     encoding_type = 'replace'
 
