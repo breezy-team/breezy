@@ -94,6 +94,5 @@ Known Issues
 ------------
 
  * Symlinks are not supported
- * Execution bits aren't currently handled
 
 
