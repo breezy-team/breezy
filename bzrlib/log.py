@@ -50,6 +50,7 @@ all the changes since the previous revision that touched hello.c.
 """
 
 import codecs
+from cStringIO import StringIO
 from itertools import (
     izip,
     )
@@ -64,6 +65,7 @@ lazy_import(globals(), """
 
 from bzrlib import (
     config,
+    diff,
     errors,
     repository as _mod_repository,
     revision as _mod_revision,
@@ -144,7 +146,8 @@ def show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             show_diff=False):
     """Write out human-readable log of commits to this branch.
 
     :param lf: The LogFormatter object showing the output.
@@ -166,6 +169,8 @@ def show_log(branch,
 
     :param limit: If set, shows only 'limit' revisions, all revisions are shown
         if None or 0.
+
+    :param show_diff: If True, output a diff after each revision.
     """
     branch.lock_read()
     try:
@@ -173,7 +178,7 @@ def show_log(branch,
             lf.begin_log()
 
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search, limit)
+                  start_revision, end_revision, search, limit, show_diff)
 
         if getattr(lf, 'end_log', None):
             lf.end_log()
@@ -189,7 +194,8 @@ def _show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             show_diff=False):
     """Worker function for show_log - see show_log."""
     if not isinstance(lf, LogFormatter):
         warn("not a LogFormatter instance: %r" % lf)
@@ -213,6 +219,7 @@ def _show_log(branch,
     generate_delta = verbose and getattr(lf, 'supports_delta', False)
 
     # now we just print all the revisions
+    repo = branch.repository
     log_count = 0
     revision_iterator = make_log_rev_iterator(branch, view_revisions,
         generate_delta, search)
@@ -221,6 +228,17 @@ def _show_log(branch,
             lr = LogRevision(rev, revno, merge_depth, delta,
                              rev_tag_dict.get(rev_id))
             lf.log_revision(lr)
+            if show_diff:
+                if len(rev.parent_ids) == 0:
+                    ancestor_id = _mod_revision.NULL_REVISION
+                else:
+                    ancestor_id = rev.parent_ids[0]
+                tree_1 = repo.revision_tree(ancestor_id)
+                tree_2 = repo.revision_tree(rev_id)
+                s = StringIO()
+                diff.show_diff_trees(tree_1, tree_2, s, old_label='', new_label='')
+                lf.to_file.write("diff:\n")
+                lf.to_file.write(s.getvalue() + "\n")
             if limit:
                 log_count += 1
                 if log_count >= limit:

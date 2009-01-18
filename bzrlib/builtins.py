@@ -1862,6 +1862,8 @@ class cmd_log(Command):
                    help='Limit the output to the first N revisions.',
                    argname='N',
                    type=_parse_limit),
+            Option('show-diff',
+                   help='Show changes made in each revision.'),
             ]
     encoding_type = 'replace'
 
@@ -1874,7 +1876,8 @@ class cmd_log(Command):
             change=None,
             log_format=None,
             message=None,
-            limit=None):
+            limit=None,
+            show_diff=False):
         from bzrlib.log import show_log
         direction = (forward and 'forward') or 'reverse'
 
@@ -1931,7 +1934,8 @@ class cmd_log(Command):
                      start_revision=rev1,
                      end_revision=rev2,
                      search=message,
-                     limit=limit)
+                     limit=limit,
+                     show_diff=show_diff)
         finally:
             b.unlock()
 
