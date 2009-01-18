@@ -101,8 +101,7 @@ def load_tests(standard_tests, module, loader):
     is_testing_for_transports = tests.condition_isinstance(
         (TestFullUpload,
          TestIncrementalUpload,
-         TestFullUploadFromRemote,
-         TestIncrementalUploadFromRemote))
+         TestUploadFromRemoteBranch))
     transport_adapter = TransportAdapter()
 
     is_testing_for_branches = tests.condition_isinstance(
@@ -578,56 +577,6 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_upload()
 
         self.assertUpFileEqual('bar', 'hello')
-
-
-class TestUploadFromRemote(TestUploadMixin):
-
-    def do_full_upload(self, *args, **kwargs):
-        up_url = self.get_url(self.upload_dir)
-        self.run_bzr(['push', up_url, '--directory=branch'])
-
-        upload = self._get_cmd_upload()
-        if kwargs.get('directory', None) is None:
-            kwargs['directory'] = up_url
-        kwargs['full'] = True
-        kwargs['quiet'] = True
-        upload.run(up_url, *args, **kwargs)
-
-    def do_incremental_upload(self, *args, **kwargs):
-        up_url = self.get_url(self.upload_dir)
-        self.run_bzr(['push', up_url, '--directory=branch'])
-
-        upload = self._get_cmd_upload()
-        if kwargs.get('directory', None) is None:
-            kwargs['directory'] = up_url
-        kwargs['quiet'] = True
-        upload.run(up_url, *args, **kwargs)
-
-    def test_no_upload_when_changes(self):
-        raise tests.TestNotApplicable()
-
-    def test_no_upload_when_conflicts(self):
-        raise tests.TestNotApplicable()
-
-    remote_branch = None
-    def get_upload_auto(self):
-        if not self.remote_branch:
-            self.remote_branch = branch.Branch.open_from_transport(\
-                self.get_transport(self.upload_dir))
-
-        return get_upload_auto(self.remote_branch)
-
-
-class TestFullUploadFromRemote(tests.TestCaseWithTransport,
-                               TestUploadFromRemote):
-
-    do_upload = TestUploadFromRemote.do_full_upload
-
-
-class TestIncrementalUploadFromRemote(tests.TestCaseWithTransport,
-                                      TestUploadFromRemote):
-
-    do_upload = TestUploadFromRemote.do_incremental_upload
 
 
 class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
