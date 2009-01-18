@@ -527,6 +527,45 @@ diff:
 1: Lorem Ipsum 2005-11-22 first post
 """)
 
+    def test_log_show_diff_file(self):
+        """Only the diffs for the given file are to be shown"""
+        self._prepare()
+        out,err = self.run_bzr('log --show-diff --short file2')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_dates(log), """\
+    2 Lorem Ipsum\t2005-11-22 [merge]
+      merge branch 1
+      === modified file 'file2'
+      --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      @@ -1,1 +1,1 @@
+      -contents of parent/file2
+      +hello
+
+    1 Lorem Ipsum\t2005-11-22
+      first post
+      === added file 'file2'
+      --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      @@ -0,0 +1,1 @@
+      +contents of parent/file2
+
+""")
+        out,err = self.run_bzr('log --show-diff --short file1')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_dates(log), """\
+    1 Lorem Ipsum\t2005-11-22
+      first post
+      === added file 'file1'
+      --- file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      +++ file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
+      @@ -0,0 +1,1 @@
+      +contents of parent/file1
+
+""")
+
 
 class TestLogEncodings(TestCaseInTempDir):
 

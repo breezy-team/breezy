@@ -227,7 +227,7 @@ def _show_log(branch,
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
             if generate_diff:
-                diff = _format_diff(repo, rev, rev_id)
+                diff = _format_diff(repo, rev, rev_id, specific_fileid)
             else:
                 diff = None
             lr = LogRevision(rev, revno, merge_depth, delta,
@@ -239,15 +239,20 @@ def _show_log(branch,
                     return
 
 
-def _format_diff(repo, rev, rev_id):
+def _format_diff(repo, rev, rev_id, specific_fileid):
     if len(rev.parent_ids) == 0:
         ancestor_id = _mod_revision.NULL_REVISION
     else:
         ancestor_id = rev.parent_ids[0]
     tree_1 = repo.revision_tree(ancestor_id)
     tree_2 = repo.revision_tree(rev_id)
+    if specific_fileid:
+        specific_files = [tree_2.id2path(specific_fileid)]
+    else:
+        specific_files = None
     s = StringIO()
-    diff.show_diff_trees(tree_1, tree_2, s, old_label='', new_label='')
+    diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
+        new_label='')
     return s.getvalue()
 
 
