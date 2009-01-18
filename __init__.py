@@ -323,8 +323,14 @@ class BzrUploader(object):
         finally:
             self.tree.unlock()
 
-class CannotUploadToWT(errors.BzrCommandError):
-    pass
+class CannotUploadToWorkingTreeError(errors.BzrCommandError):
+
+    _fmt = 'Cannot upload to a bzr managed working tree: %(url)s".'
+
+    def __init__(self, url):
+        super(CannotUploadToWorkingTreeError, self).__init__(self)
+        self.url = url
+
 
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
@@ -356,8 +362,8 @@ class cmd_upload(commands.Command):
         if directory is None:
             directory = u'.'
 
-        wt, branch, relpath = \
-            bzrdir.BzrDir.open_containing_tree_or_branch(directory)
+        (wt, branch,
+         relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
 
         if wt:
             changes = wt.changes_from(wt.basis_tree())
@@ -386,11 +392,11 @@ class cmd_upload(commands.Command):
         except errors.NotBranchError:
             has_wt = False
         except errors.NotLocalUrl:
+            # The exception raised is a bit weird... but that's life.
             has_wt = True
 
         if has_wt:
-            raise CannotUploadToWT('Cannot upload to %s as it has a'
-                                          ' working directory.' % (location))
+            raise CannotUploadToWorkingTreeError(location)
 
         if revision is None:
             rev_id = branch.last_revision()

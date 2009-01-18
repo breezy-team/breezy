@@ -42,7 +42,7 @@ from bzrlib.plugins.upload import (
     cmd_upload,
     BzrUploader,
     get_upload_auto,
-    CannotUploadToWT,
+    CannotUploadToWorkingTreeError,
     )
 
 
@@ -679,7 +679,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
         up_url = self.get_url(self.branch_dir)
         # Let's try to upload from the just created remote branch into the
         # branch (with has a working tree).
-        self.assertRaises(CannotUploadToWT,
+        self.assertRaises(CannotUploadToWorkingTreeError,
                           upload.run, up_url, directory=remote_branch_url)
 
     def test_upload_without_working_tree(self):
