@@ -188,7 +188,7 @@ class TestLog(ExternalBase):
         wt = self.make_branch_and_tree('.')
         out, err = self.run_bzr('log does-not-exist', retcode=3)
         self.assertContainsRe(
-            err, 'Path unknown at end of revision history: does-not-exist')
+            err, 'Path unknown at end or start of revision range: does-not-exist')
 
     def test_log_with_tags(self):
         tree = self._prepare(format='dirstate-tags')
@@ -516,6 +516,7 @@ class TestLogFile(TestCaseWithTransport):
         self.run_bzr('log tree/file')
 
     def prepare_tree(self, complex=False):
+        # The complex configuration includes deletes and renames
         tree = self.make_branch_and_tree('parent')
         self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
         tree.add('file1')
@@ -529,10 +530,13 @@ class TestLogFile(TestCaseWithTransport):
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
-        # The complex configuration includes deletes and renames
         if complex:
-            tree.remove('file1')
+            tree.remove('file2')
+            tree.commit('remove file2')
             tree.rename_one('file3', 'file4')
+            tree.commit('file3 is now called file4')
+            tree.remove('file1')
+            tree.commit('remove file1')
         os.chdir('parent')
 
     def test_log_file(self):
@@ -582,15 +586,29 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 4\n')
 
     def test_log_file_historical(self):
-        """File matched against end of revision range, not current name."""
+        """File matched against revision range, not current tree."""
         self.prepare_tree(complex=True)
-        # Check logging a deleted file gives an error by default
-        err_msg = "Path unknown at end of revision history: file1"
-        err = self.run_bzr('log file1', retcode=3)[1]
+
+        # Check logging a deleted file gives an error if the
+        # file isn't found at the end or start of the revision range
+        err_msg = "Path unknown at end or start of revision range: file2"
+        err = self.run_bzr('log file2', retcode=3)[1]
         self.assertContainsRe(err, err_msg)
 
-        # Check we can see a deleted file if we give the right end revision
-        log = self.run_bzr('log -r..4 file1')[0]
+        # Check logging a deleted file is ok if the file existed
+        # at the end the revision range
+        log, err = self.run_bzr('log -r..4 file2')
+        self.assertEquals('', err)
+        self.assertNotContainsRe(log, 'revno: 1\n')
+        self.assertContainsRe(log, 'revno: 2\n')
+        self.assertNotContainsRe(log, 'revno: 3\n')
+        self.assertContainsRe(log, 'revno: 3.1.1\n')
+        self.assertContainsRe(log, 'revno: 4\n')
+
+        # Check logging a deleted file is ok if the file existed
+        # at the start of the revision range
+        log, err = self.run_bzr('log file1')
+        self.assertEquals('', err)
         self.assertContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
@@ -598,15 +616,17 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 4\n')
 
     def test_log_file_renamed(self):
-        """File matched against end of revision range, not current name."""
+        """File matched against revision range, not current tree."""
         self.prepare_tree(complex=True)
+
         # Check logging a renamed file gives an error by default
-        err_msg = "Path unknown at end of revision history: file3"
+        err_msg = "Path unknown at end or start of revision range: file3"
         err = self.run_bzr('log file3', retcode=3)[1]
         self.assertContainsRe(err, err_msg)
 
         # Check we can see a renamed file if we give the right end revision
-        log = self.run_bzr('log -r..4 file3')[0]
+        log, err = self.run_bzr('log -r..4 file3')
+        self.assertEquals('', err)
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertContainsRe(log, 'revno: 3\n')
