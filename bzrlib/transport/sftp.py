@@ -1,5 +1,5 @@
 # Copyright (C) 2005 Robey Pointer <robey@lag.net>
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -447,12 +447,12 @@ class SFTPTransport(ConnectedTransport):
         """
         return 64 * 1024
 
-    def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
+    def _sftp_readv(self, fp, offsets, relpath):
         """Use the readv() member of fp to do async readv.
 
-        And then read them using paramiko.readv(). paramiko.readv()
+        Then read them using paramiko.readv(). paramiko.readv()
         does not support ranges > 64K, so it caps the request size, and
-        just reads until it gets all the stuff it wants
+        just reads until it gets all the stuff it wants.
         """
         helper = _SFTPReadvHelper(offsets, relpath)
         return helper.request_and_yield_offsets(fp)
