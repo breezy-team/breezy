@@ -297,8 +297,8 @@ def make_pack_factory(graph, delta, keylength):
 
 
 def cleanup_pack_group(versioned_files):
-    versioned_files.stream.close()
     versioned_files.writer.end()
+    versioned_files.stream.close()
 
 
 class GroupCompressVersionedFiles(VersionedFiles):
@@ -487,12 +487,15 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
-                # read
+                # read the group
                 read_memo = index_memo[0:3]
                 zdata = self._access.get_raw_records([read_memo]).next()
-                # decompress
-                plain = zlib.decompress(zdata)
-                # parse
+                # decompress - whole thing; this is a bug.
+                decomp = zlib.decompressobj()
+                plain = decomp.decompress(zdata, index_memo[4])
+                # cheapo debugging:
+                # print len(zdata), len(plain)
+                # parse - requires split_lines, better to have byte offsets here.
                 delta_lines = split_lines(plain[index_memo[3]:index_memo[4]])
                 label, sha1, delta = parse(delta_lines)
                 if label != key:
