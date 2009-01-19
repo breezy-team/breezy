@@ -147,9 +147,14 @@ class Reconfigure(object):
     def set_repository_trees(klass, bzrdir, with_trees):
         """Convert a repository branch into a standalone branch"""
         reconfiguration = klass(bzrdir, with_trees=with_trees)
-        reconfiguration._plan_changes(want_tree=False, want_branch=False,
-                                      want_bound=False, want_reference=False,
-                                      want_shared_repository=True)
+        if not reconfiguration.repository.is_shared():
+            raise errors.ReconfigurationNotSupported(reconfiguration.bzrdir)
+        if reconfiguration.with_trees is True and \
+            not reconfiguration.repository.make_working_trees():
+            reconfiguration._set_with_trees = True
+        elif reconfiguration.with_trees is False and \
+            reconfiguration.repository.make_working_trees():
+            reconfiguration._set_with_no_trees = True
         if not reconfiguration.changes_planned():
             if with_trees:
                 raise errors.AlreadyWithTrees(bzrdir)
