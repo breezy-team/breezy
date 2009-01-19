@@ -25,7 +25,7 @@ with bzr, can can use either FTP or SFTP to upload their site.
 Known limitations:
 - Symlinks are ignored,
 
-- chmod bits are not supported.
+- chmod bits (other than the owner's execution bit) are not supported.
 """
 
 # TODO: the chmod bits *can* be supported via the upload protocols
