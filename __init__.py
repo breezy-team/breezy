@@ -58,7 +58,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (0, 1, 1)
+version_info = (1, 0, 0, 'dev', 0)
 plugin_name = 'upload'
 
 
