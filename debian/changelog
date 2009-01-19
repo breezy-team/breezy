@@ -1,3 +1,9 @@
+bzr (1.11-1) experimental; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 19 Jan 2009 16:01:04 +0100
+
 bzr (1.11~rc1-1) experimental; urgency=low
 
   * New upstream release.

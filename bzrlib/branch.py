@@ -2063,7 +2063,9 @@ class BzrBranch7(BzrBranch5):
     def _get_fallback_repository(self, url):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)
-        return bzrdir.BzrDir.open(url).open_branch().repository
+        a_bzrdir = bzrdir.BzrDir.open(url,
+                                      possible_transports=[self._transport])
+        return a_bzrdir.open_branch().repository
 
     def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
