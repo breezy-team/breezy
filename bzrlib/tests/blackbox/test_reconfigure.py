@@ -116,3 +116,18 @@ class TestReconfigure(tests.TestCaseWithTransport):
         self.run_bzr_error(
             ["Requested reconfiguration of '.*' is not supported"],
             'reconfigure --with-trees branch')
+
+    def test_make_without_trees_leaves_tree_alone(self):
+        # There has to be a better way of doing this...
+        repo = self.make_repository('repo', shared=True)
+        branch = self.make_branch('repo/branch')
+        self.run_bzr('reconfigure --use-shared',
+            working_dir='repo/branch')
+        tree = branch.bzrdir.create_workingtree()
+        self.build_tree(['repo/branch/foo'])
+        tree.add('foo')
+        tree.commit('x')
+        self.run_bzr('reconfigure --with-no-trees',
+            working_dir='repo/branch')
+        self.failUnlessExists('repo/branch/foo')
+
