@@ -38,7 +38,12 @@ from bzrlib.tests import (
     )
 
 
-from bzrlib.plugins.upload import cmd_upload, BzrUploader, get_upload_auto
+from bzrlib.plugins.upload import (
+    cmd_upload,
+    BzrUploader,
+    get_upload_auto,
+    CannotUploadToWorkingTreeError,
+    )
 
 
 class TransportAdapter(
@@ -95,7 +100,8 @@ def load_tests(standard_tests, module, loader):
 
     is_testing_for_transports = tests.condition_isinstance(
         (TestFullUpload,
-         TestIncrementalUpload,))
+         TestIncrementalUpload,
+         TestUploadFromRemoteBranch))
     transport_adapter = TransportAdapter()
 
     is_testing_for_branches = tests.condition_isinstance(
@@ -138,20 +144,20 @@ def load_tests(standard_tests, module, loader):
     return result
 
 
-class TestUploadMixin(object):
-    """Helper class to share tests between full and incremental uploads.
+class UploadUtilsMixin(object):
+    """Helper class to write upload tests.
 
-    This class also provides helpers to simplify test writing. The emphasis is
-    on easy test writing, so each tree modification is committed. This doesn't
+    This class provides helpers to simplify test writing. The emphasis is on
+    easy test writing, so each tree modification is committed. This doesn't
     preclude writing tests spawning several revisions to upload more complex
     changes.
     """
 
-    upload_dir = 'upload/'
-    branch_dir = 'branch/'
+    upload_dir = 'upload'
+    branch_dir = 'branch'
 
-    def make_local_branch(self):
-        t = transport.get_transport('branch')
+    def make_branch_and_working_tree(self):
+        t = transport.get_transport(self.branch_dir)
         t.ensure_base()
         branch = bzrdir.BzrDir.create_branch_convenience(
             t.base,
@@ -161,7 +167,7 @@ class TestUploadMixin(object):
         self.tree.commit('initial empty tree')
 
     def assertUpFileEqual(self, content, path, base=upload_dir):
-        self.assertFileEqual(content, base + path)
+        self.assertFileEqual(content, osutils.pathjoin(base, path))
 
     def assertUpPathModeEqual(self, path, expected_mode, base=upload_dir):
         # FIXME: the tests needing that assertion should depend on the server
@@ -169,66 +175,67 @@ class TestUploadMixin(object):
         # against servers that can't. Note that some bzrlib transports define
         # _can_roundtrip_unix_modebits in a incomplete way, this property
         # should depend on both the client and the server, not the client only.
-        st = os.stat(base + path)
+        full_path = osutils.pathjoin(base, path)
+        st = os.stat(full_path)
         mode = st.st_mode & 0777
         if expected_mode == mode:
             return
         raise AssertionError(
             'For path %s, mode is %s not %s' %
-            (base + path, oct(mode), oct(expected_mode)))
+            (full_path, oct(mode), oct(expected_mode)))
 
     def failIfUpFileExists(self, path, base=upload_dir):
-        self.failIfExists(base + path)
+        self.failIfExists(osutils.pathjoin(base, path))
 
     def failUnlessUpFileExists(self, path, base=upload_dir):
-        self.failUnlessExists(base + path)
+        self.failUnlessExists(osutils.pathjoin(base, path))
 
-    def set_file_content(self, name, content, base=branch_dir):
-        f = file(base + name, 'wb')
+    def set_file_content(self, path, content, base=branch_dir):
+        f = file(osutils.pathjoin(base, path), 'wb')
         try:
             f.write(content)
         finally:
             f.close()
 
-    def add_file(self, name, content, base=branch_dir):
-        self.set_file_content(name, content, base)
-        self.tree.add(name)
-        self.tree.commit('add file %s' % name)
+    def add_file(self, path, content, base=branch_dir):
+        self.set_file_content(path, content, base)
+        self.tree.add(path)
+        self.tree.commit('add file %s' % path)
 
-    def modify_file(self, name, content, base=branch_dir):
-        self.set_file_content(name, content, base)
-        self.tree.commit('modify file %s' % name)
+    def modify_file(self, path, content, base=branch_dir):
+        self.set_file_content(path, content, base)
+        self.tree.commit('modify file %s' % path)
 
-    def chmod_file(self, name, mode, base=branch_dir):
-        path = base + name
-        os.chmod(path, mode)
-        self.tree.commit('change file %s mode to %s' % (name, oct(mode)))
+    def chmod_file(self, path, mode, base=branch_dir):
+        full_path = osutils.pathjoin(base, path)
+        os.chmod(full_path, mode)
+        self.tree.commit('change file %s mode to %s' % (path, oct(mode)))
 
-    def delete_any(self, name, base=branch_dir):
-        self.tree.remove([name], keep_files=False)
-        self.tree.commit('delete %s' % name)
+    def delete_any(self, path, base=branch_dir):
+        self.tree.remove([path], keep_files=False)
+        self.tree.commit('delete %s' % path)
 
-    def add_dir(self, name, base=branch_dir):
-        os.mkdir(base + name)
-        self.tree.add(name)
-        self.tree.commit('add directory %s' % name)
+    def add_dir(self, path, base=branch_dir):
+        os.mkdir(osutils.pathjoin(base, path))
+        self.tree.add(path)
+        self.tree.commit('add directory %s' % path)
 
-    def rename_any(self, old_name, new_name):
-        self.tree.rename_one(old_name, new_name)
-        self.tree.commit('rename %s into %s' % (old_name, new_name))
+    def rename_any(self, old_path, new_path):
+        self.tree.rename_one(old_path, new_path)
+        self.tree.commit('rename %s into %s' % (old_path, new_path))
 
-    def transform_dir_into_file(self, name, content, base=branch_dir):
-        osutils.delete_any(base + name)
-        self.set_file_content(name, content, base)
-        self.tree.commit('change %s from dir to file' % name)
+    def transform_dir_into_file(self, path, content, base=branch_dir):
+        osutils.delete_any(osutils.pathjoin(base, path))
+        self.set_file_content(path, content, base)
+        self.tree.commit('change %s from dir to file' % path)
 
-    def transform_file_into_dir(self, name, base=branch_dir):
+    def transform_file_into_dir(self, path, base=branch_dir):
         # bzr can't handle that kind change in a single commit without an
         # intervening bzr status (see bug #205636).
-        self.tree.remove([name], keep_files=False)
-        os.mkdir(base + name)
-        self.tree.add(name)
-        self.tree.commit('change %s from file to dir' % name)
+        self.tree.remove([path], keep_files=False)
+        os.mkdir(osutils.pathjoin(base, path))
+        self.tree.add(path)
+        self.tree.commit('change %s from file to dir' % path)
 
     def _get_cmd_upload(self):
         upload = cmd_upload()
@@ -240,23 +247,27 @@ class TestUploadMixin(object):
 
     def do_full_upload(self, *args, **kwargs):
         upload = self._get_cmd_upload()
-        up_url = self.get_transport(self.upload_dir).external_url()
+        up_url = self.get_url(self.upload_dir)
         if kwargs.get('directory', None) is None:
-            kwargs['directory'] = 'branch'
+            kwargs['directory'] = self.branch_dir
         kwargs['full'] = True
         kwargs['quiet'] = True
         upload.run(up_url, *args, **kwargs)
 
     def do_incremental_upload(self, *args, **kwargs):
         upload = self._get_cmd_upload()
-        up_url = self.get_transport(self.upload_dir).external_url()
+        up_url = self.get_url(self.upload_dir)
         if kwargs.get('directory', None) is None:
-            kwargs['directory'] = 'branch'
+            kwargs['directory'] = self.branch_dir
         kwargs['quiet'] = True
         upload.run(up_url, *args, **kwargs)
 
+
+class TestUploadMixin(UploadUtilsMixin):
+    """Helper class to share tests between full and incremental uploads."""
+
     def test_create_file(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.do_full_upload()
         self.add_file('hello', 'foo')
 
@@ -265,7 +276,7 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('foo', 'hello')
 
     def test_create_file_in_subdir(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.do_full_upload()
         self.add_dir('dir')
         self.add_file('dir/goodbye', 'baz')
@@ -278,7 +289,7 @@ class TestUploadMixin(object):
         self.assertUpPathModeEqual('dir', 0775)
 
     def test_modify_file(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('hello', 'foo')
         self.do_full_upload()
         self.modify_file('hello', 'bar')
@@ -290,7 +301,7 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('bar', 'hello')
 
     def test_rename_one_file(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('hello', 'foo')
         self.do_full_upload()
         self.rename_any('hello', 'goodbye')
@@ -302,7 +313,7 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('foo', 'goodbye')
 
     def test_rename_and_change_file(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('hello', 'foo')
         self.do_full_upload()
         self.rename_any('hello', 'goodbye')
@@ -315,7 +326,7 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('bar', 'goodbye')
 
     def test_rename_two_files(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('a', 'foo')
         self.add_file('b', 'qux')
         self.do_full_upload()
@@ -333,7 +344,7 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('qux', 'c')
 
     def test_upload_revision(self):
-        self.make_local_branch() # rev1
+        self.make_branch_and_working_tree() # rev1
         self.do_full_upload()
         self.add_file('hello', 'foo') # rev2
         self.modify_file('hello', 'bar') # rev3
@@ -346,14 +357,14 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('foo', 'hello')
 
     def test_no_upload_when_changes(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('a', 'foo')
         self.set_file_content('a', 'bar')
 
         self.assertRaises(errors.UncommittedChanges, self.do_upload)
 
     def test_no_upload_when_conflicts(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('a', 'foo')
         self.run_bzr('branch branch other')
         self.modify_file('a', 'bar')
@@ -366,7 +377,7 @@ class TestUploadMixin(object):
         self.assertRaises(errors.UncommittedChanges, self.do_upload)
 
     def test_change_file_into_dir(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('hello', 'foo')
         self.do_full_upload()
         self.transform_file_into_dir('hello')
@@ -379,7 +390,7 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('bar', 'hello/file')
 
     def test_change_dir_into_file(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_dir('hello')
         self.add_file('hello/file', 'foo')
         self.do_full_upload()
@@ -393,7 +404,7 @@ class TestUploadMixin(object):
         self.assertUpFileEqual('bar', 'hello')
 
     def test_make_file_executable(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('hello', 'foo')
         self.chmod_file('hello', 0664)
         self.do_full_upload()
@@ -405,40 +416,47 @@ class TestUploadMixin(object):
 
         self.assertUpPathModeEqual('hello', 0775)
 
+    def get_upload_auto(self):
+        return get_upload_auto(self.tree.branch)
+
     def test_upload_auto(self):
         """Test that upload --auto sets the upload_auto option"""
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
+
         self.add_file('hello', 'foo')
-        self.assertFalse(get_upload_auto(self.tree.branch))
+        self.assertFalse(self.get_upload_auto())
         self.do_full_upload(auto=True)
         self.assertUpFileEqual('foo', 'hello')
-        self.assertTrue(get_upload_auto(self.tree.branch))
+        self.assertTrue(self.get_upload_auto())
+
         # and check that it stays set until it is unset
         self.add_file('bye', 'bar')
         self.do_full_upload()
         self.assertUpFileEqual('bar', 'bye')
-        self.assertTrue(get_upload_auto(self.tree.branch))
+        self.assertTrue(self.get_upload_auto())
 
     def test_upload_noauto(self):
         """Test that upload --no-auto unsets the upload_auto option"""
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
+
         self.add_file('hello', 'foo')
-        self.assertFalse(get_upload_auto(self.tree.branch))
         self.do_full_upload(auto=True)
         self.assertUpFileEqual('foo', 'hello')
-        self.assertTrue(get_upload_auto(self.tree.branch))
+        self.assertTrue(self.get_upload_auto())
+
         self.add_file('bye', 'bar')
         self.do_full_upload(auto=False)
         self.assertUpFileEqual('bar', 'bye')
-        self.assertFalse(get_upload_auto(self.tree.branch))
+        self.assertFalse(self.get_upload_auto())
+
         # and check that it stays unset until it is set
         self.add_file('again', 'baz')
         self.do_full_upload()
         self.assertUpFileEqual('baz', 'again')
-        self.assertFalse(get_upload_auto(self.tree.branch))
+        self.assertFalse(self.get_upload_auto())
 
     def test_upload_from_subdir(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.build_tree(['branch/foo/', 'branch/foo/bar'])
         self.tree.add(['foo/', 'foo/bar'])
         self.tree.commit("Add directory")
@@ -450,14 +468,14 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
     do_upload = TestUploadMixin.do_full_upload
 
     def test_full_upload_empty_tree(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
 
         self.do_full_upload()
 
         self.failUnlessUpFileExists(BzrUploader.bzr_upload_revid_file_name)
 
     def test_invalid_revspec(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         rev1 = revisionspec.RevisionSpec.from_string('1')
         rev2 = revisionspec.RevisionSpec.from_string('2')
 
@@ -465,7 +483,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
                           self.do_incremental_upload, revision=[rev1, rev2])
 
     def test_create_remote_dir_twice(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_dir('dir')
         self.do_full_upload()
         self.add_file('dir/goodbye', 'baz')
@@ -485,7 +503,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
     # XXX: full upload doesn't handle deletions....
 
     def test_delete_one_file(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('hello', 'foo')
         self.do_full_upload()
         self.delete_any('hello')
@@ -497,7 +515,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.failIfUpFileExists('hello')
 
     def test_delete_dir_and_subdir(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_dir('dir')
         self.add_dir('dir/subdir')
         self.add_file('dir/subdir/a', 'foo')
@@ -516,7 +534,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.assertUpFileEqual('foo', 'a')
 
     def test_delete_one_file_rename_to_deleted(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('a', 'foo')
         self.add_file('b', 'bar')
         self.do_full_upload()
@@ -531,7 +549,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.assertUpFileEqual('bar', 'a')
 
     def test_rename_outside_dir_delete_dir(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_dir('dir')
         self.add_file('dir/a', 'foo')
         self.do_full_upload()
@@ -547,7 +565,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.assertUpFileEqual('foo', 'a')
 
     def test_upload_for_the_first_time_do_a_full_upload(self):
-        self.make_local_branch()
+        self.make_branch_and_working_tree()
         self.add_file('hello', 'bar')
 
         self.failIfUpFileExists(BzrUploader.bzr_upload_revid_file_name)
@@ -579,4 +597,38 @@ class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
         config = self.get_branch().get_config()
         config.set_user_option('upload_location', 'foo')
         self.assertEqual('foo', config.get_user_option('upload_location'))
+
+
+class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
+                                 UploadUtilsMixin):
+
+    remote_branch_dir = 'remote_branch'
+
+    def make_remote_branch_without_working_tree(self):
+        """Creates a branch without working tree to upload from.
+
+        It's created from the existing self.branch_dir one which still has its
+        working tree.
+        """
+        self.make_branch_and_working_tree()
+        self.add_file('hello', 'foo')
+
+        remote_branch_url = self.get_url(self.remote_branch_dir)
+        self.run_bzr(['push', remote_branch_url,
+                      '--directory', self.branch_dir])
+        return remote_branch_url
+
+    def test_no_upload_to_remote_working_tree(self):
+        remote_branch_url = self.make_remote_branch_without_working_tree()
+        upload = self._get_cmd_upload()
+        up_url = self.get_url(self.branch_dir)
+        # Let's try to upload from the just created remote branch into the
+        # branch (with has a working tree).
+        self.assertRaises(CannotUploadToWorkingTreeError,
+                          upload.run, up_url, directory=remote_branch_url)
+
+    def test_upload_without_working_tree(self):
+        remote_branch_url = self.make_remote_branch_without_working_tree()
+        self.do_full_upload(directory=remote_branch_url)
+        self.assertUpFileEqual('foo', 'hello')
 

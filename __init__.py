@@ -25,7 +25,7 @@ with bzr, can can use either FTP or SFTP to upload their site.
 Known limitations:
 - Symlinks are ignored,
 
-- chmod bits are not supported.
+- chmod bits (other than the owner's execution bit) are not supported.
 """
 
 # TODO: the chmod bits *can* be supported via the upload protocols
@@ -49,6 +49,7 @@ lazy_import.lazy_import(globals(), """
 import stat
 
 from bzrlib import (
+    bzrdir,
     errors,
     revisionspec,
     transport,
@@ -322,6 +323,14 @@ class BzrUploader(object):
         finally:
             self.tree.unlock()
 
+class CannotUploadToWorkingTreeError(errors.BzrCommandError):
+
+    _fmt = 'Cannot upload to a bzr managed working tree: %(url)s".'
+
+    def __init__(self, url):
+        super(CannotUploadToWorkingTreeError, self).__init__(self)
+        self.url = url
+
 
 class cmd_upload(commands.Command):
     """Upload a working tree, as a whole or incrementally.
@@ -357,13 +366,14 @@ class cmd_upload(commands.Command):
             raise BzrCommandError("Your version of bzr does not have the "
                     "hooks necessary for --auto to work")
 
-        wt = workingtree.WorkingTree.open_containing(directory)[0]
-        changes = wt.changes_from(wt.basis_tree())
+        (wt, branch,
+         relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
 
-        if revision is None and  changes.has_changed():
-            raise errors.UncommittedChanges(wt)
+        if wt:
+            changes = wt.changes_from(wt.basis_tree())
 
-        branch = wt.branch
+            if revision is None and  changes.has_changed():
+                raise errors.UncommittedChanges(wt)
 
         if location is None:
             stored_loc = get_upload_location(branch)
@@ -378,6 +388,20 @@ class cmd_upload(commands.Command):
                 location = stored_loc
 
         to_transport = transport.get_transport(location)
+
+        # Check that we are not uploading to a existing working tree.
+        try:
+            to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
+            has_wt = to_bzr_dir.has_workingtree()
+        except errors.NotBranchError:
+            has_wt = False
+        except errors.NotLocalUrl:
+            # The exception raised is a bit weird... but that's life.
+            has_wt = True
+
+        if has_wt:
+            raise CannotUploadToWorkingTreeError(location)
+
         if revision is None:
             rev_id = branch.last_revision()
         else:
