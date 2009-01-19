@@ -290,7 +290,7 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
 """,
                              sio.getvalue())
 
-    def test_short_log_with_merges(self):
+    def _prepare_tree_with_merges(self, with_tags=False):
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
         self.addCleanup(wt.unlock)
@@ -306,11 +306,41 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
         wt.commit('rev-2', rev_id='rev-2b',
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
+        if with_tags:
+            branch = wt.branch
+            branch.tags.set_tag('v0.2', 'rev-2b')
+            wt.commit('rev-3', rev_id='rev-3',
+                      timestamp=1132586900, timezone=36000,
+                      committer='Jane Foo <jane@foo.com>')
+            branch.tags.set_tag('v1.0rc1', 'rev-3')
+            branch.tags.set_tag('v1.0', 'rev-3')
+        return wt
+
+    def test_short_log_with_merges(self):
+        wt = self._prepare_tree_with_merges()
         logfile = self.make_utf8_encoded_stringio()
         formatter = log.ShortLogFormatter(to_file=logfile)
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
     2 Joe Foo\t2005-11-22 [merge]
+      rev-2
+
+    1 Joe Foo\t2005-11-22
+      rev-1
+
+""",
+                             logfile.getvalue())
+
+    def test_short_log_with_tags(self):
+        wt = self._prepare_tree_with_merges(with_tags=True)
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile)
+        log.show_log(wt.branch, formatter)
+        self.assertEqualDiff("""\
+    3 Jane Foo\t2005-11-22 {v1.0, v1.0rc1}
+      rev-3
+
+    2 Joe Foo\t2005-11-22 {v0.2} [merge]
       rev-2
 
     1 Joe Foo\t2005-11-22
@@ -701,7 +731,7 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
 """,
                              sio.getvalue())
 
-    def test_line_log_single_merge_revision(self):
+    def _prepare_tree_with_merges(self, with_tags=False):
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
         self.addCleanup(wt.unlock)
@@ -717,6 +747,18 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
         wt.commit('rev-2', rev_id='rev-2b',
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
+        if with_tags:
+            branch = wt.branch
+            branch.tags.set_tag('v0.2', 'rev-2b')
+            wt.commit('rev-3', rev_id='rev-3',
+                      timestamp=1132586900, timezone=36000,
+                      committer='Jane Foo <jane@foo.com>')
+            branch.tags.set_tag('v1.0rc1', 'rev-3')
+            branch.tags.set_tag('v1.0', 'rev-3')
+        return wt
+
+    def test_line_log_single_merge_revision(self):
+        wt = self._prepare_tree_with_merges()
         logfile = self.make_utf8_encoded_stringio()
         formatter = log.LineLogFormatter(to_file=logfile)
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
@@ -728,6 +770,17 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
 """,
                              logfile.getvalue())
 
+    def test_line_log_with_tags(self):
+        wt = self._prepare_tree_with_merges(with_tags=True)
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.LineLogFormatter(to_file=logfile)
+        log.show_log(wt.branch, formatter)
+        self.assertEqualDiff("""\
+3{v1.0, v1.0rc1}: Jane Foo 2005-11-22 rev-3
+2{v0.2}: Joe Foo 2005-11-22 rev-2
+1: Joe Foo 2005-11-22 rev-1
+""",
+                             logfile.getvalue())
 
 
 class TestGetViewRevisions(tests.TestCaseWithTransport):

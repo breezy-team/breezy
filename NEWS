@@ -22,12 +22,23 @@ NOT RELEASED YET
       merging from trunk and completes much faster. To see all merged
       revisions, use the new ``-v`` flag.  (Ian Clatworthy)
 
+    * ``bzr log --line`` now shows any tags immediately after the revno
+      and before the ``:``. If you have scripts which parse the output
+      from this command, you may need to adjust them accordingly.
+      (Ian Clatworthy)
+
   NEW FEATURES:
 
   IMPROVEMENTS:
 
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
+
+    * ``bzr log --short`` and ``bzr log --line`` now show tags, if any,
+      for each revision. The tags are shown comma-separated inside
+      ``{}``. For short format, the tags appear at the end of line
+      before the optional ``[merge]`` indicator. For line format,
+      the tags appear after the revno. (Ian Clatworthy)
 
   BUG FIXES:
 

@@ -840,7 +840,7 @@ class ShortLogFormatter(LogFormatter):
             is_merge = ' [merge]'
         tags = ''
         if revision.tags:
-            tags = '{%s}' % (', '.join(revision.tags))
+            tags = ' {%s}' % (', '.join(revision.tags))
 
         to_file.write("%5s %s\t%s%s%s\n" % (revision.revno,
                 self.short_author(revision.rev),
@@ -909,7 +909,7 @@ class LineLogFormatter(LogFormatter):
             # show revno only when is not None
             tag_str = ''
             if tags:
-                tag_str = '/%s' % (','.join(tags))
+                tag_str = '{%s}' % (', '.join(tags))
             out.append("%s%s:" % (revno,tag_str))
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
