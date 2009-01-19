@@ -158,16 +158,13 @@ class Reconfigure(object):
         return reconfiguration
 
     def _plan_changes(self, want_tree, want_branch, want_bound,
-                      want_reference, want_shared_repository=False):
+                      want_reference):
         """Determine which changes are needed to assume the configuration"""
-        if not want_branch and not want_reference and \
-            not want_shared_repository:
+        if not want_branch and not want_reference:
             raise errors.ReconfigurationNotSupported(self.bzrdir)
         if want_branch and want_reference:
             raise errors.ReconfigurationNotSupported(self.bzrdir)
         if self.repository is None:
-            if want_shared_repository:
-                raise errors.ReconfigurationNotSupported(self.bzrdir)
             if not want_reference:
                 self._create_repository = True
         else:
@@ -175,16 +172,6 @@ class Reconfigure(object):
                                    == self.bzrdir.root_transport.base):
                 if not self.repository.is_shared():
                     self._destroy_repository = True
-            if want_shared_repository:
-                if not self.repository.is_shared():
-                    raise errors.ReconfigurationNotSupported(self.bzrdir)
-                else:
-                    if self.with_trees is True and \
-                        not self.repository.make_working_trees():
-                        self._set_with_trees = True
-                    elif self.with_trees is False and \
-                        self.repository.make_working_trees():
-                        self._set_with_no_trees = True
         if self.referenced_branch is None:
             if want_reference:
                 self._create_reference = True
