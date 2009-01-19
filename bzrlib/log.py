@@ -620,7 +620,7 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-    if include_merges is False:
+    if not include_merges:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':
             revision_ids.reverse()
