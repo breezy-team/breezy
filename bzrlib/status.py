@@ -41,6 +41,7 @@ def show_tree_status(wt, show_unchanged=None,
                      show_pending=True,
                      revision=None,
                      short=False,
+                     verbose=False,
                      versioned=False):
     """Display summary of changes.
 
@@ -67,6 +68,8 @@ def show_tree_status(wt, show_unchanged=None,
         If one revision, compare with working tree.
         If two revisions, show status between first and second.
     :param short: If True, gives short SVN-style status lines.
+    :param verbose: If True, show all merged revisions, not just
+        the merge tips
     :param versioned: If True, only shows versioned files.
     """
     if show_unchanged is not None:
@@ -135,7 +138,7 @@ def show_tree_status(wt, show_unchanged=None,
                     prefix = ' '
                 to_file.write("%s %s\n" % (prefix, conflict))
             if (new_is_working_tree and show_pending):
-                show_pending_merges(new, to_file, short)
+                show_pending_merges(new, to_file, short, verbose=verbose)
         finally:
             old.unlock()
             new.unlock()
@@ -169,7 +172,7 @@ def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
     return sorter.iter_topo_order()
 
 
-def show_pending_merges(new, to_file, short=False):
+def show_pending_merges(new, to_file, short=False, verbose=False):
     """Write out a display of pending merges in a working tree."""
     parents = new.get_parent_ids()
     if len(parents) < 2:
@@ -188,7 +191,10 @@ def show_pending_merges(new, to_file, short=False):
     branch = new.branch
     last_revision = parents[0]
     if not short:
-        to_file.write('pending merges:\n')
+        if verbose:
+            to_file.write('pending merges:\n')
+        else:
+            to_file.write('pending merge tips: (use -v to see all merge revisions)\n')
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
     log_formatter = log.LineLogFormatter(to_file)
@@ -205,6 +211,9 @@ def show_pending_merges(new, to_file, short=False):
         log_message = log_formatter.log_string(None, rev,
                         term_width - len(first_prefix))
         to_file.write(first_prefix + log_message + '\n')
+        if not verbose:
+            continue
+
         # Find all of the revisions in the merge source, which are not in the
         # last committed revision.
         merge_extra = graph.find_unique_ancestors(merge, other_revisions)

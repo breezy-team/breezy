@@ -36,13 +36,13 @@ def get_ca_path(use_cache=True):
     # from "Details on Server SSL Certificates"
     # http://curl.haxx.se/docs/sslcerts.html
     #
-    # 4. If you're using the curl command line tool, you can specify your own CA
-    #    cert path by setting the environment variable CURL_CA_BUNDLE to the path
-    #    of your choice.
+    # 4. If you're using the curl command line tool, you can specify your own
+    #    CA cert path by setting the environment variable CURL_CA_BUNDLE to the
+    #    path of your choice.
     #
-    #    If you're using the curl command line tool on Windows, curl will search
-    #    for a CA cert file named "curl-ca-bundle.crt" in these directories and in
-    #    this order:
+    #    If you're using the curl command line tool on Windows, curl will
+    #    search for a CA cert file named "curl-ca-bundle.crt" in these
+    #    directories and in this order:
     #      1. application's directory
     #      2. current working directory
     #      3. Windows System directory (e.g. C:\windows\system32)
