@@ -1614,6 +1614,10 @@ class BzrBranch(Branch):
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
+        if not isinstance(destination._format, BzrBranchFormat5):
+            super(BzrBranch, self)._synchronize_history(
+                destination, revision_id)
+            return
         if revision_id == _mod_revision.NULL_REVISION:
             new_history = []
         else:
@@ -2059,7 +2063,9 @@ class BzrBranch7(BzrBranch5):
     def _get_fallback_repository(self, url):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)
-        return bzrdir.BzrDir.open(url).open_branch().repository
+        a_bzrdir = bzrdir.BzrDir.open(url,
+                                      possible_transports=[self._transport])
+        return a_bzrdir.open_branch().repository
 
     def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""

@@ -16,7 +16,8 @@
 
 """UI helper for the push command."""
 
-from bzrlib import builtins, bzrdir, errors, transport
+from bzrlib import (builtins, bzrdir, errors, revision as _mod_revision,
+                    transport)
 from bzrlib.trace import note, warning
 
 
@@ -63,8 +64,6 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             repository_to = br_to.repository
 
     push_result = None
-    if verbose:
-        old_rh = []
     if dir_to is None:
         # The destination doesn't exist; create it.
         # XXX: Refactor the create_prefix/no_create_prefix code into a
@@ -74,8 +73,9 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             transport.mkdir('.')
             return transport
 
-        def redirected(redirected_transport, e, redirection_notice):
-            return transport.get_transport(e.get_target_url())
+        def redirected(transport, e, redirection_notice):
+            note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
 
         try:
             to_transport = transport.do_catching_redirections(
@@ -146,8 +146,6 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # (We don't need to successfully push because of possible divergence.)
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(br_to.base)
-        if verbose:
-            old_rh = br_to.revision_history()
         try:
             try:
                 tree_to = dir_to.open_workingtree()
@@ -173,14 +171,15 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                                     '  Try using "merge" and then "push".')
     if push_result is not None:
         push_result.report(to_file)
-    elif verbose:
-        new_rh = br_to.revision_history()
-        if old_rh != new_rh:
-            # Something changed
-            from bzrlib.log import show_changed_revisions
-            show_changed_revisions(br_to, old_rh, new_rh,
-                                   to_file=to_file)
+        old_revid = push_result.old_revid
+        old_revno = push_result.old_revno
     else:
-        # we probably did a clone rather than a push, so a message was
-        # emitted above
-        pass
+        old_revid = _mod_revision.NULL_REVISION
+        old_revno = 0
+    if verbose:
+        br_to.lock_read()
+        try:
+            from bzrlib.log import show_branch_change
+            show_branch_change(br_to, to_file, old_revno, old_revid)
+        finally:
+            br_to.unlock()

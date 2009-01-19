@@ -457,3 +457,12 @@ class TestShelfManager(tests.TestCaseWithTransport):
         unshelver = shelf_manager.get_unshelver(shelf_id)
         unshelver.make_merger().do_merge()
         self.assertFileEqual('bar', 'tree/foo')
+
+    def test_get_metadata(self):
+        tree = self.make_branch_and_tree('.')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        shelf_manager = tree.get_shelf_manager()
+        shelf_id = shelf_manager.shelve_changes(creator, 'foo')
+        metadata = shelf_manager.get_metadata(shelf_id)
+        self.assertEqual('foo', metadata['message'])
+        self.assertEqual('null:', metadata['revision_id'])

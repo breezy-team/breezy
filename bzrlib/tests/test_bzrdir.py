@@ -48,15 +48,16 @@ from bzrlib.tests import (
     TestSkipped,
     test_sftp_transport
     )
-from bzrlib.tests.http_server import HttpServer
-from bzrlib.tests.http_utils import (
-    TestCaseWithTwoWebservers,
-    HTTPServerRedirecting,
+from bzrlib.tests import(
+    http_server,
+    http_utils,
     )
 from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import get_transport
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.memory import MemoryServer
+from bzrlib.transport.nosmart import NoSmartTransportDecorator
+from bzrlib.transport.readonly import ReadonlyTransportDecorator
 from bzrlib.repofmt import knitrepo, weaverepo
 
 
@@ -139,12 +140,15 @@ class TestFormatRegistry(TestCase):
         
     def test_help_topic(self):
         topics = help_topics.HelpTopicRegistry()
-        topics.register('formats', self.make_format_registry().help_topic, 
-                        'Directory formats')
-        topic = topics.get_detail('formats')
-        new, rest = topic.split('Experimental formats')
+        registry = self.make_format_registry()
+        topics.register('current-formats', registry.help_topic, 
+                        'Current formats')
+        topics.register('other-formats', registry.help_topic, 
+                        'Other formats')
+        new = topics.get_detail('current-formats')
+        rest = topics.get_detail('other-formats')
         experimental, deprecated = rest.split('Deprecated formats')
-        self.assertContainsRe(new, 'These formats can be used')
+        self.assertContainsRe(new, 'bzr help formats')
         self.assertContainsRe(new, 
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(experimental, 
@@ -176,10 +180,17 @@ class TestFormatRegistry(TestCase):
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True, alias=True)
         self.assertEqual(frozenset(['weavealias']), a_registry.aliases())
-    
+
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
+
+    def __init__(self, dir):
+        self.bzrdir = dir
+
+
+class SampleRepository(bzrlib.repository.Repository):
+    """A dummy repo."""
 
     def __init__(self, dir):
         self.bzrdir = dir
@@ -194,7 +205,7 @@ class SampleBzrDir(bzrdir.BzrDir):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        return "A repository"
+        return SampleRepository(self)
 
     def create_branch(self):
         """See BzrDir.create_branch."""
@@ -547,7 +558,7 @@ class ChrootedTests(TestCaseWithTransport):
     def setUp(self):
         super(ChrootedTests, self).setUp()
         if not self.vfs_transport_factory == MemoryServer:
-            self.transport_readonly_server = HttpServer
+            self.transport_readonly_server = http_server.HttpServer
 
     def local_branch_path(self, branch):
          return os.path.realpath(urlutils.local_path_from_url(branch.base))
@@ -869,15 +880,10 @@ class TestMeta1DirFormat(TestCaseWithTransport):
 
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        # test with 
-        new_default = bzrdir.format_registry.make_bzrdir('dirstate')
-        bzrdir.BzrDirFormat._set_default_format(new_default)
-        try:
-            tree = self.make_branch_and_tree('tree', format='knit')
-            self.assertTrue(tree.bzrdir.needs_format_conversion())
-        finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+        new_format = bzrdir.format_registry.make_bzrdir('dirstate')
+        tree = self.make_branch_and_tree('tree', format='knit')
+        self.assertTrue(tree.bzrdir.needs_format_conversion(
+            new_format))
 
 
 class TestFormat5(TestCaseWithTransport):
@@ -904,16 +910,14 @@ class TestFormat5(TestCaseWithTransport):
         self.assertTrue(dir.can_convert_format())
     
     def test_needs_conversion(self):
-        # format 5 dirs need a conversion if they are not the default.
-        # and they start of not the default.
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
-        try:
-            dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
-            self.assertFalse(dir.needs_format_conversion())
-        finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
-        self.assertTrue(dir.needs_format_conversion())
+        # format 5 dirs need a conversion if they are not the default,
+        # and they aren't
+        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+        # don't need to convert it to itself
+        self.assertFalse(dir.needs_format_conversion(bzrdir.BzrDirFormat5()))
+        # do need to convert it to the current default
+        self.assertTrue(dir.needs_format_conversion(
+            bzrdir.BzrDirFormat.get_default_format()))
 
 
 class TestFormat6(TestCaseWithTransport):
@@ -941,13 +945,9 @@ class TestFormat6(TestCaseWithTransport):
     
     def test_needs_conversion(self):
         # format 6 dirs need an conversion if they are not the default.
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirMetaFormat1())
-        try:
-            dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
-            self.assertTrue(dir.needs_format_conversion())
-        finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        self.assertTrue(dir.needs_format_conversion(
+            bzrdir.BzrDirFormat.get_default_format()))
 
 
 class NotBzrDir(bzrlib.bzrdir.BzrDir):
@@ -1064,8 +1064,8 @@ class NonLocalTests(TestCaseWithTransport):
                               workingtree.WorkingTreeFormat3)
 
 
-class TestHTTPRedirectionLoop(object):
-    """Test redirection loop between two http servers.
+class TestHTTPRedirections(object):
+    """Test redirection between two http servers.
 
     This MUST be used by daughter classes that also inherit from
     TestCaseWithTwoWebservers.
@@ -1075,62 +1075,85 @@ class TestHTTPRedirectionLoop(object):
     run, its implementation being incomplete. 
     """
 
-    # Should be defined by daughter classes to ensure redirection
-    # still use the same transport implementation (not currently
-    # enforced as it's a bit tricky to get right (see the FIXME
-    # in BzrDir.open_from_transport for the unique use case so
-    # far)
-    _qualifier = None
-
     def create_transport_readonly_server(self):
-        return HTTPServerRedirecting()
+        return http_utils.HTTPServerRedirecting()
 
     def create_transport_secondary_server(self):
-        return HTTPServerRedirecting()
+        return http_utils.HTTPServerRedirecting()
 
     def setUp(self):
-        # Both servers redirect to each server creating a loop
-        super(TestHTTPRedirectionLoop, self).setUp()
+        super(TestHTTPRedirections, self).setUp()
         # The redirections will point to the new server
         self.new_server = self.get_readonly_server()
         # The requests to the old server will be redirected
         self.old_server = self.get_secondary_server()
         # Configure the redirections
         self.old_server.redirect_to(self.new_server.host, self.new_server.port)
-        self.new_server.redirect_to(self.old_server.host, self.old_server.port)
-
-    def _qualified_url(self, host, port):
-        return 'http+%s://%s:%s' % (self._qualifier, host, port)
 
     def test_loop(self):
+        # Both servers redirect to each other creating a loop
+        self.new_server.redirect_to(self.old_server.host, self.old_server.port)
         # Starting from either server should loop
-        old_url = self._qualified_url(self.old_server.host, 
+        old_url = self._qualified_url(self.old_server.host,
                                       self.old_server.port)
         oldt = self._transport(old_url)
         self.assertRaises(errors.NotBranchError,
                           bzrdir.BzrDir.open_from_transport, oldt)
-        new_url = self._qualified_url(self.new_server.host, 
+        new_url = self._qualified_url(self.new_server.host,
                                       self.new_server.port)
         newt = self._transport(new_url)
         self.assertRaises(errors.NotBranchError,
                           bzrdir.BzrDir.open_from_transport, newt)
 
+    def test_qualifier_preserved(self):
+        wt = self.make_branch_and_tree('branch')
+        old_url = self._qualified_url(self.old_server.host,
+                                      self.old_server.port)
+        start = self._transport(old_url).clone('branch')
+        bdir = bzrdir.BzrDir.open_from_transport(start)
+        # Redirection should preserve the qualifier, hence the transport class
+        # itself.
+        self.assertIsInstance(bdir.root_transport, type(start))
 
-class TestHTTPRedirections_urllib(TestHTTPRedirectionLoop,
-                                  TestCaseWithTwoWebservers):
+
+class TestHTTPRedirections_urllib(TestHTTPRedirections,
+                                  http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for urllib implementation"""
 
-    _qualifier = 'urllib'
     _transport = HttpTransport_urllib
+
+    def _qualified_url(self, host, port):
+        return 'http+urllib://%s:%s' % (host, port)
 
 
 
 class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
-                                  TestHTTPRedirectionLoop,
-                                  TestCaseWithTwoWebservers):
+                                  TestHTTPRedirections,
+                                  http_utils.TestCaseWithTwoWebservers):
     """Tests redirections for pycurl implementation"""
 
-    _qualifier = 'pycurl'
+    def _qualified_url(self, host, port):
+        return 'http+pycurl://%s:%s' % (host, port)
+
+
+class TestHTTPRedirections_nosmart(TestHTTPRedirections,
+                                  http_utils.TestCaseWithTwoWebservers):
+    """Tests redirections for the nosmart decorator"""
+
+    _transport = NoSmartTransportDecorator
+
+    def _qualified_url(self, host, port):
+        return 'nosmart+http://%s:%s' % (host, port)
+
+
+class TestHTTPRedirections_readonly(TestHTTPRedirections,
+                                    http_utils.TestCaseWithTwoWebservers):
+    """Tests redirections for readonly decoratror"""
+
+    _transport = ReadonlyTransportDecorator
+
+    def _qualified_url(self, host, port):
+        return 'readonly+http://%s:%s' % (host, port)
 
 
 class TestDotBzrHidden(TestCaseWithTransport):

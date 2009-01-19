@@ -30,7 +30,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate is mandatory.
         if isinstance(self.workingtree_format,
-            bzrlib.workingtree_4.WorkingTreeFormat4):
+            bzrlib.workingtree_4.DirStateWorkingTreeFormat):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         # TODO: jam 20051218 this probably should add more than just
@@ -69,7 +69,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate and ignorable.
         if isinstance(self.workingtree_format,
-            bzrlib.workingtree_4.WorkingTreeFormat4):
+            bzrlib.workingtree_4.DirStateWorkingTreeFormat):
             raise TestNotApplicable("not applicable to %r"
                 % (self.workingtree_format,))
         t = self.make_branch_and_tree('.')

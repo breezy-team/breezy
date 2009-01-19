@@ -41,6 +41,7 @@ from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
+    ui,
     urlutils,
     )
 """)
@@ -84,7 +85,7 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.iteritems():
+    for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             if hasattr(factory, "_module_name"):
                 modules.add(factory._module_name)
@@ -382,6 +383,18 @@ class Transport(object):
         except TypeError: # We can't tell how many, because relpaths is a generator
             return None
 
+    def _report_activity(self, bytes, direction):
+        """Notify that this transport has activity.
+
+        Implementations should call this from all methods that actually do IO.
+        Be careful that it's not called twice, if one method is implemented on
+        top of another.
+
+        :param bytes: Number of bytes read or written.
+        :param direction: 'read' or 'write' or None.
+        """
+        ui.ui_factory.report_transport_activity(self, bytes, direction)
+
     def _update_pb(self, pb, msg, count, total):
         """Update the progress bar based on the current count
         and total available, total may be None if it was
@@ -568,7 +581,11 @@ class Transport(object):
 
         :param relpath: The relative path to the file
         """
-        return self.get(relpath).read()
+        f = self.get(relpath)
+        try:
+            return f.read()
+        finally:
+            f.close()
 
     @deprecated_method(one_four)
     def get_smart_client(self):
@@ -1249,6 +1266,22 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
+    def _redirected_to(self, source, target):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        # This returns None by default, meaning the transport can't handle the
+        # redirection.
+        return None
+
+
 
 class _SharedConnection(object):
     """A connection shared between several transports."""
@@ -1587,7 +1620,7 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
-    for proto, factory_list in transport_list_registry.iteritems():
+    for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
@@ -1739,12 +1772,13 @@ register_transport_proto('http://',
                  help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
+# The default http implementation is urllib, but https is pycurl if available
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
-                        'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 

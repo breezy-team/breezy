@@ -17,7 +17,6 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-
 from bzrlib import (
     osutils,
     symbol_versioning,
@@ -1496,10 +1495,11 @@ class RetryWithNewPacks(BzrError):
 
     internal_error = True
 
-    _fmt = ("Pack files have changed, reload and retry. %(orig_error)s")
+    _fmt = ("Pack files have changed, reload and retry. context: %(context)s"
+            " %(orig_error)s")
 
-    def __init__(self, reload_occurred, exc_info):
-        """create a new RestartWithNewPacks error.
+    def __init__(self, context, reload_occurred, exc_info):
+        """create a new RetryWithNewPacks error.
 
         :param reload_occurred: Set to True if we know that the packs have
             already been reloaded, and we are failing because of an in-memory
@@ -1516,6 +1516,19 @@ class RetryWithNewPacks(BzrError):
         # TODO: The global error handler should probably treat this by
         #       raising/printing the original exception with a bit about
         #       RetryWithNewPacks also not being caught
+
+
+class RetryAutopack(RetryWithNewPacks):
+    """Raised when we are autopacking and we find a missing file.
+
+    Meant as a signaling exception, to tell the autopack code it should try
+    again.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and try autopack again."
+            " context: %(context)s %(orig_error)s")
 
 
 class NoSuchExportFormat(BzrError):
@@ -1579,11 +1592,17 @@ class UnknownSmartMethod(InternalBzrError):
 
 class SmartMessageHandlerError(InternalBzrError):
 
-    _fmt = "The message handler raised an exception: %(exc_value)s."
+    _fmt = ("The message handler raised an exception:\n"
+            "%(traceback_text)s")
 
     def __init__(self, exc_info):
-        self.exc_type, self.exc_value, self.tb = exc_info
-        
+        import traceback
+        self.exc_type, self.exc_value, self.exc_tb = exc_info
+        self.exc_info = exc_info
+        traceback_strings = traceback.format_exception(
+                self.exc_type, self.exc_value, self.exc_tb)
+        self.traceback_text = ''.join(traceback_strings)
+
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
@@ -1661,48 +1680,14 @@ class RedirectRequested(TransportError):
 
     _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
 
-    def __init__(self, source, target, is_permanent=False, qual_proto=None):
+    def __init__(self, source, target, is_permanent=False):
         self.source = source
         self.target = target
         if is_permanent:
             self.permanently = ' permanently'
         else:
             self.permanently = ''
-        self._qualified_proto = qual_proto
         TransportError.__init__(self)
-
-    def _requalify_url(self, url):
-        """Restore the qualified proto in front of the url"""
-        # When this exception is raised, source and target are in
-        # user readable format. But some transports may use a
-        # different proto (http+urllib:// will present http:// to
-        # the user. If a qualified proto is specified, the code
-        # trapping the exception can get the qualified urls to
-        # properly handle the redirection themself (creating a
-        # new transport object from the target url for example).
-        # But checking that the scheme of the original and
-        # redirected urls are the same can be tricky. (see the
-        # FIXME in BzrDir.open_from_transport for the unique use
-        # case so far).
-        if self._qualified_proto is None:
-            return url
-
-        # The TODO related to NotBranchError mention that doing
-        # that kind of manipulation on the urls may not be the
-        # exception object job. On the other hand, this object is
-        # the interface between the code and the user so
-        # presenting the urls in different ways is indeed its
-        # job...
-        import urlparse
-        proto, netloc, path, query, fragment = urlparse.urlsplit(url)
-        return urlparse.urlunsplit((self._qualified_proto, netloc, path,
-                                   query, fragment))
-
-    def get_source_url(self):
-        return self._requalify_url(self.source)
-
-    def get_target_url(self):
-        return self._requalify_url(self.target)
 
 
 class TooManyRedirections(TransportError):
@@ -2184,11 +2169,6 @@ class RepositoryUpgradeRequired(UpgradeRequired):
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
-
-
-class MissingProgressBarFinish(BzrError):
-
-    _fmt = "A nested progress bar was not 'finished' correctly."
 
 
 class InvalidProgressBarType(BzrError):

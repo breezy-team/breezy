@@ -1090,7 +1090,7 @@ class Merge3Merger(object):
                                 parent_trans_id, trans_id)
 
     def merge_contents(self, file_id):
-        """Performa a merge on file_id contents."""
+        """Performs a merge on file_id contents."""
         def contents_pair(tree):
             if file_id not in tree:
                 return (None, None)
@@ -1579,7 +1579,7 @@ class _PlanMergeBase(object):
 
     def get_lines(self, revisions):
         """Get lines for revisions from the backing VersionedFiles.
-        
+
         :raises RevisionNotPresent: on absent texts.
         """
         keys = [(self._key_prefix + (rev,)) for rev in revisions]
@@ -1587,8 +1587,8 @@ class _PlanMergeBase(object):
         for record in self.vf.get_record_stream(keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self.vf)
-            result[record.key[-1]] = osutils.split_lines(
-                record.get_bytes_as('fulltext'))
+            result[record.key[-1]] = osutils.chunks_to_lines(
+                record.get_bytes_as('chunked'))
         return result
 
     def plan_merge(self):

@@ -18,7 +18,7 @@
 
 """Black-box tests for bzr log."""
 
-import os
+import os, re
 
 from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
@@ -140,11 +140,35 @@ class TestLog(ExternalBase):
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
 
+    def test_log_nonexistent_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -r 1234",
+            error_regexes=["bzr: ERROR: Requested revision: '1234' "
+                "does not exist in branch:"])
+
+    def test_log_nonexistent_dotted_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -r 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
+
     def test_log_change_revno(self):
         self._prepare()
         expected_log = self.run_bzr("log -r 1")[0]
         log = self.run_bzr("log -c 1")[0]
         self.assertEqualDiff(expected_log, log)
+
+    def test_log_change_nonexistent_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 1234",
+            error_regexes=["bzr: ERROR: Requested revision: '1234' "
+                "does not exist in branch:"])
+
+    def test_log_change_nonexistent_dotted_revno(self):
+        self._prepare()
+        (out, err) = self.run_bzr_error(args="log -c 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
 
     def test_log_change_single_revno(self):
         self._prepare()
@@ -218,6 +242,44 @@ class TestLog(ExternalBase):
         self.assertNotContainsRe(log, r'revno: 1\n')
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
+
+
+class TestLogVerbose(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestLogVerbose, self).setUp()
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt'])
+        tree.add('hello.txt')
+        tree.commit(message='message1')
+
+    def assertUseShortDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the short status format
+        self.assertContainsRe(log, '(?m)^A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^added:$')
+
+    def assertUseLongDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the long status format
+        self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^added:$')
+
+    def test_log_short_verbose(self):
+        self.assertUseShortDeltaFormat(['log', '--short', '-v'])
+
+    def test_log_short_verbose_verbose(self):
+        self.assertUseLongDeltaFormat(['log', '--short', '-vv'])
+
+    def test_log_long_verbose(self):
+        # Check that we use the long status format, ignoring the verbosity
+        # level
+        self.assertUseLongDeltaFormat(['log', '--long', '-v'])
+
+    def test_log_long_verbose_verbose(self):
+        # Check that we use the long status format, ignoring the verbosity
+        # level
+        self.assertUseLongDeltaFormat(['log', '--long', '-vv'])
 
 
 class TestLogMerges(TestCaseWithoutPropsHandler):
@@ -453,8 +515,7 @@ class TestLogFile(TestCaseWithTransport):
         tree.bzrdir.destroy_workingtree()
         self.run_bzr('log tree/file')
 
-    def test_log_file(self):
-        """The log for a particular file should only list revs for that file"""
+    def prepare_tree(self):
         tree = self.make_branch_and_tree('parent')
         self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
         tree.add('file1')
@@ -469,6 +530,10 @@ class TestLogFile(TestCaseWithTransport):
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
         os.chdir('parent')
+
+    def test_log_file(self):
+        """The log for a particular file should only list revs for that file"""
+        self.prepare_tree()
         log = self.run_bzr('log file1')[0]
         self.assertContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
@@ -511,3 +576,66 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
         self.assertNotContainsRe(log, 'revno: 4\n')
+
+    def test_line_log_file(self):
+        """The line log for a file should only list relevant mainline revs"""
+        # Note: this also implicitly  covers the short logging case.
+        # We test using --line in preference to --short because matching
+        # revnos in the output of --line is more reliable.
+        self.prepare_tree()
+
+        # full history of file1
+        log = self.run_bzr('log --line file1')[0]
+        self.assertContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+        # full history of file2
+        log = self.run_bzr('log --line file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertContainsRe(log, '^4:', re.MULTILINE)
+
+        # full history of file3
+        log = self.run_bzr('log --line file3')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+        # file in a merge revision
+        log = self.run_bzr('log --line -r3.1.1 file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+        # file in a mainline revision
+        log = self.run_bzr('log --line -r4 file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertContainsRe(log, '^4:', re.MULTILINE)
+
+        # file since a revision
+        log = self.run_bzr('log --line -r3.. file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertContainsRe(log, '^4:', re.MULTILINE)
+
+        # file up to a revision
+        log = self.run_bzr('log --line -r..3 file2')[0]
+        self.assertNotContainsRe(log, '^1:', re.MULTILINE)
+        self.assertContainsRe(log, '^2:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
+        self.assertNotContainsRe(log, '^4:', re.MULTILINE)
