@@ -2250,7 +2250,7 @@ class _KnitGraphIndex(object):
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
                 if (value[0] != keys[key][0][0] or
-                    node_refs != keys[key][1]):
+                    node_refs[0] != keys[key][1][0]):
                     raise KnitCorrupt(self, "inconsistent details in add_records"
                         ": %s %s" % ((value, node_refs), keys[key]))
                 del keys[key]
