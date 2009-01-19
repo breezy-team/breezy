@@ -44,6 +44,10 @@ NOT RELEASED YET
       a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
       (Andrew Bennetts)
 
+    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
+      options to change the default tree-creation policy of shared
+      repositories. (Matthew Fuller, #145033)
+
   DOCUMENTATION:
 
   API CHANGES:
@@ -116,10 +120,6 @@ occur when there are concurrent writes to a pack repository.
       arguments specified by the user in preference to the case of an existing
       item on the file-system or in the inventory to help prevent
       counter-intuitive behaviour on Windows. (Mark Hammond)
-
-    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
-      options to change the default tree-creation policy of shared
-      repositories. (Matthew Fuller, #145033)
 
   BUG FIXES:
   
