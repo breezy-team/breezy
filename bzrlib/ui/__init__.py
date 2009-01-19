@@ -172,6 +172,11 @@ class CLIUIFactory(UIFactory):
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
+        self.stdout.write(prompt)
+
+    def note(self, msg):
+        """Write an already-formatted message."""
+        self.stdout.write(msg + '\n')
 
     def clear_term(self):
         pass
@@ -195,6 +200,8 @@ class SilentUIFactory(CLIUIFactory):
     def get_password(self, prompt='', **kwargs):
         return None
 
+    def prompt(self, prompt):
+        pass
 
     def note(self, msg):
         pass
@@ -225,7 +232,9 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     elif os.environ.get('TERM') in (None, 'dumb', ''):
         # e.g. emacs compile window
         cls = CLIUIFactory
-    else:
+    # User may know better, otherwise default to TextUIFactory
+    if (   os.environ.get('BZR_USE_TEXT_UI', None) is not None
+        or cls is None):
         from bzrlib.ui.text import TextUIFactory
         cls = TextUIFactory
     return cls(stdin=stdin, stdout=stdout, stderr=stderr)
