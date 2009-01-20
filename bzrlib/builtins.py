@@ -1852,6 +1852,8 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
+            Option('merge-revisions',
+                   help='Show merge revisions.'),
             Option('message',
                    short_name='m',
                    help='Show revisions whose message matches this '
@@ -1873,6 +1875,7 @@ class cmd_log(Command):
             revision=None,
             change=None,
             log_format=None,
+            merge_revisions=None,
             message=None,
             limit=None):
         from bzrlib.log import show_log
@@ -1921,7 +1924,8 @@ class cmd_log(Command):
 
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
-                            delta_format=get_verbosity_level())
+                            delta_format=get_verbosity_level(),
+                            show_merge_revisions=merge_revisions)
 
             show_log(b,
                      lf,

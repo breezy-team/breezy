@@ -196,9 +196,14 @@ def _show_log(branch,
 
     if specific_fileid:
         trace.mutter('get log for file_id %r', specific_fileid)
-    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
+    supports_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
+    if lf.show_merge_revisions is None:
+        generate_merge_revisions = (supports_merge_revisions and
+            getattr(lf, 'prefers_merge_revisions', False))
+    else:
+        generate_merge_revisions = lf.show_merge_revisions
     allow_single_merge_revision = getattr(lf,
-        'supports_single_merge_revision', False)
+        'supports_single_merge_revision', supports_merge_revisions)
     view_revisions = calculate_view_revisions(branch, start_revision,
                                               end_revision, direction,
                                               specific_fileid,
@@ -722,6 +727,11 @@ class LogFormatter(object):
         merge revisions.  If not, and if supports_single_merge_revisions is
         also not True, then only mainline revisions will be passed to the 
         formatter.
+
+    - prefers_merge_revisions must be True if this log formatter displays
+        merge revisions by default. This flag is only relevant if
+        supports_merge_revisions is True.
+
     - supports_single_merge_revision must be True if this log formatter
         supports logging only a single merge revision.  This flag is
         only relevant if supports_merge_revisions is not True.
@@ -737,7 +747,18 @@ class LogFormatter(object):
     """
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-                 delta_format=None):
+                 delta_format=None, show_merge_revisions=None):
+        """Create a LogFormatter.
+
+        :param to_file: the file to output to
+        :param show_ids: if True, revision-ids are to be displayed
+        :param show_timezone: the timezone to use
+        :param delta_format: the level of delta information to display
+          or None to leave it u to the formatter to decide
+        :param show_merge_revisions: if True, non-mainline revisions
+          are to be shown; if False, they should not be; if None,
+          the log formatter can decide.
+        """
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
@@ -745,6 +766,7 @@ class LogFormatter(object):
             # Ensures backward compatibility
             delta_format = 2 # long format
         self.delta_format = delta_format
+        self.show_merge_revisions = show_merge_revisions
 
 # TODO: uncomment this block after show() has been removed.
 # Until then defining log_revision would prevent _show_log calling show() 
@@ -781,6 +803,7 @@ class LogFormatter(object):
 class LongLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
+    prefers_merge_revisions = True
     supports_delta = True
     supports_tags = True
 
@@ -829,15 +852,16 @@ class LongLogFormatter(LogFormatter):
 
 class ShortLogFormatter(LogFormatter):
 
+    supports_merge_revisions = True
     supports_delta = True
-    supports_single_merge_revision = True
 
     def log_revision(self, revision):
+        indent = '    ' * revision.merge_depth
         to_file = self.to_file
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
-        to_file.write("%5s %s\t%s%s\n" % (revision.revno,
+        to_file.write(indent + "%5s %s\t%s%s\n" % (revision.revno,
                 self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
@@ -845,24 +869,24 @@ class ShortLogFormatter(LogFormatter):
                             show_offset=False),
                 is_merge))
         if self.show_ids:
-            to_file.write('      revision-id:%s\n'
+            to_file.write(indent + '      revision-id:%s\n'
                           % (revision.rev.revision_id,))
         if not revision.rev.message:
-            to_file.write('      (no message)\n')
+            to_file.write(indent + '      (no message)\n')
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write('      %s\n' % (l,))
+                to_file.write(indent + '      %s\n' % (l,))
 
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids,
+            revision.delta.show(to_file, self.show_ids, indent=indent,
                                 short_status=self.delta_format==1)
         to_file.write('\n')
 
 
 class LineLogFormatter(LogFormatter):
 
-    supports_single_merge_revision = True
+    supports_merge_revisions = True
 
     def __init__(self, *args, **kwargs):
         super(LineLogFormatter, self).__init__(*args, **kwargs)
@@ -885,16 +909,18 @@ class LineLogFormatter(LogFormatter):
             return rev.message
 
     def log_revision(self, revision):
+        indent = '  ' * revision.merge_depth
         self.to_file.write(self.log_string(revision.revno, revision.rev,
-                                              self._max_chars))
+            self._max_chars, indent))
         self.to_file.write('\n')
 
-    def log_string(self, revno, rev, max_chars):
+    def log_string(self, revno, rev, max_chars, prefix=''):
         """Format log info into one string. Truncate tail of string
         :param  revno:      revision number or None.
                             Revision numbers counts from 1.
         :param  rev:        revision info object
         :param  max_chars:  maximum length of resulting string
+        :param  prefix:     string to prefix each line
         :return:            formatted truncated string
         """
         out = []
@@ -904,7 +930,7 @@ class LineLogFormatter(LogFormatter):
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
         out.append(rev.get_summary())
-        return self.truncate(" ".join(out).rstrip('\n'), max_chars)
+        return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
 
 def line_log(rev, max_chars):
