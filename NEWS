@@ -12,6 +12,14 @@ IN DEVELOPMENT
     * Progress bars now show the rate of activity for some sftp 
       operations, and they are drawn different.  (Martin Pool, #172741)
 
+  BUG FIXES:
+
+    * There was a bug in how we handled resolving when a file is deleted
+      in one branch, and modified in the other. If there was a criss-cross
+      merge, we would cause the deletion to conflict a second time.
+      (Vincent Ladeuil, John Arbash Meinel)
+
+
 NOT RELEASED YET
 ----------------
 
