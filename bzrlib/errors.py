@@ -17,7 +17,6 @@
 """Exceptions for bzr, and reporting of them.
 """
 
-
 from bzrlib import (
     osutils,
     symbol_versioning,
@@ -2170,11 +2169,6 @@ class RepositoryUpgradeRequired(UpgradeRequired):
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
-
-
-class MissingProgressBarFinish(BzrError):
-
-    _fmt = "A nested progress bar was not 'finished' correctly."
 
 
 class InvalidProgressBarType(BzrError):

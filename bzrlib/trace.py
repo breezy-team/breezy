@@ -131,7 +131,10 @@ log_error = _bzr_logger.error
 error =     _bzr_logger.error
 
 
+_last_mutter_flush_time = None
+
 def mutter(fmt, *args):
+    global _last_mutter_flush_time
     if _trace_file is None:
         return
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
@@ -152,11 +155,19 @@ def mutter(fmt, *args):
         out = fmt % tuple(real_args)
     else:
         out = fmt
-    timestamp = '%0.3f  ' % (time.time() - _bzr_log_start_time,)
+    now = time.time()
+    timestamp = '%0.3f  ' % (now - _bzr_log_start_time,)
     out = timestamp + out + '\n'
     _trace_file.write(out)
-    # no need to flush here, the trace file is now linebuffered when it's
-    # opened.
+    # We flush if we haven't flushed for a few seconds. We don't want to flush
+    # on every mutter, but when a command takes a while, it can be nice to see
+    # updates in the debug log.
+    if (_last_mutter_flush_time is None
+        or (now - _last_mutter_flush_time) > 2.0):
+        flush = getattr(_trace_file, 'flush', None)
+        if flush is not None:
+            flush()
+        _last_mutter_flush_time = now
 
 
 def mutter_callsite(stacklevel, fmt, *args):
