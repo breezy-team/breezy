@@ -29,6 +29,9 @@ NOT RELEASED YET
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
+    * Rule-based preferences can now accept multiple patterns for a set of
+      rules.  (Marius Kruger)
+
   BUG FIXES:
 
     * ``bzr log FILE`` now correctly shows mainline revisions merging
