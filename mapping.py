@@ -71,9 +71,14 @@ class BzrGitMapping(foreign.VcsMapping):
         return rev
 
 
-class BzrGitMappingExperimental(BzrGitMapping):
+class BzrGitMappingv1(BzrGitMapping):
+    revid_prefix = 'git-v1'
+    experimental = False
+
+
+class BzrGitMappingExperimental(BzrGitMappingv1):
     revid_prefix = 'git-experimental'
     experimental = True
 
 
-default_mapping = BzrGitMappingExperimental()
+default_mapping = BzrGitMappingv1()
