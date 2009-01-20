@@ -179,6 +179,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         b = wt.branch
         lf = LogCatcher()
         lf.supports_merge_revisions = True
+        lf.prefers_merge_revisions = True
         log.show_log(b, lf, verbose=True)
 
         self.assertEqual(3, len(lf.logs))

@@ -24,12 +24,14 @@ NOT RELEASED YET
 
   NEW FEATURES:
 
-    * ``bzr log`` supports a new option called ``--merge-revisions``.
+    * ``bzr log`` supports a new option called ``--include-merges``.
       This can be used to force the ``--short`` and ``--line`` formats
       to display non-mainline revisions in a nested way similar to
-      how ``--long`` does by default. ``bzr log --no-merge-revisions``
+      how ``--long`` does by default. ``bzr log --no-include-merges``
       will use the default ``--long`` format but show just the mainline
-      revisions. (Ian Clatworthy)
+      revisions. ``-n`` (for nested or non-mainline) is provided as
+      a shorthand for ``--include-merges``.
+      (Ian Clatworthy)
 
   IMPROVEMENTS:
 

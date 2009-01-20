@@ -367,7 +367,7 @@ message:
 
     def test_force_merge_revisions_off(self):
         self._prepare()
-        out,err = self.run_bzr('log --long --no-merge-revisions')
+        out,err = self.run_bzr('log --long --no-include-merges')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
@@ -389,7 +389,7 @@ message:
 
     def test_force_merge_revisions_on(self):
         self._prepare_short()
-        out,err = self.run_bzr('log --short --merge-revisions')
+        out,err = self.run_bzr('log --short -n')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
