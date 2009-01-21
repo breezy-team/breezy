@@ -28,6 +28,7 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
+        log,
         repository,
         revision as _mod_revision,
         transport,
@@ -220,24 +221,31 @@ class Branch(object):
         """
         revision_id_to_revno = dict((rev_id, revno)
                                     for seq_num, rev_id, depth, revno, end_of_merge
-                                     in self.merge_sorted_revisions())
+                                     in self.iter_merge_sorted_revisions())
         return revision_id_to_revno
 
     @needs_read_lock
-    def merge_sorted_revisions(self):
-        """Get the revisions for a branch in merge sorted order.
+    def iter_merge_sorted_revisions(self, direction='reverse'):
+        """Walk the revisions for a branch in merge sorted order.
 
-        :return: a list of (sequence_number, revision_id, depth, revno,
-            end_of_merge) tuples.
+        :param direction: either 'reverse' or 'forward'
+        :return: an iterator over
+            (sequence_number, revision_id, depth, revno, end_of_merge) tuples.
         """
         last_revision = self.last_revision()
         revision_graph = repository._old_get_graph(self.repository,
             last_revision)
-        return tsort.merge_sort(
+        merge_sorted_revisions = tsort.merge_sort(
             revision_graph,
             last_revision,
             None,
             generate_revno=True)
+        if direction == 'reverse':
+            return iter(merge_sorted_revisions)
+        if direction == 'forward':
+            return iter(log.reverse_by_depth(merge_sorted_revisions))
+        else:
+            raise ValueError('invalid direction %r' % direction)
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
