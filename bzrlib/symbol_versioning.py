@@ -1,5 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com> and others
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,22 +27,6 @@ __all__ = ['deprecated_function',
            'deprecated_passed',
            'set_warning_method',
            'warn',
-           'zero_seven',
-           'zero_eight',
-           'zero_nine',
-           'zero_ten',
-           'zero_eleven',
-           'zero_twelve',
-           'zero_thirteen',
-           'zero_fourteen',
-           'zero_fifteen',
-           'zero_sixteen',
-           'zero_seventeen',
-           'zero_eighteen',
-           'zero_ninety',
-           'zero_ninetyone',
-           'zero_ninetytwo',
-           'zero_ninetythree',
            'one_zero',
            'one_one',
            'one_two',
@@ -59,23 +42,7 @@ import bzrlib
 
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
-zero_seven = "%s was deprecated in version 0.7."
-zero_eight = "%s was deprecated in version 0.8."
-zero_nine = "%s was deprecated in version 0.9."
-zero_ten = "%s was deprecated in version 0.10."
-zero_eleven = "%s was deprecated in version 0.11."
-zero_twelve = "%s was deprecated in version 0.12."
-zero_thirteen = "%s was deprecated in version 0.13."
-zero_fourteen = "%s was deprecated in version 0.14."
-zero_fifteen = "%s was deprecated in version 0.15."
-zero_sixteen = "%s was deprecated in version 0.16."
-zero_seventeen = "%s was deprecated in version 0.17."
-zero_eighteen = "%s was deprecated in version 0.18."
-zero_ninety = "%s was deprecated in version 0.90."
-zero_ninetyone = "%s was deprecated in version 0.91."
-zero_ninetytwo = "%s was deprecated in version 0.92."
 one_zero = "%s was deprecated in version 1.0."
-zero_ninetythree = one_zero # Maintained for backwards compatibility
 one_one = "%s was deprecated in version 1.1."
 one_two = "%s was deprecated in version 1.2."
 one_three = "%s was deprecated in version 1.3."
