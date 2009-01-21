@@ -1066,6 +1066,40 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('3',) 'baz'\n"
                              , chkmap._dump_tree())
 
+    def test_search_key_16(self):
+        chk_bytes = self.get_chk_bytes()
+        chkmap = chk_map.CHKMap(chk_bytes, None,
+                                search_key_func=chk_map._search_key_16)
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '1' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  '6' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '7' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+
+    def test_search_key_255(self):
+        chk_bytes = self.get_chk_bytes()
+        chkmap = chk_map.CHKMap(chk_bytes, None,
+                                search_key_func=chk_map._search_key_255)
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '\\x1a' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  'm' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '\\x83' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+
 
 class TestSearchKeyFuncs(tests.TestCase):
 
