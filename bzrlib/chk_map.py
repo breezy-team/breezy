@@ -56,6 +56,11 @@ _PAGE_CACHE_SIZE = 4*1024*1024
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
 
+def _search_key_plain(key):
+    """Map the key tuple into a search string that just uses the key bytes."""
+    return '\x00'.join(key)
+
+
 def _search_key_16(key):
     """Map the key tuple into a search key string which has 16-way fan out."""
     return '\x00'.join(['%08X' % abs(zlib.crc32(bit)) for bit in key])
@@ -86,7 +91,7 @@ class CHKMap(object):
         """
         self._store = store
         if search_key_func is None:
-            search_key_func = '\x00'.join
+            search_key_func = _search_key_plain
         self._search_key_func = search_key_func
         if root_key is None:
             self._root_node = LeafNode(search_key_func=search_key_func)
@@ -524,7 +529,7 @@ class LeafNode(Node):
         self._common_serialised_prefix = None
         self._serialise_key = '\x00'.join
         if search_key_func is None:
-            self._search_key_func = self._serialise_key
+            self._search_key_func = _search_key_plain
         else:
             self._search_key_func = search_key_func
 
@@ -777,7 +782,7 @@ class InternalNode(Node):
         self._node_width = 0
         self._search_prefix = prefix
         if search_key_func is None:
-            self._search_key_func = '\x00'.join
+            self._search_key_func = _search_key_plain
         else:
             self._search_key_func = search_key_func
 
