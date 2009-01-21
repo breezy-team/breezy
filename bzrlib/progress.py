@@ -18,13 +18,7 @@
 """Progress indicators.
 
 The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
-will maintain a ProgressBarStack for you.
-
-For direct use, the factory ProgressBar will return an auto-detected progress
-bar that should match your terminal type. You can manually create a
-ProgressBarStack too if you need multiple levels of cooperating progress bars.
-Note that bzrlib's internal functions use the ui module, so if you are using
-bzrlib it really is best to use bzrlib.ui.ui_factory.
+will manage a conceptual stack of nested activities.
 """
 
 
