@@ -1082,6 +1082,20 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "  '7' LeafNode\n"
                              "      ('1',) 'foo'\n"
                              , chkmap._dump_tree())
+        root_key = chkmap._save()
+        chkmap = chk_map.CHKMap(chk_bytes, root_key,
+                                search_key_func=chk_map._search_key_16)
+        # We can get the values back correctly
+        self.assertEqual([(('1',), 'foo')],
+                         list(chkmap.iteritems([('1',)])))
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '1' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  '6' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '7' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
 
     def test_search_key_255(self):
         chk_bytes = self.get_chk_bytes()
@@ -1091,6 +1105,20 @@ class TestMapSearchKeys(TestCaseWithStore):
         chkmap.map(('1',), 'foo')
         chkmap.map(('2',), 'bar')
         chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '\\x1a' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  'm' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '\\x83' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+        root_key = chkmap._save()
+        chkmap = chk_map.CHKMap(chk_bytes, root_key,
+                                search_key_func=chk_map._search_key_255)
+        # We can get the values back correctly
+        self.assertEqual([(('1',), 'foo')],
+                         list(chkmap.iteritems([('1',)])))
         self.assertEqualDiff("'' InternalNode\n"
                              "  '\\x1a' LeafNode\n"
                              "      ('2',) 'bar'\n"
