@@ -25,7 +25,6 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock
 
 from bzrlib.plugins.git.foreign import ForeignBranch
-from bzrlib.plugins.git.mapping import default_mapping
 
 class GitTagDict(tag.BasicTags):
 
@@ -70,7 +69,7 @@ class GitBranch(ForeignBranch):
 
     def __init__(self, bzrdir, repository, name, head, lockfiles):
         self.repository = repository
-        super(GitBranch, self).__init__(default_mapping)
+        super(GitBranch, self).__init__(repository.get_mapping())
         self.control_files = lockfiles
         self.bzrdir = bzrdir
         self.name = name
