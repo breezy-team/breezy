@@ -29,7 +29,14 @@ NOT RELEASED YET
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
+    * Rule-based preferences can now accept multiple patterns for a set of
+      rules.  (Marius Kruger)
+
   BUG FIXES:
+
+    * ``bzr log FILE`` now correctly shows mainline revisions merging
+      a change to FILE when the ``--short`` and ``--line`` log formats
+      are used. (Ian Clatworthy, #317417)
 
     * Fix a problem with CIFS client/server lag on Windows colliding with
       an invariant-per-process algorithm for generating AtomicFile names

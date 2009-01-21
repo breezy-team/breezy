@@ -230,6 +230,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
 
     def needs_format_conversion(self, format=None):
         """Upgrading of remote bzrdirs is not supported yet."""
+        if format is None:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
+                % 'needs_format_conversion(format=None)')
         return False
 
     def clone(self, url, revision_id=None, force_new_repo=False,
