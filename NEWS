@@ -55,6 +55,10 @@ NOT RELEASED YET
 
   INTERNALS:
 
+    * New API ``Branch.merge_sorted_revisions()`` that returns a list
+      of ``(sequence_number, revision_id, depth, revno, end_of_merge)``
+      tuples. (Ian Clatworthy)
+
     * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
       formatters to retrict the output.
       (Vincent Ladeuil)

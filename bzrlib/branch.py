@@ -218,18 +218,26 @@ class Branch(object):
 
         :return: A dictionary mapping revision_id => dotted revno.
         """
+        revision_id_to_revno = dict((rev_id, revno)
+                                    for seq_num, rev_id, depth, revno, end_of_merge
+                                     in self.merge_sorted_revisions())
+        return revision_id_to_revno
+
+    @needs_read_lock
+    def merge_sorted_revisions(self):
+        """Get the revisions for a branch in merge sorted order.
+
+        :return: a list of (sequence_number, revision_id, depth, revno,
+            end_of_merge) tuples.
+        """
         last_revision = self.last_revision()
         revision_graph = repository._old_get_graph(self.repository,
             last_revision)
-        merge_sorted_revisions = tsort.merge_sort(
+        return tsort.merge_sort(
             revision_graph,
             last_revision,
             None,
             generate_revno=True)
-        revision_id_to_revno = dict((rev_id, revno)
-                                    for seq_num, rev_id, depth, revno, end_of_merge
-                                     in merge_sorted_revisions)
-        return revision_id_to_revno
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this

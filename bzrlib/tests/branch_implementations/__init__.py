@@ -162,6 +162,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.branch_implementations.test_http',
         'bzrlib.tests.branch_implementations.test_last_revision_info',
         'bzrlib.tests.branch_implementations.test_locking',
+        'bzrlib.tests.branch_implementations.test_merge_sorted_revisions',
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',
         'bzrlib.tests.branch_implementations.test_pull',
