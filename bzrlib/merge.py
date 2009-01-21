@@ -390,6 +390,7 @@ class Merger(object):
             if self._is_criss_cross:
                 warning('Warning: criss-cross merge encountered.  See bzr'
                         ' help criss-cross.')
+                mutter('Criss-cross lcas: %r' % lcas)
                 interesting_revision_ids = [self.base_rev_id]
                 interesting_revision_ids.extend(lcas)
                 interesting_trees = dict((t.get_revision_id(), t)
@@ -405,6 +406,7 @@ class Merger(object):
                 self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
+        mutter('Base revid: %r' % self.base_rev_id)
 
     def set_base(self, base_revision):
         """Set the base revision to use for the merge.
