@@ -546,7 +546,8 @@ class GenericProcessor(processor.ImportProcessor):
             self._set_tag(cmd.ref[len('refs/tags/'):], cmd.from_)
 	    return
 
-
+	# FIXME: cmd.from_ is a committish and thus could reference
+	# another branch.  Create a method for resolving commitsh's.
         if cmd.from_ is not None:
             self.cache_mgr.last_ref = cmd.ref
             self.cache_mgr.heads.setdefault(cmd.from_, set()).add(cmd.ref)
