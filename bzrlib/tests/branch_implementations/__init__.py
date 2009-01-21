@@ -157,6 +157,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.branch_implementations.test_check',
         'bzrlib.tests.branch_implementations.test_create_checkout',
         'bzrlib.tests.branch_implementations.test_commit',
+        'bzrlib.tests.branch_implementations.test_dotted_revno_to_revision_id',
         'bzrlib.tests.branch_implementations.test_get_revision_id_to_revno_map',
         'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',

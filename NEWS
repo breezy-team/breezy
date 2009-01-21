@@ -55,6 +55,9 @@ NOT RELEASED YET
 
   INTERNALS:
 
+    * New ``Branch.dotted_revno_to_revision_id()`` API.
+      (Ian Clatworthy)
+
     * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
       formatters to retrict the output.
       (Vincent Ladeuil)
