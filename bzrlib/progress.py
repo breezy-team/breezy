@@ -96,13 +96,13 @@ class ProgressTask(object):
         self.current_cnt = current_cnt
         if total_cnt:
             self.total_cnt = total_cnt
-        self.ui_factory.show_progress(self)
+        self.ui_factory._progress_updated(self)
 
     def tick(self):
         self.update(self.msg)
 
     def finished(self):
-        self.ui_factory.progress_finished(self)
+        self.ui_factory._progress_finished(self)
 
     def make_sub_task(self):
         return ProgressTask(self, self.ui_factory)

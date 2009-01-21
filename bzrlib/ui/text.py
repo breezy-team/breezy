@@ -88,7 +88,7 @@ class TextUIFactory(CLIUIFactory):
         """
         self._progress_view.show_transport_activity(byte_count)
 
-    def show_progress(self, task):
+    def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
         if task != self._task_stack[-1]:
@@ -96,11 +96,8 @@ class TextUIFactory(CLIUIFactory):
                 (task, self._task_stack[-1]))
         self._progress_view.show_progress(task)
 
-    def progress_finished(self, task):
-        CLIUIFactory.progress_finished(self, task)
-        if not self._task_stack:
-            # finished top-level task
-            self._progress_view.clear()
+    def _all_progress_finished(self):
+        self._progress_view.clear()
 
 
 class TextProgressView(object):

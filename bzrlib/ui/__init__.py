@@ -81,12 +81,28 @@ class UIFactory(object):
         self._task_stack.append(t)
         return t
 
-    def progress_finished(self, task):
-        if task != self._task_stack[-1]:
+    def _progress_finished(self, task):
+        """Called by the ProgressTask when it finishes"""
+        if not self._task_stack:
+            warnings.warn("%r finished but nothing is active"
+                % (task,))
+        elif task != self._task_stack[-1]:
             warnings.warn("%r is not the active task %r" 
                 % (task, self._task_stack[-1]))
         else:
             del self._task_stack[-1]
+        if not self._task_stack:
+            self._all_progress_finished()
+
+    def _all_progress_finished(self):
+        """Called when the top-level progress task finished"""
+        pass
+
+    def _progress_updated(self, task):
+        """Called by the ProgressTask when it changes.
+        
+        Should be specialized to draw the progress."""
+        pass
 
     def clear_term(self):
         """Prepare the terminal for output.
@@ -186,9 +202,6 @@ class SilentUIFactory(CLIUIFactory):
 
     def get_password(self, prompt='', **kwargs):
         return None
-
-    def show_progress(self, task):
-        pass
 
     def note(self, msg):
         pass
