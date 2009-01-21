@@ -189,6 +189,32 @@ class Branch(object):
         raise NotImplementedError(self.get_physical_lock_status)
 
     @needs_read_lock
+    def dotted_revno_to_revision_id(self, revno):
+        """Return the revision_id for a dotted revno.
+
+        :param revno: a tuple like (1,) or (1,1,2)
+        :return: the revision_id
+        :raises errors.NoSuchRevision: if the revno doesn't exist
+        """
+        return self._dotted_revno_to_revision_id(revno)
+
+    def _dotted_revno_to_revision_id(self, revno):
+        """Worker function for dotted_revno_to_revision_id.
+
+        Subclasses should override this if they wish to
+        provide a more efficient implementation.
+        """
+        if len(revno) == 1:
+            return self.get_rev_id(revno[0])
+        revision_id_to_revno = self.get_revision_id_to_revno_map()
+        for revision_id, this_revno in revision_id_to_revno.iteritems():
+            if revno == this_revno:
+                return revision_id
+        else:
+            revno_str = '.'.join(map(str, revno))
+            raise errors.NoSuchRevision(self, revno_str)
+
+    @needs_read_lock
     def get_revision_id_to_revno_map(self):
         """Return the revision_id => dotted revno map.
 
