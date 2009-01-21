@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,7 +83,8 @@ class UIFactory(object):
 
     def progress_finished(self, task):
         if task != self._task_stack[-1]:
-            warnings.warn("%r is not currently active" % (task,))
+            warnings.warn("%r is not the active task %r" 
+                % (task, self._task_stack[-1]))
         else:
             del self._task_stack[-1]
 
@@ -92,7 +93,7 @@ class UIFactory(object):
 
         This will, for example, clear text progress bars, and leave the
         cursor at the leftmost position."""
-        raise NotImplementedError(self.clear_term)
+        pass
 
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user. 
@@ -173,15 +174,6 @@ class CLIUIFactory(UIFactory):
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
 
-    def clear_term(self):
-        pass
-
-    def show_progress(self, task):
-        pass
-
-    def progress_finished(self, task):
-        pass
-
 
 class SilentUIFactory(CLIUIFactory):
     """A UI Factory which never prints anything.
@@ -195,6 +187,8 @@ class SilentUIFactory(CLIUIFactory):
     def get_password(self, prompt='', **kwargs):
         return None
 
+    def show_progress(self, task):
+        pass
 
     def note(self, msg):
         pass
