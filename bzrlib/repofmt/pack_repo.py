@@ -2169,7 +2169,8 @@ class CHKInventoryRepository(KnitPackRepository):
         serializer = self._format._serializer
         result = CHKInventory.from_inventory(self.chk_bytes, inv,
             maximum_size=serializer.maximum_size,
-            parent_id_basename_index=serializer.parent_id_basename_index)
+            parent_id_basename_index=serializer.parent_id_basename_index,
+            search_key_name=serializer.search_key_name)
         inv_lines = result.to_lines()
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)

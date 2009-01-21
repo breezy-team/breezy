@@ -46,7 +46,10 @@ import struct
 
 from bzrlib import versionedfile
 """)
-from bzrlib import lru_cache
+from bzrlib import (
+    lru_cache,
+    registry,
+    )
 
 # approx 2MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
@@ -74,6 +77,12 @@ def _search_key_255(key):
     """
     bytes = '\x00'.join([struct.pack('>i', zlib.crc32(bit)) for bit in key])
     return bytes.replace('\n', '_')
+
+
+search_key_registry = registry.Registry()
+search_key_registry.register('plain', _search_key_plain)
+search_key_registry.register('hash-16-way', _search_key_16)
+search_key_registry.register('hash-255-way', _search_key_255)
 
 
 class CHKMap(object):
