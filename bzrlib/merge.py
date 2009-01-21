@@ -1090,7 +1090,7 @@ class Merge3Merger(object):
                                 parent_trans_id, trans_id)
 
     def merge_contents(self, file_id):
-        """Performa a merge on file_id contents."""
+        """Performs a merge on file_id contents."""
         def contents_pair(tree):
             if file_id not in tree:
                 return (None, None)

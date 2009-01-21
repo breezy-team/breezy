@@ -4,19 +4,81 @@ Bazaar Release Notes
 
 .. contents::
 
-
 IN DEVELOPMENT
 --------------
 
+  IMPROVEMENTS:
+
+    * Progress bars now show the rate of activity for some sftp 
+      operations, and they are drawn different.  (Martin Pool, #172741)
+
+NOT RELEASED YET
+----------------
+
+  COMPATIBILITY BREAKS:
+
+    * By default, ``bzr status`` after a merge now shows just the pending
+      merge tip revisions. This improves the signal-to-noise ratio after
+      merging from trunk and completes much faster. To see all merged
+      revisions, use the new ``-v`` flag.  (Ian Clatworthy)
+
+  NEW FEATURES:
+
+  IMPROVEMENTS:
+
+    * ``bzr init`` will now print a little less verbose output.
+      (Marius Kruger)
+
+    * Rule-based preferences can now accept multiple patterns for a set of
+      rules.  (Marius Kruger)
+
+  BUG FIXES:
+
+    * ``bzr log FILE`` now correctly shows mainline revisions merging
+      a change to FILE when the ``--short`` and ``--line`` log formats
+      are used. (Ian Clatworthy, #317417)
+
+    * Fix a problem with CIFS client/server lag on Windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
+    * Many socket operations now handle EINTR by retrying the operation.
+      Previously EINTR was treated as an unrecoverable failure.  There is
+      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
+      (Andrew Bennetts)
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  TESTING:
+
+  INTERNALS:
+
+    * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
+      formatters to retrict the output.
+      (Vincent Ladeuil)
+
+bzr 1.11rc1 "Eyes up!" 2009-01-09
+---------------------------------
+
+This first monthly release of Bazaar for 2009 improves Bazaar's operation
+in Windows, Mac OS X, and other situations where file names are matched
+without regard to capitalization: Bazaar tries to match the case of an
+existing file.  This release of Bazaar also improves the efficiency of
+Tortoise Windows Shell integration and lets it work on 64-bit platforms.
+
+The UI through which Bazaar supports historic formats has been improved,
+so 'bzr help formats' now gives a simpler and shorter list, with clear
+advice.
+
+This release also fixes a number of bugs, particularly a glitch that can
+occur when there are concurrent writes to a pack repository.
+
   CHANGES:
-  
+
     * Formats using Knit-based repository formats are now explicitly
       marked as deprecated. (Ian Clatworthy)
-
-    * ``LRUCache(after_cleanup_size)`` was renamed to
-      ``after_cleanup_count`` and the old name deprecated. The new name is
-      used for clarity, and to avoid confusion with
-      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
   NEW FEATURES:
 
@@ -40,11 +102,23 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
+    * Add connection to a C++ implementation of the Windows Shell Extension
+      which is able to fully replace the current Python implemented one.
+      Advantages include 64bit support and reduction in overhead for
+      processes which drag in shell extensions.
+      (Mark Hammond)
+
     * Support the Claws mail client directly, rather than via
       xdg-email. This prevents the display of an unnecessary modal
       dialog in Claws, informing the user that a file has been
       attached to the message, and works around bug #291847 in
       xdg-utils which corrupts the destination address.
+
+    * When working on a case-insensitive case-preserving file-system, as
+      commonly found with Windows, bzr will often ignore the case of the
+      arguments specified by the user in preference to the case of an existing
+      item on the file-system or in the inventory to help prevent
+      counter-intuitive behaviour on Windows. (Mark Hammond)
 
   BUG FIXES:
   
@@ -90,11 +164,6 @@ IN DEVELOPMENT
       in the appropriate sections.
       (Vincent Ladeuil, #103029)
 
-    * Many socket operations now handle EINTR by retrying the operation.
-      Previously EINTR was treated as an unrecoverable failure.  There is
-      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
-      (Andrew Bennetts)
-
     * Opening a stacked branch now properly shares the connection, rather
       than opening a new connection for the stacked-on branch.
       (John Arbash meinel)
@@ -136,6 +205,11 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
   API CHANGES:
+
+    * ``LRUCache(after_cleanup_size)`` was renamed to
+      ``after_cleanup_count`` and the old name deprecated. The new name is
+      used for clarity, and to avoid confusion with
+      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
     * New ``ForeignRepository`` base class, to help with foreign branch 
       support (e.g. svn).  (Jelmer Vernooij)
@@ -213,6 +287,10 @@ IN DEVELOPMENT
       The default is still pycurl for https connections. (The only
       advantage of pycurl is that it checks ssl certificates.)
       (John Arbash Meinel)
+
+    * The progress and UI classes have changed; the main APIs remain the
+      same but code that provides a new UI or progress bar class may
+      need to be updated.  (Martin Pool)
 
     * ``VersionedFiles.get_record_stream()`` can now return objects with a
       storage_kind of ``chunked``. This is a collection (list/tuple) of
