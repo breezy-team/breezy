@@ -23,7 +23,6 @@ from bzrlib.chk_map import (
     CHKMap,
     InternalNode,
     LeafNode,
-    _deserialise,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -891,11 +890,11 @@ class TestMap(TestCaseWithStore):
         ptr2 = nodes[1]
         self.assertEqual('k1', ptr1[0])
         self.assertEqual('k2', ptr2[0])
-        node1 = _deserialise(chkmap._read_bytes(ptr1[1]), ptr1[1])
+        node1 = chk_map._deserialise(chkmap._read_bytes(ptr1[1]), ptr1[1], None)
         self.assertIsInstance(node1, LeafNode)
         self.assertEqual(1, len(node1))
         self.assertEqual({('k1'*50,): 'v1'}, self.to_dict(node1, chkmap._store))
-        node2 = _deserialise(chkmap._read_bytes(ptr2[1]), ptr2[1])
+        node2 = chk_map._deserialise(chkmap._read_bytes(ptr2[1]), ptr2[1], None)
         self.assertIsInstance(node2, LeafNode)
         self.assertEqual(1, len(node2))
         self.assertEqual({('k2'*50,): 'v2'}, self.to_dict(node2, chkmap._store))
@@ -1311,7 +1310,7 @@ class TestInternalNode(TestCaseWithStore):
             keys)
         # We should be able to access deserialised content.
         bytes = self.read_bytes(chk_bytes, keys[1])
-        node = _deserialise(bytes, keys[1])
+        node = chk_map._deserialise(bytes, keys[1], None)
         self.assertEqual(1, len(node))
         self.assertEqual({('foo',): 'bar'}, self.to_dict(node, chk_bytes))
         self.assertEqual(3, node._node_width)
