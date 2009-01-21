@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,6 +83,13 @@ class ProgressTask(object):
         self.show_eta = False,
         self.show_count = True
         self.show_bar = True
+
+    def __repr__(self):
+        return '%s(%r/%r, msg=%r)' % (
+            self.__class__.__name__,
+            self.current_cnt,
+            self.total_cnt,
+            self.msg)
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         self.msg = msg
