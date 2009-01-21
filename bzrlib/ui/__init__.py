@@ -92,9 +92,9 @@ class UIFactory(object):
         else:
             del self._task_stack[-1]
         if not self._task_stack:
-            self._all_progress_finished()
+            self._progress_all_finished()
 
-    def _all_progress_finished(self):
+    def _progress_all_finished(self):
         """Called when the top-level progress task finished"""
         pass
 

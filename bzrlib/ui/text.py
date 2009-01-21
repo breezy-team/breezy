@@ -96,7 +96,7 @@ class TextUIFactory(CLIUIFactory):
                 (task, self._task_stack[-1]))
         self._progress_view.show_progress(task)
 
-    def _all_progress_finished(self):
+    def _progress_all_finished(self):
         self._progress_view.clear()
 
 
