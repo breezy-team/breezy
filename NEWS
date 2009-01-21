@@ -51,6 +51,9 @@ NOT RELEASED YET
 
   API CHANGES:
 
+    * ``ProgressBarStack`` is deprecated; instead use
+      ``ui_factory.nested_progress_bar`` to create new progress bars.
+
   TESTING:
 
   INTERNALS:

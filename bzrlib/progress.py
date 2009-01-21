@@ -35,6 +35,10 @@ from bzrlib import (
     ui,
     )
 from bzrlib.trace import mutter
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 def _supports_progress(f):
@@ -153,8 +157,13 @@ def ProgressBar(to_file=None, **kwargs):
 
 
 class ProgressBarStack(object):
-    """A stack of progress bars."""
+    """A stack of progress bars.
+    
+    This class is deprecated: instead, ask the ui factory for a new progress
+    task and finish it when it's done.
+    """
 
+    @deprecated_method(deprecated_in((1, 12, 0)))
     def __init__(self,
                  to_file=None,
                  show_pct=False,
