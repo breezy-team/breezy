@@ -41,6 +41,9 @@ import heapq
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
+import zlib
+import struct
+
 from bzrlib import versionedfile
 """)
 from bzrlib import lru_cache
@@ -51,6 +54,21 @@ from bzrlib import lru_cache
 _PAGE_CACHE_SIZE = 4*1024*1024
 # We are caching bytes so len(value) is perfectly accurate
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+
+
+def _search_key_16(key):
+    """Map the key tuple into a search key string which has 16-way fan out."""
+    return '\x00'.join(['%08X' % abs(zlib.crc32(bit)) for bit in key])
+
+
+def _search_key_255(key):
+    """Map the key tuple into a search key string which has 255-way fan out.
+
+    We use 255-way because '\n' is used as a delimiter, and causes problems
+    while parsing.
+    """
+    bytes = '\x00'.join([struct.pack('>i', zlib.crc32(bit)) for bit in key])
+    return bytes.replace('\n', '_')
 
 
 class CHKMap(object):

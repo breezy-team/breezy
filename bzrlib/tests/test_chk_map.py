@@ -18,7 +18,11 @@
 
 from itertools import izip
 
-from bzrlib import chk_map, osutils
+from bzrlib import (
+    chk_map,
+    osutils,
+    tests,
+    )
 from bzrlib.chk_map import (
     CHKMap,
     InternalNode,
@@ -1061,6 +1065,41 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "  'test:3' LeafNode\n"
                              "      ('3',) 'baz'\n"
                              , chkmap._dump_tree())
+
+
+class TestSearchKeyFuncs(tests.TestCase):
+
+    def assertSearchKey16(self, expected, key):
+        self.assertEqual(expected, chk_map._search_key_16(key))
+
+    def assertSearchKey255(self, expected, key):
+        actual = chk_map._search_key_255(key)
+        self.assertEqual(expected, actual, 'actual: %r' % (actual,))
+
+    def test_simple_16(self):
+        self.assertSearchKey16('738C9ADF', ('foo',))
+        self.assertSearchKey16('738C9ADF\x00738C9ADF', ('foo', 'foo'))
+        self.assertSearchKey16('738C9ADF\x0076FF8CAA', ('foo', 'bar'))
+        self.assertSearchKey16('127D32EF', ('abcd',))
+
+    def test_simple_255(self):
+        self.assertSearchKey255('\x8cse!', ('foo',))
+        self.assertSearchKey255('\x8cse!\x00\x8cse!', ('foo', 'foo'))
+        self.assertSearchKey255('\x8cse!\x00v\xff\x8c\xaa', ('foo', 'bar'))
+        # The standard mapping for these would include '\n', so it should be
+        # mapped to '_'
+        self.assertSearchKey255('\xfdm\x93_\x00P_\x1bL', ('<', 'V'))
+
+    def test_255_does_not_include_newline(self):
+        # When mapping via _search_key_255, we should never have the '\n'
+        # character, but all other 255 values should be present
+        chars_used = set()
+        for char_in in range(256):
+            search_key = chk_map._search_key_255((chr(char_in),))
+            chars_used.update(search_key)
+        all_chars = set([chr(x) for x in range(256)])
+        unused_chars = all_chars.symmetric_difference(chars_used)
+        self.assertEqual(set('\n'), unused_chars)
 
 
 class TestLeafNode(TestCaseWithStore):
