@@ -1428,7 +1428,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
         self.assertEqual([], entries)
 
     def test_not_in_other_mod_in_lca1_not_in_lca2(self):
@@ -1459,7 +1458,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
         self.assertEqual([('foo-id', True,
                            ((root_id, [root_id, None]), None, root_id),
                            ((u'foo', [u'foo', None]), None, 'foo'),
