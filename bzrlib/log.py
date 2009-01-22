@@ -646,6 +646,7 @@ def _get_revision_limits(branch, start_revision, end_revision):
         else:
             branch.check_real_revno(start_revision)
             start_revno = start_revision
+            start_rev_id = branch.get_rev_id(start_revno)
 
     end_rev_id = None
     if end_revision is None:
@@ -657,6 +658,7 @@ def _get_revision_limits(branch, start_revision, end_revision):
         else:
             branch.check_real_revno(end_revision)
             end_revno = end_revision
+            end_rev_id = branch.get_rev_id(end_revno)
 
     if branch_revno != 0:
         if (start_rev_id == _mod_revision.NULL_REVISION
