@@ -179,7 +179,6 @@ class TestShowLog(tests.TestCaseWithTransport):
         b = wt.branch
         lf = LogCatcher()
         lf.supports_merge_revisions = True
-        lf.prefers_merge_revisions = True
         log.show_log(b, lf, verbose=True)
 
         self.assertEqual(3, len(lf.logs))
@@ -369,8 +368,7 @@ class TestShortLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
         logfile = self.make_utf8_encoded_stringio()
-        formatter = log.ShortLogFormatter(to_file=logfile,
-            show_merge_revisions=True)
+        formatter = log.ShortLogFormatter(to_file=logfile, levels=0)
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
     2 Joe Foo\t2005-11-22 [merge]
@@ -402,8 +400,7 @@ class TestShortLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
         logfile = self.make_utf8_encoded_stringio()
-        formatter = log.ShortLogFormatter(to_file=logfile,
-            show_merge_revisions=True)
+        formatter = log.ShortLogFormatter(to_file=logfile, levels=0)
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         wtb = wt.branch
         rev = revspec.in_history(wtb)
@@ -748,8 +745,7 @@ class TestLongLogFormatterWithoutMergeRevisions(TestCaseWithoutPropsHandler):
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>')
         logfile = file('out.tmp', 'w+')
-        formatter = log.LongLogFormatter(to_file=logfile,
-                show_merge_revisions=False)
+        formatter = log.LongLogFormatter(to_file=logfile, levels=1)
         log.show_log(b, formatter, verbose=True)
         logfile.flush()
         logfile.seek(0)
@@ -782,8 +778,7 @@ added:
         wt.commit('merge branch 1')
         b = wt.branch
         sio = self.make_utf8_encoded_stringio()
-        lf = log.LongLogFormatter(to_file=sio,
-                show_merge_revisions=False)
+        lf = log.LongLogFormatter(to_file=sio, levels=1)
         log.show_log(b, lf, verbose=True)
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
@@ -815,8 +810,7 @@ added:
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
         sio = self.make_utf8_encoded_stringio()
-        lf = log.LongLogFormatter(to_file=sio,
-                show_merge_revisions=False)
+        lf = log.LongLogFormatter(to_file=sio, levels=1)
         log.show_log(b, lf)
         self.assertEqualDiff("""\
 ------------------------------------------------------------
@@ -861,8 +855,7 @@ message:
                   committer='Lorem Ipsum <test@example.com>',
                   author='John Doe <jdoe@example.com>')
         sio = StringIO()
-        formatter = log.LongLogFormatter(to_file=sio,
-                show_merge_revisions=False)
+        formatter = log.LongLogFormatter(to_file=sio, levels=1)
         log.show_log(b, formatter)
         self.assertEqualDiff('''\
 ------------------------------------------------------------
@@ -891,8 +884,7 @@ message:
                   committer='Lorem Ipsum <test@example.com>',
                   author='John Doe <jdoe@example.com>')
         sio = StringIO()
-        formatter = log.LongLogFormatter(to_file=sio,
-                show_merge_revisions=False)
+        formatter = log.LongLogFormatter(to_file=sio, levels=1)
         try:
             def trivial_custom_prop_handler(revision):
                 return {'test_prop':'test_value'}
@@ -1001,8 +993,7 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
                   timezone=36000,
                   committer='Line-Log-Formatter Tester <test@line.log>')
         logfile = file('out.tmp', 'w+')
-        formatter = log.LineLogFormatter(to_file=logfile,
-                show_merge_revisions=True)
+        formatter = log.LineLogFormatter(to_file=logfile, levels=0)
         log.show_log(b, formatter)
         logfile.flush()
         logfile.seek(0)
@@ -1027,8 +1018,7 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
         logfile = self.make_utf8_encoded_stringio()
-        formatter = log.LineLogFormatter(to_file=logfile,
-                show_merge_revisions=True)
+        formatter = log.LineLogFormatter(to_file=logfile, levels=0)
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         wtb = wt.branch
         rev = revspec.in_history(wtb)
@@ -1055,8 +1045,7 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
         logfile = self.make_utf8_encoded_stringio()
-        formatter = log.LineLogFormatter(to_file=logfile,
-                show_merge_revisions=True)
+        formatter = log.LineLogFormatter(to_file=logfile, levels=0)
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
 2: Joe Foo 2005-11-22 rev-2

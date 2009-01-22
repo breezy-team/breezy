@@ -196,14 +196,13 @@ def _show_log(branch,
 
     if specific_fileid:
         trace.mutter('get log for file_id %r', specific_fileid)
-    supports_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
-    if lf.show_merge_revisions is None:
-        generate_merge_revisions = (supports_merge_revisions and
-            getattr(lf, 'prefers_merge_revisions', False))
-    else:
-        generate_merge_revisions = lf.show_merge_revisions
-    allow_single_merge_revision = getattr(lf,
-        'supports_single_merge_revision', supports_merge_revisions)
+    levels_to_display = lf.get_levels_to_display()
+    trace.mutter("displaying %d levels of log" % levels_to_display)
+    generate_merge_revisions = levels_to_display != 1
+    allow_single_merge_revision = True
+    if not getattr(lf, 'supports_merge_revisions', False):
+        allow_single_merge_revision = getattr(lf,
+            'supports_single_merge_revision', False)
     view_revisions = calculate_view_revisions(branch, start_revision,
                                               end_revision, direction,
                                               specific_fileid,
@@ -223,6 +222,9 @@ def _show_log(branch,
         generate_delta, search)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
+            # Note: 0 levels means show everything; merge_depth counts from 0
+            if levels_to_display != 0 and merge_depth >= levels_to_display:
+                continue
             lr = LogRevision(rev, revno, merge_depth, delta,
                              rev_tag_dict.get(rev_id))
             lf.log_revision(lr)
@@ -728,9 +730,9 @@ class LogFormatter(object):
         also not True, then only mainline revisions will be passed to the 
         formatter.
 
-    - prefers_merge_revisions must be True if this log formatter displays
-        merge revisions by default. This flag is only relevant if
-        supports_merge_revisions is True.
+    - preferred_levels is the number of levels this formatter defaults to.
+        The default value is zero meaning display all levels.
+        This value is only relevant if supports_merge_revisions is True.
 
     - supports_single_merge_revision must be True if this log formatter
         supports logging only a single merge revision.  This flag is
@@ -747,7 +749,7 @@ class LogFormatter(object):
     """
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-                 delta_format=None, show_merge_revisions=None):
+                 delta_format=None, levels=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
@@ -755,9 +757,8 @@ class LogFormatter(object):
         :param show_timezone: the timezone to use
         :param delta_format: the level of delta information to display
           or None to leave it u to the formatter to decide
-        :param show_merge_revisions: if True, non-mainline revisions
-          are to be shown; if False, they should not be; if None,
-          the log formatter can decide.
+        :param levels: the number of levels to display; None or -1 to
+          let the log formatter decide.
         """
         self.to_file = to_file
         self.show_ids = show_ids
@@ -766,7 +767,16 @@ class LogFormatter(object):
             # Ensures backward compatibility
             delta_format = 2 # long format
         self.delta_format = delta_format
-        self.show_merge_revisions = show_merge_revisions
+        self.levels = levels
+
+    def get_levels_to_display(self):
+        if getattr(self, 'supports_merge_revisions', False):
+            if self.levels is None or self.levels == -1:
+                return getattr(self, 'preferred_levels', 0)
+            else:
+                return self.levels
+        trace.mutter("doesn't support merge revs")
+        return 1
 
 # TODO: uncomment this block after show() has been removed.
 # Until then defining log_revision would prevent _show_log calling show() 
@@ -803,7 +813,6 @@ class LogFormatter(object):
 class LongLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
-    prefers_merge_revisions = True
     supports_delta = True
     supports_tags = True
 
@@ -853,6 +862,7 @@ class LongLogFormatter(LogFormatter):
 class ShortLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
+    preferred_levels = 1
     supports_delta = True
 
     def log_revision(self, revision):
@@ -887,6 +897,7 @@ class ShortLogFormatter(LogFormatter):
 class LineLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
+    preferred_levels = 1
 
     def __init__(self, *args, **kwargs):
         super(LineLogFormatter, self).__init__(*args, **kwargs)

@@ -24,13 +24,15 @@ NOT RELEASED YET
 
   NEW FEATURES:
 
-    * ``bzr log`` supports a new option called ``--include-merges``.
-      This can be used to force the ``--short`` and ``--line`` formats
-      to display non-mainline revisions in a nested way similar to
-      how ``--long`` does by default. ``bzr log --no-include-merges``
-      will use the default ``--long`` format but show just the mainline
-      revisions. ``-n`` (for nested or non-mainline) is provided as
-      a shorthand for ``--include-merges``.
+    * ``bzr log`` supports a new option called ``--level-count N``.
+      A value of 0 (zero) means "show all nested merge revisions" while
+      a value of 1 (one) means "show just the top level". Values above
+      1 can be used to see a limited amount of nesting. That can be
+      useful for seeing the level or two below PQM submits for example.
+      To force the ``--short`` and ``--line`` formats to display all nested
+      merge revisions just like ``--long`` does by default, use a command
+      like ``bzr log --short -n 0``. To display just the mainline using
+      ``--long`` format, ``bzr log -n 1``.
       (Ian Clatworthy)
 
   IMPROVEMENTS:

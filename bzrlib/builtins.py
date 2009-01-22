@@ -1812,6 +1812,14 @@ def _parse_limit(limitstring):
         raise errors.BzrCommandError(msg)
 
 
+def _parse_level_count(s):
+    try:
+        return int(s)
+    except ValueError:
+        msg = "The level-count argument must be an integer."
+        raise errors.BzrCommandError(msg)
+
+
 class cmd_log(Command):
     """Show log of a branch, file, or directory.
 
@@ -1852,9 +1860,11 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
-            Option('include-merges',
+            Option('level-count',
                    short_name='n',
-                   help='Show (nested) merge revisions.'),
+                   help='Number of levels to display - 0 for all, 1 for flat.',
+                   argname='N',
+                   type=_parse_level_count),
             Option('message',
                    short_name='m',
                    help='Show revisions whose message matches this '
@@ -1876,7 +1886,7 @@ class cmd_log(Command):
             revision=None,
             change=None,
             log_format=None,
-            include_merges=None,
+            level_count=None,
             message=None,
             limit=None):
         from bzrlib.log import show_log
@@ -1926,7 +1936,7 @@ class cmd_log(Command):
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
-                            show_merge_revisions=include_merges)
+                            levels=level_count)
 
             show_log(b,
                      lf,
