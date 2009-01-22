@@ -28,18 +28,15 @@ class SvnBuildPackageMappedConfig(object):
   based on a svn-buildpackage configuration.
   """
 
-  def __init__(self, tree):
-    self.bp_config = SubversionBuildPackageConfig(tree)
+  def __init__(self, bp_config):
+    self.bp_config = bp_config
 
   def get_option(self, option, section=None):
     """Retrieve the contents of an option, mapped from the equivalent 
     svn-buildpackage option."""
     if section == "BUILDDEB":
       if option == "merge":
-        if self.bp_config.get_merge_with_upstream():
-          return "True"
-        else:
-          return "False"
+        return self.bp_config.get_merge_with_upstream()
       elif option == "orig-dir":
         return self.bp_config.get("origDir")
       elif option == "build-dir":
