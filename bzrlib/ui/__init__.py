@@ -101,14 +101,16 @@ class UIFactory(object):
     def _progress_updated(self, task):
         """Called by the ProgressTask when it changes.
         
-        Should be specialized to draw the progress."""
+        Should be specialized to draw the progress.
+        """
         pass
 
     def clear_term(self):
         """Prepare the terminal for output.
 
         This will, for example, clear text progress bars, and leave the
-        cursor at the leftmost position."""
+        cursor at the leftmost position.
+        """
         pass
 
     def get_boolean(self, prompt):
