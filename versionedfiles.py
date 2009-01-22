@@ -16,6 +16,8 @@
 from bzrlib import osutils
 from bzrlib.versionedfile import VirtualVersionedFiles
 
+from bzrlib.errors import NoSuchRevision
+
 
 class VirtualRevisionTexts(VirtualVersionedFiles):
     """Virtual revisions backend."""
@@ -24,9 +26,12 @@ class VirtualRevisionTexts(VirtualVersionedFiles):
         super(VirtualRevisionTexts, self).__init__(self.repository._make_parents_provider().get_parent_map, self.get_lines)
 
     def get_lines(self, key):
-        return osutils.split_lines(self.repository.get_revision_xml(key))
+        try:
+            return osutils.split_lines(self.repository.get_revision_xml(key))
+        except NoSuchRevision:
+            return None
 
-    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, keys
 
 
 class VirtualInventoryTexts(VirtualVersionedFiles):
@@ -36,9 +41,12 @@ class VirtualInventoryTexts(VirtualVersionedFiles):
         super(VirtualInventoryTexts, self).__init__(self.repository._make_parents_provider().get_parent_map, self.get_lines)
 
     def get_lines(self, key):
-        return osutils.split_lines(self.repository.get_inventory_xml(key))
+        try:
+            return osutils.split_lines(self.repository.get_inventory_xml(key))
+        except NoSuchRevision:
+            return None
 
-    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, keys
 
 
 class VirtualSignatureTexts(VirtualVersionedFiles):
@@ -48,7 +56,10 @@ class VirtualSignatureTexts(VirtualVersionedFiles):
         super(VirtualSignatureTexts, self).__init__(self.repository._make_parents_provider().get_parent_map, self.get_lines)
 
     def get_lines(self, key):
-        return osutils.split_lines(self.repository.get_signature_text(key))
+        try:
+            return osutils.split_lines(self.repository.get_signature_text(key))
+        except NoSuchRevision:
+            return None
 
-    # TODO: annotate, iter_lines_added_or_present_in_keys, keys
+    # TODO: annotate, keys
 
