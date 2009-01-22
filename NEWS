@@ -32,6 +32,9 @@ NOT RELEASED YET
     * ``bzr log --short`` and ``bzr log --line`` are now
       much faster in many use cases. (Ian Clatworthy)
 
+    * Rule-based preferences can now accept multiple patterns for a set of
+      rules.  (Marius Kruger)
+
   BUG FIXES:
 
     * ``bzr log FILE`` now correctly shows mainline revisions merging
@@ -54,6 +57,11 @@ NOT RELEASED YET
   TESTING:
 
   INTERNALS:
+
+    * New ``Branch.dotted_revno_to_revision_id()`` and
+      ``Branch.revision_id_to_dotted_revno()`` APIs that pick the most
+      efficient way of doing the mapping.
+      (Ian Clatworthy)
 
     * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
       formatters to retrict the output.
