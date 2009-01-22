@@ -353,7 +353,8 @@ class RevisionSpec_revno(RevisionSpec):
 
         if dotted:
             try:
-                revision = branch.dotted_revno_to_revision_id(match_revno)
+                revision = branch.dotted_revno_to_revision_id(match_revno,
+                    _reverse_cache=True)
             except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:

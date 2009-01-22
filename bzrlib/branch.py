@@ -89,6 +89,7 @@ class Branch(object):
         self.tags = self._make_tags()
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._revision_id_to_revno_top_cache = {}
         self._last_revision_info_cache = None
         self._open_hook()
         hooks = Branch.hooks['open']
@@ -189,14 +190,21 @@ class Branch(object):
         raise NotImplementedError(self.get_physical_lock_status)
 
     @needs_read_lock
-    def dotted_revno_to_revision_id(self, revno):
+    def dotted_revno_to_revision_id(self, revno, _reverse_cache=False):
         """Return the revision_id for a dotted revno.
 
         :param revno: a tuple like (1,) or (1,1,2)
+        :param _cache_reverse: a private parameter enabling storage
+           of the reverse mapping in a top level cache. (This should
+           only be done in selective circumstances as we want to
+           avoid having the mapping cached multiple times.)
         :return: the revision_id
         :raises errors.NoSuchRevision: if the revno doesn't exist
         """
-        return self._dotted_revno_to_revision_id(revno)
+        rev_id = self._dotted_revno_to_revision_id(revno)
+        if _reverse_cache:
+            self._revision_id_to_revno_top_cache[rev_id] = revno
+        return rev_id
 
     def _dotted_revno_to_revision_id(self, revno):
         """Worker function for dotted_revno_to_revision_id.
@@ -224,9 +232,9 @@ class Branch(object):
 
     def _revision_id_to_dotted_revno(self, revision_id):
         """Worker function for revision_id_to_revno."""
-        # Use the revno map cache if it's loaded
-        result = None
-        if self._revision_id_to_revno_cache:
+        # Try the caches if they are loaded
+        result = self._revision_id_to_revno_top_cache.get(revision_id)
+        if result is None and self._revision_id_to_revno_cache:
             result = self._revision_id_to_revno_cache.get(revision_id)
         if result is None:
             # Try the mainline as it's optimised
@@ -234,7 +242,7 @@ class Branch(object):
                 revno = self.revision_id_to_revno(revision_id)
                 return (revno,)
             except errors.NoSuchRevision:
-                # We need to load and use the revno map after all
+                # We need to load and use the full revno map after all
                 result = self.get_revision_id_to_revno_map().get(revision_id)
                 if result is None:
                     raise errors.NoSuchRevision(self, revision_id)

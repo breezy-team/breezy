@@ -23,7 +23,7 @@ from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 class TestDottedRevnoToRevisionId(TestCaseWithBranch):
 
-    def test_dotted_revno_lookup(self):
+    def test_lookup_revision_id_by_dotted(self):
         tree = self.create_tree_with_merge()
         the_branch = tree.branch
         self.assertEqual('null:', the_branch.dotted_revno_to_revision_id((0,)))
@@ -34,3 +34,10 @@ class TestDottedRevnoToRevisionId(TestCaseWithBranch):
             (1,1,1)))
         self.assertRaises(errors.NoSuchRevision,
                           the_branch.dotted_revno_to_revision_id, (1,0,2))
+        # Test reverse caching
+        self.assertEqual(None,
+            the_branch._revision_id_to_revno_top_cache.get('rev-1'))
+        self.assertEqual('rev-1', the_branch.dotted_revno_to_revision_id((1,),
+            _reverse_cache=True))
+        self.assertEqual((1,),
+            the_branch._revision_id_to_revno_top_cache.get('rev-1'))
