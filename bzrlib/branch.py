@@ -89,7 +89,7 @@ class Branch(object):
         self.tags = self._make_tags()
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
-        self._revision_id_to_revno_top_cache = {}
+        self._partial_revision_id_to_revno_cache = {}
         self._last_revision_info_cache = None
         self._open_hook()
         hooks = Branch.hooks['open']
@@ -190,7 +190,7 @@ class Branch(object):
         raise NotImplementedError(self.get_physical_lock_status)
 
     @needs_read_lock
-    def dotted_revno_to_revision_id(self, revno, _reverse_cache=False):
+    def dotted_revno_to_revision_id(self, revno, _cache_reverse=False):
         """Return the revision_id for a dotted revno.
 
         :param revno: a tuple like (1,) or (1,1,2)
@@ -201,12 +201,12 @@ class Branch(object):
         :return: the revision_id
         :raises errors.NoSuchRevision: if the revno doesn't exist
         """
-        rev_id = self._dotted_revno_to_revision_id(revno)
-        if _reverse_cache:
-            self._revision_id_to_revno_top_cache[rev_id] = revno
+        rev_id = self._do_dotted_revno_to_revision_id(revno)
+        if _cache_reverse:
+            self._partial_revision_id_to_revno_cache[rev_id] = revno
         return rev_id
 
-    def _dotted_revno_to_revision_id(self, revno):
+    def _do_dotted_revno_to_revision_id(self, revno):
         """Worker function for dotted_revno_to_revision_id.
 
         Subclasses should override this if they wish to
@@ -215,9 +215,11 @@ class Branch(object):
         if len(revno) == 1:
             return self.get_rev_id(revno[0])
         revision_id_to_revno = self.get_revision_id_to_revno_map()
-        for revision_id, this_revno in revision_id_to_revno.iteritems():
-            if revno == this_revno:
-                return revision_id
+        revision_ids = [revision_id for revision_id, this_revno
+                        in revision_id_to_revno.iteritems()
+                        if revno == this_revno]
+        if len(revision_ids) == 1:
+            return revision_ids[0]
         else:
             revno_str = '.'.join(map(str, revno))
             raise errors.NoSuchRevision(self, revno_str)
@@ -228,24 +230,27 @@ class Branch(object):
         
         :return: a tuple like (1,) or (400,1,3).
         """
-        return self._revision_id_to_dotted_revno(revision_id)
+        return self._do_revision_id_to_dotted_revno(revision_id)
 
-    def _revision_id_to_dotted_revno(self, revision_id):
+    def _do_revision_id_to_dotted_revno(self, revision_id):
         """Worker function for revision_id_to_revno."""
         # Try the caches if they are loaded
-        result = self._revision_id_to_revno_top_cache.get(revision_id)
-        if result is None and self._revision_id_to_revno_cache:
+        result = self._partial_revision_id_to_revno_cache.get(revision_id)
+        if result is not None:
+            return result
+        if self._revision_id_to_revno_cache:
             result = self._revision_id_to_revno_cache.get(revision_id)
-        if result is None:
-            # Try the mainline as it's optimised
-            try:
-                revno = self.revision_id_to_revno(revision_id)
-                return (revno,)
-            except errors.NoSuchRevision:
-                # We need to load and use the full revno map after all
-                result = self.get_revision_id_to_revno_map().get(revision_id)
-                if result is None:
-                    raise errors.NoSuchRevision(self, revision_id)
+            if result is None:
+                raise errors.NoSuchRevision(self, revision_id)
+        # Try the mainline as it's optimised
+        try:
+            revno = self.revision_id_to_revno(revision_id)
+            return (revno,)
+        except errors.NoSuchRevision:
+            # We need to load and use the full revno map after all
+            result = self.get_revision_id_to_revno_map().get(revision_id)
+            if result is None:
+                raise errors.NoSuchRevision(self, revision_id)
         return result
 
     def get_revision_id_to_revno_map(self):

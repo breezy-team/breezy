@@ -36,8 +36,8 @@ class TestDottedRevnoToRevisionId(TestCaseWithBranch):
                           the_branch.dotted_revno_to_revision_id, (1,0,2))
         # Test reverse caching
         self.assertEqual(None,
-            the_branch._revision_id_to_revno_top_cache.get('rev-1'))
+            the_branch._partial_revision_id_to_revno_cache.get('rev-1'))
         self.assertEqual('rev-1', the_branch.dotted_revno_to_revision_id((1,),
-            _reverse_cache=True))
+            _cache_reverse=True))
         self.assertEqual((1,),
-            the_branch._revision_id_to_revno_top_cache.get('rev-1'))
+            the_branch._partial_revision_id_to_revno_cache.get('rev-1'))
