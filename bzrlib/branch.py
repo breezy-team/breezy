@@ -215,6 +215,31 @@ class Branch(object):
             raise errors.NoSuchRevision(self, revno_str)
 
     @needs_read_lock
+    def revision_id_to_dotted_revno(self, revision_id):
+        """Given a revision id, return its dotted revno.
+        
+        :return: a tuple like (1,) or (400,1,3).
+        """
+        return self._revision_id_to_dotted_revno(revision_id)
+
+    def _revision_id_to_dotted_revno(self, revision_id):
+        """Worker function for revision_id_to_revno."""
+        # Use the revno map cache if it's loaded
+        result = None
+        if self._revision_id_to_revno_cache:
+            result = self._revision_id_to_revno_cache.get(revision_id)
+        if result is None:
+            # Try the mainline as it's optimised
+            try:
+                revno = self.revision_id_to_revno(revision_id)
+                return (revno,)
+            except errors.NoSuchRevision:
+                # We need to load and use the revno map after all
+                result = self.get_revision_id_to_revno_map().get(revision_id)
+                if result is None:
+                    raise errors.NoSuchRevision(self, revision_id)
+        return result
+
     def get_revision_id_to_revno_map(self):
         """Return the revision_id => dotted revno map.
 
