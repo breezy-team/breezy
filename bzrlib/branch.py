@@ -253,6 +253,7 @@ class Branch(object):
                 raise errors.NoSuchRevision(self, revision_id)
         return result
 
+    @needs_read_lock
     def get_revision_id_to_revno_map(self):
         """Return the revision_id => dotted revno map.
 
