@@ -18,9 +18,33 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.config import ConfigObj, TreeConfig
+from bzrlib.config import ConfigObj, IniBasedConfig, TreeConfig
 from bzrlib.trace import mutter
 from bzrlib.plugins.builddeb.util import get_snapshot_revision
+
+
+class SvnBuildPackageMappedConfig(object):
+  """Config object that provides a bzr-builddeb configuration 
+  based on a svn-buildpackage configuration.
+  """
+
+  def __init__(self, tree):
+    self.bp_config = SubversionBuildPackageConfig(tree)
+
+  def get_option(self, option, section=None):
+    """Retrieve the contents of an option, mapped from the equivalent 
+    svn-buildpackage option."""
+    if section == "BUILDDEB":
+      if option == "merge":
+        if self.bp_config.get_merge_with_upstream():
+          return "True"
+        else:
+          return "False"
+      elif option == "orig-dir":
+        return self.bp_config.get("origDir")
+      elif option == "build-dir":
+        return self.bp_config.get("buildArea")
+    return None
 
 
 class DebBuildConfig(object):
@@ -71,6 +95,16 @@ class DebBuildConfig(object):
     else:
       self._branch_config = None
     self._tree_config = None
+    if tree is not None:
+      try:
+        # Imported here, since not everybody will have bzr-svn installed
+        from bzrlib.plugins.svn.config import SubversionBuildPackageConfig, NoSubversionBuildPackageConfig
+        try:
+          self._tree_config = SvnBuildPackageMappedConfig(SubversionBuildPackageConfig(tree))
+        except NoSubversionBuildPackageConfig:
+          pass # Not a svn tree
+      except ImportError:
+        pass # No svn, apparently
     self.user_config = None
 
   def set_user_config(self, user_conf):
