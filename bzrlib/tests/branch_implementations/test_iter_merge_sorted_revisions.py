@@ -42,7 +42,7 @@ class TestIterMergeSortedRevisions(TestCaseWithBranch):
         self.assertEqual([
             (3, 'rev-1', 0, (1,), True),
             (2, 'rev-2', 0, (2,), False),
-            (0, 'rev-3', 0, (3,), False),
             (1, 'rev-1.1.1', 1, (1,1,1), True),
+            (0, 'rev-3', 0, (3,), False),
             ], list(the_branch.iter_merge_sorted_revisions(
                 direction='forward')))

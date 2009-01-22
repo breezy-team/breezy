@@ -28,7 +28,6 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
-        log,
         repository,
         revision as _mod_revision,
         transport,
@@ -228,10 +227,23 @@ class Branch(object):
     def iter_merge_sorted_revisions(self, direction='reverse'):
         """Walk the revisions for a branch in merge sorted order.
 
-        :param direction: either 'reverse' or 'forward'
+        :param direction: either 'reverse' or 'forward':
+            * reverse means start at the most recent revision and
+              go backwards in history
+            * forward returns tuples in the opposite order to reverse.
+              Note in particular that forward does *not* do any intelligent
+              ordering w.r.t. depth as some clients of this API may like.
+
         :return: an iterator over
             (sequence_number, revision_id, depth, revno, end_of_merge) tuples.
         """
+        # Note: We may want to make last_revision a parameter to this method
+        # in the future. We will need to be clear though what the semantics
+        # will be. One option is to sort the whole graph and then skip until
+        # finding last_revision. That will result in depth and revno values
+        # being in the context of the branch. Another option is to sort the
+        # graph as if last_revision was the actual tip. My preference is for
+        # the first of these options. IGC 20090122
         last_revision = self.last_revision()
         revision_graph = repository._old_get_graph(self.repository,
             last_revision)
@@ -243,7 +255,7 @@ class Branch(object):
         if direction == 'reverse':
             return iter(merge_sorted_revisions)
         if direction == 'forward':
-            return iter(log.reverse_by_depth(merge_sorted_revisions))
+            return iter(reversed(merge_sorted_revisions))
         else:
             raise ValueError('invalid direction %r' % direction)
 
