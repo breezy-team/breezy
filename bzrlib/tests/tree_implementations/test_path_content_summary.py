@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib.osutils import supports_executable
+from bzrlib.osutils import supports_executable, _fs_enc
 from bzrlib.tests import SymlinkFeature, TestSkipped, TestNotApplicable
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
@@ -37,6 +37,14 @@ class TestPathContentSummary(TestCaseWithTree):
         os.symlink('target', 'tree/path')
         tree.add(['path'])
         summary = self._convert_tree(tree).path_content_summary('path')
+        self.assertEqual(('symlink', None, None, 'target'), summary)
+
+    def test_unicode_symlink_content_summary(self):
+        self.requireFeature(SymlinkFeature)
+        tree = self.make_branch_and_tree('tree')
+        os.symlink('target', u'tree/\u03b2-path')
+        tree.add([u'\u03b2-path'])
+        summary = self._convert_tree(tree).path_content_summary(u'\u03b2-path')
         self.assertEqual(('symlink', None, None, 'target'), summary)
 
     def test_missing_content_summary(self):

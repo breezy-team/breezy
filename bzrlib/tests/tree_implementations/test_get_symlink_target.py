@@ -34,9 +34,10 @@ class TestGetSymlinkTarget(TestCaseWithTree):
         os.symlink('foo', 'tree/link')
         os.symlink('../bar', 'tree/rel_link')
         os.symlink('/baz/bing', 'tree/abs_link')
+        os.symlink('target',  u'tree/\u03b2_link')
 
-        tree.add(['link', 'rel_link', 'abs_link'],
-                 ['link-id', 'rel-link-id', 'abs-link-id'])
+        tree.add(['link', 'rel_link', 'abs_link', u'\u03b2_link'],
+                 ['link-id', 'rel-link-id', 'abs-link-id', 'unicode-link-id'])
         return self._convert_tree(tree)
 
     def test_get_symlink_target(self):
@@ -46,3 +47,5 @@ class TestGetSymlinkTarget(TestCaseWithTree):
         self.assertEqual('foo', tree.get_symlink_target('link-id'))
         self.assertEqual('../bar', tree.get_symlink_target('rel-link-id'))
         self.assertEqual('/baz/bing', tree.get_symlink_target('abs-link-id'))
+        self.assertEqual('target', tree.get_symlink_target(u'unicode-link-id'))
+
