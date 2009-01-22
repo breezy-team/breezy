@@ -31,7 +31,7 @@ class DebBuildConfig(object):
 
   section = 'BUILDDEB'
 
-  def __init__(self, files, branch=None, version=None):
+  def __init__(self, files, branch=None, tree=None, version=None):
     """ 
     Creates a config to read from config files in a hierarchy.
 
@@ -70,6 +70,7 @@ class DebBuildConfig(object):
       self._branch_config = TreeConfig(branch)
     else:
       self._branch_config = None
+    self._tree_config = None
     self.user_config = None
 
   def set_user_config(self, user_conf):
@@ -110,11 +111,16 @@ class DebBuildConfig(object):
     """
     if section is None:
       section = self.section
-    if self._branch_config is not None:
-      if not trusted:
+    if not trusted:
+      if self._branch_config is not None:
         value = self._branch_config.get_option(key, section=self.section)
         if value is not None:
           mutter("Using %s for %s, taken from the branch", value, key)
+          return value
+      if self._tree_config is not None:
+        value = self._tree_config.get_option(key, section=self.section)
+        if value is not None:
+          mutter("Using %s for %s, taken from the tree", value, key)
           return value
     for config_file in self._config_files:
       if not trusted or config_file[1]:
@@ -144,11 +150,16 @@ class DebBuildConfig(object):
     marked as trusted.
     
     """
-    if self._branch_config is not None:
-      if not trusted:
+    if not trusted:
+      if self._branch_config is not None:
         value = self._branch_config.get_option(key, section=self.section)
         if value is not None:
           mutter("Using %s for %s, taken from the branch", value, key)
+          return value
+      if self._tree_config is not None:
+        value = self._tree_config.get_option(key, section=self.section)
+        if value is not None:
+          mutter("Using %s for %s, taken from the tree", value, key)
           return value
     for config_file in self._config_files:
       if not trusted or config_file[1]:

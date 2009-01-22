@@ -130,7 +130,7 @@ def debuild_config(tree, working_tree, no_user_config):
         user_config = global_conf
     if tree.path2id(default_conf):
         config_files.append((tree.get_file(tree.path2id(default_conf)), False))
-    config = DebBuildConfig(config_files)
+    config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config
 
@@ -340,7 +340,8 @@ class cmd_builddeb(Command):
               build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
           else:
               if export_upstream is None:
-                  build = DebBuild(properties, tree, _is_working_tree=working_tree)
+                  build = DebBuild(properties, branch=branch, tree=tree, 
+                                   _is_working_tree=working_tree)
               else:
                   prepull_upstream = config.prepull_upstream
                   stop_on_no_change = config.prepull_upstream_stop
