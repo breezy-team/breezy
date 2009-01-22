@@ -56,7 +56,7 @@ NOT RELEASED YET
       terminal. It is sometimes desirable do override this default by forcing
       bzr to use TextUIFactory. This can be achieved by setting the
       BZR_USE_TEXT_UI environment variable (emacs shells, as opposed to
-      compile buffers, are such an example.
+      compile buffers, are such an example).
       (Vincent Ladeuil)
 
     * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
