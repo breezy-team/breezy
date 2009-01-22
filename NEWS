@@ -62,6 +62,11 @@ NOT RELEASED YET
       compile buffers, are such an example).
       (Vincent Ladeuil)
 
+    * New ``Branch.dotted_revno_to_revision_id()`` and
+      ``Branch.revision_id_to_dotted_revno()`` APIs that pick the most
+      efficient way of doing the mapping.
+      (Ian Clatworthy)
+
     * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
       formatters to retrict the output.
       (Vincent Ladeuil)

@@ -352,20 +352,15 @@ class RevisionSpec_revno(RevisionSpec):
             revs_or_none = None
 
         if dotted:
-            branch.lock_read()
             try:
-                revision_id_to_revno = branch.get_revision_id_to_revno_map()
-                revisions = [revision_id for revision_id, revno
-                             in revision_id_to_revno.iteritems()
-                             if revno == match_revno]
-            finally:
-                branch.unlock()
-            if len(revisions) != 1:
+                revision_id = branch.dotted_revno_to_revision_id(match_revno,
+                    _cache_reverse=True)
+            except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return branch, None, revisions[0]
+                return branch, None, revision_id
         else:
             last_revno, last_revision_id = branch.last_revision_info()
             if revno < 0:
