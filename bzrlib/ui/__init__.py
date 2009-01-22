@@ -224,6 +224,7 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     If stdout is a smart terminal, this gets a smart UIFactory with 
     progress indicators, etc.  If it's a dumb terminal, just plain text output.
     """
+    cls = None
     isatty = getattr(stdin, 'isatty', None)
     if isatty is None:
         cls = CLIUIFactory
