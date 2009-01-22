@@ -309,21 +309,16 @@ def _calc_view_revisions(branch, rev_limits, direction,
                 generate_single_revision = False
         elif (not generate_merge_revisions or
             not _has_merges(branch, start_rev_id)):
-            try:
-                revno = branch.revision_id_to_revno(start_rev_id)
-                # We found it on the mainline
-                return [(start_rev_id, revno, 0)]
-            except errors.NoSuchRevision:
-                if allow_single_merge_revision:
-                    # It's a merge revision and the log formatter isn't
-                    # completely brain dead.
-                    revnos = branch.get_revision_id_to_revno_map()
-                    revno = revnos.get(start_rev_id)
-                    revno_str = '.'.join(str(n) for n in revno)
-                    return [(start_rev_id, revno_str, 0)]
-                else:
-                    raise errors.BzrCommandError('Selected log formatter only'
-                        ' supports mainline revisions.')
+            revno = branch.revision_id_to_dotted_revno(start_rev_id)
+            if len(revno) > 1 and not allow_single_merge_revision:
+                # It's a merge revision and the log formatter is
+                # completely brain dead. This "feature" of allowing
+                # log formatters incapable of displaying dotted revnos
+                # ought to be deprecated IMNSHO. IGC 20091022
+                raise errors.BzrCommandError('Selected log formatter only'
+                    ' supports mainline revisions.')
+            revno_str = '.'.join(str(n) for n in revno)
+            return [(start_rev_id, revno_str, 0)]
         else:
             generate_single_revision = False
 
@@ -417,28 +412,16 @@ def _linear_view_revisions(branch, revision_limits):
     else:
         if end_rev_id is None:
             end_rev_id = br_rev_id
-        # If we're starting on the mainline, we can calculate revnos.
-        # Otherwise, we need to look them up.
-        try:
-            cur_revno = branch.revision_id_to_revno(end_rev_id)
-            lookup_revnos = False
-        except errors.NoSuchRevision:
-            lookup_revnos = True
-        if lookup_revnos:
-            revno_map = branch.get_revision_id_to_revno_map()
         found_start = start_rev_id is None
         for revision_id in repo.iter_reverse_revision_history(end_rev_id):
-            if lookup_revnos:
-                revno_str = revno_map.get(revision_id)
-            else:
-                revno_str = str(cur_revno)
+            revno = branch.revision_id_to_dotted_revno(revision_id)
+            revno_str = '.'.join(str(n) for n in revno)
             if not found_start and revision_id == start_rev_id:
                 yield revision_id, revno_str, 0
                 found_start = True
                 break
             else:
                 yield revision_id, revno_str, 0
-                cur_revno -= 1
         else:
             if not found_start:
                 raise _StartNotLinearAncestor()
