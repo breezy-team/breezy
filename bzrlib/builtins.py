@@ -4097,6 +4097,17 @@ class cmd_serve(Command):
             ui.ui_factory = old_factory
             lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 
+    def get_host_and_port(self, port=None):
+        from bzrlib.smart import medium
+        host = medium.BZR_DEFAULT_INTERFACE
+        if port is None:
+            port = medium.BZR_DEFAULT_PORT
+        else:
+            if ':' in port:
+                host, port = port.split(':')
+            port = int(port)
+        return host, port
+
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
@@ -4113,17 +4124,11 @@ class cmd_serve(Command):
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, t)
         else:
-            host = medium.BZR_DEFAULT_INTERFACE
-            if port is None:
-                port = medium.BZR_DEFAULT_PORT
-            else:
-                if ':' in port:
-                    host, port = port.split(':')
-                port = int(port)
+            host, port = self.get_host_and_port(port)
             smart_server = server.SmartTCPServer(t, host=host, port=port)
-            print 'listening on port: ', smart_server.port
-            sys.stdout.flush()
+            note('listening on port: %s' % smart_server.port)
         self.run_server(smart_server)
+
 
 class cmd_join(Command):
     """Combine a subtree into its containing tree.
