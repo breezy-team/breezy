@@ -21,7 +21,7 @@ import os
 from bzrlib import errors
 from bzrlib.tests import TestCase
 from bzrlib.plugins.launchpad.lp_registration import (
-    InvalidLaunchpadInstance, LaunchpadService)
+    InvalidLaunchpadInstance, LaunchpadService, NotLaunchpadBranch)
 
 
 class LaunchpadServiceTests(TestCase):
@@ -120,15 +120,24 @@ class TestURLInference(TestCase):
 
     def test_non_launchpad_url(self):
         service = LaunchpadService()
-        self.assertRaises(
-            errors.InvalidURL, service.get_web_url_from_branch_url,
+        error = self.assertRaises(
+            NotLaunchpadBranch, service.get_web_url_from_branch_url,
             'bzr+ssh://example.com/~foo/bar/baz')
+        self.assertEqual(
+            'bzr+ssh://example.com/~foo/bar/baz is not hosted on Launchpad.',
+            str(error))
 
     def test_dodgy_launchpad_url(self):
         service = LaunchpadService()
         self.assertRaises(
-            errors.InvalidURL, service.get_web_url_from_branch_url,
+            NotLaunchpadBranch, service.get_web_url_from_branch_url,
             'bzr+ssh://launchpad.net/~foo/bar/baz')
+
+    def test_lp_branch_url(self):
+        service = LaunchpadService(lp_instance='production')
+        web_url = service.get_web_url_from_branch_url('lp:~foo/bar/baz')
+        self.assertEqual(
+            'http://code.launchpad.net/~foo/bar/baz', web_url)
 
     def test_staging_url(self):
         service = LaunchpadService(lp_instance='staging')

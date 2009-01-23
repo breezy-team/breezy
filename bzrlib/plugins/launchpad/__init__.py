@@ -127,6 +127,30 @@ class cmd_register_branch(Command):
 register_command(cmd_register_branch)
 
 
+class cmd_launchpad_open(Command):
+    """Open a Launchpad branch page in your web browser."""
+
+    aliases = ['lp-open']
+    takes_args = ['location?']
+
+    def run(self, location=None):
+        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
+        from bzrlib.trace import note
+        import webbrowser
+        if location is None:
+            location = u'.'
+        # XXX: What if this cannot be opened?
+        branch = Branch.open(location)
+        # XXX: What if this is None?
+        branch_url = branch.get_public_branch()
+        service = LaunchpadService()
+        web_url = service.get_web_url_from_branch_url(branch_url)
+        note('Opening %s in web browser' % web_url)
+        webbrowser.open(web_url)
+
+register_command(cmd_launchpad_open)
+
+
 class cmd_launchpad_login(Command):
     """Show or set the Launchpad user ID.
 

@@ -45,6 +45,14 @@ class InvalidLaunchpadInstance(errors.BzrError):
         errors.BzrError.__init__(self, lp_instance=lp_instance)
 
 
+class NotLaunchpadBranch(errors.BzrError):
+
+    _fmt = "%(url)s is not hosted on Launchpad."
+
+    def __init__(self, url):
+        errors.BzrError.__init__(self, url=url)
+
+
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
 
@@ -187,10 +195,11 @@ class LaunchpadService(object):
         :return: The URL of the branch on Launchpad.
         """
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
-        domains = ('bazaar.%s' % domain
-                   for domain in self.LAUNCHPAD_DOMAINS.itervalues())
-        if hostinfo not in domains:
-            raise errors.InvalidURL(branch_url)
+        if scheme != 'lp':
+            domains = ('bazaar.%s' % domain
+                       for domain in self.LAUNCHPAD_DOMAINS.itervalues())
+            if hostinfo not in domains:
+                raise NotLaunchpadBranch(branch_url)
         return urlutils.join('http://code.%s' % self.domain, path)
 
 
