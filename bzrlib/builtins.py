@@ -4135,11 +4135,13 @@ class cmd_serve(Command):
         from bzrlib.smart import medium, server
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, t)
+                sys.stdin, sys.stdout, transport)
         else:
             host, port = self.get_host_and_port(port)
-            smart_server = server.SmartTCPServer(t, host=host, port=port)
+            smart_server = server.SmartTCPServer(
+                transport, host=host, port=port)
             note('listening on port: %s' % smart_server.port)
+        return smart_server
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.transport import get_transport
