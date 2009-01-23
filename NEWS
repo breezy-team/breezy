@@ -19,6 +19,11 @@ IN DEVELOPMENT
       merge, we would cause the deletion to conflict a second time.
       (Vincent Ladeuil, John Arbash Meinel)
 
+  INTERNALS:
+
+    * Refactor cmd_serve so that it's a little easier to build commands that
+      extend it, and perhaps even a bit easier to read.  (Jonathan Lange)
+
 
 NOT RELEASED YET
 ----------------
