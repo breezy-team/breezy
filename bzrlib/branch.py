@@ -90,6 +90,7 @@ class Branch(object):
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
+        self._merge_sorted_revisions_cache = None
         self._open_hook()
         hooks = Branch.hooks['open']
         for hook in hooks:
@@ -219,45 +220,70 @@ class Branch(object):
         :return: A dictionary mapping revision_id => dotted revno.
         """
         revision_id_to_revno = dict((rev_id, revno)
-                                    for seq_num, rev_id, depth, revno, end_of_merge
-                                     in self.iter_merge_sorted_revisions())
+            for rev_id, depth, revno, end_of_merge
+             in self.iter_merge_sorted_revisions())
         return revision_id_to_revno
 
     @needs_read_lock
-    def iter_merge_sorted_revisions(self, direction='reverse'):
+    def iter_merge_sorted_revisions(self, start_revision_id=None,
+            stop_revision_id=None, direction='reverse'):
         """Walk the revisions for a branch in merge sorted order.
 
+        :param start_revision_id: the revision_id to begin walking from.
+            If None, the branch tip is used.
+        :param stop_revision_id: the revision_id to terminate the walk
+            after (i.e. the range is inclusive). If None, the rest of
+            history is included.
         :param direction: either 'reverse' or 'forward':
-            * reverse means start at the most recent revision and
-              go backwards in history
+            * reverse means return the start_revision_id first, i.e.
+              start at the most recent revision and go backwards in history
             * forward returns tuples in the opposite order to reverse.
               Note in particular that forward does *not* do any intelligent
               ordering w.r.t. depth as some clients of this API may like.
 
         :return: an iterator over
-            (sequence_number, revision_id, depth, revno, end_of_merge) tuples.
+            (revision_id, depth, revno, end_of_merge) tuples.
         """
-        # Note: We may want to make last_revision a parameter to this method
-        # in the future. We will need to be clear though what the semantics
-        # will be. One option is to sort the whole graph and then skip until
-        # finding last_revision. That will result in depth and revno values
-        # being in the context of the branch. Another option is to sort the
-        # graph as if last_revision was the actual tip. My preference is for
-        # the first of these options. IGC 20090122
-        last_revision = self.last_revision()
-        revision_graph = repository._old_get_graph(self.repository,
-            last_revision)
-        merge_sorted_revisions = tsort.merge_sort(
-            revision_graph,
-            last_revision,
-            None,
-            generate_revno=True)
+        # Note: depth and revno values are in the context of the branch so
+        # we need the full graph to get stable numbers, regardless of the
+        # start_revision_id.
+        if self._merge_sorted_revisions_cache is None:
+            last_revision = self.last_revision()
+            revision_graph = repository._old_get_graph(self.repository,
+                last_revision)
+            self._merge_sorted_revisions_cache = tsort.merge_sort(
+                revision_graph,
+                last_revision,
+                None,
+                generate_revno=True)
+        filtered = self._filter_merge_sorted_revisions(
+            self._merge_sorted_revisions_cache, start_revision_id,
+            stop_revision_id)
         if direction == 'reverse':
-            return iter(merge_sorted_revisions)
+            return filtered
         if direction == 'forward':
-            return iter(reversed(merge_sorted_revisions))
+            return reversed(list(filtered))
         else:
             raise ValueError('invalid direction %r' % direction)
+
+    def _filter_merge_sorted_revisions(self, merge_sorted_revisions,
+        start_revision_id, stop_revision_id):
+        """Iterate over an inclusive range of sorted revisions.
+        
+        This method also strips off the sequence number.
+        """
+        rev_iter = iter(merge_sorted_revisions)
+        if start_revision_id is not None:
+            for seqnum, rev_id, depth, revno, end_of_merge in rev_iter:
+                if rev_id != start_revision_id:
+                    continue
+                else:
+                    yield rev_id, depth, revno, end_of_merge
+                    break
+        for seqnum, rev_id, depth, revno, end_of_merge in rev_iter:
+            yield rev_id, depth, revno, end_of_merge
+            if stop_revision_id is not None and rev_id == stop_revision_id:
+                raise StopIteration
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
@@ -425,6 +451,7 @@ class Branch(object):
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
+        self._merge_sorted_revisions_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
