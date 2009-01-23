@@ -4080,8 +4080,24 @@ class cmd_serve(Command):
                 ),
         ]
 
-    def run(self, port=None, inet=False, directory=None, allow_writes=False):
+    def run_server(self, smart_server):
+        """Run 'smart_server' forever, with no UI output at all."""
+        # For the duration of this server, no UI output is permitted. note
+        # that this may cause problems with blackbox tests. This should be
+        # changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
         from bzrlib import lockdir
+        old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        try:
+            ui.ui_factory = ui.SilentUIFactory()
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+            smart_server.serve()
+        finally:
+            ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+
+    def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
@@ -4107,20 +4123,7 @@ class cmd_serve(Command):
             smart_server = server.SmartTCPServer(t, host=host, port=port)
             print 'listening on port: ', smart_server.port
             sys.stdout.flush()
-        # for the duration of this server, no UI output is permitted.
-        # note that this may cause problems with blackbox tests. This should
-        # be changed with care though, as we dont want to use bandwidth sending
-        # progress over stderr to smart server clients!
-        old_factory = ui.ui_factory
-        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        try:
-            ui.ui_factory = ui.SilentUIFactory()
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-            smart_server.serve()
-        finally:
-            ui.ui_factory = old_factory
-            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
-
+        self.run_server(smart_server)
 
 class cmd_join(Command):
     """Combine a subtree into its containing tree.
