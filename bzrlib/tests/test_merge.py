@@ -2153,8 +2153,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.merge_from_branch(wt.branch, 'C-id')
         wt.commit('D merges B & C', rev_id='D-id')
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
-        self.expectFailure("Merge3Merger doesn't use lcas for symlink content",
-            self.assertEqual, 0, conflicts)
+        self.assertEqual(0, conflicts)
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_renamed_symlink(self):

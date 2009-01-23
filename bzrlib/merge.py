@@ -977,7 +977,7 @@ class Merge3Merger(object):
         :return: 'this', 'other', or 'conflict' depending on whether an entry
             changed or not.
         """
-        # See doc/developers/lca_merge_resolution.txt for details about this
+        # See doc/developers/lca_tree_merging.txt for details about this
         # algorithm.
         if other == this:
             # Either Ambiguously clean, or nothing was actually changed. We
@@ -1118,40 +1118,43 @@ class Merge3Merger(object):
         # file kind...
         base_pair = contents_pair(self.base_tree)
         other_pair = contents_pair(self.other_tree)
-        # TODO: we could evaluate this only after evaluating base vs other vs
-        #       lcas, as at least some of the time it isn't needed
-        this_pair = contents_pair(self.this_tree)
         if self._lca_trees:
+            this_pair = contents_pair(self.this_tree)
             lca_pairs = [contents_pair(tree) for tree in self._lca_trees]
             winner = self._lca_multi_way((base_pair, lca_pairs), other_pair,
                                          this_pair, allow_overriding_lca=False)
         else:
-            winner = self._three_way(base_pair, other_pair, this_pair)
+            if base_pair == other_pair:
+                winner = 'this'
+            else:
+                # We delayed evaluating this_pair as long as we can to avoid
+                # unnecessary sha1 calculation
+                this_pair = contents_pair(self.this_tree)
+                winner = self._three_way(base_pair, other_pair, this_pair)
         if winner == 'this':
             # No interesting changes introduced by OTHER
             return "unmodified"
         trans_id = self.tt.trans_id_file_id(file_id)
         if winner == 'other':
             # OTHER is a straight winner, so replace this contents with other
-            if file_id in self.this_tree:
+            file_in_this = file_id in self.this_tree
+            if file_in_this:
                 # Remove any existing contents
                 self.tt.delete_contents(trans_id)
-            # XXX: why do we use file_id in self.other_tree, but then use
             if file_id in self.other_tree:
                 # OTHER changed the file
                 create_from_tree(self.tt, trans_id,
                                  self.other_tree, file_id)
-                if file_id not in self.this_tree:
+                if not file_in_this:
                     self.tt.version_file(file_id, trans_id)
                 return "modified"
-            elif file_id in self.this_tree:
+            elif file_in_this:
                 # OTHER deleted the file
                 self.tt.unversion_file(trans_id)
                 return "deleted"
         else:
             # We have a hypothetical conflict, but if we have files, then we
             # can try to merge the content
-            assert winner == 'conflict'
             if this_pair[0] == 'file' and other_pair[0] == 'file':
                 # THIS and OTHER are both files, so text merge.  Either
                 # BASE is a file, or both converted to files, so at least we
