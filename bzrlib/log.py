@@ -862,6 +862,7 @@ class ShortLogFormatter(LogFormatter):
     supports_merge_revisions = True
     preferred_levels = 1
     supports_delta = True
+    supports_tags = True
 
     def log_revision(self, revision):
         # We need two indents: one per depth and one for the information
@@ -878,13 +879,16 @@ class ShortLogFormatter(LogFormatter):
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
-        to_file.write(indent + "%*s %s\t%s%s\n" % (revno_width, revision.revno,
-                self.short_author(revision.rev),
+        tags = ''
+        if revision.tags:
+            tags = ' {%s}' % (', '.join(revision.tags))
+        to_file.write(indent + "%*s %s\t%s%s%s\n" % (revno_width,
+                revision.revno, self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
-                is_merge))
+                tags, is_merge))
         if self.show_ids:
             to_file.write(indent + offset + 'revision-id:%s\n'
                           % (revision.rev.revision_id,))
@@ -905,6 +909,7 @@ class LineLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
     preferred_levels = 1
+    supports_tags = True
 
     def __init__(self, *args, **kwargs):
         super(LineLogFormatter, self).__init__(*args, **kwargs)
@@ -929,15 +934,16 @@ class LineLogFormatter(LogFormatter):
     def log_revision(self, revision):
         indent = '  ' * revision.merge_depth
         self.to_file.write(self.log_string(revision.revno, revision.rev,
-            self._max_chars, indent))
+            self._max_chars, revision.tags, indent))
         self.to_file.write('\n')
 
-    def log_string(self, revno, rev, max_chars, prefix=''):
+    def log_string(self, revno, rev, max_chars, tags=None, prefix=''):
         """Format log info into one string. Truncate tail of string
         :param  revno:      revision number or None.
                             Revision numbers counts from 1.
-        :param  rev:        revision info object
+        :param  rev:        revision object
         :param  max_chars:  maximum length of resulting string
+        :param  tags:       list of tags or None
         :param  prefix:     string to prefix each line
         :return:            formatted truncated string
         """
@@ -947,6 +953,9 @@ class LineLogFormatter(LogFormatter):
             out.append("%s:" % revno)
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
+        if tags:
+            tag_str = '{%s}' % (', '.join(tags))
+            out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
