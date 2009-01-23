@@ -157,17 +157,35 @@ An example setup.py follows::
 Plugin metadata after installation
 ==================================
 
-After a plugin has been installed, metadata can be more easily obtained.
-Currently the only metadata used is for API versioning.
+After a plugin has been installed, metadata can be more easily obtained by
+looking inside the module object -- in other words, for variables defined
+in the plugin's ``__init__.py``.
+
+Help and documentation
+----------------------
+
+The module docstring is used as the plugin description shown by ``bzr
+plugins``.  As with all Python docstrings, the first line should be a
+short complete sentence summarizing the plugin.  The full docstring is
+shown by ``bzr help PLUGIN_NAME``.
+
+Remember that to be effective, the module docstring must be the first
+statement in the file.  It may come after comments but it must be before
+any import statements.
 
 API version
 -----------
 
-Please see `API versioning <api-versioning.html>`_ for details on the API
+Plugins can and should declare that they depend on a particular version of
+bzrlib like so::
+
+    from bzrlib.api import require_api
+
+    require_api(bzrlib, (1, 11, 0))
+
+Please see `API versioning <api-versioning.html>`_ for more details on the API
 metadata protocol used by bzrlib.
 
 
 ..
-   vim: ft=rst tw=74 ai
-
-
+   vim: ft=rst tw=74 ai shiftwidth=4
