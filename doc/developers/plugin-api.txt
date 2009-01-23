@@ -2,17 +2,29 @@
 Plugin API
 ==========
 
-Status
-======
 
-:Date: 2008-02-29
+
+:Date: 2009-01-23
+
+.. contents::
+
+Introduction
+============
 
 bzrlib has a very flexible internal structure allowing plugins for many
 operations. Plugins can add commands, new storage formats, diff and merge
 features and more. This document provides an overview of the API and
 conventions for plugin authors.
 
-.. contents::
+If you're writing a plugin and have questions not addressed by this
+document, please ask us.
+
+See also
+--------
+
+ * `Bazaar Developer Documentation Catalog <index.html>`_.
+ * <http://bazaar-vcs.org/WritingPlugins> wiki page with many more
+   suggestions about particular APIs
 
 
 Structure of a plugin
@@ -209,10 +221,14 @@ particular disk format or seen or a particular command is run.
 Plugin registrations
 ====================
 
-Registering commands
---------------------
+The plugin ``__init__.py`` runs when the plugin is loaded during bzr
+startup.  Generally the plugin won't want to actually do anything at this
+time other than register or override functions to be called later.
 
-.
+The plugin can import bzrlib and call any function.
+Some interesting APIs are described in <http://bazaar-vcs.org/WritingPlugins>
+
+
 
 ..
    vim: ft=rst tw=74 ai shiftwidth=4
