@@ -186,6 +186,33 @@ bzrlib like so::
 Please see `API versioning <api-versioning.html>`_ for more details on the API
 metadata protocol used by bzrlib.
 
+Plugin version
+--------------
+
+The plugin should expose a version tuple to describe its own version.  We
+recommend this stay approximately in sync with bzr, but you can use
+whatever you want::
+
+    __version__ == (1, 10, 0)
+
+
+Plugin performance
+==================
+
+Plugins should avoid doing work or loading code from the plugin or
+external libraries, if they're just installed but not actually active,
+because this slows down every invocation of bzr.  The bzrlib APIs
+generally allow the plugin to 'lazily' register methods to invoke if a
+particular disk format or seen or a particular command is run.
+
+
+Plugin registrations
+====================
+
+Registering commands
+--------------------
+
+.
 
 ..
    vim: ft=rst tw=74 ai shiftwidth=4
