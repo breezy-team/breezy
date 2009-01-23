@@ -864,15 +864,26 @@ class ShortLogFormatter(LogFormatter):
     supports_delta = True
     supports_tags = True
 
+    def __init__(self, *args, **kwargs):
+        super(ShortLogFormatter, self).__init__(*args, **kwargs)
+        self.revno_width_by_depth = {}
+
     def log_revision(self, revision):
         # We need two indents: one per depth and one for the information
         # relative to that indent. Most mainline revnos are 5 chars or
-        # less while dotted revnos are typically 9 chars or less.
-        indent = '    ' * revision.merge_depth
-        if indent:
-            revno_width = 9
-        else:
-            revno_width = 5
+        # less while dotted revnos are typically 9 chars or less. Once
+        # calculated, we need to remember the offset for a given depth
+        # as we might be starting from a dotted revno in the first column
+        # and we want subsequent mainline revisions to line up.
+        depth = revision.merge_depth
+        indent = '    ' * depth
+        revno_width = self.revno_width_by_depth.get(depth)
+        if revno_width is None:
+            if revision.revno.find('.') == -1:
+                revno_width = 5
+            else:
+                revno_width = 9
+            self.revno_width_by_depth[depth] = revno_width
         offset = ' ' * (revno_width + 1)
 
         to_file = self.to_file
