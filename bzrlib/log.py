@@ -197,7 +197,6 @@ def _show_log(branch,
     if specific_fileid:
         trace.mutter('get log for file_id %r', specific_fileid)
     levels_to_display = lf.get_levels_to_display()
-    trace.mutter("displaying %d levels of log" % levels_to_display)
     generate_merge_revisions = levels_to_display != 1
     allow_single_merge_revision = True
     if not getattr(lf, 'supports_merge_revisions', False):
@@ -775,7 +774,6 @@ class LogFormatter(object):
                 return getattr(self, 'preferred_levels', 0)
             else:
                 return self.levels
-        trace.mutter("doesn't support merge revs")
         return 1
 
 # TODO: uncomment this block after show() has been removed.
@@ -866,12 +864,21 @@ class ShortLogFormatter(LogFormatter):
     supports_delta = True
 
     def log_revision(self, revision):
+        # We need two indents: one per depth and one for the information
+        # relative to that indent. Most mainline revnos are 5 chars or
+        # less while dotted revnos are typically 9 chars or less.
         indent = '    ' * revision.merge_depth
+        if indent:
+            revno_width = 9
+        else:
+            revno_width = 5
+        offset = ' ' * (revno_width + 1)
+
         to_file = self.to_file
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
-        to_file.write(indent + "%5s %s\t%s%s\n" % (revision.revno,
+        to_file.write(indent + "%*s %s\t%s%s\n" % (revno_width, revision.revno,
                 self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
@@ -879,17 +886,17 @@ class ShortLogFormatter(LogFormatter):
                             show_offset=False),
                 is_merge))
         if self.show_ids:
-            to_file.write(indent + '      revision-id:%s\n'
+            to_file.write(indent + offset + 'revision-id:%s\n'
                           % (revision.rev.revision_id,))
         if not revision.rev.message:
-            to_file.write(indent + '      (no message)\n')
+            to_file.write(indent + offset + '(no message)\n')
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write(indent + '      %s\n' % (l,))
+                to_file.write(indent + offset + '%s\n' % (l,))
 
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids, indent=indent,
+            revision.delta.show(to_file, self.show_ids, indent=indent + offset,
                                 short_status=self.delta_format==1)
         to_file.write('\n')
 

@@ -370,12 +370,15 @@ class TestShortLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
         logfile = self.make_utf8_encoded_stringio()
         formatter = log.ShortLogFormatter(to_file=logfile, levels=0)
         log.show_log(wt.branch, formatter)
+        # Note that the 1.1.1 indenting is in fact correct given that
+        # the revision numbers are right justified within 5 characters
+        # for mainline revnos and 9 characters for dotted revnos.
         self.assertEqualDiff("""\
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
-    1.1.1 Joe Foo\t2005-11-22
-          rev-merged
+        1.1.1 Joe Foo\t2005-11-22
+              rev-merged
 
     1 Joe Foo\t2005-11-22
       rev-1

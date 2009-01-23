@@ -256,14 +256,14 @@ class TestLogVerbose(TestCaseWithTransport):
     def assertUseShortDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the short status format
-        self.assertContainsRe(log, '(?m)^A  hello.txt$')
-        self.assertNotContainsRe(log, '(?m)^added:$')
+        self.assertContainsRe(log, '(?m)^\s*A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^\s*added:$')
 
     def assertUseLongDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the long status format
-        self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
-        self.assertContainsRe(log, '(?m)^added:$')
+        self.assertNotContainsRe(log, '(?m)^\s*A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^\s*added:$')
 
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])
@@ -396,14 +396,34 @@ message:
     2 Joe Foo\t2005-11-22 [merge]
       merge branch 1
 
-    1.1.2 Joe Foo\t2005-11-22 [merge]
-          merge branch 2
+        1.1.2 Joe Foo\t2005-11-22 [merge]
+              merge branch 2
 
-        1.2.1 Joe Foo\t2005-11-22
-              branch 2
+            1.2.1 Joe Foo\t2005-11-22
+                  branch 2
 
-    1.1.1 Joe Foo\t2005-11-22
-          branch 1
+        1.1.1 Joe Foo\t2005-11-22
+              branch 1
+
+    1 Joe Foo\t2005-11-22
+      first post
+
+""")
+
+    def test_force_merge_revisions_N(self):
+        self._prepare_short()
+        out,err = self.run_bzr('log --short -n2')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+    2 Joe Foo\t2005-11-22 [merge]
+      merge branch 1
+
+        1.1.2 Joe Foo\t2005-11-22 [merge]
+              merge branch 2
+
+        1.1.1 Joe Foo\t2005-11-22
+              branch 1
 
     1 Joe Foo\t2005-11-22
       first post

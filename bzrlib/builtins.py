@@ -3539,9 +3539,7 @@ class cmd_missing(Command):
             'log-format',
             'show-ids',
             'verbose',
-            Option('include-merges',
-                   short_name='n',
-                   help='Show (nested) merge revisions.'),
+            Option('include-merges', 'Show merged revisions.'),
             ]
     encoding_type = 'replace'
 
