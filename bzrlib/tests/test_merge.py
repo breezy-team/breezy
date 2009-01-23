@@ -2421,8 +2421,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # TODO: We need to use the per-file graph to properly select a BASE
         #       before this will work. Or at least use the LCA trees to find
         #       the appropriate content base. (which is B, not A).
-        self.expectFailure("Merge3Merger doesn't recognize reverted content",
-            self.assertEqual, 'base content\n', wt.get_file_text('foo-id'))
+        self.assertEqual('base content\n', wt.get_file_text('foo-id'))
 
     def test_other_modified_content(self):
         builder = self.get_builder()
@@ -2438,8 +2437,6 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
             [('modify', ('foo-id', 'F content\n'))]) # Override B content
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         wt, conflicts = self.do_merge(builder, 'F-id')
-        self.expectFailure("Merge3Merger only uses BASE for content",
-            self.assertEqual, 'F content\n', wt.get_file_text('foo-id'))
         self.assertEqual(0, conflicts)
         self.assertEqual('F content\n', wt.get_file_text('foo-id'))
 
