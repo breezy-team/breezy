@@ -21,6 +21,11 @@ from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import urlutils
+""")
+
 from bzrlib import (
     config,
     errors,
@@ -46,6 +51,14 @@ class LaunchpadService(object):
     See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
     """
 
+    LAUNCHPAD_DOMAINS = {
+        'production': 'launchpad.net',
+        'edge': 'edge.launchpad.net',
+        'staging': 'staging.launchpad.net',
+        'demo': 'demo.launchpad.net',
+        'dev': 'launchpad.dev',
+        }
+
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     # We use edge as the default because:
@@ -53,13 +66,18 @@ class LaunchpadService(object):
     # All users can use it
     # There is a bug in the launchpad side where redirection causes an OOPS.
     LAUNCHPAD_INSTANCE = {
-        'production': 'https://xmlrpc.launchpad.net/bazaar/',
-        'edge': 'https://xmlrpc.edge.launchpad.net/bazaar/',
-        'staging': 'https://xmlrpc.staging.launchpad.net/bazaar/',
-        'demo': 'https://xmlrpc.demo.launchpad.net/bazaar/',
-        'dev': 'http://xmlrpc.launchpad.dev/bazaar/',
+        'production': 'https://xmlrpc.%s/bazaar/',
+        'edge': 'https://xmlrpc.%s/bazaar/',
+        'staging': 'https://xmlrpc.%s/bazaar/',
+        'demo': 'https://xmlrpc.%s/bazaar/',
+        'dev': 'http://xmlrpc.%s/bazaar/',
         }
-    DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE['edge']
+
+    for instance in LAUNCHPAD_INSTANCE:
+        LAUNCHPAD_INSTANCE[instance] %= LAUNCHPAD_DOMAINS[instance]
+
+    DEFAULT_INSTANCE = 'edge'
+    DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None
     registrant_email = None
@@ -159,6 +177,18 @@ class LaunchpadService(object):
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
                         % (self.service_url, e.errcode, e.errmsg))
         return result
+
+    @property
+    def domain(self):
+        if self._lp_instance is None:
+            instance = self.DEFAULT_INSTANCE
+        else:
+            instance = self._lp_instance
+        return self.LAUNCHPAD_DOMAINS[instance]
+
+    def get_web_url_from_branch_url(self, branch_url):
+        scheme, hostinfo, path = urlsplit(branch_url)[:3]
+        return urlutils.join('http://code.%s' % self.domain, path)
 
 
 class BaseRequest(object):

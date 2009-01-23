@@ -84,3 +84,49 @@ class LaunchpadServiceTests(TestCase):
         service = LaunchpadService(lp_instance='staging')
         self.assertEqual('http://example.com/',
                          service.service_url)
+
+
+class TestURLInference(TestCase):
+    """Test the way we infer Launchpad web pages from branch URLs."""
+
+    def test_default_bzr_ssh_url(self):
+        service = LaunchpadService()
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.edge.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_product_bzr_ssh_url(self):
+        service = LaunchpadService(lp_instance='production')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_staging_url(self):
+        service = LaunchpadService(lp_instance='staging')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.staging.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_edge_url(self):
+        service = LaunchpadService(lp_instance='edge')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.edge.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_dev_url(self):
+        service = LaunchpadService(lp_instance='dev')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.launchpad.dev/~foo/bar/baz', web_url)
+
+    def test_demo_url(self):
+        service = LaunchpadService(lp_instance='demo')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.demo.launchpad.net/~foo/bar/baz', web_url)
