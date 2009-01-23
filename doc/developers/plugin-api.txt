@@ -208,6 +208,17 @@ whatever you want::
     version_info = (1, 10, 0)
 
 
+Detecting whether code's being loaded as a plugin
+-------------------------------------------------
+
+You may have a Python module that can be used as a bzr plugin and also in
+other places.  To detect whether the module is being loaded by bzr, use
+something like this::
+
+    if __name__ == 'bzrlib.plugins.loggerhead':
+        # register with bzrlib...
+
+
 Plugin performance
 ==================
 
