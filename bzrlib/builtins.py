@@ -4080,7 +4080,7 @@ class cmd_serve(Command):
                 ),
         ]
 
-    def run_server(self, smart_server):
+    def run_smart_server(self, smart_server):
         """Run 'smart_server' forever, with no UI output at all."""
         # For the duration of this server, no UI output is permitted. note
         # that this may cause problems with blackbox tests. This should be
@@ -4127,7 +4127,7 @@ class cmd_serve(Command):
             host, port = self.get_host_and_port(port)
             smart_server = server.SmartTCPServer(t, host=host, port=port)
             note('listening on port: %s' % smart_server.port)
-        self.run_server(smart_server)
+        self.run_smart_server(smart_server)
 
 
 class cmd_join(Command):
