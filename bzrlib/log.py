@@ -907,12 +907,12 @@ class LineLogFormatter(LogFormatter):
         out = []
         if revno:
             # show revno only when is not None
-            tag_str = ''
-            if tags:
-                tag_str = '{%s}' % (', '.join(tags))
-            out.append("%s%s:" % (revno,tag_str))
+            out.append("%s:" % (revno))
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
+        if tags:
+            tag_str = '{%s}' % (', '.join(tags))
+            out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
 

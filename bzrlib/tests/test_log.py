@@ -776,8 +776,8 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
         formatter = log.LineLogFormatter(to_file=logfile)
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
-3{v1.0, v1.0rc1}: Jane Foo 2005-11-22 rev-3
-2{v0.2}: Joe Foo 2005-11-22 rev-2
+3: Jane Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
+2: Joe Foo 2005-11-22 {v0.2} rev-2
 1: Joe Foo 2005-11-22 rev-1
 """,
                              logfile.getvalue())
