@@ -4097,7 +4097,19 @@ class cmd_serve(Command):
             ui.ui_factory = old_factory
             lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 
-    def get_host_and_port(self, port=None):
+    def get_host_and_port(self, port):
+        """Return the host and port to run the smart server on.
+
+        If 'port' is None, the default host (`medium.BZR_DEFAULT_INTERFACE`)
+        and port (`medium.BZR_DEFAULT_PORT`) will be used.
+
+        If 'port' has a colon in it, the string before the colon will be
+        interpreted as the host.
+
+        :param port: A string of the port to run the server on.
+        :return: A tuple of (host, port), where 'host' is a host name or IP,
+            and port is an integer TCP/IP port.
+        """
         from bzrlib.smart import medium
         host = medium.BZR_DEFAULT_INTERFACE
         if port is None:
@@ -4108,8 +4120,28 @@ class cmd_serve(Command):
             port = int(port)
         return host, port
 
-    def run(self, port=None, inet=False, directory=None, allow_writes=False):
+    def get_smart_server(self, transport, inet, port):
+        """Construct a smart server.
+
+        :param transport: The base transport from which branches will be
+            served.
+        :param inet: If True, serve over stdin and stdout. Used for running
+            from inet.
+        :param port: The port to listen on. By default, it's `
+            medium.BZR_DEFAULT_PORT`. See `get_host_and_port` for more
+            information.
+        :return: A smart server.
+        """
         from bzrlib.smart import medium, server
+        if inet:
+            smart_server = medium.SmartServerPipeStreamMedium(
+                sys.stdin, sys.stdout, t)
+        else:
+            host, port = self.get_host_and_port(port)
+            smart_server = server.SmartTCPServer(t, host=host, port=port)
+            note('listening on port: %s' % smart_server.port)
+
+    def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
         if directory is None:
@@ -4120,13 +4152,7 @@ class cmd_serve(Command):
         chroot_server = ChrootServer(get_transport(url))
         chroot_server.setUp()
         t = get_transport(chroot_server.get_url())
-        if inet:
-            smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, t)
-        else:
-            host, port = self.get_host_and_port(port)
-            smart_server = server.SmartTCPServer(t, host=host, port=port)
-            note('listening on port: %s' % smart_server.port)
+        smart_server = self.get_smart_server(t, inet, port)
         self.run_smart_server(smart_server)
 
 
