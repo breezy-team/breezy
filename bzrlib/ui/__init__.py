@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,18 +81,37 @@ class UIFactory(object):
         self._task_stack.append(t)
         return t
 
-    def progress_finished(self, task):
-        if task != self._task_stack[-1]:
-            warnings.warn("%r is not currently active" % (task,))
+    def _progress_finished(self, task):
+        """Called by the ProgressTask when it finishes"""
+        if not self._task_stack:
+            warnings.warn("%r finished but nothing is active"
+                % (task,))
+        elif task != self._task_stack[-1]:
+            warnings.warn("%r is not the active task %r" 
+                % (task, self._task_stack[-1]))
         else:
             del self._task_stack[-1]
+        if not self._task_stack:
+            self._progress_all_finished()
+
+    def _progress_all_finished(self):
+        """Called when the top-level progress task finished"""
+        pass
+
+    def _progress_updated(self, task):
+        """Called by the ProgressTask when it changes.
+        
+        Should be specialized to draw the progress.
+        """
+        pass
 
     def clear_term(self):
         """Prepare the terminal for output.
 
         This will, for example, clear text progress bars, and leave the
-        cursor at the leftmost position."""
-        raise NotImplementedError(self.clear_term)
+        cursor at the leftmost position.
+        """
+        pass
 
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user. 
@@ -177,15 +196,6 @@ class CLIUIFactory(UIFactory):
     def note(self, msg):
         """Write an already-formatted message."""
         self.stdout.write(msg + '\n')
-
-    def clear_term(self):
-        pass
-
-    def show_progress(self, task):
-        pass
-
-    def progress_finished(self, task):
-        pass
 
 
 class SilentUIFactory(CLIUIFactory):
