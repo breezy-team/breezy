@@ -1529,9 +1529,7 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
         self.assertRaises(errors.KnitCorrupt, index.add_records,
-            [(('tip',), 'no-eol,line-delta', (None, 0, 100), [('parent',)])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
-            [(('tip',), 'line-delta,no-eol', (None, 0, 100), [('parent',)])])
+            [(('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext', (None, 0, 100), [('parent',)])])
         # parents
@@ -1591,9 +1589,7 @@ class TestGraphIndexKnit(KnitTests):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
         self.assertRaises(errors.KnitCorrupt, index.add_records,
-            [(('tip',), 'no-eol,line-delta', (None, 0, 100), [('parent',)])])
-        self.assertRaises(errors.KnitCorrupt, index.add_records,
-            [(('tip',), 'line-delta,no-eol', (None, 0, 100), [('parent',)])])
+            [(('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext', (None, 0, 100), [('parent',)])])
         # parents
@@ -1602,7 +1598,7 @@ class TestGraphIndexKnit(KnitTests):
         # change options in the second record
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)]),
-             (('tip',), 'no-eol,line-delta', (None, 0, 100), [('parent',)])])
+             (('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
 

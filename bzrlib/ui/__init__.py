@@ -191,6 +191,11 @@ class CLIUIFactory(UIFactory):
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
+        self.stdout.write(prompt)
+
+    def note(self, msg):
+        """Write an already-formatted message."""
+        self.stdout.write(msg + '\n')
 
 
 class SilentUIFactory(CLIUIFactory):
@@ -204,6 +209,9 @@ class SilentUIFactory(CLIUIFactory):
 
     def get_password(self, prompt='', **kwargs):
         return None
+
+    def prompt(self, prompt):
+        pass
 
     def note(self, msg):
         pass
@@ -226,6 +234,7 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     If stdout is a smart terminal, this gets a smart UIFactory with 
     progress indicators, etc.  If it's a dumb terminal, just plain text output.
     """
+    cls = None
     isatty = getattr(stdin, 'isatty', None)
     if isatty is None:
         cls = CLIUIFactory
@@ -234,7 +243,9 @@ def make_ui_for_terminal(stdin, stdout, stderr):
     elif os.environ.get('TERM') in (None, 'dumb', ''):
         # e.g. emacs compile window
         cls = CLIUIFactory
-    else:
+    # User may know better, otherwise default to TextUIFactory
+    if (   os.environ.get('BZR_USE_TEXT_UI', None) is not None
+        or cls is None):
         from bzrlib.ui.text import TextUIFactory
         cls = TextUIFactory
     return cls(stdin=stdin, stdout=stdout, stderr=stderr)
