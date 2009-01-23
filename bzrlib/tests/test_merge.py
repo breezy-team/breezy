@@ -1381,7 +1381,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         self.assertEqual('A-id', merge_obj.base_tree.get_revision_id())
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
         self.assertEqual([], entries)
 
     def test_not_in_other(self):
@@ -1458,6 +1457,7 @@ class TestMergerEntriesLCA(TestMergerBase):
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
         entries = list(merge_obj._entries_lca())
+        root_id = 'a-root-id'
         self.assertEqual([('foo-id', True,
                            ((root_id, [root_id, None]), None, root_id),
                            ((u'foo', [u'foo', None]), None, 'foo'),
@@ -1492,7 +1492,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
         self.assertEqual([], entries)
 
     def test_only_in_other(self):
@@ -1723,7 +1722,6 @@ class TestMergerEntriesLCA(TestMergerBase):
         merge_obj = self.make_merge_obj(builder, 'E-id')
 
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
         self.expectFailure("We don't detect that LCA resolution was the"
                            " same on both sides",
             self.assertEqual, [], entries)
@@ -1784,7 +1782,6 @@ class TestMergerEntriesLCA(TestMergerBase):
              ('add', (u'a', 'a-id', 'directory', None))])
         merge_obj = self.make_merge_obj(builder, 'E-id')
         entries = list(merge_obj._entries_lca())
-        root_id = 'a-root-id'
         # Only the kind was changed (content)
         self.assertEqual([], entries)
 
