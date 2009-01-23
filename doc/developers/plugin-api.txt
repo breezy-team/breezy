@@ -205,7 +205,7 @@ The plugin should expose a version tuple to describe its own version.  We
 recommend this stay approximately in sync with bzr, but you can use
 whatever you want::
 
-    __version__ == (1, 10, 0)
+    version_info = (1, 10, 0)
 
 
 Plugin performance
