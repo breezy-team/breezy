@@ -97,7 +97,7 @@ class TestBzrServe(TestCaseWithTransport):
         args = ['serve', '--port', 'localhost:0']
         args.extend(extra_options)
         process = self.start_bzr_subprocess(args, skip_if_plan_to_signal=True)
-        port_line = process.stdout.readline()
+        port_line = process.stderr.readline()
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
