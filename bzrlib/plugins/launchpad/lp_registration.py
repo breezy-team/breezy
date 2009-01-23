@@ -180,7 +180,17 @@ class LaunchpadService(object):
         return self.LAUNCHPAD_DOMAINS[instance]
 
     def get_web_url_from_branch_url(self, branch_url):
+        """Get the Launchpad web URL for the given branch URL.
+
+        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+            Launchpad branch URL.
+        :return: The URL of the branch on Launchpad.
+        """
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
+        domains = ('bazaar.%s' % domain
+                   for domain in self.LAUNCHPAD_DOMAINS.itervalues())
+        if hostinfo not in domains:
+            raise errors.InvalidURL(branch_url)
         return urlutils.join('http://code.%s' % self.domain, path)
 
 
