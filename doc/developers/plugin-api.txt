@@ -229,6 +229,19 @@ The plugin can import bzrlib and call any function.
 Some interesting APIs are described in <http://bazaar-vcs.org/WritingPlugins>
 
 
+Publishing your plugin
+======================
+
+When your plugin is basically working you might like to share it with
+other people.  Here are some steps to consider:
+
+ * make a project on Launchpad.net like
+   <https://launchpad.net/bzr-fastimport>
+   and publish the branches or tarballs there
+
+ * include the plugin in <http://bazaar-vcs.org/BzrPlugins>
+
+ * post about it to the ``bazaar-announce`` list at ``lists.canonical.com``
 
 ..
    vim: ft=rst tw=74 ai shiftwidth=4
