@@ -201,9 +201,9 @@ metadata protocol used by bzrlib.
 Plugin version
 --------------
 
-The plugin should expose a version tuple to describe its own version.  We
-recommend this stay approximately in sync with bzr, but you can use
-whatever you want::
+The plugin should expose a version tuple to describe its own version.
+Some plugins use a version number that corresponds to the version of bzr
+they're released against, but you can use whatever you want.  For example::
 
     version_info = (1, 10, 0)
 
