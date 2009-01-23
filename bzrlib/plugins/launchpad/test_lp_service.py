@@ -58,7 +58,7 @@ class LaunchpadServiceTests(TestCase):
 
     def test_dev_service(self):
         service = LaunchpadService(lp_instance='dev')
-        self.assertEqual('http://xmlrpc.launchpad.dev/bazaar/',
+        self.assertEqual('https://xmlrpc.launchpad.dev/bazaar/',
                          service.service_url)
 
     def test_demo_service(self):

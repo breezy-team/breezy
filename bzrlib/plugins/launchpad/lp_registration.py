@@ -61,21 +61,14 @@ class LaunchpadService(object):
 
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
+    LAUNCHPAD_INSTANCE = {}
+    for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
+        LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
+
     # We use edge as the default because:
     # Beta users get redirected to it
     # All users can use it
     # There is a bug in the launchpad side where redirection causes an OOPS.
-    LAUNCHPAD_INSTANCE = {
-        'production': 'https://xmlrpc.%s/bazaar/',
-        'edge': 'https://xmlrpc.%s/bazaar/',
-        'staging': 'https://xmlrpc.%s/bazaar/',
-        'demo': 'https://xmlrpc.%s/bazaar/',
-        'dev': 'http://xmlrpc.%s/bazaar/',
-        }
-
-    for instance in LAUNCHPAD_INSTANCE:
-        LAUNCHPAD_INSTANCE[instance] %= LAUNCHPAD_DOMAINS[instance]
-
     DEFAULT_INSTANCE = 'edge'
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
