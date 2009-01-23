@@ -103,6 +103,20 @@ class TestURLInference(TestCase):
         self.assertEqual(
             'http://code.launchpad.net/~foo/bar/baz', web_url)
 
+    def test_sftp_branch_url(self):
+        service = LaunchpadService(lp_instance='production')
+        web_url = service.get_web_url_from_branch_url(
+            'sftp://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_staging_branch_url(self):
+        service = LaunchpadService(lp_instance='production')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.staging.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'http://code.launchpad.net/~foo/bar/baz', web_url)
+
     def test_staging_url(self):
         service = LaunchpadService(lp_instance='staging')
         web_url = service.get_web_url_from_branch_url(
