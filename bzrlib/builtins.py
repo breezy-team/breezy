@@ -3541,12 +3541,11 @@ class cmd_missing(Command):
         'show-ids',
         'verbose',
         custom_help('revision',
-             help='Filter on local branch revisions (inclusive). '
+             help='Filter on other branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-        Option('other-revision',
+        Option('my-revision',
             type=_parse_revision_str,
-            short_name='o',
-            help='Filter on other branch revisions (inclusive). '
+            help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
         Option('include-merges', 'Show merged revisions.'),
         ]
@@ -3557,7 +3556,7 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, revision=None, other_revision=None):
+            include_merges=False, revision=None, my_revision=None):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
@@ -3593,11 +3592,11 @@ class cmd_missing(Command):
             remote_branch = local_branch
 
         local_revid_range = _revision_range_to_revid_range(
-            _get_revision_range(revision, local_branch,
+            _get_revision_range(my_revision, local_branch,
                 self.name()))
 
         remote_revid_range = _revision_range_to_revid_range(
-            _get_revision_range(other_revision,
+            _get_revision_range(revision,
                 remote_branch, self.name()))
 
         local_branch.lock_read()

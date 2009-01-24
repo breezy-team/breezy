@@ -159,21 +159,22 @@ class TestMissing(TestCaseWithTransport):
 
         os.chdir('a')
         # local
-        out,err = self.run_bzr('missing ../b -r 2', retcode=1)
+        out,err = self.run_bzr('missing ../b --my-revision 2', retcode=1)
         self.assertMessages(out, ('a2', 'b2', 'b3', 'b4', 'b5'), ('a3',))
 
-        out,err = self.run_bzr('missing ../b -r 3..4', retcode=1)
+        out,err = self.run_bzr('missing ../b --my-revision 3..4', retcode=1)
         self.assertMessages(out, ('a3', 'a4'), ('a2', 'a5'))
 
         #remote
-        out,err = self.run_bzr('missing ../b -o 2', retcode=1)
+        out,err = self.run_bzr('missing ../b -r 2', retcode=1)
         self.assertMessages(out, ('a2', 'a3', 'a4', 'a5', 'b2'), ('b3',))
 
-        out,err = self.run_bzr('missing ../b -o 3..4', retcode=1)
+        out,err = self.run_bzr('missing ../b -r 3..4', retcode=1)
         self.assertMessages(out, ('b3', 'b4'), ('b2', 'b5'))
 
         #both
-        out,err = self.run_bzr('missing ../b -r 3..4 -o 3..4', retcode=1)
+        out,err = self.run_bzr('missing ../b --my-revision 3..4 -r 3..4',
+            retcode=1)
         self.assertMessages(out, ('a3', 'a4', 'b3', 'b4'),
             ('a2', 'a5', 'b2', 'b5'))
 
