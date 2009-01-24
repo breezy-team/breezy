@@ -20,18 +20,26 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
-try:
-    import dulwich as git
-except ImportError:
-    import os, sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "dulwich"))
-    import dulwich as git
 from bzrlib import bzrdir
 from bzrlib.foreign import ForeignVcs, VcsMappingRegistry, foreign_vcs_registry
-from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
 from bzrlib.transport import register_lazy_transport
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
+from bzrlib.trace import warning
+
+MINIMUM_DULWICH_VERSION = (0, 1, 0)
+
+try:
+    from dulwich import __version__ as dulwich_version
+except ImportError:
+    warning("Please install dulwich, https://launchpad.net/dulwich")
+    raise
+else:
+    if dulwich_version < MINIMUM_DULWICH_VERSION:
+        warning("Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
+        raise ImportError
+
+from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
 
 bzrdir.format_registry.register(
     'git', LocalGitBzrDirFormat,
