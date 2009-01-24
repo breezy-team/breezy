@@ -987,10 +987,11 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         rev_4b = rev_from_rev_id('4b', wt.branch)
         self.assertEqual([('3c', '3', 0), ('3a', '2.1.1', 1)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'reverse'))
+        # Note that the depth is 0 for 3a because depths are normalized, but
         # there is still a bug somewhere... most probably in
         # _filter_revision_range and/or get_view_revisions still around a bad
         # use of reverse_by_depth
-        self.assertEqual([('3a', '2.1.1', 1)],
+        self.assertEqual([('3a', '2.1.1', 0)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'forward'))
 
 

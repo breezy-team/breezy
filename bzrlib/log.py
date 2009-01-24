@@ -368,7 +368,11 @@ def _calc_view_revisions(branch, rev_limits, direction,
     view_revisions = _filter_revision_range(list(view_revs_iter),
                                             start_rev_id,
                                             end_rev_id)
+    return _rebase_merge_depth(view_revisions)
 
+
+def _rebase_merge_depth(view_revisions):
+    """Adjust depths upwards so the top level is 0."""
     # Rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
     if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
@@ -445,7 +449,7 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = _filter_revisions_touching_file_id(branch,
             specific_fileid, view_revisions,
             include_merges=generate_merge_revisions)
-    return view_revisions
+    return _rebase_merge_depth(view_revisions)
 
 
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
