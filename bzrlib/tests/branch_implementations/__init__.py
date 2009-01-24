@@ -161,6 +161,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.branch_implementations.test_get_revision_id_to_revno_map',
         'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',
+        'bzrlib.tests.branch_implementations.test_iter_merge_sorted_revisions',
         'bzrlib.tests.branch_implementations.test_last_revision_info',
         'bzrlib.tests.branch_implementations.test_locking',
         'bzrlib.tests.branch_implementations.test_parent',
