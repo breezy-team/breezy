@@ -229,6 +229,10 @@ class Branch(object):
             stop_revision_id=None, direction='reverse'):
         """Walk the revisions for a branch in merge sorted order.
 
+        Merge sorted order is the output from a merge-aware,
+        topological sort, i.e. all parents come before their
+        children going forward; the opposite for reverse.
+
         :param start_revision_id: the revision_id to begin walking from.
             If None, the branch tip is used.
         :param stop_revision_id: the revision_id to terminate the walk
@@ -240,9 +244,21 @@ class Branch(object):
             * forward returns tuples in the opposite order to reverse.
               Note in particular that forward does *not* do any intelligent
               ordering w.r.t. depth as some clients of this API may like.
+              (If required, that ought to be done at higher layers.)
 
-        :return: an iterator over
-            (revision_id, depth, revno, end_of_merge) tuples.
+        :return: an iterator over (revision_id, depth, revno, end_of_merge)
+            tuples where:
+
+            * revision_id: the unique id of the revision
+            * depth: How many levels of merging deep this node has been
+              found.
+            * revno_sequence: This field provides a sequence of
+              revision numbers for all revisions. The format is:
+              (REVNO, BRANCHNUM, BRANCHREVNO). BRANCHNUM is the number of the
+              branch that the revno is on. From left to right the REVNO numbers
+              are the sequence numbers within that branch of the revision.
+            * end_of_merge: When True the next node (earlier in history) is
+              part of a different merge.
         """
         # Note: depth and revno values are in the context of the branch so
         # we need the full graph to get stable numbers, regardless of the
@@ -282,7 +298,7 @@ class Branch(object):
         for rev_id, depth, revno, end_of_merge in rev_iter:
             yield rev_id, depth, revno, end_of_merge
             if stop_revision_id is not None and rev_id == stop_revision_id:
-                raise StopIteration
+                return
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
