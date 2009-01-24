@@ -253,8 +253,10 @@ class Branch(object):
             parent_map = dict(((key, value) for key, value in
                      graph.iter_ancestry([last_revision]) if value is not None))
             revision_graph = repository._strip_NULL_ghosts(parent_map)
-            self._merge_sorted_revisions_cache = tsort.merge_sort(
-                revision_graph, last_revision, None, generate_revno=True)
+            revs = tsort.merge_sort(revision_graph, last_revision, None,
+                generate_revno=True)
+            # Drop the sequence # before caching
+            self._merge_sorted_revisions_cache = [r[1:] for r in revs]
 
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
@@ -268,19 +270,16 @@ class Branch(object):
 
     def _filter_merge_sorted_revisions(self, merge_sorted_revisions,
         start_revision_id, stop_revision_id):
-        """Iterate over an inclusive range of sorted revisions.
-        
-        This method also strips off the sequence number.
-        """
+        """Iterate over an inclusive range of sorted revisions."""
         rev_iter = iter(merge_sorted_revisions)
         if start_revision_id is not None:
-            for seqnum, rev_id, depth, revno, end_of_merge in rev_iter:
+            for rev_id, depth, revno, end_of_merge in rev_iter:
                 if rev_id != start_revision_id:
                     continue
                 else:
                     yield rev_id, depth, revno, end_of_merge
                     break
-        for seqnum, rev_id, depth, revno, end_of_merge in rev_iter:
+        for rev_id, depth, revno, end_of_merge in rev_iter:
             yield rev_id, depth, revno, end_of_merge
             if stop_revision_id is not None and rev_id == stop_revision_id:
                 raise StopIteration
