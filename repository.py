@@ -43,7 +43,7 @@ from bzrlib.plugins.git.foreign import (
     )
 from bzrlib.plugins.git.mapping import default_mapping
 
-from bzrlib.plugins.git import git
+import dulwich as git
 
 
 class GitTags(object):

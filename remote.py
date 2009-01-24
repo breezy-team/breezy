@@ -23,7 +23,6 @@ from bzrlib.repository import Repository
 from bzrlib.trace import info
 from bzrlib.transport import Transport
 
-from bzrlib.plugins.git import git
 from bzrlib.plugins.git.branch import GitBranch
 from bzrlib.plugins.git.errors import NoSuchRef
 from bzrlib.plugins.git.dir import GitDir
@@ -35,6 +34,7 @@ import tempfile
 import urllib
 import urlparse
 
+import dulwich as git
 from dulwich.pack import PackData, Pack
 
 # Don't run any tests on GitSmartTransport as it is not intended to be 

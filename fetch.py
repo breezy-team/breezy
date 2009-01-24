@@ -21,7 +21,6 @@ from bzrlib.repository import InterRepository
 from bzrlib.trace import info
 from bzrlib.tsort import topo_sort
 
-from bzrlib.plugins.git import git
 from bzrlib.plugins.git.repository import (
         LocalGitRepository, 
         GitRepository, 
@@ -29,6 +28,7 @@ from bzrlib.plugins.git.repository import (
         )
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
+import dulwich as git
 from dulwich.client import SimpleFetchGraphWalker
 from dulwich.objects import Commit
 
@@ -132,7 +132,7 @@ def import_git_objects(repo, mapping, num_objects, object_iter, pb=None):
     """
     # TODO: a more (memory-)efficient implementation of this
     objects = {}
-    for i, o in enumerate(object_iter):
+    for i, (o, _) in enumerate(object_iter):
         if pb is not None:
             pb.update("fetching objects", i, num_objects) 
         objects[o.id] = o

@@ -25,12 +25,12 @@ from bzrlib.repository import Repository
 
 from bzrlib.plugins.git import (
     dir,
-    git,
     repository,
     tests,
     )
 from bzrlib.plugins.git.mapping import default_mapping
 
+import dulwich as git
 
 class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     """Feature tests for GitRepository."""

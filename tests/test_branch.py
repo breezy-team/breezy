@@ -24,8 +24,8 @@ from bzrlib.plugins.git import (
     tests,
     )
 from bzrlib.plugins.git.mapping import default_mapping
-from bzrlib.plugins.git import git
 
+import dulwich as git
 
 
 class TestGitBranch(tests.TestCaseInTempDir):
