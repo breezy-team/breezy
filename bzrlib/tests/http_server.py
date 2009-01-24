@@ -34,10 +34,6 @@ from bzrlib import transport
 from bzrlib.transport import local
 
 
-class WebserverNotAvailable(Exception):
-    pass
-
-
 class BadWebserverPath(ValueError):
     def __str__(self):
         return 'path %s is not in %s' % self.args
@@ -181,7 +177,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
             content_length += len('\r\n') # end headers
-            content_length += end - start # + 1
+            content_length += end - start + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
         self.end_headers()
@@ -424,6 +420,9 @@ class HttpServer(transport.Server):
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
 
+    def create_httpd(self, serv_cls, rhandler_cls):
+        return serv_cls((self.host, self.port), self.request_handler, self)
+
     def __repr__(self):
         return "%s(%s:%s)" % \
             (self.__class__.__name__, self.host, self.port)
@@ -445,7 +444,7 @@ class HttpServer(transport.Server):
             if serv_cls is None:
                 raise httplib.UnknownProtocol(proto_vers)
             else:
-                self._httpd = serv_cls((self.host, self.port), rhandler, self)
+                self._httpd = self.create_httpd(serv_cls, rhandler)
             host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 

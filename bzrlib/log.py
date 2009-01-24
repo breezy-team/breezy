@@ -251,8 +251,9 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
             raise errors.BzrCommandError('Selected log formatter only supports'
                 ' mainline revisions.')
         generate_merge_revisions = generate_single_revision
+    include_merges = generate_merge_revisions or specific_fileid
     view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
-                          direction, include_merges=generate_merge_revisions)
+                          direction, include_merges=include_merges)
 
     if direction == 'reverse':
         start_rev_id, end_rev_id = end_rev_id, start_rev_id
@@ -263,8 +264,8 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
         view_revisions = view_revisions[0:1]
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
-                                                            specific_fileid,
-                                                            view_revisions)
+            specific_fileid, view_revisions,
+            include_merges=generate_merge_revisions)
 
     # rebase merge_depth - unless there are no revisions or 
     # either the first or last revision have merge_depth = 0.
@@ -532,7 +533,8 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     return view_revisions
 
 
-def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
+def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
+    include_merges=True):
     r"""Return the list of revision ids which touch a given file id.
 
     The function filters view_revisions and returns a subset.
@@ -564,6 +566,8 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
         tuples. This is the list of revisions which will be filtered. It is
         assumed that view_revisions is in merge_sort order (i.e. newest
         revision first ).
+
+    :param include_merges: include merge revisions in the result or not
 
     :return: A list of (revision_id, dotted_revno, merge_depth) tuples.
     """
@@ -604,8 +608,9 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions):
             for idx in xrange(len(current_merge_stack)):
                 node = current_merge_stack[idx]
                 if node is not None:
-                    result.append(node)
-                    current_merge_stack[idx] = None
+                    if include_merges or node[2] == 0:
+                        result.append(node)
+                        current_merge_stack[idx] = None
     return result
 
 
@@ -615,7 +620,7 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-    if include_merges is False:
+    if not include_merges:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':
             revision_ids.reverse()
@@ -825,6 +830,7 @@ class LongLogFormatter(LogFormatter):
 class ShortLogFormatter(LogFormatter):
 
     supports_delta = True
+    supports_tags = True
     supports_single_merge_revision = True
 
     def log_revision(self, revision):
@@ -832,13 +838,17 @@ class ShortLogFormatter(LogFormatter):
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
-        to_file.write("%5s %s\t%s%s\n" % (revision.revno,
+        tags = ''
+        if revision.tags:
+            tags = ' {%s}' % (', '.join(revision.tags))
+
+        to_file.write("%5s %s\t%s%s%s\n" % (revision.revno,
                 self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
-                is_merge))
+                tags, is_merge))
         if self.show_ids:
             to_file.write('      revision-id:%s\n'
                           % (revision.rev.revision_id,))
@@ -857,6 +867,7 @@ class ShortLogFormatter(LogFormatter):
 
 class LineLogFormatter(LogFormatter):
 
+    supports_tags = True
     supports_single_merge_revision = True
 
     def __init__(self, *args, **kwargs):
@@ -881,15 +892,16 @@ class LineLogFormatter(LogFormatter):
 
     def log_revision(self, revision):
         self.to_file.write(self.log_string(revision.revno, revision.rev,
-                                              self._max_chars))
+            self._max_chars, revision.tags))
         self.to_file.write('\n')
 
-    def log_string(self, revno, rev, max_chars):
+    def log_string(self, revno, rev, max_chars, tags=None):
         """Format log info into one string. Truncate tail of string
         :param  revno:      revision number or None.
                             Revision numbers counts from 1.
-        :param  rev:        revision info object
+        :param  rev:        revision object
         :param  max_chars:  maximum length of resulting string
+        :param  tags:       list of tags or None
         :return:            formatted truncated string
         """
         out = []
@@ -898,6 +910,9 @@ class LineLogFormatter(LogFormatter):
             out.append("%s:" % revno)
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
+        if tags:
+            tag_str = '{%s}' % (', '.join(tags))
+            out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
 
@@ -1008,6 +1023,101 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None,
                  start_revision=base_idx+1,
                  end_revision=len(new_rh),
                  search=None)
+
+
+def get_history_change(old_revision_id, new_revision_id, repository):
+    """Calculate the uncommon lefthand history between two revisions.
+
+    :param old_revision_id: The original revision id.
+    :param new_revision_id: The new revision id.
+    :param repository: The repository to use for the calculation.
+
+    return old_history, new_history
+    """
+    old_history = []
+    old_revisions = set()
+    new_history = []
+    new_revisions = set()
+    new_iter = repository.iter_reverse_revision_history(new_revision_id)
+    old_iter = repository.iter_reverse_revision_history(old_revision_id)
+    stop_revision = None
+    do_old = True
+    do_new = True
+    while do_new or do_old:
+        if do_new:
+            try:
+                new_revision = new_iter.next()
+            except StopIteration:
+                do_new = False
+            else:
+                new_history.append(new_revision)
+                new_revisions.add(new_revision)
+                if new_revision in old_revisions:
+                    stop_revision = new_revision
+                    break
+        if do_old:
+            try:
+                old_revision = old_iter.next()
+            except StopIteration:
+                do_old = False
+            else:
+                old_history.append(old_revision)
+                old_revisions.add(old_revision)
+                if old_revision in new_revisions:
+                    stop_revision = old_revision
+                    break
+    new_history.reverse()
+    old_history.reverse()
+    if stop_revision is not None:
+        new_history = new_history[new_history.index(stop_revision) + 1:]
+        old_history = old_history[old_history.index(stop_revision) + 1:]
+    return old_history, new_history
+
+
+def show_branch_change(branch, output, old_revno, old_revision_id):
+    """Show the changes made to a branch.
+
+    :param branch: The branch to show changes about.
+    :param output: A file-like object to write changes to.
+    :param old_revno: The revno of the old tip.
+    :param old_revision_id: The revision_id of the old tip.
+    """
+    new_revno, new_revision_id = branch.last_revision_info()
+    old_history, new_history = get_history_change(old_revision_id,
+                                                  new_revision_id,
+                                                  branch.repository)
+    if old_history == [] and new_history == []:
+        output.write('Nothing seems to have changed\n')
+        return
+
+    log_format = log_formatter_registry.get_default(branch)
+    lf = log_format(show_ids=False, to_file=output, show_timezone='original')
+    if old_history != []:
+        output.write('*'*60)
+        output.write('\nRemoved Revisions:\n')
+        show_flat_log(branch.repository, old_history, old_revno, lf)
+        output.write('*'*60)
+        output.write('\n\n')
+    if new_history != []:
+        output.write('Added Revisions:\n')
+        start_revno = new_revno - len(new_history) + 1
+        show_log(branch, lf, None, verbose=False, direction='forward',
+                 start_revision=start_revno,)
+
+
+def show_flat_log(repository, history, last_revno, lf):
+    """Show a simple log of the specified history.
+
+    :param repository: The repository to retrieve revisions from.
+    :param history: A list of revision_ids indicating the lefthand history.
+    :param last_revno: The revno of the last revision_id in the history.
+    :param lf: The log formatter to use.
+    """
+    start_revno = last_revno - len(history) + 1
+    revisions = repository.get_revisions(history)
+    for i, rev in enumerate(revisions):
+        lr = LogRevision(rev, i + last_revno, 0, None)
+        lf.log_revision(lr)
 
 
 properties_handler_registry = registry.Registry()

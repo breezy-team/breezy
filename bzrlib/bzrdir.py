@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -524,9 +524,22 @@ class BzrDir(object):
         
         :return: Tuple with old path name and new path name
         """
-        self.root_transport.copy_tree('.bzr', 'backup.bzr')
-        return (self.root_transport.abspath('.bzr'),
-                self.root_transport.abspath('backup.bzr'))
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            # FIXME: bug 300001 -- the backup fails if the backup directory
+            # already exists, but it should instead either remove it or make
+            # a new backup directory.
+            #
+            # FIXME: bug 262450 -- the backup directory should have the same 
+            # permissions as the .bzr directory (probably a bug in copy_tree)
+            old_path = self.root_transport.abspath('.bzr')
+            new_path = self.root_transport.abspath('backup.bzr')
+            pb.note('making backup of %s' % (old_path,))
+            pb.note('  to %s' % (new_path,))
+            self.root_transport.copy_tree('.bzr', 'backup.bzr')
+            return (old_path, new_path)
+        finally:
+            pb.finished()
 
     def retire_bzrdir(self, limit=10000):
         """Permanently disable the bzrdir.
@@ -1308,6 +1321,8 @@ class BzrDirPreSplitOut(BzrDir):
         # if the format is not the same as the system default,
         # an upgrade is needed.
         if format is None:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
+                % 'needs_format_conversion(format=None)')
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
@@ -1355,6 +1370,9 @@ class BzrDir4(BzrDirPreSplitOut):
 
     def needs_format_conversion(self, format=None):
         """Format 4 dirs are always in need of conversion."""
+        if format is None:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
+                % 'needs_format_conversion(format=None)')
         return True
 
     def open_repository(self):
@@ -1515,6 +1533,9 @@ class BzrDirMeta1(BzrDir):
 
     def needs_format_conversion(self, format=None):
         """See BzrDir.needs_format_conversion()."""
+        if format is None:
+            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
+                % 'needs_format_conversion(format=None)')
         if format is None:
             format = BzrDirFormat.get_default_format()
         if not isinstance(self._format, format.__class__):
@@ -2902,12 +2923,13 @@ class RepositoryAcquisitionPolicy(object):
         else:
             return urlutils.join(self._stack_on_pwd, self._stack_on)
 
-    def _add_fallback(self, repository):
+    def _add_fallback(self, repository, possible_transports=None):
         """Add a fallback to the supplied repository, if stacking is set."""
         stack_on = self._get_full_stack_on()
         if stack_on is None:
             return
-        stacked_dir = BzrDir.open(stack_on)
+        stacked_dir = BzrDir.open(stack_on,
+                                  possible_transports=possible_transports)
         try:
             stacked_repo = stacked_dir.open_branch().repository
         except errors.NotBranchError:
@@ -2955,7 +2977,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         Creates the desired repository in the bzrdir we already have.
         """
         repository = self._bzrdir.create_repository(shared=shared)
-        self._add_fallback(repository)
+        self._add_fallback(repository,
+                           possible_transports=[self._bzrdir.transport])
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
         return repository
@@ -2982,7 +3005,8 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 
         Returns an existing repository to use
         """
-        self._add_fallback(self._repository)
+        self._add_fallback(self._repository,
+                       possible_transports=[self._repository.bzrdir.transport])
         return self._repository
 
 

@@ -912,26 +912,25 @@ class KnitVersionedFiles(VersionedFiles):
         delta_size = 0
         fulltext_size = None
         for count in xrange(self._max_delta_chain):
-            # XXX: Collapse these two queries:
             try:
                 # Note that this only looks in the index of this particular
                 # KnitVersionedFiles, not in the fallbacks.  This ensures that
                 # we won't store a delta spanning physical repository
                 # boundaries.
-                method = self._index.get_method(parent)
-            except RevisionNotPresent:
-                # Some basis is not locally present: always delta
+                build_details = self._index.get_build_details([parent])
+                parent_details = build_details[parent]
+            except RevisionNotPresent, KeyError:
+                # Some basis is not locally present: always fulltext
                 return False
-            index, pos, size = self._index.get_position(parent)
-            if method == 'fulltext':
+            index_memo, compression_parent, _, _ = parent_details
+            _, _, size = index_memo
+            if compression_parent is None:
                 fulltext_size = size
                 break
             delta_size += size
             # We don't explicitly check for presence because this is in an
             # inner loop, and if it's missing it'll fail anyhow.
-            # TODO: This should be asking for compression parent, not graph
-            # parent.
-            parent = self._index.get_parent_map([parent])[parent][0]
+            parent = compression_parent
         else:
             # We couldn't find a fulltext, so we must create a new one
             return False
@@ -2251,7 +2250,7 @@ class _KnitGraphIndex(object):
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
                 if (value[0] != keys[key][0][0] or
-                    node_refs != keys[key][1]):
+                    node_refs[:1] != keys[key][1][:1]):
                     raise KnitCorrupt(self, "inconsistent details in add_records"
                         ": %s %s" % ((value, node_refs), keys[key]))
                 del keys[key]

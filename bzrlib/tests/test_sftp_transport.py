@@ -474,12 +474,17 @@ class ReadvFile(object):
             yield self._data[start:start+length]
 
 
+def _null_report_activity(*a, **k):
+    pass
+
+
 class Test_SFTPReadvHelper(tests.TestCase):
 
     def checkGetRequests(self, expected_requests, offsets):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
+            _null_report_activity)
         self.assertEqual(expected_requests, helper._get_requests())
 
     def test__get_requests(self):
@@ -499,7 +504,8 @@ class Test_SFTPReadvHelper(tests.TestCase):
     def checkRequestAndYield(self, expected, data, offsets):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
+            _null_report_activity)
         data_f = ReadvFile(data)
         result = list(helper.request_and_yield_offsets(data_f))
         self.assertEqual(expected, result)

@@ -126,7 +126,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
             raise errors.InvalidHttpRange(abspath, range_header,
                                           'Server return code %d' % code)
 
-        data = handle_response(abspath, code, response.info(), response)
+        data = handle_response(abspath, code, response.info(), response,
+            report_activity=self._report_activity)
         return code, data
 
     def _post(self, body_bytes):
@@ -136,7 +137,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
         response = self._perform(Request('POST', abspath, body_bytes,
                                          accepted_errors=[200, 403]))
         code = response.code
-        data = handle_response(abspath, code, response.info(), response)
+        data = handle_response(abspath, code, response.info(), response,
+            report_activity=self._report_activity)
         return code, data
 
     def _head(self, relpath):
@@ -165,6 +167,11 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib.tests.http_server import HttpServer_urllib
-    return [(HttpTransport_urllib, HttpServer_urllib),
-            ]
+    from bzrlib import tests
+    from bzrlib.tests import http_server
+    permutations = [(HttpTransport_urllib, http_server.HttpServer_urllib),]
+    if tests.HTTPSServerFeature.available():
+        from bzrlib.tests import https_server
+        permutations.append((HttpTransport_urllib,
+                             https_server.HTTPSServer_urllib))
+    return permutations
