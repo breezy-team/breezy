@@ -200,7 +200,7 @@ class LaunchpadService(object):
                        for domain in self.LAUNCHPAD_DOMAINS.itervalues())
             if hostinfo not in domains:
                 raise NotLaunchpadBranch(branch_url)
-        return urlutils.join('http://code.%s' % self.domain, path)
+        return urlutils.join('https://code.%s' % self.domain, path)
 
 
 class BaseRequest(object):

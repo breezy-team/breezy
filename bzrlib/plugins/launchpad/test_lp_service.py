@@ -95,28 +95,28 @@ class TestURLInference(TestCase):
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.edge.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
 
     def test_product_bzr_ssh_url(self):
         service = LaunchpadService(lp_instance='production')
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
 
     def test_sftp_branch_url(self):
         service = LaunchpadService(lp_instance='production')
         web_url = service.get_web_url_from_branch_url(
             'sftp://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
 
     def test_staging_branch_url(self):
         service = LaunchpadService(lp_instance='production')
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.staging.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
 
     def test_non_launchpad_url(self):
         service = LaunchpadService()
@@ -137,32 +137,32 @@ class TestURLInference(TestCase):
         service = LaunchpadService(lp_instance='production')
         web_url = service.get_web_url_from_branch_url('lp:~foo/bar/baz')
         self.assertEqual(
-            'http://code.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
 
     def test_staging_url(self):
         service = LaunchpadService(lp_instance='staging')
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.staging.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.staging.launchpad.net/~foo/bar/baz', web_url)
 
     def test_edge_url(self):
         service = LaunchpadService(lp_instance='edge')
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.edge.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
 
     def test_dev_url(self):
         service = LaunchpadService(lp_instance='dev')
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.launchpad.dev/~foo/bar/baz', web_url)
+            'https://code.launchpad.dev/~foo/bar/baz', web_url)
 
     def test_demo_url(self):
         service = LaunchpadService(lp_instance='demo')
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'http://code.demo.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.demo.launchpad.net/~foo/bar/baz', web_url)
