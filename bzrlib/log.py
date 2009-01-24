@@ -1031,6 +1031,7 @@ class LongLogFormatter(LogFormatter):
 class ShortLogFormatter(LogFormatter):
 
     supports_delta = True
+    supports_tags = True
     supports_single_merge_revision = True
 
     def log_revision(self, revision):
@@ -1038,13 +1039,17 @@ class ShortLogFormatter(LogFormatter):
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
             is_merge = ' [merge]'
-        to_file.write("%5s %s\t%s%s\n" % (revision.revno,
+        tags = ''
+        if revision.tags:
+            tags = ' {%s}' % (', '.join(revision.tags))
+
+        to_file.write("%5s %s\t%s%s%s\n" % (revision.revno,
                 self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
-                is_merge))
+                tags, is_merge))
         if self.show_ids:
             to_file.write('      revision-id:%s\n'
                           % (revision.rev.revision_id,))
@@ -1063,6 +1068,7 @@ class ShortLogFormatter(LogFormatter):
 
 class LineLogFormatter(LogFormatter):
 
+    supports_tags = True
     supports_single_merge_revision = True
 
     def __init__(self, *args, **kwargs):
@@ -1087,15 +1093,16 @@ class LineLogFormatter(LogFormatter):
 
     def log_revision(self, revision):
         self.to_file.write(self.log_string(revision.revno, revision.rev,
-                                              self._max_chars))
+            self._max_chars, revision.tags))
         self.to_file.write('\n')
 
-    def log_string(self, revno, rev, max_chars):
+    def log_string(self, revno, rev, max_chars, tags=None):
         """Format log info into one string. Truncate tail of string
         :param  revno:      revision number or None.
                             Revision numbers counts from 1.
-        :param  rev:        revision info object
+        :param  rev:        revision object
         :param  max_chars:  maximum length of resulting string
+        :param  tags:       list of tags or None
         :return:            formatted truncated string
         """
         out = []
@@ -1104,6 +1111,9 @@ class LineLogFormatter(LogFormatter):
             out.append("%s:" % revno)
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
+        if tags:
+            tag_str = '{%s}' % (', '.join(tags))
+            out.append(tag_str)
         out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
 
