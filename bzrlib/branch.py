@@ -249,13 +249,13 @@ class Branch(object):
         # start_revision_id.
         if self._merge_sorted_revisions_cache is None:
             last_revision = self.last_revision()
-            revision_graph = repository._old_get_graph(self.repository,
-                last_revision)
+            graph = self.repository.get_graph()
+            parent_map = dict(((key, value) for key, value in
+                     graph.iter_ancestry([last_revision]) if value is not None))
+            revision_graph = repository._strip_NULL_ghosts(parent_map)
             self._merge_sorted_revisions_cache = tsort.merge_sort(
-                revision_graph,
-                last_revision,
-                None,
-                generate_revno=True)
+                revision_graph, last_revision, None, generate_revno=True)
+
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
             stop_revision_id)
