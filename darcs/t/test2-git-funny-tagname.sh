@@ -3,6 +3,7 @@
 create_darcs test2 --darcs-2
 cd test2
 darcs tag "this :just (won't work; die)"
+darcs tag "accent-tag-éáőű"
 cd ..
 
 rm -rf test2.darcs test2.git
