@@ -127,6 +127,7 @@ class cmd_register_branch(Command):
 register_command(cmd_register_branch)
 
 
+# XXX: Make notes to test this.
 class cmd_launchpad_open(Command):
     """Open a Launchpad branch page in your web browser."""
 
