@@ -340,7 +340,7 @@ class cmd_builddeb(Command):
               build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
           else:
               if export_upstream is None:
-                  build = DebBuild(properties, branch=branch, tree=tree, 
+                  build = DebBuild(properties, tree, 
                                    _is_working_tree=working_tree)
               else:
                   prepull_upstream = config.prepull_upstream
