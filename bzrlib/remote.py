@@ -1290,6 +1290,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         self._partial_revision_id_to_revno_cache = {}
         self._revision_history_cache = None
         self._last_revision_info_cache = None
+        self._merge_sorted_revisions_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
             self._client = _client
