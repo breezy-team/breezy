@@ -199,7 +199,10 @@ class LaunchpadService(object):
             _request_factory = ResolveLaunchpadPathRequest
         if scheme == 'lp':
             resolve = _request_factory(path)
-            result = resolve.submit(self)
+            try:
+                result = resolve.submit(self)
+            except xmlrpclib.Fault, fault:
+                raise errors.InvalidURL(branch_url, str(fault))
             branch_url = result['urls'][0]
             path = urlsplit(branch_url)[2]
         else:

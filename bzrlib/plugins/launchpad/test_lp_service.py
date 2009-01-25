@@ -17,7 +17,9 @@
 """Tests for selection of the right Launchpad service by environment"""
 
 import os
+import xmlrpclib
 
+from bzrlib import errors
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance, LaunchpadService, NotLaunchpadBranch)
 from bzrlib.plugins.launchpad.test_lp_directory import FakeResolveFactory
@@ -151,6 +153,16 @@ class TestURLInference(TestCase):
         web_url = service.get_web_url_from_branch_url('lp:foo', factory)
         self.assertEqual(
             'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_lp_branch_fault(self):
+        service = LaunchpadService()
+        factory = FakeResolveFactory(self, 'foo', None)
+        def submit(service):
+            raise xmlrpclib.Fault(42, 'something went wrong')
+        factory.submit = submit
+        self.assertRaises(
+            errors.InvalidURL, service.get_web_url_from_branch_url, 'lp:foo',
+            factory)
 
     def test_staging_url(self):
         service = LaunchpadService(lp_instance='staging')
