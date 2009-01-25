@@ -206,31 +206,31 @@ class TestFindUnmerged(tests.TestCaseWithTransport):
         tree2.merge_from_branch(tree3.branch)
         rev6 = tree2.commit('six', rev_id='rev6')
 
-        self.assertUnmerged([], [('2', 'rev2', 0), ('3', 'rev3',0 ),
+        self.assertUnmerged([], [('2', 'rev2', 0), ('3', 'rev3', 0),
                                  ('4', 'rev6', 0),
                                  ('3.1.1', 'rev4', 1), ('3.1.2', 'rev5', 1),
                                  ],
-                            tree.branch, tree2.branch, 'all',
+                            tree.branch, tree2.branch,
                             include_merges=True)
 
         self.assertUnmerged([], [('4', 'rev6', 0),
                                  ('3.1.2', 'rev5', 1), ('3.1.1', 'rev4', 1),
-                                 ('3', 'rev3',0 ), ('2', 'rev2', 0),
+                                 ('3', 'rev3', 0), ('2', 'rev2', 0),
                                  ],
-                            tree.branch, tree2.branch, 'all',
+                            tree.branch, tree2.branch,
                             include_merges=True,
                             backward=True)
 
         self.assertUnmerged([], [('4', 'rev6', 0)],
-            tree.branch, tree2.branch, 'all',
+            tree.branch, tree2.branch,
             include_merges=True, remote_revid_range=(rev6, rev6))
 
-        self.assertUnmerged([], [('3', 'rev3',0 ), ('3.1.1', 'rev4', 1)],
-                    tree.branch, tree2.branch, 'all',
+        self.assertUnmerged([], [('3', 'rev3', 0), ('3.1.1', 'rev4', 1)],
+                    tree.branch, tree2.branch,
                     include_merges=True, remote_revid_range=(rev3, rev4))
 
-        self.assertUnmerged([], [('4', 'rev6', 0),('3.1.2', 'rev5', 1)],
-                    tree.branch, tree2.branch, 'all',
+        self.assertUnmerged([], [('4', 'rev6', 0), ('3.1.2', 'rev5', 1)],
+                    tree.branch, tree2.branch,
                     include_merges=True, remote_revid_range=(rev5, rev6))
 
     def test_revision_range(self):
