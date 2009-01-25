@@ -51,3 +51,15 @@ pull::
 	`branch.<branchname>.rebase` configuration setting, where `<branchname>`
 	is the current branch. The default is - just like with `git pull` - is
 	to `git merge`.
+
+list::
+	List the name [and location] of each registered darcs repo.
+	The syntax is `list [-v|--verbose]`.
+
+find-darcs::
+	Searches for darcs patches matching a SHA1 prefix.
+	The syntax is `find-darcs <sha1-prefix>`.
+
+find-git::
+	Searches for git commits matching a darcs patch prefix.
+	The syntax is `find-git <patch-prefix>`.

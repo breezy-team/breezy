@@ -148,6 +148,80 @@ push()
 	fi
 }
 
+# List the darcs remotes
+list()
+{
+	if [ -z "$*" ]
+	then
+		git config -l | sed -n -e '/git-darcs\..*/ {s/git-darcs\.//; s/\.location=.*//p}'
+		exit
+	elif [ "$#" -eq 1 ]
+	then
+		case $1 in
+			-v|--verbose)
+				git config -l | sed -n -e '/git-darcs\..*/ {s/git-darcs\.//; s/\.location=/\t/p}'
+				exit
+				;;
+		esac
+	fi
+	echo "Usage: git darcs list [-v|--verbose]"
+	exit 1
+}
+
+# Find the darcs commit(s) supporting a git SHA1 prefix
+find_darcs()
+{
+	sha1="$1"
+	shift
+	if [ -z "$sha1" -o -n "$*" ]
+	then
+		echo "Usage: git darcs find-darcs <sha1-prefix>"
+		exit 1
+	fi
+	for remote in $git_dir/darcs/*
+	do
+		remote=`basename $remote`
+		git_map=$git_dir/darcs-git/$remote-git-map
+		darcs_map=$git_dir/darcs-git/$remote-darcs-map
+		if [ ! -f $git_map -o ! -f $darcs_map ]
+		then
+			echo "Missing mappings for remote $remote"
+			exit 1
+		fi
+		for row in `sed -n -e "/:.* $sha1.*/ s/[^ ]*/&/p" $git_map`
+		do
+			sed -n -e "/$row / {s/[^ ]*//; s/.*/$remote\t&/p}" $darcs_map
+		done
+	done
+}
+
+# Find the git commit(s) supporting a darcs patch prefix
+find_git()
+{
+	patch="$1"
+	shift
+	if [ -z "$patch" -o -n "$*" ]
+	then
+		echo "Usage: git darcs find-git <patch-prefix>"
+		exit 1
+	fi
+	for remote in $git_dir/darcs/*
+	do
+		remote=`basename $remote`
+		git_map=$git_dir/darcs-git/$remote-git-map
+		darcs_map=$git_dir/darcs-git/$remote-darcs-map
+		if [ ! -f $git_map -o ! -f $darcs_map ]
+		then
+			echo "Missing mappings for remote $remote"
+			exit 1
+		fi
+		for row in `sed -n -e "/:.* $patch.*/ s/[^ ]*/&/p" $darcs_map`
+		do
+			sed -n -e "/$row / {s/[^ ]* \(.*\)/\1/p}" $git_map
+		done
+	done
+}
+
 git rev-parse 2> /dev/null
 if [ $? != 0 ]; then
 	echo "Must be inside a git repository to work"
@@ -163,11 +237,17 @@ command="$1"
 shift
 
 case $command in
-	add|push|fetch|pull)
+	add|push|fetch|pull|list)
+		;;
+	find-darcs)
+		command=find_darcs
+		;;
+	find-git)
+		command=find_git
 		;;
 	*)
 		echo "Usage: git darcs [COMMAND] [OPTIONS]"
-		echo "Commands: add, push, fetch, pull"
+		echo "Commands: add, push, fetch, pull, list, find-darcs, find-git"
 		exit
 		;;
 esac
