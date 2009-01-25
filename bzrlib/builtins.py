@@ -3523,8 +3523,29 @@ class cmd_shell_complete(Command):
 
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
-    
+
     OTHER_BRANCH may be local or remote.
+
+    :Examples:
+
+        Determine the missing revisions between this and the branch at the
+        remembered pull location::
+
+            bzr missing
+
+        Determine the missing revisions between this and another branch::
+
+            bzr missing http://server/branch
+
+        Determine the missing revisions up to a specific revision on the other
+        branch::
+
+            bzr missing -r ..-10
+
+        Determine the missing revisions up to a specific revision on this
+        branch::
+
+            bzr missing --my-revision ..-10
     """
 
     _see_also = ['merge', 'pull']

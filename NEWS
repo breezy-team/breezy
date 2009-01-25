@@ -7,6 +7,13 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  NEW FEATURES:
+
+    * Add support for filtering `bzr missing` on revisions.  Remote revisions
+      can be filtered using `bzr missing -r -20..-10` and local revisions can
+      be filtered using `bzr missing --my-revision -20..-10`.
+      (Marius Kruger)
+
   IMPROVEMENTS:
 
     * Progress bars now show the rate of activity for some sftp 
