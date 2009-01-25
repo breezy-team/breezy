@@ -1,5 +1,6 @@
 VERSION         DESCRIPTION
 -----------------------------------------------------------------------------
+              - git-darcs: new list, find-darcs and find-git subcommands
 0.8           - revert the "not exporting unchanged files multiple
 		times" optimization, it causes corrupted results in some
                 cases.
