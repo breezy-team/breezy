@@ -36,6 +36,7 @@ from cStringIO import StringIO
 
 
 class BzrFetchGraphWalker(object):
+    """GraphWalker implementation that uses a Bazaar repository."""
 
     def __init__(self, repository, mapping):
         self.repository = repository
@@ -43,6 +44,9 @@ class BzrFetchGraphWalker(object):
         self.done = set()
         self.heads = set(repository.all_revision_ids())
         self.parents = {}
+
+    def __iter__(self):
+        return iter(self.next, None)
 
     def ack(self, sha):
         revid = self.mapping.revision_id_foreign_to_bzr(sha)
