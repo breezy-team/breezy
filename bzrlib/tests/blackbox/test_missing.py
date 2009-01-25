@@ -150,7 +150,7 @@ class TestMissing(TestCaseWithTransport):
         self.build_tree_contents([('a/a', 'initial\n')])
         a_tree.add('a')
         a_tree.commit(message='r1')
-        # clone and add a differing revision
+        # clone and add differing revisions
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
 
         for i in range(2, 6):
@@ -159,15 +159,15 @@ class TestMissing(TestCaseWithTransport):
 
         os.chdir('a')
         # local
-        out,err = self.run_bzr('missing ../b --my-revision 2', retcode=1)
-        self.assertMessages(out, ('a2', 'b2', 'b3', 'b4', 'b5'), ('a3',))
+        out,err = self.run_bzr('missing ../b --my-revision 3', retcode=1)
+        self.assertMessages(out, ('a3', 'b2', 'b3', 'b4', 'b5'), ('a2', 'a4'))
 
         out,err = self.run_bzr('missing ../b --my-revision 3..4', retcode=1)
         self.assertMessages(out, ('a3', 'a4'), ('a2', 'a5'))
 
         #remote
-        out,err = self.run_bzr('missing ../b -r 2', retcode=1)
-        self.assertMessages(out, ('a2', 'a3', 'a4', 'a5', 'b2'), ('b3',))
+        out,err = self.run_bzr('missing ../b -r 3', retcode=1)
+        self.assertMessages(out, ('a2', 'a3', 'a4', 'a5', 'b3'), ('b2', 'b4'))
 
         out,err = self.run_bzr('missing ../b -r 3..4', retcode=1)
         self.assertMessages(out, ('b3', 'b4'), ('b2', 'b5'))

@@ -3526,6 +3526,10 @@ class cmd_missing(Command):
 
     OTHER_BRANCH may be local or remote.
 
+    To filter on a range of revirions, you can use the command -r begin..end
+    -r revision requests a specific revision, -r ..end or -r begin.. are
+    also valid.
+
     :Examples:
 
         Determine the missing revisions between this and the branch at the
