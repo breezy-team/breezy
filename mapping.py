@@ -19,6 +19,8 @@
 from bzrlib import errors, foreign
 from bzrlib.inventory import ROOT_ID
 from bzrlib.foreign import (
+        ForeignVcs, 
+        VcsMappingRegistry, 
         ForeignRevision,
         )
 
@@ -35,17 +37,23 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    def revision_id_foreign_to_bzr(self, git_rev_id):
+    def __eq__(self, other):
+        return type(self) == type(other) and self.revid_prefix == other.revid_prefix
+
+    @classmethod
+    def revision_id_foreign_to_bzr(cls, git_rev_id):
         """Convert a git revision id handle to a Bazaar revision id."""
-        return "%s:%s" % (self.revid_prefix, git_rev_id)
+        return "%s:%s" % (cls.revid_prefix, git_rev_id)
 
-    def revision_id_bzr_to_foreign(self, bzr_rev_id):
+    @classmethod
+    def revision_id_bzr_to_foreign(cls, bzr_rev_id):
         """Convert a Bazaar revision id to a git revision id handle."""
-        if not bzr_rev_id.startswith("%s:" % self.revid_prefix):
-            raise errors.InvalidRevisionId(bzr_rev_id, self)
-        return bzr_rev_id[len(self.revid_prefix)+1:]
+        if not bzr_rev_id.startswith("%s:" % cls.revid_prefix):
+            raise errors.InvalidRevisionId(bzr_rev_id, cls)
+        return bzr_rev_id[len(cls.revid_prefix)+1:], cls()
 
-    def show_foreign_revid(self, foreign_revid):
+    @classmethod
+    def show_foreign_revid(cls, foreign_revid):
         return { "git commit": foreign_revid }
 
     def generate_file_id(self, path):
@@ -81,4 +89,31 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     experimental = True
 
 
+class GitMappingRegistry(VcsMappingRegistry):
+
+    def revision_id_bzr_to_foreign(self, bzr_revid):
+        if not bzr_revid.startswith("git-"):
+            raise errors.InvalidRevisionId(bzr_revid, None)
+        (mapping_version, git_sha) = bzr_revid.split(":", 1)
+        mapping = self.get(mapping_version)
+        return mapping.revision_id_bzr_to_foreign(bzr_revid)
+
+    parse_revision_id = revision_id_bzr_to_foreign
+
+
+mapping_registry = GitMappingRegistry()
+mapping_registry.register_lazy('git-v1', "bzrlib.plugins.git.mapping",
+                                   "BzrGitMappingv1")
+mapping_registry.register_lazy('git-experimental', "bzrlib.plugins.git.mapping",
+                                   "BzrGitMappingExperimental")
+
+
+class ForeignGit(ForeignVcs):
+    """Foreign Git."""
+
+    def __init__(self):
+        super(ForeignGit, self).__init__(mapping_registry)
+
+
 default_mapping = BzrGitMappingv1()
+foreign_git = ForeignGit()

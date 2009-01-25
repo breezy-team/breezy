@@ -47,7 +47,7 @@ class BzrBackend(Backend):
         repo = repo_dir.open_repository()
         for branch in repo.find_branches(using=True):
             #FIXME: Need to get branch path relative to its repository and use this instead of nick
-            ret["refs/heads/"+branch.nick] = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
+            ret["refs/heads/"+branch.nick] = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())[0]
         return ret
 
     def apply_pack(self, refs, read):
@@ -148,7 +148,7 @@ def revision_to_commit(rev, mapping, tree_sha):
     commit = Commit()
     commit._tree = tree_sha
     for p in rev.parent_ids:
-        commit._parents.append(mapping.revision_id_bzr_to_foreign(p))
+        commit._parents.append(mapping.revision_id_bzr_to_foreign(p)[0])
     commit._message = rev.message
     commit._committer = rev.committer
     if 'author' in rev.properties:

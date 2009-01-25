@@ -41,7 +41,7 @@ from bzrlib.transport import get_transport
 from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
-from bzrlib.plugins.git.mapping import default_mapping
+from bzrlib.plugins.git.mapping import default_mapping, mapping_registry
 
 import dulwich as git
 
@@ -125,12 +125,12 @@ class LocalGitRepository(GitRepository):
             if revision_id == revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
-            hexsha = self.lookup_git_revid(revision_id, self.get_mapping())
+            hexsha, mapping = self.lookup_git_revid(revision_id)
             commit  = self._git.commit(hexsha)
             if commit is None:
                 continue
             else:
-                parent_map[revision_id] = [self.get_mapping().revision_id_foreign_to_bzr(p) for p in commit.parents]
+                parent_map[revision_id] = [mapping.revision_id_foreign_to_bzr(p) for p in commit.parents]
         return parent_map
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -163,20 +163,20 @@ class LocalGitRepository(GitRepository):
     def has_signature_for_revision_id(self, revision_id):
         return False
 
-    def lookup_git_revid(self, bzr_revid, mapping):
+    def lookup_git_revid(self, bzr_revid):
         try:
-            return mapping.revision_id_bzr_to_foreign(bzr_revid)
+            return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
             raise errors.NoSuchRevision(self, bzr_revid)
 
     def get_revision(self, revision_id):
-        git_commit_id = self.lookup_git_revid(revision_id, self.get_mapping())
+        git_commit_id, mapping = self.lookup_git_revid(revision_id)
         try:
             commit = self._git.commit(git_commit_id)
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         # print "fetched revision:", git_commit_id
-        revision = self.get_mapping().import_commit(commit)
+        revision = mapping.import_commit(commit)
         assert revision is not None
         return revision
 
@@ -203,7 +203,7 @@ class LocalGitRepository(GitRepository):
             inv.revision_id = revision_id
             return revisiontree.RevisionTree(self, inv, revision_id)
 
-        return GitRevisionTree(self, self.get_mapping(), revision_id)
+        return GitRevisionTree(self, revision_id)
 
     def get_inventory(self, revision_id):
         assert revision_id != None
@@ -218,12 +218,11 @@ class LocalGitRepository(GitRepository):
 
 class GitRevisionTree(revisiontree.RevisionTree):
 
-    def __init__(self, repository, mapping, revision_id):
+    def __init__(self, repository, revision_id):
         self._repository = repository
         self.revision_id = revision_id
         assert isinstance(revision_id, str)
-        self.mapping = mapping
-        git_id = repository.lookup_git_revid(revision_id, self.mapping)
+        git_id, self.mapping = repository.lookup_git_revid(revision_id)
         try:
             commit = repository._git.commit(git_id)
         except KeyError, r:

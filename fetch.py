@@ -64,7 +64,7 @@ class BzrFetchGraphWalker(object):
             self.heads.update([p for p in ps if not p in self.done])
             try:
                 self.done.add(ret)
-                return self.mapping.revision_id_bzr_to_foreign(ret)
+                return self.mapping.revision_id_bzr_to_foreign(ret)[0]
             except InvalidRevisionId:
                 pass
         return None
@@ -209,7 +209,7 @@ class InterGitNonGitRepository(InterRepository):
             if revision_id is None:
                 ret = heads.values()
             else:
-                ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
+                ret = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
         create_pb = None
@@ -264,7 +264,7 @@ class InterGitRepository(InterRepository):
         if revision_id is None:
             determine_wants = lambda x: [y for y in x.values() if not y in r.object_store]
         else:
-            args = [mapping.revision_id_bzr_to_foreign(revision_id)]
+            args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
 
         graphwalker = SimpleFetchGraphWalker(r.heads().values(), r.get_parents)
