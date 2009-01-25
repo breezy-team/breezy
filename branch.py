@@ -23,8 +23,14 @@ from bzrlib import (
     tag,
     )
 from bzrlib.decorators import needs_read_lock
+from bzrlib.trace import mutter
 
 from bzrlib.plugins.git.foreign import ForeignBranch
+
+from dulwich.objects import (
+        Commit,
+        Tag,
+        )
 
 class GitTagDict(tag.BasicTags):
 
@@ -35,6 +41,13 @@ class GitTagDict(tag.BasicTags):
     def get_tag_dict(self):
         ret = {}
         for k,v in self.repository._git.tags.iteritems():
+            obj = self.repository._git.get_object(v)
+            while isinstance(obj, Tag):
+                v = obj.object[1]
+                obj = self.repository._git.get_object(v)
+            if not isinstance(obj, Commit):
+                mutter("Tag %s points at object %r that is not a commit, ignoring", k, obj)
+                continue
             ret[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
         return ret
 
