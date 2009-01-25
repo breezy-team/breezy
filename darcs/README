@@ -101,10 +101,10 @@ the imported tags (newly created tags won't be pushed back).
 darcs-fast-export has been tested with the following versions:
 
 Darcs version (see http://bugs.darcs.net/issue844[this bug] on why do
-you need a snapshot):
+you need such a new version):
 ----
 $ darcs --version
-2.1.2 (+ 266 patches)
+2.2.0 (release)
 ----
 
 Git version:
