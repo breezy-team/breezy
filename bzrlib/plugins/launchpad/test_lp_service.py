@@ -18,10 +18,10 @@
 
 import os
 
-from bzrlib import errors
-from bzrlib.tests import TestCase
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance, LaunchpadService, NotLaunchpadBranch)
+from bzrlib.plugins.launchpad.test_lp_directory import FakeResolveFactory
+from bzrlib.tests import TestCase
 
 
 class LaunchpadServiceTests(TestCase):
@@ -135,9 +135,22 @@ class TestURLInference(TestCase):
 
     def test_lp_branch_url(self):
         service = LaunchpadService(lp_instance='production')
-        web_url = service.get_web_url_from_branch_url('lp:~foo/bar/baz')
+        factory = FakeResolveFactory(
+            self, '~foo/bar/baz',
+            dict(urls=['http://bazaar.launchpad.net/~foo/bar/baz']))
+        web_url = service.get_web_url_from_branch_url(
+            'lp:~foo/bar/baz', factory)
         self.assertEqual(
             'https://code.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_lp_branch_shortcut(self):
+        service = LaunchpadService()
+        factory = FakeResolveFactory(
+            self, 'foo',
+            dict(urls=['http://bazaar.launchpad.net/~foo/bar/baz']))
+        web_url = service.get_web_url_from_branch_url('lp:foo', factory)
+        self.assertEqual(
+            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
 
     def test_staging_url(self):
         service = LaunchpadService(lp_instance='staging')
