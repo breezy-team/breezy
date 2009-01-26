@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,13 +18,7 @@
 """Progress indicators.
 
 The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
-will maintain a ProgressBarStack for you.
-
-For direct use, the factory ProgressBar will return an auto-detected progress
-bar that should match your terminal type. You can manually create a
-ProgressBarStack too if you need multiple levels of cooperating progress bars.
-Note that bzrlib's internal functions use the ui module, so if you are using
-bzrlib it really is best to use bzrlib.ui.ui_factory.
+will manage a conceptual stack of nested activities.
 """
 
 
@@ -41,6 +35,10 @@ from bzrlib import (
     ui,
     )
 from bzrlib.trace import mutter
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 def _supports_progress(f):
@@ -84,18 +82,25 @@ class ProgressTask(object):
         self.show_count = True
         self.show_bar = True
 
+    def __repr__(self):
+        return '%s(%r/%r, msg=%r)' % (
+            self.__class__.__name__,
+            self.current_cnt,
+            self.total_cnt,
+            self.msg)
+
     def update(self, msg, current_cnt=None, total_cnt=None):
         self.msg = msg
         self.current_cnt = current_cnt
         if total_cnt:
             self.total_cnt = total_cnt
-        self.ui_factory.show_progress(self)
+        self.ui_factory._progress_updated(self)
 
     def tick(self):
         self.update(self.msg)
 
     def finished(self):
-        self.ui_factory.progress_finished(self)
+        self.ui_factory._progress_finished(self)
 
     def make_sub_task(self):
         return ProgressTask(self, self.ui_factory)
@@ -152,8 +157,13 @@ def ProgressBar(to_file=None, **kwargs):
 
 
 class ProgressBarStack(object):
-    """A stack of progress bars."""
+    """A stack of progress bars.
+    
+    This class is deprecated: instead, ask the ui factory for a new progress
+    task and finish it when it's done.
+    """
 
+    @deprecated_method(deprecated_in((1, 12, 0)))
     def __init__(self,
                  to_file=None,
                  show_pct=False,
