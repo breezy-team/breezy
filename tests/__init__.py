@@ -230,6 +230,7 @@ def test_suite():
         'test_builder',
         'test_branch',
         'test_dir',
+        'test_fetch',
         'test_repository',
         'test_ids',
         'test_blackbox',

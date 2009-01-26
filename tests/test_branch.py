@@ -24,8 +24,8 @@ from bzrlib.plugins.git import (
     tests,
     )
 from bzrlib.plugins.git.mapping import default_mapping
-from bzrlib.plugins.git import git
 
+import dulwich as git
 
 
 class TestGitBranch(tests.TestCaseInTempDir):
@@ -78,10 +78,8 @@ class TestGitBranch(tests.TestCaseInTempDir):
         
         tests.run_git('tag', '-a', '-m', 'add tag', 'foo')
         
-        newid = open('.git/refs/tags/foo').read().rstrip()
-
         thebranch = Branch.open('.')
-        self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(newid)},
+        self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
         
 

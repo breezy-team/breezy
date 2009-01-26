@@ -21,7 +21,6 @@ from bzrlib.repository import InterRepository
 from bzrlib.trace import info
 from bzrlib.tsort import topo_sort
 
-from bzrlib.plugins.git import git
 from bzrlib.plugins.git.repository import (
         LocalGitRepository, 
         GitRepository, 
@@ -29,6 +28,7 @@ from bzrlib.plugins.git.repository import (
         )
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
+import dulwich as git
 from dulwich.client import SimpleFetchGraphWalker
 from dulwich.objects import Commit
 
@@ -36,6 +36,7 @@ from cStringIO import StringIO
 
 
 class BzrFetchGraphWalker(object):
+    """GraphWalker implementation that uses a Bazaar repository."""
 
     def __init__(self, repository, mapping):
         self.repository = repository
@@ -43,6 +44,9 @@ class BzrFetchGraphWalker(object):
         self.done = set()
         self.heads = set(repository.all_revision_ids())
         self.parents = {}
+
+    def __iter__(self):
+        return iter(self.next, None)
 
     def ack(self, sha):
         revid = self.mapping.revision_id_foreign_to_bzr(sha)
@@ -64,7 +68,7 @@ class BzrFetchGraphWalker(object):
             self.heads.update([p for p in ps if not p in self.done])
             try:
                 self.done.add(ret)
-                return self.mapping.revision_id_bzr_to_foreign(ret)
+                return self.mapping.revision_id_bzr_to_foreign(ret)[0]
             except InvalidRevisionId:
                 pass
         return None
@@ -132,7 +136,7 @@ def import_git_objects(repo, mapping, num_objects, object_iter, pb=None):
     """
     # TODO: a more (memory-)efficient implementation of this
     objects = {}
-    for i, o in enumerate(object_iter):
+    for i, (o, _) in enumerate(object_iter):
         if pb is not None:
             pb.update("fetching objects", i, num_objects) 
         objects[o.id] = o
@@ -209,7 +213,7 @@ class InterGitNonGitRepository(InterRepository):
             if revision_id is None:
                 ret = heads.values()
             else:
-                ret = [mapping.revision_id_bzr_to_foreign(revision_id)]
+                ret = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
         create_pb = None
@@ -264,7 +268,7 @@ class InterGitRepository(InterRepository):
         if revision_id is None:
             determine_wants = lambda x: [y for y in x.values() if not y in r.object_store]
         else:
-            args = [mapping.revision_id_bzr_to_foreign(revision_id)]
+            args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
 
         graphwalker = SimpleFetchGraphWalker(r.heads().values(), r.get_parents)

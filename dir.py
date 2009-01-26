@@ -144,7 +144,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         """Open this directory.
 
         """
-        from bzrlib.plugins.git import git
+        import dulwich as git
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
         if url.startswith('readonly+'):
@@ -160,7 +160,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport ends in '.not/'."""
-        from bzrlib.plugins.git import git
+        import dulwich as git
         # little ugly, but works
         format = klass()
         # delegate to the main opening code. This pays a double rtt cost at the
@@ -182,7 +182,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
 
     def initialize_on_transport(self, transport):
         from bzrlib.transport.local import LocalTransport
-        from bzrlib.plugins.git import git
+        import dulwich as git
 
         if not isinstance(transport, LocalTransport):
             raise NotImplementedError(self.initialize, 
