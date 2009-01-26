@@ -71,6 +71,8 @@ NOT RELEASED YET
 
   DOCUMENTATION:
 
+    * Improved plugin developer documentation.  (Martin Pool)
+
   API CHANGES:
 
     * ``ProgressBarStack`` is deprecated; instead use
