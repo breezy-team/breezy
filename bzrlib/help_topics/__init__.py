@@ -307,6 +307,7 @@ development.
 -Devil            Capture call sites that do expensive or badly-scaling
                   operations.
 -Dfetch           Trace history copying between repositories.
+-Dgraph           Trace graph traversal.
 -Dhashcache       Log every time a working file is read to determine its hash.
 -Dhooks           Trace hook execution.
 -Dhpss            Trace smart protocol requests and responses.
@@ -316,6 +317,7 @@ development.
 -Dlock            Trace when lockdir locks are taken or released.
 -Dmerge           Emit information for debugging merges.
 -Dpack            Emit information about pack operations.
+-Dsftp            Trace SFTP internals.
 """
 
 _standard_options = \
