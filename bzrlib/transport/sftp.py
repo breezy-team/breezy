@@ -459,12 +459,12 @@ class SFTPTransport(ConnectedTransport):
         """
         return 64 * 1024
 
-    def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
+    def _sftp_readv(self, fp, offsets, relpath):
         """Use the readv() member of fp to do async readv.
 
-        And then read them using paramiko.readv(). paramiko.readv()
+        Then read them using paramiko.readv(). paramiko.readv()
         does not support ranges > 64K, so it caps the request size, and
-        just reads until it gets all the stuff it wants
+        just reads until it gets all the stuff it wants.
         """
         helper = _SFTPReadvHelper(offsets, relpath, self._report_activity)
         return helper.request_and_yield_offsets(fp)

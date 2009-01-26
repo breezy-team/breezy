@@ -123,13 +123,17 @@ class HttpTransportBase(ConnectedTransport):
 
         :param relpath: The relative path to the file
         """
-        code, response_file = self._get(relpath, None)
         # FIXME: some callers want an iterable... One step forward, three steps
         # backwards :-/ And not only an iterable, but an iterable that can be
         # seeked backwards, so we will never be able to do that.  One such
         # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
         # time of this writing it's even the only known client -- vila20071203
-        return StringIO(response_file.read())
+        return StringIO(self.get_bytes(relpath))
+
+    def get_bytes(self, relpath):
+        """See Transport.get_bytes()."""
+        code, response_file = self._get(relpath, None)
+        return response_file.read()
 
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
@@ -212,7 +216,6 @@ class HttpTransportBase(ConnectedTransport):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-
         # offsets may be a generator, we will iterate it several times, so
         # build a list
         offsets = list(offsets)

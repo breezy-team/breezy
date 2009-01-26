@@ -12,6 +12,14 @@ IN DEVELOPMENT
     * Progress bars now show the rate of activity for some sftp 
       operations, and they are drawn different.  (Martin Pool, #172741)
 
+  BUG FIXES:
+
+    * There was a bug in how we handled resolving when a file is deleted
+      in one branch, and modified in the other. If there was a criss-cross
+      merge, we would cause the deletion to conflict a second time.
+      (Vincent Ladeuil, John Arbash Meinel)
+
+
 NOT RELEASED YET
 ----------------
 
@@ -22,6 +30,11 @@ NOT RELEASED YET
       merging from trunk and completes much faster. To see all merged
       revisions, use the new ``-v`` flag.  (Ian Clatworthy)
 
+    * ``bzr log --line`` now shows any tags after the date and before
+      the commit message. If you have scripts which parse the output
+      from this command, you may need to adjust them accordingly.
+      (Ian Clatworthy)
+
   NEW FEATURES:
 
   IMPROVEMENTS:
@@ -29,11 +42,23 @@ NOT RELEASED YET
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
+    * ``bzr log --short`` and ``bzr log --line`` now show tags, if any,
+      for each revision. The tags are shown comma-separated inside
+      ``{}``. For short format, the tags appear at the end of line
+      before the optional ``[merge]`` indicator. For line format,
+      the tags appear after the date. (Ian Clatworthy)
+
+    * Rule-based preferences can now accept multiple patterns for a set of
+      rules.  (Marius Kruger)
+
   BUG FIXES:
 
     * ``bzr log FILE`` now correctly shows mainline revisions merging
       a change to FILE when the ``--short`` and ``--line`` log formats
       are used. (Ian Clatworthy, #317417)
+
+    * Don't require the present compression base in knits to be the same
+      when adding records in knits. (Jelmer Vernooij, #307394)
 
     * Fix a problem with CIFS client/server lag on Windows colliding with
       an invariant-per-process algorithm for generating AtomicFile names
@@ -48,6 +73,9 @@ NOT RELEASED YET
 
   API CHANGES:
 
+    * ``ProgressBarStack`` is deprecated; instead use
+      ``ui_factory.nested_progress_bar`` to create new progress bars.
+
   TESTING:
 
   INTERNALS:
@@ -58,6 +86,15 @@ NOT RELEASED YET
       BZR_USE_TEXT_UI environment variable (emacs shells, as opposed to
       compile buffers, are such an example).
       (Vincent Ladeuil)
+
+    * New API ``Branch.iter_merge_sorted_revisions()`` that iterates over
+      ``(revision_id, depth, revno, end_of_merge)`` tuples.
+      (Ian Clatworthy)
+
+    * New ``Branch.dotted_revno_to_revision_id()`` and
+      ``Branch.revision_id_to_dotted_revno()`` APIs that pick the most
+      efficient way of doing the mapping.
+      (Ian Clatworthy)
 
     * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
       formatters to retrict the output.
