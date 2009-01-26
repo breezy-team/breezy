@@ -133,6 +133,14 @@ class RemoteTransport(transport.ConnectedTransport):
         # No credentials
         return None, None
 
+    def _report_activity(self, bytes, direction):
+        """See Transport._report_activity.
+
+        Does nothing; the smart medium will report activity triggered by a
+        RemoteTransport.
+        """
+        pass
+
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
         try:
