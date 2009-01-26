@@ -701,6 +701,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._writeable_pipe.write(bytes)
+        self._report_activity(len(bytes), 'write')
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
@@ -708,7 +709,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
-        return self._readable_pipe.read(count)
+        bytes = self._readable_pipe.read(count)
+        self._report_activity(len(bytes), 'read')
+        return bytes
 
 
 class SmartSSHClientMedium(SmartClientStreamMedium):
@@ -742,6 +745,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
         self._write_to.write(bytes)
+        self._report_activity(len(bytes), 'write')
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -777,7 +781,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if not self._connected:
             raise errors.MediumNotConnected(self)
         bytes_to_read = min(count, _MAX_READ_SIZE)
-        return self._read_from.read(bytes_to_read)
+        bytes = self._read_from.read(bytes_to_read)
+        self._report_activity(len(bytes), 'read')
+        return bytes
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
