@@ -266,10 +266,12 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     if use_deltas_for_matching:
         view_revisions = _calc_view_revisions(branch, rev_limits,
             direction, generate_merge_revisions, allow_single_merge_revision)
-        def only_the_file(path, file_id):
-            return file_id == specific_fileid
+        if specific_fileid:
+            fileids = set([specific_fileid])
+        else:
+            fileids = None
         return make_log_rev_iterator(branch, view_revisions, generate_delta,
-            search, delta_entry_filter=only_the_file)
+            search, file_ids=fileids, direction=direction)
     else:
         view_revisions = _calc_view_revisions(branch, rev_limits,
             direction, generate_merge_revisions or specific_fileid,
@@ -508,16 +510,16 @@ def _rebase_merge_depth(view_revisions):
 
 
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
-        delta_entry_filter=None):
+        file_ids=None, direction='reverse'):
     """Create a revision iterator for log.
 
     :param branch: The branch being logged.
     :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
     :param search: A user text search string.
-    :param delta_entry_filter: If set, a delta is always generated and
-      one of its entries must pass this filter for a revision to be kept.
-      The generated delta is only retained if generate_delta is True.
+    :param file_ids: If non empty, only revisions matching one or more of
+      the file-ids are to be kept.
+    :param direction: the direction in which view_revisions is sorted
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
@@ -534,35 +536,15 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
                 yield (view, None, None)
         log_rev_iterator = iter([_convert()])
     for adapter in log_adapters:
-        log_rev_iterator = adapter(branch, generate_delta or
-            delta_entry_filter, search, log_rev_iterator)
-    if delta_entry_filter:
-        log_rev_iterator = _filter_delta_items(log_rev_iterator,
-            delta_entry_filter, generate_delta)
+        # It would be nicer if log adapter were first class objects
+        # with custom parameters. This will do for now. IGC 20090127
+        if adapter == _make_delta_filter:
+            log_rev_iterator = adapter(branch, generate_delta,
+                search, log_rev_iterator, file_ids, direction)
+        else:
+            log_rev_iterator = adapter(branch, generate_delta,
+                search, log_rev_iterator)
     return log_rev_iterator
-
-
-def _filter_delta_items(log_rev_iterator, filter, retain_delta):
-    for revs in log_rev_iterator:
-        new_revs = []
-        for (rev_id, revno, merge_depth), rev, delta in revs:
-            if _delta_matches_filter(delta, filter):
-                if not retain_delta:
-                    delta = None
-                new_revs.append(((rev_id, revno, merge_depth), rev, delta))
-        yield new_revs
-
-
-def _delta_matches_filter(delta, filter):
-    """Check is a delta matches a filter."""
-    for l in (delta.modified, delta.added, delta.removed, delta.kind_changed):
-        for item in l:
-            if filter(item[0], item[1]):
-                return True
-    for item in delta.renamed:
-        if filter(item[0], item[2]) or filter(item[1], item[2]):
-            return True
-    return False
 
 
 def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
@@ -592,7 +574,8 @@ def _filter_message_re(searchRE, log_rev_iterator):
         yield new_revs
 
 
-def _make_delta_filter(branch, generate_delta, search, log_rev_iterator):
+def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
+    fileids=None, direction='reverse'):
     """Add revision deltas to a log iterator if needed.
 
     :param branch: The branch being logged.
@@ -600,21 +583,76 @@ def _make_delta_filter(branch, generate_delta, search, log_rev_iterator):
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
+    :param file_ids: If non empty, only revisions matching one or more of
+      the file-ids are to be kept.
+    :param direction: the direction in which view_revisions is sorted
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
     """
-    if not generate_delta:
+    if not generate_delta and not fileids:
         return log_rev_iterator
-    return _generate_deltas(branch.repository, log_rev_iterator)
+    return _generate_deltas(branch.repository, log_rev_iterator,
+        generate_delta, fileids, direction)
 
 
-def _generate_deltas(repository, log_rev_iterator):
+def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
+    direction):
     """Create deltas for each batch of revisions in log_rev_iterator."""
+    check_fileids = fileids is not None and len(fileids) > 0
+    if check_fileids:
+        fileid_set = set(fileids)
+        if direction == 'reverse':
+            stop_on = 'add'
+        else:
+            stop_on = 'remove'
+    else:
+        fileid_set = None
     for revs in log_rev_iterator:
+        # If we were matching against fileids and we've run out,
+        # don't create deltas any longer
+        if check_fileids and not fileid_set:
+            yield revs
         revisions = [rev[1] for rev in revs]
         deltas = repository.get_deltas_for_revisions(revisions)
-        revs = [(rev[0], rev[1], delta) for rev, delta in izip(revs, deltas)]
-        yield revs
+        new_revs = []
+        for rev, delta in izip(revs, deltas):
+            if check_fileids:
+                if not _delta_matches_fileids(delta, fileid_set, stop_on):
+                    continue
+                elif not always_delta:
+                    # Delta was created just for matching - ditch it
+                    delta = None
+            new_revs.append((rev[0], rev[1], delta))
+        yield new_revs
+
+
+def _delta_matches_fileids(delta, fileids, stop_on='add'):
+    """Check is a delta matches one of more file-ids.
+    
+    :param fileids: a set of fileids to match against.
+    :param stop_on: either 'add' or 'remove' - take file-ids out of the
+      fileids set once their add or remove entry is detected respectively
+    """
+    if not fileids:
+        return False
+    result = False
+    for item in delta.added:
+        if item[1] in fileids:
+            if stop_on == 'add':
+                fileids.remove(item[1])
+            result = True
+    for item in delta.removed:
+        if item[1] in fileids:
+            if stop_on == 'delete':
+                fileids.remove(item[1])
+            result = True
+    if result:
+        return True
+    for l in (delta.modified, delta.renamed, delta.kind_changed):
+        for item in l:
+            if item[1] in fileids:
+                return True
+    return False
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
