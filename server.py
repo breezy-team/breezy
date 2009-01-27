@@ -45,9 +45,13 @@ class BzrBackend(Backend):
         ret = {}
         repo_dir = BzrDir.open(self.directory)
         repo = repo_dir.open_repository()
+        branch = None
         for branch in repo.find_branches(using=True):
+            #FIXME: Look for 'master' or 'trunk' in here, and set HEAD accordingly...
             #FIXME: Need to get branch path relative to its repository and use this instead of nick
             ret["refs/heads/"+branch.nick] = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())[0]
+        if 'HEAD' not in ret and branch:
+            ret['HEAD'] = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())[0]
         return ret
 
     def apply_pack(self, refs, read):
@@ -126,38 +130,18 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                for sha, obj in inventory_to_tree_and_blobs(repo, self.mapping, commit):
+                for sha, obj, path in inventory_to_tree_and_blobs(repo, self.mapping, commit):
                     if sha not in obj_sent:
                         obj_sent.add(sha)
-                        objects.add(obj)
+                        objects.add((obj, path))
 
-                objects.add(revision_to_commit(rev, self.mapping, sha))
+                objects.add((mapping.export_commit(rev, sha), None))
 
         finally:
             repo.unlock()
 
         return (len(objects), iter(objects))
 
-
-def revision_to_commit(rev, mapping, tree_sha):
-    """
-    Turn a Bazaar revision in to a Git commit
-    :param tree_sha: HACK parameter (until we can retrieve this from the mapping)
-    :return dulwich.objects.Commit represent the revision:
-    """
-    commit = Commit()
-    commit._tree = tree_sha
-    for p in rev.parent_ids:
-        commit._parents.append(mapping.revision_id_bzr_to_foreign(p)[0])
-    commit._message = rev.message
-    commit._committer = rev.committer
-    if 'author' in rev.properties:
-        commit._author = rev.properties['author']
-    else:
-        commit._author = rev.committer
-    commit._commit_time = long(rev.timestamp)
-    commit.serialize()
-    return commit
 
 def inventory_to_tree_and_blobs(repo, mapping, revision_id):
     stack = []
@@ -170,7 +154,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         while stack and not path.startswith(cur):
             tree.serialize()
             sha = tree.sha().hexdigest()
-            yield sha, tree
+            yield sha, tree, path
             t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
@@ -186,7 +170,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             blob = Blob()
             _, blob._text = repo.iter_files_bytes([(entry.file_id, revision_id, path)]).next()
             sha = blob.sha().hexdigest()
-            yield sha, blob
+            yield sha, blob, path
 
             name = splitpath(path)[-1:][0].encode('UTF-8')
             mode = stat.S_IFREG | 0644
@@ -197,11 +181,11 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
     while len(stack) > 1:
         tree.serialize()
         sha = tree.sha().hexdigest()
-        yield sha, tree
+        yield sha, tree, path
         t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
     tree.serialize()
-    yield tree.sha().hexdigest(), tree
+    yield tree.sha().hexdigest(), tree, path
 
