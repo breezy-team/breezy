@@ -47,6 +47,10 @@ IN DEVELOPMENT
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
 
+    * VirtualVersionedFiles now implements
+      ``iter_lines_added_or_present_in_keys``. This allows the creation of 
+      new branches based on stacked bzr-svn branches. (#311997)
+
   BUG FIXES:
 
     * ``bzr log FILE`` now correctly shows mainline revisions merging
