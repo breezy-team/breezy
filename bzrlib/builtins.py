@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -4080,9 +4080,70 @@ class cmd_serve(Command):
                 ),
         ]
 
-    def run(self, port=None, inet=False, directory=None, allow_writes=False):
+    def run_smart_server(self, smart_server):
+        """Run 'smart_server' forever, with no UI output at all."""
+        # For the duration of this server, no UI output is permitted. note
+        # that this may cause problems with blackbox tests. This should be
+        # changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
         from bzrlib import lockdir
+        old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        try:
+            ui.ui_factory = ui.SilentUIFactory()
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+            smart_server.serve()
+        finally:
+            ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+
+    def get_host_and_port(self, port):
+        """Return the host and port to run the smart server on.
+
+        If 'port' is None, the default host (`medium.BZR_DEFAULT_INTERFACE`)
+        and port (`medium.BZR_DEFAULT_PORT`) will be used.
+
+        If 'port' has a colon in it, the string before the colon will be
+        interpreted as the host.
+
+        :param port: A string of the port to run the server on.
+        :return: A tuple of (host, port), where 'host' is a host name or IP,
+            and port is an integer TCP/IP port.
+        """
+        from bzrlib.smart import medium
+        host = medium.BZR_DEFAULT_INTERFACE
+        if port is None:
+            port = medium.BZR_DEFAULT_PORT
+        else:
+            if ':' in port:
+                host, port = port.split(':')
+            port = int(port)
+        return host, port
+
+    def get_smart_server(self, transport, inet, port):
+        """Construct a smart server.
+
+        :param transport: The base transport from which branches will be
+            served.
+        :param inet: If True, serve over stdin and stdout. Used for running
+            from inet.
+        :param port: The port to listen on. By default, it's `
+            medium.BZR_DEFAULT_PORT`. See `get_host_and_port` for more
+            information.
+        :return: A smart server.
+        """
         from bzrlib.smart import medium, server
+        if inet:
+            smart_server = medium.SmartServerPipeStreamMedium(
+                sys.stdin, sys.stdout, transport)
+        else:
+            host, port = self.get_host_and_port(port)
+            smart_server = server.SmartTCPServer(
+                transport, host=host, port=port)
+            note('listening on port: %s' % smart_server.port)
+        return smart_server
+
+    def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
         if directory is None:
@@ -4093,33 +4154,8 @@ class cmd_serve(Command):
         chroot_server = ChrootServer(get_transport(url))
         chroot_server.setUp()
         t = get_transport(chroot_server.get_url())
-        if inet:
-            smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, t)
-        else:
-            host = medium.BZR_DEFAULT_INTERFACE
-            if port is None:
-                port = medium.BZR_DEFAULT_PORT
-            else:
-                if ':' in port:
-                    host, port = port.split(':')
-                port = int(port)
-            smart_server = server.SmartTCPServer(t, host=host, port=port)
-            print 'listening on port: ', smart_server.port
-            sys.stdout.flush()
-        # for the duration of this server, no UI output is permitted.
-        # note that this may cause problems with blackbox tests. This should
-        # be changed with care though, as we dont want to use bandwidth sending
-        # progress over stderr to smart server clients!
-        old_factory = ui.ui_factory
-        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        try:
-            ui.ui_factory = ui.SilentUIFactory()
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-            smart_server.serve()
-        finally:
-            ui.ui_factory = old_factory
-            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+        smart_server = self.get_smart_server(t, inet, port)
+        self.run_smart_server(smart_server)
 
 
 class cmd_join(Command):

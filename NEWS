@@ -102,6 +102,9 @@ IN DEVELOPMENT
       efficient way of doing the mapping.
       (Ian Clatworthy)
 
+    * Refactor cmd_serve so that it's a little easier to build commands that
+      extend it, and perhaps even a bit easier to read.  (Jonathan Lange)
+
     * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
       formatters to retrict the output.
       (Vincent Ladeuil)
