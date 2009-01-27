@@ -86,9 +86,11 @@ class ConventionalRequestHandler(MessageHandler):
     optional body.
 
     Possible states:
-     * expecting args
-     * expecting body (terminated by receiving a post-body status)
-     * finished
+     * args: expecting args
+     * body: expecting body (terminated by receiving a post-body status)
+     * error: expecting post-body error
+     * end: expecting end of message
+     * nothing: finished
     """
 
     def __init__(self, request_handler, responder):

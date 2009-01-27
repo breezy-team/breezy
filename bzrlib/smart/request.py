@@ -70,7 +70,7 @@ class SmartServerRequest(object):
             if not root_client_path.endswith('/'):
                 root_client_path += '/'
         self._root_client_path = root_client_path
-        self._body_bytes = ''
+        self._body_chunks = []
 
     def _check_enabled(self):
         """Raises DisabledMethod if this method is disabled."""
@@ -111,12 +111,12 @@ class SmartServerRequest(object):
 
         The do() method is still called, and must have returned None.
         """
-        self._body_bytes += chunk_bytes
+        self._body_chunks.append(chunk_bytes)
 
     def do_end(self):
         """Called when the end of the request has been received."""
-        body_bytes = self._body_bytes
-        self._body_bytes = None
+        body_bytes = ''.join(self._body_chunks)
+        self._body_chunks = None
         return self.do_body(body_bytes)
     
     def translate_client_path(self, client_path):
