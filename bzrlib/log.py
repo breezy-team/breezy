@@ -300,19 +300,14 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
         return []
 
     # If a single revision is requested, check we can handle it
-    generate_single_revision = (start_rev_id and start_rev_id == end_rev_id)
+    generate_single_revision = (end_rev_id and start_rev_id == end_rev_id and
+        (not generate_merge_revisions or not _has_merges(branch, end_rev_id)))
     if generate_single_revision:
-        if start_rev_id == br_rev_id:
+        if end_rev_id == br_rev_id:
             # It's the tip
-            if (not generate_merge_revisions or
-                not _has_merges(branch, br_rev_id)):
-                return [(br_rev_id, br_revno, 0)]
-            else:
-                # We need the merge revisions as well
-                generate_single_revision = False
-        elif (not generate_merge_revisions or
-            not _has_merges(branch, start_rev_id)):
-            revno = branch.revision_id_to_dotted_revno(start_rev_id)
+            return [(br_rev_id, br_revno, 0)]
+        else:
+            revno = branch.revision_id_to_dotted_revno(end_rev_id)
             if len(revno) > 1 and not allow_single_merge_revision:
                 # It's a merge revision and the log formatter is
                 # completely brain dead. This "feature" of allowing
@@ -321,9 +316,7 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
                 raise errors.BzrCommandError('Selected log formatter only'
                     ' supports mainline revisions.')
             revno_str = '.'.join(str(n) for n in revno)
-            return [(start_rev_id, revno_str, 0)]
-        else:
-            generate_single_revision = False
+            return [(end_rev_id, revno_str, 0)]
 
     # If we only want to see linear revisions, we can iterate ...
     if not generate_merge_revisions:
