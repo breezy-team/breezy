@@ -151,15 +151,16 @@ def _print_annotations(annotation, verbose, to_file, full):
 
 
 def _show_id_annotations(annotations, to_file, full):
-    last_rev_id = None
-    max_origin_len = max(len(origin) for origin, text in annotations)
-    for origin, text in annotations:
-        if full or last_rev_id != origin:
-            this = origin
-        else:
-            this = ''
-        to_file.write('%*s | %s' % (max_origin_len, this, text))
-        last_rev_id = origin
+    if annotations:
+        last_rev_id = None
+        max_origin_len = max(len(origin) for origin, text in annotations)
+        for origin, text in annotations:
+            if full or last_rev_id != origin:
+                this = origin
+            else:
+                this = ''
+            to_file.write('%*s | %s' % (max_origin_len, this, text))
+            last_rev_id = origin
     return
 
 
