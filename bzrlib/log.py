@@ -867,7 +867,9 @@ class LongLogFormatter(LogFormatter):
                                 short_status=False)
         if revision.diff is not None:
             to_file.write(indent + 'diff:\n')
-            self.show_diff(to_file, revision.diff, indent + '  ')
+            # Note: we explicitly don't indent the diff (relative to the
+            # revision information) so that the output can be fed to patch -p0
+            self.show_diff(to_file, revision.diff, indent)
 
 
 class ShortLogFormatter(LogFormatter):

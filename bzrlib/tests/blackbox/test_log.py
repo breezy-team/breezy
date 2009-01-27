@@ -444,12 +444,12 @@ timestamp: Just now
 message:
   merge branch 1
 diff:
-  === modified file 'file2'
-  --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
-  +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
-  @@ -1,1 +1,1 @@
-  -contents of parent/file2
-  +hello
+=== modified file 'file2'
+--- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -1,1 +1,1 @@
+-contents of parent/file2
++hello
     ------------------------------------------------------------
     revno: 1.1.1
     committer: Lorem Ipsum <test@example.com>
@@ -458,12 +458,12 @@ diff:
     message:
       branch 1
     diff:
-      === modified file 'file2'
-      --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
-      +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
-      @@ -1,1 +1,1 @@
-      -contents of parent/file2
-      +hello
+    === modified file 'file2'
+    --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+    @@ -1,1 +1,1 @@
+    -contents of parent/file2
+    +hello
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
@@ -472,17 +472,17 @@ timestamp: Just now
 message:
   first post
 diff:
-  === added file 'file1'
-  --- file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
-  +++ file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
-  @@ -0,0 +1,1 @@
-  +contents of parent/file1
-  
-  === added file 'file2'
-  --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
-  +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
-  @@ -0,0 +1,1 @@
-  +contents of parent/file2
+=== added file 'file1'
+--- file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -0,0 +1,1 @@
++contents of parent/file1
+
+=== added file 'file2'
+--- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -0,0 +1,1 @@
++contents of parent/file2
 """)
 
     def test_log_show_diff_short(self):
