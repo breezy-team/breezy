@@ -51,6 +51,7 @@ all the changes since the previous revision that touched hello.c.
 
 import codecs
 from itertools import (
+    chain,
     izip,
     )
 import re
@@ -325,7 +326,7 @@ def _calc_view_revisions(branch, rev_limits, direction,
 
     # If we only want to see linear revisions, we can iterate ...
     if not generate_merge_revisions:
-        result = _linear_view_revisions(branch, rev_limits)
+        result = _linear_view_revisions(branch, start_rev_id, end_rev_id)
         # If a start limit was given and it's not obviously an
         # ancestor of the end limit, check it before outputting anything
         if start_rev_id and not (_is_obvious_ancestor(branch, start_rev_id,
@@ -339,32 +340,40 @@ def _calc_view_revisions(branch, rev_limits, direction,
             result = reversed(list(result))
         return result
 
-    # If we're only looking at a limited linear range, we can skip
-    # generating merge revisions if there aren't any merges
-    if start_rev_id or end_rev_id:
-        result = []
-        try:
-            for rev_id, revno, depth in \
-                _linear_view_revisions(branch, rev_limits):
-                if _has_merges(branch, rev_id):
-                    break
-                result.append((rev_id, revno, depth))
+    # On large trees, generating the merge graph can take 30+ seconds
+    # so we delay doing it until a merge is detected, incrementally
+    # returning initial (non-merge) revisions while we can.
+    initial_revisions = []
+    try:
+        for rev_id, revno, depth in \
+            _linear_view_revisions(branch, start_rev_id, end_rev_id):
+            if _has_merges(branch, rev_id):
+                end_rev_id = rev_id
+                break
             else:
-                # Success!
-                if direction == 'forward':
-                    result = reversed(result)
-                return result
-        except _StartNotLinearAncestor:
-            # Abort - we need the smart filtering below
-            pass
+                initial_revisions.append((rev_id, revno, depth))
+        else:
+            # No merged revisions found
+            if direction == 'reverse':
+                return initial_revisions
+            elif direction == 'forward':
+                return reversed(initial_revisions)
+            else:
+                raise ValueError('invalid direction %r' % direction)
+    except _StartNotLinearAncestor:
+        # A merge was never detected so the lower revision limit can't
+        # be nested down somewhere
+        raise errors.BzrCommandError('Start revision not found in'
+            ' history of end revision.')
 
     # A log including nested merges is required. If the direction is reverse,
     # we rebase the initial merge depths so that the development line is
     # shown naturally, i.e. just like it is for linear logging. We *could*
     # make forward the exact opposite display, but showing the merge revisions
     # indented at the end seems slightly nicer in that case.
-    view_revisions = _graph_view_revisions(branch, rev_limits,
-        rebase_initial_depths=direction == 'reverse')
+    view_revisions = chain(iter(initial_revisions),
+        _graph_view_revisions(branch, start_rev_id, end_rev_id,
+        rebase_initial_depths=direction == 'reverse'))
     if direction == 'reverse':
         return view_revisions
     elif direction == 'forward':
@@ -398,16 +407,16 @@ def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
     return True
 
 
-def _linear_view_revisions(branch, revision_limits):
+def _linear_view_revisions(branch, start_rev_id, end_rev_id):
     """Calculate a sequence of revisions to view, newest to oldest.
 
-    :param revision_limits: a tuple as returned by _get_revision_limits()
+    :param start_rev_id: the lower revision-id
+    :param end_rev_id: the upper revision-id
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
     :raises _StartNotLinearAncestor: if a start_rev_id is specified but
       is not found walking the left-hand history
     """
-    br_revno, br_rev_id, start_revno, start_rev_id, end_revno, end_rev_id = \
-        revision_limits
+    br_revno, br_rev_id = branch.last_revision_info()
     repo = branch.repository
     if start_rev_id is None and end_rev_id is None:
         cur_revno = br_revno
@@ -432,16 +441,17 @@ def _linear_view_revisions(branch, revision_limits):
                 raise _StartNotLinearAncestor()
 
 
-def _graph_view_revisions(branch, revision_limits, rebase_initial_depths=True):
+def _graph_view_revisions(branch, start_rev_id, end_rev_id,
+    rebase_initial_depths=True):
     """Calculate revisions to view including merges, newest to oldest.
 
     :param branch: the branch
-    :param revision_limits: a tuple as returned by _get_revision_limits()
+    :param start_rev_id: the lower revision-id
+    :param end_rev_id: the upper revision-id
     :param rebase_initial_depth: should depths be rebased until a mainline
       revision is found?
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
     """
-    _, _, _, start_rev_id, _, end_rev_id = revision_limits
     view_revisions = branch.iter_merge_sorted_revisions(
         start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
         stop_rule="with-merges")
