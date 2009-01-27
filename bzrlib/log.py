@@ -251,6 +251,7 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     """
     rev_limits = _get_revision_limits(branch, start_revision, end_revision)
     _, _, _, start_rev_id, _, end_rev_id = rev_limits
+
     # Decide how file-ids are matched: delta-filtering vs per-file graph.
     # Delta filtering allows revisions to be displayed incrementally
     # though the total time is much slower for huge repositories: log -v
@@ -274,7 +275,7 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
             allow_single_merge_revision)
         if specific_fileid:
             view_revisions = _filter_revisions_touching_file_id(branch,
-                specific_fileid, view_revisions,
+                specific_fileid, list(view_revisions),
                 include_merges=generate_merge_revisions)
         return make_log_rev_iterator(branch, view_revisions, generate_delta,
             search)
@@ -357,29 +358,21 @@ def _calc_view_revisions(branch, rev_limits, direction,
             # Abort - we need the smart filtering below
             pass
 
-    # Otherwise, the algorithm is O(history) for now ...
-
-    # Do the filtering
-    mainline_revs, rev_nos = _get_mainline_revs(branch, rev_limits)
-    view_revs_iter = get_view_revisions(mainline_revs, rev_nos, branch,
-                          direction, include_merges=generate_merge_revisions)
+    # A log including nested merges is required. If the direction is reverse,
+    # we rebase the initial merge depths so that the development line is
+    # shown naturally, i.e. just like it is for linear logging. We *could*
+    # make forward the exact opposite display, but showing the merge revisions
+    # indented at the end seems slightly nicer in that case.
+    view_revisions = _graph_view_revisions(branch, rev_limits,
+        rebase_initial_depths=direction == 'reverse')
     if direction == 'reverse':
-        start_rev_id, end_rev_id = end_rev_id, start_rev_id
-    view_revisions = _filter_revision_range(list(view_revs_iter),
-                                            start_rev_id,
-                                            end_rev_id)
-    return _rebase_merge_depth(view_revisions)
-
-
-def _rebase_merge_depth(view_revisions):
-    """Adjust depths upwards so the top level is 0."""
-    # Rebase merge_depth - unless there are no revisions or 
-    # either the first or last revision have merge_depth = 0.
-    if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
-        min_depth = min([d for r,n,d in view_revisions])
-        if min_depth != 0:
-            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
-    return view_revisions
+        return view_revisions
+    elif direction == 'forward':
+        # Forward means oldest first, adjusting for depth.
+        view_revisions = reverse_by_depth(list(view_revisions))
+        return _rebase_merge_depth(view_revisions)
+    else:
+        raise ValueError('invalid direction %r' % direction)
 
 
 def _has_merges(branch, rev_id):
@@ -431,6 +424,40 @@ def _linear_view_revisions(branch, revision_limits):
                 raise _StartNotLinearAncestor()
 
 
+def _graph_view_revisions(branch, revision_limits, rebase_initial_depths=True):
+    """Calculate revisions to view including merges, newest to oldest.
+
+    :param branch: the branch
+    :param revision_limits: a tuple as returned by _get_revision_limits()
+    :param rebase_initial_depth: should depths be rebased until a mainline
+      revision is found?
+    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
+    """
+    _, _, _, start_rev_id, _, end_rev_id = revision_limits
+    view_revisions = branch.iter_merge_sorted_revisions(
+        start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
+        stop_rule="with-merges")
+    if not rebase_initial_depths:
+        for (rev_id, merge_depth, revno, end_of_merge
+             ) in view_revisions:
+            yield rev_id, '.'.join(map(str, revno)), merge_depth
+    else:
+        # We're following a development line starting at a merged revision.
+        # We need to adjust depths down by the initial depth until we find
+        # a depth less than it. Then we use that depth as the adjustment.
+        # If and when we reach the mainline, depth adjustment ends.
+        depth_adjustment = None
+        for (rev_id, merge_depth, revno, end_of_merge
+             ) in view_revisions:
+            if depth_adjustment is None:
+                depth_adjustment = merge_depth
+            if depth_adjustment:
+                if merge_depth < depth_adjustment:
+                    depth_adjustment = merge_depth
+                merge_depth -= depth_adjustment
+            yield rev_id, '.'.join(map(str, revno)), merge_depth
+
+
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
         specific_fileid, generate_merge_revisions, allow_single_merge_revision):
     """Calculate the revisions to view.
@@ -442,14 +469,24 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     # It is retained for API compatibility and may be deprecated
     # soon. IGC 20090116
     rev_limits = _get_revision_limits(branch, start_revision, end_revision)
-    view_revisions = _calc_view_revisions(branch, rev_limits,
+    view_revisions = list(_calc_view_revisions(branch, rev_limits,
         direction, generate_merge_revisions or specific_fileid,
-        allow_single_merge_revision)
+        allow_single_merge_revision))
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
             specific_fileid, view_revisions,
             include_merges=generate_merge_revisions)
     return _rebase_merge_depth(view_revisions)
+
+
+def _rebase_merge_depth(view_revisions):
+    """Adjust depths upwards so the top level is 0."""
+    # If either the first or last revision have a merge_depth of 0, we're done
+    if view_revisions and view_revisions[0][2] and view_revisions[-1][2]:
+        min_depth = min([d for r,n,d in view_revisions])
+        if min_depth != 0:
+            view_revisions = [(r,n,d-min_depth) for r,n,d in view_revisions]
+    return view_revisions
 
 
 def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
@@ -709,6 +746,8 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
+    # This method is no longer called by the main code path.
+    # It may be removed soon. IGC 20090127
     if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
@@ -825,6 +864,9 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
+    # This method is no longer called by the main code path.
+    # It is retained for API compatibility and may be deprecated
+    # soon. IGC 20090127
     if not include_merges:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':

@@ -363,7 +363,11 @@ class Branch(object):
                 if rev_id != start_revision_id:
                     continue
                 else:
-                    yield rev_id, depth, revno, end_of_merge
+                    # The decision to include the start or not
+                    # depends on the stop_rule if a stop is provided
+                    rev_iter = chain(
+                        iter([(rev_id, depth, revno, end_of_merge)]),
+                        rev_iter)
                     break
         if stop_revision_id is None:
             for rev_id, depth, revno, end_of_merge in rev_iter:
