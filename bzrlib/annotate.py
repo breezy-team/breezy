@@ -161,7 +161,7 @@ def _show_id_annotations(annotations, to_file, full):
         else:
             this = ''
         to_file.write('%*s | %s' % (max_origin_len, this, text))
-            last_rev_id = origin
+        last_rev_id = origin
     return
 
 
