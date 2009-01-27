@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-debug_flags = set()
 """Set of flags that enable different debug behaviour.
 
 These are set with eg ``-Dlock`` on the bzr command line.
@@ -23,3 +22,5 @@ These are set with eg ``-Dlock`` on the bzr command line.
 See "bzr help global-options" or bzrlib/help_topics/__init__.py
 for a list of the available options.
 """
+
+debug_flags = set()
