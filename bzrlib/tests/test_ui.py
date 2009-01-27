@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,9 @@ from bzrlib.progress import (
     DotsProgressBar,
     ProgressBarStack,
     TTYProgressBar,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
     )
 from bzrlib.tests import (
     TestCase,
@@ -144,9 +147,12 @@ class UITests(TestCase):
         ui = TextUIFactory(None, None, None)
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
-        # We no longer warn about finishing unnested progress bars.
+        # You do get a warning if the outermost progress bar wasn't finished
+        # first - it's not clear if this is really useful or if it should just
+        # become orphaned -- mbp 20090120
         warnings, _ = self.callCatchWarnings(pb1.finished)
-        self.assertEqual(len(warnings), 0)
+        if len(warnings) != 1:
+            self.fail("unexpected warnings: %r" % (warnings,))
         pb2.finished()
         pb1.finished()
 
@@ -156,7 +162,10 @@ class UITests(TestCase):
         stderr = StringIO()
         stdout = StringIO()
         # make a stack, which accepts parameters like a pb.
-        stack = ProgressBarStack(to_file=stderr, to_messages_file=stdout)
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            to_file=stderr, to_messages_file=stdout)
         # but is not one
         self.assertFalse(getattr(stack, 'note', False))
         pb1 = stack.get_nested()

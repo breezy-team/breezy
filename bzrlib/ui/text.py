@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 import sys
 import time
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -87,16 +88,16 @@ class TextUIFactory(CLIUIFactory):
         """
         self._progress_view.show_transport_activity(byte_count)
 
-    def show_progress(self, task):
+    def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
+        if task != self._task_stack[-1]:
+            warnings.warn("%r is not the top progress task %r" %
+                (task, self._task_stack[-1]))
         self._progress_view.show_progress(task)
 
-    def progress_finished(self, task):
-        CLIUIFactory.progress_finished(self, task)
-        if not self._task_stack:
-            # finished top-level task
-            self._progress_view.clear()
+    def _progress_all_finished(self):
+        self._progress_view.clear()
 
 
 class TextProgressView(object):
@@ -109,6 +110,9 @@ class TextProgressView(object):
     task wants to be painted.
 
     Transports feed data to this through the ui_factory object.
+
+    The Progress views can comprise a tree with _parent_task pointers, but
+    this only prints the stack from the nominated current task up to the root.
     """
 
     def __init__(self, term_file):
