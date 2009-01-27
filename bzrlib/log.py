@@ -225,6 +225,10 @@ def _show_log(branch,
                     return
 
 
+class _StartNotLinearAncestor(Exception):
+    """Raised when a start revision is not found walking left-hand history."""
+
+
 def _create_log_revision_iterator(branch, start_revision, end_revision,
     direction, specific_fileid, search, generate_merge_revisions,
     allow_single_merge_revision, generate_delta,
@@ -263,29 +267,19 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     # it should always be used in the future.
     use_deltas_for_matching = specific_fileid and (force_incremental_matching
         or generate_delta or start_rev_id or end_rev_id)
+    generate_merges = generate_merge_revisions or (specific_fileid and
+        not use_deltas_for_matching)
+    view_revisions = _calc_view_revisions(branch, start_rev_id, end_rev_id,
+        direction, generate_merges, allow_single_merge_revision)
+    search_deltas_for_fileids = None
     if use_deltas_for_matching:
-        view_revisions = _calc_view_revisions(branch, start_rev_id, end_rev_id,
-            direction, generate_merge_revisions, allow_single_merge_revision)
-        if specific_fileid:
-            fileids = set([specific_fileid])
-        else:
-            fileids = None
-        return make_log_rev_iterator(branch, view_revisions, generate_delta,
-            search, file_ids=fileids, direction=direction)
-    else:
-        view_revisions = _calc_view_revisions(branch, start_rev_id, end_rev_id,
-            direction, generate_merge_revisions or specific_fileid,
-            allow_single_merge_revision)
-        if specific_fileid:
-            view_revisions = _filter_revisions_touching_file_id(branch,
-                specific_fileid, list(view_revisions),
-                include_merges=generate_merge_revisions)
-        return make_log_rev_iterator(branch, view_revisions, generate_delta,
-            search)
-
-
-class _StartNotLinearAncestor(Exception):
-    """Raised when a start revision is not found walking left-hand history."""
+        search_deltas_for_fileids = set([specific_fileid])
+    elif specific_fileid:
+        view_revisions = _filter_revisions_touching_file_id(branch,
+            specific_fileid, list(view_revisions),
+            include_merges=generate_merge_revisions)
+    return make_log_rev_iterator(branch, view_revisions, generate_delta,
+        search, file_ids=search_deltas_for_fileids, direction=direction)
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
@@ -334,7 +328,7 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
             result = reversed(list(result))
         return result
 
-    # On large trees, generating the merge graph can take 30+ seconds
+    # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
     initial_revisions = []
@@ -362,7 +356,7 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
 
     # A log including nested merges is required. If the direction is reverse,
     # we rebase the initial merge depths so that the development line is
-    # shown naturally, i.e. just like it is for linear logging. We *could*
+    # shown naturally, i.e. just like it is for linear logging. We can easily
     # make forward the exact opposite display, but showing the merge revisions
     # indented at the end seems slightly nicer in that case.
     view_revisions = chain(iter(initial_revisions),
@@ -529,7 +523,7 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
                 yield (view, None, None)
         log_rev_iterator = iter([_convert()])
     for adapter in log_adapters:
-        # It would be nicer if log adapter were first class objects
+        # It would be nicer if log adapters were first class objects
         # with custom parameters. This will do for now. IGC 20090127
         if adapter == _make_delta_filter:
             log_rev_iterator = adapter(branch, generate_delta,
@@ -576,7 +570,7 @@ def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
-    :param file_ids: If non empty, only revisions matching one or more of
+    :param fileids: If non empty, only revisions matching one or more of
       the file-ids are to be kept.
     :param direction: the direction in which view_revisions is sorted
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
@@ -590,7 +584,13 @@ def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
 
 def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
     direction):
-    """Create deltas for each batch of revisions in log_rev_iterator."""
+    """Create deltas for each batch of revisions in log_rev_iterator.
+    
+    If we're only generating deltas for the sake of filtering against
+    file-ids, we stop generating deltas once all file-ids reach the
+    appropriate life-cycle point. If we're receiving data newest to
+    oldest, then that life-cycle point is 'add', otherwise it's 'remove'.
+    """
     check_fileids = fileids is not None and len(fileids) > 0
     if check_fileids:
         fileid_set = set(fileids)
@@ -614,6 +614,10 @@ def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
                     continue
                 elif not always_delta:
                     # Delta was created just for matching - ditch it
+                    # Note: It would probably be a better UI to return
+                    # a delta filtered by the file-ids, rather than
+                    # None at all. That functional enhancement can
+                    # come later ...
                     delta = None
             new_revs.append((rev[0], rev[1], delta))
         yield new_revs
