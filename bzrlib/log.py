@@ -328,8 +328,8 @@ def _calc_view_revisions(branch, rev_limits, direction,
         result = _linear_view_revisions(branch, rev_limits)
         # If a start limit was given and it's not obviously an
         # ancestor of the end limit, check it before outputting anything
-        if start_rev_id and not (_on_mainline(branch, start_rev_id) and
-            _on_mainline(branch, end_rev_id)):
+        if start_rev_id and not (_is_obvious_ancestor(branch, start_rev_id,
+            end_rev_id)):
             try:
                 result = list(result)
             except _StartNotLinearAncestor:
@@ -341,7 +341,7 @@ def _calc_view_revisions(branch, rev_limits, direction,
 
     # If we're only looking at a limited linear range, we can skip
     # generating merge revisions if there aren't any merges
-    if start_rev_id:
+    if start_rev_id or end_rev_id:
         result = []
         try:
             for rev_id, revno, depth in \
@@ -380,12 +380,20 @@ def _has_merges(branch, rev_id):
     return len(branch.repository.get_revision(rev_id).parent_ids) > 1
 
 
-def _on_mainline(branch, rev_id):
-    """Is rev_id on the mainline of a branch?"""
-    if rev_id:
-        try:
-            branch.revision_id_to_revno(rev_id)
-        except errors.NoSuchRevision:
+def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
+    """Is start_rev_id an obvious ancestor of end_rev_id?"""
+    if start_rev_id and end_rev_id:
+        start_dotted = branch.revision_id_to_dotted_revno(start_rev_id)
+        end_dotted = branch.revision_id_to_dotted_revno(end_rev_id)
+        if len(start_dotted) == 1 and len(end_dotted) == 1:
+            # both on mainline
+            return start_dotted[0] <= end_dotted[0]
+        elif (len(start_dotted) == 3 and len(end_dotted) == 3 and
+            start_dotted[0:1] == end_dotted[0:1]):
+            # both on same development line
+            return start_dotted[2] <= end_dotted[2]
+        else:
+            # not obvious
             return False
     return True
 
