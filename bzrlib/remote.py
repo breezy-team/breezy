@@ -18,7 +18,6 @@
 # across to run on the server.
 
 import bz2
-import itertools
 
 from bzrlib import (
     branch,
@@ -42,8 +41,6 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util import bencode
-from bzrlib.versionedfile import VersionedFiles
 
 
 class _RpcHelper(object):
@@ -339,12 +336,6 @@ class RemoteRepository(_RpcHelper):
         self.base = self.bzrdir.transport.base
         # Additional places to query for data.
         self._fallback_repositories = []
-        self.texts = RemoteVersionedFiles(self, 'texts')
-        self.inventories = RemoteVersionedFiles(self, 'inventories')
-        self.signatures = RemoteVersionedFiles(self, 'signatures')
-        self.revisions = RemoteVersionedFiles(self, 'revisions')
-        self._vf_objs = [
-            self.texts, self.inventories, self.signatures, self.revisions]
 
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
@@ -865,9 +856,8 @@ class RemoteRepository(_RpcHelper):
         In the long term getting this back from the remote repository as part
         of open would be more efficient.
         """
-        return 'topological'
-#        self._ensure_real()
-#        return self._real_repository._fetch_order
+        self._ensure_real()
+        return self._real_repository._fetch_order
 
     @property
     def _fetch_uses_deltas(self):
@@ -953,6 +943,7 @@ class RemoteRepository(_RpcHelper):
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
         recipe = (start_set, stop_keys, len(parents_map))
+        body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
             if type(key) is not str:
@@ -962,7 +953,7 @@ class RemoteRepository(_RpcHelper):
         args = (path,) + tuple(keys)
         try:
             response = self._call_with_body_bytes_expecting_body(
-                verb, args, _serialise_search_recipe(recipe))
+                verb, args, body)
         except errors.UnknownSmartMethod:
             # Server does not support this method, so get the whole graph.
             # Worse, we have to force a disconnection, because the server now
@@ -1083,6 +1074,16 @@ class RemoteRepository(_RpcHelper):
         # TODO: Suggestion from john: using external tar is much faster than
         # python's tarfile library, but it may not work on windows.
 
+    @property
+    def inventories(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to
+        avoid creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.inventories
+
     @needs_write_lock
     def pack(self):
         """Compress the data within the repository.
@@ -1092,14 +1093,46 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.pack()
 
+    @property
+    def revisions(self):
+        """Decorate the real repository for now.
+
+        In the short term this should become a real object to intercept graph
+        lookups.
+
+        In the long term a full blown network facility is needed.
+        """
+        self._ensure_real()
+        return self._real_repository.revisions
+
     def set_make_working_trees(self, new_value):
         self._ensure_real()
         self._real_repository.set_make_working_trees(new_value)
+
+    @property
+    def signatures(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to avoid
+        creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.signatures
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
         self._ensure_real()
         return self._real_repository.sign_revision(revision_id, gpg_strategy)
+
+    @property
+    def texts(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to avoid
+        creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.texts
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
@@ -1158,6 +1191,17 @@ class RemoteRepository(_RpcHelper):
                          self._fallback_repositories)
         return graph._StackedParentsProvider(providers)
 
+    def _serialise_search_recipe(self, recipe):
+        """Serialise a graph search recipe.
+
+        :param recipe: A search recipe (start, stop, count).
+        :return: Serialised bytes.
+        """
+        start_keys = ' '.join(recipe[0])
+        stop_keys = ' '.join(recipe[1])
+        count = str(recipe[2])
+        return '\n'.join((start_keys, stop_keys, count))
+
     def autopack(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
@@ -1174,130 +1218,6 @@ class RemoteRepository(_RpcHelper):
             self._real_repository._pack_collection.reload_pack_names()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-
-
-def _serialise_search_recipe(recipe):
-    """Serialise a graph search recipe.
-
-    :param recipe: A search recipe (start, stop, count).
-    :return: Serialised bytes.
-    """
-    start_keys = ' '.join(recipe[0])
-    stop_keys = ' '.join(recipe[1])
-    count = str(recipe[2])
-    return '\n'.join((start_keys, stop_keys, count))
-
-
-def _serialise_record_stream(stream):
-    """Takes a record stream as returned by get_record_stream and yields bytes.
-    """
-    # Yields bencode of (sha1, storage_kind, key, parents, build_details,
-    #                    record_bytes)
-    # Note that:
-    #  - if sha1 is None, sha1 is ''
-    #  - if parents is None, parents is 'nil' (to distinguish it from empty
-    # tuple).
-    #  - if record has no _build_details, build_details is ()
-    for record in stream:
-        sha1 = record.sha1
-        if sha1 is None:
-            sha1 = ''
-        parents = record.parents
-        if record.parents is None:
-            parents = 'nil'
-        if record.storage_kind.startswith('knit-'):
-            build_details = record._build_details
-        else:
-            build_details = ()
-        struct = (sha1, record.storage_kind, record.key, parents,
-                  build_details, record.get_bytes_as(record.storage_kind))
-        yield bencode.bencode(struct)
-
-
-class RemoteVersionedFiles(VersionedFiles):
-
-    def __init__(self, remote_repo, vf_name):
-        self.remote_repo = remote_repo
-        self.vf_name = vf_name
-
-    def _get_real_vf(self):
-        self.remote_repo._ensure_real()
-        return getattr(self.remote_repo._real_repository, self.vf_name)
-
-    def add_lines(self, version_id, parents, lines, parent_texts=None,
-            left_matching_blocks=None, nostore_sha=None, random_id=False,
-            check_content=True):
-        real_vf = self._get_real_vf()
-        return real_vf.add_lines(version_id, parents, lines,
-            parent_texts=parent_texts,
-            left_matching_blocks=left_matching_blocks,
-            nostore_sha=nostore_sha, random_id=random_id,
-            check_content=check_content)
-
-    def add_mpdiffs(self, records):
-        real_vf = self._get_real_vf()
-        return real_vf.add_mpdiffs(records)
-
-    def annotate(self, key):
-        real_vf = self._get_real_vf()
-        return real_vf.annotate(key)
-
-    def check(self, progress_bar=None):
-        real_vf = self._get_real_vf()
-        return real_vf.check(progress_bar=progress_bar)
-
-    def get_parent_map(self, keys):
-        real_vf = self._get_real_vf()
-        return real_vf.get_parent_map(keys)
-    
-    def get_record_stream(self, keys, ordering, include_delta_closure):
-        real_vf = self._get_real_vf()
-        return real_vf.get_record_stream(keys, ordering, include_delta_closure)
-
-    def get_sha1s(self, keys):
-        real_vf = self._get_real_vf()
-        return real_vf.get_sha1s(keys)
-
-    def insert_record_stream(self, stream, _record_serialiser=None):
-        lock_token = self.remote_repo._lock_token
-        if lock_token is None:
-            lock_token = ''
-        if _record_serialiser is None:
-            _record_serialiser = _serialise_record_stream
-        # Tee the stream, because we may need to replay it if we have to
-        # fallback to the VFS implementation.  This unfortunately means
-        # the entire record stream will temporarily be buffered in memory, even
-        # if we don't need to fallback.
-        # TODO: remember if this server accepts the insert_record_stream RPC,
-        # and if so skip the buffering.  (And if not, fallback immediately,
-        # again no buffering.)
-        stream, fallback_stream = itertools.tee(stream)
-        byte_stream = _record_serialiser(stream)
-        client = self.remote_repo._client
-        path = self.remote_repo.bzrdir._path_for_remote_call(client)
-        try:
-            response = client.call_with_body_stream(
-                ('VersionedFile.insert_record_stream', path, self.vf_name,
-                 lock_token), byte_stream)
-        except errors.UnknownSmartMethod:
-            real_vf = self._get_real_vf()
-            return real_vf.insert_record_stream(fallback_stream)
-
-        response_tuple, response_handler = response
-        if response_tuple != ('ok',):
-            raise errors.UnexpectedSmartServerResponse(response_tuple)
-
-    def iter_lines_added_or_present_in_keys(self, keys, pb=None):
-        real_vf = self._get_real_vf()
-        return real_vf.iter_lines_added_or_present_in_keys(keys, pb=pb)
-
-    def keys(self):
-        real_vf = self._get_real_vf()
-        return real_vf.keys()
-
-    def make_mpdiffs(self, keys):
-        real_vf = self._get_real_vf()
-        return real_vf.make_mpdiffs(keys)
 
 
 class RemoteBranchLockableFiles(LockableFiles):

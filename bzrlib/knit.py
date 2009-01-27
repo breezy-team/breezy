@@ -1377,8 +1377,6 @@ class KnitVersionedFiles(VersionedFiles):
         buffered_index_entries = {}
         for record in stream:
             parents = record.parents
-#            trace.mutter('inserting record %s (kind: %s, parents: %r)',
-#                record.key, record.storage_kind, parents)
             if record.storage_kind in delta_types:
                 # TODO: eventually the record itself should track
                 #       compression_parent

@@ -1190,7 +1190,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
     def test_get_parent_map_reconnects_if_unknown_method(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_unknown_method_response('Repository.get_parent_map')
+        client.add_unknown_method_response('Repository,get_parent_map')
         client.add_success_response_with_body('', 'ok')
         self.assertFalse(client._medium._is_remote_before((1, 2)))
         rev_id = 'revision-id'
@@ -1548,41 +1548,6 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
             [('call', 'PackRepository.autopack', ('quack/',)),
              ('_ensure_real',),
              ('pack collection autopack',)],
-            client._calls)
-
-
-class TestVersionedFilesInsertRecordStream(TestRemoteRepository):
-    """Tests for RemoteVersionedFiles.insert_record_stream implementation."""
-
-    def test_backwards_compatibility_1_10(self):
-        """1.10 and earlier servers don't have this verb, so fallback to the
-        plain VFS implementation.
-
-        First the RemoteVersionedFiles will try the insert_record_stream RPC
-        with the full stream, and then when that fails with an
-        UnknownSmartMethod it will try the VFS fallback with a copy of the full
-        stream.
-        """
-        transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(transport_path)
-        vf = repo.texts
-        client.add_unknown_method_response(
-            'VersionedFiles.insert_record_stream')
-        class StubRealVF:
-            def insert_record_stream(stub_self, stream):
-                # Listify the stream to fully consume it.
-                stream = list(stream)
-                client._calls.append(('vfs insert_record_stream', stream))
-        vf._get_real_vf = StubRealVF
-        record_list = ['fake record 1', 'fake record 2']
-        stream = (record for record in record_list)
-        vf.insert_record_stream(stream, _record_serialiser=lambda x:x)
-        self.assertEqual(
-            [('call_with_body_stream', 'VersionedFile.insert_record_stream',
-                ('quack/', 'texts', ''), record_list),
-             # Note that the fallback call needs to receive the full list,
-             # even though the original stream will have been consumed.
-             ('vfs insert_record_stream', record_list)],
             client._calls)
 
 
