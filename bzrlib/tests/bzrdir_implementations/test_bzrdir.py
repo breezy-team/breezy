@@ -1476,7 +1476,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             # available
             self.assertTrue(isinstance(dir._format.get_converter(
                 format=dir._format), bzrdir.Converter))
-        dir.needs_format_conversion(None)
+        dir.needs_format_conversion(
+            bzrdir.BzrDirFormat.get_default_format())
 
     def test_backup_copies_existing(self):
         tree = self.make_branch_and_tree('test')

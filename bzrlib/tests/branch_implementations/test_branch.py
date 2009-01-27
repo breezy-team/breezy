@@ -511,7 +511,7 @@ class ChrootedTests(TestCaseWithBranch):
         self.assertEqual('', relpath)
         branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
-        
+
 
 class InstrumentedTransaction(object):
 

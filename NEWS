@@ -4,27 +4,152 @@ Bazaar Release Notes
 
 .. contents::
 
-
 IN DEVELOPMENT
 --------------
 
-  CHANGES:
-  
-    * Formats using Knit-based repository formats are now explicitly
-      marked as deprecated. (Ian Clatworthy)
+  IMPROVEMENTS:
 
-    * ``LRUCache(after_cleanup_size)`` was renamed to
-      ``after_cleanup_count`` and the old name deprecated. The new name is
-      used for clarity, and to avoid confusion with
-      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
+    * Progress bars now show the rate of activity for some sftp 
+      operations, and they are drawn different.  (Martin Pool, #172741)
+
+  BUG FIXES:
+
+    * There was a bug in how we handled resolving when a file is deleted
+      in one branch, and modified in the other. If there was a criss-cross
+      merge, we would cause the deletion to conflict a second time.
+      (Vincent Ladeuil, John Arbash Meinel)
+
+  COMPATIBILITY BREAKS:
+
+    * By default, ``bzr status`` after a merge now shows just the pending
+      merge tip revisions. This improves the signal-to-noise ratio after
+      merging from trunk and completes much faster. To see all merged
+      revisions, use the new ``-v`` flag.  (Ian Clatworthy)
+
+    * ``bzr log --line`` now shows any tags after the date and before
+      the commit message. If you have scripts which parse the output
+      from this command, you may need to adjust them accordingly.
+      (Ian Clatworthy)
 
   NEW FEATURES:
 
-    * ``shelve --list`` can now be used to list shelved changes.
-      (Aaron Bentley)
+  IMPROVEMENTS:
+
+    * ``bzr init`` will now print a little less verbose output.
+      (Marius Kruger)
+
+    * ``bzr log --short`` and ``bzr log --line`` now show tags, if any,
+      for each revision. The tags are shown comma-separated inside
+      ``{}``. For short format, the tags appear at the end of line
+      before the optional ``[merge]`` indicator. For line format,
+      the tags appear after the date. (Ian Clatworthy)
+
+    * Rule-based preferences can now accept multiple patterns for a set of
+      rules.  (Marius Kruger)
+
+  BUG FIXES:
+
+    * ``bzr log FILE`` now correctly shows mainline revisions merging
+      a change to FILE when the ``--short`` and ``--line`` log formats
+      are used. (Ian Clatworthy, #317417)
+
+    * Don't require the present compression base in knits to be the same
+      when adding records in knits. (Jelmer Vernooij, #307394)
+
+    * Fix a problem with CIFS client/server lag on Windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
+    * Many socket operations now handle EINTR by retrying the operation.
+      Previously EINTR was treated as an unrecoverable failure.  There is
+      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
+      (Andrew Bennetts)
+
+  DOCUMENTATION:
+
+    * Improved plugin developer documentation.  (Martin Pool)
+
+  API CHANGES:
+
+    * ``ProgressBarStack`` is deprecated; instead use
+      ``ui_factory.nested_progress_bar`` to create new progress bars.
+
+    * The progress and UI classes have changed; the main APIs remain the
+      same but code that provides a new UI or progress bar class may
+      need to be updated.  (Martin Pool)
+
+  TESTING:
+
+  INTERNALS:
+
+    * Default User Interface (UI) is CLIUIFactory when bzr runs in a dumb
+      terminal. It is sometimes desirable do override this default by forcing
+      bzr to use TextUIFactory. This can be achieved by setting the
+      BZR_USE_TEXT_UI environment variable (emacs shells, as opposed to
+      compile buffers, are such an example).
+      (Vincent Ladeuil)
+
+    * New API ``Branch.iter_merge_sorted_revisions()`` that iterates over
+      ``(revision_id, depth, revno, end_of_merge)`` tuples.
+      (Ian Clatworthy)
+
+    * New ``Branch.dotted_revno_to_revision_id()`` and
+      ``Branch.revision_id_to_dotted_revno()`` APIs that pick the most
+      efficient way of doing the mapping.
+      (Ian Clatworthy)
+
+    * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
+      formatters to retrict the output.
+      (Vincent Ladeuil)
+
+
+bzr 1.11 "Eyes up!" 2009-01-19
+------------------------------
+
+This first monthly release of Bazaar for 2009 improves Bazaar's operation
+in Windows, Mac OS X, and other situations where file names are matched
+without regard to capitalization: Bazaar tries to match the case of an
+existing file.  This release of Bazaar also improves the efficiency of
+Tortoise Windows Shell integration and lets it work on 64-bit platforms.
+
+The UI through which Bazaar supports historic formats has been improved,
+so 'bzr help formats' now gives a simpler and shorter list, with clear
+advice.
+
+This release also fixes a number of bugs, particularly a glitch that can
+occur when there are concurrent writes to a pack repository.
+
+  BUG FIXES:
+
+    * Fix failing test when CompiledChunksToLines is not available.
+      (Vincent Ladeuil)
+
+    * Stacked branches don't repeatedly open their transport connection.
+      (John Arbash Meinel)
+
+
+
+bzr 1.11rc1 "Eyes up!" 2009-01-09
+---------------------------------
+
+  CHANGES:
+
+    * Formats using Knit-based repository formats are now explicitly
+      marked as deprecated. (Ian Clatworthy)
+
+  NEW FEATURES:
 
     * Add support for `bzr tags -r 1..2`, that is we now support showing
       tags applicable for a specified revision range. (Marius Kruger)
+
+    * ``authentication.conf`` now accepts pluggable read-only credential
+      stores. Such a plugin (``netrc_credential_store``) is now included,
+      handles the ``$HOME/.netrc`` file and can server as an example to
+      implement other plugins.
+      (Vincent Ladeuil)
+
+    * ``shelve --list`` can now be used to list shelved changes.
+      (Aaron Bentley)
 
   IMPROVEMENTS:
 
@@ -34,14 +159,31 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
+    * Add connection to a C++ implementation of the Windows Shell Extension
+      which is able to fully replace the current Python implemented one.
+      Advantages include 64bit support and reduction in overhead for
+      processes which drag in shell extensions.
+      (Mark Hammond)
+
+    * Support the Claws mail client directly, rather than via
+      xdg-email. This prevents the display of an unnecessary modal
+      dialog in Claws, informing the user that a file has been
+      attached to the message, and works around bug #291847 in
+      xdg-utils which corrupts the destination address.
+
+    * When working on a case-insensitive case-preserving file-system, as
+      commonly found with Windows, bzr will often ignore the case of the
+      arguments specified by the user in preference to the case of an existing
+      item on the file-system or in the inventory to help prevent
+      counter-intuitive behaviour on Windows. (Mark Hammond)
+
   BUG FIXES:
   
-    * Fix a problem with CIFS client/server lag on windows colliding with
-      an invariant-per-process algorithm for generating AtomicFile names
-      (Adrian Wilkins, #304023)
-
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
+
+    * ``bzr push`` creating a new stacked branch will now only open a
+      single connection to the target machine. (John Arbash Meinel)
 
     * Don't call iteritems on transport_list_registry, because it may
       change during iteration.  (Martin Pool, #277048)
@@ -52,6 +194,13 @@ IN DEVELOPMENT
 
     * Don't require embedding user in HTTP(S) URLs do use authentication.conf.
       (Ben Jansen, Vincent Ladeuil, #300347)
+
+    * Fix a problem with CIFS client/server lag on windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
+    * Fix bogus setUp signature in UnavailableFTPServer.
+      (Gary van der Merwe, #313498)
 
     * Fix compilation error in ``_dirstate_helpers_c`` on SunOS/Solaris.
       (Jari Aalto)
@@ -66,6 +215,15 @@ IN DEVELOPMENT
     * Handle EACCES (permission denied) errors when launching a message
       editor, and emit warnings when a configured editor cannot be
       started. (Andrew Bennetts)
+
+    * ``$HOME/.netrc`` file is now recognized as a read-only credential store
+      if configured in ``authentication.conf`` with 'password_encoding=netrc'
+      in the appropriate sections.
+      (Vincent Ladeuil, #103029)
+
+    * Opening a stacked branch now properly shares the connection, rather
+      than opening a new connection for the stacked-on branch.
+      (John Arbash meinel)
 
     * Preserve transport decorators while following redirections.
       (Vincent Ladeuil, #245964, #270863)
@@ -88,8 +246,13 @@ IN DEVELOPMENT
     * ``pull -v`` now respects the log_format configuration variable.
       (Aaron Bentley)
 
+    * ``push -v`` now works on non-initial pushes.  (Aaron Bentley)
+
     * Use the short status format when the short format is used for log.
       (Vincent Ladeuil, #87179)
+
+    * Allow files to be renamed or moved via remove + add-by-id. (Charles
+      Duffy, #314251)
 
   DOCUMENTATION:
 
@@ -99,6 +262,11 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
   API CHANGES:
+
+    * ``LRUCache(after_cleanup_size)`` was renamed to
+      ``after_cleanup_count`` and the old name deprecated. The new name is
+      used for clarity, and to avoid confusion with
+      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
     * New ``ForeignRepository`` base class, to help with foreign branch 
       support (e.g. svn).  (Jelmer Vernooij)
@@ -114,6 +282,10 @@ IN DEVELOPMENT
       ``record_delete`` methods. (Robert Collins)
 
   TESTING:
+
+    * An HTTPS server is now available (it requires python-2.6). Future bzr
+      versions will allow the use of the python-2.6 ssl module that can be
+      installed for 2.5 and 2.4.
 
     * ``bzr selftest`` now fails if new trailing white space is added to
       the bazaar sources. It only checks changes not committed yet. This
@@ -145,11 +317,19 @@ IN DEVELOPMENT
       as base classes of ``WorkingTree4`` and ``WorkingTreeFormat4``
       respectively. (Ian Clatworthy)
 
+    * ``KnitVersionedFiles._check_should_delta()`` now uses the
+      ``get_build_details`` api to avoid multiple hits to the index, and
+      to properly follow the ``compression_parent`` rather than assuming
+      it is the left-hand parent. (John Arbash Meinel)
+
     * ``KnitVersionedFiles.get_record_stream()`` will now chose a
       more optimal ordering when the keys are requested 'unordered'.
       Previously the order was fully random, now the records should be
       returned from each pack in turn, in forward I/O order.
       (John Arbash Meinel)
+    
+    * ``mutter()`` will now flush the ``~/.bzr.log`` if it has been more
+      than 2s since the last time it flushed. (John Arbash Meinel)
 
     * New method ``bzrlib.repository.Repository.add_inventory_by_delta``
       allows adding an inventory via an inventory delta, which can be
@@ -172,6 +352,9 @@ IN DEVELOPMENT
       into a fulltext. This allows for some very good memory savings when
       asking for many texts that share ancestry, as the individual chunks
       can be shared between versions of the file. (John Arbash Meinel)
+
+    * ``pull -v`` and ``push -v`` use new function
+      ``bzrlib.log.show_branch_change`` (Aaron Bentley)
 
 
 
