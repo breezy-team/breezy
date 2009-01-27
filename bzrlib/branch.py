@@ -291,7 +291,7 @@ class Branch(object):
 
     @needs_read_lock
     def iter_merge_sorted_revisions(self, start_revision_id=None,
-            stop_revision_id=None, direction='reverse'):
+            stop_revision_id=None, stop_rule='exclude', direction='reverse'):
         """Walk the revisions for a branch in merge sorted order.
 
         Merge sorted order is the output from a merge-aware,
@@ -301,8 +301,13 @@ class Branch(object):
         :param start_revision_id: the revision_id to begin walking from.
             If None, the branch tip is used.
         :param stop_revision_id: the revision_id to terminate the walk
-            after (i.e. the range is inclusive). If None, the rest of
-            history is included.
+            after. If None, the rest of history is included.
+        :param stop_rule: if stop_revision_id is not None, the precise rule
+            to use for termination:
+            * 'exclude' - leave the stop revision out of the result (default)
+            * 'include' - the stop revision is the last item in the result
+            * 'with-merges' - include the stop revision and all of its
+              merged revisions in the result
         :param direction: either 'reverse' or 'forward':
             * reverse means return the start_revision_id first, i.e.
               start at the most recent revision and go backwards in history
@@ -341,7 +346,7 @@ class Branch(object):
 
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
-            stop_revision_id)
+            stop_revision_id, stop_rule)
         if direction == 'reverse':
             return filtered
         if direction == 'forward':
@@ -350,7 +355,7 @@ class Branch(object):
             raise ValueError('invalid direction %r' % direction)
 
     def _filter_merge_sorted_revisions(self, merge_sorted_revisions,
-        start_revision_id, stop_revision_id):
+        start_revision_id, stop_revision_id, stop_rule):
         """Iterate over an inclusive range of sorted revisions."""
         rev_iter = iter(merge_sorted_revisions)
         if start_revision_id is not None:
@@ -360,10 +365,29 @@ class Branch(object):
                 else:
                     yield rev_id, depth, revno, end_of_merge
                     break
-        for rev_id, depth, revno, end_of_merge in rev_iter:
-            yield rev_id, depth, revno, end_of_merge
-            if stop_revision_id is not None and rev_id == stop_revision_id:
-                return
+        if stop_revision_id is None:
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                yield rev_id, depth, revno, end_of_merge
+        elif stop_rule == 'exclude':
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                if rev_id == stop_revision_id:
+                    return
+                yield rev_id, depth, revno, end_of_merge
+        elif stop_rule == 'include':
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                yield rev_id, depth, revno, end_of_merge
+                if rev_id == stop_revision_id:
+                    return
+        elif stop_rule == 'with-merges':
+            stop_depth = None
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                if stop_depth is not None and depth <= stop_depth:
+                    return
+                yield rev_id, depth, revno, end_of_merge
+                if rev_id == stop_revision_id:
+                    stop_depth = depth
+        else:
+            raise ValueError('invalid stop_rule %r' % stop_rule)
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this

@@ -508,7 +508,8 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
+             report_activity=None, direction='read'):
     """Copy contents of one file to another.
 
     The read_length can either be -1 to read to end-of-file (EOF) or
@@ -516,6 +517,10 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
 
     The buff_size represents the maximum size for each read operation
     performed on from_file.
+
+    :param report_activity: Call this as bytes are read, see
+        Transport._report_activity
+    :param direction: Will be passed to report_activity
 
     :return: The number of bytes copied.
     """
@@ -530,6 +535,8 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
 
             actual_bytes_read = len(block)
@@ -542,6 +549,8 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
             length += len(block)
     return length
