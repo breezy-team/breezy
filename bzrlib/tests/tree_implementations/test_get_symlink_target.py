@@ -34,7 +34,7 @@ class TestGetSymlinkTarget(TestCaseWithTree):
         os.symlink('foo', 'tree/link')
         os.symlink('../bar', 'tree/rel_link')
         os.symlink('/baz/bing', 'tree/abs_link')
-        os.symlink('target',  u'tree/\u03b2_link')
+        os.symlink('target',  u'tree/\u03b2_link'.encode(osutils._fs_enc))
 
         tree.add(['link', 'rel_link', 'abs_link', u'\u03b2_link'],
                  ['link-id', 'rel-link-id', 'abs-link-id', 'unicode-link-id'])
