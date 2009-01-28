@@ -95,7 +95,7 @@ IN DEVELOPMENT
     * Revision specifiers are now registered in
       ``bzrlib.revisionspec.revspec_registry``, and the old list of 
       revisionspec classes (``bzrlib.revisionspec.SPEC_TYPES``) has been
-      removed.
+      deprecated. (Jelmer Vernooij, #321183)
 
     * The progress and UI classes have changed; the main APIs remain the
       same but code that provides a new UI or progress bar class may
