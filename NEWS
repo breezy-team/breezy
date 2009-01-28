@@ -86,6 +86,12 @@ IN DEVELOPMENT
     * ``ProgressBarStack`` is deprecated; instead use
       ``ui_factory.nested_progress_bar`` to create new progress bars.
 
+    * ForeignVcsMapping() now requires a ForeignVcs object as first
+      argument. (Jelmer Vernooij)
+
+    * ForeignVcsMapping.show_foreign_revid() has been moved to
+      ForeignVcs. (Jelmer Vernooij)
+
     * The progress and UI classes have changed; the main APIs remain the
       same but code that provides a new UI or progress bar class may
       need to be updated.  (Martin Pool)
