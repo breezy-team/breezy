@@ -245,7 +245,8 @@ class PyCurlTransport(HttpTransportBase):
                                           'Server return code %d'
                                           % curl.getinfo(pycurl.HTTP_CODE))
         msg = self._parse_headers(header)
-        return code, response.handle_response(abspath, code, msg, data)
+        return code, response.handle_response(abspath, code, msg, data,
+            report_activity=self._report_activity)
 
     def _parse_headers(self, status_and_headers):
         """Transform the headers provided by curl into an HTTPMessage"""
@@ -285,7 +286,9 @@ class PyCurlTransport(HttpTransportBase):
         data.seek(0)
         code = curl.getinfo(pycurl.HTTP_CODE)
         msg = self._parse_headers(header)
-        return code, response.handle_response(abspath, code, msg, data)
+        return code, response.handle_response(abspath, code, msg, data,
+            report_activity=self._report_activity)
+
 
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)

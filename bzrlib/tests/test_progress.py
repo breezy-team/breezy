@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@ from bzrlib.progress import (
         InstrumentedProgress,
         )
 from bzrlib.tests import TestCase
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
 
 
 class FakeStack:
@@ -106,7 +109,10 @@ class TestProgress(TestCase):
         self.check_stack(DummyProgress, DummyProgress)
 
     def check_stack(self, parent_class, child_class):
-        stack = ProgressBarStack(klass=parent_class, to_file=StringIO())
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            klass=parent_class, to_file=StringIO())
         parent = stack.get_nested()
         try:
             self.assertIs(parent.__class__, parent_class)
@@ -212,7 +218,10 @@ class TestProgressTypes(TestCase):
 
         self.addCleanup(reset)
 
-        stack = ProgressBarStack(to_file=outf)
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            to_file=outf)
         pb = stack.get_nested()
         pb.start_time -= 1 # Make sure it is ready to write
         pb.width = 20 # And it is of reasonable size

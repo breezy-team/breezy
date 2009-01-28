@@ -126,7 +126,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
             raise errors.InvalidHttpRange(abspath, range_header,
                                           'Server return code %d' % code)
 
-        data = handle_response(abspath, code, response.info(), response)
+        data = handle_response(abspath, code, response.info(), response,
+            report_activity=self._report_activity)
         return code, data
 
     def _post(self, body_bytes):
@@ -136,7 +137,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
         response = self._perform(Request('POST', abspath, body_bytes,
                                          accepted_errors=[200, 403]))
         code = response.code
-        data = handle_response(abspath, code, response.info(), response)
+        data = handle_response(abspath, code, response.info(), response,
+            report_activity=self._report_activity)
         return code, data
 
     def _head(self, relpath):
