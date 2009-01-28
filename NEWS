@@ -92,6 +92,11 @@ IN DEVELOPMENT
     * ForeignVcsMapping.show_foreign_revid() has been moved to
       ForeignVcs. (Jelmer Vernooij)
 
+    * Revision specifiers are now registered in
+      ``bzrlib.revisionspec.revspec_registry``, and the old list of 
+      revisionspec classes (``bzrlib.revisionspec.SPEC_TYPES``) has been
+      removed.
+
     * The progress and UI classes have changed; the main APIs remain the
       same but code that provides a new UI or progress bar class may
       need to be updated.  (Martin Pool)

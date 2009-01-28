@@ -26,6 +26,7 @@ import datetime
 from bzrlib import (
     errors,
     osutils,
+    registry,
     revision,
     symbol_versioning,
     trace,
@@ -114,7 +115,6 @@ class RevisionInfo(object):
 
 # classes in this list should have a "prefix" attribute, against which
 # string specs are matched
-SPEC_TYPES = []
 _revno_regex = None
 
 
@@ -153,11 +153,12 @@ class RevisionSpec(object):
 
         if spec is None:
             return RevisionSpec(None, _internal=True)
-        for spectype in SPEC_TYPES:
-            if spec.startswith(spectype.prefix):
-                trace.mutter('Returning RevisionSpec %s for %s',
-                             spectype.__name__, spec)
-                return spectype(spec, _internal=True)
+        match = revspec_registry.get_prefix(spec)
+        if match is not None:
+            spectype, specsuffix = match
+            trace.mutter('Returning RevisionSpec %s for %s',
+                         spectype.__name__, spec)
+            return spectype(spec, _internal=True)
         else:
             # RevisionSpec_revno is special cased, because it is the only
             # one that directly handles plain integers
@@ -393,7 +394,6 @@ class RevisionSpec_revno(RevisionSpec):
 # Old compatibility 
 RevisionSpec_int = RevisionSpec_revno
 
-SPEC_TYPES.append(RevisionSpec_revno)
 
 
 class RevisionSpec_revid(RevisionSpec):
@@ -421,7 +421,6 @@ class RevisionSpec_revid(RevisionSpec):
     def _as_revision_id(self, context_branch):
         return osutils.safe_revision_id(self.spec, warn=False)
 
-SPEC_TYPES.append(RevisionSpec_revid)
 
 
 class RevisionSpec_last(RevisionSpec):
@@ -473,7 +472,6 @@ class RevisionSpec_last(RevisionSpec):
         revno, revision_id = self._revno_and_revision_id(context_branch, None)
         return revision_id
 
-SPEC_TYPES.append(RevisionSpec_last)
 
 
 class RevisionSpec_before(RevisionSpec):
@@ -548,7 +546,6 @@ class RevisionSpec_before(RevisionSpec):
                 'No parents for revision.')
         return parents[0]
 
-SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
@@ -570,7 +567,6 @@ class RevisionSpec_tag(RevisionSpec):
     def _as_revision_id(self, context_branch):
         return context_branch.tags.lookup_tag(self.spec)
 
-SPEC_TYPES.append(RevisionSpec_tag)
 
 
 class _RevListToTimestamps(object):
@@ -677,7 +673,6 @@ class RevisionSpec_date(RevisionSpec):
         else:
             return RevisionInfo(branch, rev + 1)
 
-SPEC_TYPES.append(RevisionSpec_date)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
@@ -745,7 +740,6 @@ class RevisionSpec_ancestor(RevisionSpec):
             branch.unlock()
 
 
-SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
 class RevisionSpec_branch(RevisionSpec):
@@ -794,7 +788,6 @@ class RevisionSpec_branch(RevisionSpec):
             raise errors.NoCommits(other_branch)
         return other_branch.repository.revision_tree(last_revision)
 
-SPEC_TYPES.append(RevisionSpec_branch)
 
 
 class RevisionSpec_submit(RevisionSpec_ancestor):
@@ -839,4 +832,16 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             self._get_submit_location(context_branch))
 
 
-SPEC_TYPES.append(RevisionSpec_submit)
+revspec_registry = registry.Registry()
+def _register_revspec(revspec):
+    revspec_registry.register(revspec.prefix, revspec)
+
+_register_revspec(RevisionSpec_revno)
+_register_revspec(RevisionSpec_revid)
+_register_revspec(RevisionSpec_last)
+_register_revspec(RevisionSpec_before)
+_register_revspec(RevisionSpec_tag)
+_register_revspec(RevisionSpec_date)
+_register_revspec(RevisionSpec_ancestor)
+_register_revspec(RevisionSpec_branch)
+_register_revspec(RevisionSpec_submit)
