@@ -160,6 +160,11 @@ class RevisionSpec(object):
                          spectype.__name__, spec)
             return spectype(spec, _internal=True)
         else:
+            for spectype in SPEC_TYPES:
+                trace.mutter('Returning RevisionSpec %s for %s',
+                             spectype.__name__, spec)
+                if spec.startswith(spectype.prefix):
+                    return spectype(spec, _internal=True)
             # RevisionSpec_revno is special cased, because it is the only
             # one that directly handles plain integers
             # TODO: This should not be special cased rather it should be
@@ -845,3 +850,6 @@ _register_revspec(RevisionSpec_date)
 _register_revspec(RevisionSpec_ancestor)
 _register_revspec(RevisionSpec_branch)
 _register_revspec(RevisionSpec_submit)
+
+SPEC_TYPES = symbol_versioning.deprecated_list(
+    symbol_versioning.deprecated_in((1, 12, 0)), "SPEC_TYPES", [])
