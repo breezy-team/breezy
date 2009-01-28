@@ -1285,11 +1285,28 @@ class KnitVersionedFiles(VersionedFiles):
             non_local_keys = needed_from_fallback - absent_keys
             prefix_split_keys = self._split_by_prefix(present_keys)
             prefix_split_non_local_keys = self._split_by_prefix(non_local_keys)
+            cur_keys = []
+            cur_non_local = set()
+            cur_size = 0
             for prefix, keys in prefix_split_keys.iteritems():
                 non_local = prefix_split_non_local_keys.get(prefix, [])
-                non_local = set(non_local)
-                text_map, _ = self._get_content_maps(keys, non_local)
-                for key in keys:
+                this_size = sum([positions[key][1][-1] for key in keys
+                                 if key in positions])
+                cur_size += this_size
+                cur_keys.extend(keys)
+                cur_non_local.update(non_local)
+                if cur_size >= 0:
+                    text_map, _ = self._get_content_maps(cur_keys, cur_non_local)
+                    for key in cur_keys:
+                        lines = text_map.pop(key)
+                        yield ChunkedContentFactory(key, global_map[key], None,
+                                                    lines)
+                    cur_keys = []
+                    cur_non_local = set()
+                    cur_size = 0
+            if cur_keys:
+                text_map, _ = self._get_content_maps(cur_keys, cur_non_local)
+                for key in cur_keys:
                     lines = text_map.pop(key)
                     yield ChunkedContentFactory(key, global_map[key], None,
                                                 lines)
