@@ -20,6 +20,8 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
+import bzrlib
+import bzrlib.api
 from bzrlib import bzrdir
 from bzrlib.foreign import foreign_vcs_registry
 from bzrlib.transport import register_lazy_transport
@@ -28,6 +30,7 @@ from bzrlib.option import Option
 from bzrlib.trace import warning
 
 MINIMUM_DULWICH_VERSION = (0, 1, 0)
+COMPATIBLE_BZR_VERSIONS = [(1, 12, 0)]
 
 try:
     from dulwich import __version__ as dulwich_version
@@ -38,6 +41,9 @@ else:
     if dulwich_version < MINIMUM_DULWICH_VERSION:
         warning("Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
         raise ImportError
+
+
+bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 
 from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
 
