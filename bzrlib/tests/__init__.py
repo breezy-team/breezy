@@ -597,6 +597,9 @@ def iter_suite_tests(suite):
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
 
+    def __init__(self):
+        import pdb; pdb.set_trace()
+
 
 class TestNotApplicable(TestSkipped):
     """A test is not applicable to the situation where it was run.

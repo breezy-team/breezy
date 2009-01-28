@@ -372,7 +372,7 @@ class cmd_dpush(Command):
                                    stop_revision=new_last_revid)
                     source_wt.lock_write()
                     try:
-                        update_workingtree_fileids(source_wt, 
+                        update_workinginv_fileids(source_wt, 
                             source_wt.branch.repository.revision_tree(old_last_revid),
                             source_wt.branch.repository.revision_tree(new_last_revid))
                     finally:

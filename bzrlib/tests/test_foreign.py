@@ -18,6 +18,7 @@
 """Tests for foreign VCS utility code."""
 
 from bzrlib import errors, foreign
+from bzrlib.bzrdir import BzrDirFormat, BzrDirMeta1
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport
@@ -69,7 +70,18 @@ class DummyForeignVcs(foreign.ForeignVcs):
                                        "Version 1")
 
 
+class DummyForeignVcsBzrDirFormat(BzrDirMeta1):
+    """BzrDirFormat for the dummy foreign VCS."""
+
+    def get_format_string(self):
+        return "A Dummy VCS Dir"
+
+    def get_description_string(self):
+        return "A Dummy VCS Dir"
+
+
 class ForeignVcsRegistryTests(TestCase):
+    """Tests for the ForeignVcsRegistry class."""
 
     def test_parse_revision_id_no_dash(self):       
         reg = foreign.ForeignVcsRegistry()
