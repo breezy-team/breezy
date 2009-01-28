@@ -23,6 +23,11 @@ IN DEVELOPMENT
       merge, we would cause the deletion to conflict a second time.
       (Vincent Ladeuil, John Arbash Meinel)
 
+    * There was another bug in how we chose the correct intermediate LCA in
+      criss-cross merges leading to several kind of changes be incorrectly
+      handled.
+      (John Arbash Meinel, Vincent Ladeuil)
+
   COMPATIBILITY BREAKS:
 
     * By default, ``bzr status`` after a merge now shows just the pending
