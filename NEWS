@@ -38,8 +38,9 @@ IN DEVELOPMENT
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
-    * ``bzr log --short`` and ``bzr log --line`` are now
-      much faster in many use cases. (Ian Clatworthy)
+    * ``bzr log`` is now much faster in many use cases, particularly
+      at incrementally displaying results and filtering by a
+      revision range. (Ian Clatworthy)
 
     * ``bzr log --short`` and ``bzr log --line`` now show tags, if any,
       for each revision. The tags are shown comma-separated inside
