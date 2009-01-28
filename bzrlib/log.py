@@ -213,7 +213,7 @@ def _show_log(branch,
     revision_iterator = _create_log_revision_iterator(branch,
         start_revision, end_revision, direction, specific_fileid, search,
         generate_merge_revisions, allow_single_merge_revision,
-        generate_delta)
+        generate_delta, limited_output=limit > 0)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
             lr = LogRevision(rev, revno, merge_depth, delta,
@@ -231,8 +231,7 @@ class _StartNotLinearAncestor(Exception):
 
 def _create_log_revision_iterator(branch, start_revision, end_revision,
     direction, specific_fileid, search, generate_merge_revisions,
-    allow_single_merge_revision, generate_delta,
-    force_incremental_matching=False):
+    allow_single_merge_revision, generate_delta, limited_output=False):
     """Create a revision iterator for log.
 
     :param branch: The branch being logged.
@@ -248,8 +247,7 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     :param allow_single_merge_revision: If True, logging of a single
         revision off the mainline is to be allowed
     :param generate_delta: Whether to generate a delta for each revision.
-    :param force_incremental_matching: if there's a file_id, use deltas
-        to match it unconditionally
+    :param limited_output: if True, the user only wants a limited result
 
     :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
         delta).
@@ -265,25 +263,31 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     # default when no limits are given. Delta filtering should give more
     # accurate results (e.g. inclusion of FILE deletions) so arguably
     # it should always be used in the future.
-    use_deltas_for_matching = specific_fileid and (force_incremental_matching
-        or generate_delta or start_rev_id or end_rev_id)
+    use_deltas_for_matching = specific_fileid and (
+            generate_delta or start_rev_id or end_rev_id)
+    delayed_graph_generation = not specific_fileid and (
+            start_rev_id or end_rev_id or limited_output)
     generate_merges = generate_merge_revisions or (specific_fileid and
         not use_deltas_for_matching)
     view_revisions = _calc_view_revisions(branch, start_rev_id, end_rev_id,
-        direction, generate_merges, allow_single_merge_revision)
+        direction, generate_merges, allow_single_merge_revision,
+        delayed_graph_generation=delayed_graph_generation)
     search_deltas_for_fileids = None
     if use_deltas_for_matching:
         search_deltas_for_fileids = set([specific_fileid])
     elif specific_fileid:
+        if not isinstance(view_revisions, list):
+            view_revisions = list(view_revisions)
         view_revisions = _filter_revisions_touching_file_id(branch,
-            specific_fileid, list(view_revisions),
+            specific_fileid, view_revisions,
             include_merges=generate_merge_revisions)
     return make_log_rev_iterator(branch, view_revisions, generate_delta,
         search, file_ids=search_deltas_for_fileids, direction=direction)
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
-    generate_merge_revisions, allow_single_merge_revision):
+    generate_merge_revisions, allow_single_merge_revision,
+    delayed_graph_generation=False):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
@@ -332,27 +336,28 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
     initial_revisions = []
-    try:
-        for rev_id, revno, depth in \
-            _linear_view_revisions(branch, start_rev_id, end_rev_id):
-            if _has_merges(branch, rev_id):
-                end_rev_id = rev_id
-                break
+    if delayed_graph_generation:
+        try:
+            for rev_id, revno, depth in \
+                _linear_view_revisions(branch, start_rev_id, end_rev_id):
+                if _has_merges(branch, rev_id):
+                    end_rev_id = rev_id
+                    break
+                else:
+                    initial_revisions.append((rev_id, revno, depth))
             else:
-                initial_revisions.append((rev_id, revno, depth))
-        else:
-            # No merged revisions found
-            if direction == 'reverse':
-                return initial_revisions
-            elif direction == 'forward':
-                return reversed(initial_revisions)
-            else:
-                raise ValueError('invalid direction %r' % direction)
-    except _StartNotLinearAncestor:
-        # A merge was never detected so the lower revision limit can't
-        # be nested down somewhere
-        raise errors.BzrCommandError('Start revision not found in'
-            ' history of end revision.')
+                # No merged revisions found
+                if direction == 'reverse':
+                    return initial_revisions
+                elif direction == 'forward':
+                    return reversed(initial_revisions)
+                else:
+                    raise ValueError('invalid direction %r' % direction)
+        except _StartNotLinearAncestor:
+            # A merge was never detected so the lower revision limit can't
+            # be nested down somewhere
+            raise errors.BzrCommandError('Start revision not found in'
+                ' history of end revision.')
 
     # A log including nested merges is required. If the direction is reverse,
     # we rebase the initial merge depths so that the development line is
