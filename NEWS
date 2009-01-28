@@ -37,6 +37,10 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * ``bzr log -p`` displays the patch diff for each revision.
+      When logging a file, the diff only includes changes to that file.
+      (Ian Clatworthy, #202331, #227335)
+
   IMPROVEMENTS:
 
     * ``bzr init`` will now print a little less verbose output.

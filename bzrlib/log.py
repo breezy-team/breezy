@@ -50,6 +50,7 @@ all the changes since the previous revision that touched hello.c.
 """
 
 import codecs
+from cStringIO import StringIO
 from itertools import (
     izip,
     )
@@ -64,6 +65,7 @@ lazy_import(globals(), """
 
 from bzrlib import (
     config,
+    diff,
     errors,
     repository as _mod_repository,
     revision as _mod_revision,
@@ -144,7 +146,8 @@ def show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             show_diff=False):
     """Write out human-readable log of commits to this branch.
 
     :param lf: The LogFormatter object showing the output.
@@ -166,6 +169,8 @@ def show_log(branch,
 
     :param limit: If set, shows only 'limit' revisions, all revisions are shown
         if None or 0.
+
+    :param show_diff: If True, output a diff after each revision.
     """
     branch.lock_read()
     try:
@@ -173,7 +178,7 @@ def show_log(branch,
             lf.begin_log()
 
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search, limit)
+                  start_revision, end_revision, search, limit, show_diff)
 
         if getattr(lf, 'end_log', None):
             lf.end_log()
@@ -189,7 +194,8 @@ def _show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             show_diff=False):
     """Worker function for show_log - see show_log."""
     if not isinstance(lf, LogFormatter):
         warn("not a LogFormatter instance: %r" % lf)
@@ -211,20 +217,43 @@ def _show_log(branch,
             rev_tag_dict = branch.tags.get_reverse_tag_dict()
 
     generate_delta = verbose and getattr(lf, 'supports_delta', False)
+    generate_diff = show_diff and getattr(lf, 'supports_diff', False)
 
     # now we just print all the revisions
+    repo = branch.repository
     log_count = 0
     revision_iterator = make_log_rev_iterator(branch, view_revisions,
         generate_delta, search)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
+            if generate_diff:
+                diff = _format_diff(repo, rev, rev_id, specific_fileid)
+            else:
+                diff = None
             lr = LogRevision(rev, revno, merge_depth, delta,
-                             rev_tag_dict.get(rev_id))
+                             rev_tag_dict.get(rev_id), diff)
             lf.log_revision(lr)
             if limit:
                 log_count += 1
                 if log_count >= limit:
                     return
+
+
+def _format_diff(repo, rev, rev_id, specific_fileid):
+    if len(rev.parent_ids) == 0:
+        ancestor_id = _mod_revision.NULL_REVISION
+    else:
+        ancestor_id = rev.parent_ids[0]
+    tree_1 = repo.revision_tree(ancestor_id)
+    tree_2 = repo.revision_tree(rev_id)
+    if specific_fileid:
+        specific_files = [tree_2.id2path(specific_fileid)]
+    else:
+        specific_files = None
+    s = StringIO()
+    diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
+        new_label='')
+    return s.getvalue()
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
@@ -694,12 +723,13 @@ class LogRevision(object):
     """
 
     def __init__(self, rev=None, revno=None, merge_depth=0, delta=None,
-                 tags=None):
+                 tags=None, diff=None):
         self.rev = rev
         self.revno = revno
         self.merge_depth = merge_depth
         self.delta = delta
         self.tags = tags
+        self.diff = diff
 
 
 class LogFormatter(object):
@@ -722,11 +752,16 @@ class LogFormatter(object):
         merge revisions.  If not, and if supports_single_merge_revisions is
         also not True, then only mainline revisions will be passed to the 
         formatter.
+
     - supports_single_merge_revision must be True if this log formatter
         supports logging only a single merge revision.  This flag is
         only relevant if supports_merge_revisions is not True.
+
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
+
+    - supports_diff must be True if this log formatter supports diffs.
+        Otherwise the diff attribute may not be populated.
 
     Plugins can register functions to show custom revision properties using
     the properties_handler_registry. The registered function
@@ -777,12 +812,17 @@ class LogFormatter(object):
             for key, value in handler(revision).items():
                 self.to_file.write(indent + key + ': ' + value + '\n')
 
+    def show_diff(self, to_file, diff, indent):
+        for l in diff.rstrip().split('\n'):
+            to_file.write(indent + '%s\n' % (l,))
+
 
 class LongLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
     supports_delta = True
     supports_tags = True
+    supports_diff = True
 
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
@@ -825,6 +865,11 @@ class LongLogFormatter(LogFormatter):
             # We don't respect delta_format for compatibility
             revision.delta.show(to_file, self.show_ids, indent=indent,
                                 short_status=False)
+        if revision.diff is not None:
+            to_file.write(indent + 'diff:\n')
+            # Note: we explicitly don't indent the diff (relative to the
+            # revision information) so that the output can be fed to patch -p0
+            self.show_diff(to_file, revision.diff, indent)
 
 
 class ShortLogFormatter(LogFormatter):
@@ -832,6 +877,7 @@ class ShortLogFormatter(LogFormatter):
     supports_delta = True
     supports_tags = True
     supports_single_merge_revision = True
+    supports_diff = True
 
     def log_revision(self, revision):
         to_file = self.to_file
@@ -862,6 +908,8 @@ class ShortLogFormatter(LogFormatter):
         if revision.delta is not None:
             revision.delta.show(to_file, self.show_ids,
                                 short_status=self.delta_format==1)
+        if revision.diff is not None:
+            self.show_diff(to_file, revision.diff, '      ')
         to_file.write('\n')
 
 
