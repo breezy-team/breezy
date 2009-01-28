@@ -39,6 +39,9 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
+    def __init__(self):
+        super(BzrGitMapping, self).__init__(foreign_git)
+
     def __eq__(self, other):
         return type(self) == type(other) and self.revid_prefix == other.revid_prefix
 
@@ -53,10 +56,6 @@ class BzrGitMapping(foreign.VcsMapping):
         if not bzr_rev_id.startswith("%s:" % cls.revid_prefix):
             raise errors.InvalidRevisionId(bzr_rev_id, cls)
         return bzr_rev_id[len(cls.revid_prefix)+1:], cls()
-
-    @classmethod
-    def show_foreign_revid(cls, foreign_revid):
-        return { "git commit": foreign_revid }
 
     def generate_file_id(self, path):
         if path == "":
@@ -136,6 +135,10 @@ class ForeignGit(ForeignVcs):
     def __init__(self):
         super(ForeignGit, self).__init__(mapping_registry)
 
+    @classmethod
+    def show_foreign_revid(cls, foreign_revid):
+        return { "git commit": foreign_revid }
 
-default_mapping = BzrGitMappingv1()
+
 foreign_git = ForeignGit()
+default_mapping = BzrGitMappingv1()
