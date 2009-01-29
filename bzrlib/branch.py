@@ -383,13 +383,15 @@ class Branch(object):
                 if rev_id == stop_revision_id:
                     return
         elif stop_rule == 'with-merges':
-            stop_depth = None
+            stop_rev = self.repository.get_revision(stop_revision_id)
+            if stop_rev.parent_ids:
+                left_parent = stop_rev.parent_ids[0]
+            else:
+                left_parent = _mod_revision.NULL_REVISION
             for rev_id, depth, revno, end_of_merge in rev_iter:
-                if stop_depth is not None and depth <= stop_depth:
+                if rev_id == left_parent:
                     return
                 yield rev_id, depth, revno, end_of_merge
-                if rev_id == stop_revision_id:
-                    stop_depth = depth
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
