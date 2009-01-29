@@ -1465,5 +1465,10 @@ class VirtualVersionedFiles(VersionedFiles):
             else:
                 yield AbsentContentFactory((k,))
 
-
-
+    def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        """See VersionedFile.iter_lines_added_or_present_in_versions()."""
+        for i, (key,) in enumerate(keys):
+            if pb is not None:
+                pb.update("iterating texts", i, len(keys))
+            for l in self._get_lines(key):
+                yield (l, key)

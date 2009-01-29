@@ -53,7 +53,8 @@ def iter_log_revisions(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch, restrict='all',
-                  include_merges=False, backward=False):
+                  include_merges=False, backward=False,
+                  local_revid_range=None, remote_revid_range=None):
     """Find revisions from each side that have not been merged.
 
     :param local_branch: Compare the history of local_branch
@@ -66,7 +67,11 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
     :param include_merges: Show mainline revisions only if False,
         all revisions otherwise.
     :param backward: Show oldest versions first when True, newest versions
-        first when False. 
+        first when False.
+    :param local_revid_range: Revision-id range for filtering local_branch
+        revisions (lower bound, upper bound)
+    :param remote_revid_range: Revision-id range for filtering remote_branch
+        revisions (lower bound, upper bound)
 
     :return: A list of [(revno, revision_id)] for the mainline revisions on
         each side.
@@ -77,7 +82,9 @@ def find_unmerged(local_branch, remote_branch, restrict='all',
         try:
             return _find_unmerged(
                 local_branch, remote_branch, restrict=restrict,
-                include_merges=include_merges, backward=backward)
+                include_merges=include_merges, backward=backward,
+                local_revid_range=local_revid_range,
+                remote_revid_range=remote_revid_range)
         finally:
             remote_branch.unlock()
     finally:
@@ -174,8 +181,16 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     return revline
 
 
+def _filter_revs(graph, revs, revid_range):
+    if revid_range is None or revs is None:
+        return revs
+    return [rev for rev in revs
+        if graph.is_between(rev[1], revid_range[0], revid_range[1])]
+
+
 def _find_unmerged(local_branch, remote_branch, restrict,
-                   include_merges, backward):
+                   include_merges, backward,
+                   local_revid_range=None, remote_revid_range=None):
     """See find_unmerged.
 
     The branches should already be locked before entering.
@@ -214,7 +229,8 @@ def _find_unmerged(local_branch, remote_branch, restrict,
                                      local_revision_id, backward)
         remotes = _enumerate_mainline(remote_extra, graph, remote_revno,
                                       remote_revision_id, backward)
-    return locals, remotes
+    return _filter_revs(graph, locals, local_revid_range), _filter_revs(graph,
+        remotes, remote_revid_range)
 
 
 def sorted_revisions(revisions, history_map):
