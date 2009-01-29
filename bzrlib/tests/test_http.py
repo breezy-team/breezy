@@ -136,6 +136,7 @@ def load_tests(standard_tests, module, loader):
                  TestProxyHttpServer,
                  TestRanges,
                  TestSpecificRequestHandler,
+                 TestActivity,
                  )
     is_also_testing_for_protocols = tests.condition_isinstance(tp_classes)
 
@@ -1807,3 +1808,98 @@ class Test_redirected_to(tests.TestCase):
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
         self.assertEquals(t._user, r._user)
+
+
+class ActivityHttpServer(http_server.HttpServer):
+
+    def __init__(self, request_handler=None,
+                 protocol_version=None):
+        super(ActivityHttpServer, self).__init__(
+            request_handler=request_handler, protocol_version=protocol_version)
+        # Bytes read and written by the server
+        self.bytes_read = 0
+        self.bytes_written = 0
+
+
+class PreRecoredRequestHandler(http_server.TestingHTTPRequestHandler):
+    """Pre-recorded request handler.
+
+
+    The only thing we care about here is how many bytes travel on the wire. But
+    since we want to measure it for a real http client, we have to send it
+    correct responses.
+
+    We expect to receive a *single* request nothing more (and we won't even
+    check what request it is, we just measure the bytes read until an empty
+    line.
+    """
+
+    canned_response = ''
+
+    def handle_one_request(self):
+        tcs = self.server.test_case_server
+        if not isinstance(tcs, ActivityHttpServer):
+            raise AssertionError(
+                'PreRecoredRequestHandler assumes a %r server, not %r'
+                % (ActivityHttpServer, tcs))
+        requestline = self.rfile.readline()
+        headers = self.MessageClass(self.rfile, 0)
+        # We just read: the request, the headers, an empty line indicating the
+        # end of the headers.
+        bytes_read = len(requestline)
+        for line in headers.headers:
+            bytes_read += len(line)
+        bytes_read += len('\r\n')
+        tcs.bytes_read = bytes_read
+        self.wfile.write(self.canned_response)
+        tcs.bytes_written = len(self.canned_response)
+
+
+class TestActivity(tests.TestCase):
+    """Test socket activity reporting.
+
+    We use a special purpose server to control the bytes sent and received and
+    be able to predict the activity on the client socket.
+    """
+
+    def test_http_get(self):
+        class MyRequestHandler(PreRecoredRequestHandler):
+
+            canned_response = '''HTTP/1.1 200 OK\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
+ETag: "56691-23-38e9ae00"\r
+Accept-Ranges: bytes\r
+Content-Length: 35\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+Bazaar-NG meta directory, format 1
+'''
+
+        server = ActivityHttpServer(MyRequestHandler, self._protocol_version)
+        server.setUp()
+        self.addCleanup(server.tearDown)
+
+        activities = {}
+        def report_activity(t, bytes, direction):
+            count = activities.get(direction, 0)
+            count += bytes
+            activities[direction] = count
+
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be be to define a specific ui factory instead...)
+        orig_ra = self._transport._report_activity
+        def restore_report_activity():
+            self._transport._report_activity = orig_ra
+        self.addCleanup(restore_report_activity)
+        self._transport._report_activity = report_activity
+
+        t = self._transport(server.get_url())
+
+        self.assertEqual('Bazaar-NG meta directory, format 1\n',
+                         t.get('foo/bar').read())
+        self.assertEqual(server.bytes_read, activities.get('write', 0))
+        self.assertEqual(server.bytes_written, activities.get('read', 0))

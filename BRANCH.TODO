@@ -3,3 +3,11 @@
 # 
 #
 
+* try to address pycurl failing activity tests or raise not
+   applicable otherwise
+
+* complete _ReportingFileSocket implementation for write
+   operations ?
+
+* triple check https activity reporting (including proxy
+   connection)
