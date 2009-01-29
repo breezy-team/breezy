@@ -72,6 +72,13 @@ IN DEVELOPMENT
       a change to FILE when the ``--short`` and ``--line`` log formats
       are used. (Ian Clatworthy, #317417)
 
+    * ``bzr log -rX..Y FILE`` now shows the history of FILE provided
+      it existed in Y or X, even if the file has since been deleted or
+      renamed. If no range is given, the current/basis tree and
+      initial tree are searched in that order. More generally, log
+      now interprets filenames in their historical context.
+      (Ian Clatworthy, #175520)
+
     * Don't require the present compression base in knits to be the same
       when adding records in knits. (Jelmer Vernooij, #307394)
 

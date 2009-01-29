@@ -1222,6 +1222,52 @@ def show_flat_log(repository, history, last_revno, lf):
         lf.log_revision(lr)
 
 
+def _get_fileid_to_log(revision, tree, b, fp):
+    """Find the file-id to log for a file path in a revision range.
+
+    :param revision: the revision range as parsed on the command line
+    :param tree: the working tree, if any
+    :param b: the branch
+    :param fp: file path
+    """
+    if revision is None:
+        if tree is None:
+            tree = b.basis_tree()
+        file_id = tree.path2id(fp)
+        if file_id is None:
+            # go back to when time began
+            rev1 = b.get_rev_id(1)
+            tree = b.repository.revision_tree(rev1)
+            file_id = tree.path2id(fp)
+
+    elif len(revision) == 1:
+        # One revision given - file must exist in it
+        tree = revision[0].as_tree(b)
+        file_id = tree.path2id(fp)
+
+    elif len(revision) == 2:
+        # Revision range given. Get the file-id from the end tree.
+        # If that fails, try the start tree.
+        rev_id = revision[1].as_revision_id(b)
+        if rev_id is None:
+            tree = b.basis_tree()
+        else:
+            tree = revision[1].as_tree(b)
+        file_id = tree.path2id(fp)
+        if file_id is None:
+            rev_id = revision[0].as_revision_id(b)
+            if rev_id is None:
+                rev1 = b.get_rev_id(1)
+                tree = b.repository.revision_tree(rev1)
+            else:
+                tree = revision[0].as_tree(b)
+            file_id = tree.path2id(fp)
+    else:
+        raise errors.BzrCommandError(
+            'bzr log --revision takes one or two values.')
+    return file_id
+
+
 properties_handler_registry = registry.Registry()
 properties_handler_registry.register_lazy("foreign",
                                           "bzrlib.foreign",

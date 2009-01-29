@@ -1899,7 +1899,7 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False):
-        from bzrlib.log import show_log
+        from bzrlib.log import show_log, _get_fileid_to_log
         direction = (forward and 'forward') or 'reverse'
 
         if change is not None:
@@ -1919,12 +1919,10 @@ class cmd_log(Command):
             tree, b, fp = bzrdir.BzrDir.open_containing_tree_or_branch(
                 location)
             if fp != '':
-                if tree is None:
-                    tree = b.basis_tree()
-                file_id = tree.path2id(fp)
+                file_id = _get_fileid_to_log(revision, tree, b, fp)
                 if file_id is None:
                     raise errors.BzrCommandError(
-                        "Path does not have any revision history: %s" %
+                        "Path unknown at end or start of revision range: %s" %
                         location)
         else:
             # local dir only
@@ -1960,6 +1958,7 @@ class cmd_log(Command):
                      show_diff=show_diff)
         finally:
             b.unlock()
+
 
 def _get_revision_range(revisionspec_list, branch, command_name):
     """Take the input of a revision option and turn it into a revision range.
