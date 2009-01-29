@@ -585,18 +585,18 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
         self.assertNotContainsRe(log, 'revno: 4\n')
 
-    def test_log_file_historical(self):
-        """File matched against revision range, not current tree."""
-        self.prepare_tree(complex=True)
-
+    def test_log_file_historical_missing(self):
         # Check logging a deleted file gives an error if the
         # file isn't found at the end or start of the revision range
+        self.prepare_tree(complex=True)
         err_msg = "Path unknown at end or start of revision range: file2"
         err = self.run_bzr('log file2', retcode=3)[1]
         self.assertContainsRe(err, err_msg)
 
+    def test_log_file_historical_end(self):
         # Check logging a deleted file is ok if the file existed
         # at the end the revision range
+        self.prepare_tree(complex=True)
         log, err = self.run_bzr('log -r..4 file2')
         self.assertEquals('', err)
         self.assertNotContainsRe(log, 'revno: 1\n')
@@ -605,8 +605,10 @@ class TestLogFile(TestCaseWithTransport):
         self.assertContainsRe(log, 'revno: 3.1.1\n')
         self.assertContainsRe(log, 'revno: 4\n')
 
+    def test_log_file_historical_start(self):
         # Check logging a deleted file is ok if the file existed
         # at the start of the revision range
+        self.prepare_tree(complex=True)
         log, err = self.run_bzr('log file1')
         self.assertEquals('', err)
         self.assertContainsRe(log, 'revno: 1\n')
