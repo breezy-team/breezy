@@ -1236,9 +1236,14 @@ def _get_fileid_to_log(revision, tree, b, fp):
         file_id = tree.path2id(fp)
         if file_id is None:
             # go back to when time began
-            rev1 = b.get_rev_id(1)
-            tree = b.repository.revision_tree(rev1)
-            file_id = tree.path2id(fp)
+            try:
+                rev1 = b.get_rev_id(1)
+            except errors.NoSuchRevision:
+                # No history at all
+                file_id = None
+            else:
+                tree = b.repository.revision_tree(rev1)
+                file_id = tree.path2id(fp)
 
     elif len(revision) == 1:
         # One revision given - file must exist in it
