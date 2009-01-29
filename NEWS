@@ -30,6 +30,17 @@ IN DEVELOPMENT
       When logging a file, the diff only includes changes to that file.
       (Ian Clatworthy, #202331, #227335)
 
+    * ``bzr log`` supports a new option called ``-n N`` or ``--level N``.
+      A value of 0 (zero) means "show all nested merge revisions" while
+      a value of 1 (one) means "show just the top level". Values above
+      1 can be used to see a limited amount of nesting. That can be
+      useful for seeing the level or two below PQM submits for example.
+      To force the ``--short`` and ``--line`` formats to display all nested
+      merge revisions just like ``--long`` does by default, use a command
+      like ``bzr log --short -n0``. To display just the mainline using
+      ``--long`` format, ``bzr log --long -n1``.
+      (Ian Clatworthy)
+
   IMPROVEMENTS:
 
     * ``bzr init`` will now print a little less verbose output.

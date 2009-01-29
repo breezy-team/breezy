@@ -256,14 +256,14 @@ class TestLogVerbose(TestCaseWithTransport):
     def assertUseShortDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the short status format
-        self.assertContainsRe(log, '(?m)^A  hello.txt$')
-        self.assertNotContainsRe(log, '(?m)^added:$')
+        self.assertContainsRe(log, '(?m)^\s*A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^\s*added:$')
 
     def assertUseLongDeltaFormat(self, cmd):
         log = self.run_bzr(cmd)[0]
         # Check that we use the long status format
-        self.assertNotContainsRe(log, '(?m)^A  hello.txt$')
-        self.assertContainsRe(log, '(?m)^added:$')
+        self.assertNotContainsRe(log, '(?m)^\s*A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^\s*added:$')
 
     def test_log_short_verbose(self):
         self.assertUseShortDeltaFormat(['log', '--short', '-v'])
@@ -296,6 +296,30 @@ class TestLogMerges(TestCaseWithoutPropsHandler):
         child_tree.commit(message='merge branch 2')
         parent_tree.merge_from_branch(child_tree.branch)
         parent_tree.commit(message='merge branch 1')
+        os.chdir('parent')
+
+    def _prepare_short(self):
+        parent_tree = self.make_branch_and_tree('parent')
+        parent_tree.commit(message='first post',
+            timestamp=1132586700, timezone=36000,
+            committer='Joe Foo <joe@foo.com>')
+        child_tree = parent_tree.bzrdir.sprout('child').open_workingtree()
+        child_tree.commit(message='branch 1',
+            timestamp=1132586800, timezone=36000,
+            committer='Joe Foo <joe@foo.com>')
+        smaller_tree = \
+                child_tree.bzrdir.sprout('smallerchild').open_workingtree()
+        smaller_tree.commit(message='branch 2',
+            timestamp=1132586900, timezone=36000,
+            committer='Joe Foo <joe@foo.com>')
+        child_tree.merge_from_branch(smaller_tree.branch)
+        child_tree.commit(message='merge branch 2',
+            timestamp=1132587000, timezone=36000,
+            committer='Joe Foo <joe@foo.com>')
+        parent_tree.merge_from_branch(child_tree.branch)
+        parent_tree.commit(message='merge branch 1',
+            timestamp=1132587100, timezone=36000,
+            committer='Joe Foo <joe@foo.com>')
         os.chdir('parent')
 
     def test_merges_are_indented_by_level(self):
@@ -339,6 +363,71 @@ branch nick: parent
 timestamp: Just now
 message:
   first post
+""")
+
+    def test_force_merge_revisions_off(self):
+        self._prepare()
+        out,err = self.run_bzr('log --long -n1')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+------------------------------------------------------------
+revno: 2
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  merge branch 1
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: parent
+timestamp: Just now
+message:
+  first post
+""")
+
+    def test_force_merge_revisions_on(self):
+        self._prepare_short()
+        out,err = self.run_bzr('log --short -n0')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+    2 Joe Foo\t2005-11-22 [merge]
+      merge branch 1
+
+          1.1.2 Joe Foo\t2005-11-22 [merge]
+                merge branch 2
+
+              1.2.1 Joe Foo\t2005-11-22
+                    branch 2
+
+          1.1.1 Joe Foo\t2005-11-22
+                branch 1
+
+    1 Joe Foo\t2005-11-22
+      first post
+
+""")
+
+    def test_force_merge_revisions_N(self):
+        self._prepare_short()
+        out,err = self.run_bzr('log --short -n2')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(log, """\
+    2 Joe Foo\t2005-11-22 [merge]
+      merge branch 1
+
+          1.1.2 Joe Foo\t2005-11-22 [merge]
+                merge branch 2
+
+          1.1.1 Joe Foo\t2005-11-22
+                branch 1
+
+    1 Joe Foo\t2005-11-22
+      first post
+
 """)
 
     def test_merges_single_merge_rev(self):
