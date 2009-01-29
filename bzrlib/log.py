@@ -196,7 +196,7 @@ def _show_log(branch,
 
     if specific_fileid:
         trace.mutter('get log for file_id %r', specific_fileid)
-    levels_to_display = lf.get_levels_to_display()
+    levels_to_display = lf.get_levels()
     generate_merge_revisions = levels_to_display != 1
     allow_single_merge_revision = True
     if not getattr(lf, 'supports_merge_revisions', False):
@@ -746,6 +746,7 @@ class LogFormatter(object):
             # code that returns a dict {'name':'value'} of the properties 
             # to be shown
     """
+    preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
                  delta_format=None, levels=None):
@@ -768,23 +769,21 @@ class LogFormatter(object):
         self.delta_format = delta_format
         self.levels = levels
 
-    def get_levels_to_display(self):
+    def get_levels(self):
+        """Get the number of levels to display or 0 for all."""
         if getattr(self, 'supports_merge_revisions', False):
             if self.levels is None or self.levels == -1:
-                return getattr(self, 'preferred_levels', 0)
+                return self.preferred_levels
             else:
                 return self.levels
         return 1
 
-# TODO: uncomment this block after show() has been removed.
-# Until then defining log_revision would prevent _show_log calling show() 
-# in legacy formatters.
-#    def log_revision(self, revision):
-#        """Log a revision.
-#
-#        :param  revision:   The LogRevision to be logged.
-#        """
-#        raise NotImplementedError('not implemented in abstract base')
+    def log_revision(self, revision):
+        """Log a revision.
+
+        :param  revision:   The LogRevision to be logged.
+        """
+        raise NotImplementedError('not implemented in abstract base')
 
     def short_committer(self, rev):
         name, address = config.parse_username(rev.committer)
@@ -880,9 +879,11 @@ class ShortLogFormatter(LogFormatter):
         revno_width = self.revno_width_by_depth.get(depth)
         if revno_width is None:
             if revision.revno.find('.') == -1:
+                # mainline revno, e.g. 12345
                 revno_width = 5
             else:
-                revno_width = 9
+                # dotted revno, e.g. 12345.10.55
+                revno_width = 11
             self.revno_width_by_depth[depth] = revno_width
         offset = ' ' * (revno_width + 1)
 

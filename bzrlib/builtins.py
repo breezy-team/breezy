@@ -1860,7 +1860,7 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
-            Option('level-count',
+            Option('levels',
                    short_name='n',
                    help='Number of levels to display - 0 for all, 1 for flat.',
                    argname='N',
@@ -1886,7 +1886,7 @@ class cmd_log(Command):
             revision=None,
             change=None,
             log_format=None,
-            level_count=None,
+            levels=None,
             message=None,
             limit=None):
         from bzrlib.log import show_log
@@ -1936,7 +1936,7 @@ class cmd_log(Command):
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
-                            levels=level_count)
+                            levels=levels)
 
             show_log(b,
                      lf,

@@ -396,14 +396,14 @@ message:
     2 Joe Foo\t2005-11-22 [merge]
       merge branch 1
 
-        1.1.2 Joe Foo\t2005-11-22 [merge]
-              merge branch 2
+          1.1.2 Joe Foo\t2005-11-22 [merge]
+                merge branch 2
 
-            1.2.1 Joe Foo\t2005-11-22
-                  branch 2
+              1.2.1 Joe Foo\t2005-11-22
+                    branch 2
 
-        1.1.1 Joe Foo\t2005-11-22
-              branch 1
+          1.1.1 Joe Foo\t2005-11-22
+                branch 1
 
     1 Joe Foo\t2005-11-22
       first post
@@ -419,11 +419,11 @@ message:
     2 Joe Foo\t2005-11-22 [merge]
       merge branch 1
 
-        1.1.2 Joe Foo\t2005-11-22 [merge]
-              merge branch 2
+          1.1.2 Joe Foo\t2005-11-22 [merge]
+                merge branch 2
 
-        1.1.1 Joe Foo\t2005-11-22
-              branch 1
+          1.1.1 Joe Foo\t2005-11-22
+                branch 1
 
     1 Joe Foo\t2005-11-22
       first post

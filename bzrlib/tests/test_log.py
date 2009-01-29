@@ -410,8 +410,8 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
         rev = revspec.in_history(wtb)
         log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
         self.assertEqualDiff("""\
-    1.1.1 Joe Foo\t2005-11-22
-          rev-merged
+      1.1.1 Joe Foo\t2005-11-22
+            rev-merged
 
 """,
                              logfile.getvalue())
@@ -445,8 +445,8 @@ class TestShortLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
     2 Joe Foo\t2005-11-22 [merge]
       rev-2
 
-        1.1.1 Joe Foo\t2005-11-22
-              rev-merged
+          1.1.1 Joe Foo\t2005-11-22
+                rev-merged
 
     1 Joe Foo\t2005-11-22
       rev-1
@@ -477,8 +477,8 @@ class TestShortLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
         rev = revspec.in_history(wtb)
         log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
         self.assertEqualDiff("""\
-    1.1.1 Joe Foo\t2005-11-22
-          rev-merged
+      1.1.1 Joe Foo\t2005-11-22
+            rev-merged
 
 """,
                              logfile.getvalue())
