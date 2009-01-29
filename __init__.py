@@ -26,6 +26,7 @@ import bzrlib.api
 from bzrlib import bzrdir
 from bzrlib.foreign import foreign_vcs_registry
 from bzrlib.lockable_files import TransportLock
+from bzrlib.revisionspec import revspec_registry
 from bzrlib.transport import register_lazy_transport
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
@@ -56,6 +57,8 @@ bzrdir.format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
     help='GIT repository.', native=False, experimental=True,
     )
+revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec", 
+    "RevisionSpec_git")
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
     _lock_class = TransportLock
