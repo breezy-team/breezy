@@ -65,101 +65,85 @@ except errors.DependencyNotPresent:
     pycurl_present = False
 
 
-class TransportAdapter(tests.TestScenarioApplier):
-    """Generate the same test for each transport implementation."""
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for http clients and protocol versions."""
+    result = loader.suiteClass()
+    adapter = tests.TestScenarioApplier()
+    remaining_tests = standard_tests
 
-    def __init__(self):
-        transport_scenarios = [
-            ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
-                            _server=http_server.HttpServer_urllib,
-                            _qualified_prefix='http+urllib',)),
-            ]
-        if pycurl_present:
-            transport_scenarios.append(
-                ('pycurl', dict(_transport=PyCurlTransport,
-                                _server=http_server.HttpServer_PyCurl,
-                                _qualified_prefix='http+pycurl',)))
-        self.scenarios = transport_scenarios
+    # one for each transport
+    t_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                TestHttpTransportRegistration,
+                TestHttpTransportUrls,
+                Test_redirected_to,
+                )))
+    transport_scenarios = [
+        ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
+                        _server=http_server.HttpServer_urllib,
+                        _qualified_prefix='http+urllib',)),
+        ]
+    if pycurl_present:
+        transport_scenarios.append(
+            ('pycurl', dict(_transport=PyCurlTransport,
+                            _server=http_server.HttpServer_PyCurl,
+                            _qualified_prefix='http+pycurl',)))
+    adapter.scenarios = transport_scenarios
+    tests.adapt_tests(t_tests, adapter, result)
 
-
-class TransportProtocolAdapter(TransportAdapter):
-    """Generate the same test for each protocol implementation.
-
-    In addition to the transport adaptatation that we inherit from.
-    """
-
-    def __init__(self):
-        super(TransportProtocolAdapter, self).__init__()
-        protocol_scenarios = [
+    # multiplied by one for each protocol version
+    tp_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                SmartHTTPTunnellingTest,
+                TestDoCatchRedirections,
+                TestHTTPConnections,
+                TestHTTPRedirections,
+                TestHTTPSilentRedirections,
+                TestLimitedRangeRequestServer,
+                TestPost,
+                TestProxyHttpServer,
+                TestRanges,
+                TestSpecificRequestHandler,
+                )))
+    protocol_scenarios = [
             ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
             ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
             ]
-        self.scenarios = tests.multiply_scenarios(self.scenarios,
-                                                  protocol_scenarios)
-
-
-class TransportProtocolAuthenticationAdapter(TransportProtocolAdapter):
-    """Generate the same test for each authentication scheme implementation.
-
-    In addition to the protocol adaptatation that we inherit from.
-    """
-
-    def __init__(self):
-        super(TransportProtocolAuthenticationAdapter, self).__init__()
-        auth_scheme_scenarios = [
-            ('basic', dict(_auth_scheme='basic')),
-            ('digest', dict(_auth_scheme='digest')),
-            ]
-
-        self.scenarios = tests.multiply_scenarios(self.scenarios,
-                                                  auth_scheme_scenarios)
-
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for http clients and protocol versions."""
-    # one for each transport
-    t_adapter = TransportAdapter()
-    t_classes= (TestHttpTransportRegistration,
-                TestHttpTransportUrls,
-                Test_redirected_to,
-                )
-    is_testing_for_transports = tests.condition_isinstance(t_classes)
-
-    # multiplied by one for each protocol version
-    tp_adapter = TransportProtocolAdapter()
-    tp_classes= (SmartHTTPTunnellingTest,
-                 TestDoCatchRedirections,
-                 TestHTTPConnections,
-                 TestHTTPRedirections,
-                 TestHTTPSilentRedirections,
-                 TestLimitedRangeRequestServer,
-                 TestPost,
-                 TestProxyHttpServer,
-                 TestRanges,
-                 TestSpecificRequestHandler,
-                 TestActivity,
-                 )
-    is_also_testing_for_protocols = tests.condition_isinstance(tp_classes)
+    tp_scenarios = tests.multiply_scenarios(adapter.scenarios,
+                                            protocol_scenarios)
+    adapter.scenarios = tp_scenarios
+    tests.adapt_tests(tp_tests, adapter, result)
 
     # multiplied by one for each authentication scheme
-    tpa_adapter = TransportProtocolAuthenticationAdapter()
-    tpa_classes = (TestAuth,
-                   )
-    is_also_testing_for_authentication = tests.condition_isinstance(
-        tpa_classes)
+    tpa_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                TestAuth,
+                )))
+    auth_scheme_scenarios = [
+        ('basic', dict(_auth_scheme='basic')),
+        ('digest', dict(_auth_scheme='digest')),
+        ]
+    adapter.scenarios = tests.multiply_scenarios(adapter.scenarios,
+                                                 auth_scheme_scenarios)
+    tests.adapt_tests(tpa_tests, adapter, result)
 
-    result = loader.suiteClass()
-    for test_class in tests.iter_suite_tests(standard_tests):
-        # Each test class is either standalone or testing for some combination
-        # of transport, protocol version, authentication scheme. Use the right
-        # adpater (or none) depending on the class.
-        if is_testing_for_transports(test_class):
-            result.addTests(t_adapter.adapt(test_class))
-        elif is_also_testing_for_protocols(test_class):
-            result.addTests(tp_adapter.adapt(test_class))
-        elif is_also_testing_for_authentication(test_class):
-            result.addTests(tpa_adapter.adapt(test_class))
-        else:
-            result.addTest(test_class)
+    tpact_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                TestActivity,
+                )))
+    activity_scenarios = [
+        ('http', dict(_activity_server=ActivityHTTPServer)),
+        ]
+    if tests.HTTPSServerFeature.available():
+        activity_scenarios.append(
+            ('https', dict(_activity_server=ActivityHTTPSServer,)))
+    adapter.scenarios = tests.multiply_scenarios(tp_scenarios,
+                                                 activity_scenarios)
+    tests.adapt_tests(tpact_tests, adapter, result)
+
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
     return result
 
 
@@ -1810,18 +1794,24 @@ class Test_redirected_to(tests.TestCase):
         self.assertEquals(t._user, r._user)
 
 
-class ActivityHttpServer(http_server.HttpServer):
+class ActivityServerMixin(object):
 
-    def __init__(self, request_handler=None,
-                 protocol_version=None):
-        super(ActivityHttpServer, self).__init__(
-            request_handler=request_handler, protocol_version=protocol_version)
-        # Bytes read and written by the server
-        self.bytes_read = 0
-        self.bytes_written = 0
+    # Bytes read and written by the server
+    bytes_read = 0
+    bytes_written = 0
 
 
-class PreRecoredRequestHandler(http_server.TestingHTTPRequestHandler):
+class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
+    pass
+
+
+if tests.HTTPSServerFeature.available():
+    from bzrlib.tests import https_server
+    class ActivityHTTPSServer(ActivityServerMixin, https_server.HTTPSServer):
+        pass
+
+
+class PreRecordedRequestHandler(http_server.TestingHTTPRequestHandler):
     """Pre-recorded request handler.
 
 
@@ -1838,7 +1828,7 @@ class PreRecoredRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def handle_one_request(self):
         tcs = self.server.test_case_server
-        if not isinstance(tcs, ActivityHttpServer):
+        if not isinstance(tcs, ActivityServerMixin):
             raise AssertionError(
                 'PreRecoredRequestHandler assumes a %r server, not %r'
                 % (ActivityHttpServer, tcs))
@@ -1851,8 +1841,15 @@ class PreRecoredRequestHandler(http_server.TestingHTTPRequestHandler):
             bytes_read += len(line)
         bytes_read += len('\r\n')
         tcs.bytes_read = bytes_read
-        self.wfile.write(self.canned_response)
+        # Set the bytes written *before* issuing the write, the client is
+        # supposed to consume every produced byte *before* checkingthat value.
+
+        # Doing the oppposite may lead to test failure: we may be interrupted
+        # after the write but before updating the value. The client can then
+        # continue and read the value *before* we can update it. And yes,
+        # this has been observed -- vila 20090129
         tcs.bytes_written = len(self.canned_response)
+        self.wfile.write(self.canned_response)
 
 
 class TestActivity(tests.TestCase):
@@ -1863,7 +1860,7 @@ class TestActivity(tests.TestCase):
     """
 
     def test_http_get(self):
-        class MyRequestHandler(PreRecoredRequestHandler):
+        class MyRequestHandler(PreRecordedRequestHandler):
 
             canned_response = '''HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
@@ -1878,7 +1875,8 @@ Content-Type: text/plain; charset=UTF-8\r
 Bazaar-NG meta directory, format 1
 '''
 
-        server = ActivityHttpServer(MyRequestHandler, self._protocol_version)
+        server =  self._activity_server(MyRequestHandler,
+                                        self._protocol_version)
         server.setUp()
         self.addCleanup(server.tearDown)
 

@@ -3,11 +3,8 @@
 # 
 #
 
-* add more tests for has and readv (_get_full wasn't addressed
+* add tests for has and readv (_get_full wasn't addressed
    by jam's patch but _get_ranged should be reported twice currently).
 
 * complete _ReportingFileSocket implementation for write
    operations ?
-
-* triple check https activity reporting (including proxy
-   connection)
