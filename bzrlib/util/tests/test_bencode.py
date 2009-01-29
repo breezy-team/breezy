@@ -23,7 +23,7 @@
 # Software.
 
 
-from bzrlib.util.bencode import bencode, bdecode, bdecode_tuple, Bencached
+from bzrlib.util.bencode import bencode, bdecode, bdecode_as_tuple, Bencached
 from bzrlib.tests import TestCase
 
 class TestBencode(TestCase):
@@ -189,20 +189,20 @@ class TestBencode(TestCase):
         bdecode('d0:i3ee')
 
 
-    def test_bdecode_tuple(self):
-        assert bdecode_tuple('le') == ()
+    def test_bdecode_as_tuple(self):
+        assert bdecode_as_tuple('le') == ()
         try:
-            bdecode_tuple('leanfdldjfh')
+            bdecode_as_tuple('leanfdldjfh')
             assert 0
         except ValueError:
             pass
-        assert bdecode_tuple('l0:0:0:e') == ('', '', '')
-        assert bdecode_tuple('li1ei2ei3ee') == (1, 2, 3)
-        assert bdecode_tuple('l3:asd2:xye') == ('asd', 'xy')
-        assert bdecode_tuple('ll5:Alice3:Bobeli2ei3eee') == (('Alice', 'Bob'),
+        assert bdecode_as_tuple('l0:0:0:e') == ('', '', '')
+        assert bdecode_as_tuple('li1ei2ei3ee') == (1, 2, 3)
+        assert bdecode_as_tuple('l3:asd2:xye') == ('asd', 'xy')
+        assert bdecode_as_tuple('ll5:Alice3:Bobeli2ei3eee') == (('Alice', 'Bob'),
                 (2, 3))
         try:
-            bdecode_tuple('l-3:e')
+            bdecode_as_tuple('l-3:e')
             assert 0
         except ValueError:
             pass
