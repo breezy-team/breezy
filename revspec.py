@@ -19,7 +19,7 @@
 #
 
 from bzrlib.errors import NoSuchTag
-from bzrlib.revisionspec import RevisionSpec, RevisionInfo, SPEC_TYPES
+from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 
 from bzrlib.plugins.builddeb.errors import (
         AmbiguousPackageSpecification,
@@ -84,5 +84,4 @@ class RevisionSpec_package(RevisionSpec):
         return RevisionInfo.from_revision_id(branch,
                 revision_id, revs)
 
-SPEC_TYPES.append(RevisionSpec_package)
 
