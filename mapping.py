@@ -24,9 +24,6 @@ from bzrlib.foreign import (
         ForeignRevision,
         )
 
-from dulwich.objects import Commit
-
-
 def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')
 
@@ -85,6 +82,7 @@ class BzrGitMapping(foreign.VcsMapping):
         :param tree_sha: HACK parameter (until we can retrieve this from the mapping)
         :return dulwich.objects.Commit represent the revision:
         """
+        from dulwich.objects import Commit
         commit = Commit()
         commit._tree = tree_sha
         for p in rev.parent_ids:

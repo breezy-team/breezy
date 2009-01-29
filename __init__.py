@@ -32,29 +32,34 @@ from bzrlib.trace import warning
 MINIMUM_DULWICH_VERSION = (0, 1, 0)
 COMPATIBLE_BZR_VERSIONS = [(1, 12, 0)]
 
-try:
-    from dulwich import __version__ as dulwich_version
-except ImportError:
-    warning("Please install dulwich, https://launchpad.net/dulwich")
-    raise
-else:
-    if dulwich_version < MINIMUM_DULWICH_VERSION:
-        warning("Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
-        raise ImportError
-
+_versions_checked = False
+def lazy_check_versions():
+    global _versions_checked
+    if _versions_checked:
+        return
+    _versions_checked = True
+    try:
+        from dulwich import __version__ as dulwich_version
+    except ImportError:
+        warning("Please install dulwich, https://launchpad.net/dulwich")
+        raise
+    else:
+        if dulwich_version < MINIMUM_DULWICH_VERSION:
+            warning("Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
+            raise ImportError
 
 bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 
-from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
-
-bzrdir.format_registry.register(
-    'git', LocalGitBzrDirFormat,
-    help='GIT repository.', 
-    native=False, experimental=True,
+bzrdir.format_registry.register_lazy('git', 
+    "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
+    help='GIT repository.', native=False, experimental=True,
     )
 
-bzrdir.BzrDirFormat.register_control_format(LocalGitBzrDirFormat)
-bzrdir.BzrDirFormat.register_control_format(RemoteGitBzrDirFormat)
+lazy_check_versions()
+# TODO: This should be lazier
+from bzrlib.plugins.git.dir import LocalGitBzrDirFormat, RemoteGitBzrDirFormat
+bzrdir.BzrDirFormat.register_control_format_lazy("bzrlib.plugins.git.dir", "LocalGitBzrDirFormat")
+bzrdir.BzrDirFormat.register_control_format_lazy("bzrlib.plugins.git.dir", "RemoteGitBzrDirFormat")
 
 register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
                         'GitSmartTransport')
@@ -77,6 +82,7 @@ class cmd_git_serve(Command):
     ]
 
     def run(self, directory=None):
+        lazy_check_versions()
         from dulwich.server import TCPGitServer
         from bzrlib.plugins.git.server import BzrBackend
         from bzrlib.trace import warning

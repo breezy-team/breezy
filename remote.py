@@ -23,6 +23,9 @@ from bzrlib.repository import Repository
 from bzrlib.trace import info
 from bzrlib.transport import Transport
 
+from bzrlib.plugins.git import lazy_check_versions
+lazy_check_versions()
+
 from bzrlib.plugins.git.branch import GitBranch
 from bzrlib.plugins.git.errors import NoSuchRef
 from bzrlib.plugins.git.dir import GitDir
