@@ -1818,6 +1818,14 @@ def _parse_limit(limitstring):
         raise errors.BzrCommandError(msg)
 
 
+def _parse_levels(s):
+    try:
+        return int(s)
+    except ValueError:
+        msg = "The levels argument must be an integer."
+        raise errors.BzrCommandError(msg)
+
+
 class cmd_log(Command):
     """Show log of a branch, file, or directory.
 
@@ -1858,6 +1866,11 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
+            Option('levels',
+                   short_name='n',
+                   help='Number of levels to display - 0 for all, 1 for flat.',
+                   argname='N',
+                   type=_parse_levels),
             Option('message',
                    short_name='m',
                    help='Show revisions whose message matches this '
@@ -1882,6 +1895,7 @@ class cmd_log(Command):
             revision=None,
             change=None,
             log_format=None,
+            levels=None,
             message=None,
             limit=None,
             show_diff=False):
@@ -1931,7 +1945,8 @@ class cmd_log(Command):
 
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
-                            delta_format=get_verbosity_level())
+                            delta_format=get_verbosity_level(),
+                            levels=levels)
 
             show_log(b,
                      lf,
