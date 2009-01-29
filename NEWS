@@ -7,27 +7,6 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
-  IMPROVEMENTS:
-
-    * Progress bars now show the rate of activity for some sftp 
-      operations, and they are drawn different.  (Martin Pool, #172741)
-
-  BUG FIXES:
-
-    * ``bzr annotate --show-ids`` doesn't give a backtrace on empty files
-      anymore.
-      (Anne Mohsen, Vincent Ladeuil, #314525)
-
-    * There was a bug in how we handled resolving when a file is deleted
-      in one branch, and modified in the other. If there was a criss-cross
-      merge, we would cause the deletion to conflict a second time.
-      (Vincent Ladeuil, John Arbash Meinel)
-
-    * There was another bug in how we chose the correct intermediate LCA in
-      criss-cross merges leading to several kind of changes be incorrectly
-      handled.
-      (John Arbash Meinel, Vincent Ladeuil)
-
   COMPATIBILITY BREAKS:
 
     * By default, ``bzr status`` after a merge now shows just the pending
@@ -41,6 +20,11 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
   NEW FEATURES:
+
+    * Add support for filtering `bzr missing` on revisions.  Remote revisions
+      can be filtered using `bzr missing -r -20..-10` and local revisions can
+      be filtered using `bzr missing --my-revision -20..-10`.
+      (Marius Kruger)
 
     * ``bzr log -p`` displays the patch diff for each revision.
       When logging a file, the diff only includes changes to that file.
@@ -57,6 +41,9 @@ IN DEVELOPMENT
       before the optional ``[merge]`` indicator. For line format,
       the tags appear after the date. (Ian Clatworthy)
 
+    * Progress bars now show the rate of activity for some sftp 
+      operations, and they are drawn different.  (Martin Pool, #172741)
+
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
 
@@ -65,6 +52,10 @@ IN DEVELOPMENT
       new branches based on stacked bzr-svn branches. (#311997)
 
   BUG FIXES:
+
+    * ``bzr annotate --show-ids`` doesn't give a backtrace on empty files
+      anymore.
+      (Anne Mohsen, Vincent Ladeuil, #314525)
 
     * ``bzr log FILE`` now correctly shows mainline revisions merging
       a change to FILE when the ``--short`` and ``--line`` log formats
@@ -81,6 +72,16 @@ IN DEVELOPMENT
       Previously EINTR was treated as an unrecoverable failure.  There is
       a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
       (Andrew Bennetts)
+
+    * There was a bug in how we handled resolving when a file is deleted
+      in one branch, and modified in the other. If there was a criss-cross
+      merge, we would cause the deletion to conflict a second time.
+      (Vincent Ladeuil, John Arbash Meinel)
+
+    * There was another bug in how we chose the correct intermediate LCA in
+      criss-cross merges leading to several kind of changes be incorrectly
+      handled.
+      (John Arbash Meinel, Vincent Ladeuil)
 
   DOCUMENTATION:
 
