@@ -55,7 +55,13 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import ListOption, Option, RegistryOption, custom_help
+from bzrlib.option import (
+    ListOption,
+    Option,
+    RegistryOption,
+    custom_help,
+    _parse_revision_str,
+    )
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
@@ -1967,6 +1973,16 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             'bzr %s --revision takes one or two values.' % command_name)
     return rev1, rev2
 
+
+def _revision_range_to_revid_range(revision_range):
+    rev_id1 = None
+    rev_id2 = None
+    if revision_range[0] is not None:
+        rev_id1 = revision_range[0].rev_id
+    if revision_range[1] is not None:
+        rev_id2 = revision_range[1].rev_id
+    return rev_id1, rev_id2
+
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
     if long:
@@ -3512,25 +3528,57 @@ class cmd_shell_complete(Command):
 
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
-    
+
     OTHER_BRANCH may be local or remote.
+
+    To filter on a range of revirions, you can use the command -r begin..end
+    -r revision requests a specific revision, -r ..end or -r begin.. are
+    also valid.
+
+    :Examples:
+
+        Determine the missing revisions between this and the branch at the
+        remembered pull location::
+
+            bzr missing
+
+        Determine the missing revisions between this and another branch::
+
+            bzr missing http://server/branch
+
+        Determine the missing revisions up to a specific revision on the other
+        branch::
+
+            bzr missing -r ..-10
+
+        Determine the missing revisions up to a specific revision on this
+        branch::
+
+            bzr missing --my-revision ..-10
     """
 
     _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [
-            Option('reverse', 'Reverse the order of revisions.'),
-            Option('mine-only',
-                   'Display changes in the local branch only.'),
-            Option('this' , 'Same as --mine-only.'),
-            Option('theirs-only',
-                   'Display changes in the remote branch only.'),
-            Option('other', 'Same as --theirs-only.'),
-            'log-format',
-            'show-ids',
-            'verbose',
-            Option('include-merges', 'Show merged revisions.'),
-            ]
+        Option('reverse', 'Reverse the order of revisions.'),
+        Option('mine-only',
+               'Display changes in the local branch only.'),
+        Option('this' , 'Same as --mine-only.'),
+        Option('theirs-only',
+               'Display changes in the remote branch only.'),
+        Option('other', 'Same as --theirs-only.'),
+        'log-format',
+        'show-ids',
+        'verbose',
+        custom_help('revision',
+             help='Filter on other branch revisions (inclusive). '
+                'See "help revisionspec" for details.'),
+        Option('my-revision',
+            type=_parse_revision_str,
+            help='Filter on local branch revisions (inclusive). '
+                'See "help revisionspec" for details.'),
+        Option('include-merges', 'Show merged revisions.'),
+        ]
     encoding_type = 'replace'
 
     @display_command
@@ -3538,7 +3586,7 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False):
+            include_merges=False, revision=None, my_revision=None):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
@@ -3572,6 +3620,15 @@ class cmd_missing(Command):
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
+
+        local_revid_range = _revision_range_to_revid_range(
+            _get_revision_range(my_revision, local_branch,
+                self.name()))
+
+        remote_revid_range = _revision_range_to_revid_range(
+            _get_revision_range(revision,
+                remote_branch, self.name()))
+
         local_branch.lock_read()
         try:
             remote_branch.lock_read()
@@ -3579,7 +3636,9 @@ class cmd_missing(Command):
                 local_extra, remote_extra = find_unmerged(
                     local_branch, remote_branch, restrict,
                     backward=not reverse,
-                    include_merges=include_merges)
+                    include_merges=include_merges,
+                    local_revid_range=local_revid_range,
+                    remote_revid_range=remote_revid_range)
 
                 if log_format is None:
                     registry = log.log_formatter_registry
@@ -4716,10 +4775,7 @@ class cmd_tags(Command):
                 revid1, revid2 = rev1.rev_id, rev2.rev_id
                 # only show revisions between revid1 and revid2 (inclusive)
                 tags = [(tag, revid) for tag, revid in tags if
-                     (revid2 is None or
-                         graph.is_ancestor(revid, revid2)) and
-                     (revid1 is None or
-                         graph.is_ancestor(revid1, revid))]
+                    graph.is_between(revid, revid1, revid2)]
             finally:
                 branch.unlock()
         if sort == 'alpha':
