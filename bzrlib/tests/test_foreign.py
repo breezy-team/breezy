@@ -17,8 +17,17 @@
 
 """Tests for foreign VCS utility code."""
 
-from bzrlib import errors, foreign, lockable_files
-from bzrlib.bzrdir import BzrDirFormat, BzrDirMeta1, BzrDirMetaFormat1
+from bzrlib import (
+    errors,
+    foreign,
+    lockable_files,
+    )
+from bzrlib.bzrdir import (
+    BzrDir,
+    BzrDirFormat,
+    BzrDirMeta1,
+    BzrDirMetaFormat1,
+    )
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport
@@ -29,6 +38,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 # make it "foreign". 
 # 
 # It has the following differences to "regular" Bazaar:
+# - The control directory is named ".dummy", not ".bzr".
 # - The revision ids are tuples, not strings.
 
 
@@ -90,7 +100,7 @@ class DummyForeignVcsDirFormat(BzrDirMetaFormat1):
         """Return the .bzrdir style format present in a directory."""
         if not transport.has('.dummy'):
             raise errors.NotBranchError(path=transport.base)
-        return klass
+        return klass()
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -228,3 +238,34 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
             self.assertEquals(["TREE_ROOT", "bla-b"], list(wt.inventory))
         finally:
             wt.unlock()
+
+
+class DummyForeignVcsTests(TestCaseWithTransport):
+    """Very basic test for DummyForeignVcs."""
+
+    def setUp(self):
+        BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
+        self.addCleanup(self.unregister)
+        super(DummyForeignVcsTests, self).setUp()
+
+    def unregister(self):
+        try:
+            BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
+        except ValueError:
+            pass
+
+    def test_create(self):
+        """Test we can create dummies."""
+        self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
+        dir = BzrDir.open("d")
+        self.assertEquals("A Dummy VCS Dir", dir._format.get_format_string())
+        dir.open_repository()
+        dir.open_branch()
+        dir.open_workingtree()
+
+    def test_sprout(self):
+        """Test we can clone dummies and that the format is preserved."""
+        self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
+        dir = BzrDir.open("d")
+        newdir = dir.sprout("e")
+        self.assertEquals("A Dummy VCS Dir", newdir._format.get_format_string())
