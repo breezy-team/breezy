@@ -42,3 +42,6 @@ class NoSuchRef(BzrGitError):
     
     def __init__(self, ref):
         self.ref = ref
+
+class LightWeightCheckoutsNotSupported(BzrGitError):
+    _fmt = "bzr-git does not support creating lightweight checkouts at the moment."

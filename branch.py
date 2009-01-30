@@ -26,6 +26,7 @@ from bzrlib.decorators import needs_read_lock
 from bzrlib.trace import mutter
 
 from bzrlib.plugins.git.foreign import ForeignBranch
+from bzrlib.plugins.git.errors import LightWeightCheckoutsNotSupported
 
 from dulwich.objects import (
         Commit,
@@ -122,6 +123,30 @@ class LocalGitBranch(GitBranch):
         if self.head is None:
             return revision.NULL_REVISION
         return self.mapping.revision_id_foreign_to_bzr(self.head)
+
+    def create_checkout(self, to_location, revision_id=None, 
+                        lightweight=False, accelerator_tree=None, hardlink=False):
+        if lightweight:
+            raise LightWeightCheckoutsNotSupported()
+        return self._create_heavyweight_checkout(to_location, revision_id, hardlink)
+
+    def _create_heavyweight_checkout(self, to_location, revision_id=None, 
+                                     hardlink=False):
+        """Create a new heavyweight checkout of this branch.
+
+        :param to_location: URL of location to create the new checkout in.
+        :param revision_id: Revision that should be the tip of the checkout.
+        :param hardlink: Whether to hardlink
+        :return: WorkingTree object of checkout.
+        """
+        checkout_branch = BzrDir.create_branch_convenience(
+            to_location, force_new_tree=False, format=get_rich_root_format())
+        checkout = checkout_branch.bzrdir
+        checkout_branch.bind(self)
+        # pull up to the specified revision_id to set the initial 
+        # branch tip correctly, and seed it with history.
+        checkout_branch.pull(self, stop_revision=revision_id)
+        return checkout.create_workingtree(revision_id, hardlink=hardlink)
 
     def _make_tags(self):
         return GitTagDict(self)
