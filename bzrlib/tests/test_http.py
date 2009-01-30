@@ -1794,11 +1794,56 @@ class Test_redirected_to(tests.TestCase):
         self.assertEquals(t._user, r._user)
 
 
+class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
+    """Request handler for a unique and pre-defined request.
+
+    The only thing we care about here is how many bytes travel on the wire. But
+    since we want to measure it for a real http client, we have to send it
+    correct responses.
+
+    We expect to receive a *single* request nothing more (and we won't even
+    check what request it is, we just measure the bytes read until an empty
+    line.
+    """
+
+    def handle_one_request(self):
+        tcs = self.server.test_case_server
+        requestline = self.rfile.readline()
+        headers = self.MessageClass(self.rfile, 0)
+        # We just read: the request, the headers, an empty line indicating the
+        # end of the headers.
+        bytes_read = len(requestline)
+        for line in headers.headers:
+            bytes_read += len(line)
+        bytes_read += len('\r\n')
+        if requestline.startswith('POST'):
+            # The body should be a single line (or we don't know where it ends
+            # and we don't want to issue a blocking read)
+            body = self.rfile.readline()
+            bytes_read += len(body)
+        tcs.bytes_read = bytes_read
+
+        # We set the bytes written *before* issuing the write, the client is
+        # supposed to consume every produced byte *before* checking that value.
+
+        # Doing the oppposite may lead to test failure: we may be interrupted
+        # after the write but before updating the value. The client can then
+        # continue and read the value *before* we can update it. And yes,
+        # this has been observed -- vila 20090129
+        tcs.bytes_written = len(tcs.canned_response)
+        self.wfile.write(tcs.canned_response)
+
+
 class ActivityServerMixin(object):
 
-    # Bytes read and written by the server
-    bytes_read = 0
-    bytes_written = 0
+    def __init__(self, protocol_version):
+        super(ActivityServerMixin, self).__init__(
+            request_handler=PredefinedRequestHandler,
+            protocol_version=protocol_version)
+        # Bytes read and written by the server
+        self.bytes_read = 0
+        self.bytes_written = 0
+        self.canned_response = None
 
 
 class ActivityHTTPServer(ActivityServerMixin, http_server.HttpServer):
@@ -1811,47 +1856,6 @@ if tests.HTTPSServerFeature.available():
         pass
 
 
-class PreRecordedRequestHandler(http_server.TestingHTTPRequestHandler):
-    """Pre-recorded request handler.
-
-
-    The only thing we care about here is how many bytes travel on the wire. But
-    since we want to measure it for a real http client, we have to send it
-    correct responses.
-
-    We expect to receive a *single* request nothing more (and we won't even
-    check what request it is, we just measure the bytes read until an empty
-    line.
-    """
-
-    canned_response = ''
-
-    def handle_one_request(self):
-        tcs = self.server.test_case_server
-        if not isinstance(tcs, ActivityServerMixin):
-            raise AssertionError(
-                'PreRecoredRequestHandler assumes a %r server, not %r'
-                % (ActivityHttpServer, tcs))
-        requestline = self.rfile.readline()
-        headers = self.MessageClass(self.rfile, 0)
-        # We just read: the request, the headers, an empty line indicating the
-        # end of the headers.
-        bytes_read = len(requestline)
-        for line in headers.headers:
-            bytes_read += len(line)
-        bytes_read += len('\r\n')
-        tcs.bytes_read = bytes_read
-        # Set the bytes written *before* issuing the write, the client is
-        # supposed to consume every produced byte *before* checkingthat value.
-
-        # Doing the oppposite may lead to test failure: we may be interrupted
-        # after the write but before updating the value. The client can then
-        # continue and read the value *before* we can update it. And yes,
-        # this has been observed -- vila 20090129
-        tcs.bytes_written = len(self.canned_response)
-        self.wfile.write(self.canned_response)
-
-
 class TestActivity(tests.TestCase):
     """Test socket activity reporting.
 
@@ -1859,10 +1863,38 @@ class TestActivity(tests.TestCase):
     be able to predict the activity on the client socket.
     """
 
-    def test_http_get(self):
-        class MyRequestHandler(PreRecordedRequestHandler):
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.server = self._activity_server(self._protocol_version)
+        self.server.setUp()
+        self.activities = {}
+        def report_activity(t, bytes, direction):
+            count = self.activities.get(direction, 0)
+            count += bytes
+            self.activities[direction] = count
 
-            canned_response = '''HTTP/1.1 200 OK\r
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be be to define a specific ui factory instead...)
+        self.orig_report_activity = self._transport._report_activity
+        self._transport._report_activity = report_activity
+
+    def tearDown(self):
+        self._transport._report_activity = self.orig_report_activity
+        self.server.tearDown()
+        tests.TestCase.tearDown(self)
+
+    def get_transport(self):
+        return self._transport(self.server.get_url())
+
+    def assertActivitiesMatch(self):
+        self.assertEqual(self.server.bytes_read,
+                         self.activities.get('write', 0), 'written bytes')
+        self.assertEqual(self.server.bytes_written,
+                         self.activities.get('read', 0), 'read bytes')
+
+    def test_get(self):
+        self.server.canned_response = '''HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
@@ -1874,30 +1906,97 @@ Content-Type: text/plain; charset=UTF-8\r
 \r
 Bazaar-NG meta directory, format 1
 '''
-
-        server =  self._activity_server(MyRequestHandler,
-                                        self._protocol_version)
-        server.setUp()
-        self.addCleanup(server.tearDown)
-
-        activities = {}
-        def report_activity(t, bytes, direction):
-            count = activities.get(direction, 0)
-            count += bytes
-            activities[direction] = count
-
-        # We override at class level because constructors may propagate the
-        # bound method and render instance overriding ineffective (an
-        # alternative would be be to define a specific ui factory instead...)
-        orig_ra = self._transport._report_activity
-        def restore_report_activity():
-            self._transport._report_activity = orig_ra
-        self.addCleanup(restore_report_activity)
-        self._transport._report_activity = report_activity
-
-        t = self._transport(server.get_url())
-
+        t = self.get_transport()
         self.assertEqual('Bazaar-NG meta directory, format 1\n',
                          t.get('foo/bar').read())
-        self.assertEqual(server.bytes_read, activities.get('write', 0))
-        self.assertEqual(server.bytes_written, activities.get('read', 0))
+        self.assertActivitiesMatch()
+
+    def test_has(self):
+        self.server.canned_response = '''HTTP/1.1 200 OK\r
+Server: SimpleHTTP/0.6 Python/2.5.2\r
+Date: Thu, 29 Jan 2009 20:21:47 GMT\r
+Content-type: application/octet-stream\r
+Content-Length: 20\r
+Last-Modified: Thu, 29 Jan 2009 20:21:47 GMT\r
+\r
+'''
+        t = self.get_transport()
+        self.assertTrue(t.has('foo/bar'))
+        self.assertActivitiesMatch()
+
+    def test_readv(self):
+        self.server.canned_response = '''HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:49:48 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 1534\r
+Connection: close\r
+Content-Type: multipart/byteranges; boundary=418470f848b63279b\r
+\r
+\r
+--418470f848b63279b\r
+Content-type: text/plain; charset=UTF-8\r
+Content-range: bytes 0-254/93890\r
+\r
+mbp@sourcefrog.net-20050309040815-13242001617e4a06
+mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e7627
+mbp@sourcefrog.net-20050309040957-6cad07f466bb0bb8
+mbp@sourcefrog.net-20050309041501-c840e09071de3b67
+mbp@sourcefrog.net-20050309044615-c24a3250be83220a
+\r
+--418470f848b63279b\r
+Content-type: text/plain; charset=UTF-8\r
+Content-range: bytes 1000-2049/93890\r
+\r
+40-fd4ec249b6b139ab
+mbp@sourcefrog.net-20050311063625-07858525021f270b
+mbp@sourcefrog.net-20050311231934-aa3776aff5200bb9
+mbp@sourcefrog.net-20050311231953-73aeb3a131c3699a
+mbp@sourcefrog.net-20050311232353-f5e33da490872c6a
+mbp@sourcefrog.net-20050312071639-0a8f59a34a024ff0
+mbp@sourcefrog.net-20050312073432-b2c16a55e0d6e9fb
+mbp@sourcefrog.net-20050312073831-a47c3335ece1920f
+mbp@sourcefrog.net-20050312085412-13373aa129ccbad3
+mbp@sourcefrog.net-20050313052251-2bf004cb96b39933
+mbp@sourcefrog.net-20050313052856-3edd84094687cb11
+mbp@sourcefrog.net-20050313053233-e30a4f28aef48f9d
+mbp@sourcefrog.net-20050313053853-7c64085594ff3072
+mbp@sourcefrog.net-20050313054757-a86c3f5871069e22
+mbp@sourcefrog.net-20050313061422-418f1f73b94879b9
+mbp@sourcefrog.net-20050313120651-497bd231b19df600
+mbp@sourcefrog.net-20050314024931-eae0170ef25a5d1a
+mbp@sourcefrog.net-20050314025438-d52099f915fe65fc
+mbp@sourcefrog.net-20050314025539-637a636692c055cf
+mbp@sourcefrog.net-20050314025737-55eb441f430ab4ba
+mbp@sourcefrog.net-20050314025901-d74aa93bb7ee8f62
+mbp@source\r
+--418470f848b63279b--\r
+'''
+        t = self.get_transport()
+        # Remember that the request is ignored and that the ranges below
+        # doesn't have to match the canned response.
+        l = list(t.readv('/foo/bar', ((0, 255), (1000, 1050))))
+        self.assertEqual(2, len(l))
+        self.assertActivitiesMatch()
+
+    def test_post(self):
+        self.server.canned_response = '''HTTP/1.1 200 OK\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
+ETag: "56691-23-38e9ae00"\r
+Accept-Ranges: bytes\r
+Content-Length: 35\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+lalala whatever as long as itsssss
+'''
+        t = self.get_transport()
+        # We must send a single line of body bytes, see
+        # PredefinedRequestHandler.handle_one_request
+        code, f = t._post('abc def end-of-body\n')
+        self.assertEqual('lalala whatever as long as itsssss\n', f.read())
+        self.assertActivitiesMatch()

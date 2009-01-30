@@ -12,8 +12,9 @@ IN DEVELOPMENT
     * Progress bars now show the rate of activity for some sftp 
       operations, and they are drawn different.  (Martin Pool, #172741)
 
-    * Progress bars now show the rate of activity for some^H *all* hhtp ;)
-      operations for both urllib and pycurl implementations.
+    * Progress bars now show the rate of activity for urllib and pycurl based
+      http client implementations. The operations are tracked as the socket
+      level for better precision.
       (Vincent Ladeuil)
 
   BUG FIXES:
