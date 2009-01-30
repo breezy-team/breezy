@@ -76,5 +76,15 @@ class VcsDirectory(object):
             else:
                 return urls[version]["Svn"]
 
+        if "Git" in urls[version]:
+            try:
+                import bzrlib.plugins.git
+            except ImportError:
+                info("This package uses git. If you would like to "
+                        "access it with bzr then please install bzr-git "
+                        "and re-run the command.")
+            else:
+                return urls[version]["Git"]
+
         raise errors.InvalidURL(path=url,
             extra='unsupported VCSes %r found' % urls[version].keys())
