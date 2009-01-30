@@ -34,10 +34,9 @@ class TestGetSymlinkTarget(TestCaseWithTree):
         os.symlink('foo', 'tree/link')
         os.symlink('../bar', 'tree/rel_link')
         os.symlink('/baz/bing', 'tree/abs_link')
-        os.symlink('target',  u'tree/\u03b2_link'.encode(osutils._fs_enc))
 
-        tree.add(['link', 'rel_link', 'abs_link', u'\u03b2_link'],
-                 ['link-id', 'rel-link-id', 'abs-link-id', 'unicode-link-id'])
+        tree.add(['link', 'rel_link', 'abs_link'],
+                 ['link-id', 'rel-link-id', 'abs-link-id'])
         return self._convert_tree(tree)
 
     def test_get_symlink_target(self):
@@ -47,5 +46,17 @@ class TestGetSymlinkTarget(TestCaseWithTree):
         self.assertEqual('foo', tree.get_symlink_target('link-id'))
         self.assertEqual('../bar', tree.get_symlink_target('rel-link-id'))
         self.assertEqual('/baz/bing', tree.get_symlink_target('abs-link-id'))
+
+    def test_get_unicode_symlink_target(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('tree')
+        try:
+            os.symlink('target',  u'tree/\u03b2_link'.encode(osutils._fs_enc))
+        except UnicodeError:
+            raise tests.TestSkipped(
+                'This platform does not support unicode file paths.')
+        tree.add([u'\u03b2_link'], ['unicode-link-id'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         self.assertEqual('target', tree.get_symlink_target(u'unicode-link-id'))
 

@@ -42,7 +42,12 @@ class TestPathContentSummary(TestCaseWithTree):
     def test_unicode_symlink_content_summary(self):
         self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('tree')
-        os.symlink('target', u'tree/\u03b2-path'.encode(_fs_enc))
+        try:
+            os.symlink('target', u'tree/\u03b2-path'.encode(_fs_enc))
+        except UnicodeError:
+            raise TestSkipped(
+                'This platform does not support unicode file paths.')
+
         tree.add([u'\u03b2-path'])
         summary = self._convert_tree(tree).path_content_summary(u'\u03b2-path')
         self.assertEqual(('symlink', None, None, 'target'), summary)
