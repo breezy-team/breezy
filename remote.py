@@ -106,6 +106,28 @@ class RemoteGitDir(GitDir):
         raise NotLocalUrl(self.transport.base)
 
 
+class TemporaryPackIterator(object):
+
+    def __init__(self, path):
+        self.path_data = path
+        basename = path[:-len(".pack")]
+        p = PackData(path)
+        self.path_idx = basename+".idx"
+        p.create_index_v2(self.path_idx)
+        self.pack = Pack(basename)
+        self._iter = self.pack.iterobjects()
+
+    def __del__(self):
+        os.remove(self.path_data)
+        os.remove(self.path_idx)
+
+    def next(self):
+        return (self._iter.next(), None)
+
+    def __len__(self):
+        return len(self.pack)
+
+
 class RemoteGitRepository(GitRepository):
 
     def __init__(self, gitdir, lockfiles):
@@ -120,12 +142,8 @@ class RemoteGitRepository(GitRepository):
         fd, path = tempfile.mkstemp(suffix=".pack")
         self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
         os.close(fd)
-        basename = path[:-len(".pack")]
-        p = PackData(path)
-        p.create_index_v2(basename+".idx")
-        pack = Pack(basename)
-        os.remove(path)
-        return (len(p), pack.iterobjects())
+        ret = TemporaryPackIterator(path)
+        return (len(ret), iter(ret.next, None))
 
 
 class RemoteGitBranch(GitBranch):
