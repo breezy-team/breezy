@@ -91,6 +91,9 @@ IN DEVELOPMENT
       a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
       (Andrew Bennetts)
 
+    * Support symlinks with non-ascii characters in the symlink filename.
+      (Jelmer Vernooij, #319323)
+
     * There was a bug in how we handled resolving when a file is deleted
       in one branch, and modified in the other. If there was a criss-cross
       merge, we would cause the deletion to conflict a second time.
