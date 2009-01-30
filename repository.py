@@ -42,6 +42,7 @@ from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
 from bzrlib.plugins.git.mapping import default_mapping, mapping_registry
+from bzrlib.plugins.git.versionedfiles import GitTexts
 
 import dulwich as git
 
@@ -96,6 +97,7 @@ class LocalGitRepository(GitRepository):
         self.signatures = versionedfiles.VirtualSignatureTexts(self)
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self.inventories = versionedfiles.VirtualInventoryTexts(self)
+        self.texts = GitTexts(self._git.object_store)
         self.tags = GitTags(self._git.get_tags())
 
     def all_revision_ids(self):
