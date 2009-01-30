@@ -95,6 +95,7 @@ class LocalGitRepository(GitRepository):
         self.texts = None
         self.signatures = versionedfiles.VirtualSignatureTexts(self)
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
+        self.inventories = versionedfiles.VirtualInventoryTexts(self)
         self.tags = GitTags(self._git.get_tags())
 
     def all_revision_ids(self):
