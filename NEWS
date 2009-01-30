@@ -1,5 +1,10 @@
 0.4.3	UNRELEASED
 
+ PERFORMANCE
+
+  * Register commands lazily, should reduce import time when unused.
+  
+
 0.4.2	2008-11-18
 
  FEATURES
