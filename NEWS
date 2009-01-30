@@ -41,6 +41,10 @@ IN DEVELOPMENT
       ``--long`` format, ``bzr log --long -n1``.
       (Ian Clatworthy)
 
+    * New command ``bzr dpush`` that can push changes to foreign 
+      branches (svn, git) without setting custom bzr-specific metadata.
+      (Jelmer Vernooij)
+
   IMPROVEMENTS:
 
     * ``bzr init`` will now print a little less verbose output.
