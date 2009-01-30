@@ -22,7 +22,7 @@ patches, the user can resolve the conflict and continue the rebase using the
 """
 
 import bzrlib
-import bzrlib,api
+import bzrlib.api
 from bzrlib.commands import plugin_cmds
 
 version_info = (0, 4, 3, 'dev', 0)
