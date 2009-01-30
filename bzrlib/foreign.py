@@ -329,7 +329,7 @@ class cmd_dpush(Command):
             short_name='d',
             type=unicode,
             ),
-            Option('no-rebase', help="Don't rebase after push")]
+            Option('no-rebase', help="Do not rebase after push.")]
 
     def run(self, location=None, remember=False, directory=None, 
             no_rebase=False):
