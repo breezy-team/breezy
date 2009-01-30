@@ -168,8 +168,8 @@ denotes a change between revisions (and not a sequence of changes).  In
 addition, "log" considers a closed range whereas "diff" and "merge" consider it
 to be open-ended, that is, they include one end but not the other.  For example:
 "bzr log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
-while "bzr diff -r 3647..3649" includes the changes done in revisions 3647 and
-3648, but not 3649.
+while "bzr diff -r 3647..3649" includes the changes done in revisions 3648 and
+3649, but not 3647.
 
 The keywords used as revision selection methods are the following:
 """)
@@ -179,7 +179,7 @@ The keywords used as revision selection methods are the following:
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
-    for i in bzrlib.revisionspec.SPEC_TYPES:
+    for prefix, i in bzrlib.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == bzrlib.revisionspec.RevisionSpec.help_txt:
             summary = "N/A"

@@ -45,6 +45,13 @@ class VcsMapping(object):
     # using this mapping.
     revid_prefix = None
 
+    def __init__(self, vcs):
+        """Create a new VcsMapping.
+
+        :param vcs: VCS that this mapping maps to Bazaar
+        """
+        self.vcs = vcs
+
     def revision_id_bzr_to_foreign(self, bzr_revid):
         """Parse a bzr revision id and convert it to a foreign revid.
 
@@ -60,15 +67,6 @@ class VcsMapping(object):
         :return: A bzr revision id.
         """
         raise NotImplementedError(self.revision_id_foreign_to_bzr)
-
-    def show_foreign_revid(self, foreign_revid):
-        """Prepare a foreign revision id for formatting using bzr log.
-        
-        :param foreign_revid: Foreign revision id.
-        :return: Dictionary mapping string keys to string values.
-        """
-        # TODO: This could be on ForeignVcs instead
-        return { }
 
 
 class VcsMappingRegistry(registry.Registry):
@@ -124,7 +122,7 @@ def show_foreign_properties(rev):
     """
     # Revision comes directly from a foreign repository
     if isinstance(rev, ForeignRevision):
-        return rev.mapping.show_foreign_revid(rev.foreign_revid)
+        return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
 
     # Revision was once imported from a foreign repository
     try:
@@ -133,7 +131,7 @@ def show_foreign_properties(rev):
     except errors.InvalidRevisionId:
         return {}
 
-    return mapping.show_foreign_revid(foreign_revid)
+    return mapping.vcs.show_foreign_revid(foreign_revid)
 
 
 class ForeignVcs(object):
@@ -141,6 +139,14 @@ class ForeignVcs(object):
 
     def __init__(self, mapping_registry):
         self.mapping_registry = mapping_registry
+
+    def show_foreign_revid(self, foreign_revid):
+        """Prepare a foreign revision id for formatting using bzr log.
+        
+        :param foreign_revid: Foreign revision id.
+        :return: Dictionary mapping string keys to string values.
+        """
+        return { }
 
 
 class ForeignVcsRegistry(registry.Registry):

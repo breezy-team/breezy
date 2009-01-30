@@ -2,17 +2,29 @@
 Plugin API
 ==========
 
-Status
-======
 
-:Date: 2008-02-29
+
+:Date: 2009-01-23
+
+.. contents::
+
+Introduction
+============
 
 bzrlib has a very flexible internal structure allowing plugins for many
 operations. Plugins can add commands, new storage formats, diff and merge
 features and more. This document provides an overview of the API and
 conventions for plugin authors.
 
-.. contents::
+If you're writing a plugin and have questions not addressed by this
+document, please ask us.
+
+See also
+--------
+
+ * `Bazaar Developer Documentation Catalog <index.html>`_.
+ * <http://bazaar-vcs.org/WritingPlugins> wiki page with many more
+   suggestions about particular APIs
 
 
 Structure of a plugin
@@ -157,17 +169,90 @@ An example setup.py follows::
 Plugin metadata after installation
 ==================================
 
-After a plugin has been installed, metadata can be more easily obtained.
-Currently the only metadata used is for API versioning.
+After a plugin has been installed, metadata can be more easily obtained by
+looking inside the module object -- in other words, for variables defined
+in the plugin's ``__init__.py``.
+
+Help and documentation
+----------------------
+
+The module docstring is used as the plugin description shown by ``bzr
+plugins``.  As with all Python docstrings, the first line should be a
+short complete sentence summarizing the plugin.  The full docstring is
+shown by ``bzr help PLUGIN_NAME``.
+
+Remember that to be effective, the module docstring must be the first
+statement in the file.  It may come after comments but it must be before
+any import statements.
 
 API version
 -----------
 
-Please see `API versioning <api-versioning.html>`_ for details on the API
+Plugins can and should declare that they depend on a particular version of
+bzrlib like so::
+
+    from bzrlib.api import require_api
+
+    require_api(bzrlib, (1, 11, 0))
+
+Please see `API versioning <api-versioning.html>`_ for more details on the API
 metadata protocol used by bzrlib.
 
+Plugin version
+--------------
+
+The plugin should expose a version tuple to describe its own version.
+Some plugins use a version number that corresponds to the version of bzr
+they're released against, but you can use whatever you want.  For example::
+
+    version_info = (1, 10, 0)
+
+
+Detecting whether code's being loaded as a plugin
+-------------------------------------------------
+
+You may have a Python module that can be used as a bzr plugin and also in
+other places.  To detect whether the module is being loaded by bzr, use
+something like this::
+
+    if __name__ == 'bzrlib.plugins.loggerhead':
+        # register with bzrlib...
+
+
+Plugin performance
+==================
+
+Plugins should avoid doing work or loading code from the plugin or
+external libraries, if they're just installed but not actually active,
+because this slows down every invocation of bzr.  The bzrlib APIs
+generally allow the plugin to 'lazily' register methods to invoke if a
+particular disk format or seen or a particular command is run.
+
+
+Plugin registrations
+====================
+
+The plugin ``__init__.py`` runs when the plugin is loaded during bzr
+startup.  Generally the plugin won't want to actually do anything at this
+time other than register or override functions to be called later.
+
+The plugin can import bzrlib and call any function.
+Some interesting APIs are described in <http://bazaar-vcs.org/WritingPlugins>
+
+
+Publishing your plugin
+======================
+
+When your plugin is basically working you might like to share it with
+other people.  Here are some steps to consider:
+
+ * make a project on Launchpad.net like
+   <https://launchpad.net/bzr-fastimport>
+   and publish the branches or tarballs there
+
+ * include the plugin in <http://bazaar-vcs.org/BzrPlugins>
+
+ * post about it to the ``bazaar-announce`` list at ``lists.canonical.com``
 
 ..
-   vim: ft=rst tw=74 ai
-
-
+   vim: ft=rst tw=74 ai shiftwidth=4
