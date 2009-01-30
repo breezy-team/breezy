@@ -919,7 +919,7 @@ class KnitVersionedFiles(VersionedFiles):
                 # boundaries.
                 build_details = self._index.get_build_details([parent])
                 parent_details = build_details[parent]
-            except RevisionNotPresent, KeyError:
+            except (RevisionNotPresent, KeyError), e:
                 # Some basis is not locally present: always fulltext
                 return False
             index_memo, compression_parent, _, _ = parent_details
