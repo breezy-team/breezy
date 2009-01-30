@@ -1588,7 +1588,7 @@ class DirState(object):
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
-        return os.readlink(abspath)
+        return os.readlink(abspath.encode(osutils._fs_enc))
 
     def get_ghosts(self):
         """Return a list of the parent tree revision ids that are ghosts."""

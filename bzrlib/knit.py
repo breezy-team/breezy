@@ -919,7 +919,7 @@ class KnitVersionedFiles(VersionedFiles):
                 # boundaries.
                 build_details = self._index.get_build_details([parent])
                 parent_details = build_details[parent]
-            except RevisionNotPresent, KeyError:
+            except (RevisionNotPresent, KeyError), e:
                 # Some basis is not locally present: always fulltext
                 return False
             index_memo, compression_parent, _, _ = parent_details
@@ -2250,7 +2250,7 @@ class _KnitGraphIndex(object):
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
                 if (value[0] != keys[key][0][0] or
-                    node_refs != keys[key][1]):
+                    node_refs[:1] != keys[key][1][:1]):
                     raise KnitCorrupt(self, "inconsistent details in add_records"
                         ": %s %s" % ((value, node_refs), keys[key]))
                 del keys[key]
