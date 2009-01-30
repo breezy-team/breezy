@@ -17,8 +17,8 @@
 
 """Tests for foreign VCS utility code."""
 
-from bzrlib import errors, foreign
-from bzrlib.bzrdir import BzrDirFormat, BzrDirMeta1
+from bzrlib import errors, foreign, lockable_files
+from bzrlib.bzrdir import BzrDirFormat, BzrDirMeta1, BzrDirMetaFormat1
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport
@@ -70,15 +70,57 @@ class DummyForeignVcs(foreign.ForeignVcs):
         return { "dummy ding": "%s/%s\\%s" % foreign_revid }
 
 
-
-class DummyForeignVcsBzrDirFormat(BzrDirMeta1):
+class DummyForeignVcsDirFormat(BzrDirMetaFormat1):
     """BzrDirFormat for the dummy foreign VCS."""
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         return "A Dummy VCS Dir"
 
-    def get_description_string(self):
+    @classmethod
+    def get_format_description(cls):
         return "A Dummy VCS Dir"
+
+    @classmethod
+    def is_supported(cls):
+        return True
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style format present in a directory."""
+        if not transport.has('.dummy'):
+            raise errors.NotBranchError(path=transport.base)
+        return klass
+
+    def initialize_on_transport(self, transport):
+        """Initialize a new bzrdir in the base directory of a Transport."""
+        # Since we don't have a .bzr directory, inherit the
+        # mode from the root directory
+        temp_control = lockable_files.LockableFiles(transport,
+                            '', lockable_files.TransportLock)
+        temp_control._transport.mkdir('.dummy',
+                                      # FIXME: RBC 20060121 don't peek under
+                                      # the covers
+                                      mode=temp_control._dir_mode)
+        del temp_control
+        bzrdir_transport = transport.clone('.dummy')
+        # NB: no need to escape relative paths that are url safe.
+        control_files = lockable_files.LockableFiles(bzrdir_transport,
+            self._lock_file_name, self._lock_class)
+        control_files.create_lock()
+        return self.open(transport, _found=True)
+
+    def _open(self, transport):
+        return DummyForeignVcsDir(transport, self)
+
+
+class DummyForeignVcsDir(BzrDirMeta1):
+
+    def __init__(self, _transport, _format):
+        self._format = _format
+        self.transport = _transport.clone('.dummy')
+        self.root_transport = _transport
+        self._mode_check_done = False
 
 
 class ForeignVcsRegistryTests(TestCase):

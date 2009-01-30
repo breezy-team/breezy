@@ -18,69 +18,71 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirFormat
-from bzrlib.repository import Repository
 from bzrlib.foreign import ForeignBranch, ForeignRepository
+from bzrlib.repository import Repository
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests.test_foreign import DummyForeignVcsBzrDirFormat
+from bzrlib.tests.test_foreign import DummyForeignVcsDirFormat
+
+import os
 
 class TestDpush(ExternalBase):
 
     def setUp(self):
+        BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
         super(TestDpush, self).setUp()
-        BzrDirFormat.register_control_format(DummyForeignVcsBzrDirFormat)
 
     def tearDown(self):
-        super(TestDpush, self).tearDown()
         try:
-            BzrDirFormat.unregister_control_format(DummyForeignVcsBzrDirFormat)
+            BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
         except ValueError:
             pass
+        super(TestDpush, self).tearDown()
 
     def test_dpush_empty(self):
-        tree = self.make_branch_and_tree("dp", format=DummyForeignVcsBzrDirFormat)
+        tree = self.make_branch_and_tree("dp", 
+            format=DummyForeignVcsDirFormat())
         self.run_bzr("init --rich-root-pack dc")
-        os.chdir("dc")
-        self.run_bzr("dpush %s" % repos_url)
+        self.run_bzr("dpush -d dc dp")
 
     def test_dpush(self):
-        tree = self.make_branch_and_tree("d", format=DummyForeignVcsBzrDirFormat)
+        tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
 
         self.build_tree(("d/foo", "bar"))
         tree.add("foo")
         tree.commit("msg")
 
-        self.run_bzr("branch %s dc" % repos_url)
+        self.run_bzr("branch d dc")
         self.build_tree(("dc/foo", "blaaaa"))
         self.run_bzr("commit -m msg dc")
-        self.run_bzr("dpush -d dc %s" % repos_url)
+        self.run_bzr("dpush -d dc d")
         self.check_output("", "status dc")
 
     def test_dpush_new(self):
-        tree = self.make_branch_and_tree("d", format=DummyForeignVcsBzrDirFormat)
+        tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
 
         self.build_tree(("d/foo", "bar"))
         tree.add("foo")
         tree.commit("msg")
 
-        self.run_bzr("branch %s dc" % repos_url)
+        self.run_bzr("branch d dc")
         self.build_tree(("dc/foofile", "blaaaa"))
         self.run_bzr("add dc/foofile")
         self.run_bzr("commit -m msg dc")
-        self.run_bzr("dpush -d dc %s" % repos_url)
+        self.run_bzr("dpush -d dc d")
         self.check_output("3\n", "revno dc")
         self.check_output("", "status dc")
 
     def test_dpush_wt_diff(self):
-        tree = self.make_branch_and_tree("d", format=DummyForeignVcsBzrDirFormat)
+        tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         
         self.build_tree(("d/foo", "bar"))
         tree.add("foo")
         tree.commit("msg")
 
-        self.run_bzr("branch %s dc" % repos_url)
+        self.run_bzr("branch d dc")
         self.build_tree({"dc/foofile": "blaaaa"})
         self.run_bzr("add dc/foofile")
         self.run_bzr("commit -m msg dc")
         self.build_tree({"dc/foofile": "blaaaal"})
-        self.run_bzr("dpush -d dc %s" % repos_url)
+        self.run_bzr("dpush -d dc d")
         self.check_output('modified:\n  foofile\n', "status dc")
