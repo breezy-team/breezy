@@ -103,6 +103,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * Expanded the help for log.  (Ian Clatworthy)
+
     * Improved plugin developer documentation.  (Martin Pool)
 
   API CHANGES:

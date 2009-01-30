@@ -1827,30 +1827,192 @@ def _parse_levels(s):
 
 
 class cmd_log(Command):
-    """Show log of a branch, file, or directory.
+    """Show historical log for a branch or subset of a branch.
 
-    By default show the log of the branch containing the working directory.
+    log is bzr's default tool for exploring the history of a branch.
+    The branch to use is taken from the first parameter. If no parameters
+    are given, the branch containing the working directory is logged.
+    Here are some simple examples::
 
-    To request a range of logs, you can use the command -r begin..end
-    -r revision requests a specific revision, -r ..end or -r begin.. are
-    also valid.
+      bzr log                       log the current branch
+      bzr log foo.py                log a file in its branch
+      bzr log http://server/branch  log a branch on a server
 
-    :Examples:
-        Log the current branch::
+    The filtering, ordering and information shown for each revision can
+    be controlled as explained below. By default, all revisions are
+    shown sorted (topologically) so that newer revisions appear before
+    older ones and descendants always appear before ancestors. If displayed,
+    merged revisions are shown indented under the revision in which they
+    were merged.
 
-            bzr log
+    :Log formats:
 
-        Log a file::
+     A log format controls how information about each revision is displayed.
+     The standard log formats are compared below::
+ 
+      Feature                 long           short         line
+      ----------------------  -------------  ------------  -------------------
+      design goal             detailed view  concise view  1 revision per line
+      committer               name+email     name only     name only
+      author                  name+email     -             -
+      date-time format        full           date only     date only
+      commit message          full           full          top line
+      tags                    yes            yes           yes
+      merges indicator        -              yes           -
+      status/delta            optional       optional      -
+      diff/patch              optional       optional      -
+      revision-id             optional       optional      -
+      branch nick             yes            -             -
+      foreign vcs properties  yes            -             -
+      preferred levels        all            1             1
+ 
+     The default format is ``long``. To change this, define the ``log_format``
+     setting in the ``[DEFAULT]`` section of ``bazaar.conf`` like this (say)::
+ 
+       [DEFAULT]
+       log_format = short
+ 
+     Alternatively, to change the log format used for a given query, use the
+     --long, --short or --line options.
+ 
+     If one of the standard log formats does not meet your needs, additional
+     formats can be provided by plugins.
 
-            bzr log foo.c
+    :Output control:
 
-        Log the last 10 revisions of a branch::
-
-            bzr log -r -10.. http://server/branch
+     The following options can be used to control what information is
+     displayed::
+ 
+       -l N        display a maximum of N revisions
+       -n N        display N levels of revisions (0 for all, 1 for collapsed)
+       -v          display a status summary (delta) for each revision
+       -p          display a diff (patch) for each revision
+       --show-ids  display revision-ids (and file-ids), not just revnos
+ 
+     Note that the default number of levels to display is a function of the
+     log format. If the -n option is not used, ``short`` and ``line`` show
+     just the top level (mainline) while ``long`` shows all levels of merged
+     revisions.
+ 
+     Status summaries are shown using status flags like A, M, etc. To see
+     the changes explained using words like ``added`` and ``modified``
+     instead, use the -vv option.
+ 
+    :Ordering control:
+ 
+     To display revisions from oldest to newest, use the --forward option.
+     In most cases, using this option will have little impact on the total
+     time taken to produce a log, though --forward does not incrementally
+     display revisions like --reverse does when it can.
+ 
+    :Revision filtering:
+ 
+     The -r option can be used to specify what revision or range of revisions
+     to filter against. The various forms are shown below::
+ 
+       -rX      display revision X
+       -rX..    display revision X and later
+       -r..Y    display up to and including revision Y
+       -rX..Y   display from X to Y inclusive
+ 
+     See ``bzr help revisionspec`` for details on how to specify X and Y.
+     Some common examples are given below::
+ 
+       -r-1                show just the tip
+       -r-10..             show the last 10 mainline revisions
+       -rsubmit:..         show what's new on this branch
+       -rancestor:path..   show changes since the common ancestor of this
+                           branch and the one at location path
+       -rdate:yesterday..  show changes since yesterday
+ 
+    :Path filtering:
+ 
+     If a parameter is given and it's not a branch, the log will be filtered
+     to show only those revisions that changed the nominated file or
+     directory.
+ 
+     Filenames are interpreted within their historical context. To log a
+     deleted file, specify a revision range so that the file existed at
+     the end or start of the range.
+ 
+     Historical context is also important when interpreting pathnames of
+     renamed files/directories. Consider the following example:
+ 
+     * revision 1: add tutorial.txt
+     * revision 2: modify tutorial.txt
+     * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt
+ 
+     In this case:
+ 
+     * ``bzr log guide.txt`` will log the file added in revision 1
+ 
+     * ``bzr log tutorial.txt`` will log the new file added in revision 3
+ 
+     * ``bzr log -r2 -p tutorial.txt`` will show the changes made to
+       the original file in revision 2.
+ 
+     * ``bzr log -r2 -p guide.txt`` will display an error message as there
+       was no file called guide.txt in revision 2.
+ 
+     Renames are always followed by log. By design, there is no need to
+     explicitly ask for this (and no way to stop logging a file back
+     until it was last renamed).
+ 
+     Note: If the path is a directory, only revisions that directly changed
+     that directory object are currently shown. This is considered a bug.
+     (Support for filtering against multiple files and for files within a
+     directory is under development.)
+ 
+    :Other filtering:
+ 
+     The --message option can be used for finding revisions that match a
+     regular expression in a commit message.
+ 
+    :Tips & tricks:
+ 
+     GUI tools and IDEs are often better at exploring history than command
+     line tools. You may prefer qlog or glog from the QBzr and Bzr-Gtk packages
+     respectively for example. (TortoiseBzr uses qlog for displaying logs.) See
+     http://bazaar-vcs.org/BzrPlugins and http://bazaar-vcs.org/IDEIntegration.
+ 
+     Web interfaces are often better at exploring history than command line
+     tools, particularly for branches on servers. You may prefer Loggerhead
+     or one of its alternatives. See http://bazaar-vcs.org/WebInterface.
+ 
+     You may find it useful to add the aliases below to ``bazaar.conf``::
+ 
+       [ALIASES]
+       tip = log -r-1 -n0
+       top = log -r-10.. --short --forward
+       show = log -v -p -n0 --long
+ 
+     ``bzr tip`` will then show the latest revision while ``bzr top``
+     will show the last 10 mainline revisions. To see the details of a
+     particular revision X,  ``bzr show -rX``.
+ 
+     As many GUI tools and Web interfaces do, you may prefer viewing
+     history collapsed initially. If you are interested in looking deeper
+     into a particular merge X, use ``bzr log -n0 -rX``. If you like
+     working this way, you may wish to either:
+ 
+     * change your default log format to short (or line)
+     * add this alias: log = log -n0
+ 
+     ``bzr log -v`` on a branch with lots of history is currently
+     very slow. A fix for this issue is currently under development.
+     With or without that fix, it is recommended that a revision range
+     be given when using the -v option.
+ 
+     bzr has a generic full-text matching plugin, bzr-search, that can be
+     used to find revisions matching user names, commit messages, etc.
+     Among other features, this plugin can find all revisions containing
+     a list of words but not others.
+ 
+     When exploring non-mainline history on large projects with deep
+     history, the performance of log can be greatly improved by installing
+     the revnocache plugin. This plugin buffers historical information
+     trading disk space for faster speed.
     """
-
-    # TODO: Make --revision support uuid: and hash: [future tag:] notation.
-
     takes_args = ['location?']
     takes_options = [
             Option('forward',
