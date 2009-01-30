@@ -21,6 +21,9 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
+import os
+import sys
+
 import bzrlib
 import bzrlib.api
 from bzrlib import bzrdir, errors as bzr_errors
@@ -33,6 +36,10 @@ from bzrlib.trace import warning
 
 MINIMUM_DULWICH_VERSION = (0, 1, 0)
 COMPATIBLE_BZR_VERSIONS = [(1, 11, 0), (1, 12, 0)]
+
+if getattr(sys, "frozen", None):
+    # allow import additional libs from ./_lib for bzr.exe only
+    sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '_lib')))
 
 _versions_checked = False
 def lazy_check_versions():
@@ -223,7 +230,6 @@ class cmd_git_serve(Command):
         from dulwich.server import TCPGitServer
         from bzrlib.plugins.git.server import BzrBackend
         from bzrlib.trace import warning
-        import os
 
         warning("server support in bzr-git is experimental.")
 

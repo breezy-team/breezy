@@ -4,3 +4,4 @@
 ./.pydevproject
 build
 .plugins
+./_lib
