@@ -377,9 +377,9 @@ class cmd_dpush(Command):
                     source_wt.lock_write()
                     try:
                         update_workinginv_fileids(source_wt, 
-                            source_wt.branch.repository.revision_tree(
+                            source_wt.branch.repository.get_inventory(
                                 old_last_revid),
-                            source_wt.branch.repository.revision_tree(
+                            source_wt.branch.repository.get_inventory(
                                 new_last_revid))
                     finally:
                         source_wt.unlock()

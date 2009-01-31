@@ -43,6 +43,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 # It has the following differences to "regular" Bazaar:
 # - The control directory is named ".dummy", not ".bzr".
 # - The revision ids are tuples, not strings.
+# - Doesn't support more than one parent natively
 
 
 class DummyForeignVcsMapping(foreign.VcsMapping):
@@ -93,7 +94,26 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, *args, **kwargs)
 
     def dpull(self, source, stop_revision=None):
-        return {}
+        # This just handles simple cases, but that's good enough for tests
+        my_history = self.revision_history()
+        their_history = source.revision_history()
+        if their_history[:min(len(my_history), len(their_history))] != my_history:
+            raise errors.DivergedBranches(self, source)
+        todo = their_history[len(my_history):]
+        revidmap = {}
+        for revid in todo:
+            rev = source.repository.get_revision(revid)
+            tree = source.repository.revision_tree(revid)
+            builder = self.get_commit_builder([self.last_revision()], 
+                    self.get_config(), rev.timestamp,
+                    rev.timezone, rev.committer, rev.properties)
+            for path, ie in tree.inventory.iter_entries():
+                builder.record_entry_contents(ie.copy(), 
+                    [self.repository.get_inventory(self.last_revision())],
+                    path, tree, None)
+            builder.finish_inventory()
+            revidmap[revid] = builder.commit(rev.message)
+        return revidmap
 
 
 class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
