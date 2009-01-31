@@ -50,6 +50,7 @@ all the changes since the previous revision that touched hello.c.
 """
 
 import codecs
+from cStringIO import StringIO
 from itertools import (
     chain,
     izip,
@@ -65,6 +66,7 @@ lazy_import(globals(), """
 
 from bzrlib import (
     config,
+    diff,
     errors,
     repository as _mod_repository,
     revision as _mod_revision,
@@ -145,7 +147,8 @@ def show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             show_diff=False):
     """Write out human-readable log of commits to this branch.
 
     :param lf: The LogFormatter object showing the output.
@@ -167,6 +170,8 @@ def show_log(branch,
 
     :param limit: If set, shows only 'limit' revisions, all revisions are shown
         if None or 0.
+
+    :param show_diff: If True, output a diff after each revision.
     """
     branch.lock_read()
     try:
@@ -174,7 +179,7 @@ def show_log(branch,
             lf.begin_log()
 
         _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search, limit)
+                  start_revision, end_revision, search, limit, show_diff)
 
         if getattr(lf, 'end_log', None):
             lf.end_log()
@@ -190,7 +195,8 @@ def _show_log(branch,
              start_revision=None,
              end_revision=None,
              search=None,
-             limit=None):
+             limit=None,
+             show_diff=False):
     """Worker function for show_log - see show_log."""
     if not isinstance(lf, LogFormatter):
         warn("not a LogFormatter instance: %r" % lf)
@@ -198,17 +204,28 @@ def _show_log(branch,
         trace.mutter('get log for file_id %r', specific_fileid)
 
     # Consult the LogFormatter about what it needs and can handle
-    generate_merge_revisions = getattr(lf, 'supports_merge_revisions', False)
-    allow_single_merge_revision = getattr(lf,
-        'supports_single_merge_revision', generate_merge_revisions)
+    levels_to_display = lf.get_levels()
+    generate_merge_revisions = levels_to_display != 1
+    allow_single_merge_revision = True
+    if not getattr(lf, 'supports_merge_revisions', False):
+        allow_single_merge_revision = getattr(lf,
+            'supports_single_merge_revision', False)
+    view_revisions = calculate_view_revisions(branch, start_revision,
+                                              end_revision, direction,
+                                              specific_fileid,
+                                              generate_merge_revisions,
+                                              allow_single_merge_revision)
+    rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags and branch.supports_tags():
         rev_tag_dict = branch.tags.get_reverse_tag_dict()
     else:
         rev_tag_dict = {}
     generate_delta = verbose and getattr(lf, 'supports_delta', False)
+    generate_diff = show_diff and getattr(lf, 'supports_diff', False)
 
     # Find and print the interesting revisions
+    repo = branch.repository
     log_count = 0
     revision_iterator = _create_log_revision_iterator(branch,
         start_revision, end_revision, direction, specific_fileid, search,
@@ -216,13 +233,37 @@ def _show_log(branch,
         generate_delta, limited_output=limit > 0)
     for revs in revision_iterator:
         for (rev_id, revno, merge_depth), rev, delta in revs:
+            # Note: 0 levels means show everything; merge_depth counts from 0
+            if levels_to_display != 0 and merge_depth >= levels_to_display:
+                continue
+            if generate_diff:
+                diff = _format_diff(repo, rev, rev_id, specific_fileid)
+            else:
+                diff = None
             lr = LogRevision(rev, revno, merge_depth, delta,
-                             rev_tag_dict.get(rev_id))
+                             rev_tag_dict.get(rev_id), diff)
             lf.log_revision(lr)
             if limit:
                 log_count += 1
                 if log_count >= limit:
                     return
+
+
+def _format_diff(repo, rev, rev_id, specific_fileid):
+    if len(rev.parent_ids) == 0:
+        ancestor_id = _mod_revision.NULL_REVISION
+    else:
+        ancestor_id = rev.parent_ids[0]
+    tree_1 = repo.revision_tree(ancestor_id)
+    tree_2 = repo.revision_tree(rev_id)
+    if specific_fileid:
+        specific_files = [tree_2.id2path(specific_fileid)]
+    else:
+        specific_files = None
+    s = StringIO()
+    diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
+        new_label='')
+    return s.getvalue()
 
 
 class _StartNotLinearAncestor(Exception):
@@ -1042,12 +1083,13 @@ class LogRevision(object):
     """
 
     def __init__(self, rev=None, revno=None, merge_depth=0, delta=None,
-                 tags=None):
+                 tags=None, diff=None):
         self.rev = rev
-        self.revno = revno
+        self.revno = str(revno)
         self.merge_depth = merge_depth
         self.delta = delta
         self.tags = tags
+        self.diff = diff
 
 
 class LogFormatter(object):
@@ -1070,11 +1112,20 @@ class LogFormatter(object):
         merge revisions.  If not, and if supports_single_merge_revision is
         also not True, then only mainline revisions will be passed to the 
         formatter.
+
+    - preferred_levels is the number of levels this formatter defaults to.
+        The default value is zero meaning display all levels.
+        This value is only relevant if supports_merge_revisions is True.
+
     - supports_single_merge_revision must be True if this log formatter
         supports logging only a single merge revision.  This flag is
         only relevant if supports_merge_revisions is not True.
+
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
+
+    - supports_diff must be True if this log formatter supports diffs.
+        Otherwise the diff attribute may not be populated.
 
     Plugins can register functions to show custom revision properties using
     the properties_handler_registry. The registered function
@@ -1083,9 +1134,20 @@ class LogFormatter(object):
             # code that returns a dict {'name':'value'} of the properties 
             # to be shown
     """
+    preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-                 delta_format=None):
+                 delta_format=None, levels=None):
+        """Create a LogFormatter.
+
+        :param to_file: the file to output to
+        :param show_ids: if True, revision-ids are to be displayed
+        :param show_timezone: the timezone to use
+        :param delta_format: the level of delta information to display
+          or None to leave it u to the formatter to decide
+        :param levels: the number of levels to display; None or -1 to
+          let the log formatter decide.
+        """
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
@@ -1093,16 +1155,23 @@ class LogFormatter(object):
             # Ensures backward compatibility
             delta_format = 2 # long format
         self.delta_format = delta_format
+        self.levels = levels
 
-# TODO: uncomment this block after show() has been removed.
-# Until then defining log_revision would prevent _show_log calling show() 
-# in legacy formatters.
-#    def log_revision(self, revision):
-#        """Log a revision.
-#
-#        :param  revision:   The LogRevision to be logged.
-#        """
-#        raise NotImplementedError('not implemented in abstract base')
+    def get_levels(self):
+        """Get the number of levels to display or 0 for all."""
+        if getattr(self, 'supports_merge_revisions', False):
+            if self.levels is None or self.levels == -1:
+                return self.preferred_levels
+            else:
+                return self.levels
+        return 1
+
+    def log_revision(self, revision):
+        """Log a revision.
+
+        :param  revision:   The LogRevision to be logged.
+        """
+        raise NotImplementedError('not implemented in abstract base')
 
     def short_committer(self, rev):
         name, address = config.parse_username(rev.committer)
@@ -1125,12 +1194,17 @@ class LogFormatter(object):
             for key, value in handler(revision).items():
                 self.to_file.write(indent + key + ': ' + value + '\n')
 
+    def show_diff(self, to_file, diff, indent):
+        for l in diff.rstrip().split('\n'):
+            to_file.write(indent + '%s\n' % (l,))
+
 
 class LongLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
     supports_delta = True
     supports_tags = True
+    supports_diff = True
 
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
@@ -1173,15 +1247,45 @@ class LongLogFormatter(LogFormatter):
             # We don't respect delta_format for compatibility
             revision.delta.show(to_file, self.show_ids, indent=indent,
                                 short_status=False)
+        if revision.diff is not None:
+            to_file.write(indent + 'diff:\n')
+            # Note: we explicitly don't indent the diff (relative to the
+            # revision information) so that the output can be fed to patch -p0
+            self.show_diff(to_file, revision.diff, indent)
 
 
 class ShortLogFormatter(LogFormatter):
 
+    supports_merge_revisions = True
+    preferred_levels = 1
     supports_delta = True
     supports_tags = True
-    supports_single_merge_revision = True
+    supports_diff = True
+
+    def __init__(self, *args, **kwargs):
+        super(ShortLogFormatter, self).__init__(*args, **kwargs)
+        self.revno_width_by_depth = {}
 
     def log_revision(self, revision):
+        # We need two indents: one per depth and one for the information
+        # relative to that indent. Most mainline revnos are 5 chars or
+        # less while dotted revnos are typically 11 chars or less. Once
+        # calculated, we need to remember the offset for a given depth
+        # as we might be starting from a dotted revno in the first column
+        # and we want subsequent mainline revisions to line up.
+        depth = revision.merge_depth
+        indent = '    ' * depth
+        revno_width = self.revno_width_by_depth.get(depth)
+        if revno_width is None:
+            if revision.revno.find('.') == -1:
+                # mainline revno, e.g. 12345
+                revno_width = 5
+            else:
+                # dotted revno, e.g. 12345.10.55
+                revno_width = 11
+            self.revno_width_by_depth[depth] = revno_width
+        offset = ' ' * (revno_width + 1)
+
         to_file = self.to_file
         is_merge = ''
         if len(revision.rev.parent_ids) > 1:
@@ -1189,34 +1293,36 @@ class ShortLogFormatter(LogFormatter):
         tags = ''
         if revision.tags:
             tags = ' {%s}' % (', '.join(revision.tags))
-
-        to_file.write("%5s %s\t%s%s%s\n" % (revision.revno,
-                self.short_author(revision.rev),
+        to_file.write(indent + "%*s %s\t%s%s%s\n" % (revno_width,
+                revision.revno, self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
                 tags, is_merge))
         if self.show_ids:
-            to_file.write('      revision-id:%s\n'
+            to_file.write(indent + offset + 'revision-id:%s\n'
                           % (revision.rev.revision_id,))
         if not revision.rev.message:
-            to_file.write('      (no message)\n')
+            to_file.write(indent + offset + '(no message)\n')
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write('      %s\n' % (l,))
+                to_file.write(indent + offset + '%s\n' % (l,))
 
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids,
+            revision.delta.show(to_file, self.show_ids, indent=indent + offset,
                                 short_status=self.delta_format==1)
+        if revision.diff is not None:
+            self.show_diff(to_file, revision.diff, '      ')
         to_file.write('\n')
 
 
 class LineLogFormatter(LogFormatter):
 
+    supports_merge_revisions = True
+    preferred_levels = 1
     supports_tags = True
-    supports_single_merge_revision = True
 
     def __init__(self, *args, **kwargs):
         super(LineLogFormatter, self).__init__(*args, **kwargs)
@@ -1239,17 +1345,19 @@ class LineLogFormatter(LogFormatter):
             return rev.message
 
     def log_revision(self, revision):
+        indent = '  ' * revision.merge_depth
         self.to_file.write(self.log_string(revision.revno, revision.rev,
-            self._max_chars, revision.tags))
+            self._max_chars, revision.tags, indent))
         self.to_file.write('\n')
 
-    def log_string(self, revno, rev, max_chars, tags=None):
+    def log_string(self, revno, rev, max_chars, tags=None, prefix=''):
         """Format log info into one string. Truncate tail of string
         :param  revno:      revision number or None.
                             Revision numbers counts from 1.
         :param  rev:        revision object
         :param  max_chars:  maximum length of resulting string
         :param  tags:       list of tags or None
+        :param  prefix:     string to prefix each line
         :return:            formatted truncated string
         """
         out = []
@@ -1262,7 +1370,7 @@ class LineLogFormatter(LogFormatter):
             tag_str = '{%s}' % (', '.join(tags))
             out.append(tag_str)
         out.append(rev.get_summary())
-        return self.truncate(" ".join(out).rstrip('\n'), max_chars)
+        return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
 
 def line_log(rev, max_chars):
@@ -1466,6 +1574,57 @@ def show_flat_log(repository, history, last_revno, lf):
     for i, rev in enumerate(revisions):
         lr = LogRevision(rev, i + last_revno, 0, None)
         lf.log_revision(lr)
+
+
+def _get_fileid_to_log(revision, tree, b, fp):
+    """Find the file-id to log for a file path in a revision range.
+
+    :param revision: the revision range as parsed on the command line
+    :param tree: the working tree, if any
+    :param b: the branch
+    :param fp: file path
+    """
+    if revision is None:
+        if tree is None:
+            tree = b.basis_tree()
+        file_id = tree.path2id(fp)
+        if file_id is None:
+            # go back to when time began
+            try:
+                rev1 = b.get_rev_id(1)
+            except errors.NoSuchRevision:
+                # No history at all
+                file_id = None
+            else:
+                tree = b.repository.revision_tree(rev1)
+                file_id = tree.path2id(fp)
+
+    elif len(revision) == 1:
+        # One revision given - file must exist in it
+        tree = revision[0].as_tree(b)
+        file_id = tree.path2id(fp)
+
+    elif len(revision) == 2:
+        # Revision range given. Get the file-id from the end tree.
+        # If that fails, try the start tree.
+        rev_id = revision[1].as_revision_id(b)
+        if rev_id is None:
+            tree = b.basis_tree()
+        else:
+            tree = revision[1].as_tree(b)
+        file_id = tree.path2id(fp)
+        if file_id is None:
+            rev_id = revision[0].as_revision_id(b)
+            if rev_id is None:
+                rev1 = b.get_rev_id(1)
+                tree = b.repository.revision_tree(rev1)
+            else:
+                tree = revision[0].as_tree(b)
+            file_id = tree.path2id(fp)
+    else:
+        raise errors.BzrCommandError(
+            'bzr log --revision takes one or two values.')
+    return file_id
 
 
 properties_handler_registry = registry.Registry()

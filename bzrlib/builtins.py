@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,7 +55,13 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import ListOption, Option, RegistryOption, custom_help
+from bzrlib.option import (
+    ListOption,
+    Option,
+    RegistryOption,
+    custom_help,
+    _parse_revision_str,
+    )
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
@@ -1812,6 +1818,14 @@ def _parse_limit(limitstring):
         raise errors.BzrCommandError(msg)
 
 
+def _parse_levels(s):
+    try:
+        return int(s)
+    except ValueError:
+        msg = "The levels argument must be an integer."
+        raise errors.BzrCommandError(msg)
+
+
 class cmd_log(Command):
     """Show log of a branch, file, or directory.
 
@@ -1852,6 +1866,11 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
+            Option('levels',
+                   short_name='n',
+                   help='Number of levels to display - 0 for all, 1 for flat.',
+                   argname='N',
+                   type=_parse_levels),
             Option('message',
                    short_name='m',
                    help='Show revisions whose message matches this '
@@ -1862,6 +1881,9 @@ class cmd_log(Command):
                    help='Limit the output to the first N revisions.',
                    argname='N',
                    type=_parse_limit),
+            Option('show-diff',
+                   short_name='p',
+                   help='Show changes made in each revision as a patch.'),
             ]
     encoding_type = 'replace'
 
@@ -1873,9 +1895,11 @@ class cmd_log(Command):
             revision=None,
             change=None,
             log_format=None,
+            levels=None,
             message=None,
-            limit=None):
-        from bzrlib.log import show_log
+            limit=None,
+            show_diff=False):
+        from bzrlib.log import show_log, _get_fileid_to_log
         direction = (forward and 'forward') or 'reverse'
 
         if change is not None:
@@ -1895,12 +1919,10 @@ class cmd_log(Command):
             tree, b, fp = bzrdir.BzrDir.open_containing_tree_or_branch(
                 location)
             if fp != '':
-                if tree is None:
-                    tree = b.basis_tree()
-                file_id = tree.path2id(fp)
+                file_id = _get_fileid_to_log(revision, tree, b, fp)
                 if file_id is None:
                     raise errors.BzrCommandError(
-                        "Path does not have any revision history: %s" %
+                        "Path unknown at end or start of revision range: %s" %
                         location)
         else:
             # local dir only
@@ -1921,7 +1943,8 @@ class cmd_log(Command):
 
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
-                            delta_format=get_verbosity_level())
+                            delta_format=get_verbosity_level(),
+                            levels=levels)
 
             show_log(b,
                      lf,
@@ -1931,9 +1954,11 @@ class cmd_log(Command):
                      start_revision=rev1,
                      end_revision=rev2,
                      search=message,
-                     limit=limit)
+                     limit=limit,
+                     show_diff=show_diff)
         finally:
             b.unlock()
+
 
 def _get_revision_range(revisionspec_list, branch, command_name):
     """Take the input of a revision option and turn it into a revision range.
@@ -1970,6 +1995,16 @@ def _get_revision_range(revisionspec_list, branch, command_name):
         raise errors.BzrCommandError(
             'bzr %s --revision takes one or two values.' % command_name)
     return rev1, rev2
+
+
+def _revision_range_to_revid_range(revision_range):
+    rev_id1 = None
+    rev_id2 = None
+    if revision_range[0] is not None:
+        rev_id1 = revision_range[0].rev_id
+    if revision_range[1] is not None:
+        rev_id2 = revision_range[1].rev_id
+    return rev_id1, rev_id2
 
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
@@ -3516,25 +3551,57 @@ class cmd_shell_complete(Command):
 
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
-    
+
     OTHER_BRANCH may be local or remote.
+
+    To filter on a range of revirions, you can use the command -r begin..end
+    -r revision requests a specific revision, -r ..end or -r begin.. are
+    also valid.
+
+    :Examples:
+
+        Determine the missing revisions between this and the branch at the
+        remembered pull location::
+
+            bzr missing
+
+        Determine the missing revisions between this and another branch::
+
+            bzr missing http://server/branch
+
+        Determine the missing revisions up to a specific revision on the other
+        branch::
+
+            bzr missing -r ..-10
+
+        Determine the missing revisions up to a specific revision on this
+        branch::
+
+            bzr missing --my-revision ..-10
     """
 
     _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [
-            Option('reverse', 'Reverse the order of revisions.'),
-            Option('mine-only',
-                   'Display changes in the local branch only.'),
-            Option('this' , 'Same as --mine-only.'),
-            Option('theirs-only',
-                   'Display changes in the remote branch only.'),
-            Option('other', 'Same as --theirs-only.'),
-            'log-format',
-            'show-ids',
-            'verbose',
-            Option('include-merges', 'Show merged revisions.'),
-            ]
+        Option('reverse', 'Reverse the order of revisions.'),
+        Option('mine-only',
+               'Display changes in the local branch only.'),
+        Option('this' , 'Same as --mine-only.'),
+        Option('theirs-only',
+               'Display changes in the remote branch only.'),
+        Option('other', 'Same as --theirs-only.'),
+        'log-format',
+        'show-ids',
+        'verbose',
+        custom_help('revision',
+             help='Filter on other branch revisions (inclusive). '
+                'See "help revisionspec" for details.'),
+        Option('my-revision',
+            type=_parse_revision_str,
+            help='Filter on local branch revisions (inclusive). '
+                'See "help revisionspec" for details.'),
+        Option('include-merges', 'Show merged revisions.'),
+        ]
     encoding_type = 'replace'
 
     @display_command
@@ -3542,7 +3609,7 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False):
+            include_merges=False, revision=None, my_revision=None):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
@@ -3576,6 +3643,15 @@ class cmd_missing(Command):
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
+
+        local_revid_range = _revision_range_to_revid_range(
+            _get_revision_range(my_revision, local_branch,
+                self.name()))
+
+        remote_revid_range = _revision_range_to_revid_range(
+            _get_revision_range(revision,
+                remote_branch, self.name()))
+
         local_branch.lock_read()
         try:
             remote_branch.lock_read()
@@ -3583,7 +3659,9 @@ class cmd_missing(Command):
                 local_extra, remote_extra = find_unmerged(
                     local_branch, remote_branch, restrict,
                     backward=not reverse,
-                    include_merges=include_merges)
+                    include_merges=include_merges,
+                    local_revid_range=local_revid_range,
+                    remote_revid_range=remote_revid_range)
 
                 if log_format is None:
                     registry = log.log_formatter_registry
@@ -4089,9 +4167,70 @@ class cmd_serve(Command):
                 ),
         ]
 
-    def run(self, port=None, inet=False, directory=None, allow_writes=False):
+    def run_smart_server(self, smart_server):
+        """Run 'smart_server' forever, with no UI output at all."""
+        # For the duration of this server, no UI output is permitted. note
+        # that this may cause problems with blackbox tests. This should be
+        # changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
         from bzrlib import lockdir
+        old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        try:
+            ui.ui_factory = ui.SilentUIFactory()
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+            smart_server.serve()
+        finally:
+            ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+
+    def get_host_and_port(self, port):
+        """Return the host and port to run the smart server on.
+
+        If 'port' is None, the default host (`medium.BZR_DEFAULT_INTERFACE`)
+        and port (`medium.BZR_DEFAULT_PORT`) will be used.
+
+        If 'port' has a colon in it, the string before the colon will be
+        interpreted as the host.
+
+        :param port: A string of the port to run the server on.
+        :return: A tuple of (host, port), where 'host' is a host name or IP,
+            and port is an integer TCP/IP port.
+        """
+        from bzrlib.smart import medium
+        host = medium.BZR_DEFAULT_INTERFACE
+        if port is None:
+            port = medium.BZR_DEFAULT_PORT
+        else:
+            if ':' in port:
+                host, port = port.split(':')
+            port = int(port)
+        return host, port
+
+    def get_smart_server(self, transport, inet, port):
+        """Construct a smart server.
+
+        :param transport: The base transport from which branches will be
+            served.
+        :param inet: If True, serve over stdin and stdout. Used for running
+            from inet.
+        :param port: The port to listen on. By default, it's `
+            medium.BZR_DEFAULT_PORT`. See `get_host_and_port` for more
+            information.
+        :return: A smart server.
+        """
         from bzrlib.smart import medium, server
+        if inet:
+            smart_server = medium.SmartServerPipeStreamMedium(
+                sys.stdin, sys.stdout, transport)
+        else:
+            host, port = self.get_host_and_port(port)
+            smart_server = server.SmartTCPServer(
+                transport, host=host, port=port)
+            note('listening on port: %s' % smart_server.port)
+        return smart_server
+
+    def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
         if directory is None:
@@ -4102,33 +4241,8 @@ class cmd_serve(Command):
         chroot_server = ChrootServer(get_transport(url))
         chroot_server.setUp()
         t = get_transport(chroot_server.get_url())
-        if inet:
-            smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, t)
-        else:
-            host = medium.BZR_DEFAULT_INTERFACE
-            if port is None:
-                port = medium.BZR_DEFAULT_PORT
-            else:
-                if ':' in port:
-                    host, port = port.split(':')
-                port = int(port)
-            smart_server = server.SmartTCPServer(t, host=host, port=port)
-            print 'listening on port: ', smart_server.port
-            sys.stdout.flush()
-        # for the duration of this server, no UI output is permitted.
-        # note that this may cause problems with blackbox tests. This should
-        # be changed with care though, as we dont want to use bandwidth sending
-        # progress over stderr to smart server clients!
-        old_factory = ui.ui_factory
-        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        try:
-            ui.ui_factory = ui.SilentUIFactory()
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-            smart_server.serve()
-        finally:
-            ui.ui_factory = old_factory
-            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+        smart_server = self.get_smart_server(t, inet, port)
+        self.run_smart_server(smart_server)
 
 
 class cmd_join(Command):
@@ -4684,10 +4798,7 @@ class cmd_tags(Command):
                 revid1, revid2 = rev1.rev_id, rev2.rev_id
                 # only show revisions between revid1 and revid2 (inclusive)
                 tags = [(tag, revid) for tag, revid in tags if
-                     (revid2 is None or
-                         graph.is_ancestor(revid, revid2)) and
-                     (revid1 is None or
-                         graph.is_ancestor(revid1, revid))]
+                    graph.is_between(revid, revid1, revid2)]
             finally:
                 branch.unlock()
         if sort == 'alpha':

@@ -232,23 +232,19 @@ class RepoFetcher(object):
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)
         to_weave = self.to_repository.inventories
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            # just merge, this is optimisable and its means we don't
-            # copy unreferenced data such as not-needed inventories.
-            pb.update("fetch inventory", 1, 3)
-            from_weave = self.from_repository.inventories
-            pb.update("fetch inventory", 2, 3)
-            # we fetch only the referenced inventories because we do not
-            # know for unselected inventories whether all their required
-            # texts are present in the other repository - it could be
-            # corrupt.
-            to_weave.insert_record_stream(from_weave.get_record_stream(
-                [(rev_id,) for rev_id in revs],
-                self.to_repository._fetch_order,
-                not self.to_repository._fetch_uses_deltas))
-        finally:
-            child_pb.finished()
+        # just merge, this is optimisable and its means we don't
+        # copy unreferenced data such as not-needed inventories.
+        pb.update("fetch inventory", 1, 3)
+        from_weave = self.from_repository.inventories
+        pb.update("fetch inventory", 2, 3)
+        # we fetch only the referenced inventories because we do not
+        # know for unselected inventories whether all their required
+        # texts are present in the other repository - it could be
+        # corrupt.
+        to_weave.insert_record_stream(from_weave.get_record_stream(
+            [(rev_id,) for rev_id in revs],
+            self.to_repository._fetch_order,
+            not self.to_repository._fetch_uses_deltas))
 
     def _fetch_revision_texts(self, revs, pb):
         # fetch signatures first and then the revision texts
