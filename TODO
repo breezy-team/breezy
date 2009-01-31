@@ -1,2 +1,3 @@
 - Push into git
 - Tests
+- change fetch_objects() to return an object that can represent either ObjectStore or Pack

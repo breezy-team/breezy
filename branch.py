@@ -91,6 +91,14 @@ class GitBranch(ForeignBranch):
         self.base = bzrdir.transport.base
         self._format = GitBranchFormat()
 
+    def dpull(self, source, stop_revision=None):
+        if stop_revision is None:
+            stop_revision = source.last_revision()
+        # FIXME: Check for diverged branches
+        revidmap = self.repository.dfetch(source.repository, stop_revision)
+        self.head, self.mapping = self.mapping.revision_id_bzr_to_foreign(revidmap[stop_revision])
+        return revidmap
+
     def lock_write(self):
         self.control_files.lock_write()
 

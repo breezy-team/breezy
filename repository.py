@@ -21,7 +21,6 @@ import time
 
 import bzrlib
 from bzrlib import (
-    deprecated_graph,
     errors,
     graph,
     inventory,
@@ -29,8 +28,8 @@ from bzrlib import (
     repository,
     revision,
     revisiontree,
+    ui,
     urlutils,
-    versionedfile,
     )
 from bzrlib.foreign import (
         ForeignRepository,
@@ -150,6 +149,31 @@ class LocalGitRepository(GitRepository):
             ancestry.append(rev)
         ancestry.reverse()
         return ancestry
+
+    def import_revision_gist(self, source, revid):
+        pass
+
+    def dfetch(self, source, stop_revision):
+        if stop_revision is None:
+            raise NotImplementedError
+        revidmap = {}
+        todo = []
+        source.lock_read()
+        try:
+            graph = source.get_graph()
+            for revid, parents in graph.iter_ancestry([stop_revision]):
+                if not self.has_revision(revid):
+                    todo.append(revid)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                for i, revid in enumerate(reversed(todo)):
+                    pb.update("pushing revisions", i, len(todo))
+                    revidmap[revid] = self.import_revision_gist(source, revid)
+            finally:
+                pb.finished()
+        finally:
+            source.unlock()
+        return revidmap
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
