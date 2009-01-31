@@ -44,6 +44,12 @@ class TestDpush(ExternalBase):
         self.run_bzr("init --rich-root-pack dc")
         self.run_bzr("dpush -d dc dp")
 
+    def test_dpush_native(self):
+        tree = self.make_branch_and_tree("dp")
+        self.run_bzr("init dc")
+        error = self.run_bzr("dpush -d dc dp", retcode=3)[1]
+        self.assertContainsRe(error, 'not a foreign branch, use regular push')
+
     def test_dpush(self):
         tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
 
@@ -80,9 +86,9 @@ class TestDpush(ExternalBase):
         tree.commit("msg")
 
         self.run_bzr("branch d dc")
-        self.build_tree({"dc/foofile": "blaaaa"})
+        self.build_tree(("dc/foofile", "blaaaa"))
         self.run_bzr("add dc/foofile")
         self.run_bzr("commit -m msg dc")
-        self.build_tree({"dc/foofile": "blaaaal"})
+        self.build_tree(("dc/foofile", "blaaaal"))
         self.run_bzr("dpush -d dc d")
         self.check_output('modified:\n  foofile\n', "status dc")

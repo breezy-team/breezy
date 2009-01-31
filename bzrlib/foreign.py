@@ -359,14 +359,12 @@ class cmd_dpush(Command):
 
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
+        if not isinstance(target_branch, ForeignBranch):
+            raise BzrCommandError("%r is not a foreign branch, use "
+                                  "regular push." % target_branch)
         target_branch.lock_write()
         try:
-            if not isinstance(target_branch, ForeignBranch):
-                info("target branch is not a foreign branch, using regular push.")
-                target_branch.pull(source_branch)
-                no_rebase = True
-            else:
-                revid_map = target_branch.dpull(source_branch)
+            revid_map = target_branch.dpull(source_branch)
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
@@ -379,8 +377,10 @@ class cmd_dpush(Command):
                     source_wt.lock_write()
                     try:
                         update_workinginv_fileids(source_wt, 
-                            source_wt.branch.repository.revision_tree(old_last_revid),
-                            source_wt.branch.repository.revision_tree(new_last_revid))
+                            source_wt.branch.repository.revision_tree(
+                                old_last_revid),
+                            source_wt.branch.repository.revision_tree(
+                                new_last_revid))
                     finally:
                         source_wt.unlock()
                 else:
