@@ -122,6 +122,9 @@ default_mapping = BzrGitMappingv1()
 
 
 def inventory_to_tree_and_blobs(repo, mapping, revision_id):
+    from dulwich.objects import Tree, Blob
+    from bzrlib.inventory import InventoryDirectory, InventoryFile
+    import stat
     stack = []
     cur = ""
     tree = Tree()

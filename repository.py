@@ -40,7 +40,7 @@ from bzrlib.transport import get_transport
 from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
-from bzrlib.plugins.git.mapping import default_mapping, mapping_registry
+from bzrlib.plugins.git.mapping import default_mapping, mapping_registry, inventory_to_tree_and_blobs, revision_to_commit
 from bzrlib.plugins.git.versionedfiles import GitTexts
 
 import dulwich as git
@@ -154,10 +154,15 @@ class LocalGitRepository(GitRepository):
         """Impor the gist of another revision into this Git repository.
 
         """
+        objects = []
         rev = source.get_revision(revid)
-        inventory_to_tree_and_blobs(source, None, revid)
-        commit = revision_to_commit(rev, FIXME, parent_lookup)
-        pass
+        for sha, object, path in inventory_to_tree_and_blobs(source, None, revid):
+            if path == "":
+                tree_sha = sha
+            objects.append((sha, object))
+        commit = revision_to_commit(rev, tree_sha, parent_lookup)
+        objects.append((commit.sha(), commit))
+        self._git.object_store.add_objects(len(objects), objects)
 
     def dfetch(self, source, stop_revision):
         if stop_revision is None:
@@ -174,7 +179,7 @@ class LocalGitRepository(GitRepository):
             try:
                 for i, revid in enumerate(reversed(todo)):
                     pb.update("pushing revisions", i, len(todo))
-                    revidmap[revid] = self.import_revision_gist(source, revid)
+                    revidmap[revid] = self.import_revision_gist(source, revid, revidmap.get)
             finally:
                 pb.finished()
         finally:
