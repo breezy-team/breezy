@@ -27,6 +27,7 @@ from bzrlib.bzrdir import (
     BzrDirFormat,
     BzrDirMeta1,
     BzrDirMetaFormat1,
+    format_registry,
     )
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
@@ -131,6 +132,21 @@ class DummyForeignVcsDir(BzrDirMeta1):
         self.transport = _transport.clone('.dummy')
         self.root_transport = _transport
         self._mode_check_done = False
+
+    def cloning_metadir(self, stacked=False):
+        """Produce a metadir suitable for cloning with."""
+        return format_registry.make_bzrdir("default")
+
+    def sprout(self, url, revision_id=None, force_new_repo=False,
+               recurse='down', possible_transports=None,
+               accelerator_tree=None, hardlink=False, stacked=False,
+               source_branch=None):
+        # dirstate doesn't cope with accelerator_trees well 
+        # that have a different control dir
+        return super(DummyForeignVcsDir, self).sprout(url=url, 
+                revision_id=revision_id, force_new_repo=force_new_repo, 
+                recurse=recurse, possible_transports=possible_transports, 
+                hardlink=hardlink, stacked=stacked, source_branch=source_branch)
 
 
 class ForeignVcsRegistryTests(TestCase):
@@ -264,8 +280,8 @@ class DummyForeignVcsTests(TestCaseWithTransport):
         dir.open_workingtree()
 
     def test_sprout(self):
-        """Test we can clone dummies and that the format is preserved."""
+        """Test we can clone dummies and that the format is not preserved."""
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         dir = BzrDir.open("d")
         newdir = dir.sprout("e")
-        self.assertEquals("A Dummy VCS Dir", newdir._format.get_format_string())
+        self.assertNotEquals("A Dummy VCS Dir", newdir._format.get_format_string())
