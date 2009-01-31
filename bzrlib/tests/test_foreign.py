@@ -18,9 +18,11 @@
 """Tests for foreign VCS utility code."""
 
 from bzrlib import (
+    branch,
     errors,
     foreign,
     lockable_files,
+    lockdir,
     )
 from bzrlib.bzrdir import (
     BzrDir,
@@ -81,6 +83,43 @@ class DummyForeignVcs(foreign.ForeignVcs):
         return { "dummy ding": "%s/%s\\%s" % foreign_revid }
 
 
+class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
+    """A Dummy VCS Branch."""
+
+    def __init__(self, _format, _control_files, a_bzrdir, *args, **kwargs):
+        self._format = _format
+        self._base = a_bzrdir.transport.base
+        foreign.ForeignBranch.__init__(self, DummyForeignVcsMapping(DummyForeignVcs()))
+        branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, *args, **kwargs)
+
+    def dpull(self, source, stop_revision=None):
+        return {}
+
+
+class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
+
+    def get_format_string(self):
+        return "Branch for Testing"
+
+    def __init__(self):
+        super(DummyForeignVcsBranchFormat, self).__init__()
+        self._matchingbzrdir = DummyForeignVcsDirFormat()
+
+    def open(self, a_bzrdir, _found=False):
+        if not _found:
+            raise NotImplementedError
+        try:
+            transport = a_bzrdir.get_branch_transport(None)
+            control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                         lockdir.LockDir)
+            return DummyForeignVcsBranch(_format=self,
+                              _control_files=control_files,
+                              a_bzrdir=a_bzrdir,
+                              _repository=a_bzrdir.find_repository())
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
+
+
 class DummyForeignVcsDirFormat(BzrDirMetaFormat1):
     """BzrDirFormat for the dummy foreign VCS."""
 
@@ -95,6 +134,9 @@ class DummyForeignVcsDirFormat(BzrDirMetaFormat1):
     @classmethod
     def is_supported(cls):
         return True
+
+    def get_branch_format(self):
+        return DummyForeignVcsBranchFormat()
 
     @classmethod
     def probe_transport(klass, transport):
@@ -132,6 +174,11 @@ class DummyForeignVcsDir(BzrDirMeta1):
         self.transport = _transport.clone('.dummy')
         self.root_transport = _transport
         self._mode_check_done = False
+        self._control_files = lockable_files.LockableFiles(self.transport,
+            "lock", lockable_files.TransportLock)
+
+    def open_branch(self):
+        return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):
         """Produce a metadir suitable for cloning with."""
