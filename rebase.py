@@ -210,6 +210,10 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
     children = {}
     parent_map = {}
     for r, ps in ancestry:
+        if not children.has_key(r):
+            children[r] = []
+        if ps is None: # Ghost
+            continue
         parent_map[r] = ps
         if not children.has_key(r):
             children[r] = []

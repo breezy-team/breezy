@@ -1,5 +1,9 @@
 0.4.3	UNRELEASED
 
+ BUG FIXES
+
+  * Cope with ghosts in svn-upgrade. (#320113)
+
  PERFORMANCE
 
   * Register commands lazily, should reduce import time when unused.
