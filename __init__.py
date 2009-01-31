@@ -18,15 +18,10 @@
 
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
-from bzrlib.repository import Repository
-from bzrlib.revision import Revision
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     errors,
-    log,
-    osutils,
-    registry,
     )
 """)
 
