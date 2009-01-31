@@ -307,6 +307,9 @@ bzr 1.11rc1 "Eyes up!" 2009-01-09
     * Allow files to be renamed or moved via remove + add-by-id. (Charles
       Duffy, #314251)
 
+    * 'bzr status' no longer stops and errors on nonexistent files,
+      instead reports "X" and moves on to next arg.  (Karl Fogel, #306394)
+
   DOCUMENTATION:
 
     * Improved the formats help topic to explain why multiple formats
