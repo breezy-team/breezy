@@ -76,27 +76,6 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.timezone = 0
         return rev
 
-    def export_commit(self, rev, tree_sha):
-        """Turn a Bazaar revision in to a Git commit
-
-        :param tree_sha: HACK parameter (until we can retrieve this from the mapping)
-        :return dulwich.objects.Commit represent the revision:
-        """
-        from dulwich.objects import Commit
-        commit = Commit()
-        commit._tree = tree_sha
-        for p in rev.parent_ids:
-            commit._parents.append(self.revision_id_bzr_to_foreign(p))
-        commit._message = rev.message
-        commit._committer = rev.committer
-        if 'author' in rev.properties:
-            commit._author = rev.properties['author']
-        else:
-            commit._author = rev.committer
-        commit._commit_time = long(rev.timestamp)
-        commit.serialize()
-        return commit
-
 
 class BzrGitMappingv1(BzrGitMapping):
     revid_prefix = 'git-v1'
@@ -140,3 +119,73 @@ class ForeignGit(ForeignVcs):
 
 foreign_git = ForeignGit()
 default_mapping = BzrGitMappingv1()
+
+
+def inventory_to_tree_and_blobs(repo, mapping, revision_id):
+    stack = []
+    cur = ""
+    tree = Tree()
+
+    inv = repo.get_inventory(revision_id)
+
+    for path, entry in inv.iter_entries():
+        while stack and not path.startswith(cur):
+            tree.serialize()
+            sha = tree.sha().hexdigest()
+            yield sha, tree, path
+            t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+            cur, tree = stack.pop()
+            tree.add(*t)
+
+        if type(entry) == InventoryDirectory:
+            stack.append((cur, tree))
+            cur = path
+            tree = Tree()
+
+        if type(entry) == InventoryFile:
+            #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
+            # and having all these objects in memory at once
+            blob = Blob()
+            _, blob._text = repo.iter_files_bytes([(entry.file_id, revision_id, path)]).next()
+            sha = blob.sha().hexdigest()
+            yield sha, blob, path
+
+            name = splitpath(path)[-1:][0].encode('UTF-8')
+            mode = stat.S_IFREG | 0644
+            if entry.executable:
+                mode |= 0111
+            tree.add(mode, name, sha)
+
+    while len(stack) > 1:
+        tree.serialize()
+        sha = tree.sha().hexdigest()
+        yield sha, tree, path
+        t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+        cur, tree = stack.pop()
+        tree.add(*t)
+
+    tree.serialize()
+    yield tree.sha().hexdigest(), tree, path
+
+
+def revision_to_commit(rev, tree_sha, parent_lookup):
+    """Turn a Bazaar revision in to a Git commit
+
+    :param tree_sha: Tree sha for the commit
+    :param parent_lookup: Function for looking up the GIT sha equiv of a bzr revision
+    :return dulwich.objects.Commit represent the revision:
+    """
+    from dulwich.objects import Commit
+    commit = Commit()
+    commit._tree = tree_sha
+    for p in rev.parent_ids:
+        commit._parents.append(parent_lookup(p))
+    commit._message = rev.message
+    commit._committer = rev.committer
+    if 'author' in rev.properties:
+        commit._author = rev.properties['author']
+    else:
+        commit._author = rev.committer
+    commit._commit_time = long(rev.timestamp)
+    commit.serialize()
+    return commit

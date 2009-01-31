@@ -150,7 +150,13 @@ class LocalGitRepository(GitRepository):
         ancestry.reverse()
         return ancestry
 
-    def import_revision_gist(self, source, revid):
+    def import_revision_gist(self, source, revid, parent_lookup):
+        """Impor the gist of another revision into this Git repository.
+
+        """
+        rev = source.get_revision(revid)
+        inventory_to_tree_and_blobs(source, None, revid)
+        commit = revision_to_commit(rev, FIXME, parent_lookup)
         pass
 
     def dfetch(self, source, stop_revision):

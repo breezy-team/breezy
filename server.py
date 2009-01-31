@@ -20,7 +20,7 @@ from bzrlib.inventory import InventoryDirectory, InventoryFile
 from bzrlib.osutils import splitpath
 
 from bzrlib.plugins.git.fetch import import_git_objects
-from bzrlib.plugins.git.mapping import default_mapping
+from bzrlib.plugins.git.mapping import default_mapping, revision_to_commit, inventory_to_tree_and_blobs
 
 from dulwich.server import Backend
 from dulwich.pack import Pack, PackData, write_pack_index_v2
@@ -102,12 +102,16 @@ class BzrBackend(Backend):
 
     def fetch_objects(self, determine_wants, graph_walker, progress):
         """ yield git objects to send to client """
+        repo = Repository.open(self.directory)
+
+        # If this is a Git repository, just use the existing fetch_objects implementation.
+        if getattr(repo, "fetch_objects", None) is None:
+            return repo.fetch_objects(determine_wants, graph_walker, progress)
+
         wants = determine_wants(self.get_refs())
         commits_to_send = set([self.mapping.revision_id_foreign_to_bzr(w) for w in wants])
         rev_done = set()
         obj_sent = set()
-
-        repo = Repository.open(self.directory)
 
         objects = set()
 
@@ -116,7 +120,7 @@ class BzrBackend(Backend):
             have = graph_walker.next()
             while have:
                 rev_done.add(have)
-                if repo.has_revision(self.mapping.revision_id_foregin_to_bzr(sha)):
+                if repo.has_revision(self.mapping.revision_id_foreign_to_bzr(sha)):
                     graph_walker.ack(have)
                 have = graph_walker.next()
 
@@ -135,57 +139,10 @@ class BzrBackend(Backend):
                         obj_sent.add(sha)
                         objects.add((obj, path))
 
-                objects.add((mapping.export_commit(rev, sha), None))
+                objects.add((revision_to_commit(rev, sha, self.mapping.revision_id_bzr_to_foreign), None))
 
         finally:
             repo.unlock()
 
         return (len(objects), iter(objects))
-
-
-def inventory_to_tree_and_blobs(repo, mapping, revision_id):
-    stack = []
-    cur = ""
-    tree = Tree()
-
-    inv = repo.get_inventory(revision_id)
-
-    for path, entry in inv.iter_entries():
-        while stack and not path.startswith(cur):
-            tree.serialize()
-            sha = tree.sha().hexdigest()
-            yield sha, tree, path
-            t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
-            cur, tree = stack.pop()
-            tree.add(*t)
-
-        if type(entry) == InventoryDirectory:
-            stack.append((cur, tree))
-            cur = path
-            tree = Tree()
-
-        if type(entry) == InventoryFile:
-            #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
-            # and having all these objects in memory at once
-            blob = Blob()
-            _, blob._text = repo.iter_files_bytes([(entry.file_id, revision_id, path)]).next()
-            sha = blob.sha().hexdigest()
-            yield sha, blob, path
-
-            name = splitpath(path)[-1:][0].encode('UTF-8')
-            mode = stat.S_IFREG | 0644
-            if entry.executable:
-                mode |= 0111
-            tree.add(mode, name, sha)
-
-    while len(stack) > 1:
-        tree.serialize()
-        sha = tree.sha().hexdigest()
-        yield sha, tree, path
-        t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
-        cur, tree = stack.pop()
-        tree.add(*t)
-
-    tree.serialize()
-    yield tree.sha().hexdigest(), tree, path
 
