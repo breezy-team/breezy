@@ -111,7 +111,7 @@ class cmd_dpush(Command):
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
         try:
-            if not isinstance(target_branch, ForeignBranch):
+            if getattr(target_branch, "dpull", None) is None:
                 info("target branch is not a foreign branch, using regular push.")
                 target_branch.pull(source_branch)
                 no_rebase = True
