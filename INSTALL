@@ -1,2 +1,7 @@
-Installing bzr-git can be done by putting it into the ~/.bazaar/plugins directory, 
-and renaming its directory to "git".
+You need the Dulwich Python module installed (or in PYTHONPATH) and a fairly 
+recent version of bzr. 
+
+For more information on Dulwich, see http://samba.org/~jelmer/dulwich/
+
+Installing bzr-git can be done by putting it into the ~/.bazaar/plugins 
+directory, and renaming its directory to "git".
