@@ -362,9 +362,9 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
         i = 0
         try:
             parent_invs = map(repository.get_revision_inventory, new_parents)
-            for path, ie in oldtree.inventory.iter_entries():
-                pb.update('upgrading file', i, total)
-                ie = ie.copy()
+            for i, (path, old_ie) in enumerate(oldtree.inventory.iter_entries()):
+                pb.update('upgrading file', i, len(oldtree.inventory))
+                ie = old_ie.copy()
                 # Either this file was modified last in this revision, 
                 # in which case it has to be rewritten
                 if fix_revid is not None:
@@ -386,7 +386,6 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
                         inv[ie.file_id].text_sha1 == ie.text_sha1, parent_invs))
                         == 0):
                         raise ReplayParentsInconsistent(ie.file_id, ie.revision)
-                i += 1
                 builder.record_entry_contents(ie, parent_invs, path, oldtree,
                         oldtree.path_content_summary(path))
         finally:
