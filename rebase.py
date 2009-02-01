@@ -17,7 +17,7 @@
 
 from bzrlib.config import Config
 from bzrlib.errors import (BzrError, NoSuchFile, UnknownFormatError,
-                           NoCommonAncestor, UnrelatedBranches)
+                           NoCommonAncestor, NoSuchId, UnrelatedBranches)
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib.graph import FrozenHeadsCache
 from bzrlib.merge import Merger
@@ -325,8 +325,7 @@ def rebase(repository, replace_map, replay_fn):
         pb.finished()
         
 
-def replay_snapshot(repository, oldrevid, newrevid, new_parents, 
-                    revid_renames, fix_revid=None):
+def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     """Replay a commit by simply commiting the same snapshot with different 
     parents.
 
@@ -334,7 +333,6 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
     :param oldrevid: Revision id of the revision to copy.
     :param newrevid: Revision id of the revision to create.
     :param new_parents: Revision ids of the new parent revisions.
-    :param revid_renames: Revision id renames for texts.
     """
     assert isinstance(new_parents, tuple), "replay_snapshot: Expected tuple for %r" % new_parents
     mutter('creating copy %r of %r with new parents %r' % 
@@ -356,38 +354,43 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
         # Check what new_ie.file_id should be
         # use old and new parent inventories to generate new_id map
         fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
-        oldtree = MapTree(repository.revision_tree(oldrevid), fileid_map)
-        total = len(oldtree.inventory)
+        oldtree = repository.revision_tree(oldrevid)
+        mappedtree = MapTree(oldtree, fileid_map)
         pb = ui.ui_factory.nested_progress_bar()
-        i = 0
         try:
-            parent_invs = map(repository.get_revision_inventory, new_parents)
-            for i, (path, old_ie) in enumerate(oldtree.inventory.iter_entries()):
-                pb.update('upgrading file', i, len(oldtree.inventory))
+            old_parent_invs = list(repository.iter_inventories(oldrev.parent_ids))
+            new_parent_invs = list(repository.iter_inventories(new_parents))
+            for i, (path, old_ie) in enumerate(mappedtree.inventory.iter_entries()):
+                pb.update('upgrading file', i, len(mappedtree.inventory))
                 ie = old_ie.copy()
                 # Either this file was modified last in this revision, 
                 # in which case it has to be rewritten
-                if fix_revid is not None:
-                    ie.revision = fix_revid(ie.revision)
-                if ie.revision == oldrevid:
-                    key = (ie.file_id, newrevid)
-                    if repository.texts.get_parent_map([key]):
+                if old_ie.revision == oldrevid:
+                    if repository.texts.has_key((ie.file_id, newrevid)):
+                        # Use the existing text
                         ie.revision = newrevid
                     else:
+                        # Create a new text
                         ie.revision = None
                 else:
                     # or it was already there before the commit, in 
                     # which case the right revision should be used
-                    if revid_renames.has_key(ie.revision):
-                        ie.revision = revid_renames[ie.revision]
-                    # make sure at least one of the new parents contains 
-                    # the ie.file_id, ie.revision combination
-                    if (len(filter(lambda inv: ie.file_id in inv and
-                        inv[ie.file_id].text_sha1 == ie.text_sha1, parent_invs))
-                        == 0):
-                        raise ReplayParentsInconsistent(ie.file_id, ie.revision)
-                builder.record_entry_contents(ie, parent_invs, path, oldtree,
-                        oldtree.path_content_summary(path))
+                    # one of the old parents had this revision, so find that
+                    # and then use the matching new parent
+                    old_file_id = oldtree.inventory.path2id(path)
+                    assert old_file_id is not None
+                    ie = None
+                    for (old_pinv, new_pinv) in zip(old_parent_invs, new_parent_invs):
+                        if (old_pinv.has_id(old_file_id) and
+                            old_pinv[old_file_id].revision == old_ie.revision):
+                            try:
+                                ie = new_pinv[old_ie.file_id].copy()
+                            except NoSuchId:
+                                raise ReplayParentsInconsistent(old_ie.file_id, old_ie.revision)
+                            break
+                    assert ie is not None
+                builder.record_entry_contents(ie, new_parent_invs, path, mappedtree,
+                        mappedtree.path_content_summary(path))
         finally:
             pb.finished()
         builder.finish_inventory()
