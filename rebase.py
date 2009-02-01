@@ -362,7 +362,6 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents,
         i = 0
         try:
             parent_invs = map(repository.get_revision_inventory, new_parents)
-            transact = repository.get_transaction()
             for path, ie in oldtree.inventory.iter_entries():
                 pb.update('upgrading file', i, total)
                 ie = ie.copy()
