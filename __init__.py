@@ -80,9 +80,17 @@ class cmd_dpush(Command):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.inventory import Inventory
+        from bzrlib.revision import NULL_REVISION
         from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
         from upgrade import update_workinginv_fileids
+
+        def get_inv(wt, revid):
+            if revid == NULL_REVISION:
+                return Inventory()
+            else:
+                return wt.branch.repository.get_inventory(revid)
 
         if directory is None:
             directory = "."
@@ -124,8 +132,8 @@ class cmd_dpush(Command):
                     source_wt.lock_write()
                     try:
                         update_workinginv_fileids(source_wt, 
-                            source_wt.branch.repository.get_inventory(old_last_revid),
-                            source_wt.branch.repository.get_inventory(new_last_revid))
+                            get_inv(source_wt, old_last_revid), 
+                            get_inv(source_wt, new_last_revid))
                     finally:
                         source_wt.unlock()
                 else:
