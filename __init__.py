@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2008-2009 Jelmer Vernooij <jelmer@samba.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,9 @@
 
 """Foreign branch utilities."""
 
+from bzrlib import errors
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-from bzrlib import (
-    errors,
-    )
-""")
 
 
 class ForeignBranch(Branch):
@@ -87,7 +82,7 @@ class cmd_dpush(Command):
         from bzrlib.errors import BzrCommandError, NoWorkingTree
         from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
-        from upgrade import update_workingtree_fileids
+        from upgrade import update_workinginv_fileids
 
         if directory is None:
             directory = "."
@@ -128,9 +123,9 @@ class cmd_dpush(Command):
                                    stop_revision=new_last_revid)
                     source_wt.lock_write()
                     try:
-                        update_workingtree_fileids(source_wt, 
-                            source_wt.branch.repository.revision_tree(old_last_revid),
-                            source_wt.branch.repository.revision_tree(new_last_revid))
+                        update_workinginv_fileids(source_wt, 
+                            source_wt.branch.repository.get_inventory(old_last_revid),
+                            source_wt.branch.repository.get_inventory(new_last_revid))
                     finally:
                         source_wt.unlock()
                 else:
