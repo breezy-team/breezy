@@ -91,8 +91,7 @@ def determine_fileid_renames(old_inv, new_inv):
         if new_file_id is None:
             raise AssertionError(
                 "Unable to find %s in new inventory" % old_file_id)
-        if new_file_id != old_file_id:
-            ret[new_inv.id2path(new_file_id)] = (old_file_id, new_file_id)
+        ret[new_inv.id2path(new_file_id)] = (old_file_id, new_file_id)
     return ret
 
 
@@ -108,7 +107,7 @@ def update_workinginv_fileids(wt, old_inv, new_inv):
     new_root_id = None
     # Adjust file ids in working tree
     # Sorted, so we process parents before children
-    for path in sorted(fileid_renames.keys(), reverse=True):
+    for path in sorted(fileid_renames.keys()):
         if path != "":
             old_fileids.append(fileid_renames[path][0])
             new_fileids.append((path, fileid_renames[path][1]))
