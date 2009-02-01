@@ -21,6 +21,9 @@
 
 """A GIT branch and repository format implementation for bzr."""
 
+import os
+import sys
+
 import bzrlib
 import bzrlib.api
 from bzrlib import bzrdir, errors as bzr_errors
@@ -33,6 +36,10 @@ from bzrlib.trace import warning
 MINIMUM_DULWICH_VERSION = (0, 1, 0)
 COMPATIBLE_BZR_VERSIONS = [(1, 11, 0), (1, 12, 0)]
 
+if getattr(sys, "frozen", None):
+    # allow import additional libs from ./_lib for bzr.exe only
+    sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '_lib')))
+
 _versions_checked = False
 def lazy_check_versions():
     global _versions_checked
@@ -42,12 +49,10 @@ def lazy_check_versions():
     try:
         from dulwich import __version__ as dulwich_version
     except ImportError:
-        warning("Please install dulwich, https://launchpad.net/dulwich")
-        raise
+        raise ImportError("bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
         if dulwich_version < MINIMUM_DULWICH_VERSION:
-            warning("Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
-            raise ImportError
+            raise ImportError("bzr-git: Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
 
 bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 
