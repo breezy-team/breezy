@@ -2,7 +2,7 @@
 
  BUG FIXES
 
-  * Cope with ghosts in svn-upgrade. (#320113)
+  * Cope with ghosts in svn-upgrade. (#323140)
 
  PERFORMANCE
 
