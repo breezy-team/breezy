@@ -1,4 +1,4 @@
-# Copyright (C) 2006,2008 by Jelmer Vernooij
+# Copyright (C) 2006-2009 by Jelmer Vernooij
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,12 @@
 """Upgrading revisions made with older versions of the mapping."""
 
 from bzrlib import ui
-from bzrlib.errors import BzrError, InvalidRevisionId, DependencyNotPresent
+from bzrlib.errors import (
+    DependencyNotPresent,
+    BzrError,
+    InvalidRevisionId,
+    NoSuchRevision,
+    )
 from bzrlib.trace import info
 
 import itertools
@@ -38,7 +43,7 @@ def check_rebase_version(min_version):
     """
     try:
         from bzrlib.plugins.rebase import version_info as rebase_version_info
-        if rebase_version_info[:2] < min_version:
+        if rebase_version_info[:len(min_version)] < min_version:
             raise RebaseNotPresent("Version %r present, at least %r required" 
                                    % (rebase_version_info, min_version))
     except ImportError, e:
@@ -69,13 +74,52 @@ def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
         return revid + mapping_suffix + upgrade_suffix
 
 
-def determine_fileid_renames(old_tree, new_tree):
-    for old_file_id in old_tree:
-        new_file_id = new_tree.path2id(old_tree.id2path(old_file_id))
-        if old_file_id == new_file_id:
-            continue
-        if new_file_id is not None:
-            yield new_tree.id2path(new_file_id), old_file_id, new_file_id
+def determine_fileid_renames(old_inv, new_inv):
+    """Determine the file ids based on a old and a new inventory that 
+    are equal in content.
+
+    :param old_inv: Old inventory
+    :param new_inv: New inventory
+    :return: Dictionary a (old_id, new_id) tuple for each path in the 
+        inventories.
+    """
+    ret = {}
+    if len(old_inv) != len(new_inv):
+        raise AssertionError("Inventories are not of the same size")
+    for old_file_id in old_inv:
+        new_file_id = new_inv.path2id(old_inv.id2path(old_file_id))
+        if new_file_id is None:
+            raise AssertionError(
+                "Unable to find %s in new inventory" % old_file_id)
+        if new_file_id != old_file_id:
+            ret[new_inv.id2path(new_file_id)] = (old_file_id, new_file_id)
+    return ret
+
+
+def update_workinginv_fileids(wt, old_inv, new_inv):
+    """Update all file ids in wt according to old_tree/new_tree. 
+
+    old_tree and new_tree should be two RevisionTree's that differ only
+    in file ids.
+    """
+    fileid_renames = determine_fileid_renames(old_inv, new_inv)
+    old_fileids = []
+    new_fileids = []
+    new_root_id = None
+    # Adjust file ids in working tree
+    # Sorted, so we process parents before children
+    for path in sorted(fileid_renames.keys(), reverse=True):
+        if path != "":
+            old_fileids.append(fileid_renames[path][0])
+            new_fileids.append((path, fileid_renames[path][1]))
+        else:
+            new_root_id = fileid_renames[path][1]
+    new_fileids.reverse()
+    wt.unversion(old_fileids)
+    if new_root_id is not None:
+        wt.set_root_id(new_root_id)
+    wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
+    wt.set_last_revision(new_inv.revision_id)
 
 
 def upgrade_workingtree(wt, foreign_repository, new_mapping, mapping_registry, 
@@ -93,24 +137,9 @@ def upgrade_workingtree(wt, foreign_repository, new_mapping, mapping_registry,
         last_revid = wt.branch.last_revision()
         if old_revid == last_revid:
             return revid_renames
-
-        fileid_renames = dict([(path, (old_fileid, new_fileid)) for (path, old_fileid, new_fileid) in determine_fileid_renames(wt.branch.repository.revision_tree(old_revid), wt.branch.repository.revision_tree(last_revid))])
-        old_fileids = []
-        new_fileids = []
-        new_root_id = None
-        # Adjust file ids in working tree
-        for path in sorted(fileid_renames.keys(), reverse=True):
-            if path != "":
-                old_fileids.append(fileid_renames[path][0])
-                new_fileids.append((path, fileid_renames[path][1]))
-            else:
-                new_root_id = fileid_renames[path][1]
-        new_fileids.reverse()
-        wt.unversion(old_fileids)
-        if new_root_id is not None:
-            wt.set_root_id(new_root_id)
-        wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
-        wt.set_last_revision(last_revid)
+        old_inv = wt.branch.repository.get_inventory(old_revid)
+        new_inv = wt.branch.repository.get_inventory(last_revid)
+        update_workinginv_fileids(wt, old_inv, new_inv)
     finally:
         wt.unlock()
 
@@ -120,18 +149,19 @@ def upgrade_workingtree(wt, foreign_repository, new_mapping, mapping_registry,
 def upgrade_tags(tags, repository, foreign_repository, new_mapping, mapping_registry, 
                  allow_changes=False, verbose=False, branch_renames=None):
     """Upgrade a tags dictionary."""
+    renames = {}
+    if branch_renames is not None:
+        renames.update(branch_renames)
     pb = ui.ui_factory.nested_progress_bar()
     try:
         tags_dict = tags.get_tag_dict()
         for i, (name, revid) in enumerate(tags_dict.items()):
             pb.update("upgrading tags", i, len(tags_dict))
-            if branch_renames is not None and revid in branch_renames:
-                renames = branch_renames
-            else:
-                renames = upgrade_repository(repository, foreign_repository, 
+            if not revid in renames:
+                renames.update(upgrade_repository(repository, foreign_repository, 
                       revision_id=revid, new_mapping=new_mapping,
                       mapping_registry=mapping_registry,
-                      allow_changes=allow_changes, verbose=verbose)
+                      allow_changes=allow_changes, verbose=verbose))
             if revid in renames:
                 tags.set_tag(name, renames[revid])
     finally:
@@ -154,7 +184,7 @@ def upgrade_branch(branch, foreign_repository, new_mapping,
               allow_changes=allow_changes, verbose=verbose)
     upgrade_tags(branch.tags, branch.repository, foreign_repository, 
            new_mapping=new_mapping, mapping_registry=mapping_registry, 
-           allow_changes=allow_changes, verbose=verbose)
+           allow_changes=allow_changes, verbose=verbose, branch_renames=renames)
     if len(renames) > 0:
         branch.generate_revision_history(renames[revid])
     return renames
@@ -172,7 +202,7 @@ def check_revision_changed(oldrev, newrev):
         raise UpgradeChangesContent(oldrev.revision_id)
 
 
-def generate_upgrade_map(new_mapping, revs, mapping_registry):
+def generate_upgrade_map(revs, mapping_registry, determine_upgraded_revid):
     """Generate an upgrade map for use by bzr-rebase.
 
     :param new_mapping: Mapping to upgrade revisions to.
@@ -185,18 +215,17 @@ def generate_upgrade_map(new_mapping, revs, mapping_registry):
     for revid in revs:
         assert isinstance(revid, str)
         try:
-            (foreign_revid, _) = mapping_registry.parse_revision_id(revid)
+            (foreign_revid, old_mapping) = mapping_registry.parse_revision_id(revid)
         except InvalidRevisionId:
             # Not a foreign revision, nothing to do
             continue
-        newrevid = new_mapping.revision_id_foreign_to_bzr(foreign_revid)
-        if revid == newrevid:
+        newrevid = determine_upgraded_revid(foreign_revid)
+        if newrevid in (revid, None):
             continue
         rename_map[revid] = newrevid
-
     return rename_map
 
-MIN_REBASE_VERSION = (0, 4)
+MIN_REBASE_VERSION = (0, 4, 3)
 
 def create_upgrade_plan(repository, foreign_repository, new_mapping,
                         mapping_registry, revision_id=None, allow_changes=False):
@@ -220,13 +249,20 @@ def create_upgrade_plan(repository, foreign_repository, new_mapping,
     else:
         potential = itertools.imap(lambda (rev, parents): rev, 
                 graph.iter_ancestry([revision_id]))
-    upgrade_map = generate_upgrade_map(new_mapping, potential, mapping_registry)
-   
-    # Make sure all the required current version revisions are present
-    for revid in upgrade_map.values():
-        if not repository.has_revision(revid):
-            repository.fetch(foreign_repository, revid)
 
+    def determine_upgraded_revid(foreign_revid):
+        # FIXME: Try all mappings until new_mapping rather than just new_mapping
+        new_revid = new_mapping.revision_id_foreign_to_bzr(foreign_revid)
+        # Make sure the revision is there
+        if not repository.has_revision(new_revid):
+            try:
+                repository.fetch(foreign_repository, new_revid)
+            except NoSuchRevision:
+                return None
+        return new_revid
+
+    upgrade_map = generate_upgrade_map(potential, mapping_registry, determine_upgraded_revid)
+   
     if not allow_changes:
         for oldrevid, newrevid in upgrade_map.iteritems():
             oldrev = repository.get_revision(oldrevid)
@@ -277,16 +313,7 @@ def upgrade_repository(repository, foreign_repository, new_mapping,
         if verbose:
             for revid in rebase_todo(repository, plan):
                 info("%s -> %s" % (revid, plan[revid][0]))
-        def fix_revid(revid):
-            try:
-                (foreign_revid, mapping) = mapping_registry.parse_revision_id(revid)
-            except InvalidRevisionId:
-                return revid
-            return new_mapping.revision_id_foreign_to_bzr(foreign_revid)
-        def replay(repository, oldrevid, newrevid, new_parents):
-            return replay_snapshot(repository, oldrevid, newrevid, new_parents,
-                                   revid_renames, fix_revid)
-        rebase(repository, plan, replay)
+        rebase(repository, plan, replay_snapshot)
         return revid_renames
     finally:
         repository.unlock()
