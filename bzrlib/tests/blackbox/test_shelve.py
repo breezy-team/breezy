@@ -26,9 +26,14 @@ class TestShelveList(TestCaseWithTransport):
         err = self.run_bzr('shelve --list')[1]
         self.assertEqual('No shelved changes.\n', err)
 
+    def make_creator(self, tree):
+        creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
+        self.addCleanup(creator.finalize)
+        return creator
+
     def test_shelve_one(self):
         tree = self.make_branch_and_tree('.')
-        creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
+        creator = self.make_creator(tree)
         shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
         out, err = self.run_bzr('shelve --list', retcode=1)
         self.assertEqual('', err)
@@ -36,7 +41,7 @@ class TestShelveList(TestCaseWithTransport):
 
     def test_shelve_no_message(self):
         tree = self.make_branch_and_tree('.')
-        creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
+        creator = self.make_creator(tree)
         shelf_id = tree.get_shelf_manager().shelve_changes(creator)
         out, err = self.run_bzr('shelve --list', retcode=1)
         self.assertEqual('', err)
@@ -44,9 +49,9 @@ class TestShelveList(TestCaseWithTransport):
 
     def test_shelf_order(self):
         tree = self.make_branch_and_tree('.')
-        creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
+        creator = self.make_creator(tree)
         tree.get_shelf_manager().shelve_changes(creator, 'Foo')
-        creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
+        creator = self.make_creator(tree)
         tree.get_shelf_manager().shelve_changes(creator, 'Bar')
         out, err = self.run_bzr('shelve --list', retcode=1)
         self.assertEqual('', err)

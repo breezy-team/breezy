@@ -29,7 +29,7 @@ from bzrlib import debug
 from bzrlib import errors
 from bzrlib.smart import message, request
 from bzrlib.trace import log_exception_quietly, mutter
-from bzrlib.util.bencode import bdecode, bencode
+from bzrlib.util.bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -939,7 +939,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
     def _extract_prefixed_bencoded_data(self):
         prefixed_bytes = self._extract_length_prefixed_bytes()
         try:
-            decoded = bdecode(prefixed_bytes)
+            decoded = bdecode_as_tuple(prefixed_bytes)
         except ValueError:
             raise errors.SmartProtocolError(
                 'Bytes %r not bencoded' % (prefixed_bytes,))

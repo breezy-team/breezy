@@ -12,82 +12,94 @@
 # 
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
-# The Software is provided "AS IS", without warranty of any kind,
-# express or implied, including but not limited to the warranties of
-# merchantability,  fitness for a particular purpose and
-# noninfringement. In no event shall the  authors or copyright holders
-# be liable for any claim, damages or other liability, whether in an
-# action of contract, tort or otherwise, arising from, out of or in
-# connection with the Software or the use or other dealings in the
-# Software.
+#
+# Modifications copyright (C) 2008 Canonical Ltd
 
-def decode_int(x, f):
-    f += 1
-    newf = x.index('e', f)
-    try:
-        n = int(x[f:newf])
-    except (OverflowError, ValueError):
-        n = long(x[f:newf])
-    if x[f] == '-':
-        if x[f + 1] == '0':
+class BDecoder(object):
+
+    def __init__(self, yield_tuples=False):
+        """Constructor.
+
+        :param yield_tuples: if true, decode "l" elements as tuples rather than
+            lists.
+        """
+        self.yield_tuples = yield_tuples
+        decode_func = {}
+        decode_func['l'] = self.decode_list
+        decode_func['d'] = self.decode_dict
+        decode_func['i'] = self.decode_int
+        decode_func['0'] = self.decode_string
+        decode_func['1'] = self.decode_string
+        decode_func['2'] = self.decode_string
+        decode_func['3'] = self.decode_string
+        decode_func['4'] = self.decode_string
+        decode_func['5'] = self.decode_string
+        decode_func['6'] = self.decode_string
+        decode_func['7'] = self.decode_string
+        decode_func['8'] = self.decode_string
+        decode_func['9'] = self.decode_string
+        self.decode_func = decode_func
+
+    def decode_int(self, x, f):
+        f += 1
+        newf = x.index('e', f)
+        try:
+            n = int(x[f:newf])
+        except (OverflowError, ValueError):
+            n = long(x[f:newf])
+        if x[f] == '-':
+            if x[f + 1] == '0':
+                raise ValueError
+        elif x[f] == '0' and newf != f+1:
             raise ValueError
-    elif x[f] == '0' and newf != f+1:
-        raise ValueError
-    return (n, newf+1)
+        return (n, newf+1)
 
-def decode_string(x, f):
-    colon = x.index(':', f)
-    try:
-        n = int(x[f:colon])
-    except (OverflowError, ValueError):
-        n = long(x[f:colon])
-    if x[f] == '0' and colon != f+1:
-        raise ValueError
-    colon += 1
-    return (x[colon:colon+n], colon+n)
-
-def decode_list(x, f):
-    r, f = [], f+1
-    while x[f] != 'e':
-        v, f = decode_func[x[f]](x, f)
-        r.append(v)
-    return (tuple(r), f + 1)
-
-def decode_dict(x, f):
-    r, f = {}, f+1
-    lastkey = None
-    while x[f] != 'e':
-        k, f = decode_string(x, f)
-        if lastkey >= k:
+    def decode_string(self, x, f):
+        colon = x.index(':', f)
+        try:
+            n = int(x[f:colon])
+        except (OverflowError, ValueError):
+            n = long(x[f:colon])
+        if x[f] == '0' and colon != f+1:
             raise ValueError
-        lastkey = k
-        r[k], f = decode_func[x[f]](x, f)
-    return (r, f + 1)
+        colon += 1
+        return (x[colon:colon+n], colon+n)
 
-decode_func = {}
-decode_func['l'] = decode_list
-decode_func['d'] = decode_dict
-decode_func['i'] = decode_int
-decode_func['0'] = decode_string
-decode_func['1'] = decode_string
-decode_func['2'] = decode_string
-decode_func['3'] = decode_string
-decode_func['4'] = decode_string
-decode_func['5'] = decode_string
-decode_func['6'] = decode_string
-decode_func['7'] = decode_string
-decode_func['8'] = decode_string
-decode_func['9'] = decode_string
+    def decode_list(self, x, f):
+        r, f = [], f+1
+        while x[f] != 'e':
+            v, f = self.decode_func[x[f]](x, f)
+            r.append(v)
+        if self.yield_tuples:
+            r = tuple(r)
+        return (r, f + 1)
 
-def bdecode(x):
-    try:
-        r, l = decode_func[x[0]](x, 0)
-    except (IndexError, KeyError):
-        raise ValueError
-    if l != len(x):
-        raise ValueError
-    return r
+    def decode_dict(self, x, f):
+        r, f = {}, f+1
+        lastkey = None
+        while x[f] != 'e':
+            k, f = self.decode_string(x, f)
+            if lastkey >= k:
+                raise ValueError
+            lastkey = k
+            r[k], f = self.decode_func[x[f]](x, f)
+        return (r, f + 1)
+
+    def bdecode(self, x):
+        try:
+            r, l = self.decode_func[x[0]](x, 0)
+        except (IndexError, KeyError):
+            raise ValueError
+        if l != len(x):
+            raise ValueError
+        return r
+
+
+_decoder = BDecoder()
+bdecode = _decoder.bdecode
+
+_tuple_decoder = BDecoder(True)
+bdecode_as_tuple = _tuple_decoder.bdecode
 
 
 from types import StringType, IntType, LongType, DictType, ListType, TupleType
@@ -139,6 +151,7 @@ else:
     def encode_bool(x,r):
         encode_int(int(x), r)
     encode_func[BooleanType] = encode_bool
+
 
 def bencode(x):
     r = []

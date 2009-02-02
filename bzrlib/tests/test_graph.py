@@ -698,6 +698,17 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_graph.is_ancestor('rev2a', 'rev2b')
         self.assertTrue('null:' not in instrumented_provider.calls)
 
+    def test_is_between(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(True, graph.is_between('null:', 'null:', 'null:'))
+        self.assertEqual(True, graph.is_between('rev1', 'null:', 'rev1'))
+        self.assertEqual(True, graph.is_between('rev1', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev4', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev3', 'rev1', 'rev4'))
+        self.assertEqual(False, graph.is_between('rev4', 'rev1', 'rev3'))
+        self.assertEqual(False, graph.is_between('rev1', 'rev2a', 'rev4'))
+        self.assertEqual(False, graph.is_between('null:', 'rev1', 'rev4'))
+
     def test_is_ancestor_boundary(self):
         """Ensure that we avoid searching the whole graph.
         

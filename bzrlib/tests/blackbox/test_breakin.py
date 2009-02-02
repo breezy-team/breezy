@@ -54,7 +54,7 @@ class TestBreakin(tests.TestCase):
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB=None))
         # wait for it to get started, and print the 'listening' line
-        proc.stdout.readline()
+        proc.stderr.readline()
         # first sigquit pops into debugger
         os.kill(proc.pid, signal.SIGQUIT)
         proc.stdin.write("q\n")
@@ -67,7 +67,7 @@ class TestBreakin(tests.TestCase):
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB=None))
         # wait for it to get started, and print the 'listening' line
-        proc.stdout.readline()
+        proc.stderr.readline()
         # break into the debugger
         os.kill(proc.pid, signal.SIGQUIT)
         # now send a second sigquit, which should cause it to exit.  That
@@ -93,7 +93,7 @@ class TestBreakin(tests.TestCase):
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB='0'))
         # wait for it to get started, and print the 'listening' line
-        proc.stdout.readline()
+        proc.stderr.readline()
         # first hit should just kill it
         os.kill(proc.pid, signal.SIGQUIT)
         proc.wait()
