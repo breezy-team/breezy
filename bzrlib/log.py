@@ -210,12 +210,6 @@ def _show_log(branch,
     if not getattr(lf, 'supports_merge_revisions', False):
         allow_single_merge_revision = getattr(lf,
             'supports_single_merge_revision', False)
-    view_revisions = calculate_view_revisions(branch, start_revision,
-                                              end_revision, direction,
-                                              specific_fileid,
-                                              generate_merge_revisions,
-                                              allow_single_merge_revision)
-    rev_tag_dict = {}
     generate_tags = getattr(lf, 'supports_tags', False)
     if generate_tags and branch.supports_tags():
         rev_tag_dict = branch.tags.get_reverse_tag_dict()
