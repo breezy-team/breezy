@@ -295,11 +295,10 @@ def _create_log_revision_iterator(branch, start_revision, end_revision,
     # though the total time is much slower for huge repositories: log -v
     # is the *lower* performance bound. At least until the split
     # inventory format arrives, per-file-graph needs to remain the
-    # default when no limits are given. Delta filtering should give more
+    # default except in verbose mode. Delta filtering should give more
     # accurate results (e.g. inclusion of FILE deletions) so arguably
     # it should always be used in the future.
-    use_deltas_for_matching = specific_fileid and (
-            generate_delta or start_rev_id or end_rev_id)
+    use_deltas_for_matching = specific_fileid and generate_delta
     delayed_graph_generation = not specific_fileid and (
             start_rev_id or end_rev_id or limited_output)
     generate_merges = generate_merge_revisions or (specific_fileid and
