@@ -286,7 +286,7 @@ class BranchStatus(TestCaseWithTransport):
 
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
-        # should say so
+        # should give an error
         wt = self.make_branch_and_tree('.')
         self.assertStatus([], wt)
         self.build_tree(['FILE_A', 'FILE_B', 'FILE_C', 'FILE_D', 'FILE_E', ])
