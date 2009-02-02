@@ -257,7 +257,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                     parents = tuple(parents)
                 replace_map[c] = (generate_revid(c), tuple(parents))
                 if replace_map[c][0] == c:
-                    del replace_map[c][0]
+                    del replace_map[c]
                 elif c not in processed:
                     todo.append(c)
     finally:
