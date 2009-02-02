@@ -237,6 +237,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
     try:
         while len(todo) > 0:
             r = todo.pop()
+            processed.add(r)
             i += 1
             pb.update('determining dependencies', i, total)
             # Add entry for them in replace_map
@@ -255,10 +256,10 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                     parents[parents.index(r)] = replace_map[r][0]
                     parents = tuple(parents)
                 replace_map[c] = (generate_revid(c), tuple(parents))
-                assert replace_map[c][0] != c, "Invalid value in replace map %r" % c
-            processed.add(r)
-            # Add them to todo[]
-            todo.extend(filter(lambda x: not x in processed, children[r]))
+                if replace_map[c][0] == c:
+                    del replace_map[c][0]
+                elif c not in processed:
+                    todo.append(c)
     finally:
         pb.finished()
 
