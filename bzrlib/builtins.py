@@ -49,7 +49,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
@@ -1972,16 +1972,23 @@ def _get_revision_range(revisionspec_list, branch, command_name):
     elif len(revisionspec_list) == 1:
         rev1 = rev2 = revisionspec_list[0].in_history(branch)
     elif len(revisionspec_list) == 2:
-        if revisionspec_list[1].get_branch() != revisionspec_list[0
-                ].get_branch():
+        start_spec = revisionspec_list[0]
+        end_spec = revisionspec_list[1]
+        if end_spec.get_branch() != start_spec.get_branch():
             # b is taken from revision[0].get_branch(), and
             # show_log will use its revision_history. Having
             # different branches will lead to weird behaviors.
             raise errors.BzrCommandError(
                 "bzr %s doesn't accept two revisions in different"
                 " branches." % command_name)
-        rev1 = revisionspec_list[0].in_history(branch)
-        rev2 = revisionspec_list[1].in_history(branch)
+        rev1 = start_spec.in_history(branch)
+        # Avoid loading all of history when we know a missing
+        # end of range means the last revision ...
+        if end_spec.spec is None:
+            last_revno, last_revision_id = branch.last_revision_info()
+            rev2 = RevisionInfo(branch, last_revno, last_revision_id)
+        else:
+            rev2 = end_spec.in_history(branch)
     else:
         raise errors.BzrCommandError(
             'bzr %s --revision takes one or two values.' % command_name)
