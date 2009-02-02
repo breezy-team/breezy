@@ -156,6 +156,8 @@ def show_tree_status(wt, show_unchanged=None,
         finally:
             old.unlock()
             new.unlock()
+            if nonexistents:
+              raise errors.PathsDoNotExist(sorted(nonexistents))
     finally:
         wt.unlock()
 

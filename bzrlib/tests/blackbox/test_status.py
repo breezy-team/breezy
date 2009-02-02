@@ -223,6 +223,12 @@ class BranchStatus(TestCaseWithTransport):
                 wt, short=True)
 
         tof = StringIO()
+        self.assertRaises(errors.PathsDoNotExist,
+                          show_tree_status,
+                          wt, specific_files=['bye.c','test.c','absent.c'], 
+                          to_file=tof)
+        
+        tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
@@ -327,13 +333,19 @@ class BranchStatus(TestCaseWithTransport):
           'nonexistent:\n',
           '  NONEXISTENT\n',
           ]
-        out, err = self.run_bzr('status NONEXISTENT')
+        out, err = self.run_bzr('status NONEXISTENT', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
 
         expected = [
           'X:   NONEXISTENT\n',
           ]
-        out, err = self.run_bzr('status --short NONEXISTENT')
+        out, err = self.run_bzr('status --short NONEXISTENT', retcode=3)
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
         
         # bzr st [--short] NONEXISTENT ...others..
         expected = [
@@ -346,8 +358,12 @@ class BranchStatus(TestCaseWithTransport):
           '  NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status NONEXISTENT '
-                                'FILE_A FILE_B FILE_C FILE_D FILE_E')
+                                'FILE_A FILE_B FILE_C FILE_D FILE_E',
+                                retcode=3)
         self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
         
         expected = [
           ' D  FILE_E\n',
@@ -356,8 +372,12 @@ class BranchStatus(TestCaseWithTransport):
           'X   NONEXISTENT\n',
           ]
         out, err = self.run_bzr('status --short NONEXISTENT '
-                                'FILE_A FILE_B FILE_C FILE_D FILE_E')
+                                'FILE_A FILE_B FILE_C FILE_D FILE_E',
+                                retcode=3)
         self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
         
         # bzr st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
         expected = [
@@ -372,8 +392,11 @@ class BranchStatus(TestCaseWithTransport):
           ]
         out, err = self.run_bzr('status NONEXISTENT '
                                 'FILE_A FILE_B ANOTHER_NONEXISTENT '
-                                'FILE_C FILE_D FILE_E')
+                                'FILE_C FILE_D FILE_E', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'ANOTHER_NONEXISTENT NONEXISTENT.*')
         
         expected = [
           ' D  FILE_E\n',
@@ -384,8 +407,11 @@ class BranchStatus(TestCaseWithTransport):
           ]
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B ANOTHER_NONEXISTENT '
-                                'FILE_C FILE_D FILE_E')
+                                'FILE_C FILE_D FILE_E', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'ANOTHER_NONEXISTENT NONEXISTENT.*')
         
         # bzr st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
         expected = [
@@ -403,8 +429,11 @@ class BranchStatus(TestCaseWithTransport):
           ]
         out, err = self.run_bzr('status NONEXISTENT '
                                 'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
-                                'FILE_C FILE_D FILE_E FILE_Q')
+                                'FILE_C FILE_D FILE_E FILE_Q', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
         
         expected = [
           '+N  FILE_Q\n',
@@ -416,8 +445,11 @@ class BranchStatus(TestCaseWithTransport):
           ]
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
-                                'FILE_C FILE_D FILE_E FILE_Q')
+                                'FILE_C FILE_D FILE_E FILE_Q', retcode=3)
         self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
 
     def test_status_out_of_date(self):
         """Simulate status of out-of-date tree after remote push"""
