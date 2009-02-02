@@ -157,7 +157,7 @@ def show_tree_status(wt, show_unchanged=None,
             old.unlock()
             new.unlock()
             if nonexistents:
-              raise errors.PathsDoNotExist(sorted(nonexistents))
+              raise errors.PathsDoNotExist(nonexistents)
     finally:
         wt.unlock()
 
@@ -271,7 +271,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
 
 
 def _filter_nonexistent(orig_paths, old_tree, new_tree):
-    """Convert orig_paths to two lists and return them.
+    """Convert orig_paths to two sorted lists and return them.
 
     The first is orig_paths paths minus the items in the second list,
     and the second list is paths that are not in either inventory or
@@ -290,4 +290,8 @@ def _filter_nonexistent(orig_paths, old_tree, new_tree):
     s = new_tree.filter_unversioned_files(s)
     nonexistent = [path for path in s if not new_tree.has_filename(path)]
     remaining   = [path for path in orig_paths if not path in nonexistent]
-    return remaining, nonexistent
+    # Sorting the 'remaining' list doesn't have much effect in
+    # practice, since the various status output sections will sort
+    # their groups individually.  But for consistency of this
+    # function's API, it's better to sort both than just 'nonexistent'.
+    return sorted(remaining), sorted(nonexistent)
