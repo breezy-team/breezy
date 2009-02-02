@@ -362,8 +362,8 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
         result = _linear_view_revisions(branch, start_rev_id, end_rev_id)
         # If a start limit was given and it's not obviously an
         # ancestor of the end limit, check it before outputting anything
-        if start_rev_id and not (_is_obvious_ancestor(branch, start_rev_id,
-            end_rev_id)):
+        if direction == 'forward' or (start_rev_id
+            and not _is_obvious_ancestor(branch, start_rev_id, end_rev_id)):
             try:
                 result = list(result)
             except _StartNotLinearAncestor:
@@ -420,7 +420,8 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
 
 def _has_merges(branch, rev_id):
     """Does a revision have multiple parents or not?"""
-    return len(branch.repository.get_revision(rev_id).parent_ids) > 1
+    parents = branch.repository.get_parent_map([rev_id]).get(rev_id, [])
+    return len(parents) > 1
 
 
 def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
@@ -648,9 +649,9 @@ def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
         fileid_set = None
     for revs in log_rev_iterator:
         # If we were matching against fileids and we've run out,
-        # don't create deltas any longer
+        # there's nothing left to do
         if check_fileids and not fileid_set:
-            yield revs
+            return
         revisions = [rev[1] for rev in revs]
         deltas = repository.get_deltas_for_revisions(revisions)
         new_revs = []
