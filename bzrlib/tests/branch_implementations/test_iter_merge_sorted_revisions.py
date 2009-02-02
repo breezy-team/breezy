@@ -84,6 +84,33 @@ class TestIterMergeSortedRevisions(TestCaseWithBranch):
             ], list(the_branch.iter_merge_sorted_revisions(
                 stop_revision_id='rev-3', stop_rule='with-merges')))
 
+    def test_merge_sorted_single_stop_exclude(self):
+        # from X..X exclusive is an empty result
+        tree = self.create_tree_with_merge()
+        the_branch = tree.bzrdir.open_branch()
+        self.assertEqual([], list(the_branch.iter_merge_sorted_revisions(
+                start_revision_id='rev-3', stop_revision_id='rev-3')))
+
+    def test_merge_sorted_single_stop_include(self):
+        # from X..X inclusive is [X]
+        tree = self.create_tree_with_merge()
+        the_branch = tree.bzrdir.open_branch()
+        self.assertEqual([
+            ('rev-3', 0, (3,), False),
+            ], list(the_branch.iter_merge_sorted_revisions(
+                start_revision_id='rev-3', stop_revision_id='rev-3',
+                stop_rule='include')))
+
+    def test_merge_sorted_single_stop_with_merges(self):
+        tree = self.create_tree_with_merge()
+        the_branch = tree.bzrdir.open_branch()
+        self.assertEqual([
+            ('rev-3', 0, (3,), False),
+            ('rev-1.1.1', 1, (1,1,1), True),
+            ], list(the_branch.iter_merge_sorted_revisions(
+                start_revision_id='rev-3', stop_revision_id='rev-3',
+                stop_rule='with-merges')))
+
     def test_merge_sorted_forward(self):
         tree = self.create_tree_with_merge()
         the_branch = tree.bzrdir.open_branch()
