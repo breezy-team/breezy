@@ -73,7 +73,7 @@ Very big objects - no delta. I plan to kick this in at 5MB initially, but
 once the codebase is up and running, we can tweak this to
 
 Very small objects - no delta? If they are combined with a larger zlib object
-why not?
+why not? (Answer: because zlib's window is really small)
 
 Other objects - group by fileid (gives related texts a chance, though using a
 file name would be better long term as e.g. COPYING and COPYING from different

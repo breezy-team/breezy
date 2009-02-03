@@ -40,6 +40,7 @@ from bzrlib.osutils import (
     split_lines,
     )
 from bzrlib.btree_index import BTreeBuilder
+from bzrlib.lru_cache import LRUSizeCache
 from bzrlib.plugins.groupcompress import equivalence_table
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
@@ -315,6 +316,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._access = access
         self._delta = delta
         self._unadded_refs = {}
+        self._group_cache = LRUSizeCache(max_size=50*1024*1024)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -487,23 +489,30 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
-                # read the group
                 read_memo = index_memo[0:3]
-                zdata = self._access.get_raw_records([read_memo]).next()
-                # decompress - whole thing; this is a bug.
-                decomp = zlib.decompressobj()
-                plain = decomp.decompress(zdata, index_memo[4])
+                # get the group:
+                try:
+                    plain = self._group_cache[read_memo]
+                except KeyError:
+                    # read the group
+                    zdata = self._access.get_raw_records([read_memo]).next()
+                    # decompress - whole thing - this is not a bug, as it
+                    # permits caching. We might want to store the partially
+                    # decompresed group and decompress object, so that recent
+                    # texts are not penalised by big groups.
+                    decomp = zlib.decompressobj()
+                    plain = decomp.decompress(zdata) #, index_memo[4])
+                    self._group_cache[read_memo] = plain
                 # cheapo debugging:
                 # print len(zdata), len(plain)
-                # parse - requires split_lines, better to have byte offsets here.
+                # parse - requires split_lines, better to have byte offsets
+                # here (but not by much - we only split the region for the
+                # recipe, and we often want to end up with lines anyway.
                 delta_lines = split_lines(plain[index_memo[3]:index_memo[4]])
                 label, sha1, delta = parse(delta_lines)
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-                basis = plain[:index_memo[3]]
-                # basis = StringIO(basis).readlines()
-                #basis = split_lines(plain[:last_end])
-                lines = apply_delta(basis, delta)
+                lines = apply_delta(plain, delta)
             bytes = ''.join(lines)
             yield FulltextContentFactory(key, parents, sha1, bytes)
             
