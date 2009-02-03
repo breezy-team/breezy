@@ -112,10 +112,10 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 errors.NotStacked):
             finally_stacked_on = None
         if finally_stacked_on is not None:
-            note('Created new stacked branch referring to %s.' %
+            to_file.write('Created new stacked branch referring to %s.\n' %
                  finally_stacked_on)
         else:
-            note('Created new branch.')
+            to_file.write('Created new branch.\n')
         # We successfully created the target, remember it
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(br_to.base)
