@@ -2688,3 +2688,23 @@ def _run_with_write_locked_target(target, callable, *args, **kwargs):
     else:
         target.unlock()
         return result
+
+
+class InterBranchBzrDir(InterObject):
+    """This class represents ops taking place between a Branch and a BzrDir.
+
+    Its instances have methods like push() and branch(), and create a new 
+    instance of a branch in a target BzrDir based on the base branch.
+    """
+    _optimisers = []
+    """The available optimised InterBranchBzrDir types."""
+
+    def push(self, stop_revision=None):
+        """Push the source branch into the target BzrDir."""
+        raise NotImplementedError(self.push)
+
+    def branch(self, stop_revision=None):
+        """Create a local branch in target from source."""
+        raise NotImplementedError(self.branch)
+
+
