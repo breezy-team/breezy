@@ -90,18 +90,21 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         dir_to = br_from.bzrdir.clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on)
         br_to = dir_to.open_branch()
+        push_result = branch.PushResult()
+        push_result.old_revno = None
+        push_result.old_revid = None
+        push_result.source_branch = br_from
+        push_result.target_branch = br_to
         # TODO: Some more useful message about what was copied
         try:
-            finally_stacked_on = br_to.get_stacked_on_url()
+            push_result.stacked_on = br_to.get_stacked_on_url()
         except (errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat,
                 errors.NotStacked):
-            finally_stacked_on = None
-        if finally_stacked_on is not None:
-            note('Created new stacked branch referring to %s.' %
-                 finally_stacked_on)
-        else:
-            note('Created new branch.')
+            push_result.stacked_on = None
+        (push_result.new_revno, push_result.new_revid) = \
+            br_to.last_revision_info()
+        br_to.set_push_location(br_from.base)
     else:
         if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "
@@ -109,7 +112,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         inter = branch.InterBranchBzrDir.get(br_from, dir_to)
         try:
             push_result = inter.push(revision_id=revision_id, 
-                overwrite=overwrite)
+                overwrite=overwrite, remember=remember)
         except errors.NoRepositoryPresent:
             # we have a bzrdir but no branch or repository
             # XXX: Figure out what to do other than complain.
@@ -126,18 +129,11 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                     "tree of: %s. See 'bzr help working-trees' for "
                     "more information." % push_result.target_branch.base)
 
-        # We successfully pushed, remember it
-        if push_result.source_branch.get_push_location() is None or remember:
-            push_result.source_branch.set_push_location(push_result.target_branch.base)
 
-    if push_result is not None:
-        push_result.report(to_file)
-        old_revid = push_result.old_revid
-        old_revno = push_result.old_revno
-        br_to = push_result.target_branch
-    else:
-        old_revid = _mod_revision.NULL_REVISION
-        old_revno = 0
+    push_result.report(to_file)
+    old_revid = push_result.old_revid
+    old_revno = push_result.old_revno
+    br_to = push_result.target_branch
     if verbose:
         br_to.lock_read()
         try:

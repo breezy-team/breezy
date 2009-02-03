@@ -2591,7 +2591,11 @@ class PushResult(_Result):
     def report(self, to_file):
         """Write a human-readable description of the result."""
         if self.old_revid is None:
-            to_file.write('Created new branch.\n')
+            if self.stacked_on is not None:
+                to_file.write('Created new stacked branch referring to %s.\n' %
+                    self.stacked_on)
+            else:
+                to_file.write('Created new branch.\n')
         elif self.old_revid == self.new_revid:
             to_file.write('No new revisions to push.\n')
         else:
@@ -2703,7 +2707,7 @@ class InterBranchBzrDir(InterObject):
     _optimisers = []
     """The available optimised InterBranchBzrDir types."""
 
-    def push(self, revision_id=None, overwrite=True):
+    def push(self, revision_id=None, overwrite=True, remember=False):
         """Push the source branch into the target BzrDir."""
         raise NotImplementedError(self.push)
 
@@ -2717,7 +2721,8 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
 
     """
 
-    def push(self, revision_id=None, overwrite=False):
+    def push(self, revision_id=None, overwrite=False, remember=False):
+        """See InterBranchBzrDir.push."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
         # if there is a repository without a branch.
@@ -2736,6 +2741,7 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
             repository_to.fetch(self.source.repository, revision_id=revision_id)
             br_to = self.source.clone(self.target, revision_id=revision_id)
             push_result = PushResult()
+            push_result.stacked_on = None
             push_result.old_revno = None
             push_result.old_revid = None
             (push_result.new_revno, push_result.new_revid) = \
@@ -2745,6 +2751,9 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
             push_result.master_branch = None
             push_result.workingtree_updated = False
         else:
+            # We have successfully opened the branch, remember if necessary:
+            if self.source.get_push_location() is None or remember:
+                self.source.set_push_location(br_to.base)
             try:
                 tree_to = self.target.open_workingtree()
             except errors.NotLocalUrl:
