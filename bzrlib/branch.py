@@ -45,6 +45,7 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -2580,6 +2581,7 @@ class PushResult(_Result):
     :ivar source_branch: Source branch object.
     :ivar master_branch: Master branch of the target, or None.
     :ivar target_branch: Target/destination branch object.
+    :ivar workingtree_updated: Whether or not the WorkingTree was updated.
     """
 
     def __int__(self):
@@ -2588,7 +2590,9 @@ class PushResult(_Result):
 
     def report(self, to_file):
         """Write a human-readable description of the result."""
-        if self.old_revid == self.new_revid:
+        if self.old_revid is None:
+            to_file.write('Created new branch.\n')
+        elif self.old_revid == self.new_revid:
             to_file.write('No new revisions to push.\n')
         else:
             to_file.write('Pushed up to revision %d.\n' % self.new_revno)
@@ -2699,12 +2703,72 @@ class InterBranchBzrDir(InterObject):
     _optimisers = []
     """The available optimised InterBranchBzrDir types."""
 
-    def push(self, stop_revision=None):
+    def push(self, revision_id=None, overwrite=True):
         """Push the source branch into the target BzrDir."""
         raise NotImplementedError(self.push)
 
-    def branch(self, stop_revision=None):
+    def branch(self, revision_id=None):
         """Create a local branch in target from source."""
         raise NotImplementedError(self.branch)
 
 
+class GenericInterBranchBzrDir(InterBranchBzrDir):
+    """Generic implementation of InterBranchBzrDir using standard public APIs.
+
+    """
+
+    def push(self, revision_id=None, overwrite=False):
+        br_to = None
+        # If we can open a branch, use its direct repository, otherwise see
+        # if there is a repository without a branch.
+        try:
+            br_to = self.target.open_branch()
+        except errors.NotBranchError:
+            # Didn't find a branch, can we find a repository?
+            repository_to = self.target.find_repository()
+        else:
+            # Found a branch, so we must have found a repository
+            repository_to = br_to.repository
+
+        if br_to is None:
+            # We have a repository but no branch, copy the revisions, and then
+            # create a branch.
+            repository_to.fetch(self.source.repository, revision_id=revision_id)
+            br_to = self.source.clone(self.target, revision_id=revision_id)
+            push_result = PushResult()
+            push_result.old_revno = None
+            push_result.old_revid = None
+            (push_result.new_revno, push_result.new_revid) = \
+                    br_to.last_revision_info()
+            push_result.source_branch = self.source
+            push_result.target_branch = br_to
+            push_result.master_branch = None
+            push_result.workingtree_updated = False
+        else:
+            try:
+                tree_to = self.target.open_workingtree()
+            except errors.NotLocalUrl:
+                push_result = self.source.push(br_to, overwrite,
+                                           stop_revision=revision_id)
+                push_result.workingtree_updated = False
+            except errors.NoWorkingTree:
+                push_result = self.source.push(br_to, overwrite,
+                                           stop_revision=revision_id)
+                push_result.workingtree_updated = False
+            else:
+                tree_to.lock_write()
+                try:
+                    push_result = self.source.push(tree_to.branch, overwrite,
+                                                   stop_revision=revision_id)
+                    tree_to.update()
+                finally:
+                    tree_to.unlock()
+                push_result.workingtree_updated = True
+        return push_result
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        return True
+
+
+InterBranchBzrDir.register_optimiser(GenericInterBranchBzrDir)

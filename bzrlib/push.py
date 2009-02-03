@@ -16,7 +16,7 @@
 
 """UI helper for the push command."""
 
-from bzrlib import (builtins, bzrdir, errors, revision as _mod_revision,
+from bzrlib import (builtins, branch, bzrdir, errors, revision as _mod_revision,
                     transport)
 from bzrlib.trace import note, warning
 
@@ -48,20 +48,6 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
     except errors.NotBranchError:
         pass # Didn't find anything
-    else:
-        # If we can open a branch, use its direct repository, otherwise see
-        # if there is a repository without a branch.
-        try:
-            br_to = dir_to.open_branch()
-        except errors.NotBranchError:
-            # Didn't find a branch, can we find a repository?
-            try:
-                repository_to = dir_to.find_repository()
-            except errors.NoRepositoryPresent:
-                pass
-        else:
-            # Found a branch, so we must have found a repository
-            repository_to = br_to.repository
 
     push_result = None
     if dir_to is None:
@@ -116,63 +102,39 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                  finally_stacked_on)
         else:
             note('Created new branch.')
-        # We successfully created the target, remember it
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(br_to.base)
-    elif repository_to is None:
-        # we have a bzrdir but no branch or repository
-        # XXX: Figure out what to do other than complain.
-        raise errors.BzrCommandError("At %s you have a valid .bzr control"
-            " directory, but not a branch or repository. This is an"
-            " unsupported configuration. Please move the target directory"
-            " out of the way and try again."
-            % location)
-    elif br_to is None:
-        # We have a repository but no branch, copy the revisions, and then
-        # create a branch.
+    else:
         if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "
                     "already exists at the destination location.")
-        repository_to.fetch(br_from.repository, revision_id=revision_id)
-        br_to = br_from.clone(dir_to, revision_id=revision_id)
-        note('Created new branch.')
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(br_to.base)
-    else: # We have a valid to branch
-        if stacked_on is not None:
-            warning("Ignoring request for a stacked branch as branch "
-                    "already exists at the destination location.")
-        # We were able to connect to the remote location, so remember it.
-        # (We don't need to successfully push because of possible divergence.)
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(br_to.base)
+        inter = branch.InterBranchBzrDir.get(br_from, dir_to)
         try:
-            try:
-                tree_to = dir_to.open_workingtree()
-            except errors.NotLocalUrl:
-                warning("This transport does not update the working " 
-                        "tree of: %s. See 'bzr help working-trees' for "
-                        "more information." % br_to.base)
-                push_result = br_from.push(br_to, overwrite,
-                                           stop_revision=revision_id)
-            except errors.NoWorkingTree:
-                push_result = br_from.push(br_to, overwrite,
-                                           stop_revision=revision_id)
-            else:
-                tree_to.lock_write()
-                try:
-                    push_result = br_from.push(tree_to.branch, overwrite,
-                                               stop_revision=revision_id)
-                    tree_to.update()
-                finally:
-                    tree_to.unlock()
+            push_result = inter.push(revision_id=revision_id, 
+                overwrite=overwrite)
+        except errors.NoRepositoryPresent:
+            # we have a bzrdir but no branch or repository
+            # XXX: Figure out what to do other than complain.
+            raise errors.BzrCommandError("At %s you have a valid .bzr control"
+                " directory, but not a branch or repository. This is an"
+                " unsupported configuration. Please move the target directory"
+                " out of the way and try again."
+                % location)
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                     '  Try using "merge" and then "push".')
+        if not push_result.workingtree_updated:
+            warning("This transport does not update the working " 
+                    "tree of: %s. See 'bzr help working-trees' for "
+                    "more information." % push_result.target_branch.base)
+
+        # We successfully pushed, remember it
+        if push_result.source_branch.get_push_location() is None or remember:
+            push_result.source_branch.set_push_location(push_result.target_branch.base)
+
     if push_result is not None:
         push_result.report(to_file)
         old_revid = push_result.old_revid
         old_revno = push_result.old_revno
+        br_to = push_result.target_branch
     else:
         old_revid = _mod_revision.NULL_REVISION
         old_revno = 0
