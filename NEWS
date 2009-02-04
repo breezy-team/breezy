@@ -46,6 +46,10 @@ IN DEVELOPMENT
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
+    * ``bzr log`` is now much faster in many use cases, particularly
+      at incrementally displaying results and filtering by a
+      revision range. (Ian Clatworthy)
+
     * ``bzr log --short`` and ``bzr log --line`` now show tags, if any,
       for each revision. The tags are shown comma-separated inside
       ``{}``. For short format, the tags appear at the end of line
@@ -57,6 +61,11 @@ IN DEVELOPMENT
 
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
+
+    * The debugger started as a result of setting ``$BZR_PDB`` works
+      around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
+      can cause truncated tracebacks in Python versions before 2.6.
+      (Andrew Bennetts)
 
     * VirtualVersionedFiles now implements
       ``iter_lines_added_or_present_in_keys``. This allows the creation of 
@@ -90,6 +99,9 @@ IN DEVELOPMENT
       Previously EINTR was treated as an unrecoverable failure.  There is
       a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
       (Andrew Bennetts)
+
+    * Support symlinks with non-ascii characters in the symlink filename.
+      (Jelmer Vernooij, #319323)
 
     * There was a bug in how we handled resolving when a file is deleted
       in one branch, and modified in the other. If there was a criss-cross
