@@ -179,7 +179,7 @@ The keywords used as revision selection methods are the following:
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
-    for i in bzrlib.revisionspec.SPEC_TYPES:
+    for prefix, i in bzrlib.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == bzrlib.revisionspec.RevisionSpec.help_txt:
             summary = "N/A"
