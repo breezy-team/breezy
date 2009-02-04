@@ -62,6 +62,11 @@ IN DEVELOPMENT
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
 
+    * The debugger started as a result of setting ``$BZR_PDB`` works
+      around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
+      can cause truncated tracebacks in Python versions before 2.6.
+      (Andrew Bennetts)
+
     * VirtualVersionedFiles now implements
       ``iter_lines_added_or_present_in_keys``. This allows the creation of 
       new branches based on stacked bzr-svn branches. (#311997)
