@@ -253,6 +253,14 @@ class FakeClient(_SmartClient):
         self.expecting_body = True
         return result[1], FakeProtocol(result[2], self)
 
+    def call_with_body_stream(self, args, stream):
+        # Explicitly consume the stream before checking for an error, because
+        # that's what happens a real medium.
+        stream = list(stream)
+        self._check_call(args[0], args[1:])
+        self._calls.append(('call_with_body_stream', args[0], args[1:], stream))
+        return self._get_next_response()[1]
+
 
 class FakeMedium(medium.SmartClientMedium):
 
