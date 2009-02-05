@@ -211,7 +211,7 @@ class build_ext_if_possible(build_ext):
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extensions.\n'
                          '  Use "build_ext --allow-python-fallback" to use'
-                         ' slower python implementations instead.\n')
+                         ' slower python implementations instead.\n'
                          % (ext.name,))
                 raise
             log.warn('\n  Building of "%s" extension failed.\n'
