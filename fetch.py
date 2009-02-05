@@ -126,19 +126,18 @@ def import_git_tree(repo, mapping, path, tree, inv, parent_invs, lookup_object):
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
 
 
-def import_git_objects(repo, mapping, num_objects, object_iter, pb=None):
+def import_git_objects(repo, mapping, object_iter, pb=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Bazaar repository
     :param mapping: Mapping to use
-    :param num_objects: Number of objects.
     :param object_iter: Iterator over Git objects.
     """
     # TODO: a more (memory-)efficient implementation of this
     objects = {}
     for i, (o, _) in enumerate(object_iter):
         if pb is not None:
-            pb.update("fetching objects", i, num_objects) 
+            pb.update("fetching objects", i, len(object_iter)) 
         objects[o.id] = o
     graph = []
     root_trees = {}
@@ -224,11 +223,9 @@ class InterGitNonGitRepository(InterRepository):
             try:
                 self.target.start_write_group()
                 try:
-                    (num_objects, objects_iter) = \
-                            self.source.fetch_objects(determine_wants, 
+                    objects_iter = self.source.fetch_objects(determine_wants, 
                                 graph_walker, progress)
-                    import_git_objects(self.target, mapping, num_objects, 
-                                       objects_iter, pb)
+                    import_git_objects(self.target, mapping, objects_iter, pb)
                 finally:
                     self.target.commit_write_group()
             finally:

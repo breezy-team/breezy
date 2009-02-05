@@ -142,8 +142,7 @@ class RemoteGitRepository(GitRepository):
         fd, path = tempfile.mkstemp(suffix=".pack")
         self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
         os.close(fd)
-        ret = TemporaryPackIterator(path)
-        return (len(ret), iter(ret.next, None))
+        return TemporaryPackIterator(path)
 
 
 class RemoteGitBranch(GitBranch):
