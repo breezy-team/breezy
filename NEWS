@@ -19,6 +19,11 @@ IN DEVELOPMENT
       from this command, you may need to adjust them accordingly.
       (Ian Clatworthy)
 
+    * ``bzr log --line`` now indicates which revisions are merges with
+      `[merge]` after the date.  Scripts which parse the output of this
+      command may need to be adjusted.
+      (Neil Martinsen-Burrell)
+
   NEW FEATURES:
 
     * Add support for filtering `bzr missing` on revisions.  Remote revisions
