@@ -2711,10 +2711,6 @@ class InterBranchBzrDir(InterObject):
         """Push the source branch into the target BzrDir."""
         raise NotImplementedError(self.push)
 
-    def branch(self, revision_id=None):
-        """Create a local branch in target from source."""
-        raise NotImplementedError(self.branch)
-
 
 class GenericInterBranchBzrDir(InterBranchBzrDir):
     """Generic implementation of InterBranchBzrDir using standard public APIs.
@@ -2740,6 +2736,8 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
             # create a branch.
             repository_to.fetch(self.source.repository, revision_id=revision_id)
             br_to = self.source.clone(self.target, revision_id=revision_id)
+            if self.source.get_push_location() is None or remember:
+                self.source.set_push_location(br_to.base)
             push_result = PushResult()
             push_result.stacked_on = None
             push_result.old_revno = None

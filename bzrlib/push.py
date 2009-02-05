@@ -49,7 +49,6 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     except errors.NotBranchError:
         pass # Didn't find anything
 
-    push_result = None
     if dir_to is None:
         # The destination doesn't exist; create it.
         # XXX: Refactor the create_prefix/no_create_prefix code into a
@@ -104,7 +103,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             push_result.stacked_on = None
         (push_result.new_revno, push_result.new_revid) = \
             br_to.last_revision_info()
-        br_to.set_push_location(br_from.base)
+        if br_from.get_push_location() is None or remember:
+            br_from.set_push_location(br_from.base)
     else:
         if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "
