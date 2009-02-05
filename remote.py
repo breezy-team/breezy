@@ -38,7 +38,7 @@ import urllib
 import urlparse
 
 import dulwich as git
-from dulwich.pack import PackData, Pack
+from dulwich.pack import PackData, Pack, PackIndex
 
 # Don't run any tests on GitSmartTransport as it is not intended to be 
 # a full implementation of Transport
@@ -106,33 +106,18 @@ class RemoteGitDir(GitDir):
         raise NotLocalUrl(self.transport.base)
 
 
-class TemporaryPackIterator(object):
+class TemporaryPackIterator(Pack):
 
-    def __init__(self, path):
-        self.path_data = path
-        basename = path[:-len(".pack")]
-        p = PackData(path)
-        self.path_idx = basename+".idx"
-        p.create_index_v2(self.path_idx)
-        self.pack = Pack(basename)
-        self._iter = self.pack.iterobjects()
-        self.iterobjects = self.pack.iterobjects
-
-    def __getitem__(self, key):
-        return self.pack[key]
-
-    def __contains__(self, key):
-        return key in self.pack
+    @property
+    def idx(self):
+        if self._idx is None:
+            self._data.create_index_v2(self._idx_path)
+            self._idx = PackIndex(self._idx_path)
+        return self._idx
 
     def __del__(self):
-        os.remove(self.path_data)
-        os.remove(self.path_idx)
-
-    def next(self):
-        return (self._iter.next(), None)
-
-    def __len__(self):
-        return len(self.pack)
+        os.remove(self._data_path)
+        os.remove(self._idx_path)
 
 
 class RemoteGitRepository(GitRepository):
@@ -149,7 +134,7 @@ class RemoteGitRepository(GitRepository):
         fd, path = tempfile.mkstemp(suffix=".pack")
         self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
         os.close(fd)
-        return TemporaryPackIterator(path)
+        return TemporaryPackIterator(path[:-len(".pack")])
 
 
 class RemoteGitBranch(GitBranch):
