@@ -116,6 +116,13 @@ class TemporaryPackIterator(object):
         p.create_index_v2(self.path_idx)
         self.pack = Pack(basename)
         self._iter = self.pack.iterobjects()
+        self.iterobjects = self.pack.iterobjects
+
+    def __getitem__(self, key):
+        return self.pack[key]
+
+    def __contains__(self, key):
+        return key in self.pack
 
     def __del__(self):
         os.remove(self.path_data)

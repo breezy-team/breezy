@@ -134,19 +134,14 @@ def import_git_objects(repo, mapping, object_iter, pb=None):
     :param object_iter: Iterator over Git objects.
     """
     # TODO: a more (memory-)efficient implementation of this
-    objects = {}
-    for i, (o, _) in enumerate(object_iter):
-        if pb is not None:
-            pb.update("fetching objects", i, len(object_iter)) 
-        objects[o.id] = o
     graph = []
     root_trees = {}
     revisions = {}
     # Find and convert commit objects
-    for o in objects.itervalues():
+    for o in object_iter.iterobjects():
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
-            root_trees[rev.revision_id] = objects[o.tree]
+            root_trees[rev.revision_id] = object_iter[o.tree]
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
     # Order the revisions
@@ -162,8 +157,8 @@ def import_git_objects(repo, mapping, object_iter, pb=None):
         inv = Inventory()
         inv.revision_id = rev.revision_id
         def lookup_object(sha):
-            if sha in objects:
-                return objects[sha]
+            if sha in object_iter:
+                return object_iter[sha]
             return reconstruct_git_object(repo, mapping, sha)
         parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
         import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, 
