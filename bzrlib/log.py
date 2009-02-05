@@ -946,6 +946,7 @@ class ShortLogFormatter(LogFormatter):
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
                 tags, is_merge))
+        self.show_properties(revision.rev, indent+offset)
         if self.show_ids:
             to_file.write(indent + offset + 'revision-id:%s\n'
                           % (revision.rev.revision_id,))
