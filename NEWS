@@ -19,6 +19,11 @@ IN DEVELOPMENT
       from this command, you may need to adjust them accordingly.
       (Ian Clatworthy)
 
+    * ``bzr log --short`` now shows any additional revision properties
+      after the date and before the commit message.  Scripts that parse 
+      output of the log command in this situation may need to adjust.
+      (Neil Martinsen-Burrell)
+
   NEW FEATURES:
 
     * Add support for filtering `bzr missing` on revisions.  Remote revisions
