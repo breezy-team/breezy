@@ -118,6 +118,10 @@ IN DEVELOPMENT
       handled.
       (John Arbash Meinel, Vincent Ladeuil)
 
+    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
+      options to change the default tree-creation policy of shared
+      repositories. (Matthew Fuller, #145033)
+
   DOCUMENTATION:
 
     * Improved plugin developer documentation.  (Martin Pool)
