@@ -41,6 +41,10 @@ IN DEVELOPMENT
       ``--long`` format, ``bzr log --long -n1``.
       (Ian Clatworthy)
 
+    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
+      options to change the default tree-creation policy of shared
+      repositories.  (Matthew Fuller, Marius Kruger, #145033)
+
   IMPROVEMENTS:
 
     * ``bzr init`` will now print a little less verbose output.
@@ -117,10 +121,6 @@ IN DEVELOPMENT
       criss-cross merges leading to several kind of changes be incorrectly
       handled.
       (John Arbash Meinel, Vincent Ladeuil)
-
-    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
-      options to change the default tree-creation policy of shared
-      repositories. (Matthew Fuller, #145033)
 
   DOCUMENTATION:
 
