@@ -43,6 +43,12 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr xxx -h`` and ``bzr help xxx`` where xxx is a command now show
+      concise help without the descriptive sections (like Description and
+      Examples). When concise help is given, a message is given explaining
+      how to see the complete help, i.e. ``bzr help -v xxx``.
+      (Ian Clatworthy)
+
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
