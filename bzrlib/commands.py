@@ -389,8 +389,8 @@ class Command(object):
                         result += ':%s:\n%s\n' % (label,sections[label])
                 result += '\n'
         else:
-            result += ("See bzr help -v %s for more details and examples.\n" %
-                self.name())
+            result += ("See bzr help -v %s for more details and examples.\n\n"
+                % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
@@ -524,9 +524,6 @@ class Command(object):
         args, opts = parse_args(self, argv, alias_argv)
 
         # Process the standard options
-        if 'help' in opts:  # e.g. bzr add --help
-            sys.stdout.write(self.get_help_text())
-            return 0
         trace.set_verbosity_level(option._verbosity_level)
         if 'verbose' in self.supported_std_options:
             opts['verbose'] = trace.is_verbose()
@@ -536,6 +533,10 @@ class Command(object):
             opts['quiet'] = trace.is_quiet()
         elif opts.has_key('quiet'):
             del opts['quiet']
+        if 'help' in opts:  # e.g. bzr add --help
+            verbose_help = trace.is_verbose()
+            sys.stdout.write(self.get_help_text(verbose=verbose_help))
+            return 0
 
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)

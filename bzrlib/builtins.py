@@ -3520,16 +3520,18 @@ class cmd_help(Command):
     _see_also = ['topics']
     takes_options = [
             Option('long', 'Show help on all commands.'),
+            custom_help('verbose',
+                help='Show detailed help including Description and Examples.'),
             ]
     takes_args = ['topic?']
     aliases = ['?', '--help', '-?', '-h']
     
     @display_command
-    def run(self, topic=None, long=False):
+    def run(self, topic=None, long=False, verbose=False):
         import bzrlib.help
         if topic is None and long:
             topic = "commands"
-        bzrlib.help.help(topic)
+        bzrlib.help.help(topic, verbose=verbose)
 
 
 class cmd_shell_complete(Command):

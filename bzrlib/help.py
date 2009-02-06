@@ -34,7 +34,7 @@ from bzrlib import (
     )
 
 
-def help(topic=None, outfile=None):
+def help(topic=None, outfile=None, verbose=False):
     """Write the help for the specific topic to outfile"""
     if outfile is None:
         outfile = sys.stdout
@@ -48,7 +48,11 @@ def help(topic=None, outfile=None):
         for index, topic in topics[1:]:
             shadowed_terms.append('%s%s' % (index.prefix,
                 topic.get_help_topic()))
-        outfile.write(topics[0][1].get_help_text(shadowed_terms))
+        source = topics[0][1]
+        if isinstance(source, _mod_commands.Command):
+            outfile.write(source.get_help_text(shadowed_terms, verbose=verbose))
+        else:
+            outfile.write(source.get_help_text(shadowed_terms))
     except errors.NoHelpTopic:
         if alias is None:
             raise

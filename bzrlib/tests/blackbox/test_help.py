@@ -112,12 +112,15 @@ class TestHelp(ExternalBase):
         self.assertTrue('rocks' in hidden)
         self.assertTrue('rocks' not in commands)
 
-    def test_help_detail(self):
+    def test_help_concise(self):
         dash_h  = self.run_bzr('commit -h')[0]
         help_x  = self.run_bzr('help commit')[0]
-        qmark_x = self.run_bzr('help commit')[0]
-        self.assertEquals(dash_h, help_x)
-        self.assertEquals(dash_h, qmark_x)
+        self.assertEqualDiff(dash_h, help_x)
+
+    def test_help_detail(self):
+        dash_h  = self.run_bzr('commit -h -v')[0]
+        help_x  = self.run_bzr('help -v commit')[0]
+        self.assertEqualDiff(dash_h, help_x)
 
     def test_help_help(self):
         help = self.run_bzr('help help')[0]

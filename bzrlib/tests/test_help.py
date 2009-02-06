@@ -189,7 +189,8 @@ class TestCommandHelp(tests.TestCase):
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
             '\n'
-            'See bzr help -v Demo for more details and examples.\n')
+            'See bzr help -v Demo for more details and examples.\n'
+            '\n')
 
     def test_help_custom_section_ordering(self):
         """Custom descriptive sections should remain in the order given."""
