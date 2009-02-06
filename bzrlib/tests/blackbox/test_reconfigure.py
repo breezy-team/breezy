@@ -118,16 +118,12 @@ class TestReconfigure(tests.TestCaseWithTransport):
             'reconfigure --with-trees branch')
 
     def test_make_without_trees_leaves_tree_alone(self):
-        # There has to be a better way of doing this...
         repo = self.make_repository('repo', shared=True)
-        branch = self.make_branch('repo/branch')
-        self.run_bzr('reconfigure --use-shared',
-            working_dir='repo/branch')
-        tree = branch.bzrdir.create_workingtree()
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        tree = workingtree.WorkingTree.open('repo/branch')
         self.build_tree(['repo/branch/foo'])
         tree.add('foo')
-        tree.commit('x')
-        self.run_bzr('reconfigure --with-no-trees',
+        self.run_bzr('reconfigure --with-no-trees --force',
             working_dir='repo/branch')
         self.failUnlessExists('repo/branch/foo')
-
+        tree = workingtree.WorkingTree.open('repo/branch')
