@@ -147,6 +147,95 @@ class TestCommandHelp(tests.TestCase):
             '        cmd arg2\n'
             '\n')
 
+    def test_concise_help_text(self):
+        """Concise help text excludes the descriptive sections."""
+        class cmd_Demo(commands.Command):
+            """A sample command.
+ 
+            Blah blah blah.
+
+            :Examples:
+                Example 1::
+ 
+                    cmd arg1
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEqualDiff(
+            helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo\n'
+            '\n'
+            'Options:\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
+            '\n'
+            'Description:\n'
+            '  Blah blah blah.\n'
+            '\n'
+            'Examples:\n'
+            '    Example 1:\n'
+            '\n'
+            '        cmd arg1\n'
+            '\n')
+        helptext = cmd.get_help_text(verbose=False)
+        self.assertEquals(helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo\n'
+            '\n'
+            'Options:\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
+            '\n'
+            'See bzr help -v Demo for more details and examples.\n')
+
+    def test_help_custom_section_ordering(self):
+        """Custom descriptive sections should remain in the order given."""
+        class cmd_Demo(commands.Command):
+            """A sample command.
+ 
+            Blah blah blah.
+
+            :Formats:
+              Interesting stuff about formats.
+
+            :Examples:
+              Example 1::
+ 
+                cmd arg1
+
+            :Tips:
+              Clever things to keep in mind.
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEqualDiff(
+            helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo\n'
+            '\n'
+            'Options:\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
+            '\n'
+            'Description:\n'
+            '  Blah blah blah.\n'
+            '\n'
+            'Formats:\n'
+            '  Interesting stuff about formats.\n'
+            '\n'
+            'Examples:\n'
+            '  Example 1:\n'
+            '\n'
+            '    cmd arg1\n'
+            '\n'
+            'Tips:\n'
+            '  Clever things to keep in mind.\n'
+            '\n')
+
     def test_help_text_custom_usage(self):
         """Help text may contain a custom usage section."""
         class cmd_Demo(commands.Command):
