@@ -1336,7 +1336,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False, stacked=False):
+               hardlink=False, no_tree=False, stacked=False):
         """See BzrDir.sprout()."""
         if stacked:
             raise errors.UnstackableBranchFormat(
@@ -1352,10 +1352,11 @@ class BzrDirPreSplitOut(BzrDir):
             self.open_branch().sprout(result, revision_id=revision_id)
         except errors.NotBranchError:
             pass
-        # we always want a working tree
-        WorkingTreeFormat2().initialize(result,
-                                        accelerator_tree=accelerator_tree,
-                                        hardlink=hardlink)
+
+        if not no_tree:
+            WorkingTreeFormat2().initialize(result,
+                                            accelerator_tree=accelerator_tree,
+                                            hardlink=hardlink)
         return result
 
 
