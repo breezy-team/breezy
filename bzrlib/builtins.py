@@ -73,6 +73,16 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True):
                                      (e.path, file_list[0]))
 
 
+def _get_one_revision(command_name, revisions):
+    if revisions is None:
+        return None
+    if len(revisions) != 1:
+        raise errors.BzrCommandError(
+            'bzr %s --revision takes exactly one revision identifier' % (
+                command_name,))
+    return revisions[0]
+
+
 def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
     if branch is None:
         branch = tree.branch
@@ -82,11 +92,8 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
         else:
             rev_tree = branch.basis_tree()
     else:
-        if len(revisions) != 1:
-            raise errors.BzrCommandError(
-                'bzr %s --revision takes exactly one revision identifier' % (
-                    command_name,))
-        rev_tree = revisions[0].as_tree(branch)
+        revision = _get_one_revision(command_name, revisions)
+        rev_tree = revision.as_tree(branch)
     return rev_tree
 
 
@@ -997,7 +1004,7 @@ class cmd_branch(Command):
 
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['1revision', Option('hardlink',
+    takes_options = ['revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
@@ -1014,6 +1021,7 @@ class cmd_branch(Command):
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        revision = _get_one_revision(revision)
         br_from.lock_read()
         try:
             if revision is not None:
@@ -1085,7 +1093,7 @@ class cmd_checkout(Command):
 
     _see_also = ['checkouts', 'branch']
     takes_args = ['branch_location?', 'to_location?']
-    takes_options = ['1revision',
+    takes_options = ['revision',
                      Option('lightweight',
                             help="Perform a lightweight checkout.  Lightweight "
                                  "checkouts depend on access to the branch for "
@@ -1108,6 +1116,7 @@ class cmd_checkout(Command):
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
+        revision = _get_one_revision(revision)
         if files_from is not None:
             accelerator_tree = WorkingTree.open(files_from)
         if revision is not None:

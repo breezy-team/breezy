@@ -1120,11 +1120,6 @@ class RangeInChangeOption(BzrError):
     _fmt = "Option --change does not accept revision ranges"
 
 
-class RangeInSingleRevisionOption(BzrError):
-
-    _fmt = "This command does not accept revision ranges"
-
-
 class NoSuchRevisionSpec(BzrError):
 
     _fmt = "No namespace registered for string: %(spec)r"
