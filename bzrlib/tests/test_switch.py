@@ -96,6 +96,20 @@ class TestSwitch(tests.TestCaseWithTransport):
         self.assertContainsRe(str(err),
             "Pending merges must be committed or reverted before using switch")
 
+    def test_switch_with_revision(self):
+        """Test switch when a revision is given."""
+        # Create a tree with 2 revisions
+        tree = self._setup_tree()
+        self.build_tree(['branch-1/file-2'])
+        tree.add('file-2')
+        tree.commit('rev2')
+        # Check it out and switch to revision 1
+        checkout = tree.branch.create_checkout('checkout',
+                                               lightweight=self.lightweight)
+        switch.switch(checkout.bzrdir, tree.branch, revision_id="rev1")
+        self.failUnlessExists('checkout/file-1')
+        self.failIfExists('checkout/file-2')
+
 
 class TestSwitchHeavyweight(TestSwitch):
 
