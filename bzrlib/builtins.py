@@ -997,7 +997,7 @@ class cmd_branch(Command):
 
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', Option('hardlink',
+    takes_options = ['1revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
@@ -1011,18 +1011,13 @@ class cmd_branch(Command):
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False):
         from bzrlib.tag import _merge_tags_if_possible
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr branch --revision takes exactly 1 revision value')
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         br_from.lock_read()
         try:
-            if len(revision) == 1 and revision[0] is not None:
-                revision_id = revision[0].as_revision_id(br_from)
+            if revision is not None:
+                revision_id = revision.as_revision_id(br_from)
             else:
                 # FIXME - wt.last_revision, fallback to branch, fall back to
                 # None or perhaps NULL_REVISION to mean copy nothing
@@ -1051,7 +1046,7 @@ class cmd_branch(Command):
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location,
-                    revision[0])
+                    revision)
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
             # If the source branch is stacked, the new branch may
