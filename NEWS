@@ -43,6 +43,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr branch`` now has a ``--no-tree`` option which turns off the
+      generation of a working tree in the new branch.
+      (Daniel Watkins, #273993)
+
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
