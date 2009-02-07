@@ -19,7 +19,7 @@
 
 import os
 
-from bzrlib import branch, errors, switch, tests
+from bzrlib import branch, errors, revisionspec, switch, tests
 
 
 class TestSwitch(tests.TestCaseWithTransport):
@@ -109,7 +109,8 @@ class TestSwitch(tests.TestCaseWithTransport):
         # Check it out and switch to revision 1
         checkout = tree.branch.create_checkout('checkout',
                                                lightweight=self.lightweight)
-        switch.switch(checkout.bzrdir, tree.branch, revision_id="rev1")
+        revspec = revisionspec.RevisionSpec.from_string("revid:rev1")
+        switch.switch(checkout.bzrdir, tree.branch, revspec=revspec)
         self.failUnlessExists('checkout/file-1')
         self.failIfExists('checkout/file-2')
 
