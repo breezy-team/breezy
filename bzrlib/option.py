@@ -100,10 +100,10 @@ def _parse_revision_str(revstr):
 
 
 def _parse_one_revision_str(revstr):
-    """Parse the revision string and return a tuple with a single revision.
+    """Parse the revision string and return a single revision.
 
     >>> _parse_one_revision_str('123')
-    (<RevisionSpec_revno 123>,)
+    <RevisionSpec_revno 123>
     >>> _parse_one_revision_str('123..124')
     Traceback (most recent call last):
       ...
@@ -112,7 +112,7 @@ def _parse_one_revision_str(revstr):
     revs = _parse_revision_str(revstr)
     if len(revs) > 1:
         raise errors.RangeInSingleRevisionOption()
-    return (revs[0],)
+    return revs[0]
 
 
 def _parse_change_str(revstr):
