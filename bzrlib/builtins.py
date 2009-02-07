@@ -1000,7 +1000,7 @@ class cmd_branch(Command):
     takes_options = ['revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
         Option('no-tree',
-            help="Create a branch without a working-tree.")]
+            help="Create a branch without a working-tree."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '

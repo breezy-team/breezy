@@ -1135,8 +1135,8 @@ class BzrDir(object):
             result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
-        if isinstance(target_transport, local.LocalTransport) and not no_tree
-            and (result_repo is None or result_repo.make_working_trees()):
+        if (isinstance(target_transport, local.LocalTransport) and not no_tree
+            and (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink)
             wt.lock_write()
