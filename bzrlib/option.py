@@ -99,6 +99,22 @@ def _parse_revision_str(revstr):
     return revs
 
 
+def _parse_one_revision_str(revstr):
+    """Parse the revision string and return a tuple with a single revision.
+
+    >>> _parse_one_revision_str('123')
+    (<RevisionSpec_revno 123>,)
+    >>> _parse_one_revision_str('123..124')
+    Traceback (most recent call last):
+      ...
+    RangeInSingleRevisionOption: This command does not accept revision ranges
+    """
+    revs = _parse_revision_str(revstr)
+    if len(revs) > 1:
+        raise errors.RangeInSingleRevisionOption()
+    return (revs[0],)
+
+
 def _parse_change_str(revstr):
     """Parse the revision string and return a tuple with left-most
     parent of the revision.
@@ -530,6 +546,12 @@ _global_option('revision',
                type=_parse_revision_str,
                short_name='r',
                help='See "help revisionspec" for details.')
+_global_option('1revision',
+               type=_parse_one_revision_str,
+               short_name='r',
+               param_name='revision',
+               help='Select changes introduced by the specified revision.'
+                    ' See also "help revisionspec".')
 _global_option('change',
                type=_parse_change_str,
                short_name='c',
