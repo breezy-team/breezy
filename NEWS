@@ -56,6 +56,9 @@ IN DEVELOPMENT
       before the optional ``[merge]`` indicator. For line format,
       the tags appear after the date. (Ian Clatworthy)
 
+    * ``bzr switch`` now takes a ``--revision`` option, to allow switching to a
+      specific revision of a branch. (Daniel Watkins, #183559)
+
     * Progress bars now show the rate of activity for some sftp 
       operations, and they are drawn different.  (Martin Pool, #172741)
 
