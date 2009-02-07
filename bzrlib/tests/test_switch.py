@@ -99,10 +99,13 @@ class TestSwitch(tests.TestCaseWithTransport):
     def test_switch_with_revision(self):
         """Test switch when a revision is given."""
         # Create a tree with 2 revisions
-        tree = self._setup_tree()
+        tree = self.make_branch_and_tree('branch-1')
+        self.build_tree(['branch-1/file-1'])
+        tree.add('file-1')
+        tree.commit(rev_id='rev1', message='rev1')
         self.build_tree(['branch-1/file-2'])
         tree.add('file-2')
-        tree.commit('rev2')
+        tree.commit(rev_id='rev2', message='rev2')
         # Check it out and switch to revision 1
         checkout = tree.branch.create_checkout('checkout',
                                                lightweight=self.lightweight)
