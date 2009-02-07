@@ -22,7 +22,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.trace import note
 
 
-def switch(control_dir, to_branch, force=False):
+def switch(control_dir, to_branch, force=False, revision_id=None):
     """Switch the branch associated with a checkout.
 
     :param control_dir: BzrDir of the checkout to change
@@ -36,7 +36,7 @@ def switch(control_dir, to_branch, force=False):
         source_repository = to_branch.repository
     _set_branch_location(control_dir, to_branch, force)
     tree = control_dir.open_workingtree()
-    _update(tree, source_repository)
+    _update(tree, source_repository, revision_id)
 
 
 def _check_pending_merges(control, force=False):
@@ -112,7 +112,7 @@ def _any_local_commits(this_branch, possible_transports):
     return False
 
 
-def _update(tree, source_repository):
+def _update(tree, source_repository, revision_id=None):
     """Update a working tree to the latest revision of its branch.
 
     :param tree: the working tree
@@ -121,12 +121,14 @@ def _update(tree, source_repository):
     tree.lock_tree_write()
     try:
         to_branch = tree.branch
-        if tree.last_revision() == to_branch.last_revision():
+        if revision_id is None:
+            revision_id = to_branch.last_revision()
+        if tree.last_revision() == revision_id:
             note("Tree is up to date at revision %d.", to_branch.revno())
             return
         base_tree = source_repository.revision_tree(tree.last_revision())
-        merge.Merge3Merger(tree, tree, base_tree, to_branch.basis_tree())
-        tree.set_last_revision(to_branch.last_revision())
+        merge.Merge3Merger(tree, tree, base_tree, to_branch.repository.revision_tree(revision_id))
+        tree.set_last_revision(revision_id)
         note('Updated to revision %d.' % to_branch.revno())
     finally:
         tree.unlock()
