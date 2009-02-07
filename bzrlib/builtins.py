@@ -1085,7 +1085,7 @@ class cmd_checkout(Command):
 
     _see_also = ['checkouts', 'branch']
     takes_args = ['branch_location?', 'to_location?']
-    takes_options = ['revision',
+    takes_options = ['1revision',
                      Option('lightweight',
                             help="Perform a lightweight checkout.  Lightweight "
                                  "checkouts depend on access to the branch for "
@@ -1103,11 +1103,6 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None, hardlink=False):
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr checkout --revision takes exactly 1 revision value')
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
@@ -1115,8 +1110,8 @@ class cmd_checkout(Command):
             branch_location)
         if files_from is not None:
             accelerator_tree = WorkingTree.open(files_from)
-        if len(revision) == 1 and revision[0] is not None:
-            revision_id = revision[0].as_revision_id(source)
+        if revision is not None:
+            revision_id = revision.as_revision_id(source)
         else:
             revision_id = None
         if to_location is None:
