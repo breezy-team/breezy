@@ -4925,12 +4925,12 @@ class cmd_switch(Command):
                 this_url = this_branch.base
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
-        if revision is not None:
-            if len(revision) > 1:
-                raise errors.BzrCommandError(
-                    'bzr switch --revision takes exactly 1 revision value')
-            revision = revision[0].as_revision_id(to_branch)
-        switch.switch(control_dir, to_branch, force, revision)
+        if revision is None:
+            revision = [None]
+        elif len(revision) > 1:
+            raise errors.BzrCommandError(
+                'bzr switch --revision takes exactly 1 revision value')
+        switch.switch(control_dir, to_branch, force, revision[0])
         if branch.get_config().has_explicit_nickname():
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
