@@ -159,10 +159,10 @@ class LocalGitRepository(GitRepository):
         for sha, object, path in inventory_to_tree_and_blobs(source, None, revid):
             if path == "":
                 tree_sha = sha
-            objects.append((sha, object))
+            objects.append((object, path))
         commit = revision_to_commit(rev, tree_sha, parent_lookup)
-        objects.append((commit.sha(), commit))
-        self._git.object_store.add_objects(len(objects), objects)
+        objects.append((commit, None))
+        self._git.object_store.add_objects(objects)
 
     def dfetch(self, source, stop_revision):
         if stop_revision is None:

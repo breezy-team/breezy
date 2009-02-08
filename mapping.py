@@ -138,7 +138,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         while stack and not path.startswith(cur):
             tree.serialize()
             sha = tree.sha().hexdigest()
-            yield sha, tree, path
+            yield sha, tree, cur
             t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
@@ -165,13 +165,13 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
     while len(stack) > 1:
         tree.serialize()
         sha = tree.sha().hexdigest()
-        yield sha, tree, path
+        yield sha, tree, cur
         t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
     tree.serialize()
-    yield tree.sha().hexdigest(), tree, ""
+    yield tree.sha().hexdigest(), tree, cur
 
 
 def revision_to_commit(rev, tree_sha, parent_lookup):
