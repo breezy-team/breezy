@@ -192,7 +192,7 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
                      force_new_repo=False, accelerator_tree=None,
-                     no_tree=False):
+                     create_tree_if_local=True):
         """Sprout from_bzrdir into to_url, or raise TestSkipped.
         
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
@@ -205,7 +205,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                     force_new_repo=force_new_repo,
                                     possible_transports=[to_transport],
                                     accelerator_tree=accelerator_tree,
-                                    no_tree=no_tree)
+                                    create_tree_if_local=create_tree_if_local)
         return target
 
     def test_create_null_workingtree(self):
@@ -1129,7 +1129,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
-        target = self.sproutOrSkip(dir, self.get_url('target'), no_tree=True)
+        target = self.sproutOrSkip(dir, self.get_url('target'),
+                                   create_tree_if_local=False)
         self.failIfExists('target/foo')
         self.assertEqual(tree.branch.last_revision(), target.open_branch().last_revision())
 

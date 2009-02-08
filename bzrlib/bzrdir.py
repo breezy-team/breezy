@@ -1061,7 +1061,7 @@ class BzrDir(object):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               no_tree=False, source_branch=None):
+               source_branch=None, create_tree_if_local=True):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -1080,9 +1080,10 @@ class BzrDir(object):
             content is different.
         :param hardlink: If true, hard-link files from accelerator_tree,
             where possible.
-        :param no_tree: If true, no working-tree will be created.
         :param stacked: If true, create a stacked branch referring to the
             location of this control directory.
+        :param create_tree_if_local: If true, a working-tree will be created
+            when working locally.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -1135,8 +1136,9 @@ class BzrDir(object):
             result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
-        if (isinstance(target_transport, local.LocalTransport) and not no_tree
-            and (result_repo is None or result_repo.make_working_trees())):
+        if (create_tree_if_local and
+            isinstance(target_transport, local.LocalTransport) and
+            (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink)
             wt.lock_write()
@@ -1336,7 +1338,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False, no_tree=False, stacked=False):
+               hardlink=False, stacked=False, create_tree_if_local=True):
         """See BzrDir.sprout()."""
         if stacked:
             raise errors.UnstackableBranchFormat(
@@ -1353,10 +1355,10 @@ class BzrDirPreSplitOut(BzrDir):
         except errors.NotBranchError:
             pass
 
-        if not no_tree:
-            WorkingTreeFormat2().initialize(result,
-                                            accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink)
+        # we always want a working tree
+        WorkingTreeFormat2().initialize(result,
+                                        accelerator_tree=accelerator_tree,
+                                        hardlink=hardlink)
         return result
 
 

@@ -1011,7 +1011,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, no_tree=False, stacked=False, standalone=False):
+            hardlink=False, stacked=False, standalone=False, no_tree=False):
         from bzrlib.tag import _merge_tags_if_possible
         if revision is None:
             revision = [None]
@@ -1048,7 +1048,7 @@ class cmd_branch(Command):
                                             accelerator_tree=accelerator_tree,
                                             hardlink=hardlink, stacked=stacked,
                                             force_new_repo=standalone,
-                                            no_tree=no_tree,
+                                            create_tree_if_local=not no_tree,
                                             source_branch=br_from)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
