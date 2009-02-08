@@ -728,6 +728,8 @@ class RevisionSpec_ancestor(RevisionSpec):
             revision_a = revision.ensure_null(branch.last_revision())
             if revision_a == revision.NULL_REVISION:
                 raise errors.NoCommits(branch)
+            if other_location == '':
+                other_location = branch.get_parent()
             other_branch = Branch.open(other_location)
             other_branch.lock_read()
             try:
