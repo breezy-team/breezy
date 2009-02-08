@@ -804,6 +804,7 @@ class cmd_pull(Command):
             revision=None, verbose=False,
             directory=None):
         # FIXME: too much stuff is in the command class
+        revision = _get_one_revision('pull', revision)
         revision_id = None
         mergeable = None
         if directory is None:
@@ -851,11 +852,7 @@ class cmd_pull(Command):
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
-            if len(revision) == 1:
-                revision_id = revision[0].as_revision_id(branch_from)
-            else:
-                raise errors.BzrCommandError(
-                    'bzr pull --revision takes one value.')
+            revision_id = revision.as_revision_id(branch_from)
 
         branch_to.lock_write()
         try:
