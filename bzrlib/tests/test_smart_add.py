@@ -34,7 +34,7 @@ class AddCustomIDAction(AddAction):
                                        + path.raw_path.replace('/', '%'),
                                        warn=False)
         if self.should_print:
-            self._to_file.write('added %s with id %s\n'
+            self._to_file.write('adding %s with id %s\n'
                                 % (path.raw_path, file_id))
         return file_id
 
@@ -150,7 +150,7 @@ class TestAddActions(TestCase):
         self.run_action("")
 
     def test__print(self):
-        self.run_action("added path\n")
+        self.run_action("adding path\n")
 
     def run_action(self, output):
         from bzrlib.add import AddAction

@@ -35,10 +35,11 @@ class TestAdd(ExternalBase):
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
-                           'added .bzrignore',
-                           'added dir',
-                           'added dir/sub.txt',
-                           'added top.txt',
+                           'adding .bzrignore',
+                           'adding dir',
+                           'adding dir/sub.txt',
+                           'adding top.txt',
+                           'add completed',
                            'ignored 1 file(s).'],
                           results)
         out = self.run_bzr('add -v')[0]
@@ -146,9 +147,10 @@ class TestAdd(ExternalBase):
         os.chdir('new')
         out, err = self.run_bzr('add --file-ids-from ../base')
         self.assertEqual('', err)
-        self.assertEqualDiff('added a w/ file id from a\n'
-                             'added b w/ file id from b\n'
-                             'added b/c w/ file id from b/c\n',
+        self.assertEqualDiff('adding a w/ file id from a\n'
+                             'adding b w/ file id from b\n'
+                             'adding b/c w/ file id from b/c\n',
+                             'add completed\n',
                              out)
         new_tree = new_tree.bzrdir.open_workingtree()
         self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
@@ -167,8 +169,9 @@ class TestAdd(ExternalBase):
         os.chdir('new')
         out, err = self.run_bzr('add --file-ids-from ../base/b')
         self.assertEqual('', err)
-        self.assertEqualDiff('added c w/ file id from b/c\n'
-                             'added d w/ file id from b/d\n',
+        self.assertEqualDiff('adding c w/ file id from b/c\n'
+                             'adding d w/ file id from b/d\n',
+                             'add completed\n',
                              out)
 
         new_tree = new_tree.bzrdir.open_workingtree()
