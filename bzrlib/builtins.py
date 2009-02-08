@@ -605,15 +605,12 @@ class cmd_inventory(Command):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
+        revision = _get_one_revision(revision)
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
         try:
             if revision is not None:
-                if len(revision) > 1:
-                    raise errors.BzrCommandError(
-                        'bzr inventory --revision takes exactly one revision'
-                        ' identifier')
-                tree = revision[0].as_tree(work_tree.branch)
+                tree = revision.as_tree(work_tree.branch)
 
                 extra_trees = [work_tree]
                 tree.lock_read()
