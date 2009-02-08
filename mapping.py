@@ -131,6 +131,9 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
 
     inv = repo.get_inventory(revision_id)
 
+    # stack contains the set of trees that we haven't 
+    # finished constructing
+
     for path, entry in inv.iter_entries():
         while stack and not path.startswith(cur):
             tree.serialize()
@@ -168,7 +171,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         tree.add(*t)
 
     tree.serialize()
-    yield tree.sha().hexdigest(), tree, path
+    yield tree.sha().hexdigest(), tree, ""
 
 
 def revision_to_commit(rev, tree_sha, parent_lookup):
