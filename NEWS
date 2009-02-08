@@ -67,6 +67,10 @@ IN DEVELOPMENT
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
 
+    * The ``ancestor:`` revision spec will now default to referring to the
+      parent of the branch if no other location is given.
+      (Daniel Watkins, #198417)
+
     * The debugger started as a result of setting ``$BZR_PDB`` works
       around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
       can cause truncated tracebacks in Python versions before 2.6.
