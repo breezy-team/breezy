@@ -16,7 +16,7 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from bzrlib import errors, foreign
+from bzrlib import errors, foreign, urlutils
 from bzrlib.inventory import ROOT_ID
 from bzrlib.foreign import (
         ForeignVcs, 
@@ -136,7 +136,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             tree.serialize()
             sha = tree.sha().hexdigest()
             yield sha, tree, path
-            t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+            t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
 
@@ -149,11 +149,11 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
             # and having all these objects in memory at once
             blob = Blob()
-            _, blob._text = repo.iter_files_bytes([(entry.file_id, revision_id, path)]).next()
+            _, blob._text = repo.iter_files_bytes([(entry.file_id, entry.revision, path)]).next()
             sha = blob.sha().hexdigest()
             yield sha, blob, path
 
-            name = splitpath(path)[-1:][0].encode('UTF-8')
+            name = urlutils.basename(path).encode("utf-8")
             mode = stat.S_IFREG | 0644
             if entry.executable:
                 mode |= 0111
@@ -163,7 +163,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         tree.serialize()
         sha = tree.sha().hexdigest()
         yield sha, tree, path
-        t = (stat.S_IFDIR, splitpath(cur)[-1:][0].encode('UTF-8'), sha)
+        t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
