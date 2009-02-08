@@ -185,10 +185,10 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         # The order of adds is not strictly fixed:
         sio.seek(0)
         lines = sorted(sio.readlines())
-        self.assertEqual(['adding dir1 with id directory-dir1\n',
-                          'adding dir1/file2 with id file-dir1%file2\n',
-                          'adding file1 with id file-file1\n'],
-                         lines)
+        self.assertEqualDiff(['added dir1 with id directory-dir1\n',
+                              'added dir1/file2 with id file-dir1%file2\n',
+                              'added file1 with id file-file1\n',
+                             ], lines)
         wt.lock_read()
         self.addCleanup(wt.unlock)
         self.assertEqual([('', wt.path2id('')),
