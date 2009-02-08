@@ -185,7 +185,9 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
     commit = Commit()
     commit._tree = tree_sha
     for p in rev.parent_ids:
-        commit._parents.append(parent_lookup(p))
+        git_p = parent_lookup(p)
+        if git_p is not None:
+            commit._parents.append(git_p)
     commit._message = rev.message
     commit._committer = rev.committer
     if 'author' in rev.properties:

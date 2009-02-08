@@ -163,25 +163,32 @@ class LocalGitRepository(GitRepository):
         commit = revision_to_commit(rev, tree_sha, parent_lookup)
         objects.append((commit, None))
         self._git.object_store.add_objects(objects)
+        return commit.sha().hexdigest()
 
     def dfetch(self, source, stop_revision):
         if stop_revision is None:
             raise NotImplementedError
         revidmap = {}
+        gitidmap = {}
         todo = []
-        source.lock_read()
+        source.lock_write()
         try:
             graph = source.get_graph()
-            for revid, parents in graph.iter_ancestry([stop_revision]):
+            ancestry = [x for x in source.get_ancestry(stop_revision) if x is not None]
+            for revid in graph.iter_topo_order(ancestry):
                 if not self.has_revision(revid):
                     todo.append(revid)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                for i, revid in enumerate(reversed(todo)):
+                for i, revid in enumerate(todo):
                     pb.update("pushing revisions", i, len(todo))
-                    revidmap[revid] = self.import_revision_gist(source, revid, revidmap.get)
+                    git_commit = self.import_revision_gist(source, revid, gitidmap.__getitem__)
+                    gitidmap[revid] = git_commit
+                    git_revid = self.get_mapping().revision_id_foreign_to_bzr(git_commit)
+                    revidmap[revid] = git_revid
             finally:
                 pb.finished()
+            source.fetch(self, revision_id=revidmap[stop_revision])
         finally:
             source.unlock()
         return revidmap
