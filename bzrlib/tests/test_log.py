@@ -763,7 +763,7 @@ message:
             log.properties_handler_registry.remove(
                 'trivial_custom_prop_handler')
             self.assertEqualDiff('''\
-    1 John Doe	2005-11-23
+    1 John Doe\t2005-11-23
       test_prop: test_value
       add a
 
