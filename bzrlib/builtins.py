@@ -605,7 +605,7 @@ class cmd_inventory(Command):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
-        revision = _get_one_revision(revision)
+        revision = _get_one_revision('inventory', revision)
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
         try:
@@ -1018,7 +1018,7 @@ class cmd_branch(Command):
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
-        revision = _get_one_revision(revision)
+        revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
             if revision is not None:
@@ -1113,7 +1113,7 @@ class cmd_checkout(Command):
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
-        revision = _get_one_revision(revision)
+        revision = _get_one_revision('checkout', revision)
         if files_from is not None:
             accelerator_tree = WorkingTree.open(files_from)
         if revision is not None:
