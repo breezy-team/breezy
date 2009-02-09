@@ -4903,17 +4903,22 @@ class cmd_switch(Command):
     that of the master.
     """
 
-    takes_args = ['to_location']
+    takes_args = ['to_location?']
     takes_options = [Option('force',
                         help='Switch even if local commits will be lost.'),
                      'revision'
                      ]
 
-    def run(self, to_location, force=False, revision=None):
+    def run(self, to_location=None, force=False, revision=None):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
         branch = control_dir.open_branch()
+        if to_location is None:
+            if revision is None:
+                raise errors.BzrCommandError('You must supply either a'
+                                             ' revision or a location')
+            to_location = '.'
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
