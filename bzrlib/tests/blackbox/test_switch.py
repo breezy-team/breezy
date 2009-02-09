@@ -26,6 +26,15 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class TestSwitch(ExternalBase):
 
+    def _create_sample_tree(self):
+        tree = self.make_branch_and_tree('branch-1')
+        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
+        tree.add('file-1')
+        tree.commit('rev1')
+        tree.add('file-2')
+        tree.commit('rev2')
+        return tree
+
     def test_switch_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         self.run_bzr('branch branch branch2')
@@ -135,24 +144,14 @@ class TestSwitch(ExternalBase):
         self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
 
     def test_switch_revision(self):
-        tree = self.make_branch_and_tree('branch-1')
-        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
-        tree.add('file-1')
-        tree.commit('rev1')
-        tree.add('file-2')
-        tree.commit('rev2')
+        tree = self._create_sample_tree()
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', 'branch-1', '-r1'], working_dir='checkout')
         self.failUnlessExists('checkout/file-1')
         self.failIfExists('checkout/file-2')
 
     def test_switch_only_revision(self):
-        tree = self.make_branch_and_tree('branch-1')
-        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
-        tree.add('file-1')
-        tree.commit('rev1')
-        tree.add('file-2')
-        tree.commit('rev2')
+        tree = self._create_sample_tree()
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.failUnlessExists('checkout/file-1')
         self.failUnlessExists('checkout/file-2')
