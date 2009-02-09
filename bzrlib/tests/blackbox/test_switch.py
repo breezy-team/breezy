@@ -154,6 +154,8 @@ class TestSwitch(ExternalBase):
         tree.add('file-2')
         tree.commit('rev2')
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        self.failUnlessExists('checkout/file-1')
+        self.failUnlessExists('checkout/file-2')
         self.run_bzr(['switch', '-r1'], working_dir='checkout')
         self.failUnlessExists('checkout/file-1')
         self.failIfExists('checkout/file-2')
