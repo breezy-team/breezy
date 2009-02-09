@@ -22,7 +22,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.trace import note
 
 
-def switch(control_dir, to_branch, force=False, revspec=None):
+def switch(control_dir, to_branch, force=False, revision_id=None):
     """Switch the branch associated with a checkout.
 
     :param control_dir: BzrDir of the checkout to change
@@ -36,10 +36,6 @@ def switch(control_dir, to_branch, force=False, revspec=None):
         source_repository = to_branch.repository
     _set_branch_location(control_dir, to_branch, force)
     tree = control_dir.open_workingtree()
-    if revspec is not None:
-        revision_id = revspec.as_revision_id(tree.branch)
-    else:
-        revision_id = None
     _update(tree, source_repository, revision_id)
 
 
