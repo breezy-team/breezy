@@ -236,3 +236,14 @@ class TestUnshelver(tests.TestCaseWithTransport):
                                                  action='delete-only')
         unshelver.run()
         self.assertIs(None, manager.last_shelf())
+
+    def test_unshelve_args_invalid_shelf_id(self):
+        tree = self.make_branch_and_tree('tree')
+        manager = tree.get_shelf_manager()
+        shelf_file = manager.new_shelf()[1]
+        try:
+            shelf_file.write('garbage')
+        finally:
+            shelf_file.close()
+        self.assertRaises(errors.InvalidShelfId,
+            shelf_ui.Unshelver.from_args, directory='tree', action='delete-only', shelf_id='foo')
