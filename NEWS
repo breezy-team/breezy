@@ -48,6 +48,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr add`` more clearly communicates success vs failure.
+      (Daniel Watkins)
+
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
