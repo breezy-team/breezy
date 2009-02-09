@@ -4961,7 +4961,9 @@ class cmd_shelve(Command):
 
     Shelve allows you to temporarily put changes you've made "on the shelf",
     ie. out of the way, until a later time when you can bring them back from
-    the shelf with the 'unshelve' command.
+    the shelf with the 'unshelve' command.  The changes are stored alongside
+    your working tree, and so they aren't propagated along with your branch nor
+    will they survive its deletion.
 
     If shelve --list is specified, previously-shelved changes are listed.
 
