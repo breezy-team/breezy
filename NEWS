@@ -127,6 +127,8 @@ IN DEVELOPMENT
       handled.
       (John Arbash Meinel, Vincent Ladeuil)
 
+    * Unshelve now handles deleted paths without crashing. (Robert Collins)
+
   DOCUMENTATION:
 
     * Improved plugin developer documentation.  (Martin Pool)
