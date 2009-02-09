@@ -103,7 +103,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
-    * Expanded the help for log.  (Ian Clatworthy)
+    * Expanded the help for log and added a new help topic called
+      ``log-formats``.  (Ian Clatworthy)
 
     * Improved plugin developer documentation.  (Martin Pool)
 
