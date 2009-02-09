@@ -55,11 +55,15 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.index = Index(os.path.join(self.repository._git.controldir(), 
             "index"))
 
-    def lock_read(self):
-        pass
-
     def unlock(self):
-        pass
+        # non-implementation specific cleanup
+        self._cleanup()
+
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
 
     def is_control_filename(self, path):
         return os.path.basename(path) == ".git"
