@@ -200,8 +200,8 @@ class TestSend(tests.TestCaseWithTransport):
         branch = _mod_branch.Branch.open('branch')
         branch.get_config().set_user_option('mail_client', 'editor')
         self.run_bzr_error(
-            ('No mail-to address (--mail-to) or output (-o) specified',),
-            'send -f branch')
+            ('No mail-to address \\(--mail-to\\) or output \\(-o\\) specified',
+            ), 'send -f branch')
         branch.get_config().set_user_option('mail_client', 'bogus')
         self.run_bzr('send -f branch -o-')
         self.run_bzr_error(('Unknown mail client: bogus',),
