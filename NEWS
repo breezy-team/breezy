@@ -24,6 +24,11 @@ IN DEVELOPMENT
       output of the log command in this situation may need to adjust.
       (Neil Martinsen-Burrell)
 
+    * The experimental formats ``1.12-preview`` and ``1.12-preview-rich-root``
+      have been renamed ``development-wt5`` and ``development-wt5-rich-root``
+      respectively, given they are not ready for release in 1.12.
+      (Ian Clatworthy)
+
   NEW FEATURES:
 
     * Add support for filtering `bzr missing` on revisions.  Remote revisions
