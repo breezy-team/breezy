@@ -148,7 +148,7 @@ class FulltextContentFactory(ContentFactory):
         if storage_kind == self.storage_kind:
             return self._text
         elif storage_kind == 'chunked':
-            return (self._text,)
+            return [self._text]
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 

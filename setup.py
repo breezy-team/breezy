@@ -197,8 +197,8 @@ class build_ext_if_possible(build_ext):
         except DistutilsPlatformError, e:
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extensions.\n'
-                         '  Use --allow-python-fallback to use slower'
-                         ' python implementations instead.\n')
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n')
                 raise
             log.warn(str(e))
             log.warn('\n  Extensions cannot be built.\n'
@@ -209,9 +209,9 @@ class build_ext_if_possible(build_ext):
             build_ext.build_extension(self, ext)
         except CCompilerError:
             if not self.allow_python_fallback:
-                log.warn('\n  Failed to build "%s".\n'
-                         '  Use --allow-python-fallback to use slower'
-                         ' python implementations instead.\n'
+                log.warn('\n  Cannot build extensions.\n'
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n'
                          % (ext.name,))
                 raise
             log.warn('\n  Building of "%s" extension failed.\n'

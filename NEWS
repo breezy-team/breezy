@@ -19,6 +19,11 @@ IN DEVELOPMENT
       from this command, you may need to adjust them accordingly.
       (Ian Clatworthy)
 
+    * ``bzr log --short`` now shows any additional revision properties
+      after the date and before the commit message.  Scripts that parse 
+      output of the log command in this situation may need to adjust.
+      (Neil Martinsen-Burrell)
+
   NEW FEATURES:
 
     * Add support for filtering `bzr missing` on revisions.  Remote revisions
@@ -59,8 +64,22 @@ IN DEVELOPMENT
     * Progress bars now show the rate of activity for some sftp 
       operations, and they are drawn different.  (Martin Pool, #172741)
 
+    * Progress bars now show the rate of activity for urllib and pycurl based
+      http client implementations. The operations are tracked at the socket
+      level for better precision.
+      (Vincent Ladeuil)
+
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
+
+    * The ``ancestor:`` revision spec will now default to referring to the
+      parent of the branch if no other location is given.
+      (Daniel Watkins, #198417)
+
+    * The debugger started as a result of setting ``$BZR_PDB`` works
+      around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
+      can cause truncated tracebacks in Python versions before 2.6.
+      (Andrew Bennetts)
 
     * VirtualVersionedFiles now implements
       ``iter_lines_added_or_present_in_keys``. This allows the creation of 
@@ -107,6 +126,8 @@ IN DEVELOPMENT
       criss-cross merges leading to several kind of changes be incorrectly
       handled.
       (John Arbash Meinel, Vincent Ladeuil)
+
+    * Unshelve now handles deleted paths without crashing. (Robert Collins)
 
   DOCUMENTATION:
 
