@@ -2936,7 +2936,7 @@ class NoSuchShelfId(BzrError):
 
 class InvalidShelfId(BzrError):
 
-    _fmt = '"%(invalid_id)s" is not a valid shelf id.'
+    _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
 
     def __init__(self, invalid_id):
         BzrError.__init__(self, invalid_id=invalid_id)
