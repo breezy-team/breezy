@@ -159,4 +159,6 @@ class TestSwitch(ExternalBase):
         self.failUnlessExists('checkout/file-1')
         self.failIfExists('checkout/file-2')
         # Check that we don't accept a range
-        self.run_bzr_error(['switch', '-r1..2'], working_dir='checkout')
+        self.run_bzr_error(
+            ['bzr switch --revision takes exactly one revision identifier'],
+            ['switch', '-r0..2'], working_dir='checkout')
