@@ -1258,10 +1258,11 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
         self.assertEqual('0123456789', t.get('a').read())
 
     def test_read_redirected_bundle_from_url(self):
-        from bzrlib.bundle import read_bundle_from_url
+        from bzrlib.bundle import read_mergeable_from_url
         url = self.old_transport.abspath('bundle')
-        bundle = read_bundle_from_url(url)
-        # If read_bundle_from_url was successful we get an empty bundle
+        bundle = read_mergeable_from_url(
+            url, possible_transports=[self.old_transport])
+        # If read_mergeable_from_url was successful we get an empty bundle
         self.assertEqual([], bundle.revisions)
 
 
