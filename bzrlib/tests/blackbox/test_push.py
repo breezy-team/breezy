@@ -88,10 +88,10 @@ class TestPush(ExternalBase):
         path = branch_a.get_push_location()
         self.assertEquals(out,
                           'Using saved push location: %s\n' 
-                          'Pushed up to revision 2.\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
-                         'All changes applied successfully.\n')
+                         'All changes applied successfully.\n'
+                         'Pushed up to revision 2.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
@@ -103,8 +103,8 @@ class TestPush(ExternalBase):
         # bzr push from a branch that does not have a checkout should work.
         b = self.make_branch('.')
         out, err = self.run_bzr('push pushed-location')
-        self.assertEqual('Created new branch.\n', out)
-        self.assertEqual('', err)
+        self.assertEqual('', out)
+        self.assertEqual('Created new branch.\n', err)
         b2 = Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
@@ -119,8 +119,8 @@ class TestPush(ExternalBase):
         os.chdir('tree')
         out, err = self.run_bzr('push pushed-to')
         os.chdir('..')
-        self.assertEqual('Created new branch.\n', out)
-        self.assertEqual('', err)
+        self.assertEqual('', out)
+        self.assertEqual('Created new branch.\n', err)
 
     def test_push_only_pushes_history(self):
         # Knit branches should only push the history for the current revision.
@@ -295,9 +295,9 @@ class TestPush(ExternalBase):
         # we publish branch_tree with a reference to the mainline.
         out, err = self.run_bzr(['push', '--stacked-on', trunk_tree.branch.base,
             self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_tree.branch.base, out)
-        self.assertEqual('', err)
+            trunk_tree.branch.base, err)
         self.assertPublished(branch_tree.last_revision(),
             trunk_tree.branch.base)
 
@@ -308,9 +308,9 @@ class TestPush(ExternalBase):
         # for us.
         out, err = self.run_bzr(['push', '--stacked',
             self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_tree.branch.base, out)
-        self.assertEqual('', err)
+            trunk_tree.branch.base, err)
         self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
 
     def test_push_new_branch_stacked_uses_parent_public(self):
@@ -326,9 +326,9 @@ class TestPush(ExternalBase):
         # for us.
         out, err = self.run_bzr(['push', '--stacked',
             self.get_url('published')], working_dir='branch')
+        self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
-            trunk_public_url, out)
-        self.assertEqual('', err)
+            trunk_public_url, err)
         self.assertPublished(branch_tree.last_revision(), trunk_public_url)
 
     def test_push_new_branch_stacked_no_parent(self):
