@@ -73,6 +73,16 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True):
                                      (e.path, file_list[0]))
 
 
+def _get_one_revision(command_name, revisions):
+    if revisions is None:
+        return None
+    if len(revisions) != 1:
+        raise errors.BzrCommandError(
+            'bzr %s --revision takes exactly one revision identifier' % (
+                command_name,))
+    return revisions[0]
+
+
 def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
     if branch is None:
         branch = tree.branch
@@ -82,11 +92,8 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
         else:
             rev_tree = branch.basis_tree()
     else:
-        if len(revisions) != 1:
-            raise errors.BzrCommandError(
-                'bzr %s --revision takes exactly one revision identifier' % (
-                    command_name,))
-        rev_tree = revisions[0].as_tree(branch)
+        revision = _get_one_revision(command_name, revisions)
+        rev_tree = revision.as_tree(branch)
     return rev_tree
 
 
@@ -525,6 +532,8 @@ class cmd_add(Command):
         finally:
             if base_tree is not None:
                 base_tree.unlock()
+        if not is_quiet() and len(added) > 0:
+            self.outf.write('add completed\n')
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -598,15 +607,12 @@ class cmd_inventory(Command):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
+        revision = _get_one_revision('inventory', revision)
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
         try:
             if revision is not None:
-                if len(revision) > 1:
-                    raise errors.BzrCommandError(
-                        'bzr inventory --revision takes exactly one revision'
-                        ' identifier')
-                tree = revision[0].as_tree(work_tree.branch)
+                tree = revision.as_tree(work_tree.branch)
 
                 extra_trees = [work_tree]
                 tree.lock_read()
@@ -831,6 +837,7 @@ class cmd_pull(Command):
                     self.outf.write("Using saved parent location: %s\n" % display_url)
                 location = stored_loc
 
+        revision = _get_one_revision('pull', revision)
         if mergeable is not None:
             if revision is not None:
                 raise errors.BzrCommandError(
@@ -847,11 +854,7 @@ class cmd_pull(Command):
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
-            if len(revision) == 1:
-                revision_id = revision[0].as_revision_id(branch_from)
-            else:
-                raise errors.BzrCommandError(
-                    'bzr pull --revision takes one value.')
+            revision_id = revision.as_revision_id(branch_from)
 
         branch_to.lock_write()
         try:
@@ -936,12 +939,9 @@ class cmd_push(Command):
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
+        revision = _get_one_revision('push', revision)
         if revision is not None:
-            if len(revision) == 1:
-                revision_id = revision[0].in_history(br_from).rev_id
-            else:
-                raise errors.BzrCommandError(
-                    'bzr push --revision takes one value.')
+            revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = br_from.last_revision()
 
@@ -1011,18 +1011,14 @@ class cmd_branch(Command):
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False):
         from bzrlib.tag import _merge_tags_if_possible
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr branch --revision takes exactly 1 revision value')
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
-            if len(revision) == 1 and revision[0] is not None:
-                revision_id = revision[0].as_revision_id(br_from)
+            if revision is not None:
+                revision_id = revision.as_revision_id(br_from)
             else:
                 # FIXME - wt.last_revision, fallback to branch, fall back to
                 # None or perhaps NULL_REVISION to mean copy nothing
@@ -1051,7 +1047,7 @@ class cmd_branch(Command):
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location,
-                    revision[0])
+                    revision)
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
             # If the source branch is stacked, the new branch may
@@ -1108,20 +1104,16 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None, hardlink=False):
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr checkout --revision takes exactly 1 revision value')
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
+        revision = _get_one_revision('checkout', revision)
         if files_from is not None:
             accelerator_tree = WorkingTree.open(files_from)
-        if len(revision) == 1 and revision[0] is not None:
-            revision_id = revision[0].as_revision_id(source)
+        if revision is not None:
+            revision_id = revision.as_revision_id(source)
         else:
             revision_id = None
         if to_location is None:

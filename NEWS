@@ -19,6 +19,16 @@ IN DEVELOPMENT
       from this command, you may need to adjust them accordingly.
       (Ian Clatworthy)
 
+    * ``bzr log --short`` now shows any additional revision properties
+      after the date and before the commit message.  Scripts that parse 
+      output of the log command in this situation may need to adjust.
+      (Neil Martinsen-Burrell)
+
+    * The experimental formats ``1.12-preview`` and ``1.12-preview-rich-root``
+      have been renamed ``development-wt5`` and ``development-wt5-rich-root``
+      respectively, given they are not ready for release in 1.12.
+      (Ian Clatworthy)
+
   NEW FEATURES:
 
     * Add support for filtering `bzr missing` on revisions.  Remote revisions
@@ -42,6 +52,9 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
   IMPROVEMENTS:
+
+    * ``bzr add`` more clearly communicates success vs failure.
+      (Daniel Watkins)
 
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
@@ -70,6 +83,10 @@ IN DEVELOPMENT
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
 
+    * The ``ancestor:`` revision spec will now default to referring to the
+      parent of the branch if no other location is given.
+      (Daniel Watkins, #198417)
+
     * The debugger started as a result of setting ``$BZR_PDB`` works
       around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
       can cause truncated tracebacks in Python versions before 2.6.
@@ -96,6 +113,9 @@ IN DEVELOPMENT
       now interprets filenames in their historical context.
       (Ian Clatworthy, #175520)
 
+    * ``bzr status`` now reports nonexistent files and continues, then
+       errors (with code 3) at the end.  (Karl Fogel, #306394)
+
     * Don't require the present compression base in knits to be the same
       when adding records in knits. (Jelmer Vernooij, #307394)
 
@@ -120,6 +140,8 @@ IN DEVELOPMENT
       criss-cross merges leading to several kind of changes be incorrectly
       handled.
       (John Arbash Meinel, Vincent Ladeuil)
+
+    * Unshelve now handles deleted paths without crashing. (Robert Collins)
 
   DOCUMENTATION:
 
