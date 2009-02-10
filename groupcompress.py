@@ -158,7 +158,9 @@ class GroupCompressor(object):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
-            for identification of the text during decompression.
+            for identification of the text during decompression. If the last
+            element is 'None' it is replaced with the sha1 of the text -
+            e.g. sha1:xxxxxxx.
         :param lines: The lines to be compressed. Must be split
             on \n, with the \n preserved.'
         :param expected_sha: If non-None, the sha the lines are blieved to
@@ -168,6 +170,8 @@ class GroupCompressor(object):
             the group output so far.
         """
         sha1 = sha_strings(lines)
+        if key[-1] is None:
+            key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
         # setup good encoding for trailing \n support.
         if not lines or lines[-1].endswith('\n'):
@@ -406,8 +410,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
-        if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id, self)
+        if version_id is not None:
+            if contains_whitespace(version_id):
+                raise InvalidRevisionId(version_id, self)
         self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
@@ -586,9 +591,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     record.get_bytes_as(record.storage_kind))
             found_sha1, end_point = self._compressor.compress(record.key,
                 split_lines(bytes), record.sha1)
-            self._unadded_refs[record.key] = record.parents
+            if record.key[-1] is None:
+                key = record.key[:-1] + ('sha1:' + found_sha1,)
+            else:
+                key = record.key
+            self._unadded_refs[key] = record.parents
             yield found_sha1
-            keys_to_add.append((record.key, '%d %d' % (basis_end, end_point),
+            keys_to_add.append((key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
             if basis_end > 1024 * 1024 * 20:
