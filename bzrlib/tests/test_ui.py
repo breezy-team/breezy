@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,9 @@ from bzrlib.progress import (
     DotsProgressBar,
     ProgressBarStack,
     TTYProgressBar,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
     )
 from bzrlib.tests import (
     TestCase,
@@ -101,11 +104,11 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
+        ui_factory = TextUIFactory(stdin=StringIO(''),
+            stderr=stderr,
+            stdout=stdout)
         pb = ui_factory.nested_progress_bar()
         try:
-            pb.to_messages_file = stdout
-            ui_factory._progress_bar_stack.bottom().to_file = stderr
             result = pb.note('t')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
@@ -122,13 +125,12 @@ class UITests(TestCase):
         # The PQM redirects the output to a file, so it
         # defaults to creating a Dots progress bar. we
         # need to force it to believe we are a TTY
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
+        ui_factory = TextUIFactory(
+            stdin=StringIO(''),
+            stdout=stdout, stderr=stderr)
         pb = ui_factory.nested_progress_bar()
         try:
-            pb.to_messages_file = stdout
-            ui_factory._progress_bar_stack.bottom().to_file = stderr
             # Create a progress update that isn't throttled
-            pb.start_time -= 10
             pb.update('x', 1, 1)
             result = pb.note('t')
             self.assertEqual(None, result)
@@ -142,10 +144,15 @@ class UITests(TestCase):
 
     def test_progress_nested(self):
         # test factory based nested and popping.
-        ui = TextUIFactory()
+        ui = TextUIFactory(None, None, None)
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
-        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        # You do get a warning if the outermost progress bar wasn't finished
+        # first - it's not clear if this is really useful or if it should just
+        # become orphaned -- mbp 20090120
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        if len(warnings) != 1:
+            self.fail("unexpected warnings: %r" % (warnings,))
         pb2.finished()
         pb1.finished()
 
@@ -155,32 +162,26 @@ class UITests(TestCase):
         stderr = StringIO()
         stdout = StringIO()
         # make a stack, which accepts parameters like a pb.
-        stack = ProgressBarStack(to_file=stderr, to_messages_file=stdout)
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            to_file=stderr, to_messages_file=stdout)
         # but is not one
         self.assertFalse(getattr(stack, 'note', False))
         pb1 = stack.get_nested()
         pb2 = stack.get_nested()
-        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
         # the text ui factory never actually removes the stack once its setup.
         # we need to be able to nest again correctly from here.
         pb1 = stack.get_nested()
         pb2 = stack.get_nested()
-        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
-
-    def test_text_factory_setting_progress_bar(self):
-        # we should be able to choose the progress bar type used.
-        factory = TextUIFactory(bar_type=DotsProgressBar)
-        bar = factory.nested_progress_bar()
-        bar.finished()
-        self.assertIsInstance(bar, DotsProgressBar)
-
-    def test_cli_stdin_is_default_stdin(self):
-        factory = CLIUIFactory()
-        self.assertEqual(sys.stdin, factory.stdin)
 
     def assert_get_bool_acceptance_of_user_input(self, factory):
         factory.stdin = StringIO("y\nyes with garbage\n"
@@ -212,28 +213,27 @@ class UITests(TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getbool(self):
-        factory = TextUIFactory()
+        factory = TextUIFactory(None, None, None)
         self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        factory = TextUIFactory(bar_type=DotsProgressBar)
-        factory.stdout = _TTYStringIO()
-        factory.stdin = StringIO("yada\ny\n")
-        pb = self.apply_redirected(factory.stdin, factory.stdout,
-                                   factory.stdout, factory.nested_progress_bar)
-        pb.start_time = None
-        self.apply_redirected(factory.stdin, factory.stdout,
-                              factory.stdout, pb.update, "foo", 0, 1)
+        out = _TTYStringIO()
+        factory = TextUIFactory(stdin=StringIO("yada\ny\n"), stdout=out, stderr=out)
+        pb = factory.nested_progress_bar()
+        pb.show_bar = False
+        pb.show_spinner = False
+        pb.show_count = False
+        pb.update("foo", 0, 1)
         self.assertEqual(True,
                          self.apply_redirected(None, factory.stdout,
                                                factory.stdout,
                                                factory.get_boolean,
                                                "what do you want"))
-        output = factory.stdout.getvalue()
-        self.assertEqual("foo: .\n"
-                         "what do you want? [y/n]: what do you want? [y/n]: ",
-                         factory.stdout.getvalue())
-        # stdin should be empty
+        output = out.getvalue()
+        self.assertContainsRe(factory.stdout.getvalue(),
+            "foo *\r\r  *\r*")
+        self.assertContainsRe(factory.stdout.getvalue(),
+            r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
+        # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
-

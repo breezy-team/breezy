@@ -2171,11 +2171,6 @@ class LocalRequiresBoundBranch(BzrError):
     _fmt = "Cannot perform local-only commits on unbound branches."
 
 
-class MissingProgressBarFinish(BzrError):
-
-    _fmt = "A nested progress bar was not 'finished' correctly."
-
-
 class InvalidProgressBarType(BzrError):
 
     _fmt = ("Environment variable BZR_PROGRESS_BAR='%(bar_type)s"
@@ -2663,7 +2658,7 @@ class NoMessageSupplied(BzrError):
 
 class NoMailAddressSpecified(BzrError):
 
-    _fmt = "No mail-to address specified."
+    _fmt = "No mail-to address (--mail-to) or output (-o) specified."
 
 
 class UnknownMailClient(BzrError):

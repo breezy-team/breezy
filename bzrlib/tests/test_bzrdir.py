@@ -880,15 +880,10 @@ class TestMeta1DirFormat(TestCaseWithTransport):
 
     def test_needs_conversion_different_working_tree(self):
         # meta1dirs need an conversion if any element is not the default.
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        # test with 
-        new_default = bzrdir.format_registry.make_bzrdir('dirstate')
-        bzrdir.BzrDirFormat._set_default_format(new_default)
-        try:
-            tree = self.make_branch_and_tree('tree', format='knit')
-            self.assertTrue(tree.bzrdir.needs_format_conversion())
-        finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+        new_format = bzrdir.format_registry.make_bzrdir('dirstate')
+        tree = self.make_branch_and_tree('tree', format='knit')
+        self.assertTrue(tree.bzrdir.needs_format_conversion(
+            new_format))
 
 
 class TestFormat5(TestCaseWithTransport):
@@ -915,16 +910,14 @@ class TestFormat5(TestCaseWithTransport):
         self.assertTrue(dir.can_convert_format())
     
     def test_needs_conversion(self):
-        # format 5 dirs need a conversion if they are not the default.
-        # and they start of not the default.
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
-        try:
-            dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
-            self.assertFalse(dir.needs_format_conversion())
-        finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
-        self.assertTrue(dir.needs_format_conversion())
+        # format 5 dirs need a conversion if they are not the default,
+        # and they aren't
+        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+        # don't need to convert it to itself
+        self.assertFalse(dir.needs_format_conversion(bzrdir.BzrDirFormat5()))
+        # do need to convert it to the current default
+        self.assertTrue(dir.needs_format_conversion(
+            bzrdir.BzrDirFormat.get_default_format()))
 
 
 class TestFormat6(TestCaseWithTransport):
@@ -952,13 +945,9 @@ class TestFormat6(TestCaseWithTransport):
     
     def test_needs_conversion(self):
         # format 6 dirs need an conversion if they are not the default.
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirMetaFormat1())
-        try:
-            dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
-            self.assertTrue(dir.needs_format_conversion())
-        finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        self.assertTrue(dir.needs_format_conversion(
+            bzrdir.BzrDirFormat.get_default_format()))
 
 
 class NotBzrDir(bzrlib.bzrdir.BzrDir):

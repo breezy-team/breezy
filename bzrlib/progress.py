@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Aaron Bentley <aaron.bentley@utoronto.ca>
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,30 +18,27 @@
 """Progress indicators.
 
 The usual way to use this is via bzrlib.ui.ui_factory.nested_progress_bar which
-will maintain a ProgressBarStack for you.
-
-For direct use, the factory ProgressBar will return an auto-detected progress
-bar that should match your terminal type. You can manually create a
-ProgressBarStack too if you need multiple levels of cooperating progress bars.
-Note that bzrlib's internal functions use the ui module, so if you are using
-bzrlib it really is best to use bzrlib.ui.ui_factory.
+will manage a conceptual stack of nested activities.
 """
 
-# TODO: Optionally show elapsed time instead/as well as ETA; nicer
-# when the rate is unpredictable
 
 import sys
 import time
 import os
+import warnings
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
+
 from bzrlib import (
     errors,
+    osutils,
+    trace,
+    ui,
     )
-""")
-
 from bzrlib.trace import mutter
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 def _supports_progress(f):
@@ -62,7 +58,79 @@ def _supports_progress(f):
     return True
 
 
-_progress_bar_types = {}
+class ProgressTask(object):
+    """Model component of a progress indicator.
+
+    Most code that needs to indicate progress should update one of these, 
+    and it will in turn update the display, if one is present.
+
+    Code updating the task may also set fields as hints about how to display
+    it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
+    will not necessarily respect all these fields.
+    """
+
+    def __init__(self, parent_task=None, ui_factory=None):
+        self._parent_task = parent_task
+        self._last_update = 0
+        self.total_cnt = None
+        self.current_cnt = None
+        self.msg = ''
+        self.ui_factory = ui_factory
+        self.show_pct = False
+        self.show_spinner = True
+        self.show_eta = False,
+        self.show_count = True
+        self.show_bar = True
+
+    def __repr__(self):
+        return '%s(%r/%r, msg=%r)' % (
+            self.__class__.__name__,
+            self.current_cnt,
+            self.total_cnt,
+            self.msg)
+
+    def update(self, msg, current_cnt=None, total_cnt=None):
+        self.msg = msg
+        self.current_cnt = current_cnt
+        if total_cnt:
+            self.total_cnt = total_cnt
+        self.ui_factory._progress_updated(self)
+
+    def tick(self):
+        self.update(self.msg)
+
+    def finished(self):
+        self.ui_factory._progress_finished(self)
+
+    def make_sub_task(self):
+        return ProgressTask(self, self.ui_factory)
+
+    def _overall_completion_fraction(self, child_fraction=0.0):
+        """Return fractional completion of this task and its parents
+        
+        Returns None if no completion can be computed."""
+        if self.total_cnt:
+            own_fraction = (float(self.current_cnt) + child_fraction) / self.total_cnt
+        else:
+            own_fraction = None
+        if self._parent_task is None:
+            return own_fraction
+        else:
+            if own_fraction is None:
+                own_fraction = 0.0
+            return self._parent_task._overall_completion_fraction(own_fraction)
+
+    def note(self, fmt_string, *args):
+        """Record a note without disrupting the progress bar."""
+        # XXX: shouldn't be here; put it in mutter or the ui instead
+        if args:
+            self.ui_factory.note(fmt_string % args)
+        else:
+            self.ui_factory.note(fmt_string)
+
+    def clear(self):
+        # XXX: shouldn't be here; put it in mutter or the ui instead
+        self.ui_factory.clear_term()
 
 
 def ProgressBar(to_file=None, **kwargs):
@@ -87,10 +155,15 @@ def ProgressBar(to_file=None, **kwargs):
                                                 _progress_bar_types.keys())
         return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
 
- 
-class ProgressBarStack(object):
-    """A stack of progress bars."""
 
+class ProgressBarStack(object):
+    """A stack of progress bars.
+    
+    This class is deprecated: instead, ask the ui factory for a new progress
+    task and finish it when it's done.
+    """
+
+    @deprecated_method(deprecated_in((1, 12, 0)))
     def __init__(self,
                  to_file=None,
                  show_pct=False,
@@ -147,8 +220,9 @@ class ProgressBarStack(object):
     def return_pb(self, bar):
         """Return bar after its been used."""
         if bar is not self._stack[-1]:
-            raise errors.MissingProgressBarFinish()
-        self._stack.pop()
+            warnings.warn("%r is not currently active" % (bar,))
+        else:
+            self._stack.pop()
 
  
 class _BaseProgressBar(object):
@@ -206,6 +280,7 @@ class DummyProgress(_BaseProgressBar):
 
     This can be used as the default argument for methods that
     take an optional progress indicator."""
+
     def tick(self):
         pass
 
@@ -223,10 +298,6 @@ class DummyProgress(_BaseProgressBar):
 
     def child_progress(self, **kwargs):
         return DummyProgress(**kwargs)
-
-
-_progress_bar_types['dummy'] = DummyProgress
-_progress_bar_types['none'] = DummyProgress
 
 
 class DotsProgressBar(_BaseProgressBar):
@@ -257,7 +328,6 @@ class DotsProgressBar(_BaseProgressBar):
         self.tick()
 
 
-_progress_bar_types['dots'] = DotsProgressBar
 
     
 class TTYProgressBar(_BaseProgressBar):
@@ -329,8 +399,9 @@ class TTYProgressBar(_BaseProgressBar):
         self.tick()
 
     def update(self, msg, current_cnt=None, total_cnt=None,
-               child_fraction=0):
-        """Update and redraw progress bar."""
+            child_fraction=0):
+        """Update and redraw progress bar.
+        """
         if msg is None:
             msg = self.last_msg
 
@@ -355,6 +426,9 @@ class TTYProgressBar(_BaseProgressBar):
         ##     self.last_total == total_cnt and
         ##     self.child_fraction == child_fraction):
         ##     return
+
+        if msg is None:
+            msg = ''
 
         old_msg = self.last_msg
         # save these for the tick() function
@@ -401,7 +475,7 @@ class TTYProgressBar(_BaseProgressBar):
             # make both fields the same size
             t = '%i' % (self.last_total)
             c = '%*i' % (len(t), self.last_cnt)
-            count_str = ' ' + c + '/' + t 
+            count_str = ' ' + c + '/' + t
 
         if self.show_bar:
             # progress bar, if present, soaks up all remaining space
@@ -425,7 +499,8 @@ class TTYProgressBar(_BaseProgressBar):
         else:
             bar_str = ''
 
-        m = spin_str + bar_str + self.last_msg + count_str + pct_str + eta_str
+        m = spin_str + bar_str + self.last_msg + count_str \
+            + pct_str + eta_str
         self.to_file.write('\r%-*.*s' % (self.width - 1, self.width - 1, m))
         self._have_output = True
         #self.to_file.flush()
@@ -437,7 +512,6 @@ class TTYProgressBar(_BaseProgressBar):
         #self.to_file.flush()        
 
 
-_progress_bar_types['tty'] = TTYProgressBar
 
 
 class ChildProgress(_BaseProgressBar):
@@ -557,3 +631,10 @@ class ProgressPhase(object):
         else:
             self.cur_phase += 1
         self.pb.update(self.message, self.cur_phase, self.total)
+
+
+_progress_bar_types = {}
+_progress_bar_types['dummy'] = DummyProgress
+_progress_bar_types['none'] = DummyProgress
+_progress_bar_types['tty'] = TTYProgressBar
+_progress_bar_types['dots'] = DotsProgressBar

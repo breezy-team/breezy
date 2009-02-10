@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -29,6 +30,7 @@ from bzrlib.transport import (
 from bzrlib.trace import note
 
 
+@deprecated_function(deprecated_in((1, 12, 0)))
 def read_bundle_from_url(url):
     return read_mergeable_from_url(url, _do_directive=False)
 

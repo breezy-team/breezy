@@ -250,3 +250,8 @@ class PatchesTester(TestCase):
         for patch in patches:
             patch_files.append((patch.oldname, patch.newname))
         self.assertEqual(patch_files, filenames)
+
+    def testStatsValues(self):
+        """Test the added, removed and hunks values for stats_values."""
+        patch = parse_patch(self.datafile("diff"))
+        self.assertEqual((299, 407, 48), patch.stats_values())

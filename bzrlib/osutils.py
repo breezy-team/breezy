@@ -508,7 +508,8 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
+             report_activity=None, direction='read'):
     """Copy contents of one file to another.
 
     The read_length can either be -1 to read to end-of-file (EOF) or
@@ -516,6 +517,10 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
 
     The buff_size represents the maximum size for each read operation
     performed on from_file.
+
+    :param report_activity: Call this as bytes are read, see
+        Transport._report_activity
+    :param direction: Will be passed to report_activity
 
     :return: The number of bytes copied.
     """
@@ -530,6 +535,8 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
 
             actual_bytes_read = len(block)
@@ -542,6 +549,8 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
             length += len(block)
     return length
@@ -1607,7 +1616,7 @@ def recv_all(socket, bytes):
     """
     b = ''
     while len(b) < bytes:
-        new = socket.recv(bytes - len(b))
+        new = until_no_eintr(socket.recv, bytes - len(b))
         if new == '':
             break # eof
         b += new
@@ -1622,7 +1631,7 @@ def send_all(socket, bytes):
     """
     chunk_size = 2**16
     for pos in xrange(0, len(bytes), chunk_size):
-        socket.sendall(bytes[pos:pos+chunk_size])
+        until_no_eintr(socket.sendall, bytes[pos:pos+chunk_size])
 
 
 def dereference_path(path):
@@ -1694,6 +1703,19 @@ def file_kind(f, _lstat=os.lstat):
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
+
+
+def until_no_eintr(f, *a, **kw):
+    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
+    while True:
+        try:
+            return f(*a, **kw)
+        except (IOError, OSError), e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
+
 
 if sys.platform == "win32":
     import msvcrt
