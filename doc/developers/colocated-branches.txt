@@ -28,10 +28,10 @@ Use Cases
 =========
 
 Carla has a large C-based project with a large tree and a lot of .o
-files that get generated as part of his build process. She doesn't want
+files that get generated as part of her build process. She doesn't want
 to create a new working tree for each new branch but simply uses "bzr
-switch" to switch between the different 
-colocated branches that all use the same working tree.
+switch" to switch between the different colocated branches that all use
+the same working tree.
 
 Brad has a single project with a lot of related branches. He works on
 them and occasionally pushes all of those branches to a remote host
