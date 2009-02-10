@@ -284,9 +284,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqualDiff('conflicts:\n  Contents conflict in dir2/file1\n',
                              tof.getvalue())
 
-    def test_status_nonexistent_file(self):
-        # files that don't exist in either the basis tree or working tree
-        # should give an error
+    def _prepare_nonexistent(self):
         wt = self.make_branch_and_tree('.')
         self.assertStatus([], wt)
         self.build_tree(['FILE_A', 'FILE_B', 'FILE_C', 'FILE_D', 'FILE_E', ])
@@ -302,7 +300,12 @@ class BranchStatus(TestCaseWithTransport):
         open('FILE_Q', 'w').write('FILE_Q is added but not committed.')
         wt.add('FILE_Q')  # FILE_Q will be added but not committed
         open('UNVERSIONED_BUT_EXISTING', 'w')
+        return wt
 
+    def test_status_nonexistent_file(self):
+        # files that don't exist in either the basis tree or working tree
+        # should give an error
+        wt = self._prepare_nonexistent()
         self.assertStatus([
             'removed:\n',
             '  FILE_E\n',
@@ -315,7 +318,6 @@ class BranchStatus(TestCaseWithTransport):
             '  UNVERSIONED_BUT_EXISTING\n',
             ],
             wt)
-
         self.assertStatus([
             ' M  FILE_B\n',
             ' M  FILE_C\n',
@@ -338,7 +340,6 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-
         expected = [
           'X:   NONEXISTENT\n',
           ]
@@ -347,7 +348,9 @@ class BranchStatus(TestCaseWithTransport):
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
         
+    def test_status_nonexistent_file_with_others(self):
         # bzr st [--short] NONEXISTENT ...others..
+        wt = self._prepare_nonexistent()
         expected = [
           'removed:\n',
           '  FILE_E\n',
@@ -364,7 +367,6 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-        
         expected = [
           ' D  FILE_E\n',
           ' M  FILE_C\n',
@@ -379,7 +381,9 @@ class BranchStatus(TestCaseWithTransport):
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
         
+    def test_status_multiple_nonexistent_files(self):
         # bzr st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
+        wt = self._prepare_nonexistent()
         expected = [
           'removed:\n',
           '  FILE_E\n',
@@ -397,7 +401,6 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'ANOTHER_NONEXISTENT NONEXISTENT.*')
-        
         expected = [
           ' D  FILE_E\n',
           ' M  FILE_C\n',
@@ -413,7 +416,9 @@ class BranchStatus(TestCaseWithTransport):
                               r'.*ERROR: Path\(s\) do not exist: '
                               'ANOTHER_NONEXISTENT NONEXISTENT.*')
         
+    def test_status_nonexistent_file_with_unversioned(self):
         # bzr st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
+        wt = self._prepare_nonexistent()
         expected = [
           'removed:\n',
           '  FILE_E\n',
@@ -434,7 +439,6 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-        
         expected = [
           '+N  FILE_Q\n',
           '?   UNVERSIONED_BUT_EXISTING\n',
