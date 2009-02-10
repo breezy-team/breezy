@@ -1132,7 +1132,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = self.sproutOrSkip(dir, self.get_url('target'),
                                    create_tree_if_local=False)
         self.failIfExists('target/foo')
-        self.assertEqual(tree.branch.last_revision(), target.open_branch().last_revision())
+        self.assertEqual(tree.branch.last_revision(),
+                         target.open_branch().last_revision())
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
