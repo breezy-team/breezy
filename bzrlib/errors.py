@@ -2937,3 +2937,12 @@ class NoSuchShelfId(BzrError):
 class UserAbort(BzrError):
 
     _fmt = 'The user aborted the operation.'
+
+
+class MustHaveWorkingTree(BzrError):
+
+    _fmt = ("The branch '%(url)s'(%(format)s) cannot be branched without a"
+            " working tree.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self, format=format, url=url)
