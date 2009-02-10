@@ -56,6 +56,10 @@ IN DEVELOPMENT
     * ``bzr add`` more clearly communicates success vs failure.
       (Daniel Watkins)
 
+    * ``bzr branch`` now has a ``--no-tree`` option which turns off the
+      generation of a working tree in the new branch.
+      (Daniel Watkins, John Klinger, #273993)
+
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
 
