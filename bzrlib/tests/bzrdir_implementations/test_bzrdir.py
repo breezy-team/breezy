@@ -1129,6 +1129,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
+        if isinstance(dir, (bzrdir.BzrDirPreSplitOut,)):
+            self.assertRaises(errors.MustHaveWorkingTree, self.sproutOrSkip,
+                              dir, self.get_url('target'),
+                              create_tree_if_local=False)
+            return
         target = self.sproutOrSkip(dir, self.get_url('target'),
                                    create_tree_if_local=False)
         self.failIfExists('target/foo')

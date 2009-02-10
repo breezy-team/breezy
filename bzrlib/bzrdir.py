@@ -1343,6 +1343,9 @@ class BzrDirPreSplitOut(BzrDir):
         if stacked:
             raise errors.UnstackableBranchFormat(
                 self._format, self.root_transport.base)
+        if not create_tree_if_local:
+            raise errors.MustHaveWorkingTree(
+                self._format, self.root_transport.base)
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
