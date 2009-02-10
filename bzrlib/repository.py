@@ -2191,6 +2191,19 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
 class RepositoryFormatRegistry(registry.Registry):
     """Registry of RepositoryFormats."""
 
+    def __init__(self, other_registry=None):
+        registry.Registry.__init__(self)
+        self._other_registry = other_registry
+
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, info=None,
+                      override_existing=False):
+        registry.Registry.register_lazy(self, key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+        if self._other_registry is not None:
+            self._other_registry.register_lazy(key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+
     def get(self, format_string):
         r = registry.Registry.get(self, format_string)
         if callable(r):
@@ -2198,7 +2211,11 @@ class RepositoryFormatRegistry(registry.Registry):
         return r
     
 
-format_registry = RepositoryFormatRegistry()
+network_format_registry = RepositoryFormatRegistry()
+"""Registry of formats indexed by their network name."""
+
+
+format_registry = RepositoryFormatRegistry(network_format_registry)
 """Registry of formats, indexed by their identifying format string.
 
 This can contain either format instances themselves, or classes/factories that
@@ -2397,9 +2414,26 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         finally:
             control_files.unlock()
 
+    def network_name(self):
+        """Metadir formats have matching disk and network format strings."""
+        return self.get_format_string()
 
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.  They're 
+
+# Pre-0.8 formats that don't have a disk format string, but do have a network
+# name are just registered in network_format_registry.
+network_format_registry.register_lazy(
+    "Bazaar-NG branch, format 5\n",
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat5',
+)
+network_format_registry.register_lazy(
+    "Bazaar-NG branch, format 6\n",
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat6',
+)
+
+# formats which have no format string are not discoverable or independently
+# creatable on disk, so are not registered in format_registry.  They're 
 # all in bzrlib.repofmt.weaverepo now.  When an instance of one of these is
 # needed, it's constructed directly by the BzrDir.  Non-native formats where
 # the repository is not separately opened are similar.

@@ -3014,6 +3014,8 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 # appear in chronological order and format descriptions can build
 # on previous ones.
 format_registry = BzrDirFormatRegistry()
+# The pre-0.8 formats have their repo format network name registered in
+# repository.py.
 format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
     ' support checkouts or shared repositories.',
