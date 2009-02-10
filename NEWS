@@ -8,6 +8,13 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  IMPROVEMENTS:
+
+    * ``bzr branch`` now has a ``--no-tree`` option which turns off the
+      generation of a working tree in the new branch.
+      (Daniel Watkins, John Klinger, #273993)
+
+
 bzr 1.12rc1 "1234567890" 2009-02-10
 -----------------------------------
 
@@ -65,10 +72,6 @@ network IO.
 
     * ``bzr add`` more clearly communicates success vs failure.
       (Daniel Watkins)
-
-    * ``bzr branch`` now has a ``--no-tree`` option which turns off the
-      generation of a working tree in the new branch.
-      (Daniel Watkins, John Klinger, #273993)
 
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
