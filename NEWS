@@ -79,6 +79,9 @@ IN DEVELOPMENT
       parent of the branch if no other location is given.
       (Daniel Watkins, #198417)
 
+    * The ``bzr shelve`` prompt now includes a '?' help option to explain the
+      short options better. (Daniel Watkins, #327429)
+
     * The debugger started as a result of setting ``$BZR_PDB`` works
       around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
       can cause truncated tracebacks in Python versions before 2.6.
