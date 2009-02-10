@@ -148,12 +148,16 @@ IN DEVELOPMENT
 
     * ``ProgressBarStack`` is deprecated; instead use
       ``ui_factory.nested_progress_bar`` to create new progress bars.
+      (Martin Pool)
 
     * ForeignVcsMapping() now requires a ForeignVcs object as first
       argument. (Jelmer Vernooij)
 
     * ForeignVcsMapping.show_foreign_revid() has been moved to
       ForeignVcs. (Jelmer Vernooij)
+
+    * ``read_bundle_from_url`` is deprecated in favor of
+      ``read_mergeable_from_url``.  (Vincent Ladeuil)
 
     * Revision specifiers are now registered in
       ``bzrlib.revisionspec.revspec_registry``, and the old list of 
