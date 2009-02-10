@@ -2658,7 +2658,7 @@ class NoMessageSupplied(BzrError):
 
 class NoMailAddressSpecified(BzrError):
 
-    _fmt = "No mail-to address specified."
+    _fmt = "No mail-to address (--mail-to) or output (-o) specified."
 
 
 class UnknownMailClient(BzrError):

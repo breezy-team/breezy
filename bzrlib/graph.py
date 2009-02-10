@@ -920,6 +920,17 @@ class Graph(object):
         return set([candidate_descendant]) == self.heads(
             [candidate_ancestor, candidate_descendant])
 
+    def is_between(self, revid, lower_bound_revid, upper_bound_revid):
+        """Determine whether a revision is between two others.
+
+        returns true if and only if:
+        lower_bound_revid <= revid <= upper_bound_revid
+        """
+        return ((upper_bound_revid is None or
+                    self.is_ancestor(revid, upper_bound_revid)) and
+               (lower_bound_revid is None or
+                    self.is_ancestor(lower_bound_revid, revid)))
+
     def _search_for_extra_common(self, common, searchers):
         """Make sure that unique nodes are genuinely unique.
 

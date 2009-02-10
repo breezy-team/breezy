@@ -553,6 +553,17 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
     def test_as_revision_id(self):
         self.assertAsRevisionId('alt_r2', 'ancestor:tree2')
 
+    def test_default(self):
+        # We don't have a parent to default to
+        self.assertRaises(errors.NotBranchError, self.get_in_history,
+                          'ancestor:')
+
+        # Create a branch with a parent to default to
+        tree3 = self.tree.bzrdir.sprout('tree3').open_workingtree()
+        tree3.commit('foo', rev_id='r3')
+        self.tree = tree3
+        self.assertInHistoryIs(2, 'r2', 'ancestor:')
+
 
 class TestRevisionSpec_branch(TestRevisionSpec):
     
