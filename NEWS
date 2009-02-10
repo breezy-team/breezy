@@ -1,0 +1,31 @@
+--------------------
+bzr-upload Release Notes
+--------------------
+
+.. contents::
+
+IN DEVELOPMENT
+--------------
+
+  COMPATIBILITY BREAKS:
+
+  NEW FEATURES:
+
+    * Remote branches can be used to upload from.
+      (Gary van der Merwe, Vincent Ladeuil)
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+    * Clarify 'changes' definition in online help.
+      (Vincent Ladeuil, #275538)
+
+  API CHANGES:
+
+  TESTING:
+
+  INTERNALS:
+

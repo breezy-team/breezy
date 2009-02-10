@@ -83,7 +83,8 @@ class TransportAdapter(
                              'transport_server': test_server.Vsftpd,
                              })
                 result.append(scenario)
-            if test_server.ProftpdFeature().available():
+            from test_server import ProftpdFeature
+            if ProftpdFeature().available():
                 scenario = ('proftpd',
                             {'transport_class': test_server.FtpTransport,
                              'transport_server': test_server.Proftpd,

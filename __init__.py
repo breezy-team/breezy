@@ -337,6 +337,8 @@ class cmd_upload(commands.Command):
 
     If no destination is specified use the last one used.
     If no revision is specified upload the changes since the last upload.
+
+    Changes include files added, renamed, modified or removed.
     """
     takes_args = ['location?']
     takes_options = [
