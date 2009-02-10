@@ -1039,14 +1039,20 @@ class cmd_branch(Command):
             except errors.NoSuchFile:
                 raise errors.BzrCommandError('Parent of "%s" does not exist.'
                                              % to_location)
-            # preserve whatever source format we have.
-            dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                        possible_transports=[to_transport],
-                                        accelerator_tree=accelerator_tree,
-                                        hardlink=hardlink, stacked=stacked,
-                                        force_new_repo=standalone,
-                                        source_branch=br_from)
-            branch = dir.open_branch()
+            try:
+                # preserve whatever source format we have.
+                dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
+                                            possible_transports=[to_transport],
+                                            accelerator_tree=accelerator_tree,
+                                            hardlink=hardlink, stacked=stacked,
+                                            force_new_repo=standalone,
+                                            source_branch=br_from)
+                branch = dir.open_branch()
+            except errors.NoSuchRevision:
+                to_transport.delete_tree('.')
+                msg = "The branch %s has no revision %s." % (from_location,
+                    revision[0])
+                raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
             # If the source branch is stacked, the new branch may
             # be stacked whether we asked for that explicitly or not.
