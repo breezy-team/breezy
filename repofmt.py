@@ -46,6 +46,14 @@ from bzrlib.repofmt.pack_repo import (
     ReconcilePacker,
     OptimisingPacker,
     )
+try:
+    from bzrlib.repofmt.pack_repo import (
+    RepositoryFormatPackDevelopment4,
+    RepositoryFormatPackDevelopment4Subtree,
+    )
+    chk_support = True
+except ImportError:
+    chk_support = False
 from bzrlib import ui
 
 
@@ -74,21 +82,51 @@ class GCPack(NewPack):
             files created during the pack creation. e.g '.autopack'
         :param file_mode: An optional file mode to create the new files with.
         """
+        # replaced from bzr.dev to:
+        # - change inventory reference list length to 1
+        # - change texts reference lists to 1
+        # TODO: patch this to be parameterised upstream
+        
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
         index_builder_class = pack_collection._index_builder_class
-        Pack.__init__(self,
-            # Revisions: parents list, no text compression.
-            index_builder_class(reference_lists=1),
-            # Inventory: compressed, with graph for compatibility with other
-            # existing bzrlib code.
-            index_builder_class(reference_lists=1),
-            # Texts: per file graph:
-            index_builder_class(reference_lists=1, key_elements=2),
-            # Signatures: Just blobs to store, no compression, no parents
-            # listing.
-            index_builder_class(reference_lists=0),
-            )
+        if chk_support:
+            # from brisbane-core
+            if pack_collection.chk_index is not None:
+                chk_index = index_builder_class(reference_lists=0)
+            else:
+                chk_index = None
+            Pack.__init__(self,
+                # Revisions: parents list, no text compression.
+                index_builder_class(reference_lists=1),
+                # Inventory: We want to map compression only, but currently the
+                # knit code hasn't been updated enough to understand that, so we
+                # have a regular 2-list index giving parents and compression
+                # source.
+                index_builder_class(reference_lists=1),
+                # Texts: compression and per file graph, for all fileids - so two
+                # reference lists and two elements in the key tuple.
+                index_builder_class(reference_lists=1, key_elements=2),
+                # Signatures: Just blobs to store, no compression, no parents
+                # listing.
+                index_builder_class(reference_lists=0),
+                # CHK based storage - just blobs, no compression or parents.
+                chk_index=chk_index
+                )
+        else:
+            # from bzr.dev
+            Pack.__init__(self,
+                # Revisions: parents list, no text compression.
+                index_builder_class(reference_lists=1),
+                # Inventory: compressed, with graph for compatibility with other
+                # existing bzrlib code.
+                index_builder_class(reference_lists=1),
+                # Texts: per file graph:
+                index_builder_class(reference_lists=1, key_elements=2),
+                # Signatures: Just blobs to store, no compression, no parents
+                # listing.
+                index_builder_class(reference_lists=0),
+                )
         self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
         self.index_class = pack_collection._index_class
@@ -164,6 +202,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             self._index_transport, index_name, index_size)
 
     def _start_write_group(self):
+        # Overridden to add 'self.pack_factory()'
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
@@ -178,6 +217,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             self._new_pack)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
+        if chk_support and self.chk_index is not None:
+            self.chk_index.add_writable_index(self._new_pack.chk_index,
+                self._new_pack)
+            self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
 
         self.repo.inventories._index._add_callback = self.inventory_index.add_callback
         self.repo.revisions._index._add_callback = self.revision_index.add_callback
@@ -196,12 +239,22 @@ class GCPackRepository(KnitPackRepository):
             _commit_builder_class, _serializer)
         # and now replace everything it did :)
         index_transport = self._transport.clone('indices')
-        self._pack_collection = GCRepositoryPackCollection(self,
-            self._transport, index_transport,
-            self._transport.clone('upload'),
-            self._transport.clone('packs'),
-            _format.index_builder_class,
-            _format.index_class)
+        if chk_support:
+            self._pack_collection = GCRepositoryPackCollection(self,
+                self._transport, index_transport,
+                self._transport.clone('upload'),
+                self._transport.clone('packs'),
+                _format.index_builder_class,
+                _format.index_class,
+                use_chk_index=self._format.supports_chks,
+                )
+        else:
+            self._pack_collection = GCRepositoryPackCollection(self,
+                self._transport, index_transport,
+                self._transport.clone('upload'),
+                self._transport.clone('packs'),
+                _format.index_builder_class,
+                _format.index_class)
         self.inventories = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
@@ -283,6 +336,26 @@ class RepositoryFormatPackGCSubtrees(RepositoryFormatPackDevelopment2Subtree):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format - btree+groupcompress "
             ", interoperates with pack-0.92-subtrees\n")
+
+if chk_support:
+    'Bazaar development format - 1.9+gc (needs bzr.dev from 1.9)\n',
+    class RepositoryFormatPackGCPlainCHK(RepositoryFormatPackDevelopment4):
+        """A CHK+group compress pack repository."""
+
+        repository_class = GCPackRepository
+
+        def get_format_string(self):
+            """See RepositoryFormat.get_format_string()."""
+            return ('Bazaar development format - chk+gc '
+                '(needs bzr.dev from 1.12)\n')
+
+        def get_format_description(self):
+            """See RepositoryFormat.get_format_description()."""
+            return ("Development repository format - chk+groupcompress "
+                ", interoperates with pack-0.92\n")
+
+
+
 
 
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):

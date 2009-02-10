@@ -40,7 +40,7 @@ format_registry.register_metadir('gc-plain',
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=False,
     experimental=True,
@@ -52,7 +52,7 @@ format_registry.register_metadir('gc-rich-root',
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=False,
     experimental=True,
@@ -64,11 +64,31 @@ format_registry.register_metadir('gc-subtrees',
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=False,
     experimental=True,
     )
+
+# if we have chk support in bzrlib, use it. Otherwise don't register cause 'bzr
+# info' will die horribly.
+try:
+    from bzrlib.repofmt.pack_repo import (
+    RepositoryFormatPackDevelopment4,
+    )
+    format_registry.register_metadir('gc-plain-chk',
+        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlainCHK',
+        help='pack-1.9 with CHK inv and group compress. '
+            'Please read '
+            'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+            'before use.',
+        branch_format='bzrlib.branch.BzrBranchFormat7',
+        tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+        hidden=False,
+        experimental=True,
+        )
+except ImportError:
+    pass
 
 from bzrlib.repository import format_registry as repo_registry
 repo_registry.register_lazy(
@@ -76,18 +96,20 @@ repo_registry.register_lazy(
     'bzrlib.plugins.groupcompress.repofmt',
     'RepositoryFormatPackGCPlain',
     )
-from bzrlib.repository import format_registry as repo_registry
 repo_registry.register_lazy(
     'Bazaar development format - btree+gc-rich-root (needs bzr.dev from 1.6)\n',
     'bzrlib.plugins.groupcompress.repofmt',
     'RepositoryFormatPackGCRichRoot',
     )
-
-from bzrlib.repository import format_registry as repo_registry
 repo_registry.register_lazy(
     'Bazaar development format - btree+gc-subtrees (needs bzr.dev from 1.6)\n',
     'bzrlib.plugins.groupcompress.repofmt',
     'RepositoryFormatPackGCSubtrees',
+    )
+repo_registry.register_lazy(
+    'Bazaar development format - chk+gc (needs bzr.dev from 1.12)\n',
+    'bzrlib.plugins.groupcompress.repofmt',
+    'RepositoryFormatPackGCPlainCHK',
     )
 
 
