@@ -542,6 +542,7 @@ Column 1 - versioning/renames::
   - File unversioned
   R File renamed
   ? File unknown
+  X File nonexistent (and unknown to bzr)
   C File has conflicts
   P Entry for a pending merge (not a file)
 
