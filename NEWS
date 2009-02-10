@@ -24,6 +24,8 @@ IN DEVELOPMENT
       output of the log command in this situation may need to adjust.
       (Neil Martinsen-Burrell)
 
+    * ``read_bundle_from_url`` has been deprecated. (Vincent Ladeuil)
+
   NEW FEATURES:
 
     * Add support for filtering `bzr missing` on revisions.  Remote revisions
