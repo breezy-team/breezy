@@ -8,11 +8,28 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  COMPATIBILITY BREAKS:
+
+    * ``bzr log --line`` now indicates which revisions are merges with
+      `[merge]` after the date.  Scripts which parse the output of this
+      command may need to be adjusted.
+      (Neil Martinsen-Burrell)
+
+  NEW FEATURES:
+
   IMPROVEMENTS:
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+  API CHANGES:
+
+  INTERNALS:
 
 
 bzr 1.12rc1 "1234567890" 2009-02-10

@@ -616,7 +616,7 @@ diff:
         log = normalize_log(out)
         # Not supported by this formatter so expect plain output
         self.assertEqualDiff(subst_dates(log), """\
-2: Lorem Ipsum 2005-11-22 merge branch 1
+2: Lorem Ipsum 2005-11-22 [merge] merge branch 1
 1: Lorem Ipsum 2005-11-22 first post
 """)
 
