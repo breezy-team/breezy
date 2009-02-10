@@ -284,12 +284,176 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqualDiff('conflicts:\n  Contents conflict in dir2/file1\n',
                              tof.getvalue())
 
+    def _prepare_nonexistent(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertStatus([], wt)
+        self.build_tree(['FILE_A', 'FILE_B', 'FILE_C', 'FILE_D', 'FILE_E', ])
+        wt.add('FILE_A')
+        wt.add('FILE_B')
+        wt.add('FILE_C')
+        wt.add('FILE_D')
+        wt.add('FILE_E')
+        wt.commit('Create five empty files.')
+        open('FILE_B', 'w').write('Modification to file FILE_B.')
+        open('FILE_C', 'w').write('Modification to file FILE_C.')
+        unlink('FILE_E')  # FILE_E will be versioned but missing 
+        open('FILE_Q', 'w').write('FILE_Q is added but not committed.')
+        wt.add('FILE_Q')  # FILE_Q will be added but not committed
+        open('UNVERSIONED_BUT_EXISTING', 'w')
+        return wt
+
     def test_status_nonexistent_file(self):
         # files that don't exist in either the basis tree or working tree
         # should give an error
-        wt = self.make_branch_and_tree('.')
-        out, err = self.run_bzr('status does-not-exist', retcode=3)
-        self.assertContainsRe(err, r'do not exist.*does-not-exist')
+        wt = self._prepare_nonexistent()
+        self.assertStatus([
+            'removed:\n',
+            '  FILE_E\n',
+            'added:\n',
+            '  FILE_Q\n',
+            'modified:\n',
+            '  FILE_B\n',
+            '  FILE_C\n',
+            'unknown:\n',
+            '  UNVERSIONED_BUT_EXISTING\n',
+            ],
+            wt)
+        self.assertStatus([
+            ' M  FILE_B\n',
+            ' M  FILE_C\n',
+            ' D  FILE_E\n',
+            '+N  FILE_Q\n',
+            '?   UNVERSIONED_BUT_EXISTING\n',
+            ],
+            wt, short=True)
+
+        # Okay, everything's looking good with the existent files.
+        # Let's see what happens when we throw in non-existent files.
+
+        # bzr st [--short] NONEXISTENT '
+        expected = [
+          'nonexistent:\n',
+          '  NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status NONEXISTENT', retcode=3)
+        self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
+        expected = [
+          'X:   NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status --short NONEXISTENT', retcode=3)
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
+        
+    def test_status_nonexistent_file_with_others(self):
+        # bzr st [--short] NONEXISTENT ...others..
+        wt = self._prepare_nonexistent()
+        expected = [
+          'removed:\n',
+          '  FILE_E\n',
+          'modified:\n',
+          '  FILE_B\n',
+          '  FILE_C\n',
+          'nonexistent:\n',
+          '  NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status NONEXISTENT '
+                                'FILE_A FILE_B FILE_C FILE_D FILE_E',
+                                retcode=3)
+        self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
+        expected = [
+          ' D  FILE_E\n',
+          ' M  FILE_C\n',
+          ' M  FILE_B\n',
+          'X   NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status --short NONEXISTENT '
+                                'FILE_A FILE_B FILE_C FILE_D FILE_E',
+                                retcode=3)
+        self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
+        
+    def test_status_multiple_nonexistent_files(self):
+        # bzr st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
+        wt = self._prepare_nonexistent()
+        expected = [
+          'removed:\n',
+          '  FILE_E\n',
+          'modified:\n',
+          '  FILE_B\n',
+          '  FILE_C\n',
+          'nonexistent:\n',
+          '  ANOTHER_NONEXISTENT\n',
+          '  NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status NONEXISTENT '
+                                'FILE_A FILE_B ANOTHER_NONEXISTENT '
+                                'FILE_C FILE_D FILE_E', retcode=3)
+        self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'ANOTHER_NONEXISTENT NONEXISTENT.*')
+        expected = [
+          ' D  FILE_E\n',
+          ' M  FILE_C\n',
+          ' M  FILE_B\n',
+          'X   ANOTHER_NONEXISTENT\n',
+          'X   NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status --short NONEXISTENT '
+                                'FILE_A FILE_B ANOTHER_NONEXISTENT '
+                                'FILE_C FILE_D FILE_E', retcode=3)
+        self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'ANOTHER_NONEXISTENT NONEXISTENT.*')
+        
+    def test_status_nonexistent_file_with_unversioned(self):
+        # bzr st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
+        wt = self._prepare_nonexistent()
+        expected = [
+          'removed:\n',
+          '  FILE_E\n',
+          'added:\n',
+          '  FILE_Q\n',
+          'modified:\n',
+          '  FILE_B\n',
+          '  FILE_C\n',
+          'unknown:\n',
+          '  UNVERSIONED_BUT_EXISTING\n',
+          'nonexistent:\n',
+          '  NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status NONEXISTENT '
+                                'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
+                                'FILE_C FILE_D FILE_E FILE_Q', retcode=3)
+        self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
+        expected = [
+          '+N  FILE_Q\n',
+          '?   UNVERSIONED_BUT_EXISTING\n',
+          ' D  FILE_E\n',
+          ' M  FILE_C\n',
+          ' M  FILE_B\n',
+          'X   NONEXISTENT\n',
+          ]
+        out, err = self.run_bzr('status --short NONEXISTENT '
+                                'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
+                                'FILE_C FILE_D FILE_E FILE_Q', retcode=3)
+        self.assertEqual(expected, out.splitlines(True))
+        self.assertContainsRe(err,
+                              r'.*ERROR: Path\(s\) do not exist: '
+                              'NONEXISTENT.*')
 
     def test_status_out_of_date(self):
         """Simulate status of out-of-date tree after remote push"""
