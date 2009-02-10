@@ -574,7 +574,8 @@ class TestErrors(TestCaseWithTransport):
 
     def test_must_have_working_tree(self):
         err = errors.MustHaveWorkingTree('foo', 'bar')
-        self.assertEqual(str(err), "The branch 'bar'(foo) cannot be branched without a working tree.")
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
+                                   " working tree.")
 
 
 class PassThroughError(errors.BzrError):

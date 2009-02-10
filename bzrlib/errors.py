@@ -2941,8 +2941,7 @@ class UserAbort(BzrError):
 
 class MustHaveWorkingTree(BzrError):
 
-    _fmt = ("The branch '%(url)s'(%(format)s) cannot be branched without a"
-            " working tree.")
+    _fmt = ("Branching '%(url)s'(%(format)s) must create a working tree.")
 
     def __init__(self, format, url):
         BzrError.__init__(self, format=format, url=url)
