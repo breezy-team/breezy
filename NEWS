@@ -105,6 +105,9 @@ IN DEVELOPMENT
       now interprets filenames in their historical context.
       (Ian Clatworthy, #175520)
 
+    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
+      shelf id. (Daniel Watkins)
+
     * Don't require the present compression base in knits to be the same
       when adding records in knits. (Jelmer Vernooij, #307394)
 
@@ -119,6 +122,9 @@ IN DEVELOPMENT
 
     * Support symlinks with non-ascii characters in the symlink filename.
       (Jelmer Vernooij, #319323)
+
+    * The documentation for ``shelve`` and ``unshelve`` has been clarified.
+      (Daniel Watkins, #327421, #327425)
 
     * There was a bug in how we handled resolving when a file is deleted
       in one branch, and modified in the other. If there was a criss-cross
