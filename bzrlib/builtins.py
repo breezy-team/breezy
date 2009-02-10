@@ -999,6 +999,8 @@ class cmd_branch(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
+        Option('no-tree',
+            help="Create a branch without a working-tree."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
@@ -1009,7 +1011,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, stacked=False, standalone=False):
+            hardlink=False, stacked=False, standalone=False, no_tree=False):
         from bzrlib.tag import _merge_tags_if_possible
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
@@ -1042,6 +1044,7 @@ class cmd_branch(Command):
                                             accelerator_tree=accelerator_tree,
                                             hardlink=hardlink, stacked=stacked,
                                             force_new_repo=standalone,
+                                            create_tree_if_local=not no_tree,
                                             source_branch=br_from)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:

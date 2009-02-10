@@ -572,6 +572,11 @@ class TestErrors(TestCaseWithTransport):
             str(err), "The message handler raised an exception:\n")
         self.assertEndsWith(str(err), "Exception: example error\n")
 
+    def test_must_have_working_tree(self):
+        err = errors.MustHaveWorkingTree('foo', 'bar')
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
+                                   " working tree.")
+
 
 class PassThroughError(errors.BzrError):
     
