@@ -4,8 +4,18 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
+
+bzr 1.12rc1 "1234567890" 2009-02-10
+-----------------------------------
+
+This release of Bazaar contains many improvements to the speed and
+functionality of ``bzr log`` and the display of logged revisions by ``bzr
+status``.  bzr now also gives a better indication of progress, both in the
+way operations are drawn onto a text terminal, and by showing the rate of
+network IO.
 
   COMPATIBILITY BREAKS:
 
@@ -31,9 +41,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
-    * Add support for filtering `bzr missing` on revisions.  Remote revisions
-      can be filtered using `bzr missing -r -20..-10` and local revisions can
-      be filtered using `bzr missing --my-revision -20..-10`.
+    * Add support for filtering ``bzr missing`` on revisions.  Remote revisions
+      can be filtered using ``bzr missing -r -20..-10`` and local revisions can
+      be filtered using ``bzr missing --my-revision -20..-10``.
       (Marius Kruger)
 
     * ``bzr log -p`` displays the patch diff for each revision.
@@ -152,12 +162,16 @@ IN DEVELOPMENT
 
     * ``ProgressBarStack`` is deprecated; instead use
       ``ui_factory.nested_progress_bar`` to create new progress bars.
+      (Martin Pool)
 
     * ForeignVcsMapping() now requires a ForeignVcs object as first
       argument. (Jelmer Vernooij)
 
     * ForeignVcsMapping.show_foreign_revid() has been moved to
       ForeignVcs. (Jelmer Vernooij)
+
+    * ``read_bundle_from_url`` is deprecated in favor of
+      ``read_mergeable_from_url``.  (Vincent Ladeuil)
 
     * Revision specifiers are now registered in
       ``bzrlib.revisionspec.revspec_registry``, and the old list of 
@@ -167,8 +181,6 @@ IN DEVELOPMENT
     * The progress and UI classes have changed; the main APIs remain the
       same but code that provides a new UI or progress bar class may
       need to be updated.  (Martin Pool)
-
-  TESTING:
 
   INTERNALS:
 

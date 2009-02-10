@@ -79,8 +79,13 @@ class _ReportingFileSocket(object):
         self._report_activity(len(s), 'read')
         return s
 
-    def readline(self, size=-1):
-        s = self.filesock.readline(size)
+    def readline(self):
+        # This should be readline(self, size=-1), but httplib in python 2.4 and
+        #  2.5 defines a SSLFile wrapper whose readline method lacks the size
+        #  parameter.  So until we drop support for 2.4 and 2.5 and since we
+        #  don't *need* the size parameter we'll stay with readline(self)
+        #  --  vila 20090209
+        s = self.filesock.readline()
         self._report_activity(len(s), 'read')
         return s
 
