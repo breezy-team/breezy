@@ -4904,6 +4904,7 @@ class cmd_switch(Command):
     def run(self, to_location=None, force=False, revision=None):
         from bzrlib import switch
         tree_location = '.'
+        revision = _get_one_revision('switch', revision)
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
         branch = control_dir.open_branch()
         if to_location is None:
@@ -4923,10 +4924,7 @@ class cmd_switch(Command):
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
         if revision is not None:
-            if len(revision) > 1:
-                raise errors.BzrCommandError(
-                    'bzr switch --revision takes exactly 1 revision value')
-            revision = revision[0].as_revision_id(to_branch)
+            revision = revision.as_revision_id(to_branch)
         switch.switch(control_dir, to_branch, force, revision)
         if branch.get_config().has_explicit_nickname():
             branch = control_dir.open_branch() #get the new branch!
