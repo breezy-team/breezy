@@ -191,6 +191,14 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
 
+    def test_shelve_help(self):
+        tree = self.create_shelvable_tree()
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve? [yNfq?]', '?')
+        shelver.expect('Shelve? [(y)es, (N)o, (f)inish, or (q)uit]', 'f')
+        shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
+        shelver.run()
+
 
 class TestUnshelver(tests.TestCaseWithTransport):
 
