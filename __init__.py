@@ -87,6 +87,11 @@ try:
         hidden=False,
         experimental=True,
         )
+    repo_registry.register_lazy(
+        'Bazaar development format - chk+gc (needs bzr.dev from 1.12)\n',
+        'bzrlib.plugins.groupcompress.repofmt',
+        'RepositoryFormatPackGCPlainCHK',
+        )
 except ImportError:
     pass
 
@@ -105,11 +110,6 @@ repo_registry.register_lazy(
     'Bazaar development format - btree+gc-subtrees (needs bzr.dev from 1.6)\n',
     'bzrlib.plugins.groupcompress.repofmt',
     'RepositoryFormatPackGCSubtrees',
-    )
-repo_registry.register_lazy(
-    'Bazaar development format - chk+gc (needs bzr.dev from 1.12)\n',
-    'bzrlib.plugins.groupcompress.repofmt',
-    'RepositoryFormatPackGCPlainCHK',
     )
 
 
