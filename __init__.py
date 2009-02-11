@@ -163,9 +163,6 @@ class cmd_fast_import(Command):
                     Option('count', type=int,
                         help="Import this many revisions then exit.",
                         ),
-                    Option('inv-fulltext', type=int,
-                        help="Inventory fulltext every N revisions.",
-                        ),
                     Option('inv-cache', type=int,
                         help="Number of inventories to cache.",
                         ),
@@ -179,7 +176,7 @@ class cmd_fast_import(Command):
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
-        checkpoint=10000, count=-1, inv_fulltext=200, inv_cache=10,
+        checkpoint=10000, count=-1, inv_cache=10,
         experimental=True, import_marks=None, export_marks=None):
         from bzrlib import bzrdir
         from bzrlib.plugins.fastimport.processors import generic_processor
@@ -189,7 +186,6 @@ class cmd_fast_import(Command):
             'trees': trees,
             'checkpoint': checkpoint,
             'count': count,
-            'inv-fulltext': inv_fulltext,
             'inv-cache': inv_cache,
             'experimental': experimental,
             'import-marks': import_marks,
