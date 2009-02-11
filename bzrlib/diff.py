@@ -100,9 +100,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         ud[2] = ud[2].replace('-1,0', '-0,0')
     elif not newlines:
         ud[2] = ud[2].replace('+1,0', '+0,0')
-    # work around for difflib emitting random spaces after the label
-    ud[0] = ud[0][:-2] + '\n'
-    ud[1] = ud[1][:-2] + '\n'
 
     for line in ud:
         to_file.write(line)

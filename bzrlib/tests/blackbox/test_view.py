@@ -26,7 +26,7 @@ class TestViewUI(TestCaseWithTransport):
     def make_branch_and_tree(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('1.12-preview')
+        format = bzrdir.format_registry.make_bzrdir('development-wt5')
         return TestCaseWithTransport.make_branch_and_tree(self, '.',
             format=format)
 

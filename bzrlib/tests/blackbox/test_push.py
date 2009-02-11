@@ -382,6 +382,19 @@ class TestPush(ExternalBase):
         # fulltext record for f-id @ rev-1, then this will fail.
         out, err = self.run_bzr('push -d repo/local remote -r 3')
 
+    def test_push_verbose_shows_log(self):
+        tree = self.make_branch_and_tree('source')
+        tree.commit('rev1')
+        out, err = self.run_bzr('push -v -d source target')
+        # initial push contains log
+        self.assertContainsRe(out, 'rev1')
+        tree.commit('rev2')
+        out, err = self.run_bzr('push -v -d source target')
+        # subsequent push contains log
+        self.assertContainsRe(out, 'rev2')
+        # subsequent log is accurate
+        self.assertNotContainsRe(out, 'rev1')
+
 
 class RedirectingMemoryTransport(MemoryTransport):
 

@@ -4,10 +4,10 @@
 # When preparing a new release, make sure to set all of these to the latest
 # values.
 VERSIONS = {
-    'bzr': '1.9',
-    'qbzr': '0.9.5',
-    'bzrtools': '1.9.1',
-    'bzr-svn': '0.4.14',
+    'bzr': '1.11',
+    'qbzr': '0.9.6',
+    'bzrtools': '1.11.0',
+    'bzr-svn': '0.4.16',
 }
 
 # This will be passed to 'make' to ensure we build with the right python
@@ -83,7 +83,7 @@ def update_bzr():
     bzr_dir = get_bzr_dir()
     if not os.path.isdir(bzr_dir):
         bzr_version = VERSIONS['bzr']
-        bzr_url = 'http://bazaar-vcs.org/bzr/bzr' + bzr_version
+        bzr_url = 'http://bazaar-vcs.org/bzr/bzr.' + bzr_version
         print "Getting bzr release %s from %s" % (bzr_version, bzr_url)
         call_or_fail([bzr(), 'co', bzr_url])
     else:
@@ -112,7 +112,7 @@ def get_plugin_trunk_branch(plugin_name):
 def update_plugin_trunk(plugin_name):
     trunk_dir = get_plugin_trunk_dir(plugin_name)
     if not os.path.isdir(trunk_dir):
-        plugin_trunk = get_plugin_trunk_branch()
+        plugin_trunk = get_plugin_trunk_branch(plugin_name)
         print "Getting latest %s trunk" % (plugin_name,)
         call_or_fail([bzr(), 'co', plugin_trunk,
                       trunk_dir])

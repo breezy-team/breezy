@@ -2222,6 +2222,14 @@ class VirtualVersionedFilesTests(TestCase):
         record = it.next()
         self.assertEquals("absent", record.storage_kind)
 
+    def test_iter_lines_added_or_present_in_keys(self):
+        self._lines["A"] = ["FOO", "BAR"]
+        self._lines["B"] = ["HEY"]
+        self._lines["C"] = ["Alberta"]
+        it = self.texts.iter_lines_added_or_present_in_keys([("A",), ("B",)])
+        self.assertEquals(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]), 
+            sorted(list(it)))
+
 
 class TestOrderingVersionedFilesDecorator(TestCaseWithMemoryTransport):
 

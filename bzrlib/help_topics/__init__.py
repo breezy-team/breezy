@@ -168,8 +168,8 @@ denotes a change between revisions (and not a sequence of changes).  In
 addition, "log" considers a closed range whereas "diff" and "merge" consider it
 to be open-ended, that is, they include one end but not the other.  For example:
 "bzr log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
-while "bzr diff -r 3647..3649" includes the changes done in revisions 3647 and
-3648, but not 3649.
+while "bzr diff -r 3647..3649" includes the changes done in revisions 3648 and
+3649, but not 3647.
 
 The keywords used as revision selection methods are the following:
 """)
@@ -179,7 +179,7 @@ The keywords used as revision selection methods are the following:
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
-    for i in bzrlib.revisionspec.SPEC_TYPES:
+    for prefix, i in bzrlib.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == bzrlib.revisionspec.RevisionSpec.help_txt:
             summary = "N/A"
@@ -307,6 +307,7 @@ development.
 -Devil            Capture call sites that do expensive or badly-scaling
                   operations.
 -Dfetch           Trace history copying between repositories.
+-Dgraph           Trace graph traversal.
 -Dhashcache       Log every time a working file is read to determine its hash.
 -Dhooks           Trace hook execution.
 -Dhpss            Trace smart protocol requests and responses.
@@ -316,6 +317,7 @@ development.
 -Dlock            Trace when lockdir locks are taken or released.
 -Dmerge           Emit information for debugging merges.
 -Dpack            Emit information about pack operations.
+-Dsftp            Trace SFTP internals.
 """
 
 _standard_options = \
@@ -540,6 +542,7 @@ Column 1 - versioning/renames::
   - File unversioned
   R File renamed
   ? File unknown
+  X File nonexistent (and unknown to bzr)
   C File has conflicts
   P Entry for a pending merge (not a file)
 

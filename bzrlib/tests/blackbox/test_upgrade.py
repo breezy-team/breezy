@@ -1,6 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
-# Authors: Robert Collins <robert.collins@canonical.com>
-#          and others
+# Copyright (C) 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -108,10 +106,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
-making backup of tree history
-%s.bzr has been backed up to %sbackup.bzr
-if conversion fails, you can move this directory back to .bzr
-if it succeeds, you can remove this directory if you wish
+making backup of %s.bzr
+  to %sbackup.bzr
 starting upgrade from format 5 to 6
 adding prefixes to weaves
 adding prefixes to revision-store
@@ -132,10 +128,8 @@ finished
         (out, err) = self.run_bzr(
             ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
-making backup of tree history
-%s.bzr has been backed up to %sbackup.bzr
-if conversion fails, you can move this directory back to .bzr
-if it succeeds, you can remove this directory if you wish
+making backup of %s.bzr
+  to %sbackup.bzr
 starting repository conversion
 repository converted
 finished
@@ -171,10 +165,8 @@ class SFTPTests(TestCaseWithSFTPServer):
         url = t.base
         out, err = self.run_bzr(['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
-making backup of tree history
-%s.bzr has been backed up to %sbackup.bzr
-if conversion fails, you can move this directory back to .bzr
-if it succeeds, you can remove this directory if you wish
+making backup of %s.bzr
+  to %sbackup.bzr
 starting upgrade from format 6 to metadir
 starting repository conversion
 repository converted

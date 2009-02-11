@@ -41,6 +41,7 @@ def show_tree_status(wt, show_unchanged=None,
                      show_pending=True,
                      revision=None,
                      short=False,
+                     verbose=False,
                      versioned=False):
     """Display summary of changes.
 
@@ -67,6 +68,8 @@ def show_tree_status(wt, show_unchanged=None,
         If one revision, compare with working tree.
         If two revisions, show status between first and second.
     :param short: If True, gives short SVN-style status lines.
+    :param verbose: If True, show all merged revisions, not just
+        the merge tips
     :param versioned: If True, only shows versioned files.
     """
     if show_unchanged is not None:
@@ -100,7 +103,8 @@ def show_tree_status(wt, show_unchanged=None,
         old.lock_read()
         new.lock_read()
         try:
-            _raise_if_nonexistent(specific_files, old, new)
+            specific_files, nonexistents \
+                = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
             if short:
                 changes = new.iter_changes(old, show_unchanged, specific_files,
@@ -134,11 +138,29 @@ def show_tree_status(wt, show_unchanged=None,
                 else:
                     prefix = ' '
                 to_file.write("%s %s\n" % (prefix, conflict))
+            # Show files that were requested but don't exist (and are
+            # not versioned).  We don't involve delta in this; these
+            # paths are really the province of just the status
+            # command, since they have more to do with how it was
+            # invoked than with the tree it's operating on.
+            if nonexistents and not short:
+                to_file.write("nonexistent:\n")
+            for nonexistent in nonexistents:
+                # We could calculate prefix outside the loop but, given
+                # how rarely this ought to happen, it's OK and arguably
+                # slightly faster to do it here (ala conflicts above)
+                if short:
+                    prefix = 'X  '
+                else:
+                    prefix = ' '
+                to_file.write("%s %s\n" % (prefix, nonexistent))
             if (new_is_working_tree and show_pending):
-                show_pending_merges(new, to_file, short)
+                show_pending_merges(new, to_file, short, verbose=verbose)
         finally:
             old.unlock()
             new.unlock()
+            if nonexistents:
+              raise errors.PathsDoNotExist(nonexistents)
     finally:
         wt.unlock()
 
@@ -169,7 +191,7 @@ def _get_sorted_revisions(tip_revision, revision_ids, parent_map):
     return sorter.iter_topo_order()
 
 
-def show_pending_merges(new, to_file, short=False):
+def show_pending_merges(new, to_file, short=False, verbose=False):
     """Write out a display of pending merges in a working tree."""
     parents = new.get_parent_ids()
     if len(parents) < 2:
@@ -188,7 +210,10 @@ def show_pending_merges(new, to_file, short=False):
     branch = new.branch
     last_revision = parents[0]
     if not short:
-        to_file.write('pending merges:\n')
+        if verbose:
+            to_file.write('pending merges:\n')
+        else:
+            to_file.write('pending merge tips: (use -v to see all merge revisions)\n')
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
     log_formatter = log.LineLogFormatter(to_file)
@@ -205,6 +230,9 @@ def show_pending_merges(new, to_file, short=False):
         log_message = log_formatter.log_string(None, rev,
                         term_width - len(first_prefix))
         to_file.write(first_prefix + log_message + '\n')
+        if not verbose:
+            continue
+
         # Find all of the revisions in the merge source, which are not in the
         # last committed revision.
         merge_extra = graph.find_unique_ancestors(merge, other_revisions)
@@ -245,22 +273,28 @@ def show_pending_merges(new, to_file, short=False):
             to_file.write(sub_prefix + log_message + '\n')
 
 
-def _raise_if_nonexistent(paths, old_tree, new_tree):
-    """Complain if paths are not in either inventory or tree.
+def _filter_nonexistent(orig_paths, old_tree, new_tree):
+    """Convert orig_paths to two sorted lists and return them.
 
-    It's OK with the files exist in either tree's inventory, or 
-    if they exist in the tree but are not versioned.
-    
+    The first is orig_paths paths minus the items in the second list,
+    and the second list is paths that are not in either inventory or
+    tree (they don't qualify if they exist in the tree's inventory, or
+    if they exist in the tree but are not versioned.)
+
+    If either of the two lists is empty, return it as an empty list.
+
     This can be used by operations such as bzr status that can accept
     unknown or ignored files.
     """
-    mutter("check paths: %r", paths)
-    if not paths:
-        return
-    s = old_tree.filter_unversioned_files(paths)
+    mutter("check paths: %r", orig_paths)
+    if not orig_paths:
+        return orig_paths, []
+    s = old_tree.filter_unversioned_files(orig_paths)
     s = new_tree.filter_unversioned_files(s)
-    s = [path for path in s if not new_tree.has_filename(path)]
-    if s:
-        raise errors.PathsDoNotExist(sorted(s))
-
-
+    nonexistent = [path for path in s if not new_tree.has_filename(path)]
+    remaining   = [path for path in orig_paths if not path in nonexistent]
+    # Sorting the 'remaining' list doesn't have much effect in
+    # practice, since the various status output sections will sort
+    # their groups individually.  But for consistency of this
+    # function's API, it's better to sort both than just 'nonexistent'.
+    return sorted(remaining), sorted(nonexistent)

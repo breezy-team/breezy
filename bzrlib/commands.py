@@ -868,8 +868,8 @@ def display_command(func):
 
 def main(argv):
     import bzrlib.ui
-    from bzrlib.ui.text import TextUIFactory
-    bzrlib.ui.ui_factory = TextUIFactory()
+    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
+        sys.stdin, sys.stdout, sys.stderr)
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
@@ -894,11 +894,32 @@ def run_bzr_catch_errors(argv):
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        exitcode = trace.report_exception(sys.exc_info(), sys.stderr)
+        exc_info = sys.exc_info()
+        exitcode = trace.report_exception(exc_info, sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
+            tb = exc_info[2]
             import pdb
-            pdb.post_mortem(sys.exc_traceback)
+            if sys.version_info[:2] < (2, 6):
+                # XXX: we want to do
+                #    pdb.post_mortem(tb)
+                # but because pdb.post_mortem gives bad results for tracebacks
+                # from inside generators, we do it manually.
+                # (http://bugs.python.org/issue4150, fixed in Python 2.6)
+                
+                # Setup pdb on the traceback
+                p = pdb.Pdb()
+                p.reset()
+                p.setup(tb.tb_frame, tb)
+                # Point the debugger at the deepest frame of the stack
+                p.curindex = len(p.stack) - 1
+                p.curframe = p.stack[p.curindex]
+                # Start the pdb prompt.
+                p.print_stack_entry(p.stack[p.curindex])
+                p.execRcLines()
+                p.cmdloop()
+            else:
+                pdb.post_mortem(tb)
         return exitcode
 
 
