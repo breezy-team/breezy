@@ -75,9 +75,11 @@ class HTTPSServer(http_server.HttpServer):
     # Provides usable defaults since an https server requires both a
     # private key and certificate to work.
     def __init__(self, request_handler=http_server.TestingHTTPRequestHandler,
+                 protocol_version=None,
                  key_file=ssl_certs.build_path('server_without_pass.key'),
                  cert_file=ssl_certs.build_path('server.crt')):
-        http_server.HttpServer.__init__(self, request_handler)
+        http_server.HttpServer.__init__(self, request_handler=request_handler,
+                                        protocol_version=protocol_version)
         self.key_file = key_file
         self.cert_file = cert_file
         self.temp_files = []

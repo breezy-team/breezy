@@ -37,7 +37,7 @@ class _SmartClient(object):
             self._headers = dict(headers)
 
     def _send_request(self, protocol_version, method, args, body=None,
-                      readv_body=None):
+                      readv_body=None, body_stream=None):
         encoder, response_handler = self._construct_protocol(
             protocol_version)
         encoder.set_headers(self._headers)
@@ -45,10 +45,17 @@ class _SmartClient(object):
             if readv_body is not None:
                 raise AssertionError(
                     "body and readv_body are mutually exclusive.")
+            if body_stream is not None:
+                raise AssertionError(
+                    "body and body_stream are mutually exclusive.")
             encoder.call_with_body_bytes((method, ) + args, body)
         elif readv_body is not None:
-            encoder.call_with_body_readv_array((method, ) + args,
-                    readv_body)
+            if body_stream is not None:
+                raise AssertionError(
+                    "readv_body and body_stream are mutually exclusive.")
+            encoder.call_with_body_readv_array((method, ) + args, readv_body)
+        elif body_stream is not None:
+            encoder.call_with_body_stream((method, ) + args, body_stream)
         else:
             encoder.call(method, *args)
         return response_handler
@@ -61,12 +68,12 @@ class _SmartClient(object):
             hook(params)
             
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
-            expect_response_body=True):
+            body_stream=None, expect_response_body=True):
         self._run_call_hooks(method, args, body, readv_body)
         if self._medium._protocol_version is not None:
             response_handler = self._send_request(
                 self._medium._protocol_version, method, args, body=body,
-                readv_body=readv_body)
+                readv_body=readv_body, body_stream=body_stream)
             return (response_handler.read_response_tuple(
                         expect_body=expect_response_body),
                     response_handler)
@@ -77,7 +84,7 @@ class _SmartClient(object):
                     self._medium._remember_remote_is_before((1, 6))
                 response_handler = self._send_request(
                     protocol_version, method, args, body=body,
-                    readv_body=readv_body)
+                    readv_body=readv_body, body_stream=body_stream)
                 try:
                     response_tuple = response_handler.read_response_tuple(
                         expect_body=expect_response_body)
@@ -163,6 +170,12 @@ class _SmartClient(object):
     def call_with_body_readv_array(self, args, body):
         response, response_handler = self._call_and_read_response(
                 args[0], args[1:], readv_body=body, expect_response_body=True)
+        return (response, response_handler)
+
+    def call_with_body_stream(self, args, stream):
+        response, response_handler = self._call_and_read_response(
+                args[0], args[1:], body_stream=stream,
+                expect_response_body=False)
         return (response, response_handler)
 
     def remote_path_from_transport(self, transport):

@@ -39,6 +39,7 @@ import warnings
 
 from bzrlib import (
     config,
+    debug,
     errors,
     urlutils,
     )
@@ -182,9 +183,10 @@ class _SFTPReadvHelper(object):
                 requests.append((start, next_size))
                 size -= next_size
                 start += next_size
-        mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
-               self.relpath, len(sorted_offsets), len(coalesced),
-               len(requests))
+        if 'sftp' in debug.debug_flags:
+            mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
+                self.relpath, len(sorted_offsets), len(coalesced),
+                len(requests))
         return requests
 
     def request_and_yield_offsets(self, fp):
@@ -286,8 +288,9 @@ class _SFTPReadvHelper(object):
             del buffered_data[:]
             data_chunks.append((input_start, buffered))
         if data_chunks:
-            mutter('SFTP readv left with %d out-of-order bytes',
-                   sum(map(lambda x: len(x[1]), data_chunks)))
+            if 'sftp' in debug.debug_flags:
+                mutter('SFTP readv left with %d out-of-order bytes',
+                    sum(map(lambda x: len(x[1]), data_chunks)))
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized
@@ -446,7 +449,8 @@ class SFTPTransport(ConnectedTransport):
             readv = getattr(fp, 'readv', None)
             if readv:
                 return self._sftp_readv(fp, offsets, relpath)
-            mutter('seek and read %s offsets', len(offsets))
+            if 'sftp' in debug.debug_flags:
+                mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')

@@ -67,13 +67,59 @@ from bzrlib import (
     )
 
 
-class _BufferedMakefileSocket(object):
+class _ReportingFileSocket(object):
 
-    def __init__(self, sock):
+    def __init__(self, filesock, report_activity=None):
+        self.filesock = filesock
+        self._report_activity = report_activity
+
+
+    def read(self, size=1):
+        s = self.filesock.read(size)
+        self._report_activity(len(s), 'read')
+        return s
+
+    def readline(self):
+        # This should be readline(self, size=-1), but httplib in python 2.4 and
+        #  2.5 defines a SSLFile wrapper whose readline method lacks the size
+        #  parameter.  So until we drop support for 2.4 and 2.5 and since we
+        #  don't *need* the size parameter we'll stay with readline(self)
+        #  --  vila 20090209
+        s = self.filesock.readline()
+        self._report_activity(len(s), 'read')
+        return s
+
+    def __getattr__(self, name):
+        return getattr(self.filesock, name)
+
+
+class _ReportingSocket(object):
+
+    def __init__(self, sock, report_activity=None):
         self.sock = sock
+        self._report_activity = report_activity
+
+    def send(self, s, *args):
+        self.sock.send(s, *args)
+        self._report_activity(len(s), 'write')
+
+    def sendall(self, s, *args):
+        self.sock.send(s, *args)
+        self._report_activity(len(s), 'write')
+
+    def recv(self, *args):
+        s = self.sock.recv(*args)
+        self._report_activity(len(s), 'read')
+        return s
 
     def makefile(self, mode='r', bufsize=-1):
-        return self.sock.makefile(mode, 65536)
+        # httplib creates a fileobject that doesn't do buffering, which
+        # makes fp.readline() very expensive because it only reads one byte
+        # at a time.  So we wrap the socket in an object that forces
+        # sock.makefile to make a buffered file.
+        fsock = self.sock.makefile(mode, 65536)
+        # And wrap that into a reporting kind of fileobject
+        return _ReportingFileSocket(fsock, self._report_activity)
 
     def __getattr__(self, name):
         return getattr(self.sock, name)
@@ -95,14 +141,6 @@ class Response(httplib.HTTPResponse):
     # instead. The underlying file is either a socket or a StringIO, so reading
     # 8k chunks should be fine.
     _discarded_buf_size = 8192
-
-    def __init__(self, sock, *args, **kwargs):
-        # httplib creates a fileobject that doesn't do buffering, which
-        # makes fp.readline() very expensive because it only reads one byte
-        # at a time.  So we wrap the socket in an object that forces
-        # sock.makefile to make a buffered file.
-        sock = _BufferedMakefileSocket(sock)
-        httplib.HTTPResponse.__init__(self, sock, *args, **kwargs)
 
     def begin(self):
         """Begin to read the response from the server.
@@ -178,8 +216,10 @@ class AbstractHTTPConnection:
     # we want to warn. But not below a given thresold.
     _range_warning_thresold = 1024 * 1024
 
-    def __init__(self):
+    def __init__(self,
+                 report_activity=None):
         self._response = None
+        self._report_activity = report_activity
         self._ranges_received_whole_file = None
 
     def _mutter_connect(self):
@@ -216,12 +256,17 @@ class AbstractHTTPConnection:
         # Restore our preciousss
         self.sock = sock
 
+    def _wrap_socket_for_reporting(self, sock):
+        """Wrap the socket before anybody use it."""
+        self.sock = _ReportingSocket(sock, self._report_activity)
+
 
 class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
 
     # XXX: Needs refactoring at the caller level.
-    def __init__(self, host, port=None, proxied_host=None):
-        AbstractHTTPConnection.__init__(self)
+    def __init__(self, host, port=None, proxied_host=None,
+                 report_activity=None):
+        AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPConnection.__init__(self, host, port, strict=True)
         self.proxied_host = proxied_host
@@ -230,6 +275,7 @@ class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
         if 'http' in debug.debug_flags:
             self._mutter_connect()
         httplib.HTTPConnection.connect(self)
+        self._wrap_socket_for_reporting(self.sock)
 
 
 # Build the appropriate socket wrapper for ssl
@@ -248,8 +294,9 @@ except ImportError:
 class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
 
     def __init__(self, host, port=None, key_file=None, cert_file=None,
-                 proxied_host=None):
-        AbstractHTTPConnection.__init__(self)
+                 proxied_host=None,
+                 report_activity=None):
+        AbstractHTTPConnection.__init__(self, report_activity=report_activity)
         # Use strict=True since we don't support HTTP/0.9
         httplib.HTTPSConnection.__init__(self, host, port,
                                          key_file, cert_file, strict=True)
@@ -259,11 +306,14 @@ class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
         if 'http' in debug.debug_flags:
             self._mutter_connect()
         httplib.HTTPConnection.connect(self)
+        self._wrap_socket_for_reporting(self.sock)
         if self.proxied_host is None:
             self.connect_to_origin()
 
     def connect_to_origin(self):
-        self.sock = _ssl_wrap_socket(self.sock, self.key_file, self.cert_file)
+        ssl_sock = _ssl_wrap_socket(self.sock, self.key_file, self.cert_file)
+        # Wrap the ssl socket before anybody use it
+        self._wrap_socket_for_reporting(ssl_sock)
 
 
 class Request(urllib2.Request):
@@ -355,6 +405,9 @@ class ConnectionHandler(urllib2.BaseHandler):
 
     handler_order = 1000 # after all pre-processings
 
+    def __init__(self, report_activity=None):
+        self._report_activity = report_activity
+
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
         if not host:
@@ -366,7 +419,8 @@ class ConnectionHandler(urllib2.BaseHandler):
         # request is made)
         try:
             connection = http_connection_class(
-                host, proxied_host=request.proxied_host)
+                host, proxied_host=request.proxied_host,
+                report_activity=self._report_activity)
         except httplib.InvalidURL, exception:
             # There is only one occurrence of InvalidURL in httplib
             raise errors.InvalidURL(request.get_full_url(),
@@ -1370,9 +1424,11 @@ class Opener(object):
     def __init__(self,
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
-                 error=HTTPErrorProcessor,):
-        self._opener = urllib2.build_opener( \
-            connection, redirect, error,
+                 error=HTTPErrorProcessor,
+                 report_activity=None):
+        self._opener = urllib2.build_opener(
+            connection(report_activity=report_activity),
+            redirect, error,
             ProxyHandler(),
             HTTPBasicAuthHandler(),
             HTTPDigestAuthHandler(),

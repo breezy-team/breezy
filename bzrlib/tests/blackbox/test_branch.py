@@ -107,6 +107,12 @@ class TestBranch(ExternalBase):
         self.assertEqual(strip_trailing_slash(b.repository.base),
             strip_trailing_slash(local_path_to_url(expected_repo_path)))
 
+    def test_branch_no_tree(self):
+        self.example_branch('source')
+        self.run_bzr('branch --no-tree source target')
+        self.failIfExists('target/hello')
+        self.failIfExists('target/goodbye')
+
 
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
