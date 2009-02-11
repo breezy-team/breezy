@@ -512,7 +512,7 @@ class GenericProcessor(processor.ImportProcessor):
         file_ids = {}
         for revision_id in revision_ids:
             inv = self.repo.revision_tree(revision_id).inventory
-            # Cache the inventoires while we're at it
+            # Cache the inventories while we're at it
             self.cache_mgr.inventories[revision_id] = inv
             for path, ie in inv.iter_entries():
                 file_ids[path] = ie.file_id
@@ -553,7 +553,7 @@ class GenericProcessor(processor.ImportProcessor):
         self._set_tag(cmd.id, cmd.from_)
 
     def _set_tag(self, name, from_):
-        """Define a tag given a name an import 'from' reference."""
+        """Define a tag given a name and import 'from' reference."""
         bzr_tag_name = name.decode('utf-8', 'replace')
         bzr_rev_id = self.cache_mgr.revision_ids[from_]
         self.tags[bzr_tag_name] = bzr_rev_id
@@ -695,7 +695,7 @@ class GenericCommitHandler(processor.CommitHandler):
         # Track the heads and get the real parent list
         parents = _track_heads(self.command, self.cache_mgr)
 
-        # Get the parent inventories
+        # Convert the parent commit-ids to bzr revision-ids
         if parents:
             self.parents = [self.cache_mgr.revision_ids[p]
                 for p in parents]
@@ -870,7 +870,8 @@ class GenericCommitHandler(processor.CommitHandler):
         """Get the inventories for revision-ids.
         
         This is a callback used by the RepositoryLoader to
-        speed up inventory reconstruction."""
+        speed up inventory reconstruction.
+        """
         present = []
         inventories = []
         # If an inventory is in the cache, we assume it was
@@ -996,7 +997,7 @@ class GenericBranchUpdater(object):
     def _get_matching_branches(self):
         """Get the Bazaar branches.
 
-        :return: default_tip, branch_tips, lost_tips where
+        :return: default_tip, branch_tips, lost_heads where
           default_tip = the last commit mark for the default branch
           branch_tips = a list of (branch,tip) tuples for other branches.
           lost_heads = a list of (bazaar-name,revision) for branches that
