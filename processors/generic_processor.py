@@ -543,7 +543,12 @@ class GenericProcessor(processor.ImportProcessor):
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
         if cmd.ref.startswith('refs/tags/'):
-            self._set_tag(cmd.ref[len('refs/tags/'):], cmd.from_)
+            tag_name = cmd.ref[len('refs/tags/'):]
+            if cmd.from_ is None:
+                self.warning("ignoring reset refs/tags/%s - no from clause"
+                    % tag_name)
+            else:
+                self._set_tag(tag_name, cmd.from_)
         else:
             self.warning("resets are not supported yet"
                 " - ignoring reset of '%s'", cmd.ref)
