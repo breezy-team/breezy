@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import osutils, ui, urlutils
-from bzrlib.errors import InvalidRevisionId
+from bzrlib.errors import InvalidRevisionId, NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.repository import InterRepository
 from bzrlib.trace import info
