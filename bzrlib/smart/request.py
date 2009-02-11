@@ -105,7 +105,7 @@ class SmartServerRequest(object):
         Must return a SmartServerResponse.
         """
         if body_bytes != '':
-            raise SmartProtocolError('Request does not expect a body.')
+            raise errors.SmartProtocolError('Request does not expect a body')
 
     def do_chunk(self, chunk_bytes):
         """Called with each body chunk if the request has a streamed body.

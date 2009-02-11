@@ -16,8 +16,16 @@
 
 """Tests for smart server request infrastructure (bzrlib.smart.request)."""
 
+from bzrlib import errors
 from bzrlib.smart import request
 from bzrlib.tests import TestCase
+
+
+class NoBodyRequest(request.SmartServerRequest):
+    """A request that does not implement do_body."""
+
+    def do(self):
+        return request.SuccessfulSmartServerResponse(('ok',))
 
 
 class TestSmartRequest(TestCase):
@@ -28,14 +36,27 @@ class TestSmartRequest(TestCase):
         """
         # Create a SmartServerRequestHandler with a SmartServerRequest subclass
         # that does not implement do_body.
-        class NoBodyRequest(request.SmartServerRequest):
-            """A request that does not implement do_body."""
-            def do(self):
-                return request.SuccessfulSmartServerResponse(('ok',))
         handler = request.SmartServerRequestHandler(
             None, {'foo': NoBodyRequest}, '/')
         # Emulate a request with no body (i.e. just args).
         handler.args_received(('foo',))
         handler.end_received()
-        # no exception was raised.
+        # Request done, no exception was raised.
+
+    def test_unexpected_body(self):
+        """If a request implementation receives an unexpected body, it
+        raises an error.
+        """
+        # Create a SmartServerRequestHandler with a SmartServerRequest subclass
+        # that does not implement do_body.
+        handler = request.SmartServerRequestHandler(
+            None, {'foo': NoBodyRequest}, '/')
+        # Emulate a request with a body
+        handler.args_received(('foo',))
+        handler.accept_body('some body bytes')
+        # Note that the exception currently occurs at the end of the request.
+        # In principle it would also be ok for it to happen earlier, during
+        # accept_body.
+        exc = self.assertRaises(errors.SmartProtocolError, handler.end_received)
+        self.assertEquals('Request does not expect a body', exc.details)
 
