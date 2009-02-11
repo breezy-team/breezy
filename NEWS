@@ -7,7 +7,36 @@ bzr-fastimport Release Notes
 IN DEVELOPMENT
 --------------
 
+  COMPATIBILITY BREAKS:
+
   FEATURES:
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+    * Ignore lightweight tags with no from clause rather than abort.
+      (It seems git-fast-export outputs these commands frequently now
+      while it didn't appear to in early versions.)
+      (Ian Clatworthy, edice, #259711)
+
+    * Import into rich-root (and subtree) repositories without aborting.
+      (Ian Clatworthy, #300921)
+
+  API BREAKS:
+
+  TESTING:
+
+  INTERNALS:
+
+
+0.7 09-Feb-2009
+---------------
+
+  COMPATIBILITY BREAKS:
+
+    * bzr-fast-export.py renamed to bzr-fast-export.
+      (Jelmer Vernooij)
 
   IMPROVEMENTS:
 
@@ -33,17 +62,6 @@ IN DEVELOPMENT
 
     * Update the last-modified revision for a renamed file.
       (John Arbash Meinel)
-
-  COMPATIBILITY BREAKS:
-
-    * bzr-fast-export.py renamed to bzr-fast-export.
-      (Jelmer Vernooij)
-
-  API BREAKS:
-
-  TESTING:
-
-  INTERNALS:
 
 
 0.6 23-Jul-2008
