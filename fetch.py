@@ -197,18 +197,9 @@ class InterGitNonGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              mapping=None):
-        if mapping is None:
-            mapping = self.source.get_mapping()
+    def fetch_objects(self, determine_wants, mapping, pb=None):
         def progress(text):
             pb.update("git: %s" % text.rstrip("\r\n"), 0, 0)
-        def determine_wants(heads):
-            if revision_id is None:
-                ret = heads.values()
-            else:
-                ret = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
-            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         graph_walker = BzrFetchGraphWalker(self.target, mapping)
         create_pb = None
         if pb is None:
@@ -228,6 +219,18 @@ class InterGitNonGitRepository(InterRepository):
         finally:
             if create_pb:
                 create_pb.finished()
+
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
+              mapping=None):
+        if mapping is None:
+            mapping = self.source.get_mapping()
+        def determine_wants(heads):
+            if revision_id is None:
+                ret = heads.values()
+            else:
+                ret = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
+            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
+        return self.fetch_objects(determine_wants, mapping, pb)
 
     @staticmethod
     def is_compatible(source, target):

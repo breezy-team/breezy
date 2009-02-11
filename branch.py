@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     config,
+    repository,
     revision,
     tag,
     )
@@ -189,3 +190,30 @@ class LocalGitBranch(GitBranch):
         result.set_parent(self.bzrdir.root_transport.base)
         return result
 
+
+class InterGitGenericBranch(branch.InterBranch):
+
+    @classmethod
+    def is_compatible(self, source, target):
+        return isinstance(source, GitBranch)
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+        graph=None):
+        """See InterBranch.update_revisions()."""
+        # TODO: stop_revision, overwrite
+        interrepo = repository.InterRepository.get(self.source.repository, self.target.repository)
+        self._last_revid = None
+        def determine_wants(heads):
+            if not self.source.name in heads:
+                raise BzrError("No such remote branch '%s', found: %r" % (
+                    self.source.name, heads.keys()))
+            head = heads[self.source.name]
+            self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(head)
+            if not self.target.repository.has_revision(self._last_revid):
+                return []
+            return [head]
+        interrepo.fetch_objects(determine_wants, self.source.mapping)
+        self.target.set_last_revision(last_revid)
+
+
+branch.InterBranch.register_optimiser(InterGitGenericBranch)
