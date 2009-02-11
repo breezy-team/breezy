@@ -144,10 +144,13 @@ Now that the release is publicly available, tell people about it.
     | 
     | <<Summary paragraph from news>>
     |
+    | The Bazaar team is happy to announce availability of a new 
+    | release of the bzr adaptive version control system.
+    |
     | Thanks to everyone who contributed patches, suggestions, and
     | feedback.
     | 
-    | bzr x.yy is now available for download from 
+    | Bazaar is now available for download from 
     | http://bazaar-vcs.org/Download as a source tarball; packages 
     | for various systems will be available soon.
     | 
