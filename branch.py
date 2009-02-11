@@ -213,7 +213,7 @@ class InterGitGenericBranch(branch.InterBranch):
                 return []
             return [head]
         interrepo.fetch_objects(determine_wants, self.source.mapping)
-        self.target.set_last_revision(last_revid)
+        self.target.generate_revision_history(self._last_revid)
 
 
 branch.InterBranch.register_optimiser(InterGitGenericBranch)

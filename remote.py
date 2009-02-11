@@ -61,7 +61,8 @@ class GitSmartTransport(Transport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port)
+        return git.client.TCPGitClient(self._host, self._port, 
+            capabilities=["multi_ack", "side-band-64k", "ofs-delta", "side-band"])
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
@@ -106,6 +107,12 @@ class RemoteGitDir(GitDir):
         raise NotLocalUrl(self.transport.base)
 
 
+class EmptyObjectStoreIterator(dict):
+
+    def iterobjects(self):
+        return []
+
+
 class TemporaryPackIterator(Pack):
 
     def __init__(self, path, resolve_ext_ref):
@@ -139,7 +146,7 @@ class RemoteGitRepository(GitRepository):
         self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
         os.close(fd)
         if os.path.getsize(path) == 0:
-            return {}
+            return EmptyObjectStoreIterator()
         return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
 
 
