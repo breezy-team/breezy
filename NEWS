@@ -4,8 +4,48 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
+
+  COMPATIBILITY BREAKS:
+
+    * ``bzr log --line`` now indicates which revisions are merges with
+      `[merge]` after the date.  Scripts which parse the output of this
+      command may need to be adjusted.
+      (Neil Martinsen-Burrell)
+
+  NEW FEATURES:
+
+  IMPROVEMENTS:
+
+    * ``bzr branch`` now has a ``--no-tree`` option which turns off the
+      generation of a working tree in the new branch.
+      (Daniel Watkins, John Klinger, #273993)
+
+  BUG FIXES:
+
+    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
+      shelf id. (Daniel Watkins)
+
+  DOCUMENTATION:
+
+    * The documentation for ``shelve`` and ``unshelve`` has been clarified.
+      (Daniel Watkins, #327421, #327425)
+
+  API CHANGES:
+
+  INTERNALS:
+
+
+bzr 1.12rc1 "1234567890" 2009-02-10
+-----------------------------------
+
+This release of Bazaar contains many improvements to the speed and
+functionality of ``bzr log`` and the display of logged revisions by ``bzr
+status``.  bzr now also gives a better indication of progress, both in the
+way operations are drawn onto a text terminal, and by showing the rate of
+network IO.
 
   COMPATIBILITY BREAKS:
 
@@ -24,11 +64,16 @@ IN DEVELOPMENT
       output of the log command in this situation may need to adjust.
       (Neil Martinsen-Burrell)
 
+    * The experimental formats ``1.12-preview`` and ``1.12-preview-rich-root``
+      have been renamed ``development-wt5`` and ``development-wt5-rich-root``
+      respectively, given they are not ready for release in 1.12.
+      (Ian Clatworthy)
+
   NEW FEATURES:
 
-    * Add support for filtering `bzr missing` on revisions.  Remote revisions
-      can be filtered using `bzr missing -r -20..-10` and local revisions can
-      be filtered using `bzr missing --my-revision -20..-10`.
+    * Add support for filtering ``bzr missing`` on revisions.  Remote revisions
+      can be filtered using ``bzr missing -r -20..-10`` and local revisions can
+      be filtered using ``bzr missing --my-revision -20..-10``.
       (Marius Kruger)
 
     * ``bzr log -p`` displays the patch diff for each revision.
@@ -47,6 +92,9 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
   IMPROVEMENTS:
+
+    * ``bzr add`` more clearly communicates success vs failure.
+      (Daniel Watkins)
 
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
@@ -102,6 +150,9 @@ IN DEVELOPMENT
       now interprets filenames in their historical context.
       (Ian Clatworthy, #175520)
 
+    * ``bzr status`` now reports nonexistent files and continues, then
+       errors (with code 3) at the end.  (Karl Fogel, #306394)
+
     * Don't require the present compression base in knits to be the same
       when adding records in knits. (Jelmer Vernooij, #307394)
 
@@ -137,12 +188,16 @@ IN DEVELOPMENT
 
     * ``ProgressBarStack`` is deprecated; instead use
       ``ui_factory.nested_progress_bar`` to create new progress bars.
+      (Martin Pool)
 
     * ForeignVcsMapping() now requires a ForeignVcs object as first
       argument. (Jelmer Vernooij)
 
     * ForeignVcsMapping.show_foreign_revid() has been moved to
       ForeignVcs. (Jelmer Vernooij)
+
+    * ``read_bundle_from_url`` is deprecated in favor of
+      ``read_mergeable_from_url``.  (Vincent Ladeuil)
 
     * Revision specifiers are now registered in
       ``bzrlib.revisionspec.revspec_registry``, and the old list of 
@@ -152,8 +207,6 @@ IN DEVELOPMENT
     * The progress and UI classes have changed; the main APIs remain the
       same but code that provides a new UI or progress bar class may
       need to be updated.  (Martin Pool)
-
-  TESTING:
 
   INTERNALS:
 

@@ -21,6 +21,11 @@ from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import urlutils
+""")
+
 from bzrlib import (
     config,
     errors,
@@ -40,26 +45,40 @@ class InvalidLaunchpadInstance(errors.BzrError):
         errors.BzrError.__init__(self, lp_instance=lp_instance)
 
 
+class NotLaunchpadBranch(errors.BzrError):
+
+    _fmt = "%(url)s is not hosted on Launchpad."
+
+    def __init__(self, url):
+        errors.BzrError.__init__(self, url=url)
+
+
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
 
     See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
     """
 
+    LAUNCHPAD_DOMAINS = {
+        'production': 'launchpad.net',
+        'edge': 'edge.launchpad.net',
+        'staging': 'staging.launchpad.net',
+        'demo': 'demo.launchpad.net',
+        'dev': 'launchpad.dev',
+        }
+
     # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
+    LAUNCHPAD_INSTANCE = {}
+    for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
+        LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
+
     # We use edge as the default because:
     # Beta users get redirected to it
     # All users can use it
     # There is a bug in the launchpad side where redirection causes an OOPS.
-    LAUNCHPAD_INSTANCE = {
-        'production': 'https://xmlrpc.launchpad.net/bazaar/',
-        'edge': 'https://xmlrpc.edge.launchpad.net/bazaar/',
-        'staging': 'https://xmlrpc.staging.launchpad.net/bazaar/',
-        'demo': 'https://xmlrpc.demo.launchpad.net/bazaar/',
-        'dev': 'http://xmlrpc.launchpad.dev/bazaar/',
-        }
-    DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE['edge']
+    DEFAULT_INSTANCE = 'edge'
+    DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None
     registrant_email = None
@@ -159,6 +178,40 @@ class LaunchpadService(object):
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
                         % (self.service_url, e.errcode, e.errmsg))
         return result
+
+    @property
+    def domain(self):
+        if self._lp_instance is None:
+            instance = self.DEFAULT_INSTANCE
+        else:
+            instance = self._lp_instance
+        return self.LAUNCHPAD_DOMAINS[instance]
+
+    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
+        """Get the Launchpad web URL for the given branch URL.
+
+        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+            Launchpad branch URL.
+        :return: The URL of the branch on Launchpad.
+        """
+        scheme, hostinfo, path = urlsplit(branch_url)[:3]
+        if _request_factory is None:
+            _request_factory = ResolveLaunchpadPathRequest
+        if scheme == 'lp':
+            resolve = _request_factory(path)
+            try:
+                result = resolve.submit(self)
+            except xmlrpclib.Fault, fault:
+                raise errors.InvalidURL(branch_url, str(fault))
+            branch_url = result['urls'][0]
+            path = urlsplit(branch_url)[2]
+        else:
+            domains = (
+                'bazaar.%s' % domain
+                for domain in self.LAUNCHPAD_DOMAINS.itervalues())
+            if hostinfo not in domains:
+                raise NotLaunchpadBranch(branch_url)
+        return urlutils.join('https://code.%s' % self.domain, path)
 
 
 class BaseRequest(object):
