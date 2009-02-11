@@ -696,6 +696,8 @@ class GenericCommitHandler(processor.CommitHandler):
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
+        if self.repo.supports_rich_root():
+            self.lines_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
         parents = _track_heads(self.command, self.cache_mgr)
@@ -716,7 +718,9 @@ class GenericCommitHandler(processor.CommitHandler):
             inv = self.get_inventory(self.parents[0])
             # TODO: Shallow copy - deep inventory copying is expensive
             self.inventory = inv.copy()
-        if not self.repo.supports_rich_root():
+        if self.repo.supports_rich_root():
+            self.inventory.revision_id = self.revision_id
+        else:
             # In this repository, root entries have no knit or weave. When
             # serializing out to disk and back in, root.revision is always
             # the new revision_id.
@@ -845,6 +849,9 @@ class GenericCommitHandler(processor.CommitHandler):
     def gen_initial_inventory(self):
         """Generate an inventory for a parentless revision."""
         inv = inventory.Inventory(revision_id=self.revision_id)
+        if self.repo.supports_rich_root():
+            # The very first root needs to have the right revision
+            inv.root.revision = self.revision_id
         return inv
 
     def gen_revision_id(self):
