@@ -45,6 +45,7 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -668,44 +669,8 @@ class Branch(object):
             information. This can be None.
         :return: None
         """
-        other.lock_read()
-        try:
-            other_revno, other_last_revision = other.last_revision_info()
-            stop_revno = None # unknown
-            if stop_revision is None:
-                stop_revision = other_last_revision
-                if _mod_revision.is_null(stop_revision):
-                    # if there are no commits, we're done.
-                    return
-                stop_revno = other_revno
-
-            # what's the current last revision, before we fetch [and change it
-            # possibly]
-            last_rev = _mod_revision.ensure_null(self.last_revision())
-            # we fetch here so that we don't process data twice in the common
-            # case of having something to pull, and so that the check for 
-            # already merged can operate on the just fetched graph, which will
-            # be cached in memory.
-            self.fetch(other, stop_revision)
-            # Check to see if one is an ancestor of the other
-            if not overwrite:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                if self._check_if_descendant_or_diverged(
-                        stop_revision, last_rev, graph, other):
-                    # stop_revision is a descendant of last_rev, but we aren't
-                    # overwriting, so we're done.
-                    return
-            if stop_revno is None:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                this_revno, this_last_revision = self.last_revision_info()
-                stop_revno = graph.find_distance_to_null(stop_revision,
-                                [(other_last_revision, other_revno),
-                                 (this_last_revision, this_revno)])
-            self.set_last_revision_info(stop_revno, stop_revision)
-        finally:
-            other.unlock()
+        return InterBranch.get(other, self).update_revisions(stop_revision,
+            overwrite, graph)
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
@@ -2688,3 +2653,84 @@ def _run_with_write_locked_target(target, callable, *args, **kwargs):
     else:
         target.unlock()
         return result
+
+
+class InterBranch(InterObject):
+    """This class represents operations taking place between two branches.
+
+    Its instances have methods like pull() and push() and contain
+    references to the source and target repositories these operations
+    can be carried out on.
+    """
+
+    _optimisers = []
+    """The available optimised InterBranch types."""
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+                         graph=None):
+        """Pull in new perfect-fit revisions.
+
+        :param stop_revision: Updated until the given revision
+        :param overwrite: Always set the branch pointer, rather than checking
+            to see if it is a proper descendant.
+        :param graph: A Graph object that can be used to query history
+            information. This can be None.
+        :return: None
+        """
+        raise NotImplementedError(self.update_revisions)
+
+
+class GenericInterBranch(InterBranch):
+    """InterBranch implementation that uses public Branch functions.
+    """
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+        graph=None):
+        """See InterBranch.update_revisions()."""
+        self.source.lock_read()
+        try:
+            other_revno, other_last_revision = self.source.last_revision_info()
+            stop_revno = None # unknown
+            if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+                stop_revno = other_revno
+
+            # what's the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = _mod_revision.ensure_null(self.target.last_revision())
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
+            self.target.fetch(self.source, stop_revision)
+            # Check to see if one is an ancestor of the other
+            if not overwrite:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                if self.target._check_if_descendant_or_diverged(
+                        stop_revision, last_rev, graph, self.source):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
+                    return
+            if stop_revno is None:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                this_revno, this_last_revision = \
+                        self.target.last_revision_info()
+                stop_revno = graph.find_distance_to_null(stop_revision,
+                                [(other_last_revision, other_revno),
+                                 (this_last_revision, this_revno)])
+            self.target.set_last_revision_info(stop_revno, stop_revision)
+        finally:
+            self.source.unlock()
+
+    @classmethod
+    def is_compatible(self, source, target):
+        # GenericBranch uses the public API, so always compatible
+        return True
+
+
+InterBranch.register_optimiser(GenericInterBranch)
