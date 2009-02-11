@@ -25,7 +25,13 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
+      shelf id. (Daniel Watkins)
+
   DOCUMENTATION:
+
+    * The documentation for ``shelve`` and ``unshelve`` has been clarified.
+      (Daniel Watkins, #327421, #327425)
 
   API CHANGES:
 
