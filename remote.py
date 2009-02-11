@@ -107,6 +107,12 @@ class RemoteGitDir(GitDir):
         raise NotLocalUrl(self.transport.base)
 
 
+class EmptyObjectStoreIterator(dict):
+
+    def iterobjects(self):
+        return []
+
+
 class TemporaryPackIterator(Pack):
 
     @property
@@ -135,6 +141,8 @@ class RemoteGitRepository(GitRepository):
         fd, path = tempfile.mkstemp(suffix=".pack")
         self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
         os.close(fd)
+        if os.path.getsize(path) == 0:
+            return EmptyObjectStoreIterator()
         return TemporaryPackIterator(path[:-len(".pack")])
 
 
