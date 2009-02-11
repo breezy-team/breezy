@@ -808,12 +808,14 @@ class TestCase(unittest.TestCase):
             bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
             bzrlib.smart.client._SmartClient: bzrlib.smart.client._SmartClient.hooks,
             bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
+            bzrlib.commands.Command: bzrlib.commands.Command.hooks,
             }
         self.addCleanup(self._restoreHooks)
         # reset all hooks to an empty instance of the appropriate type
         bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
         bzrlib.smart.client._SmartClient.hooks = bzrlib.smart.client.SmartClientHooks()
         bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
+        bzrlib.commands.Command.hooks = bzrlib.commands.CommandHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""

@@ -50,6 +50,7 @@ from bzrlib import (
 
 from bzrlib import registry
 # Compatibility
+from bzrlib.hooks import Hooks
 from bzrlib.option import Option
 
 
@@ -170,7 +171,11 @@ def get_cmd_object(cmd_name, plugins_override=True):
         If true, plugin commands can override builtins.
     """
     try:
-        return _get_cmd_object(cmd_name, plugins_override)
+        cmd = _get_cmd_object(cmd_name, plugins_override)
+        # Allow plugins to extend commands
+        for hook in Command.hooks['extend_command']:
+            hook(cmd)
+        return cmd
     except KeyError:
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
@@ -216,9 +221,8 @@ def _get_cmd_object(cmd_name, plugins_override=True):
         except errors.NoPluginAvailable:
             pass
         else:
-            raise errors.CommandAvailableInPlugin(cmd_name, 
+            raise errors.CommandAvailableInPlugin(cmd_name,
                                                   plugin_metadata, provider)
-
     raise KeyError
 
 
@@ -279,6 +283,7 @@ class Command(object):
             sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
 
+    :cvar hooks: An instance of CommandHooks.
     """
     aliases = []
     takes_args = []
@@ -573,6 +578,25 @@ class Command(object):
             return None
 
 
+class CommandHooks(Hooks):
+    """Hooks related to Command object creation/enumeration."""
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        Hooks.__init__(self)
+        # Introduced in 0.13:
+        # invoked after creating a command object to allow modifications such
+        # as adding or removing options, docs etc. Invoked with the command
+        # object.
+        self['extend_command'] = []
+
+Command.hooks = CommandHooks()
+
+
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
     
@@ -845,6 +869,7 @@ def run_bzr(argv):
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
         option._verbosity_level = saved_verbosity_level
+
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
