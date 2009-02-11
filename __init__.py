@@ -43,7 +43,6 @@ To report bugs or publish enhancements, visit the bzr-fastimport project
 page on Launchpad, https://launchpad.net/bzr-fastimport.
 """
 
-
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option, ListOption
 
@@ -67,6 +66,7 @@ def _run(source, processor_factory, control, params, verbose):
         stream = sys.stdin
         try:
             import msvcrt
+            import os
             msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
         except ImportError:
             pass
