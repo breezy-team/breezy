@@ -151,12 +151,12 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
     def do_PUT(self):
         """Serve a PUT request."""
         # FIXME: test_put_file_unicode makes us emit a traceback because a
-        # UnicodeEncodeError occurs after the request headers have been sent be
-        # before the body can be send. It's harmless and do not make the test
-        # fails. Adressing that will mean protecting all reads from the socket,
-        # which is too heavy for now -- vila 20070917
+        # UnicodeEncodeError occurs after the request headers have been sent
+        # but before the body can be send. It's harmless and does not make the
+        # test fails. Adressing that will mean protecting all reads from the
+        # socket, which is too heavy for now -- vila 20070917
         path = self.translate_path(self.path)
-        trace.mutter("do_PUT rel: [%s], abs: [%s]" % (self.path,path))
+        trace.mutter("do_PUT rel: [%s], abs: [%s]" % (self.path, path))
 
         do_append = False
         # Check the Content-Range header
@@ -186,6 +186,8 @@ class TestingDAVRequestHandler(http_server.TestingHTTPRequestHandler):
             else:
                 f = open(path, 'wb')
         except (IOError, OSError), e :
+            trace.mutter("do_PUT got: [%r] while opening/seeking on [%s]"
+                         % (e, self.path))
             self.send_error(409, 'Conflict')
             return
 

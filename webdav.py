@@ -387,8 +387,9 @@ class DavConnectionHandler(_urllib2_wrappers.ConnectionHandler):
 class DavOpener(_urllib2_wrappers.Opener):
     """Dav specific needs regarding HTTP(S)"""
 
-    def __init__(self):
-        super(DavOpener, self).__init__(connection=DavConnectionHandler)
+    def __init__(self, report_activity=None):
+        super(DavOpener, self).__init__(connection=DavConnectionHandler,
+                                        report_activity=report_activity)
 
 
 class HttpDavTransport(_urllib.HttpTransport_urllib):
@@ -400,11 +401,6 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
 
     _debuglevel = 0
     _opener_class = DavOpener
-
-    def __init__(self, base, _from_transport=None):
-        assert base.startswith('https+webdav') or base.startswith('http+webdav')
-        super(HttpDavTransport, self).__init__(base,
-                                               _from_transport=_from_transport)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -681,7 +677,7 @@ class HttpDavTransport(_urllib.HttpTransport_urllib):
         code = response.code
         if code in (404, 409):
             raise errors.NoSuchFile(abs_from)
-        # XXX: out test server returns 201 but apache2 returns 204, need
+        # XXX: our test server returns 201 but apache2 returns 204, need
         # investivation.
         if code not in(201, 204):
             self._raise_http_error(abs_from, response,
