@@ -2565,6 +2565,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              load_list=None,
              debug_flags=None,
              starting_with=None,
+             runner_class=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2600,7 +2601,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      list_only=list_only,
                      random_seed=random_seed,
                      exclude_pattern=exclude_pattern,
-                     strict=strict)
+                     strict=strict,
+                     runner_class=runner_class,
+                     )
     finally:
         default_transport = old_transport
         selftest_debug_flags = old_debug_flags
