@@ -13,6 +13,10 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
 
+  [ Kees Cook ]
+  * builder.py: switch to using external tar command to replace buggy
+   tarfile unpacker.
+
  -- James Westby <james.westby@canonical.com>  Thu, 28 Aug 2008 11:41:35 +0100
 
 bzr-builddeb (2.0.2~0ubuntu2) intrepid; urgency=low

@@ -433,20 +433,24 @@ class DebMergeBuild(DebBuild):
       tarball = self._find_tarball()
       mutter("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-      tar = tarfile.open(tarball)
-      try:
-        if getattr(tar, 'extractall', None) is not None:
-          tar.extractall(tempdir)
-        else:
-          #Dammit, that's new in 2.5
-          for tarinfo in tar.getmembers():
-            if tarinfo.isdir():
-              tar.extract(tarinfo, tempdir)
-          for tarinfo in tar.getmembers():
-            if not tarinfo.isdir():
-              tar.extract(tarinfo, tempdir)
-      finally:
-        tar.close()
+
+      subprocess.call(['tar','-C',tempdir,'-xf',tarball])
+# tarfile does not respect umask when unpacking.
+#      tar = tarfile.open(tarball)
+#      try:
+#        if getattr(tar, 'extractall', None) is not None:
+#          tar.extractall(tempdir)
+#        else:
+#          #Dammit, that's new in 2.5
+#          for tarinfo in tar.getmembers():
+#            if tarinfo.isdir():
+#              tar.extract(tarinfo, tempdir)
+#          for tarinfo in tar.getmembers():
+#            if not tarinfo.isdir():
+#              tar.extract(tarinfo, tempdir)
+#      finally:
+#        tar.close()
+
       files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
       if len(files) == 1:
