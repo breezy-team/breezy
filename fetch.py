@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import osutils, ui, urlutils
-from bzrlib.errors import InvalidRevisionId
+from bzrlib.errors import InvalidRevisionId, NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.repository import InterRepository
 from bzrlib.trace import info
@@ -26,6 +26,7 @@ from bzrlib.plugins.git.repository import (
         GitRepository, 
         GitFormat,
         )
+from bzrlib.plugins.git.shamap import GitObjectConverter
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
 import dulwich as git
@@ -126,7 +127,8 @@ def import_git_tree(repo, mapping, path, tree, inv, parent_invs, lookup_object):
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
 
 
-def import_git_objects(repo, mapping, object_iter, pb=None):
+def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
+        pb=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Bazaar repository
@@ -159,26 +161,15 @@ def import_git_objects(repo, mapping, object_iter, pb=None):
         def lookup_object(sha):
             if sha in object_iter:
                 return object_iter[sha]
-            return reconstruct_git_object(repo, mapping, sha)
+            return target_git_object_retriever(sha)
         parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
         import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, 
             lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
 
 
-def reconstruct_git_commit(repo, rev):
-    raise NotImplementedError(self.reconstruct_git_commit)
-
-
 def reconstruct_git_object(repo, mapping, sha):
-    # Commit
-    revid = mapping.revision_id_foreign_to_bzr(sha)
-    try:
-        rev = repo.get_revision(revid)
-    except NoSuchRevision:
-        pass
-    else:
-        return reconstruct_git_commit(rev)
+    import pdb; pdb.set_trace()
 
     # TODO: Tree
     # TODO: Blob
@@ -204,14 +195,19 @@ class InterGitNonGitRepository(InterRepository):
         create_pb = None
         if pb is None:
             create_pb = pb = ui.ui_factory.nested_progress_bar()
+        target_git_object_retriever = GitObjectConverter(self.target, mapping)
+        
         try:
             self.target.lock_write()
             try:
                 self.target.start_write_group()
                 try:
                     objects_iter = self.source.fetch_objects(determine_wants, 
-                                graph_walker, progress)
-                    import_git_objects(self.target, mapping, objects_iter, pb)
+                                graph_walker, 
+                                target_git_object_retriever.__getitem__, 
+                                progress)
+                    import_git_objects(self.target, mapping, objects_iter, 
+                            target_git_object_retriever, pb)
                 finally:
                     self.target.commit_write_group()
             finally:

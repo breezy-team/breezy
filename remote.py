@@ -108,10 +108,14 @@ class RemoteGitDir(GitDir):
 
 class TemporaryPackIterator(Pack):
 
+    def __init__(self, path, resolve_ext_ref):
+        self.resolve_ext_ref = resolve_ext_ref
+        super(TemporaryPackIterator, self).__init__(path)
+
     @property
     def idx(self):
         if self._idx is None:
-            self._data.create_index_v2(self._idx_path)
+            self._data.create_index_v2(self._idx_path, self.resolve_ext_ref)
             self._idx = PackIndex(self._idx_path)
         return self._idx
 
@@ -130,11 +134,13 @@ class RemoteGitRepository(GitRepository):
         self._transport.fetch_pack(determine_wants, graph_walker, pack_data, 
             progress)
 
-    def fetch_objects(self, determine_wants, graph_walker, progress=None):
+    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref, progress=None):
         fd, path = tempfile.mkstemp(suffix=".pack")
         self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
         os.close(fd)
-        return TemporaryPackIterator(path[:-len(".pack")])
+        if os.path.getsize(path) == 0:
+            return {}
+        return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
 
 
 class RemoteGitBranch(GitBranch):

@@ -106,7 +106,7 @@ class BzrBackend(Backend):
 
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(repo, "fetch_objects", None) is None:
-            return repo.fetch_objects(determine_wants, graph_walker, progress)
+            return repo.fetch_objects(determine_wants, graph_walker, None, progress)
 
         wants = determine_wants(self.get_refs())
         commits_to_send = set([self.mapping.revision_id_foreign_to_bzr(w) for w in wants])

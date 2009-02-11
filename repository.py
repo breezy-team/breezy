@@ -257,7 +257,7 @@ class LocalGitRepository(GitRepository):
     def set_make_working_trees(self, trees):
         pass
 
-    def fetch_objects(self, determine_wants, graph_walker, progress=None):
+    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref, progress=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
 
 

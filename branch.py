@@ -209,7 +209,7 @@ class InterGitGenericBranch(branch.InterBranch):
                     self.source.name, heads.keys()))
             head = heads[self.source.name]
             self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(head)
-            if not self.target.repository.has_revision(self._last_revid):
+            if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]
         interrepo.fetch_objects(determine_wants, self.source.mapping)
