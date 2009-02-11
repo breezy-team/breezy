@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
+      supporting the use of different runners. (Robert Collins)
+
 
 bzr 1.12rc1 "1234567890" 2009-02-10
 -----------------------------------

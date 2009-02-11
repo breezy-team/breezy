@@ -2485,13 +2485,23 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
-              strict=False):
+              strict=False,
+              runner_class=None):
+    """Run a test suite for bzr selftest.
+
+    :param runner_class: The class of runner to use. Must support the
+        constructor arguments passed by run_suite which are more than standard
+        python uses.
+    :return: A boolean indicating success.
+    """
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
     else:
         verbosity = 1
-    runner = TextTestRunner(stream=sys.stdout,
+    if runner_class is None:
+        runner_class = TextTestRunner
+    runner = runner_class(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
