@@ -94,6 +94,3 @@ if __name__ == '__main__':
     import unittest
     runner = unittest.TextTestRunner()
     runner.run(test_suite())
-else:
-    import sys
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
