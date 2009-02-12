@@ -115,7 +115,7 @@ doc/en/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide))
 # Set the paper size for PDF files.
 # Options:  'a4' (ISO A4 size), 'letter' (US Letter size)
 PAPERSIZE = a4
-PDF_DOCUMENTS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
+PDF_DOCS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
 
 # Copy and modify the RST sources, and convert SVG images to PDF
 # files for use a images in the LaTeX-generated PDF.
@@ -174,7 +174,7 @@ doc/developers/performance.png: doc/developers/performance.dot
 
 derived_web_docs = $(htm_files) $(dev_htm_files) doc/developers/performance.png
 WEB_DOCS = $(derived_web_docs) $(non_txt_files)
-ALL_DOCS = $(derived_web_docs) $(MAN_PAGES) $(PDF_DOCUMENTS)
+ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 
 # the main target to build all the docs
 docs: $(ALL_DOCS)
@@ -183,6 +183,9 @@ docs: $(ALL_DOCS)
 HTMLDIR := html_docs
 html-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
+
+# Produce PDF documents.  Requires pdfLaTeX and 'rubber' for tools/rst2pdf.py.
+pdf-docs: $(PDF_DOCS)
 
 # clean produced docs
 clean-docs:
