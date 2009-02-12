@@ -2573,6 +2573,18 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment4Subtree',
     )
+format_registry.register_lazy(
+    ('Bazaar development format 4 hash 16'
+     ' (needs bzr.dev from before 1.13)\n'),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment4Hash16',
+    )
+format_registry.register_lazy(
+    ('Bazaar development format 4 hash 255'
+     ' (needs bzr.dev from before 1.13)\n'),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment4Hash255',
+    )
 
 
 class InterRepository(InterObject):

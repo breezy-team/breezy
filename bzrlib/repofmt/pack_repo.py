@@ -872,11 +872,16 @@ class Packer(object):
             'chk_index')
         chk_nodes = self._index_contents(chk_indices, refs)
         new_refs = set()
+        # TODO: This isn't strictly tasteful as we are accessing some private
+        #       variables (_serializer). Perhaps a better way would be to have
+        #       Repository._deserialise_chk_node()
+        search_key_func = chk_map.search_key_registry.get(
+            self._pack_collection.repo._serializer.search_key_name)
         def accumlate_refs(lines):
             # XXX: move to a generic location
             # Yay mismatch:
             bytes = ''.join(lines)
-            node = chk_map._deserialise(bytes, ("unknown",))
+            node = chk_map._deserialise(bytes, ("unknown",), search_key_func)
             new_refs.update(node.refs())
         self._copy_nodes(chk_nodes, chk_index_map, self.new_pack._writer,
             self.new_pack.chk_index, output_lines=accumlate_refs)
@@ -2169,7 +2174,8 @@ class CHKInventoryRepository(KnitPackRepository):
         serializer = self._format._serializer
         result = CHKInventory.from_inventory(self.chk_bytes, inv,
             maximum_size=serializer.maximum_size,
-            parent_id_basename_index=serializer.parent_id_basename_index)
+            parent_id_basename_index=serializer.parent_id_basename_index,
+            search_key_name=serializer.search_key_name)
         inv_lines = result.to_lines()
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
@@ -3039,3 +3045,81 @@ class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format, currently the same as "
             "1.9-subtree with B+Tree and chk support.\n")
+
+
+class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
+    """A no-subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.12.
+
+    This is pack-1.9 with CHKMap based inventories with 16-way hash tries.
+    """
+
+    repository_class = CHKInventoryRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = chk_serializer.chk_serializer_16_parent_id
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+    supports_chks = True
+    _commit_inv_deltas = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development4-hash16')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar development format 4 hash 16 (needs bzr.dev from before 1.13)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "1.9 with B+Trees and chk support and 16-way hash tries\n")
+
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatPackDevelopment4Hash255(RepositoryFormatPack):
+    """A no-subtrees development repository.
+
+    This format should be retained until the second release after bzr 1.12.
+
+    This is pack-1.9 with CHKMap based inventories with 255-way hash tries.
+    """
+
+    repository_class = CHKInventoryRepository
+    _commit_builder_class = PackCommitBuilder
+    _serializer = chk_serializer.chk_serializer_255_parent_id
+    supports_external_lookups = True
+    # What index classes to use
+    index_builder_class = BTreeBuilder
+    index_class = BTreeGraphIndex
+    supports_chks = True
+    _commit_inv_deltas = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development4-hash255')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar development format 4 hash 255 (needs bzr.dev from before 1.13)\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format, currently the same as "
+            "1.9 with B+Trees and chk support and 255-way hash tries\n")
+
+    def check_conversion_target(self, target_format):
+        pass

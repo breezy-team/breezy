@@ -18,12 +18,15 @@
 
 from itertools import izip
 
-from bzrlib import chk_map, osutils
+from bzrlib import (
+    chk_map,
+    osutils,
+    tests,
+    )
 from bzrlib.chk_map import (
     CHKMap,
     InternalNode,
     LeafNode,
-    _deserialise,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -891,11 +894,11 @@ class TestMap(TestCaseWithStore):
         ptr2 = nodes[1]
         self.assertEqual('k1', ptr1[0])
         self.assertEqual('k2', ptr2[0])
-        node1 = _deserialise(chkmap._read_bytes(ptr1[1]), ptr1[1])
+        node1 = chk_map._deserialise(chkmap._read_bytes(ptr1[1]), ptr1[1], None)
         self.assertIsInstance(node1, LeafNode)
         self.assertEqual(1, len(node1))
         self.assertEqual({('k1'*50,): 'v1'}, self.to_dict(node1, chkmap._store))
-        node2 = _deserialise(chkmap._read_bytes(ptr2[1]), ptr2[1])
+        node2 = chk_map._deserialise(chkmap._read_bytes(ptr2[1]), ptr2[1], None)
         self.assertIsInstance(node2, LeafNode)
         self.assertEqual(1, len(node2))
         self.assertEqual({('k2'*50,): 'v2'}, self.to_dict(node2, chkmap._store))
@@ -998,6 +1001,186 @@ class TestMap(TestCaseWithStore):
             "  'b' LeafNode None\n"
             "      ('bbb',) 'value3'\n",
             chkmap._dump_tree(include_keys=True))
+
+
+def _search_key_single(key):
+    """A search key function that maps all nodes to the same value"""
+    return 'value'
+
+def _test_search_key(key):
+    return 'test:' + '\x00'.join(key)
+
+
+class TestMapSearchKeys(TestCaseWithStore):
+
+    def test_default_chk_map_uses_flat_search_key(self):
+        chkmap = chk_map.CHKMap(self.get_chk_bytes(), None)
+        self.assertEqual('1',
+                         chkmap._search_key_func(('1',)))
+        self.assertEqual('1\x002',
+                         chkmap._search_key_func(('1', '2')))
+        self.assertEqual('1\x002\x003',
+                         chkmap._search_key_func(('1', '2', '3')))
+
+    def test_search_key_is_passed_to_root_node(self):
+        chkmap = chk_map.CHKMap(self.get_chk_bytes(), None,
+                                search_key_func=_test_search_key)
+        self.assertIs(_test_search_key, chkmap._search_key_func)
+        self.assertEqual('test:1\x002\x003',
+                         chkmap._search_key_func(('1', '2', '3')))
+        self.assertEqual('test:1\x002\x003',
+                         chkmap._root_node._search_key(('1', '2', '3')))
+
+    def test_search_key_passed_via__ensure_root(self):
+        chk_bytes = self.get_chk_bytes()
+        chkmap = chk_map.CHKMap(chk_bytes, None,
+                                search_key_func=_test_search_key)
+        root_key = chkmap._save()
+        chkmap = chk_map.CHKMap(chk_bytes, root_key,
+                                search_key_func=_test_search_key)
+        chkmap._ensure_root()
+        self.assertEqual('test:1\x002\x003',
+                         chkmap._root_node._search_key(('1', '2', '3')))
+
+    def test_search_key_with_internal_node(self):
+        chk_bytes = self.get_chk_bytes()
+        chkmap = chk_map.CHKMap(chk_bytes, None,
+                                search_key_func=_test_search_key)
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'test:1' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             "  'test:2' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  'test:3' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             , chkmap._dump_tree())
+        root_key = chkmap._save()
+        chkmap = chk_map.CHKMap(chk_bytes, root_key,
+                                search_key_func=_test_search_key)
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  'test:1' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             "  'test:2' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  'test:3' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             , chkmap._dump_tree())
+
+    def test_search_key_16(self):
+        chk_bytes = self.get_chk_bytes()
+        chkmap = chk_map.CHKMap(chk_bytes, None,
+                                search_key_func=chk_map._search_key_16)
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '1' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  '6' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '7' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+        root_key = chkmap._save()
+        chkmap = chk_map.CHKMap(chk_bytes, root_key,
+                                search_key_func=chk_map._search_key_16)
+        # We can get the values back correctly
+        self.assertEqual([(('1',), 'foo')],
+                         list(chkmap.iteritems([('1',)])))
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '1' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  '6' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '7' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+
+    def test_search_key_255(self):
+        chk_bytes = self.get_chk_bytes()
+        chkmap = chk_map.CHKMap(chk_bytes, None,
+                                search_key_func=chk_map._search_key_255)
+        chkmap._root_node.set_maximum_size(10)
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '\\x1a' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  'm' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '\\x83' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+        root_key = chkmap._save()
+        chkmap = chk_map.CHKMap(chk_bytes, root_key,
+                                search_key_func=chk_map._search_key_255)
+        # We can get the values back correctly
+        self.assertEqual([(('1',), 'foo')],
+                         list(chkmap.iteritems([('1',)])))
+        self.assertEqualDiff("'' InternalNode\n"
+                             "  '\\x1a' LeafNode\n"
+                             "      ('2',) 'bar'\n"
+                             "  'm' LeafNode\n"
+                             "      ('3',) 'baz'\n"
+                             "  '\\x83' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+
+    def test_search_key_collisions(self):
+        chkmap = chk_map.CHKMap(self.get_chk_bytes(), None,
+                                search_key_func=_search_key_single)
+        # The node will want to expand, but it cannot, because it knows that
+        # all the keys must map to this node
+        chkmap._root_node.set_maximum_size(20)
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             "      ('2',) 'bar'\n"
+                             "      ('3',) 'baz'\n"
+                             , chkmap._dump_tree())
+
+
+class TestSearchKeyFuncs(tests.TestCase):
+
+    def assertSearchKey16(self, expected, key):
+        self.assertEqual(expected, chk_map._search_key_16(key))
+
+    def assertSearchKey255(self, expected, key):
+        actual = chk_map._search_key_255(key)
+        self.assertEqual(expected, actual, 'actual: %r' % (actual,))
+
+    def test_simple_16(self):
+        self.assertSearchKey16('738C9ADF', ('foo',))
+        self.assertSearchKey16('738C9ADF\x00738C9ADF', ('foo', 'foo'))
+        self.assertSearchKey16('738C9ADF\x0076FF8CAA', ('foo', 'bar'))
+        self.assertSearchKey16('127D32EF', ('abcd',))
+
+    def test_simple_255(self):
+        self.assertSearchKey255('\x8cse!', ('foo',))
+        self.assertSearchKey255('\x8cse!\x00\x8cse!', ('foo', 'foo'))
+        self.assertSearchKey255('\x8cse!\x00v\xff\x8c\xaa', ('foo', 'bar'))
+        # The standard mapping for these would include '\n', so it should be
+        # mapped to '_'
+        self.assertSearchKey255('\xfdm\x93_\x00P_\x1bL', ('<', 'V'))
+
+    def test_255_does_not_include_newline(self):
+        # When mapping via _search_key_255, we should never have the '\n'
+        # character, but all other 255 values should be present
+        chars_used = set()
+        for char_in in range(256):
+            search_key = chk_map._search_key_255((chr(char_in),))
+            chars_used.update(search_key)
+        all_chars = set([chr(x) for x in range(256)])
+        unused_chars = all_chars.symmetric_difference(chars_used)
+        self.assertEqual(set('\n'), unused_chars)
 
 
 class TestLeafNode(TestCaseWithStore):
@@ -1247,7 +1430,7 @@ class TestInternalNode(TestCaseWithStore):
             keys)
         # We should be able to access deserialised content.
         bytes = self.read_bytes(chk_bytes, keys[1])
-        node = _deserialise(bytes, keys[1])
+        node = chk_map._deserialise(bytes, keys[1], None)
         self.assertEqual(1, len(node))
         self.assertEqual({('foo',): 'bar'}, self.to_dict(node, chk_bytes))
         self.assertEqual(3, node._node_width)
