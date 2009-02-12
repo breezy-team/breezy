@@ -16,34 +16,33 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+import bzrlib
+
 from bzrlib.errors import NoSuchRevision
 
 
-class GitObjectConverter(object):
+def check_pysqlite_version(sqlite3):
+    """Check that sqlite library is compatible.
 
-    def __init__(self, repository, mapping=None):
-        self.repository = repository
-        if mapping is None:
-            self.mapping = self.repository.get_mapping()
-        else:
-            self.mapping = mapping
+    """
+    if (sqlite3.sqlite_version_info[0] < 3 or 
+            (sqlite3.sqlite_version_info[0] == 3 and 
+             sqlite3.sqlite_version_info[1] < 3)):
+        warning('Needs at least sqlite 3.3.x')
+        raise bzrlib.errors.BzrError("incompatible sqlite library")
 
-    def __getitem__(self, sha):
-        # Commit
-        revid = self.mapping.revision_id_foreign_to_bzr(sha)
-        try:
-            rev = self.repository.get_revision(revid)
-        except NoSuchRevision:
-            pass
-        else:
-            return reconstruct_git_commit(rev)
+try:
+    try:
+        import sqlite3
+        check_pysqlite_version(sqlite3)
+    except (ImportError, bzrlib.errors.BzrError), e: 
+        from pysqlite2 import dbapi2 as sqlite3
+        check_pysqlite_version(sqlite3)
+except:
+    warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
+            'module')
+    raise bzrlib.errors.BzrError("missing sqlite library")
 
-        # TODO: Yeah, this won't scale, but the only alternative is a 
-        # custom map..
-        for (fileid, revision) in self.repository.texts.keys():
-            blob = self._get_blob(
-            print revision
-            
 
 class GitShaMap(object):
 
@@ -63,29 +62,3 @@ class GitShaMap(object):
             revision: revid, tree sha
         """
         raise NotImplementedError(self.lookup_git_sha)
-
-
-class MappedGitObjectConverter(GitObjectConverter):
-    
-    def __init__(self, repository):
-        self.repository = repository
-        self._idmap = GitShaMap(self.repository._transport)
-
-    def _update_sha_map(self):
-        # TODO: Check which 
-        raise NotImplementedError(self._update_sha_map)
-
-    def __getitem__(self, sha):
-        # See if sha is in map
-        try:
-            (type, type_data) = self._idmap.lookup_git_sha(sha)
-        except KeyError:
-            # if not, see if there are any unconverted revisions and add them 
-            # to the map, search for sha in map again
-            self._update_sha_map()
-            (type, type_data) = self._idmap.lookup_git_sha(sha)
-        # convert object to git object
-        if type == "revision":
-            return self._get_commit(*type_data)
-        else:
-            raise AssertionError("Unknown object type '%s'" % type)
