@@ -455,6 +455,8 @@ class Node(object):
         self._items = {}
         # The common search prefix
         self._search_prefix = None
+        # Do all of the keys in this leaf share an identical search_key?
+        self._all_search_keys_identical = None
 
     def __repr__(self):
         items_str = sorted(self._items)
@@ -656,12 +658,19 @@ class LeafNode(Node):
         search_key = self._search_key(key)
         if self._search_prefix is None:
             self._search_prefix = search_key
+            self._all_search_keys_identical = True
         else:
+            old_search_prefix = self._search_prefix
             self._search_prefix = self.common_prefix(
                 self._search_prefix, search_key)
+            if (self._all_search_keys_identical
+                and (old_search_prefix != self._search_prefix
+                     or self._search_prefix != search_key)):
+                self._all_search_keys_identical = False
         if (self._len > 1
             and self._maximum_size
-            and self._current_size() > self._maximum_size):
+            and self._current_size() > self._maximum_size
+            and not self._all_search_keys_identical):
             return True
         return False
 
@@ -750,6 +759,10 @@ class LeafNode(Node):
         """
         search_keys = [self._search_key(key) for key in self._items]
         self._search_prefix = self.common_prefix_for_keys(search_keys)
+        if len(set(search_keys)) == 1:
+            self._all_search_keys_identical = True
+        else:
+            self._all_search_keys_identical = False
         return self._search_prefix
 
     def _compute_serialised_prefix(self):

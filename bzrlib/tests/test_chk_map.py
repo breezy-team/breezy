@@ -1003,6 +1003,10 @@ class TestMap(TestCaseWithStore):
             chkmap._dump_tree(include_keys=True))
 
 
+def _search_key_single(key):
+    """A search key function that maps all nodes to the same value"""
+    return 'value'
+
 def _test_search_key(key):
     return 'test:' + '\x00'.join(key)
 
@@ -1126,6 +1130,21 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('3',) 'baz'\n"
                              "  '\\x83' LeafNode\n"
                              "      ('1',) 'foo'\n"
+                             , chkmap._dump_tree())
+
+    def test_search_key_collisions(self):
+        chkmap = chk_map.CHKMap(self.get_chk_bytes(), None,
+                                search_key_func=_search_key_single)
+        # The node will want to expand, but it cannot, because it knows that
+        # all the keys must map to this node
+        chkmap._root_node.set_maximum_size(20)
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
+        self.assertEqualDiff("'' LeafNode\n"
+                             "      ('1',) 'foo'\n"
+                             "      ('2',) 'bar'\n"
+                             "      ('3',) 'baz'\n"
                              , chkmap._dump_tree())
 
 
