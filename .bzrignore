@@ -54,4 +54,4 @@ bzrlib/_*.pyd
 # generated help topics
 doc/en/user-reference/*.txt
 ./doc/en/user-guide/latex_prepared
-./doc/en/user-guide/user-guide.a4.pdf
+./doc/en/user-guide/*.pdf
