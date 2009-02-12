@@ -40,8 +40,9 @@ commands = {
         "mark_uploaded": []
         }
 
-plugin_cmds.register_lazy('cmd_' + command, aliases, 
-    "bzrlib.plugins.builddeb.commands")
+for command, aliases in commands.iteritems():
+    plugin_cmds.register_lazy('cmd_' + command, aliases, 
+        "bzrlib.plugins.builddeb.commands")
 
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')

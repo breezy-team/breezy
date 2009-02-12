@@ -44,7 +44,13 @@ from bzrlib.trace import info, warning
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 
-from bzrlib.plugins.builddeb.builder import (DebBuild,
+from bzrlib.plugins.builddeb import (
+    debuild_config,
+    default_build_dir,
+    default_orig_dir,
+    )
+from bzrlib.plugins.builddeb.builder import (
+                     DebBuild,
                      DebMergeBuild,
                      DebNativeBuild,
                      DebSplitBuild,
