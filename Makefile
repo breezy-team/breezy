@@ -119,7 +119,7 @@ PDF_DOCS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
 # Copy and modify the RST sources, and convert SVG images to PDF
 # files for use a images in the LaTeX-generated PDF.
 # Then generate the PDF output from the modified RST sources.
-doc/en/user-guide/user-guide.$(PAPERSIZE).pdf: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
+doc/en/user-guide/user-guide.$(PAPERSIZE).pdf: $(wildcard $(addsuffix /*.txt, doc/en/user-guide))
 	mkdir -p doc/en/user-guide/latex_prepared
 	$(PYTHON) tools/prepare_for_latex.py \
 	    --out-dir=doc/en/user-guide/latex_prepared \

@@ -3,7 +3,7 @@
 # Modify reStructuredText 'image' directives by adding a percentage 'width'
 # attribute so that the images are scaled to fit on the page when the document
 # is renderd to LaTeX, and add a center alignment.
-# 
+#
 # Also convert references to PNG images to use PDF files generated from SVG
 # files if available.
 #
@@ -72,7 +72,7 @@ class Converter(object):
             if directive_match is not None:
                 image_src = directive_match.group(1)
                 if verbose:
-                    print('Image ' + image_src + ' in ' + filename 
+                    print('Image ' + image_src + ' in ' + filename
                           + ': ' + line.strip())
 
                 foundimg = True
@@ -93,7 +93,7 @@ class ImageFixer(object):
 
     def replace_extension(self, path, newext):
         if path.endswith(newext):
-            raise Exception("File '" + path + "' already has extension '" 
+            raise Exception("File '" + path + "' already has extension '"
                             + newext +"'")
         dot = path.rfind('.')
         if dot == -1:
@@ -128,7 +128,7 @@ class ImageFixer(object):
                          '--export-pdf=' + pdfpath, svgpath]) != 0:
                     raise Exception("Conversion to pdf failed")
                 return pdffile
-        
+
         # No conversion, just copy the file.
         srcpath = os.path.join(self.srcdir, filename)
         destpath = os.path.join(self.destdir, filename)
@@ -149,7 +149,7 @@ if __name__ == '__main__':
         print('while adjusting the use of images and possibly converting SVG')
         print('images to PDF files so LaTeX can include them.')
         sys.exit(1)
-    
+
     for arg in argv[1:]:
         if arg == '-v' or arg == '--verbose':
             verbose = True
