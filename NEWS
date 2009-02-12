@@ -31,6 +31,17 @@ IN DEVELOPMENT
       of that directory being deleted.
       (Ian Clatworthy, #309486)
 
+    * Handle an empty email section.
+      (Ian Clatworthy)
+
+    * Handle multiple merges within the one merge clause. That's illegal
+      according to the spec but git-fast-export does it.
+      (Ian Clatworthy, #259711)
+
+    * Handle names and paths that aren't utf8 encoded. The spec recommends
+      utf8 encoding of these but git-fast-export doesn't always do that.
+      (Ian Clatworthy, #289088)
+
     * Ignore lightweight tags with no from clause rather than abort.
       (It seems git-fast-export outputs these commands frequently now
       while it didn't appear to in early versions.)

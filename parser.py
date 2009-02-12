@@ -349,7 +349,11 @@ class ImportParser(LineBasedParser):
         while True:
             merge = self._get_merge()
             if merge is not None:
-                merges.append(merge)
+                # while the spec suggests it's illegal, git-fast-export
+                # outputs multiple merges on the one line, e.g.
+                # merge :x :y :z
+                these_merges = merge.split(" ")
+                merges.extend(these_merges)
             else:
                 break
         return commands.CommitCommand(ref, mark, author, committer, message,
