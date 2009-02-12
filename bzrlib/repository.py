@@ -2563,27 +2563,27 @@ format_registry.register_lazy(
     'RepositoryFormatPackDevelopment3Subtree',
     )
 format_registry.register_lazy(
-    "Bazaar development format 4 (needs bzr.dev from before 1.11)\n",
+    "Bazaar development format 5 (needs bzr.dev from before 1.13)\n",
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment4',
+    'RepositoryFormatPackDevelopment5',
     )
 format_registry.register_lazy(
-    ("Bazaar development format 4 with subtree support "
-        "(needs bzr.dev from before 1.11)\n"),
+    ("Bazaar development format 5 with subtree support"
+     " (needs bzr.dev from before 1.13)\n"),
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment4Subtree',
+    'RepositoryFormatPackDevelopment5Subtree',
     )
 format_registry.register_lazy(
-    ('Bazaar development format 4 hash 16'
+    ('Bazaar development format 5 hash 16'
      ' (needs bzr.dev from before 1.13)\n'),
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment4Hash16',
+    'RepositoryFormatPackDevelopment5Hash16',
     )
 format_registry.register_lazy(
-    ('Bazaar development format 4 hash 255'
+    ('Bazaar development format 5 hash 255'
      ' (needs bzr.dev from before 1.13)\n'),
     'bzrlib.repofmt.pack_repo',
-    'RepositoryFormatPackDevelopment4Hash255',
+    'RepositoryFormatPackDevelopment5Hash255',
     )
 
 

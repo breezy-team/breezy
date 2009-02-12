@@ -3197,69 +3197,47 @@ format_registry.register_metadir('development2-subtree',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('development3',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment3',
-    help='1.9 with CHK Inventories. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
-    experimental=True,
-    )
-format_registry.register_metadir('development3-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment3Subtree',
-    help='1.9-subtree with CHK Inventories. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
-    experimental=True,
-    )
-format_registry.register_metadir('development4',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment4',
+format_registry.register_metadir('development5',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5',
     help='1.9 with CHK inventories with parent_id index. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('development4-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment4Subtree',
+format_registry.register_metadir('development5-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5Subtree',
     help='1.9-subtree with CHK Inventories with parent_id index. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('development4-hash16',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment4Hash16',
+format_registry.register_metadir('development5-hash16',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5Hash16',
     help='1.9 with CHK inventories with parent_id index and 16-way hash trie. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('development4-hash255',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment4Hash255',
+format_registry.register_metadir('development5-hash255',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5Hash255',
     help='1.9 with CHK inventories with parent_id index and 255-way hash trie. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     hidden=True,
     experimental=True,
     )

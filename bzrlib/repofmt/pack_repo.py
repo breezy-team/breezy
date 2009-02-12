@@ -2873,7 +2873,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
             "1.6.1-subtree with B+Tree indices.\n")
 
 
-class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5(RepositoryFormatPack):
     """A no-subtrees development repository.
 
     This format should be retained until the second release after bzr 1.13.
@@ -2892,7 +2892,7 @@ class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
     _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development4')
+        return bzrdir.format_registry.make_bzrdir('development5')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -2901,7 +2901,7 @@ class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 4 (needs bzr.dev from before 1.13)\n"
+        return "Bazaar development format 5 (needs bzr.dev from before 1.13)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -2912,7 +2912,7 @@ class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
         pass
 
 
-class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5Subtree(RepositoryFormatPack):
     """A subtrees development repository.
 
     This format should be retained until the second release after bzr 1.13.
@@ -2934,7 +2934,7 @@ class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development4-subtree')
+            'development5-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -2951,7 +2951,7 @@ class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format 4 with subtree support"
+        return ("Bazaar development format 5 with subtree support"
                 " (needs bzr.dev from before 1.11)\n")
 
     def get_format_description(self):
@@ -2960,7 +2960,7 @@ class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
                 " 1.9-subtree with B+Tree and chk support.\n")
 
 
-class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5Hash16(RepositoryFormatPack):
     """A no-subtrees development repository.
 
     This format should be retained until the second release after bzr 1.13.
@@ -2979,7 +2979,7 @@ class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
     _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development4-hash16')
+        return bzrdir.format_registry.make_bzrdir('development5-hash16')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -2988,7 +2988,7 @@ class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format 4 hash 16"
+        return ("Bazaar development format 5 hash 16"
                 " (needs bzr.dev from before 1.13)\n")
 
     def get_format_description(self):
@@ -3000,7 +3000,7 @@ class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
         pass
 
 
-class RepositoryFormatPackDevelopment4Hash255(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5Hash255(RepositoryFormatPack):
     """A no-subtrees development repository.
 
     This format should be retained until the second release after bzr 1.13.
@@ -3019,7 +3019,7 @@ class RepositoryFormatPackDevelopment4Hash255(RepositoryFormatPack):
     _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development4-hash255')
+        return bzrdir.format_registry.make_bzrdir('development5-hash255')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -3028,7 +3028,7 @@ class RepositoryFormatPackDevelopment4Hash255(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format 4 hash 255"
+        return ("Bazaar development format 5 hash 255"
                 " (needs bzr.dev from before 1.13)\n")
 
     def get_format_description(self):
