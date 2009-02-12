@@ -191,7 +191,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                               % a_bzrdir.transport)
 
     def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
-                     force_new_repo=False, accelerator_tree=None):
+                     force_new_repo=False, accelerator_tree=None,
+                     create_tree_if_local=True):
         """Sprout from_bzrdir into to_url, or raise TestSkipped.
         
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
@@ -203,7 +204,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = from_bzrdir.sprout(to_url, revision_id=revision_id,
                                     force_new_repo=force_new_repo,
                                     possible_transports=[to_transport],
-                                    accelerator_tree=accelerator_tree)
+                                    accelerator_tree=accelerator_tree,
+                                    create_tree_if_local=create_tree_if_local)
         return target
 
     def test_create_null_workingtree(self):
@@ -1119,6 +1121,24 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = self.sproutOrSkip(dir, self.get_url('target'),
                                    accelerator_tree=tree)
         self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
+
+    def test_sprout_branch_no_tree(self):
+        tree = self.make_branch_and_tree('source')
+        self.build_tree(['source/foo'])
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        tree.commit('revision 2', rev_id='2', allow_pointless=True)
+        dir = tree.bzrdir
+        if isinstance(dir, (bzrdir.BzrDirPreSplitOut,)):
+            self.assertRaises(errors.MustHaveWorkingTree, self.sproutOrSkip,
+                              dir, self.get_url('target'),
+                              create_tree_if_local=False)
+            return
+        target = self.sproutOrSkip(dir, self.get_url('target'),
+                                   create_tree_if_local=False)
+        self.failIfExists('target/foo')
+        self.assertEqual(tree.branch.last_revision(),
+                         target.open_branch().last_revision())
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.

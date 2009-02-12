@@ -54,7 +54,7 @@ class AddAction(object):
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('added %s\n' % _quote(path.raw_path))
+            self._to_file.write('adding %s\n' % _quote(path.raw_path))
         return None
 
 
@@ -73,7 +73,7 @@ class AddFromBaseAction(AddAction):
         file_id, base_path = self._get_base_file_id(path, parent_ie)
         if file_id is not None:
             if self.should_print:
-                self._to_file.write('added %s w/ file id from %s\n'
+                self._to_file.write('adding %s w/ file id from %s\n'
                                     % (path.raw_path, base_path))
         else:
             # we aren't doing anything special, so let the default

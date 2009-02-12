@@ -73,6 +73,16 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True):
                                      (e.path, file_list[0]))
 
 
+def _get_one_revision(command_name, revisions):
+    if revisions is None:
+        return None
+    if len(revisions) != 1:
+        raise errors.BzrCommandError(
+            'bzr %s --revision takes exactly one revision identifier' % (
+                command_name,))
+    return revisions[0]
+
+
 def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
     if branch is None:
         branch = tree.branch
@@ -82,11 +92,8 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
         else:
             rev_tree = branch.basis_tree()
     else:
-        if len(revisions) != 1:
-            raise errors.BzrCommandError(
-                'bzr %s --revision takes exactly one revision identifier' % (
-                    command_name,))
-        rev_tree = revisions[0].as_tree(branch)
+        revision = _get_one_revision(command_name, revisions)
+        rev_tree = revision.as_tree(branch)
     return rev_tree
 
 
@@ -525,6 +532,8 @@ class cmd_add(Command):
         finally:
             if base_tree is not None:
                 base_tree.unlock()
+        if not is_quiet() and len(added) > 0:
+            self.outf.write('add completed\n')
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -598,15 +607,12 @@ class cmd_inventory(Command):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
+        revision = _get_one_revision('inventory', revision)
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
         try:
             if revision is not None:
-                if len(revision) > 1:
-                    raise errors.BzrCommandError(
-                        'bzr inventory --revision takes exactly one revision'
-                        ' identifier')
-                tree = revision[0].as_tree(work_tree.branch)
+                tree = revision.as_tree(work_tree.branch)
 
                 extra_trees = [work_tree]
                 tree.lock_read()
@@ -831,6 +837,7 @@ class cmd_pull(Command):
                     self.outf.write("Using saved parent location: %s\n" % display_url)
                 location = stored_loc
 
+        revision = _get_one_revision('pull', revision)
         if mergeable is not None:
             if revision is not None:
                 raise errors.BzrCommandError(
@@ -847,11 +854,7 @@ class cmd_pull(Command):
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
-            if len(revision) == 1:
-                revision_id = revision[0].as_revision_id(branch_from)
-            else:
-                raise errors.BzrCommandError(
-                    'bzr pull --revision takes one value.')
+            revision_id = revision.as_revision_id(branch_from)
 
         branch_to.lock_write()
         try:
@@ -936,12 +939,9 @@ class cmd_push(Command):
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
+        revision = _get_one_revision('push', revision)
         if revision is not None:
-            if len(revision) == 1:
-                revision_id = revision[0].in_history(br_from).rev_id
-            else:
-                raise errors.BzrCommandError(
-                    'bzr push --revision takes one value.')
+            revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = br_from.last_revision()
 
@@ -999,6 +999,8 @@ class cmd_branch(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
+        Option('no-tree',
+            help="Create a branch without a working-tree."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
@@ -1009,20 +1011,16 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, stacked=False, standalone=False):
+            hardlink=False, stacked=False, standalone=False, no_tree=False):
         from bzrlib.tag import _merge_tags_if_possible
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr branch --revision takes exactly 1 revision value')
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
-            if len(revision) == 1 and revision[0] is not None:
-                revision_id = revision[0].as_revision_id(br_from)
+            if revision is not None:
+                revision_id = revision.as_revision_id(br_from)
             else:
                 # FIXME - wt.last_revision, fallback to branch, fall back to
                 # None or perhaps NULL_REVISION to mean copy nothing
@@ -1046,12 +1044,13 @@ class cmd_branch(Command):
                                             accelerator_tree=accelerator_tree,
                                             hardlink=hardlink, stacked=stacked,
                                             force_new_repo=standalone,
+                                            create_tree_if_local=not no_tree,
                                             source_branch=br_from)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location,
-                    revision[0])
+                    revision)
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
             # If the source branch is stacked, the new branch may
@@ -1108,20 +1107,16 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None, hardlink=False):
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr checkout --revision takes exactly 1 revision value')
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
+        revision = _get_one_revision('checkout', revision)
         if files_from is not None:
             accelerator_tree = WorkingTree.open(files_from)
-        if len(revision) == 1 and revision[0] is not None:
-            revision_id = revision[0].as_revision_id(source)
+        if revision is not None:
+            revision_id = revision.as_revision_id(source)
         else:
             revision_id = None
         if to_location is None:
@@ -2917,6 +2912,10 @@ class cmd_selftest(Command):
                      ]
     encoding_type = 'replace'
 
+    def __init__(self):
+        Command.__init__(self)
+        self.additional_selftest_args = {}
+
     def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
@@ -2954,22 +2953,24 @@ class cmd_selftest(Command):
             test_suite_factory = None
             benchfile = None
         try:
-            result = selftest(verbose=verbose,
-                              pattern=pattern,
-                              stop_on_failure=one,
-                              transport=transport,
-                              test_suite_factory=test_suite_factory,
-                              lsprof_timed=lsprof_timed,
-                              bench_history=benchfile,
-                              matching_tests_first=first,
-                              list_only=list_only,
-                              random_seed=randomize,
-                              exclude_pattern=exclude,
-                              strict=strict,
-                              load_list=load_list,
-                              debug_flags=debugflag,
-                              starting_with=starting_with,
-                              )
+            selftest_kwargs = {"verbose": verbose,
+                              "pattern": pattern,
+                              "stop_on_failure": one,
+                              "transport": transport,
+                              "test_suite_factory": test_suite_factory,
+                              "lsprof_timed": lsprof_timed,
+                              "bench_history": benchfile,
+                              "matching_tests_first": first,
+                              "list_only": list_only,
+                              "random_seed": randomize,
+                              "exclude_pattern": exclude,
+                              "strict": strict,
+                              "load_list": load_list,
+                              "debug_flags": debugflag,
+                              "starting_with": starting_with
+                              }
+            selftest_kwargs.update(self.additional_selftest_args)
+            result = selftest(**selftest_kwargs)
         finally:
             if benchfile is not None:
                 benchfile.close()
@@ -4959,7 +4960,9 @@ class cmd_shelve(Command):
 
     Shelve allows you to temporarily put changes you've made "on the shelf",
     ie. out of the way, until a later time when you can bring them back from
-    the shelf with the 'unshelve' command.
+    the shelf with the 'unshelve' command.  The changes are stored alongside
+    your working tree, and so they aren't propagated along with your branch nor
+    will they survive its deletion.
 
     If shelve --list is specified, previously-shelved changes are listed.
 
@@ -5027,8 +5030,8 @@ class cmd_unshelve(Command):
     """Restore shelved changes.
 
     By default, the most recently shelved changes are restored. However if you
-    specify a patch by name those changes will be restored instead.  This
-    works best when the changes don't depend on each other.
+    specify a shelf by id those changes will be restored instead.  This works
+    best when the changes don't depend on each other.
     """
 
     takes_args = ['shelf_id?']

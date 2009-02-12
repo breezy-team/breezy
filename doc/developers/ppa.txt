@@ -222,9 +222,8 @@ Long Form
 Packaging bzr-svn
 ~~~~~~~~~~~~~~~~~
 
-bzr-svn uses bzr-builddeb in "split" mode, where the packaging branch
-contains both the source and the ``debian/`` directory, and the
-``orig.tar.gz`` is split off when building the packgae.
+bzr-svn uses a packaging branch that contains both the source 
+(including any changes against upstream) and the ``debian/`` directory.
 
 To build bzr-svn:
 
@@ -234,8 +233,6 @@ To build bzr-svn:
   
    This should bring in both upstream and packaging changes for the new
    release, and it's updated as part of the bzr-svn release process.
-
-#. ``export UPSTREAM_VERSION=bzr-svn-0.4.15`` or similar
 
 #. Run ``dch -v 0.4.15-1~bazaar1-hardy1 -D hardy`` or similar
 
