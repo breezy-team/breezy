@@ -4,6 +4,15 @@ Bazaar Release Notes
 
 .. contents::
 
+NOT RELEASED YET
+----------------
+
+  BUG FIXES:
+
+    * ``bzr init --development-wt5[-rich-root]`` would fail because of
+      circular import errors. (John Arbash Meinel, #328135)
+
+
 bzr 1.12rc1 "1234567890" 2009-02-10
 -----------------------------------
 
