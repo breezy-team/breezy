@@ -71,6 +71,7 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           preserve_input,
                           randomize_suite,
+                          run_suite,
                           split_suite_by_condition,
                           split_suite_by_re,
                           test_lsprof,
@@ -1444,10 +1445,15 @@ class TestTestCase(TestCase):
 
     def test_hooks_sanitised(self):
         """The bzrlib hooks should be sanitised by setUp."""
+        # Note this test won't fail with hooks that the core library doesn't
+        # use - but it trigger with a plugin that adds hooks, so its still a
+        # useful warning in that case.
         self.assertEqual(bzrlib.branch.BranchHooks(),
             bzrlib.branch.Branch.hooks)
         self.assertEqual(bzrlib.smart.server.SmartServerHooks(),
             bzrlib.smart.server.SmartTCPServer.hooks)
+        self.assertEqual(bzrlib.commands.CommandHooks(),
+            bzrlib.commands.Command.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -2268,3 +2274,21 @@ class TestTestPrefixRegistry(tests.TestCase):
         self.assertEquals('bzrlib.tests', tpr.resolve_alias('bt'))
         self.assertEquals('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
         self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
+
+
+class TestRunSuite(TestCase):
+
+    def test_runner_class(self):
+        """run_suite accepts and uses a runner_class keyword argument."""
+        class Stub(TestCase):
+            def test_foo(self):
+                pass
+        suite = Stub("test_foo")
+        calls = []
+        class MyRunner(TextTestRunner):
+            def run(self, test):
+                calls.append(test)
+                return ExtendedTestResult(self.stream, self.descriptions,
+                    self.verbosity)
+        run_suite(suite, runner_class=MyRunner)
+        self.assertEqual(calls, [suite])

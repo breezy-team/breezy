@@ -2912,6 +2912,10 @@ class cmd_selftest(Command):
                      ]
     encoding_type = 'replace'
 
+    def __init__(self):
+        Command.__init__(self)
+        self.additional_selftest_args = {}
+
     def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
@@ -2949,22 +2953,24 @@ class cmd_selftest(Command):
             test_suite_factory = None
             benchfile = None
         try:
-            result = selftest(verbose=verbose,
-                              pattern=pattern,
-                              stop_on_failure=one,
-                              transport=transport,
-                              test_suite_factory=test_suite_factory,
-                              lsprof_timed=lsprof_timed,
-                              bench_history=benchfile,
-                              matching_tests_first=first,
-                              list_only=list_only,
-                              random_seed=randomize,
-                              exclude_pattern=exclude,
-                              strict=strict,
-                              load_list=load_list,
-                              debug_flags=debugflag,
-                              starting_with=starting_with,
-                              )
+            selftest_kwargs = {"verbose": verbose,
+                              "pattern": pattern,
+                              "stop_on_failure": one,
+                              "transport": transport,
+                              "test_suite_factory": test_suite_factory,
+                              "lsprof_timed": lsprof_timed,
+                              "bench_history": benchfile,
+                              "matching_tests_first": first,
+                              "list_only": list_only,
+                              "random_seed": randomize,
+                              "exclude_pattern": exclude,
+                              "strict": strict,
+                              "load_list": load_list,
+                              "debug_flags": debugflag,
+                              "starting_with": starting_with
+                              }
+            selftest_kwargs.update(self.additional_selftest_args)
+            result = selftest(**selftest_kwargs)
         finally:
             if benchfile is not None:
                 benchfile.close()

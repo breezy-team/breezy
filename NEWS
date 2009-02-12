@@ -37,6 +37,13 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
+      supporting the use of different runners. (Robert Collins)
+
+    * New hook Commands['extend_command'] to allow plugins to access a
+      command object before the command is run (or help generated from
+      it), without overriding the command. (Robert Collins)
+
 
 bzr 1.12rc1 "1234567890" 2009-02-10
 -----------------------------------
