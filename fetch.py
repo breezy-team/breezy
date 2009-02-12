@@ -26,7 +26,7 @@ from bzrlib.plugins.git.repository import (
         GitRepository, 
         GitFormat,
         )
-from bzrlib.plugins.git.shamap import GitObjectConverter
+from bzrlib.plugins.git.converter import GitObjectConverter
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
 import dulwich as git
@@ -161,7 +161,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         def lookup_object(sha):
             if sha in object_iter:
                 return object_iter[sha]
-            return target_git_object_retriever(sha)
+            return target_git_object_retriever[sha]
         parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
         import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, 
             lookup_object)

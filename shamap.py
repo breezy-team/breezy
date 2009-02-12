@@ -20,6 +20,8 @@ import bzrlib
 
 from bzrlib.errors import NoSuchRevision
 
+import os
+
 
 def check_pysqlite_version(sqlite3):
     """Check that sqlite library is compatible.
@@ -48,11 +50,28 @@ class GitShaMap(object):
 
     def __init__(self, transport):
         self.transport = transport
+        self.db = sqlite3.connect(
+            os.path.join(self.transport.local_abspath("."), "git.db"))
+        self.db.executescript("""
+        create table if not exists commits(sha1 text, revid text, tree_sha text);
+        create index if not exists commit_sha1 on commits(sha1);
+        create table if not exists blobs(sha1 text, fileid text, revid text);
+        create index if not exists blobs_sha1 on blobs(sha1);
+        create table if not exists trees(sha1 text, fileid text, revid text);
+        create index if not exists trees_sha1 on trees(sha1);
+""")
 
     def add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
-        raise NotImplementedError(self.add_entry)
+        if type == "commit":
+            self.db.execute("replace into commits (sha1, revid, tree_sha) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
+        elif type == "blob":
+            self.db.execute("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
+        elif type == "tree":
+            self.db.execute("replace into trees (sha1, fileid, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
+        else:
+            raise AssertionError("Unknown type %s" % type)
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -61,4 +80,17 @@ class GitShaMap(object):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
-        raise NotImplementedError(self.lookup_git_sha)
+        row = self.db.execute("select revid, tree_sha from commits where sha1 = ?", (sha,)).fetchone()
+        if row is not None:
+            return ("commit", row)
+        row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
+        if row is not None:
+            return ("blob", row)
+        row = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,)).fetchone()
+        if row is not None:
+            return ("tree", row)
+        raise KeyError(sha)
+
+    def revids(self):
+        for row in self.db.execute("select revid from commits").fetchall():
+            yield row[0]

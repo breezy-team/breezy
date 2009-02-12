@@ -38,9 +38,9 @@ class GitObjectConverter(object):
         self._idmap = GitShaMap(self.repository._transport)
 
     def _update_sha_map(self):
-        all_revids = set(self._idmap.revids())
-        present = self.repository.has_revisions(all_revids)
-        missing = all_revids - present
+        all_revids = set(self.repository.all_revision_ids())
+        present_revids = set(self._idmap.revids())
+        missing = all_revids - present_revids
         for revid in missing:
             self._update_sha_map_revision(revid)
 
@@ -48,9 +48,8 @@ class GitObjectConverter(object):
         raise NotImplementedError(self._parent_lookup)
 
     def _update_sha_map_revision(self, revid):
-        (foreign_revid, mapping) = self.repository.lookup_git_revid(revid)
         inv = self.repository.get_inventory(revid)
-        objects = inventory_to_tree_and_blobs(self.repository, mapping, revid)
+        objects = inventory_to_tree_and_blobs(self.repository, self.mapping, revid)
         for sha, o, path in objects:
             if path == "":
                 tree_sha = sha
