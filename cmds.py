@@ -45,9 +45,13 @@ from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb import (
-    debuild_config,
     default_build_dir,
     default_orig_dir,
+    default_result_dir,
+    default_conf,
+    local_conf,
+    global_conf,
+    test_suite,
     )
 from bzrlib.plugins.builddeb.builder import (
                      DebBuild,
@@ -57,6 +61,7 @@ from bzrlib.plugins.builddeb.builder import (
                      DebMergeExportUpstreamBuild,
                      DebExportUpstreamBuild,
                      )
+from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (StopBuild,
                     )
 from bzrlib.plugins.builddeb.hooks import run_hook
@@ -100,6 +105,27 @@ no_user_conf_opt = Option('no-user-config',
     help="Stop builddeb from reading the user's config file. Used mainly "
     "for tests")
 
+
+def debuild_config(tree, working_tree, no_user_config):
+    """Obtain the Debuild configuration object.
+
+    :param tree: A Tree object, can be a WorkingTree or RevisionTree.
+    :param working_tree: Whether the tree is a working tree.
+    :param no_user_config: Whether to skip the user configuration
+    """
+    config_files = []
+    user_config = None
+    if (working_tree and 
+        tree.has_filename(local_conf) and tree.path2id(local_conf) is None):
+        config_files.append((tree.get_file_byname(local_conf), True))
+    if not no_user_config:
+        config_files.append((global_conf, True))
+        user_config = global_conf
+    if tree.path2id(default_conf):
+        config_files.append((tree.get_file(tree.path2id(default_conf)), False))
+    config = DebBuildConfig(config_files)
+    config.set_user_config(user_config)
+    return config
 
 
 class cmd_builddeb(Command):
@@ -747,16 +773,6 @@ class cmd_mark_uploaded(Command):
             db.tag_version(changelog.version)
         finally:
             t.unlock()
-
-
-
-
-def test_suite():
-    from unittest import TestSuite
-    from bzrlib.plugins.builddeb import tests
-    result = TestSuite()
-    result.addTest(tests.test_suite())
-    return result
 
 
 class cmd_test_builddeb(Command):

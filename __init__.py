@@ -28,7 +28,6 @@ import os
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
 
-from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.version import version_info
 
 commands = {
@@ -42,7 +41,7 @@ commands = {
 
 for command, aliases in commands.iteritems():
     plugin_cmds.register_lazy('cmd_' + command, aliases, 
-        "bzrlib.plugins.builddeb.commands")
+        "bzrlib.plugins.builddeb.cmds")
 
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
@@ -52,28 +51,6 @@ local_conf = os.path.join(builddeb_dir, 'local.conf')
 default_build_dir = '../build-area'
 default_orig_dir = '..'
 default_result_dir = '..'
-
-
-def debuild_config(tree, working_tree, no_user_config):
-    """Obtain the Debuild configuration object.
-
-    :param tree: A Tree object, can be a WorkingTree or RevisionTree.
-    :param working_tree: Whether the tree is a working tree.
-    :param no_user_config: Whether to skip the user configuration
-    """
-    config_files = []
-    user_config = None
-    if (working_tree and 
-        tree.has_filename(local_conf) and tree.path2id(local_conf) is None):
-        config_files.append((tree.get_file_byname(local_conf), True))
-    if not no_user_config:
-        config_files.append((global_conf, True))
-        user_config = global_conf
-    if tree.path2id(default_conf):
-        config_files.append((tree.get_file(tree.path2id(default_conf)), False))
-    config = DebBuildConfig(config_files)
-    config.set_user_config(user_config)
-    return config
 
 
 directories.register_lazy("deb:", 'bzrlib.plugins.builddeb.directory', 
@@ -87,6 +64,15 @@ except ImportError:
     from bzrlib.revisionspec import SPEC_TYPES
     from bzrlib.plugins.builddeb.revspec import RevisionSpec_package
     SPEC_TYPES.append(RevisionSpec_package)
+
+
+def test_suite():
+    from unittest import TestSuite
+    from bzrlib.plugins.builddeb import tests
+    result = TestSuite()
+    result.addTest(tests.test_suite())
+    return result
+
 
 if __name__ == '__main__':
     print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
