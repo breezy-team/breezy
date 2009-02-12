@@ -819,7 +819,7 @@ try:
     revspec_registry.register_lazy("package:", "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
 except ImportError:
     from bzrlib.revisionspec import SPEC_TYPES
-    from bzrlib.plugins.revspec import RevisionSpec_package
+    from bzrlib.plugins.builddeb.revspec import RevisionSpec_package
     SPEC_TYPES.append(RevisionSpec_package)
 
 if __name__ == '__main__':
