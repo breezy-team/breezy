@@ -188,12 +188,9 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
         git_p = parent_lookup(p)
         if git_p is not None:
             commit._parents.append(git_p)
-    commit._message = rev.message
-    commit._committer = rev.committer
-    if 'author' in rev.properties:
-        commit._author = rev.properties['author']
-    else:
-        commit._author = rev.committer
+    commit._message = rev.message.encode("utf-8")
+    commit._committer = rev.committer.encode("utf-8")
+    commit._author = rev.get_apparent_author().encode("utf-8")
     commit._commit_time = long(rev.timestamp)
     commit.serialize()
     return commit

@@ -18,6 +18,8 @@
 
 import bzrlib
 
+from bzrlib import ui
+
 from bzrlib.errors import NoSuchRevision
 
 from bzrlib.plugins.git.mapping import (
@@ -25,6 +27,10 @@ from bzrlib.plugins.git.mapping import (
     revision_to_commit,
     )
 from bzrlib.plugins.git.shamap import GitShaMap
+
+from dulwich.objects import (
+    Blob,
+    )
 
 
 class GitObjectConverter(object):
@@ -38,14 +44,18 @@ class GitObjectConverter(object):
         self._idmap = GitShaMap(self.repository._transport)
 
     def _update_sha_map(self):
-        all_revids = set(self.repository.all_revision_ids())
+        all_revids = self.repository.all_revision_ids()
+        graph = self.repository.get_graph()
         present_revids = set(self._idmap.revids())
-        missing = all_revids - present_revids
-        for revid in missing:
-            self._update_sha_map_revision(revid)
-
-    def _parent_lookup(self, sha):
-        raise NotImplementedError(self._parent_lookup)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for i, revid in enumerate(graph.iter_topo_order(all_revids)):
+                if revid in present_revids:
+                    continue
+                pb.update("updating git map", i, len(all_revids))
+                self._update_sha_map_revision(revid)
+        finally:
+            pb.finished()
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
@@ -59,8 +69,8 @@ class GitObjectConverter(object):
             else:
                 self._idmap.add_entry(sha, "tree", (ie.file_id, ie.revision))
         rev = self.repository.get_revision(revid)
-        commit_obj = revision_to_commit(rev, tree_sha, self._parent_lookup)
-        self._idmap.add_entry(commit_obj.sha(), "commit", (revid, tree_sha))
+        commit_obj = revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
+        self._idmap.add_entry(commit_obj.sha().hexdigest(), "commit", (revid, tree_sha))
 
     def _get_blob(self, fileid, revision):
         text = self.repository.texts.get_record_stream([(fileid, revision)], "unordered", True).next().get_bytes_as("fulltext")
@@ -73,7 +83,7 @@ class GitObjectConverter(object):
 
     def _get_commit(self, revid, tree_sha):
         rev = self.repository.get_revision(revid)
-        return revision_to_commit(rev, tree_sha, self._parent_lookup)
+        return revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
 
     def __getitem__(self, sha):
         # See if sha is in map

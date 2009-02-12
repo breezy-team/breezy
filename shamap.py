@@ -61,9 +61,14 @@ class GitShaMap(object):
         create index if not exists trees_sha1 on trees(sha1);
 """)
 
+    def _parent_lookup(self, revid):
+        return self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()[0].encode("utf-8")
+
     def add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
+        assert isinstance(type_data, tuple)
+        assert isinstance(sha, str), "type was %r" % sha
         if type == "commit":
             self.db.execute("replace into commits (sha1, revid, tree_sha) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
         elif type == "blob":
