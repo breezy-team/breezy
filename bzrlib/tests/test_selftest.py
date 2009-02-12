@@ -71,6 +71,7 @@ from bzrlib.tests import (
                           iter_suite_tests,
                           preserve_input,
                           randomize_suite,
+                          run_suite,
                           split_suite_by_condition,
                           split_suite_by_re,
                           test_lsprof,
@@ -2273,3 +2274,21 @@ class TestTestPrefixRegistry(tests.TestCase):
         self.assertEquals('bzrlib.tests', tpr.resolve_alias('bt'))
         self.assertEquals('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
         self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
+
+
+class TestRunSuite(TestCase):
+
+    def test_runner_class(self):
+        """run_suite accepts and uses a runner_class keyword argument."""
+        class Stub(TestCase):
+            def test_foo(self):
+                pass
+        suite = Stub("test_foo")
+        calls = []
+        class MyRunner(TextTestRunner):
+            def run(self, test):
+                calls.append(test)
+                return ExtendedTestResult(self.stream, self.descriptions,
+                    self.verbosity)
+        run_suite(suite, runner_class=MyRunner)
+        self.assertEqual(calls, [suite])

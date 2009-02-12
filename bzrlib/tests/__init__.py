@@ -2487,13 +2487,23 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
-              strict=False):
+              strict=False,
+              runner_class=None):
+    """Run a test suite for bzr selftest.
+
+    :param runner_class: The class of runner to use. Must support the
+        constructor arguments passed by run_suite which are more than standard
+        python uses.
+    :return: A boolean indicating success.
+    """
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
     else:
         verbosity = 1
-    runner = TextTestRunner(stream=sys.stdout,
+    if runner_class is None:
+        runner_class = TextTestRunner
+    runner = runner_class(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
@@ -2555,6 +2565,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              load_list=None,
              debug_flags=None,
              starting_with=None,
+             runner_class=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2590,7 +2601,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      list_only=list_only,
                      random_seed=random_seed,
                      exclude_pattern=exclude_pattern,
-                     strict=strict)
+                     strict=strict,
+                     runner_class=runner_class,
+                     )
     finally:
         default_transport = old_transport
         selftest_debug_flags = old_debug_flags
