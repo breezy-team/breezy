@@ -47,7 +47,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
         if _from_transport is not None:
             self._opener = _from_transport._opener
         else:
-            self._opener = self._opener_class()
+            self._opener = self._opener_class(
+                report_activity=self._report_activity)
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
@@ -100,7 +101,6 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     def _get(self, relpath, offsets, tail_amount=0):
         """See HttpTransport._get"""
-
         abspath = self._remote_path(relpath)
         headers = {}
         accepted_errors = [200, 404]

@@ -16,6 +16,7 @@
 
 """Tests for repositories that support CHK indices."""
 
+from bzrlib import osutils
 from bzrlib.versionedfile import VersionedFiles
 from bzrlib.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
@@ -65,18 +66,19 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.unlock()
 
     def test_pack_preserves_chk_bytes_store(self):
-        expected_set = set([('sha1:4e6482a3a5cb2d61699971ac77befe11a0ec5779',),
-            ('sha1:af554bebcd35f8573896f3f6314bc46dd832e01c',)])
+        leaf_lines = ["chkleaf:\n", "0\n", "1\n", "0\n", "\n"]
+        leaf_sha1 = osutils.sha_strings(leaf_lines)
+        node_lines = ["chknode:\n", "0\n", "1\n", "1\n", "foo\n",
+                      "\x00sha1:%s\n" % (leaf_sha1,)]
+        node_sha1 = osutils.sha_strings(node_lines)
+        expected_set = set([('sha1:' + leaf_sha1,), ('sha1:' + node_sha1,)])
         repo = self.make_repository('.')
         repo.lock_write()
         try:
             repo.start_write_group()
             try:
                 # Internal node pointing at a leaf.
-                repo.chk_bytes.add_lines((None,), None,
-                    ["chknode:\n", "0\n", "1\n", "1\n",
-                     "foo\x00sha1:4e6482a3a5cb2d61699971ac77befe11a0ec5779\n"],
-                     random_id=True)
+                repo.chk_bytes.add_lines((None,), None, node_lines, random_id=True)
             except:
                 repo.abort_write_group()
                 raise
@@ -85,8 +87,7 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             repo.start_write_group()
             try:
                 # Leaf in a separate pack.
-                repo.chk_bytes.add_lines((None,), None,
-                    ["chkleaf:\n", "0\n", "1\n", "0\n"], random_id=True)
+                repo.chk_bytes.add_lines((None,), None, leaf_lines, random_id=True)
             except:
                 repo.abort_write_group()
                 raise

@@ -84,13 +84,22 @@ class ConventionalRequestHandler(MessageHandler):
     "Conventional" is used in the sense described in
     doc/developers/network-protocol.txt: a simple message with arguments and an
     optional body.
+
+    Possible states:
+     * args: expecting args
+     * body: expecting body (terminated by receiving a post-body status)
+     * error: expecting post-body error
+     * end: expecting end of message
+     * nothing: finished
     """
 
     def __init__(self, request_handler, responder):
         MessageHandler.__init__(self)
         self.request_handler = request_handler
         self.responder = responder
-        self.args_received = False
+        self.expecting = 'args'
+        self._should_finish_body = False
+        self._response_sent = False
 
     def protocol_error(self, exception):
         if self.responder.response_sent:
@@ -100,30 +109,62 @@ class ConventionalRequestHandler(MessageHandler):
         self.responder.send_error(exception)
 
     def byte_part_received(self, byte):
-        raise errors.SmartProtocolError(
-            'Unexpected message part: byte(%r)' % (byte,))
+        if self.expecting == 'body':
+            if byte == 'S':
+                # Success.  Nothing more to come except the end of message.
+                self.expecting = 'end'
+            elif byte == 'E':
+                # Error.  Expect an error structure.
+                self.expecting = 'error'
+            else:
+                raise errors.SmartProtocolError(
+                    'Non-success status byte in request body: %r' % (byte,))
+        else:
+            raise errors.SmartProtocolError(
+                'Unexpected message part: byte(%r)' % (byte,))
 
     def structure_part_received(self, structure):
-        if self.args_received:
+        if self.expecting == 'args':
+            self._args_received(structure)
+        elif self.expecting == 'error':
+            self._error_received(structure)
+        else:
             raise errors.SmartProtocolError(
                 'Unexpected message part: structure(%r)' % (structure,))
-        self.args_received = True
-        self.request_handler.dispatch_command(structure[0], structure[1:])
+
+    def _args_received(self, args):
+        self.expecting = 'body'
+        self.request_handler.dispatch_command(args[0], args[1:])
         if self.request_handler.finished_reading:
+            self._response_sent = True
             self.responder.send_response(self.request_handler.response)
+            self.expecting = 'end'
+
+    def _error_received(self, error_args):
+        self.expecting = 'end'
+        self.request_handler.post_body_error_received(error_args)
 
     def bytes_part_received(self, bytes):
-        # Note that there's no intrinsic way to distinguish a monolithic body
-        # from a chunk stream.  A request handler knows which it is expecting
-        # (once the args have been received), so it should be able to do the
-        # right thing.
-        self.request_handler.accept_body(bytes)
-        self.request_handler.end_of_body()
+        if self.expecting == 'body':
+            self._should_finish_body = True
+            self.request_handler.accept_body(bytes)
+        else:
+            raise errors.SmartProtocolError(
+                'Unexpected message part: bytes(%r)' % (bytes,))
+
+    def end_received(self):
+        if self.expecting not in ['body', 'end']:
+            raise errors.SmartProtocolError(
+                'End of message received prematurely (while expecting %s)'
+                % (self.expecting,))
+        self.expecting = 'nothing'
+        self.request_handler.end_received()
         if not self.request_handler.finished_reading:
             raise errors.SmartProtocolError(
-                "Conventional request body was received, but request handler "
-                "has not finished reading.")
-        self.responder.send_response(self.request_handler.response)
+                "Complete conventional request was received, but request "
+                "handler has not finished reading.")
+        if not self._response_sent:
+            self.responder.send_response(self.request_handler.response)
 
 
 class ResponseHandler(object):
@@ -202,10 +243,9 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self._bytes_parts.append(bytes)
 
     def structure_part_received(self, structure):
-        if type(structure) is not list:
+        if type(structure) is not tuple:
             raise errors.SmartProtocolError(
                 'Args structure is not a sequence: %r' % (structure,))
-        structure = tuple(structure)
         if not self._body_started:
             if self.args is not None:
                 raise errors.SmartProtocolError(

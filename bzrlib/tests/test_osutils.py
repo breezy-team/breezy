@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ from bzrlib.osutils import (
         pathjoin,
         pumpfile,
         pump_string_file,
+        canonical_relpath,
         )
 from bzrlib.tests import (
         adapt_tests,
@@ -45,6 +46,7 @@ from bzrlib.tests import (
         split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
+        CaseInsCasePresFilenameFeature,
         TestCase,
         TestCaseInTempDir,
         TestScenarioApplier,
@@ -356,6 +358,24 @@ class TestOSUtils(TestCaseInTempDir):
         osutils.host_os_dereferences_symlinks()
 
 
+class TestCanonicalRelPath(TestCaseInTempDir):
+
+    _test_needs_features = [CaseInsCasePresFilenameFeature]
+
+    def test_canonical_relpath_simple(self):
+        f = file('MixedCaseName', 'w')
+        f.close()
+        self.failUnlessEqual(
+            canonical_relpath(self.test_base_dir, 'mixedcasename'),
+            'work/MixedCaseName')
+
+    def test_canonical_relpath_missing_tail(self):
+        os.mkdir('MixedCaseParent')
+        self.failUnlessEqual(
+            canonical_relpath(self.test_base_dir, 'mixedcaseparent/nochild'),
+            'work/MixedCaseParent/nochild')
+
+
 class TestPumpFile(TestCase):
     """Test pumpfile method."""
     def setUp(self):
@@ -465,6 +485,34 @@ class TestPumpFile(TestCase):
         if response_data != self.test_data:
             message = "Data not equal.  Expected %d bytes, received %d."
             self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_report_activity(self):
+        activity = []
+        def log_activity(length, direction):
+            activity.append((length, direction))
+        from_file = StringIO(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file, buff_size=500,
+                 report_activity=log_activity, direction='read')
+        self.assertEqual([(500, 'read'), (500, 'read'), (500, 'read'),
+                          (36, 'read')], activity)
+
+        from_file = StringIO(self.test_data)
+        to_file = StringIO()
+        del activity[:]
+        pumpfile(from_file, to_file, buff_size=500,
+                 report_activity=log_activity, direction='write')
+        self.assertEqual([(500, 'write'), (500, 'write'), (500, 'write'),
+                          (36, 'write')], activity)
+
+        # And with a limited amount of data
+        from_file = StringIO(self.test_data)
+        to_file = StringIO()
+        del activity[:]
+        pumpfile(from_file, to_file, buff_size=500, read_length=1028,
+                 report_activity=log_activity, direction='read')
+        self.assertEqual([(500, 'read'), (500, 'read'), (28, 'read')], activity)
+
 
 
 class TestPumpStringFile(TestCase):
@@ -1423,59 +1471,12 @@ class TestShaFileByName(TestCaseInTempDir):
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
 
 
-_debug_text = \
-r'''# Copyright (C) 2005, 2006 Canonical Ltd
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-
-# NOTE: If update these, please also update the help for global-options in
-#       bzrlib/help_topics/__init__.py
-
-debug_flags = set()
-"""Set of flags that enable different debug behaviour.
-
-These are set with eg ``-Dlock`` on the bzr command line.
-
-Options include:
- 
- * auth - show authentication sections used
- * error - show stack traces for all top level exceptions
- * evil - capture call sites that do expensive or badly-scaling operations.
- * fetch - trace history copying between repositories
- * graph - trace graph traversal information
- * hashcache - log every time a working file is read to determine its hash
- * hooks - trace hook execution
- * hpss - trace smart protocol requests and responses
- * http - trace http connections, requests and responses
- * index - trace major index operations
- * knit - trace knit operations
- * lock - trace when lockdir locks are taken or released
- * merge - emit information for debugging merges
- * pack - emit information about pack operations
-
-"""
-'''
-
-
 class TestResourceLoading(TestCaseInTempDir):
 
     def test_resource_string(self):
         # test resource in bzrlib
         text = osutils.resource_string('bzrlib', 'debug.py')
-        self.assertEquals(_debug_text, text)
+        self.assertContainsRe(text, "debug_flags = set()")
         # test resource under bzrlib
         text = osutils.resource_string('bzrlib.ui', 'text.py')
         self.assertContainsRe(text, "class TextUIFactory")

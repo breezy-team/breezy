@@ -275,8 +275,8 @@ class Patch:
     def get_header(self):
         return "--- %s\n+++ %s\n" % (self.oldname, self.newname)
 
-    def stats_str(self):
-        """Return a string of patch statistics"""
+    def stats_values(self):
+        """Calculate the number of inserts and removes."""
         removes = 0
         inserts = 0
         for hunk in self.hunks:
@@ -285,8 +285,12 @@ class Patch:
                      inserts+=1;
                 elif isinstance(line, RemoveLine):
                      removes+=1;
+        return (inserts, removes, len(self.hunks))
+
+    def stats_str(self):
+        """Return a string of patch statistics"""
         return "%i inserts, %i removes in %i hunks" % \
-            (inserts, removes, len(self.hunks))
+            self.stats_values()
 
     def pos_in_mod(self, position):
         newpos = position

@@ -310,21 +310,23 @@ class RepoFetcher(object):
             True) # We need them as full-texts so we can find their references
         uninteresting_chk_roots = set()
         interesting_chk_roots = set()
-        for record in inv_stream:
-            bytes = record.get_bytes_as('fulltext')
-            chk_inv = inventory.CHKInventory.deserialise(
-                self.from_repository.chk_bytes, bytes, record.key)
-            if record.key == start_rev_key:
-                uninteresting_chk_roots.add(chk_inv.id_to_entry.key())
-                p_id_map = chk_inv.parent_id_basename_to_file_id
-                if p_id_map is not None:
-                    uninteresting_chk_roots.add(p_id_map.key())
-            else:
-                self.to_repository.inventories.insert_record_stream([record])
-                interesting_chk_roots.add(chk_inv.id_to_entry.key())
-                p_id_map = chk_inv.parent_id_basename_to_file_id
-                if p_id_map is not None:
-                    interesting_chk_roots.add(p_id_map.key())
+        def filter_inv_stream(inv_stream):
+            for record in inv_stream:
+                bytes = record.get_bytes_as('fulltext')
+                chk_inv = inventory.CHKInventory.deserialise(
+                    self.from_repository.chk_bytes, bytes, record.key)
+                if record.key == start_rev_key:
+                    uninteresting_chk_roots.add(chk_inv.id_to_entry.key())
+                    p_id_map = chk_inv.parent_id_basename_to_file_id
+                    if p_id_map is not None:
+                        uninteresting_chk_roots.add(p_id_map.key())
+                else:
+                    yield record
+                    interesting_chk_roots.add(chk_inv.id_to_entry.key())
+                    p_id_map = chk_inv.parent_id_basename_to_file_id
+                    if p_id_map is not None:
+                        interesting_chk_roots.add(p_id_map.key())
+        self.to_repository.inventories.insert_record_stream(filter_inv_stream(inv_stream))
         # Now that we have worked out all of the interesting root nodes, grab
         # all of the interesting pages and insert them
         interesting = chk_map.iter_interesting_nodes(

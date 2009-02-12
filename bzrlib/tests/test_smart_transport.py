@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1489,12 +1489,12 @@ class TestSmartProtocol(tests.TestCase):
         smart_protocol._has_dispatched = True
         smart_protocol.request = _mod_request.SmartServerRequestHandler(
             None, _mod_request.request_handlers, '/')
-        class FakeCommand(object):
-            def do_body(cmd, body_bytes):
+        class FakeCommand(_mod_request.SmartServerRequest):
+            def do_body(self_cmd, body_bytes):
                 self.end_received = True
                 self.assertEqual('abcdefg', body_bytes)
                 return _mod_request.SuccessfulSmartServerResponse(('ok', ))
-        smart_protocol.request._command = FakeCommand()
+        smart_protocol.request._command = FakeCommand(None)
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
         # interface to work with that will not cause this inconsistency.
@@ -2270,14 +2270,6 @@ class TestVersionOneFeaturesInProtocolThree(
         self.assertEqual(4, smart_protocol.next_read_size())
 
 
-class NoOpRequest(_mod_request.SmartServerRequest):
-
-    def do(self):
-        return _mod_request.SuccessfulSmartServerResponse(())
-
-dummy_registry = {'ARG': NoOpRequest}
-
-
 class LoggingMessageHandler(object):
 
     def __init__(self):
@@ -2358,7 +2350,7 @@ class TestProtocolThree(TestSmartProtocol):
             '\0\0\0\x07' # length prefix
             'l3:ARGe' # ['ARG']
             )
-        self.assertEqual([('structure', ['ARG'])], event_log)
+        self.assertEqual([('structure', ('ARG',))], event_log)
 
     def test_decode_multiple_bytes(self):
         """The protocol can decode a multiple 'bytes' message parts."""
@@ -2375,7 +2367,7 @@ class TestProtocolThree(TestSmartProtocol):
             [('bytes', 'first'), ('bytes', 'second')], event_log)
 
 
-class TestConventionalResponseHandler(tests.TestCase):
+class TestConventionalResponseHandlerBodyStream(tests.TestCase):
 
     def make_response_handler(self, response_bytes):
         from bzrlib.smart.message import ConventionalResponseHandler
@@ -2392,7 +2384,7 @@ class TestConventionalResponseHandler(tests.TestCase):
             protocol_decoder, medium_request)
         return response_handler
 
-    def test_body_stream_interrupted_by_error(self):
+    def test_interrupted_by_error(self):
         interrupted_body_stream = (
             'oS' # successful response
             's\0\0\0\x02le' # empty args
@@ -2409,7 +2401,7 @@ class TestConventionalResponseHandler(tests.TestCase):
         exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
         self.assertEqual(('error', 'abc'), exc.error_tuple)
 
-    def test_body_stream_interrupted_by_connection_lost(self):
+    def test_interrupted_by_connection_lost(self):
         interrupted_body_stream = (
             'oS' # successful response
             's\0\0\0\x02le' # empty args
@@ -2426,6 +2418,83 @@ class TestConventionalResponseHandler(tests.TestCase):
         response_handler = self.make_response_handler(interrupted_body_stream)
         self.assertRaises(
             errors.ConnectionReset, response_handler.read_body_bytes)
+
+    def test_multiple_bytes_parts(self):
+        multiple_bytes_parts = (
+            'oS' # successful response
+            's\0\0\0\x02le' # empty args
+            'b\0\0\0\x0bSome bytes\n' # some bytes
+            'b\0\0\0\x0aMore bytes' # more bytes
+            'e' # message end
+            )
+        response_handler = self.make_response_handler(multiple_bytes_parts)
+        self.assertEqual(
+            'Some bytes\nMore bytes', response_handler.read_body_bytes())
+        response_handler = self.make_response_handler(multiple_bytes_parts)
+        self.assertEqual(
+            ['Some bytes\n', 'More bytes'],
+            list(response_handler.read_streamed_body()))
+
+
+class FakeResponder(object):
+
+    response_sent = False
+
+    def send_error(self, exc):
+        raise exc
+
+    def send_response(self, response):
+        pass
+
+
+class TestConventionalRequestHandlerBodyStream(tests.TestCase):
+    """Tests for ConventionalRequestHandler's handling of request bodies."""
+
+    def make_request_handler(self, request_bytes):
+        """Make a ConventionalRequestHandler for the given bytes using test
+        doubles for the request_handler and the responder.
+        """
+        from bzrlib.smart.message import ConventionalRequestHandler
+        request_handler = InstrumentedRequestHandler()
+        request_handler.response = _mod_request.SuccessfulSmartServerResponse(('arg', 'arg'))
+        responder = FakeResponder()
+        message_handler = ConventionalRequestHandler(request_handler, responder)
+        protocol_decoder = protocol.ProtocolThreeDecoder(message_handler)
+        # put decoder in desired state (waiting for message parts)
+        protocol_decoder.state_accept = protocol_decoder._state_accept_expecting_message_part
+        protocol_decoder.accept_bytes(request_bytes)
+        return request_handler
+
+    def test_multiple_bytes_parts(self):
+        """Each bytes part triggers a call to the request_handler's
+        accept_body method.
+        """
+        multiple_bytes_parts = (
+            's\0\0\0\x07l3:fooe' # args
+            'b\0\0\0\x0bSome bytes\n' # some bytes
+            'b\0\0\0\x0aMore bytes' # more bytes
+            'e' # message end
+            )
+        request_handler = self.make_request_handler(multiple_bytes_parts)
+        accept_body_calls = [
+            call_info[1] for call_info in request_handler.calls
+            if call_info[0] == 'accept_body']
+        self.assertEqual(
+            ['Some bytes\n', 'More bytes'], accept_body_calls)
+
+    def test_error_flag_after_body(self):
+        body_then_error = (
+            's\0\0\0\x07l3:fooe' # request args
+            'b\0\0\0\x0bSome bytes\n' # some bytes
+            'b\0\0\0\x0aMore bytes' # more bytes
+            'oE' # error flag
+            's\0\0\0\x07l3:bare' # error args
+            'e' # message end
+            )
+        request_handler = self.make_request_handler(body_then_error)
+        self.assertEqual(
+            [('post_body_error_received', ('bar',)), ('end_received',)],
+            request_handler.calls[-2:])
 
 
 class TestMessageHandlerErrors(tests.TestCase):
@@ -2476,18 +2545,27 @@ class InstrumentedRequestHandler(object):
 
     def __init__(self):
         self.calls = []
-
-    def body_chunk_received(self, chunk_bytes):
-        self.calls.append(('body_chunk_received', chunk_bytes))
+        self.finished_reading = False
 
     def no_body_received(self):
         self.calls.append(('no_body_received',))
 
-    def prefixed_body_received(self, body_bytes):
-        self.calls.append(('prefixed_body_received', body_bytes))
-
     def end_received(self):
         self.calls.append(('end_received',))
+        self.finished_reading = True
+
+    def dispatch_command(self, cmd, args):
+        self.calls.append(('dispatch_command', cmd, args))
+
+    def accept_body(self, bytes):
+        self.calls.append(('accept_body', bytes))
+
+    def end_of_body(self):
+        self.calls.append(('end_of_body',))
+        self.finished_reading = True
+
+    def post_body_error_received(self, error_args):
+        self.calls.append(('post_body_error_received', error_args))
 
 
 class StubRequest(object):
@@ -2529,7 +2607,7 @@ class TestClientDecodingProtocolThree(TestSmartProtocol):
         # The message handler has been invoked with all the parts of the
         # trivial response: empty headers, status byte, no args, end.
         self.assertEqual(
-            [('headers', {}), ('byte', 'S'), ('structure', []), ('end',)],
+            [('headers', {}), ('byte', 'S'), ('structure', ()), ('end',)],
             response_handler.event_log)
 
     def test_incomplete_message(self):
@@ -2642,6 +2720,63 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
         encoder.call_with_body_bytes(('arg', 'arg'), 'body bytes')
         self.assertEqual(
             ['accept_bytes', 'finished_writing'], medium_request.calls)
+
+    def test_call_with_body_stream_smoke_test(self):
+        """A smoke test for ProtocolThreeRequester.call_with_body_stream.
+
+        This test checks that a particular simple invocation of
+        call_with_body_stream emits the correct bytes for that invocation.
+        """
+        requester, output = self.make_client_encoder_and_output()
+        requester.set_headers({'header name': 'header value'})
+        stream = ['chunk 1', 'chunk two']
+        requester.call_with_body_stream(('one arg',), stream)
+        self.assertEquals(
+            'bzr message 3 (bzr 1.6)\n' # protocol version
+            '\x00\x00\x00\x1fd11:header name12:header valuee' # headers
+            's\x00\x00\x00\x0bl7:one arge' # args
+            'b\x00\x00\x00\x07chunk 1' # a prefixed body chunk
+            'b\x00\x00\x00\x09chunk two' # a prefixed body chunk
+            'e', # end
+            output.getvalue())
+
+    def test_call_with_body_stream_empty_stream(self):
+        """call_with_body_stream with an empty stream."""
+        requester, output = self.make_client_encoder_and_output()
+        requester.set_headers({})
+        stream = []
+        requester.call_with_body_stream(('one arg',), stream)
+        self.assertEquals(
+            'bzr message 3 (bzr 1.6)\n' # protocol version
+            '\x00\x00\x00\x02de' # headers
+            's\x00\x00\x00\x0bl7:one arge' # args
+            # no body chunks
+            'e', # end
+            output.getvalue())
+
+    def test_call_with_body_stream_error(self):
+        """call_with_body_stream will abort the streamed body with an
+        error if the stream raises an error during iteration.
+        
+        The resulting request will still be a complete message.
+        """
+        requester, output = self.make_client_encoder_and_output()
+        requester.set_headers({})
+        def stream_that_fails():
+            yield 'aaa'
+            yield 'bbb'
+            raise Exception('Boom!')
+        requester.call_with_body_stream(('one arg',), stream_that_fails())
+        self.assertEquals(
+            'bzr message 3 (bzr 1.6)\n' # protocol version
+            '\x00\x00\x00\x02de' # headers
+            's\x00\x00\x00\x0bl7:one arge' # args
+            'b\x00\x00\x00\x03aaa' # body
+            'b\x00\x00\x00\x03bbb' # more body
+            'oE' # error flag
+            's\x00\x00\x00\x09l5:errore' # error args: ('error',)
+            'e', # end
+            output.getvalue())
 
 
 class StubMediumRequest(object):
@@ -3412,34 +3547,3 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         self.assertNotEquals(type(r), type(t))
 
 
-# TODO: Client feature that does get_bundle and then installs that into a
-# branch; this can be used in place of the regular pull/fetch operation when
-# coming from a smart server.
-#
-# TODO: Eventually, want to do a 'branch' command by fetching the whole
-# history as one big bundle.  How?  
-#
-# The branch command does 'br_from.sprout', which tries to preserve the same
-# format.  We don't necessarily even want that.  
-#
-# It might be simpler to handle cmd_pull first, which does a simpler fetch()
-# operation from one branch into another.  It already has some code for
-# pulling from a bundle, which it does by trying to see if the destination is
-# a bundle file.  So it seems the logic for pull ought to be:
-# 
-#  - if it's a smart server, get a bundle from there and install that
-#  - if it's a bundle, install that
-#  - if it's a branch, pull from there
-#
-# Getting a bundle from a smart server is a bit different from reading a
-# bundle from a URL:
-#
-#  - we can reasonably remember the URL we last read from 
-#  - you can specify a revision number to pull, and we need to pass it across
-#    to the server as a limit on what will be requested
-#
-# TODO: Given a URL, determine whether it is a smart server or not (or perhaps
-# otherwise whether it's a bundle?)  Should this be a property or method of
-# the transport?  For the ssh protocol, we always know it's a smart server.
-# For http, we potentially need to probe.  But if we're explicitly given
-# bzr+http:// then we can skip that for now. 

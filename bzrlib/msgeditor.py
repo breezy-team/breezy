@@ -248,7 +248,7 @@ def make_commit_message_template(working_tree, specific_files):
     from bzrlib.status import show_tree_status
     status_tmp = StringIO()
     show_tree_status(working_tree, specific_files=specific_files, 
-                     to_file=status_tmp)
+                     to_file=status_tmp, verbose=True)
     return status_tmp.getvalue()
 
 

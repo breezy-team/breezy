@@ -121,7 +121,7 @@ class TreeTransformBase(object):
         self._non_present_ids = {}
         # Mapping of new file_id -> trans_id
         self._r_new_id = {}
-        # Set of file_ids that will be removed
+        # Set of trans_ids that will be removed
         self._removed_id = set()
         # Mapping of path in old tree -> trans_id
         self._tree_path_ids = {}
@@ -1649,7 +1649,8 @@ class _PreviewTree(tree.Tree):
     def has_id(self, file_id):
         if file_id in self._transform._r_new_id:
             return True
-        elif file_id in self._transform._removed_id:
+        elif file_id in set([self._transform.tree_file_id(trans_id) for
+            trans_id in self._transform._removed_id]):
             return False
         else:
             return self._transform._tree.has_id(file_id)

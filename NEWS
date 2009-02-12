@@ -8,15 +8,272 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+  COMPATIBILITY BREAKS:
+
+    * ``bzr log --line`` now indicates which revisions are merges with
+      `[merge]` after the date.  Scripts which parse the output of this
+      command may need to be adjusted.
+      (Neil Martinsen-Burrell)
+
+  NEW FEATURES:
+
+  IMPROVEMENTS:
+
+    * ``bzr branch`` now has a ``--no-tree`` option which turns off the
+      generation of a working tree in the new branch.
+      (Daniel Watkins, John Klinger, #273993)
+
+  BUG FIXES:
+
+    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
+      shelf id. (Daniel Watkins)
+
+  DOCUMENTATION:
+
+    * The documentation for ``shelve`` and ``unshelve`` has been clarified.
+      (Daniel Watkins, #327421, #327425)
+
+  API CHANGES:
+
+  INTERNALS:
+
+    * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
+      supporting the use of different runners. (Robert Collins)
+
+    * New hook Commands['extend_command'] to allow plugins to access a
+      command object before the command is run (or help generated from
+      it), without overriding the command. (Robert Collins)
+
+
+bzr 1.12rc1 "1234567890" 2009-02-10
+-----------------------------------
+
+This release of Bazaar contains many improvements to the speed and
+functionality of ``bzr log`` and the display of logged revisions by ``bzr
+status``.  bzr now also gives a better indication of progress, both in the
+way operations are drawn onto a text terminal, and by showing the rate of
+network IO.
+
+  COMPATIBILITY BREAKS:
+
+    * By default, ``bzr status`` after a merge now shows just the pending
+      merge tip revisions. This improves the signal-to-noise ratio after
+      merging from trunk and completes much faster. To see all merged
+      revisions, use the new ``-v`` flag.  (Ian Clatworthy)
+
+    * ``bzr log --line`` now shows any tags after the date and before
+      the commit message. If you have scripts which parse the output
+      from this command, you may need to adjust them accordingly.
+      (Ian Clatworthy)
+
+    * ``bzr log --short`` now shows any additional revision properties
+      after the date and before the commit message.  Scripts that parse 
+      output of the log command in this situation may need to adjust.
+      (Neil Martinsen-Burrell)
+
+    * The experimental formats ``1.12-preview`` and ``1.12-preview-rich-root``
+      have been renamed ``development-wt5`` and ``development-wt5-rich-root``
+      respectively, given they are not ready for release in 1.12.
+      (Ian Clatworthy)
+
+  NEW FEATURES:
+
+    * Add support for filtering ``bzr missing`` on revisions.  Remote revisions
+      can be filtered using ``bzr missing -r -20..-10`` and local revisions can
+      be filtered using ``bzr missing --my-revision -20..-10``.
+      (Marius Kruger)
+
+    * ``bzr log -p`` displays the patch diff for each revision.
+      When logging a file, the diff only includes changes to that file.
+      (Ian Clatworthy, #202331, #227335)
+
+    * ``bzr log`` supports a new option called ``-n N`` or ``--level N``.
+      A value of 0 (zero) means "show all nested merge revisions" while
+      a value of 1 (one) means "show just the top level". Values above
+      1 can be used to see a limited amount of nesting. That can be
+      useful for seeing the level or two below PQM submits for example.
+      To force the ``--short`` and ``--line`` formats to display all nested
+      merge revisions just like ``--long`` does by default, use a command
+      like ``bzr log --short -n0``. To display just the mainline using
+      ``--long`` format, ``bzr log --long -n1``.
+      (Ian Clatworthy)
+
+  IMPROVEMENTS:
+
+    * ``bzr add`` more clearly communicates success vs failure.
+      (Daniel Watkins)
+
+    * ``bzr init`` will now print a little less verbose output.
+      (Marius Kruger)
+
+    * ``bzr log`` is now much faster in many use cases, particularly
+      at incrementally displaying results and filtering by a
+      revision range. (Ian Clatworthy)
+
+    * ``bzr log --short`` and ``bzr log --line`` now show tags, if any,
+      for each revision. The tags are shown comma-separated inside
+      ``{}``. For short format, the tags appear at the end of line
+      before the optional ``[merge]`` indicator. For line format,
+      the tags appear after the date. (Ian Clatworthy)
+
+    * Progress bars now show the rate of activity for some sftp 
+      operations, and they are drawn different.  (Martin Pool, #172741)
+
+    * Progress bars now show the rate of activity for urllib and pycurl based
+      http client implementations. The operations are tracked at the socket
+      level for better precision.
+      (Vincent Ladeuil)
+
+    * Rule-based preferences can now accept multiple patterns for a set of
+      rules.  (Marius Kruger)
+
+    * The ``ancestor:`` revision spec will now default to referring to the
+      parent of the branch if no other location is given.
+      (Daniel Watkins, #198417)
+
+    * The debugger started as a result of setting ``$BZR_PDB`` works
+      around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
+      can cause truncated tracebacks in Python versions before 2.6.
+      (Andrew Bennetts)
+
+    * VirtualVersionedFiles now implements
+      ``iter_lines_added_or_present_in_keys``. This allows the creation of 
+      new branches based on stacked bzr-svn branches. (#311997)
+
+  BUG FIXES:
+
+    * ``bzr annotate --show-ids`` doesn't give a backtrace on empty files
+      anymore.
+      (Anne Mohsen, Vincent Ladeuil, #314525)
+
+    * ``bzr log FILE`` now correctly shows mainline revisions merging
+      a change to FILE when the ``--short`` and ``--line`` log formats
+      are used. (Ian Clatworthy, #317417)
+
+    * ``bzr log -rX..Y FILE`` now shows the history of FILE provided
+      it existed in Y or X, even if the file has since been deleted or
+      renamed. If no range is given, the current/basis tree and
+      initial tree are searched in that order. More generally, log
+      now interprets filenames in their historical context.
+      (Ian Clatworthy, #175520)
+
+    * ``bzr status`` now reports nonexistent files and continues, then
+       errors (with code 3) at the end.  (Karl Fogel, #306394)
+
+    * Don't require the present compression base in knits to be the same
+      when adding records in knits. (Jelmer Vernooij, #307394)
+
+    * Fix a problem with CIFS client/server lag on Windows colliding with
+      an invariant-per-process algorithm for generating AtomicFile names
+      (Adrian Wilkins, #304023)
+
+    * Many socket operations now handle EINTR by retrying the operation.
+      Previously EINTR was treated as an unrecoverable failure.  There is
+      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
+      (Andrew Bennetts)
+
+    * Support symlinks with non-ascii characters in the symlink filename.
+      (Jelmer Vernooij, #319323)
+
+    * There was a bug in how we handled resolving when a file is deleted
+      in one branch, and modified in the other. If there was a criss-cross
+      merge, we would cause the deletion to conflict a second time.
+      (Vincent Ladeuil, John Arbash Meinel)
+
+    * There was another bug in how we chose the correct intermediate LCA in
+      criss-cross merges leading to several kind of changes be incorrectly
+      handled.
+      (John Arbash Meinel, Vincent Ladeuil)
+
+    * Unshelve now handles deleted paths without crashing. (Robert Collins)
+
+  DOCUMENTATION:
+
+    * Improved plugin developer documentation.  (Martin Pool)
+
+  API CHANGES:
+
+    * ``ProgressBarStack`` is deprecated; instead use
+      ``ui_factory.nested_progress_bar`` to create new progress bars.
+      (Martin Pool)
+
+    * ForeignVcsMapping() now requires a ForeignVcs object as first
+      argument. (Jelmer Vernooij)
+
+    * ForeignVcsMapping.show_foreign_revid() has been moved to
+      ForeignVcs. (Jelmer Vernooij)
+
+    * ``read_bundle_from_url`` is deprecated in favor of
+      ``read_mergeable_from_url``.  (Vincent Ladeuil)
+
+    * Revision specifiers are now registered in
+      ``bzrlib.revisionspec.revspec_registry``, and the old list of 
+      revisionspec classes (``bzrlib.revisionspec.SPEC_TYPES``) has been
+      deprecated. (Jelmer Vernooij, #321183)
+
+    * The progress and UI classes have changed; the main APIs remain the
+      same but code that provides a new UI or progress bar class may
+      need to be updated.  (Martin Pool)
+
+  INTERNALS:
+
+    * Default User Interface (UI) is CLIUIFactory when bzr runs in a dumb
+      terminal. It is sometimes desirable do override this default by forcing
+      bzr to use TextUIFactory. This can be achieved by setting the
+      BZR_USE_TEXT_UI environment variable (emacs shells, as opposed to
+      compile buffers, are such an example).
+      (Vincent Ladeuil)
+
+    * New API ``Branch.iter_merge_sorted_revisions()`` that iterates over
+      ``(revision_id, depth, revno, end_of_merge)`` tuples.
+      (Ian Clatworthy)
+
+    * New ``Branch.dotted_revno_to_revision_id()`` and
+      ``Branch.revision_id_to_dotted_revno()`` APIs that pick the most
+      efficient way of doing the mapping.
+      (Ian Clatworthy)
+
+    * Refactor cmd_serve so that it's a little easier to build commands that
+      extend it, and perhaps even a bit easier to read.  (Jonathan Lange)
+
+    * ``TreeDelta.show()`` now accepts a ``filter`` parameter allowing log
+      formatters to retrict the output.
+      (Vincent Ladeuil)
+
+
+bzr 1.11 "Eyes up!" 2009-01-19
+------------------------------
+
+This first monthly release of Bazaar for 2009 improves Bazaar's operation
+in Windows, Mac OS X, and other situations where file names are matched
+without regard to capitalization: Bazaar tries to match the case of an
+existing file.  This release of Bazaar also improves the efficiency of
+Tortoise Windows Shell integration and lets it work on 64-bit platforms.
+
+The UI through which Bazaar supports historic formats has been improved,
+so 'bzr help formats' now gives a simpler and shorter list, with clear
+advice.
+
+This release also fixes a number of bugs, particularly a glitch that can
+occur when there are concurrent writes to a pack repository.
+
+  BUG FIXES:
+
+    * Fix failing test when CompiledChunksToLines is not available.
+      (Vincent Ladeuil)
+
+    * Stacked branches don't repeatedly open their transport connection.
+      (John Arbash Meinel)
+
+
+
+bzr 1.11rc1 "Eyes up!" 2009-01-09
+---------------------------------
+
   CHANGES:
-  
+
     * Formats using Knit-based repository formats are now explicitly
       marked as deprecated. (Ian Clatworthy)
-
-    * ``LRUCache(after_cleanup_size)`` was renamed to
-      ``after_cleanup_count`` and the old name deprecated. The new name is
-      used for clarity, and to avoid confusion with
-      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
   NEW FEATURES:
 
@@ -40,11 +297,23 @@ IN DEVELOPMENT
     * ``bzr revision-info`` now supports a -d option to specify an
       alternative branch. (Michael Hudson)
 
+    * Add connection to a C++ implementation of the Windows Shell Extension
+      which is able to fully replace the current Python implemented one.
+      Advantages include 64bit support and reduction in overhead for
+      processes which drag in shell extensions.
+      (Mark Hammond)
+
     * Support the Claws mail client directly, rather than via
       xdg-email. This prevents the display of an unnecessary modal
       dialog in Claws, informing the user that a file has been
       attached to the message, and works around bug #291847 in
       xdg-utils which corrupts the destination address.
+
+    * When working on a case-insensitive case-preserving file-system, as
+      commonly found with Windows, bzr will often ignore the case of the
+      arguments specified by the user in preference to the case of an existing
+      item on the file-system or in the inventory to help prevent
+      counter-intuitive behaviour on Windows. (Mark Hammond)
 
   BUG FIXES:
   
@@ -90,11 +359,6 @@ IN DEVELOPMENT
       in the appropriate sections.
       (Vincent Ladeuil, #103029)
 
-    * Many socket operations now handle EINTR by retrying the operation.
-      Previously EINTR was treated as an unrecoverable failure.  There is
-      a new ``until_no_eintr`` helper function in ``bzrlib.osutils``.
-      (Andrew Bennetts)
-
     * Opening a stacked branch now properly shares the connection, rather
       than opening a new connection for the stacked-on branch.
       (John Arbash meinel)
@@ -136,6 +400,11 @@ IN DEVELOPMENT
       (Ian Clatworthy)
 
   API CHANGES:
+
+    * ``LRUCache(after_cleanup_size)`` was renamed to
+      ``after_cleanup_count`` and the old name deprecated. The new name is
+      used for clarity, and to avoid confusion with
+      ``LRUSizeCache(after_cleanup_size)``. (John Arbash Meinel)
 
     * New ``ForeignRepository`` base class, to help with foreign branch 
       support (e.g. svn).  (Jelmer Vernooij)

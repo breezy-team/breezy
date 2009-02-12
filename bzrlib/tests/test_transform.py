@@ -42,7 +42,6 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
 from bzrlib.osutils import file_kind, pathjoin
 from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
-    CaseInsensitiveFilesystemFeature,
     HardlinkFeature,
     SymlinkFeature,
     TestCase,

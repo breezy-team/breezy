@@ -50,6 +50,7 @@ from bzrlib import (
 
 from bzrlib import registry
 # Compatibility
+from bzrlib.hooks import Hooks
 from bzrlib.option import Option
 
 
@@ -170,7 +171,11 @@ def get_cmd_object(cmd_name, plugins_override=True):
         If true, plugin commands can override builtins.
     """
     try:
-        return _get_cmd_object(cmd_name, plugins_override)
+        cmd = _get_cmd_object(cmd_name, plugins_override)
+        # Allow plugins to extend commands
+        for hook in Command.hooks['extend_command']:
+            hook(cmd)
+        return cmd
     except KeyError:
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
@@ -216,9 +221,8 @@ def _get_cmd_object(cmd_name, plugins_override=True):
         except errors.NoPluginAvailable:
             pass
         else:
-            raise errors.CommandAvailableInPlugin(cmd_name, 
+            raise errors.CommandAvailableInPlugin(cmd_name,
                                                   plugin_metadata, provider)
-
     raise KeyError
 
 
@@ -279,6 +283,7 @@ class Command(object):
             sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
 
+    :cvar hooks: An instance of CommandHooks.
     """
     aliases = []
     takes_args = []
@@ -573,6 +578,25 @@ class Command(object):
             return None
 
 
+class CommandHooks(Hooks):
+    """Hooks related to Command object creation/enumeration."""
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        Hooks.__init__(self)
+        # Introduced in 1.13:
+        # invoked after creating a command object to allow modifications such
+        # as adding or removing options, docs etc. Invoked with the command
+        # object.
+        self['extend_command'] = []
+
+Command.hooks = CommandHooks()
+
+
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
     
@@ -846,6 +870,7 @@ def run_bzr(argv):
         # --verbose in their own way.
         option._verbosity_level = saved_verbosity_level
 
+
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
     def ignore_pipe(*args, **kwargs):
@@ -868,8 +893,8 @@ def display_command(func):
 
 def main(argv):
     import bzrlib.ui
-    from bzrlib.ui.text import TextUIFactory
-    bzrlib.ui.ui_factory = TextUIFactory()
+    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
+        sys.stdin, sys.stdout, sys.stderr)
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
@@ -894,11 +919,32 @@ def run_bzr_catch_errors(argv):
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        exitcode = trace.report_exception(sys.exc_info(), sys.stderr)
+        exc_info = sys.exc_info()
+        exitcode = trace.report_exception(exc_info, sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
+            tb = exc_info[2]
             import pdb
-            pdb.post_mortem(sys.exc_traceback)
+            if sys.version_info[:2] < (2, 6):
+                # XXX: we want to do
+                #    pdb.post_mortem(tb)
+                # but because pdb.post_mortem gives bad results for tracebacks
+                # from inside generators, we do it manually.
+                # (http://bugs.python.org/issue4150, fixed in Python 2.6)
+                
+                # Setup pdb on the traceback
+                p = pdb.Pdb()
+                p.reset()
+                p.setup(tb.tb_frame, tb)
+                # Point the debugger at the deepest frame of the stack
+                p.curindex = len(p.stack) - 1
+                p.curframe = p.stack[p.curindex]
+                # Start the pdb prompt.
+                p.print_stack_entry(p.stack[p.curindex])
+                p.execRcLines()
+                p.cmdloop()
+            else:
+                pdb.post_mortem(tb)
         return exitcode
 
 

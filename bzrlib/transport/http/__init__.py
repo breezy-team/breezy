@@ -212,7 +212,6 @@ class HttpTransportBase(ConnectedTransport):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-
         # offsets may be a generator, we will iterate it several times, so
         # build a list
         offsets = list(offsets)

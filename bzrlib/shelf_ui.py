@@ -223,7 +223,10 @@ class Unshelver(object):
         tree, path = workingtree.WorkingTree.open_containing(directory)
         manager = tree.get_shelf_manager()
         if shelf_id is not None:
-            shelf_id = int(shelf_id)
+            try:
+                shelf_id = int(shelf_id)
+            except ValueError:
+                raise errors.InvalidShelfId(shelf_id)
         else:
             shelf_id = manager.last_shelf()
             if shelf_id is None:
