@@ -2874,6 +2874,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_shelf_ui',
                    'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
+                   'bzrlib.tests.test_smart_request',
                    'bzrlib.tests.test_smart_transport',
                    'bzrlib.tests.test_smtp_connection',
                    'bzrlib.tests.test_source',
