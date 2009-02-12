@@ -4,10 +4,11 @@
 # When preparing a new release, make sure to set all of these to the latest
 # values.
 VERSIONS = {
-    'bzr': '1.11',
-    'qbzr': '0.9.6',
-    'bzrtools': '1.11.0',
-    'bzr-svn': '0.4.16',
+    'bzr': '1.12',
+    'qbzr': '0.9.7',
+    'bzrtools': '1.12.0',
+    'bzr-svn': '0.5.0',
+    'subvertpy': '0.6.2',
 }
 
 # This will be passed to 'make' to ensure we build with the right python
@@ -123,8 +124,8 @@ def update_plugin_trunk(plugin_name):
 
 
 def _plugin_tag_name(plugin_name):
-    if plugin_name == 'bzr-svn':
-        return 'bzr-svn-' + VERSIONS['bzr-svn']
+    if plugin_name in ('bzr-svn', 'subvertpy'):
+        return '%s-%s' % (plugin_name, VERSIONS[plugin_name])
     # bzrtools and qbzr use 'release-X.Y.Z'
     return 'release-' + VERSIONS[plugin_name]
 
@@ -189,6 +190,7 @@ def main(args):
     update_tbzr()
     clean_target()
     create_target()
+    install_plugin('subvertpy')
     install_plugin('bzrtools')
     install_plugin('qbzr')
     install_plugin('bzr-svn')
