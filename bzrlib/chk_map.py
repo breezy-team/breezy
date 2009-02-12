@@ -455,8 +455,6 @@ class Node(object):
         self._items = {}
         # The common search prefix
         self._search_prefix = None
-        # Do all of the keys in this leaf share an identical search_key?
-        self._all_search_keys_identical = None
 
     def __repr__(self):
         items_str = sorted(self._items)
@@ -658,20 +656,18 @@ class LeafNode(Node):
         search_key = self._search_key(key)
         if self._search_prefix is None:
             self._search_prefix = search_key
-            self._all_search_keys_identical = True
         else:
-            old_search_prefix = self._search_prefix
             self._search_prefix = self.common_prefix(
                 self._search_prefix, search_key)
-            if (self._all_search_keys_identical
-                and (old_search_prefix != self._search_prefix
-                     or self._search_prefix != search_key)):
-                self._all_search_keys_identical = False
         if (self._len > 1
             and self._maximum_size
-            and self._current_size() > self._maximum_size
-            and not self._all_search_keys_identical):
-            return True
+            and self._current_size() > self._maximum_size):
+            # Check to see if all of the search_keys for this node are
+            # identical. We allow the node to grow under that circumstance
+            # (we could track this as common state, but it is infrequent)
+            if (search_key != self._search_prefix
+                or not self._are_search_keys_identical()):
+                return True
         return False
 
     def _split(self, store):
@@ -759,11 +755,23 @@ class LeafNode(Node):
         """
         search_keys = [self._search_key(key) for key in self._items]
         self._search_prefix = self.common_prefix_for_keys(search_keys)
-        if len(set(search_keys)) == 1:
-            self._all_search_keys_identical = True
-        else:
-            self._all_search_keys_identical = False
         return self._search_prefix
+
+    def _are_search_keys_identical(self):
+        """Check to see if the search keys for all entries are the same.
+
+        When using a hash as the search_key it is possible for non-identical
+        keys to collide. If that happens enough, we may try overflow a
+        LeafNode, but as all are collisions, we must not split.
+        """
+        common_search_key = None
+        for key in self._items:
+            search_key = self._search_key(key)
+            if common_search_key is None:
+                common_search_key = search_key
+            elif search_key != common_search_key:
+                return False
+        return True
 
     def _compute_serialised_prefix(self):
         """Determine the common prefix for serialised keys in this node.
