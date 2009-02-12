@@ -53,7 +53,6 @@ pyflakes-nounused:
 clean:
 	$(PYTHON) setup.py clean
 	-find . -name "*.pyc" -o -name "*.pyo" -o -name "*.so" | xargs rm -f
-	rm -rf doc/en/user-guide/latex_prepared
 
 # Build API documentation
 docfiles = bzr bzrlib
@@ -184,13 +183,15 @@ HTMLDIR := html_docs
 html-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
 
-# Produce PDF documents.  Requires pdfLaTeX and 'rubber' for tools/rst2pdf.py.
+# Produce PDF documents.  Requires pdfLaTeX, rubber, and Inkscape.
 pdf-docs: $(PDF_DOCS)
 
 # clean produced docs
 clean-docs:
 	$(PYTHON) tools/win32/ostools.py remove $(ALL_DOCS) \
-	$(HTMLDIR) $(derived_txt_files)
+	    $(HTMLDIR) $(derived_txt_files)
+	rm -f doc/en/user-guide/*.pdf
+	rm -rf doc/en/user-guide/latex_prepared
 
 
 ### Windows Support ###
