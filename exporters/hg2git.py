@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2007 Rocco Rutte <pdmef@gmx.net>
+# Copyright (c) 2007, 2008 Rocco Rutte <pdmef@gmx.net> and others.
 # License: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 from mercurial import repo,hg,cmdutil,util,ui,revlog,node
@@ -8,12 +8,22 @@ import re
 import os
 import sys
 
-# git branch for hg's default 'HEAD' branch
+# default git branch name
 cfg_master='master'
+# default origin name
+origin_name=''
 # silly regex to see if user field has email address
 user_re=re.compile('([^<]+) (<[^>]+>)$')
 # silly regex to clean out user names
 user_clean_re=re.compile('^["]([^"]+)["]$')
+
+def set_default_branch(name):
+  global cfg_master
+  cfg_master = name
+
+def set_origin_name(name):
+  global origin_name
+  origin_name = name
 
 def setup_repo(url):
   myui=ui.ui(interactive=False)
@@ -45,9 +55,12 @@ def fixup_user(user,authors):
   return '%s %s' % (name,mail)
 
 def get_branch(name):
-  # HEAD may be from CVS imports into hg
+  # 'HEAD' is the result of a bug in mutt's cvs->hg conversion,
+  # other CVS imports may need it, too
   if name=='HEAD' or name=='default' or name=='':
     name=cfg_master
+  if origin_name:
+    return origin_name + '/' + name
   return name
 
 def get_changeset(ui,repo,revision,authors={}):
@@ -85,7 +98,7 @@ def save_cache(filename,cache):
 def get_git_sha1(name,type='heads'):
   try:
     # use git-rev-parse to support packed refs
-    cmd="GIT_DIR='%s' git-rev-parse --verify refs/%s/%s 2>/dev/null" % (os.getenv('GIT_DIR','/dev/null'),type,name)
+    cmd="GIT_DIR='%s' git rev-parse --verify refs/%s/%s 2>/dev/null" % (os.getenv('GIT_DIR','/dev/null'),type,name)
     p=os.popen(cmd)
     l=p.readline()
     p.close()

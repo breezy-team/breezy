@@ -1,18 +1,19 @@
 #!/bin/sh
 
-# Copyright (c) 2007 Rocco Rutte <pdmef@gmx.net>
+# Copyright (c) 2007, 2008 Rocco Rutte <pdmef@gmx.net> and others.
 # License: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 ROOT="`dirname $0`"
 REPO=""
 PFX="hg2git"
+SFX_MAPPING="mapping"
 SFX_MARKS="marks"
 SFX_HEADS="heads"
 SFX_STATE="state"
 QUIET=""
 PYTHON=${PYTHON:-python}
 
-USAGE="[--quiet] [-r <repo>] [-m <max>] [-s] [-A <file>]"
+USAGE="[--quiet] [-r <repo>] [-m <max>] [-s] [-A <file>] [-M <name>] [-o <name>]"
 LONG_USAGE="Import hg repository <repo> up to either tip or <max>
 If <repo> is omitted, use last hg repository as obtained from state file,
 GIT_DIR/$PFX-$SFX_STATE by default.
@@ -26,9 +27,11 @@ Options:
 	-A	Read author map from file
 		(Same as in git-svnimport(1) and git-cvsimport(1))
 	-r	Mercurial repository to import
+        -M      Set the default branch name (default to 'master')
+        -o      Use <name> as branch namespace to track upstream (eg 'origin')
 "
 
-. git-sh-setup
+. "$(git --exec-path)/git-sh-setup"
 cd_to_toplevel
 
 while case "$#" in 0) break ;; esac
@@ -66,11 +69,11 @@ fi
 GIT_DIR="$GIT_DIR" $PYTHON "$ROOT/hg-fast-export.py" \
   --repo "$REPO" \
   --marks "$GIT_DIR/$PFX-$SFX_MARKS" \
+  --mapping "$GIT_DIR/$PFX-$SFX_MAPPING" \
   --heads "$GIT_DIR/$PFX-$SFX_HEADS" \
   --status "$GIT_DIR/$PFX-$SFX_STATE" \
   "$@" \
-| git-fast-import $QUIET --export-marks="$GIT_DIR/$PFX-$SFX_MARKS.tmp" \
-|| die 'Git fast-import failed'
+| git fast-import $QUIET --export-marks="$GIT_DIR/$PFX-$SFX_MARKS.tmp" 
 
 # move recent marks cache out of the way...
 if [ -f "$GIT_DIR/$PFX-$SFX_MARKS" ] ; then
@@ -89,7 +92,7 @@ rm -rf "$GIT_DIR/$PFX-$SFX_MARKS.old" "$GIT_DIR/$PFX-$SFX_MARKS.tmp"
 # save SHA1s of current heads for incremental imports
 # and connectivity (plus sanity checking)
 for head in `git branch | sed 's#^..##'` ; do
-  id="`git-rev-parse $head`"
+  id="`git rev-parse $head`"
   echo ":$head $id"
 done > "$GIT_DIR/$PFX-$SFX_HEADS"
 
