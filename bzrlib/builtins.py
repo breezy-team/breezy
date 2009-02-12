@@ -2953,21 +2953,21 @@ class cmd_selftest(Command):
             test_suite_factory = None
             benchfile = None
         try:
-            selftest_kwargs = {"verbose":verbose,
-                              "pattern":pattern,
-                              "stop_on_failure":one,
-                              "transport":transport,
-                              "test_suite_factory":test_suite_factory,
-                              "lsprof_timed":lsprof_timed,
-                              "bench_history":benchfile,
-                              "matching_tests_first":first,
-                              "list_only":list_only,
-                              "random_seed":randomize,
-                              "exclude_pattern":exclude,
-                              "strict":strict,
-                              "load_list":load_list,
-                              "debug_flags":debugflag,
-                              "starting_with":starting_with
+            selftest_kwargs = {"verbose": verbose,
+                              "pattern": pattern,
+                              "stop_on_failure": one,
+                              "transport": transport,
+                              "test_suite_factory": test_suite_factory,
+                              "lsprof_timed": lsprof_timed,
+                              "bench_history": benchfile,
+                              "matching_tests_first": first,
+                              "list_only": list_only,
+                              "random_seed": randomize,
+                              "exclude_pattern": exclude,
+                              "strict": strict,
+                              "load_list": load_list,
+                              "debug_flags": debugflag,
+                              "starting_with": starting_with
                               }
             selftest_kwargs.update(self.additional_selftest_args)
             result = selftest(**selftest_kwargs)
