@@ -41,11 +41,15 @@ import heapq
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
+import zlib
+import struct
+
 from bzrlib import versionedfile
 """)
 from bzrlib import (
     lru_cache,
     osutils,
+    registry,
     )
 
 # approx 2MB
@@ -56,19 +60,51 @@ _PAGE_CACHE_SIZE = 4*1024*1024
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
 
+def _search_key_plain(key):
+    """Map the key tuple into a search string that just uses the key bytes."""
+    return '\x00'.join(key)
+
+
+def _search_key_16(key):
+    """Map the key tuple into a search key string which has 16-way fan out."""
+    return '\x00'.join(['%08X' % abs(zlib.crc32(bit)) for bit in key])
+
+
+def _search_key_255(key):
+    """Map the key tuple into a search key string which has 255-way fan out.
+
+    We use 255-way because '\n' is used as a delimiter, and causes problems
+    while parsing.
+    """
+    bytes = '\x00'.join([struct.pack('>i', zlib.crc32(bit)) for bit in key])
+    return bytes.replace('\n', '_')
+
+
+search_key_registry = registry.Registry()
+search_key_registry.register('plain', _search_key_plain)
+search_key_registry.register('hash-16-way', _search_key_16)
+search_key_registry.register('hash-255-way', _search_key_255)
+
+
 class CHKMap(object):
     """A persistent map from string to string backed by a CHK store."""
 
-    def __init__(self, store, root_key):
+    def __init__(self, store, root_key, search_key_func=None):
         """Create a CHKMap object.
 
         :param store: The store the CHKMap is stored in.
         :param root_key: The root key of the map. None to create an empty
             CHKMap.
+        :param search_key_func: A function mapping a key => bytes. These bytes
+            are then used by the internal nodes to split up leaf nodes into
+            multiple pages.
         """
         self._store = store
+        if search_key_func is None:
+            search_key_func = _search_key_plain
+        self._search_key_func = search_key_func
         if root_key is None:
-            self._root_node = LeafNode()
+            self._root_node = LeafNode(search_key_func=search_key_func)
         else:
             self._root_node = self._node_key(root_key)
 
@@ -95,6 +131,8 @@ class CHKMap(object):
         if type(self._root_node) == tuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
+            # XXX: Shouldn't this be put into _deserialize?
+            self._root_node._search_key_func = self._search_key_func
 
     def _get_node(self, node):
         """Get a node.
@@ -108,7 +146,8 @@ class CHKMap(object):
         """
         if type(node) == tuple:
             bytes = self._read_bytes(node)
-            return _deserialise(bytes, node)
+            return _deserialise(bytes, node,
+                search_key_func=self._search_key_func)
         else:
             return node
 
@@ -362,7 +401,8 @@ class CHKMap(object):
         if len(node_details) == 1:
             self._root_node = node_details[0][1]
         else:
-            self._root_node = InternalNode(prefix)
+            self._root_node = InternalNode(prefix,
+                                search_key_func=self._search_key_func)
             self._root_node.set_maximum_size(node_details[0][1].maximum_size)
             self._root_node._key_width = node_details[0][1]._key_width
             for split, node in node_details:
@@ -493,11 +533,15 @@ class LeafNode(Node):
         the key/value pairs.
     """
 
-    def __init__(self):
+    def __init__(self, search_key_func=None):
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
         self._serialise_key = '\x00'.join
+        if search_key_func is None:
+            self._search_key_func = _search_key_plain
+        else:
+            self._search_key_func = search_key_func
 
     def _current_size(self):
         """Answer the current serialised size of this node.
@@ -522,13 +566,13 @@ class LeafNode(Node):
             + bytes_for_items)
 
     @classmethod
-    def deserialise(klass, bytes, key):
+    def deserialise(klass, bytes, key, search_key_func=None):
         """Deserialise bytes, with key key, into a LeafNode.
 
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.
         """
-        result = LeafNode()
+        result = LeafNode(search_key_func=search_key_func)
         # Splitlines can split on '\r' so don't use it, split('\n') adds an
         # extra '' if the bytes ends in a final newline.
         lines = bytes.split('\n')
@@ -600,6 +644,9 @@ class LeafNode(Node):
                 + len(str(value.count('\n'))) + 1
                 + len(value) + 1)
 
+    def _search_key(self, key):
+        return self._search_key_func(key)
+
     def _map_no_split(self, key, value):
         """Map a key to a value.
 
@@ -626,7 +673,12 @@ class LeafNode(Node):
         if (self._len > 1
             and self._maximum_size
             and self._current_size() > self._maximum_size):
-            return True
+            # Check to see if all of the search_keys for this node are
+            # identical. We allow the node to grow under that circumstance
+            # (we could track this as common state, but it is infrequent)
+            if (search_key != self._search_prefix
+                or not self._are_search_keys_identical()):
+                return True
         return False
 
     def _split(self, store):
@@ -654,7 +706,7 @@ class LeafNode(Node):
             if len(prefix) < split_at:
                 prefix += '\x00'*(split_at - len(prefix))
             if prefix not in result:
-                node = LeafNode()
+                node = LeafNode(search_key_func=self._search_key_func)
                 node.set_maximum_size(self._maximum_size)
                 node._key_width = self._key_width
                 result[prefix] = node
@@ -707,10 +759,6 @@ class LeafNode(Node):
         _page_cache.add(self._key, bytes)
         return [self._key]
 
-    def _search_key(self, key):
-        """Return the search key for a key in this node."""
-        return '\x00'.join(key)
-
     def refs(self):
         """Return the references to other CHK's held by this node."""
         return []
@@ -724,6 +772,22 @@ class LeafNode(Node):
         search_keys = [self._search_key(key) for key in self._items]
         self._search_prefix = self.common_prefix_for_keys(search_keys)
         return self._search_prefix
+
+    def _are_search_keys_identical(self):
+        """Check to see if the search keys for all entries are the same.
+
+        When using a hash as the search_key it is possible for non-identical
+        keys to collide. If that happens enough, we may try overflow a
+        LeafNode, but as all are collisions, we must not split.
+        """
+        common_search_key = None
+        for key in self._items:
+            search_key = self._search_key(key)
+            if common_search_key is None:
+                common_search_key = search_key
+            elif search_key != common_search_key:
+                return False
+        return True
 
     def _compute_serialised_prefix(self):
         """Determine the common prefix for serialised keys in this node.
@@ -757,12 +821,16 @@ class InternalNode(Node):
         LeafNode or InternalNode.
     """
 
-    def __init__(self, prefix=''):
+    def __init__(self, prefix='', search_key_func=None):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
         # How many octets key prefixes within this node are.
         self._node_width = 0
         self._search_prefix = prefix
+        if search_key_func is None:
+            self._search_key_func = _search_key_plain
+        else:
+            self._search_key_func = search_key_func
 
     def __repr__(self):
         items_str = sorted(self._items)
@@ -794,14 +862,14 @@ class InternalNode(Node):
             len(str(self._maximum_size)))
 
     @classmethod
-    def deserialise(klass, bytes, key):
+    def deserialise(klass, bytes, key, search_key_func=None):
         """Deserialise bytes to an InternalNode, with key key.
 
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
-        result = InternalNode()
+        result = InternalNode(search_key_func=search_key_func)
         # Splitlines can split on '\r' so don't use it, remove the extra ''
         # from the result of split('\n') because we should have a trailing
         # newline
@@ -881,7 +949,8 @@ class InternalNode(Node):
                 except KeyError:
                     continue
                 else:
-                    node = _deserialise(bytes, key)
+                    node = _deserialise(bytes, key,
+                        search_key_func=self._search_key_func)
                     self._items[keys[key]] = node
                     found_keys.add(key)
                     yield node
@@ -901,7 +970,8 @@ class InternalNode(Node):
                 nodes = []
                 for record in stream:
                     bytes = record.get_bytes_as('fulltext')
-                    node = _deserialise(bytes, record.key)
+                    node = _deserialise(bytes, record.key,
+                        search_key_func=self._search_key_func)
                     nodes.append(node)
                     self._items[keys[record.key]] = node
                     _page_cache.add(record.key, bytes)
@@ -920,7 +990,8 @@ class InternalNode(Node):
             # and then map this key into that node.
             new_prefix = self.common_prefix(self._search_prefix,
                                             search_key)
-            new_parent = InternalNode(new_prefix)
+            new_parent = InternalNode(new_prefix,
+                search_key_func=self._search_key_func)
             new_parent.set_maximum_size(self._maximum_size)
             new_parent._key_width = self._key_width
             new_parent.add_node(self._search_prefix[:len(new_prefix)+1],
@@ -971,6 +1042,7 @@ class InternalNode(Node):
         child = klass()
         child.set_maximum_size(self._maximum_size)
         child._key_width = self._key_width
+        child._search_key_func = self._search_key_func
         self._items[search_key] = child
         return child
 
@@ -1013,7 +1085,7 @@ class InternalNode(Node):
         """Return the serialised key for key in this node."""
         # search keys are fixed width. All will be self._node_width wide, so we
         # pad as necessary.
-        return ('\x00'.join(key) + '\x00'*self._node_width)[:self._node_width]
+        return (self._search_key_func(key) + '\x00'*self._node_width)[:self._node_width]
 
     def _search_prefix_filter(self, key):
         """Serialise key for use as a prefix filter in iteritems."""
@@ -1112,7 +1184,7 @@ class InternalNode(Node):
         #       and cause size changes greater than the length of one key.
         #       So for now, we just add everything to a new Leaf until it
         #       splits, as we know that will give the right answer
-        new_leaf = LeafNode()
+        new_leaf = LeafNode(search_key_func=self._search_key_func)
         new_leaf.set_maximum_size(self._maximum_size)
         new_leaf._key_width = self._key_width
         # A batch_size of 16 was chosen because:
@@ -1132,12 +1204,13 @@ class InternalNode(Node):
         return new_leaf
 
 
-def _deserialise(bytes, key):
+def _deserialise(bytes, key, search_key_func):
     """Helper for repositorydetails - convert bytes to a node."""
     if bytes.startswith("chkleaf:\n"):
-        return LeafNode.deserialise(bytes, key)
+        return LeafNode.deserialise(bytes, key, search_key_func=search_key_func)
     elif bytes.startswith("chknode:\n"):
-        return InternalNode.deserialise(bytes, key)
+        return InternalNode.deserialise(bytes, key,
+            search_key_func=search_key_func)
     else:
         raise AssertionError("Unknown node type.")
 
@@ -1157,7 +1230,9 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
         if pb is not None:
             pb.tick()
         bytes = record.get_bytes_as('fulltext')
-        node = _deserialise(bytes, record.key)
+        # We don't care about search_key_func for this code, because we only
+        # care about external references.
+        node = _deserialise(bytes, record.key, search_key_func=None)
         if record.key in uninteresting_keys:
             if isinstance(node, InternalNode):
                 next_uninteresting.update(node.refs())
@@ -1221,7 +1296,9 @@ def _find_all_uninteresting(store, interesting_root_keys,
             else:
                 bytes = adapter.get_bytes(record,
                             record.get_bytes_as(record.storage_kind))
-            node = _deserialise(bytes, record.key)
+            # We don't care about search_key_func for this code, because we
+            # only care about external references.
+            node = _deserialise(bytes, record.key, search_key_func=None)
             if isinstance(node, InternalNode):
                 # uninteresting_prefix_chks.update(node._items.iteritems())
                 chks = node._items.values()
@@ -1289,7 +1366,9 @@ def iter_interesting_nodes(store, interesting_root_keys,
             else:
                 bytes = adapter.get_bytes(record,
                             record.get_bytes_as(record.storage_kind))
-            node = _deserialise(bytes, record.key)
+            # We don't care about search_key_func for this code, because we
+            # only care about external references.
+            node = _deserialise(bytes, record.key, search_key_func=None)
             if isinstance(node, InternalNode):
                 chks = set(node.refs())
                 chks.difference_update(all_uninteresting_chks)

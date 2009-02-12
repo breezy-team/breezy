@@ -3241,5 +3241,27 @@ format_registry.register_metadir('development4-subtree',
     hidden=True,
     experimental=True,
     )
+format_registry.register_metadir('development4-hash16',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment4Hash16',
+    help='1.9 with CHK inventories with parent_id index and 16-way hash trie. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development4-hash255',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment4Hash255',
+    help='1.9 with CHK inventories with parent_id index and 255-way hash trie. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
 # The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')

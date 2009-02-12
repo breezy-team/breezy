@@ -198,6 +198,7 @@ class TestCHKInventory(TestCaseWithTransport):
         self.assertEqual(inv.root.parent_id, new_inv.root.parent_id)
         self.assertEqual(inv.root.name, new_inv.root.name)
         self.assertEqual("rootrev", new_inv.root.revision)
+        self.assertEqual('plain', new_inv._search_key_name)
 
     def test_deserialise_wrong_revid(self):
         inv = Inventory()
@@ -215,13 +216,53 @@ class TestCHKInventory(TestCaseWithTransport):
         inv.root.revision = "bar"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        lines = chk_inv.to_lines()
         self.assertEqual([
             'chkinventory:\n',
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
-            'id_to_entry: sha1:36219af8518a9bed1e52db58e99131db2a00b329\n',
-            ],
-            chk_inv.to_lines())
+            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            ], lines)
+        chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
+        self.assertEqual('plain', chk_inv._search_key_name)
+
+    def test_captures_parent_id_basename_index(self):
+        inv = Inventory()
+        inv.revision_id = "foo"
+        inv.root.revision = "bar"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
+                    parent_id_basename_index=True)
+        lines = chk_inv.to_lines()
+        self.assertEqual([
+            'chkinventory:\n',
+            'revision_id: foo\n',
+            'root_id: TREE_ROOT\n',
+            'parent_id_basename_to_file_id: sha1:46f33678d1c8cfd9b6d00dc658b6c8a9ac7bb0f0\n',
+            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            ], lines)
+        chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
+        self.assertEqual('plain', chk_inv._search_key_name)
+
+    def test_captures_search_key_name(self):
+        inv = Inventory()
+        inv.revision_id = "foo"
+        inv.root.revision = "bar"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
+                                              parent_id_basename_index=True,
+                                              search_key_name='hash-16-way')
+        lines = chk_inv.to_lines()
+        self.assertEqual([
+            'chkinventory:\n',
+            'revision_id: foo\n',
+            'root_id: TREE_ROOT\n',
+            'search_key_name: hash-16-way\n',
+            'parent_id_basename_to_file_id: sha1:46f33678d1c8cfd9b6d00dc658b6c8a9ac7bb0f0\n',
+            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            ], lines)
+        chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
+        self.assertEqual('hash-16-way', chk_inv._search_key_name)
 
     def test_directory_children_on_demand(self):
         inv = Inventory()

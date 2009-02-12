@@ -1362,9 +1362,10 @@ class CHKInventory(CommonInventory):
     to reuse.
     """
 
-    def __init__(self):
+    def __init__(self, search_key_name):
         CommonInventory.__init__(self)
         self._entry_cache = {}
+        self._search_key_name = search_key_name
 
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
@@ -1447,15 +1448,18 @@ class CHKInventory(CommonInventory):
         :param new_revision_id: The revision id of the resulting CHKInventory.
         :return: The new CHKInventory.
         """
-        result = CHKInventory()
+        result = CHKInventory(self._search_key_name)
+        search_key_func = chk_map.search_key_registry.get(self._search_key_name)
         result.revision_id = new_revision_id
         result.id_to_entry = chk_map.CHKMap(
             self.id_to_entry._store,
-            self.id_to_entry._root_node)
+            self.id_to_entry._root_node,
+            search_key_func=search_key_func)
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
-                self.parent_id_basename_to_file_id._root_node)
+                self.parent_id_basename_to_file_id._root_node,
+                search_key_func=search_key_func)
             parent_id_basename_delta = []
         else:
             result.parent_id_basename_to_file_id = None
@@ -1509,20 +1513,32 @@ class CHKInventory(CommonInventory):
             for.
         :return: A CHKInventory
         """
-        result = CHKInventory()
         lines = bytes.splitlines()
         if lines[0] != 'chkinventory:':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
-        result.revision_id = lines[1][13:]
-        result.root_id = lines[2][9:]
-        if lines[3].startswith('parent_id_basename_to_file_id:'):
+        revision_id = lines[1][13:]
+        root_id = lines[2][9:]
+        if lines[3].startswith('search_key_name:'):
+            search_key_name = lines[3][17:]
             next = 4
-            result.parent_id_basename_to_file_id = chk_map.CHKMap(
-                chk_store, (lines[3][31:],))
         else:
+            search_key_name = 'plain'
             next = 3
+        result = CHKInventory(search_key_name)
+        result.revision_id = revision_id
+        result.root_id = root_id
+        search_key_func = chk_map.search_key_registry.get(
+                            result._search_key_name)
+        if lines[next].startswith('parent_id_basename_to_file_id:'):
+            result.parent_id_basename_to_file_id = chk_map.CHKMap(
+                chk_store, (lines[next][31:],),
+                search_key_func=search_key_func)
+            next += 1
+        else:
             result.parent_id_basename_to_file_id = None
-        result.id_to_entry = chk_map.CHKMap(chk_store, (lines[next][13:],))
+
+        result.id_to_entry = chk_map.CHKMap(chk_store, (lines[next][13:],),
+                                            search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
                 (result.revision_id, expected_revision_id))
@@ -1530,7 +1546,7 @@ class CHKInventory(CommonInventory):
 
     @classmethod
     def from_inventory(klass, chk_store, inventory, maximum_size=0,
-        parent_id_basename_index=False):
+        parent_id_basename_index=False, search_key_name='plain'):
         """Create a CHKInventory from an existing inventory.
 
         The content of inventory is copied into the chk_store, and a
@@ -1541,15 +1557,18 @@ class CHKInventory(CommonInventory):
         :param maximum_size: The CHKMap node size limit.
         :param parent_id_basename_index: If True create and use a
             parent_id,basename->file_id index.
+        :param search_key_name: The identifier for the search key function
         """
-        result = CHKInventory()
+        result = CHKInventory(search_key_name)
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
-        result.id_to_entry = chk_map.CHKMap(chk_store, None)
+        search_key_func = chk_map.search_key_registry.get(search_key_name)
+        result.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
         file_id_delta = []
         if parent_id_basename_index:
-            result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store, None)
+            result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+                None, search_key_func)
             result.parent_id_basename_to_file_id._root_node.set_maximum_size(
                 maximum_size)
             result.parent_id_basename_to_file_id._root_node._key_width = 2
@@ -1745,6 +1764,8 @@ class CHKInventory(CommonInventory):
         lines = ["chkinventory:\n"]
         lines.append("revision_id: %s\n" % self.revision_id)
         lines.append("root_id: %s\n" % self.root_id)
+        if self._search_key_name != 'plain':
+            lines.append('search_key_name: %s\n' % (self._search_key_name,))
         if self.parent_id_basename_to_file_id is not None:
             lines.append('parent_id_basename_to_file_id: %s\n' %
                 self.parent_id_basename_to_file_id.key())
