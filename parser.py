@@ -252,8 +252,8 @@ class LineBasedParser(object):
 # part should be non-empty but git-fast-export doesn't always do that so
 # the first bit is \w*, not \w+.) Also git-fast-import code says the
 # space before the email is optional.
-_WHO_AND_WHEN_RE = re.compile(r'([^<]*)<(.+)> (.+)')
-_WHO_RE = re.compile(r'([^<]*)<(.+)>')
+_WHO_AND_WHEN_RE = re.compile(r'([^<]*)<(.*)> (.+)')
+_WHO_RE = re.compile(r'([^<]*)<(.*)>')
 
 
 class ImportParser(LineBasedParser):
@@ -480,7 +480,12 @@ class ImportParser(LineBasedParser):
         name = match.group(1)
         if len(name) > 0:
             if name[-1] == " ":
-                name = name[:-1].decode('utf_8')
+                try:
+                    name = name[:-1].decode('utf_8')
+                except UnicodeDecodeError:
+                    # The spec says names are *typically* utf8 encoded
+                    # but that isn't enforced by git-fast-export (at least)
+                    name = name[:-1]
         return (name,match.group(2),when[0],when[1])
 
     def _path(self, s):
@@ -490,7 +495,11 @@ class ImportParser(LineBasedParser):
                 self.abort(errors.BadFormat, cmd, section, s)
             else:
                 return _unquote_c_string(s[1:-1])
-        return s.decode('utf_8')
+        try:
+            return s.decode('utf_8')
+        except UnicodeDecodeError:
+            # The spec recommends utf8 encoding but that isn't enforced
+            return s
 
     def _path_pair(self, s):
         """Parse two paths separated by a space."""
