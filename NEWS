@@ -27,6 +27,10 @@ IN DEVELOPMENT
     * Fix ``os`` import as needed on Windows.
       (Ian Clatworthy, esskov, #264988)
 
+    * Handle a directory turning into a file and then the children
+      of that directory being deleted.
+      (Ian Clatworthy, #309486)
+
     * Ignore lightweight tags with no from clause rather than abort.
       (It seems git-fast-export outputs these commands frequently now
       while it didn't appear to in early versions.)

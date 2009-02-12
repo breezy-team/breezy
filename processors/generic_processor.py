@@ -772,6 +772,13 @@ class GenericCommitHandler(processor.CommitHandler):
             self._warn_unless_in_merges(fileid, path)
         except errors.NoSuchId:
             self._warn_unless_in_merges(fileid, path)
+        except AttributeError, ex:
+            if ex.args[0] == 'children':
+                # A directory has changed into a file and then one
+                # of it's children is being deleted!
+                self._warn_unless_in_merges(fileid, path)
+            else:
+                raise
         try:
             self.cache_mgr._delete_path(path)
         except KeyError:
