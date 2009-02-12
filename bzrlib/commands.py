@@ -588,7 +588,7 @@ class CommandHooks(Hooks):
         notified.
         """
         Hooks.__init__(self)
-        # Introduced in 0.13:
+        # Introduced in 1.13:
         # invoked after creating a command object to allow modifications such
         # as adding or removing options, docs etc. Invoked with the command
         # object.
