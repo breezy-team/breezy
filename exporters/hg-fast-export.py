@@ -414,10 +414,10 @@ if __name__=='__main__':
   m=-1
   if options.max!=None: m=options.max
 
-  if options.marksfile==None: bail(parser,'--marks')
-  if options.mappingfile==None: bail(parser,'--mapping')
-  if options.headsfile==None: bail(parser,'--heads')
-  if options.statusfile==None: bail(parser,'--status')
+  if options.marksfile==None: options.marksfile = 'hg-export.marks'
+  if options.mappingfile==None: options.mappingfile = 'hg-export.mapping'
+  if options.headsfile==None: options.headsfile = 'hg-export.heads'
+  if options.statusfile==None: options.statusfile = 'hg-export.status'
   if options.repourl==None: bail(parser,'--repo')
 
   a={}
@@ -429,6 +429,12 @@ if __name__=='__main__':
 
   if options.origin_name!=None:
     set_origin_name(options.origin_name)
+
+  try:
+    import msvcrt
+    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+  except ImportError:
+    pass
 
   sys.exit(hg2git(options.repourl,m,options.marksfile,options.mappingfile,options.headsfile,
     options.statusfile,authors=a,sob=options.sob,force=options.force))

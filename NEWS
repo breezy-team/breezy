@@ -17,6 +17,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Updated the bundled version of hg-fast-export to be the latest
+      code from http://repo.or.cz/w/fast-export.git. It should now
+      support recent Mercurial releases.
+      (Ian Clatworthy, #318903)
+
   BUG FIXES:
 
     * Fix ``os`` import as needed on Windows.
