@@ -20,6 +20,12 @@ import bzrlib
 
 from bzrlib.errors import NoSuchRevision
 
+from bzrlib.plugins.git.mapping import (
+    inventory_to_tree_and_blobs,
+    revision_to_commit,
+    )
+from bzrlib.plugins.git.shamap import GitShaMap
+
 
 class GitObjectConverter(object):
 
@@ -29,33 +35,46 @@ class GitObjectConverter(object):
             self.mapping = self.repository.get_mapping()
         else:
             self.mapping = mapping
-
-    def __getitem__(self, sha):
-        # Commit
-        revid = self.mapping.revision_id_foreign_to_bzr(sha)
-        try:
-            rev = self.repository.get_revision(revid)
-        except NoSuchRevision:
-            pass
-        else:
-            return reconstruct_git_commit(rev)
-
-        # TODO: Yeah, this won't scale, but the only alternative is a 
-        # custom map..
-        for (fileid, revision) in self.repository.texts.keys():
-            blob = self._get_blob(
-            print revision
-            
-
-class MappedGitObjectConverter(GitObjectConverter):
-    
-    def __init__(self, repository):
-        self.repository = repository
         self._idmap = GitShaMap(self.repository._transport)
 
     def _update_sha_map(self):
-        # TODO: Check which 
-        raise NotImplementedError(self._update_sha_map)
+        all_revids = set(self._idmap.revids())
+        present = self.repository.has_revisions(all_revids)
+        missing = all_revids - present
+        for revid in missing:
+            self._update_sha_map_revision(revid)
+
+    def _parent_lookup(self, sha):
+        raise NotImplementedError(self._parent_lookup)
+
+    def _update_sha_map_revision(self, revid):
+        (foreign_revid, mapping) = self.repository.lookup_git_revid(revid)
+        inv = self.repository.get_inventory(revid)
+        objects = inventory_to_tree_and_blobs(self.repository, mapping, revid)
+        for sha, o, path in objects:
+            if path == "":
+                tree_sha = sha
+            ie = inv[inv.path2id(path)]
+            if ie.kind in ("file", "symlink"):
+                self._idmap.add_entry(sha, "blob", (ie.file_id, ie.revision))
+            else:
+                self._idmap.add_entry(sha, "tree", (ie.file_id, ie.revision))
+        rev = self.repository.get_revision(revid)
+        commit_obj = revision_to_commit(rev, tree_sha, self._parent_lookup)
+        self._idmap.add_entry(commit_obj.sha(), "commit", (revid, tree_sha))
+
+    def _get_blob(self, fileid, revision):
+        text = self.repository.texts.get_record_stream([(fileid, revision)], "unordered", True).next().get_bytes_as("fulltext")
+        blob = Blob()
+        blob._text = text
+        return blob
+
+    def _get_tree(self, fileid, revid):
+        raise NotImplementedError(self._get_tree)
+
+    def _get_commit(self, revid, tree_sha):
+        rev = self.repository.get_revision(revid)
+        return revision_to_commit(rev, tree_sha, self._parent_lookup)
 
     def __getitem__(self, sha):
         # See if sha is in map
@@ -67,7 +86,11 @@ class MappedGitObjectConverter(GitObjectConverter):
             self._update_sha_map()
             (type, type_data) = self._idmap.lookup_git_sha(sha)
         # convert object to git object
-        if type == "revision":
+        if type == "commit":
             return self._get_commit(*type_data)
+        elif type == "blob":
+            return self._get_blob(*type_data)
+        elif type == "tree":
+            return self._get_tree(*type_data)
         else:
             raise AssertionError("Unknown object type '%s'" % type)
