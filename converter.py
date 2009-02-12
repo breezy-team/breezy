@@ -55,6 +55,7 @@ class GitObjectConverter(object):
                 pb.update("updating git map", i, len(all_revids))
                 self._update_sha_map_revision(revid)
         finally:
+            self._idmap.commit()
             pb.finished()
 
     def _update_sha_map_revision(self, revid):
@@ -66,8 +67,10 @@ class GitObjectConverter(object):
             ie = inv[inv.path2id(path)]
             if ie.kind in ("file", "symlink"):
                 self._idmap.add_entry(sha, "blob", (ie.file_id, ie.revision))
+            elif ie.kind == "directory":
+                self._idmap.add_entry(sha, "tree", (path, ie.revision))
             else:
-                self._idmap.add_entry(sha, "tree", (ie.file_id, ie.revision))
+                raise AssertionError()
         rev = self.repository.get_revision(revid)
         commit_obj = revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
         self._idmap.add_entry(commit_obj.sha().hexdigest(), "commit", (revid, tree_sha))
@@ -78,7 +81,7 @@ class GitObjectConverter(object):
         blob._text = text
         return blob
 
-    def _get_tree(self, fileid, revid):
+    def _get_tree(self, path, revid):
         raise NotImplementedError(self._get_tree)
 
     def _get_commit(self, revid, tree_sha):

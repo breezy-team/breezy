@@ -57,12 +57,15 @@ class GitShaMap(object):
         create index if not exists commit_sha1 on commits(sha1);
         create table if not exists blobs(sha1 text, fileid text, revid text);
         create index if not exists blobs_sha1 on blobs(sha1);
-        create table if not exists trees(sha1 text, fileid text, revid text);
+        create table if not exists trees(sha1 text, path text, revid text);
         create index if not exists trees_sha1 on trees(sha1);
 """)
 
     def _parent_lookup(self, revid):
         return self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()[0].encode("utf-8")
+
+    def commit(self):
+        self.db.commit()
 
     def add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
@@ -74,7 +77,7 @@ class GitShaMap(object):
         elif type == "blob":
             self.db.execute("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
         elif type == "tree":
-            self.db.execute("replace into trees (sha1, fileid, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
+            self.db.execute("replace into trees (sha1, path, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
         else:
             raise AssertionError("Unknown type %s" % type)
 
@@ -91,7 +94,7 @@ class GitShaMap(object):
         row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
         if row is not None:
             return ("blob", row)
-        row = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,)).fetchone()
+        row = self.db.execute("select path, revid from trees where sha1 = ?", (sha,)).fetchone()
         if row is not None:
             return ("tree", row)
         raise KeyError(sha)
