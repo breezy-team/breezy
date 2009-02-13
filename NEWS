@@ -61,6 +61,9 @@ IN DEVELOPMENT
     * Import into rich-root (and subtree) repositories without aborting.
       (Ian Clatworthy, #300921)
 
+    * Recursively delete children when a directory is deleted.
+      (Scott James Remnant)
+
   API BREAKS:
 
   TESTING:

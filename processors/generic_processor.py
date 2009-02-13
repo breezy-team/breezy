@@ -765,12 +765,22 @@ class GenericCommitHandler(processor.CommitHandler):
         self._modify_inventory(filecmd.path, filecmd.kind,
             filecmd.is_executable, data)
 
-    def delete_handler(self, filecmd):
-        path = filecmd.path
+    def _delete_recursive(self, path):
         self.debug("deleting %s", path)
         fileid = self.bzr_file_id(path)
+        dirname, basename = osutils.split(path)
+        if (fileid in self.inventory and
+            isinstance(self.inventory[fileid], inventory.InventoryDirectory)):
+            for child_path in self.inventory[fileid].children.keys():
+                self._delete_recursive(os.utils.pathjoin(path, child_path))
         try:
-            del self.inventory[fileid]
+            if self.inventory.id2path(fileid) == path:
+                del self.inventory[fileid]
+            else:
+                # already added by some other name?
+                if dirname in self.cache_mgr.file_ids:
+                    parent_id = self.cache_mgr.file_ids[dirname]
+                    del self.inventory[parent_id].children[basename]
         except KeyError:
             self._warn_unless_in_merges(fileid, path)
         except errors.NoSuchId:
@@ -786,6 +796,9 @@ class GenericCommitHandler(processor.CommitHandler):
             self.cache_mgr._delete_path(path)
         except KeyError:
             pass
+
+    def delete_handler(self, filecmd):
+        self._delete_recursive(filecmd.path)
 
     def _warn_unless_in_merges(self, fileid, path):
         if len(self.parents) <= 1:
