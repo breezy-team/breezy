@@ -22,6 +22,9 @@ IN DEVELOPMENT
       kernel has revisions with more than that.
       (Ian Clatworthy)
 
+    * The fastimport-id-map file can now have more revisions than the
+      repository. (Scott James Remnant)
+
     * Updated the bundled version of hg-fast-export to be the latest
       code from http://repo.or.cz/w/fast-export.git. It should now
       support recent Mercurial releases.

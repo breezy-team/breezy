@@ -415,7 +415,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.cache_mgr.revision_ids, known = idmapfile.load_id_map(
             self.id_map_path)
         existing_count = len(self.repo.all_revision_ids())
-        if existing_count != known:
+        if existing_count < known:
             raise plugin_errors.BadRepositorySize(known, existing_count)
         return known
 
