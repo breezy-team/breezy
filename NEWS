@@ -4,8 +4,8 @@ Bazaar Release Notes
 
 .. contents::
 
-NOT RELEASED YET
-----------------
+bzr 1.12 "1234567890" 2009-02-13
+--------------------------------
 
 This release of Bazaar contains many improvements to the speed,
 documentation and functionality of ``bzr log`` and the display of logged
