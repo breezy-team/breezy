@@ -45,14 +45,28 @@ IN DEVELOPMENT
       it), without overriding the command. (Robert Collins)
 
 
+bzr 1.12 "1234567890" 2009-02-13
+--------------------------------
+
+This release of Bazaar contains many improvements to the speed,
+documentation and functionality of ``bzr log`` and the display of logged
+revisions by ``bzr status``.  bzr now also gives a better indication of
+progress, both in the way operations are drawn onto a text terminal, and
+by showing the rate of network IO.
+
+  BUG FIXES:
+
+    * ``bzr init --development-wt5[-rich-root]`` would fail because of
+      circular import errors. (John Arbash Meinel, #328135)
+
+  DOCUMENTATION:
+
+    * Expanded the help for log and added a new help topic called
+      ``log-formats``.  (Ian Clatworthy)
+
+
 bzr 1.12rc1 "1234567890" 2009-02-10
 -----------------------------------
-
-This release of Bazaar contains many improvements to the speed and
-functionality of ``bzr log`` and the display of logged revisions by ``bzr
-status``.  bzr now also gives a better indication of progress, both in the
-way operations are drawn onto a text terminal, and by showing the rate of
-network IO.
 
   COMPATIBILITY BREAKS:
 
