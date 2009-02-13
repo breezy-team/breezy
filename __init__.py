@@ -34,6 +34,7 @@ See DESIGN in the groupcompress source.
 
 
 from bzrlib.bzrdir import format_registry
+from bzrlib.repository import format_registry as repo_registry
 format_registry.register_metadir('gc-plain',
     'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlain',
     help='pack-0.92 with btree index and group compress. '
@@ -95,7 +96,6 @@ try:
 except ImportError:
     pass
 
-from bzrlib.repository import format_registry as repo_registry
 repo_registry.register_lazy(
     'Bazaar development format - btree+gc (needs bzr.dev from 1.6)\n',
     'bzrlib.plugins.groupcompress.repofmt',
