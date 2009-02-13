@@ -49,8 +49,8 @@ from bzrlib.repofmt.pack_repo import (
 try:
     from bzrlib.repofmt.pack_repo import (
     CHKInventoryRepository,
-    RepositoryFormatPackDevelopment4,
-    RepositoryFormatPackDevelopment4Subtree,
+    RepositoryFormatPackDevelopment5,
+    RepositoryFormatPackDevelopment5Hash16,
     )
     chk_support = True
 except ImportError:
@@ -423,21 +423,33 @@ class RepositoryFormatPackGCSubtrees(RepositoryFormatPackDevelopment2Subtree):
             ", interoperates with pack-0.92-subtrees\n")
 
 if chk_support:
-    'Bazaar development format - 1.9+gc (needs bzr.dev from 1.9)\n',
-    class RepositoryFormatPackGCPlainCHK(RepositoryFormatPackDevelopment4):
+    class RepositoryFormatPackGCPlainCHK(RepositoryFormatPackDevelopment5):
         """A CHK+group compress pack repository."""
 
         repository_class = GCCHKPackRepository
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - chk+gc '
-                '(needs bzr.dev from 1.12)\n')
+            return ('Bazaar development format - chk+gc'
+                    ' (needs bzr.dev from 1.13)\n')
 
         def get_format_description(self):
             """See RepositoryFormat.get_format_description()."""
-            return ("Development repository format - chk+groupcompress "
-                ", interoperates with pack-0.92\n")
+            return ("Development repository format - chk+groupcompress")
+
+    class RepositoryFormatPackGCPlainCHK16(RepositoryFormatPackDevelopment5Hash16):
+        """A hashed CHK+group compress pack repository."""
+
+        repository_class = GCCHKPackRepository
+
+        def get_format_string(self):
+            """See RepositoryFormat.get_format_string()."""
+            return ('Bazaar development format - hash16chk+gc'
+                    ' (needs bzr.dev from 1.13)\n')
+
+        def get_format_description(self):
+            """See RepositoryFormat.get_format_description()."""
+            return ("Development repository format - hash16chk+groupcompress")
 
 
 
@@ -448,7 +460,8 @@ def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     formats = (RepositoryFormatPackGCPlain, RepositoryFormatPackGCRichRoot,
         RepositoryFormatPackGCSubtrees)
     if chk_support:
-        formats = formats + (RepositoryFormatPackGCPlainCHK,)
+        formats = formats + (RepositoryFormatPackGCPlainCHK,
+                             RepositoryFormatPackGCPlainCHK16)
     if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
     else:
