@@ -313,22 +313,14 @@ if chk_support:
                 _commit_builder_class, _serializer)
             # and now replace everything it did :)
             index_transport = self._transport.clone('indices')
-            if chk_support:
-                self._pack_collection = GCRepositoryPackCollection(self,
-                    self._transport, index_transport,
-                    self._transport.clone('upload'),
-                    self._transport.clone('packs'),
-                    _format.index_builder_class,
-                    _format.index_class,
-                    use_chk_index=self._format.supports_chks,
-                    )
-            else:
-                self._pack_collection = GCRepositoryPackCollection(self,
-                    self._transport, index_transport,
-                    self._transport.clone('upload'),
-                    self._transport.clone('packs'),
-                    _format.index_builder_class,
-                    _format.index_class)
+            self._pack_collection = GCRepositoryPackCollection(self,
+                self._transport, index_transport,
+                self._transport.clone('upload'),
+                self._transport.clone('packs'),
+                _format.index_builder_class,
+                _format.index_class,
+                use_chk_index=self._format.supports_chks,
+                )
             self.inventories = GroupCompressVersionedFiles(
                 _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
                     add_callback=self._pack_collection.inventory_index.add_callback,
@@ -351,19 +343,15 @@ if chk_support:
                     add_callback=self._pack_collection.text_index.add_callback,
                     parents=True, is_locked=self.is_locked),
                 access=self._pack_collection.text_index.data_access)
-            if chk_support and _format.supports_chks:
-                # No graph, no compression:- references from chks are between
-                # different objects not temporal versions of the same; and without
-                # some sort of temporal structure knit compression will just fail.
-                self.chk_bytes = GroupCompressVersionedFiles(
-                    _GCGraphIndex(self._pack_collection.chk_index.combined_index,
-                        add_callback=self._pack_collection.chk_index.add_callback,
-                        parents=False, is_locked=self.is_locked),
-                    access=self._pack_collection.chk_index.data_access)
-            else:
-                self.chk_bytes = None
+            assert _format.supports_chks
+            # No parents, individual CHK pages don't have specific ancestry
+            self.chk_bytes = GroupCompressVersionedFiles(
+                _GCGraphIndex(self._pack_collection.chk_index.combined_index,
+                    add_callback=self._pack_collection.chk_index.add_callback,
+                    parents=False, is_locked=self.is_locked),
+                access=self._pack_collection.chk_index.data_access)
             # True when the repository object is 'write locked' (as opposed to the
-            # physical lock only taken out around changes to the pack-names list.) 
+            # physical lock only taken out around changes to the pack-names list.)
             # Another way to represent this would be a decorator around the control
             # files object that presents logical locks as physical ones - if this
             # gets ugly consider that alternative design. RBC 20071011
@@ -438,9 +426,6 @@ if chk_support:
             """See RepositoryFormat.get_format_description()."""
             return ("Development repository format - chk+groupcompress "
                 ", interoperates with pack-0.92\n")
-
-
-
 
 
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
