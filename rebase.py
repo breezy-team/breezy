@@ -302,9 +302,10 @@ def rebase(repository, replace_map, replay_fn):
                 dependencies[p] = []
             dependencies[p].append(revid)
 
-    pb = ui.ui_factory.nested_progress_bar()
+    import pdb; pdb.set_trace()
     total = len(todo)
     i = 0
+    pb = ui.ui_factory.nested_progress_bar()
     try:
         while len(todo) > 0:
             pb.update('rebase revisions', i, total)
@@ -312,7 +313,7 @@ def rebase(repository, replace_map, replay_fn):
             revid = todo.pop()
             (newrevid, newparents) = replace_map[revid]
             assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
-            if filter(repository.has_revision, newparents) != newparents:
+            if repository.has_revisions(newparents) != set(newparents):
                 # Not all parents present yet, avoid for now
                 continue
             if repository.has_revision(newrevid):
