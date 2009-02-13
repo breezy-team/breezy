@@ -1256,8 +1256,14 @@ cdef class ProcessEntryC:
             path = self.pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
             # TODO: these are the same for an entire directory: cache em.
-            parent_id = self.state._get_entry(self.target_index,
-                                         path_utf8=entry[0][0])[0][2]
+            parent_entry = self.state._get_entry(self.target_index,
+                                                 path_utf8=entry[0][0])
+            if parent_entry is None:
+                raise errors.DirstateCorrupt(self.state,
+                    "We could not find the parent entry in index %d"
+                    " for the entry: %s"
+                    % (self.target_index, entry[0]))
+            parent_id = parent_entry[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
             if path_info is not None:
