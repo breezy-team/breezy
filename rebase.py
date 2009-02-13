@@ -290,21 +290,13 @@ def rebase(repository, replace_map, replay_fn):
     :param replace_map: Dictionary with revisions to (optionally) rewrite
     :param merge_fn: Function for replaying a revision
     """
-    todo = list(rebase_todo(repository, replace_map))
-    dependencies = {}
-
     # Figure out the dependencies
-    graph = {}
-    for revid in todo:
-        graph[revid] = replace_map[revid][1]
-
-    total = len(todo)
-    i = 0
+    graph = repository.get_graph()
+    todo = list(graph.iter_topo_order(replace_map.keys()))
     pb = ui.ui_factory.nested_progress_bar()
     try:
-        for revid in topo_sort(graph):
-            pb.update('rebase revisions', i, total)
-            i += 1
+        for i, revid in enumerate(todo):
+            pb.update('rebase revisions', i, len(todo))
             (newrevid, newparents) = replace_map[revid]
             assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
             if repository.has_revision(newrevid):
