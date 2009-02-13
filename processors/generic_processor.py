@@ -539,7 +539,10 @@ class GenericProcessor(processor.ImportProcessor):
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
-        self._set_tag(cmd.id, cmd.from_)
+        if cmd.from_ is not None:
+            self._set_tag(cmd.id, cmd.from_)
+        else:
+            self.warning("ignoring tag %s - no from clause" % cmd.id)
 
     def _set_tag(self, name, from_):
         """Define a tag given a name and import 'from' reference."""
