@@ -2953,3 +2953,27 @@ class MustHaveWorkingTree(BzrError):
 
     def __init__(self, format, url):
         BzrError.__init__(self, format=format, url=url)
+
+
+class UnresumableWriteGroups(BzrError):
+    
+    _fmt = ("Repository %(repository)s cannot resume write group(s) "
+            "%(write_groups)r: %(reason)s")
+
+    internal_error = True
+
+    def __init__(self, repository, write_groups, reason):
+        self.repository = repository
+        self.write_groups = write_groups
+        self.reason = reason
+
+
+class UnsuspendableWriteGroup(BzrError):
+    
+    _fmt = ("Repository %(repository)s cannot suspend a write group.")
+
+    internal_error = True
+
+    def __init__(self, repository):
+        self.repository = repository
+

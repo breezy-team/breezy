@@ -16,6 +16,8 @@
 
 """Tests for repository write groups."""
 
+import sys
+
 from bzrlib import errors
 from bzrlib.transport import local, memory
 from bzrlib.tests import TestNotApplicable
@@ -115,3 +117,282 @@ class TestWriteGroup(TestCaseWithRepository):
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
         if token is not None:
             repo.leave_lock_in_place()
+
+    def test_suspend_write_group(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            # The contract for repos that don't support suspending write groups
+            # is that suspend_write_group raises UnsuspendableWriteGroup, but
+            # is otherwise a no-op.  So we can still e.g. abort the write group
+            # as usual.
+            self.assertTrue(repo.is_in_write_group())
+            repo.abort_write_group()
+        else:
+            # After suspending a write group we are no longer in a write group
+            self.assertFalse(repo.is_in_write_group())
+            # suspend_write_group returns a list of tokens, which are strs.  If
+            # no other write groups were resumed, there will only be one token.
+            self.assertEqual(1, len(wg_tokens))
+            self.assertIsInstance(wg_tokens[0], str)
+            # See also test_pack_repository's test of the same name.
+
+    def test_resume_write_group_then_abort(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            # If the repo does not support suspending write groups, it doesn't
+            # support resuming them either.
+            repo.abort_write_group()
+            self.assertRaises(
+                errors.UnsuspendableWriteGroup, repo.resume_write_group, [])
+        else:
+            #self.assertEqual([], list(repo.texts.keys()))
+            same_repo = repo.bzrdir.open_repository()
+            same_repo.lock_write()
+            self.addCleanup(same_repo.unlock)
+            same_repo.resume_write_group(wg_tokens)
+            self.assertEqual([text_key], list(same_repo.texts.keys()))
+            self.assertTrue(same_repo.is_in_write_group())
+            same_repo.abort_write_group()
+            self.assertEqual([], list(repo.texts.keys()))
+            # See also test_pack_repository's test of the same name.
+
+    def test_multiple_resume_write_group(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        first_key = ('file-id', 'revid')
+        repo.texts.add_lines(first_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        self.assertTrue(same_repo.is_in_write_group())
+        second_key = ('file-id', 'second-revid')
+        same_repo.texts.add_lines(second_key, (first_key,), ['more lines'])
+        try:
+            new_wg_tokens = same_repo.suspend_write_group()
+        except:
+            e = sys.exc_info()
+            same_repo.abort_write_group(suppress_errors=True)
+            raise e[0], e[1], e[2]
+        self.assertEqual(2, len(new_wg_tokens))
+        self.assertSubset(wg_tokens, new_wg_tokens)
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(new_wg_tokens)
+        both_keys = set([first_key, second_key])
+        self.assertEqual(both_keys, same_repo.texts.keys())
+        same_repo.abort_write_group()
+
+    def test_no_op_suspend_resume(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        new_wg_tokens = same_repo.suspend_write_group()
+        self.assertEqual(wg_tokens, new_wg_tokens)
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        self.assertEqual([text_key], list(same_repo.texts.keys()))
+        same_repo.abort_write_group()
+
+    def test_read_after_suspend_fails(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        self.assertEqual([], list(repo.texts.keys()))
+
+    def test_read_after_second_suspend_fails(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.suspend_write_group()
+        self.assertEqual([], list(same_repo.texts.keys()))
+
+    def test_read_after_resume_abort_fails(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.abort_write_group()
+        self.assertEqual([], list(same_repo.texts.keys()))
+
+    def test_cannot_resume_aborted_write_group(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.abort_write_group()
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        self.assertRaises(
+            errors.UnresumableWriteGroups, same_repo.resume_write_group,
+            wg_tokens)
+
+    def test_commit_resumed_write_group_no_new_data(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.commit_write_group()
+        self.assertEqual([text_key], list(same_repo.texts.keys()))
+        self.assertEqual(
+            'lines', same_repo.texts.get_record_stream([text_key],
+                'unordered', True).next().get_bytes_as('fulltext'))
+        self.assertRaises(
+            errors.UnresumableWriteGroups, same_repo.resume_write_group,
+            wg_tokens)
+
+    def test_commit_resumed_write_group_plus_new_data(self):
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        first_key = ('file-id', 'revid')
+        repo.texts.add_lines(first_key, (), ['lines'])
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(
+                'Cannot test multiple resume of repo that does not support '
+                'suspending')
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        second_key = ('file-id', 'second-revid')
+        same_repo.texts.add_lines(second_key, (first_key,), ['more lines'])
+        same_repo.commit_write_group()
+        self.assertEqual(
+            set([first_key, second_key]), set(same_repo.texts.keys()))
+        self.assertEqual(
+            'lines', same_repo.texts.get_record_stream([first_key],
+                'unordered', True).next().get_bytes_as('fulltext'))
+        self.assertEqual(
+            'more lines', same_repo.texts.get_record_stream([second_key],
+                'unordered', True).next().get_bytes_as('fulltext'))
+
+#    def test_suspend_empty_write_group(self):
+
