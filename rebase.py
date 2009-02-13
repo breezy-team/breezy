@@ -335,13 +335,15 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     try:
         # Check what new_ie.file_id should be
         # use old and new parent inventories to generate new_id map
-        fileid_map = map_file_ids(repository, oldrev.parent_ids, new_parents)
+        nonghost_oldparents = tuple([p for p in oldrev.parent_ids if repository.has_revision(p)])
+        nonghost_newparents = tuple([p for p in new_parents if repository.has_revision(p)])
+        fileid_map = map_file_ids(repository, nonghost_oldparents, nonghost_newparents)
         oldtree = repository.revision_tree(oldrevid)
         mappedtree = MapTree(oldtree, fileid_map)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            old_parent_invs = list(repository.iter_inventories(oldrev.parent_ids))
-            new_parent_invs = list(repository.iter_inventories(new_parents))
+            old_parent_invs = list(repository.iter_inventories(nonghost_oldparents))
+            new_parent_invs = list(repository.iter_inventories(nonghost_newparents))
             for i, (path, old_ie) in enumerate(mappedtree.inventory.iter_entries()):
                 pb.update('upgrading file', i, len(mappedtree.inventory))
                 ie = old_ie.copy()
