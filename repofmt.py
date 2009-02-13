@@ -448,7 +448,7 @@ def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     formats = (RepositoryFormatPackGCPlain, RepositoryFormatPackGCRichRoot,
         RepositoryFormatPackGCSubtrees)
     if chk_support:
-        formats = formats + (RepositoryFormatPackGCPlain,)
+        formats = formats + (RepositoryFormatPackGCPlainCHK,)
     if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
     else:
