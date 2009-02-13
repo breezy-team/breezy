@@ -65,9 +65,9 @@ class TestCaseWithStore(TestCaseWithTransport):
 class TestMap(TestCaseWithStore):
 
     def assertHasABMap(self, chk_bytes):
-        ab_leaf_bytes = 'chkleaf:\n0\n1\n1\na\n\x00b\n'
+        ab_leaf_bytes = 'chkleaf:\n0\n1\n1\na\n\x001\nb\n'
         ab_sha1 = osutils.sha_string(ab_leaf_bytes)
-        self.assertEqual('ffb046e740d93f2108f1c54ae52035578c99fa45', ab_sha1)
+        self.assertEqual('90986195696b177c8895d48fdb4b7f2366f798a0', ab_sha1)
         root_key = ('sha1:' + ab_sha1,)
         self.assertEqual(ab_leaf_bytes, self.read_bytes(chk_bytes, root_key))
         return root_key
@@ -215,7 +215,7 @@ class TestMap(TestCaseWithStore):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)
         # Should fit 2 keys per LeafNode
-        chkmap._root_node.set_maximum_size(30)
+        chkmap._root_node.set_maximum_size(35)
         chkmap.map(('aaa',), 'v')
         self.assertEqualDiff("'' LeafNode\n"
                              "      ('aaa',) 'v'\n",
@@ -384,7 +384,7 @@ class TestMap(TestCaseWithStore):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)
         # Should fit 2 keys per LeafNode
-        chkmap._root_node.set_maximum_size(30)
+        chkmap._root_node.set_maximum_size(35)
         chkmap.map(('aaa',), 'v')
         chkmap.map(('aab',), 'very long value that splits')
         self.assertEqualDiff("'' InternalNode\n"
@@ -431,7 +431,7 @@ class TestMap(TestCaseWithStore):
         store = self.get_chk_bytes()
         chkmap = CHKMap(store, None)
         # Should fit 2 keys per LeafNode
-        chkmap._root_node.set_maximum_size(30)
+        chkmap._root_node.set_maximum_size(35)
         chkmap.map(('aaa',), 'v')
         chkmap.map(('aab',), 'v')
         self.assertEqualDiff("'' LeafNode\n"
@@ -867,7 +867,7 @@ class TestMap(TestCaseWithStore):
         self.assertEqual(0, len(chkmap))
 
     def test___len__2(self):
-        chkmap = self._get_map({"foo":"bar", "gam":"quux"})
+        chkmap = self._get_map({("foo",):"bar", ("gam",):"quux"})
         self.assertEqual(2, len(chkmap))
 
     def test_max_size_100_bytes_new(self):
@@ -946,7 +946,7 @@ class TestMap(TestCaseWithStore):
     def test__dump_tree(self):
         chkmap = self._get_map({("aaa",): "value1", ("aab",): "value2",
                                 ("bbb",): "value3",},
-                               maximum_size=10)
+                               maximum_size=15)
         self.assertEqualDiff("'' InternalNode\n"
                              "  'a' InternalNode\n"
                              "    'aaa' LeafNode\n"
@@ -966,13 +966,13 @@ class TestMap(TestCaseWithStore):
                              "      ('bbb',) 'value3'\n",
                              chkmap._dump_tree())
         self.assertEqualDiff(
-            "'' InternalNode sha1:9c0e7f6cca48983d33e03897b847710c27fd78ad\n"
-            "  'a' InternalNode sha1:771cd596632557845720770a0e4829d8065d53da\n"
-            "    'aaa' LeafNode sha1:6cabbca9713908aff819d79b3688e181c6eab8b2\n"
+            "'' InternalNode sha1:0690d471eb0a624f359797d0ee4672bd68f4e236\n"
+            "  'a' InternalNode sha1:1514c35503da9418d8fd90c1bed553077cb53673\n"
+            "    'aaa' LeafNode sha1:4cc5970454d40b4ce297a7f13ddb76f63b88fefb\n"
             "      ('aaa',) 'value1'\n"
-            "    'aab' LeafNode sha1:c11b2aa06649e62846acbdff810fca5718c23ba6\n"
+            "    'aab' LeafNode sha1:1d68bc90914ef8a3edbcc8bb28b00cb4fea4b5e2\n"
             "      ('aab',) 'value2'\n"
-            "  'b' LeafNode sha1:5036c643a1c6491ae76d6bb0fd927f3a40d63ee8\n"
+            "  'b' LeafNode sha1:3686831435b5596515353364eab0399dc45d49e7\n"
             "      ('bbb',) 'value3'\n",
             chkmap._dump_tree(include_keys=True))
 
@@ -993,10 +993,10 @@ class TestMap(TestCaseWithStore):
         # for them yet, so they are listed as None
         self.assertEqualDiff(
             "'' InternalNode None\n"
-            "  'a' InternalNode sha1:771cd596632557845720770a0e4829d8065d53da\n"
-            "    'aaa' LeafNode sha1:6cabbca9713908aff819d79b3688e181c6eab8b2\n"
+            "  'a' InternalNode sha1:6b0d881dd739a66f733c178b24da64395edfaafd\n"
+            "    'aaa' LeafNode sha1:40b39a08d895babce17b20ae5f62d187eaa4f63a\n"
             "      ('aaa',) 'value1'\n"
-            "    'aab' LeafNode sha1:c11b2aa06649e62846acbdff810fca5718c23ba6\n"
+            "    'aab' LeafNode sha1:ad1dc7c4e801302c95bf1ba7b20bc45e548cd51a\n"
             "      ('aab',) 'value2'\n"
             "  'b' LeafNode None\n"
             "      ('bbb',) 'value3'\n",
@@ -1203,7 +1203,7 @@ class TestLeafNode(TestCaseWithStore):
         node = LeafNode()
         base_size = node._current_size()
         node.map(None, ("foo bar",), "baz")
-        self.assertEqual(base_size + 12, node._current_size())
+        self.assertEqual(base_size + 14, node._current_size())
 
     def test_deserialise_empty(self):
         node = LeafNode.deserialise("chkleaf:\n10\n1\n0\n\n", ("sha1:1234",))
@@ -1215,14 +1215,15 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_deserialise_items(self):
         node = LeafNode.deserialise(
-            "chkleaf:\n0\n1\n2\n\nfoo bar\x00baz\nquux\x00blarh\n", ("sha1:1234",))
+            "chkleaf:\n0\n1\n2\n\nfoo bar\x001\nbaz\nquux\x001\nblarh\n",
+            ("sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo bar",), "baz"), (("quux",), "blarh")],
             sorted(node.iteritems(None)))
 
     def test_deserialise_item_with_null_width_1(self):
         node = LeafNode.deserialise(
-            "chkleaf:\n0\n1\n2\n\nfoo\x00bar\x00baz\nquux\x00blarh\n",
+            "chkleaf:\n0\n1\n2\n\nfoo\x001\nbar\x00baz\nquux\x001\nblarh\n",
             ("sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo",), "bar\x00baz"), (("quux",), "blarh")],
@@ -1230,7 +1231,8 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_deserialise_item_with_null_width_2(self):
         node = LeafNode.deserialise(
-            "chkleaf:\n0\n2\n2\n\nfoo\x001\x00bar\x00baz\nquux\x00\x00blarh\n",
+            "chkleaf:\n0\n2\n2\n\nfoo\x001\x001\nbar\x00baz\n"
+            "quux\x00\x001\nblarh\n",
             ("sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo", "1"), "bar\x00baz"), (("quux", ""), "blarh")],
@@ -1238,18 +1240,30 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_iteritems_selected_one_of_two_items(self):
         node = LeafNode.deserialise(
-            "chkleaf:\n0\n1\n2\n\nfoo bar\x00baz\nquux\x00blarh\n", ("sha1:1234",))
+            "chkleaf:\n0\n1\n2\n\nfoo bar\x001\nbaz\nquux\x001\nblarh\n",
+            ("sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([(("quux",), "blarh")],
             sorted(node.iteritems(None, [("quux",), ("qaz",)])))
 
     def test_deserialise_item_with_common_prefix(self):
         node = LeafNode.deserialise(
-            "chkleaf:\n0\n2\n2\nfoo\x00\n1\x00bar\x00baz\n2\x00blarh\n",
+            "chkleaf:\n0\n2\n2\nfoo\x00\n1\x001\nbar\x00baz\n2\x001\nblarh\n",
             ("sha1:1234",))
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo", "1"), "bar\x00baz"), (("foo", "2"), "blarh")],
             sorted(node.iteritems(None)))
+        self.assertEqual('foo\x00', node._search_prefix)
+        self.assertEqual('foo\x00', node._common_serialised_prefix)
+
+    def test_deserialise_multi_line(self):
+        node = LeafNode.deserialise(
+            "chkleaf:\n0\n2\n2\nfoo\x00\n1\x002\nbar\nbaz\n2\x002\nblarh\n\n",
+            ("sha1:1234",))
+        self.assertEqual(2, len(node))
+        self.assertEqual([(("foo", "1"), "bar\nbaz"),
+                          (("foo", "2"), "blarh\n"),
+                         ], sorted(node.iteritems(None)))
         self.assertEqual('foo\x00', node._search_prefix)
         self.assertEqual('foo\x00', node._common_serialised_prefix)
 
@@ -1264,7 +1278,8 @@ class TestLeafNode(TestCaseWithStore):
 
     def test_key_after_unmap(self):
         node = LeafNode.deserialise(
-            "chkleaf:\n0\n1\n2\n\nfoo bar\x00baz\nquux\x00blarh\n", ("sha1:1234",))
+            "chkleaf:\n0\n1\n2\n\nfoo bar\x001\nbaz\nquux\x001\nblarh\n",
+            ("sha1:1234",))
         node.unmap(None, ("foo bar",))
         self.assertEqual(None, node.key())
 
@@ -1334,11 +1349,11 @@ class TestLeafNode(TestCaseWithStore):
         node = LeafNode()
         node.set_maximum_size(10)
         node.map(None, ("foo bar",), "baz quux")
-        expected_key = ("sha1:f98fcfe7d3fc59c29134a5d5438c896e57cefe6d",)
+        expected_key = ("sha1:f89fac7edfc6bdb1b1b54a556012ff0c646ef5e0",)
         self.assertEqual('foo bar', node._common_serialised_prefix)
         self.assertEqual([expected_key],
             list(node.serialise(store)))
-        self.assertEqual("chkleaf:\n10\n1\n1\nfoo bar\n\x00baz quux\n",
+        self.assertEqual("chkleaf:\n10\n1\n1\nfoo bar\n\x001\nbaz quux\n",
             self.read_bytes(store, expected_key))
         self.assertEqual(expected_key, node.key())
 
@@ -1426,7 +1441,7 @@ class TestInternalNode(TestCaseWithStore):
         keys = list(node.serialise(chk_bytes))
         child_key = child.serialise(chk_bytes)[0]
         self.assertEqual(
-            [child_key, ('sha1:72dda40e7c70d00cde178f6f79560d36f3264ba5',)],
+            [child_key, ('sha1:cf67e9997d8228a907c1f5bfb25a8bd9cd916fac',)],
             keys)
         # We should be able to access deserialised content.
         bytes = self.read_bytes(chk_bytes, keys[1])
