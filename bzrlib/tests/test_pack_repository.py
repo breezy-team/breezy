@@ -208,10 +208,14 @@ class TestPackRepository(TestCaseWithTransport):
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
         # We should have 50 (10x5) files in the obsolete_packs directory.
+        # If supports_chks, then we have 60
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
         self.assertFalse('bar' in obsolete_files)
-        self.assertEqual(50, len(obsolete_files))
+        if tree.branch.repository.supports_chks:
+            self.assertEqual(60, len(obsolete_files))
+        else:
+            self.assertEqual(50, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
@@ -600,7 +604,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # metadata
             if getattr(repo._format, 'supports_tree_reference', False):
                 if repo._format.supports_chks:
-                    matching_format_name = 'development3-subtree'
+                    matching_format_name = 'development5-subtree'
                 else:
                     matching_format_name = 'pack-0.92-subtree'
             else:
@@ -608,7 +612,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             mismatching_format_name = 'pack-0.92'
         else:
             if repo._format.supports_chks:
-                matching_format_name = 'development3'
+                matching_format_name = 'development5'
             else:
                 matching_format_name = 'pack-0.92'
             mismatching_format_name = 'pack-0.92-subtree'
@@ -630,7 +634,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # can only stack on repositories that have compatible internal
             # metadata
             if repo._format.supports_chks:
-                matching_format_name = 'development3-subtree'
+                matching_format_name = 'development5-subtree'
             else:
                 matching_format_name = 'pack-0.92-subtree'
             mismatching_format_name = 'rich-root-pack'
@@ -784,24 +788,24 @@ def load_tests(basic_tests, module, test_loader):
                   "with subtree support (needs bzr.dev from before 1.8)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
-         dict(format_name='development3',
-              format_string="Bazaar development format 3 "
-                  "(needs bzr.dev from before 1.10)\n",
+         dict(format_name='development5',
+              format_string="Bazaar development format 5 "
+                  "(needs bzr.dev from before 1.13)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
-         dict(format_name='development3-subtree',
-              format_string="Bazaar development format 3 "
-                  "with subtree support (needs bzr.dev from before 1.10)\n",
+         dict(format_name='development5-subtree',
+              format_string="Bazaar development format 5 "
+                  "with subtree support (needs bzr.dev from before 1.13)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
-         dict(format_name='development4',
-              format_string="Bazaar development format 4 "
-                  "(needs bzr.dev from before 1.10)\n",
+         dict(format_name='development5-hash16',
+              format_string="Bazaar development format 5 hash 16"
+                            " (needs bzr.dev from before 1.13)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
-         dict(format_name='development4-subtree',
-              format_string="Bazaar development format 4 "
-                  "with subtree support (needs bzr.dev from before 1.10)\n",
+         dict(format_name='development5-hash255',
+              format_string="Bazaar development format 5 hash 255"
+                            " (needs bzr.dev from before 1.13)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]

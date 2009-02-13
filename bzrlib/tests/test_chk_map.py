@@ -34,9 +34,9 @@ from bzrlib.tests import TestCaseWithTransport
 class TestCaseWithStore(TestCaseWithTransport):
 
     def get_chk_bytes(self):
-        # The eassiest way to get a CHK store is a development3 repository and
+        # The eassiest way to get a CHK store is a development5 repository and
         # then work with the chk_bytes attribute directly.
-        repo = self.make_repository(".", format="development3")
+        repo = self.make_repository(".", format="development5")
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()

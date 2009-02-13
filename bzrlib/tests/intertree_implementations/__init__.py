@@ -176,7 +176,7 @@ def load_tests(basic_tests, module, loader):
     # CHKInventory does not have an InterTree optimiser class (yet).
     chk_tree_format = WorkingTreeFormat4()
     chk_tree_format._get_matchingbzrdir = \
-        lambda:bzrlib.bzrdir.format_registry.make_bzrdir('development3')
+        lambda:bzrlib.bzrdir.format_registry.make_bzrdir('development5')
     test_intertree_permutations.append(
         (InterTree.__name__ + "(CHKInventory)",
          InterTree,

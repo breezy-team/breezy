@@ -2952,7 +2952,7 @@ class RepositoryFormatPackDevelopment5Subtree(RepositoryFormatPack):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar development format 5 with subtree support"
-                " (needs bzr.dev from before 1.11)\n")
+                " (needs bzr.dev from before 1.13)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

@@ -668,7 +668,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
 class TestDevelopment3(TestCaseWithTransport):
 
     def test_add_inventory_uses_chk_map(self):
-        repo = self.make_repository('repo', format="development3")
+        repo = self.make_repository('repo', format="development5")
         source = self.make_branch_and_tree("source", format="pack-0.92")
         revid = source.commit("foo", rev_id="foo")
         # get the inventory from the committed revision
@@ -690,10 +690,10 @@ class TestDevelopment3(TestCaseWithTransport):
         self.assertEqual(4096, inv.id_to_entry._root_node.maximum_size)
 
 
-class TestDevelopment4(TestCaseWithTransport):
+class TestDevelopment5(TestCaseWithTransport):
 
     def test_inventories_use_chk_map_with_parent_base_dict(self):
-        tree = self.make_branch_and_tree('repo', format="development4")
+        tree = self.make_branch_and_tree('repo', format="development5")
         revid = tree.commit("foo")
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -706,12 +706,12 @@ class TestDevelopment4(TestCaseWithTransport):
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
 
-class TestDevelopment3FindRevisionOutsideSet(TestCaseWithTransport):
+class TestDevelopment5FindRevisionOutsideSet(TestCaseWithTransport):
     """Tests for _find_revision_outside_set."""
 
     def setUp(self):
         super(TestDevelopment3FindRevisionOutsideSet, self).setUp()
-        self.builder = self.make_branch_builder('source', format='development3')
+        self.builder = self.make_branch_builder('source', format='development5')
         self.builder.start_series()
         self.builder.build_snapshot('initial', None,
             [('add', ('', 'tree-root', 'directory', None))])
