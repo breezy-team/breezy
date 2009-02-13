@@ -212,7 +212,7 @@ class TestPackRepository(TestCaseWithTransport):
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
         self.assertFalse('bar' in obsolete_files)
-        if tree.branch.repository.supports_chks:
+        if tree.branch.repository._format.supports_chks:
             self.assertEqual(60, len(obsolete_files))
         else:
             self.assertEqual(50, len(obsolete_files))
@@ -694,10 +694,14 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
         # We should have 50 (10x5) files in the obsolete_packs directory.
+        # If supports_chks, then we have 60
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
         self.assertFalse('bar' in obsolete_files)
-        self.assertEqual(50, len(obsolete_files))
+        if tree.branch.repository._format.supports_chks:
+            self.assertEqual(60, len(obsolete_files))
+        else:
+            self.assertEqual(50, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]

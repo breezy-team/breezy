@@ -221,7 +221,7 @@ class TestCHKInventory(TestCaseWithTransport):
             'chkinventory:\n',
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
-            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            'id_to_entry: sha1:f9734d8d315fda54c056bbbc814c192a22719480\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
         self.assertEqual('plain', chk_inv._search_key_name)
@@ -238,8 +238,8 @@ class TestCHKInventory(TestCaseWithTransport):
             'chkinventory:\n',
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
-            'parent_id_basename_to_file_id: sha1:46f33678d1c8cfd9b6d00dc658b6c8a9ac7bb0f0\n',
-            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'id_to_entry: sha1:f9734d8d315fda54c056bbbc814c192a22719480\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
         self.assertEqual('plain', chk_inv._search_key_name)
@@ -258,8 +258,8 @@ class TestCHKInventory(TestCaseWithTransport):
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
             'search_key_name: hash-16-way\n',
-            'parent_id_basename_to_file_id: sha1:46f33678d1c8cfd9b6d00dc658b6c8a9ac7bb0f0\n',
-            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'id_to_entry: sha1:f9734d8d315fda54c056bbbc814c192a22719480\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
         self.assertEqual('hash-16-way', chk_inv._search_key_name)
