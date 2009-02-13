@@ -294,35 +294,23 @@ def rebase(repository, replace_map, replay_fn):
     dependencies = {}
 
     # Figure out the dependencies
+    graph = {}
     for revid in todo:
-        for p in replace_map[revid][1]:
-            if repository.has_revision(p):
-                continue
-            if not dependencies.has_key(p):
-                dependencies[p] = []
-            dependencies[p].append(revid)
+        graph[revid] = replace_map[revid][1]
 
-    import pdb; pdb.set_trace()
     total = len(todo)
     i = 0
     pb = ui.ui_factory.nested_progress_bar()
     try:
-        while len(todo) > 0:
+        for revid in topo_sort(graph):
             pb.update('rebase revisions', i, total)
             i += 1
-            revid = todo.pop()
             (newrevid, newparents) = replace_map[revid]
             assert isinstance(newparents, tuple), "Expected tuple for %r" % newparents
-            if repository.has_revisions(newparents) != set(newparents):
-                # Not all parents present yet, avoid for now
-                continue
             if repository.has_revision(newrevid):
                 # Was already converted, no need to worry about it again
                 continue
             replay_fn(repository, revid, newrevid, newparents)
-            if dependencies.has_key(newrevid):
-                todo.extend(dependencies[newrevid])
-                del dependencies[newrevid]
     finally:
         pb.finished()
         
