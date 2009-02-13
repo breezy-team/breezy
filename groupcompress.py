@@ -27,6 +27,7 @@ from bzrlib import (
     diff,
     errors,
     graph as _mod_graph,
+    osutils,
     pack,
     patiencediff,
     )
@@ -395,7 +396,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         reannotate = annotate.reannotate
         for record in self.get_record_stream(keys, 'topological', True):
             key = record.key
-            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            chunks = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parent_lines = [parent_cache[parent] for parent in parent_map[key]]
             parent_cache[key] = list(
                 reannotate(parent_lines, fulltext, key, None, head_cache))
@@ -582,15 +583,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent([record.key], self)
-            elif record.storage_kind == 'fulltext':
-                bytes = record.get_bytes_as('fulltext')
+            elif record.storage_kind in ('chunked', 'fulltext'):
+                lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 bytes = adapter.get_bytes(record,
                     record.get_bytes_as(record.storage_kind))
+                lines = osutils.split_lines(bytes)
             found_sha1, end_point = self._compressor.compress(record.key,
-                split_lines(bytes), record.sha1)
+                lines, record.sha1)
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
             else:
