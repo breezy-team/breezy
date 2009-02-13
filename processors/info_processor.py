@@ -28,10 +28,6 @@ from bzrlib.plugins.fastimport import (
     )
 
 
-# Maximum number of parents for a merge commit
-_MAX_PARENTS = 16
-
-
 class InfoProcessor(processor.ImportProcessor):
     """An import processor that dumps statistics about the input.
 
@@ -56,8 +52,7 @@ class InfoProcessor(processor.ImportProcessor):
         for fc in commands.FILE_COMMAND_NAMES:
             self.file_cmd_counts[fc] = 0
         self.parent_counts = {}
-        for i in xrange(0, _MAX_PARENTS):
-            self.parent_counts[i] = 0
+        self.max_parent_count = 0
         self.committers = set()
         self.separate_authors_found = False
         self.symlinks_found = False
@@ -86,9 +81,9 @@ class InfoProcessor(processor.ImportProcessor):
         if self.cmd_counts['commit']:
             p_names = []
             p_values = []
-            for i in xrange(0, _MAX_PARENTS):
-                count = self.parent_counts[i]
-                if count > 0:
+            for i in xrange(0, self.max_parent_count + 1):
+                if i in self.parent_counts:
+                    count = self.parent_counts[i]
                     p_names.append("parents-%d" % i)
                     p_values.append(count)
             flags = {
@@ -207,7 +202,13 @@ class InfoProcessor(processor.ImportProcessor):
                 pass
         self.heads[cmd.id] = cmd.ref
         self.last_ids[cmd.ref] = cmd.id
-        self.parent_counts[len(parents)] += 1
+        parent_count = len(parents)
+        if self.parent_counts.has_key(parent_count):
+            self.parent_counts[parent_count] += 1
+        else:
+            self.parent_counts[parent_count] = 1
+            if parent_count > self.max_parent_count:
+                self.max_parent_count = parent_count
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""

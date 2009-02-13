@@ -17,6 +17,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr fast-import-info`` now handles an unlimited # of parents for a
+      revision. The spec suggests the maximum ought to be 16 but the linux
+      kernel has revisions with more than that.
+      (Ian Clatworthy)
+
     * Updated the bundled version of hg-fast-export to be the latest
       code from http://repo.or.cz/w/fast-export.git. It should now
       support recent Mercurial releases.
