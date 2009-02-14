@@ -207,11 +207,14 @@ class TestPackRepository(TestCaseWithTransport):
         tree = tree.bzrdir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
-        # We should have 50 (10x5) files in the obsolete_packs directory.
+        nb_files = 5 # .pack, .rix, .iix, .tix, .six
+        if tree.branch.repository._format.supports_chks:
+            nb_files += 1 # .cix
+        # We should have 10 x nb_files files in the obsolete_packs directory.
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
         self.assertFalse('bar' in obsolete_files)
-        self.assertEqual(50, len(obsolete_files))
+        self.assertEqual(10 * nb_files, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
@@ -666,9 +669,10 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertEqual(1, len(new_instance._pack_collection.all_packs()))
 
     def test_autopack_only_considers_main_repo_packs(self):
-        base = self.make_branch_and_tree('base', format=self.get_format())
+        format = self.get_format()
+        base = self.make_branch_and_tree('base', format=format)
         base.commit('foo')
-        tree = self.make_branch_and_tree('repo', format=self.get_format())
+        tree = self.make_branch_and_tree('repo', format=format)
         tree.branch.repository.add_fallback_repository(base.branch.repository)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         # This test could be a little cheaper by replacing the packs
@@ -689,11 +693,14 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         tree = tree.bzrdir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
-        # We should have 50 (10x5) files in the obsolete_packs directory.
+        nb_files = 5 # .pack, .rix, .iix, .tix, .six
+        if tree.branch.repository._format.supports_chks:
+            nb_files += 1 # .cix
+        # We should have 10 x nb_files files in the obsolete_packs directory.
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
         self.assertFalse('bar' in obsolete_files)
-        self.assertEqual(50, len(obsolete_files))
+        self.assertEqual(10 * nb_files, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
