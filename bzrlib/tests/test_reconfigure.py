@@ -410,3 +410,10 @@ class TestReconfigure(tests.TestCaseWithTransport):
             reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, False)
         self.assertContainsRe(str(e),
             r"Shared repository '.*' already doesn't create working trees.")
+
+    def test_repository_tree_reconfiguration_not_supported(self):
+        tree = self.make_branch_and_tree('tree')
+        e = self.assertRaises(errors.ReconfigurationNotSupported,
+            reconfigure.Reconfigure.set_repository_trees, tree.bzrdir, None)
+        self.assertContainsRe(str(e),
+            r"Requested reconfiguration of '.*' is not supported.")
