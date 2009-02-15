@@ -1279,12 +1279,11 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
         # origin is a fulltext
         entries = f.get_record_stream([('origin',)], 'unordered', False)
         base = entries.next()
-        ft_data = ft_adapter.get_bytes(base, base.get_bytes_as(base.storage_kind))
+        ft_data = ft_adapter.get_bytes(base)
         # merged is both a delta and multiple parents.
         entries = f.get_record_stream([('merged',)], 'unordered', False)
         merged = entries.next()
-        delta_data = delta_adapter.get_bytes(merged,
-            merged.get_bytes_as(merged.storage_kind))
+        delta_data = delta_adapter.get_bytes(merged)
         return ft_data, delta_data
 
     def test_deannotation_noeol(self):

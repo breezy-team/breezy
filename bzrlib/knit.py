@@ -151,7 +151,8 @@ class KnitAdapter(object):
 class FTAnnotatedToUnannotated(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
-    def get_bytes(self, factory, annotated_compressed_bytes):
+    def get_bytes(self, factory):
+        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         content = self._annotate_factory.parse_fulltext(contents, rec[1])
@@ -162,7 +163,8 @@ class FTAnnotatedToUnannotated(KnitAdapter):
 class DeltaAnnotatedToUnannotated(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
-    def get_bytes(self, factory, annotated_compressed_bytes):
+    def get_bytes(self, factory):
+        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         delta = self._annotate_factory.parse_line_delta(contents, rec[1],
@@ -175,7 +177,8 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
 class FTAnnotatedToFullText(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
-    def get_bytes(self, factory, annotated_compressed_bytes):
+    def get_bytes(self, factory):
+        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         content, delta = self._annotate_factory.parse_record(factory.key[-1],
@@ -186,7 +189,8 @@ class FTAnnotatedToFullText(KnitAdapter):
 class DeltaAnnotatedToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
-    def get_bytes(self, factory, annotated_compressed_bytes):
+    def get_bytes(self, factory):
+        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         delta = self._annotate_factory.parse_line_delta(contents, rec[1],
@@ -209,7 +213,8 @@ class DeltaAnnotatedToFullText(KnitAdapter):
 class FTPlainToFullText(KnitAdapter):
     """An adapter from FT plain knits to unannotated ones."""
 
-    def get_bytes(self, factory, compressed_bytes):
+    def get_bytes(self, factory):
+        compressed_bytes = factory.get_bytes_as(factory.storage_kind)
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
         content, delta = self._plain_factory.parse_record(factory.key[-1],
@@ -220,7 +225,8 @@ class FTPlainToFullText(KnitAdapter):
 class DeltaPlainToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
-    def get_bytes(self, factory, compressed_bytes):
+    def get_bytes(self, factory):
+        compressed_bytes = factory.get_bytes_as(factory.storage_kind)
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
         delta = self._plain_factory.parse_line_delta(contents, rec[1])
@@ -1408,8 +1414,7 @@ class KnitVersionedFiles(VersionedFiles):
                     except KeyError:
                         adapter_key = (record.storage_kind, "knit-ft-gz")
                         adapter = get_adapter(adapter_key)
-                    bytes = adapter.get_bytes(
-                        record, record.get_bytes_as(record.storage_kind))
+                    bytes = adapter.get_bytes(record)
                 else:
                     bytes = record.get_bytes_as(record.storage_kind)
                 options = [record._build_details[0]]
@@ -1459,8 +1464,7 @@ class KnitVersionedFiles(VersionedFiles):
                 # fallback kvfs.
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
-                lines = split_lines(adapter.get_bytes(
-                    record, record.get_bytes_as(record.storage_kind)))
+                lines = split_lines(adapter.get_bytes(record))
                 try:
                     self.add_lines(record.key, parents, lines)
                 except errors.RevisionAlreadyPresent:
