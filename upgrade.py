@@ -145,7 +145,7 @@ def upgrade_workingtree(wt, foreign_repository, new_mapping,
 
 
 def upgrade_tags(tags, repository, foreign_repository, new_mapping, 
-                 allow_changes=False, verbose=False, branch_renames=None,m
+                 allow_changes=False, verbose=False, branch_renames=None,
                  branch_ancestry=None):
     """Upgrade a tags dictionary."""
     renames = {}
