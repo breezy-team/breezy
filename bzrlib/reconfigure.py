@@ -62,6 +62,7 @@ class Reconfigure(object):
         self._create_tree = False
         self._create_repository = False
         self._destroy_repository = False
+        self._repository_trees = None
 
     @staticmethod
     def to_branch(bzrdir):
@@ -152,7 +153,7 @@ class Reconfigure(object):
                 not reconfiguration.repository.make_working_trees()):
             raise errors.AlreadyWithNoTrees(bzrdir)
         else:
-            reconfiguration.repository.set_make_working_trees(with_trees)
+            reconfiguration._repository_trees = with_trees
         return reconfiguration
 
     def _plan_changes(self, want_tree, want_branch, want_bound,
@@ -317,3 +318,5 @@ class Reconfigure(object):
             local_branch.bind(branch.Branch.open(bind_location))
         if self._destroy_repository:
             self.bzrdir.destroy_repository()
+        if self._repository_trees is not None:
+            repo.set_make_working_trees(self._repository_trees)
