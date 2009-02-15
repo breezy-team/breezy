@@ -399,11 +399,14 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_make_with_trees_already_with_trees(self):
         repo = self.make_repository_with_without_trees(True)
-        self.assertRaises(errors.AlreadyWithTrees,
-            reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, True)
+        e = self.assertRaises(errors.AlreadyWithTrees,
+           reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, True)
+        self.assertContainsRe(str(e),
+            r"Shared repository '.*' already creates working trees.")
 
     def test_make_without_trees_already_no_trees(self):
         repo = self.make_repository_with_without_trees(False)
-        self.assertRaises(errors.AlreadyWithNoTrees,
+        e = self.assertRaises(errors.AlreadyWithNoTrees,
             reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, False)
-
+        self.assertContainsRe(str(e),
+            r"Shared repository '.*' already doesn't create working trees.")
