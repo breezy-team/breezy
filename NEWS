@@ -15,7 +15,14 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * Initial cut at reset support. (Brian de Alwis, Ian Clatworthy)
+
   IMPROVEMENTS:
+
+    * If ``refs/heads/xxx`` and ``refs/remotes/origin/xxx`` are both
+      defined, the latter is now mapped to a bzr branch called
+      ``xxx.remote`` rather than ``remotes--origins--xxx``.
+      (Ian Clatworthy)
 
     * ``bzr fast-import-info`` now handles an unlimited # of parents for a
       revision. The spec suggests the maximum ought to be 16 but the linux

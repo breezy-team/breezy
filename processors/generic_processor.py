@@ -315,7 +315,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the branches
         self.note("Updating branch information ...")
         updater = GenericBranchUpdater(self.repo, self.branch, self.cache_mgr,
-            helpers.invert_dict(self.cache_mgr.heads),
+            helpers.invert_dictset(self.cache_mgr.heads),
             self.cache_mgr.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
@@ -533,9 +533,17 @@ class GenericProcessor(processor.ImportProcessor):
             elif self.verbose:
                 self.warning("ignoring reset refs/tags/%s - no from clause"
                     % tag_name)
-        else:
-            self.warning("resets are not supported yet"
-                " - ignoring reset of '%s'", cmd.ref)
+            return
+
+	# FIXME: cmd.from_ is a committish and thus could reference
+	# another branch.  Create a method for resolving commitish's.
+        if cmd.from_ is not None:
+            self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
+            # Why is this required now vs at the end?
+            #updater = GenericBranchUpdater(self.repo, self.branch, self.cache_mgr,
+            #    helpers.invert_dictset(self.cache_mgr.heads),
+            #    self.cache_mgr.last_ref, self.tags)
+            #updater.update()
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
@@ -579,7 +587,7 @@ class GenericCacheManager(object):
         # path -> file-ids - as generated
         self.file_ids = {}
 
-        # Head tracking: last ref, last id per ref & map of commit ids to ref
+        # Head tracking: last ref, last id per ref & map of commit ids to ref*s*
         self.last_ref = None
         self.last_ids = {}
         self.heads = {}
@@ -621,6 +629,18 @@ class GenericCacheManager(object):
         self.file_ids[new_path] = self.file_ids[old_path]
         del self.file_ids[old_path]
 
+    def track_heads_for_ref(self, cmd_ref, cmd_id, parents=None):
+        if parents is not None:
+            for parent in parents:
+                refs = self.heads.get(parent)
+                if refs:
+                    refs.discard(cmd_ref)
+                    if not refs:
+                        del self.heads[parent]
+        self.heads.setdefault(cmd_id, set()).add(cmd_ref)
+        self.last_ids[cmd_ref] = cmd_id
+        self.last_ref = cmd_ref
+
 
 def _track_heads(cmd, cache_mgr):
     """Track the repository heads given a CommitCommand.
@@ -637,17 +657,9 @@ def _track_heads(cmd, cache_mgr):
         else:
             parents = []
     parents.extend(cmd.merges)
+
     # Track the heads
-    for parent in parents:
-        try:
-            del cache_mgr.heads[parent]
-        except KeyError:
-            # it's ok if the parent isn't there - another
-            # commit may have already removed it
-            pass
-    cache_mgr.heads[cmd.id] = cmd.ref
-    cache_mgr.last_ids[cmd.ref] = cmd.id
-    cache_mgr.last_ref = cmd.ref
+    cache_mgr.track_heads_for_ref(cmd.ref, cmd.id, parents)
     return parents
 
 
@@ -695,7 +707,8 @@ class GenericCommitHandler(processor.CommitHandler):
                 for p in parents]
         else:
             self.parents = []
-        self.debug("revision parents are %s", str(self.parents))
+        self.debug("%s id: %s, parents: %s", self.command.id,
+            self.revision_id, str(self.parents))
 
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
@@ -1095,7 +1108,10 @@ class GenericBranchUpdater(object):
             full_name = "--".join(parts)
             bazaar_name = parts[-1]
             if bazaar_name in bazaar_names:
-                bazaar_name = full_name
+                if parts[0] == 'remotes':
+                    bazaar_name += ".remote"
+                else:
+                    bazaar_name = full_name
             bazaar_names[bazaar_name] = ref_name
         return bazaar_names
 
