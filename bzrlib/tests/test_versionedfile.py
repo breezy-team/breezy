@@ -1708,6 +1708,34 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         entries = files.get_record_stream(keys, 'topological', False)
         self.assertAbsentRecord(files, keys, parent_map, entries)
 
+    def test_get_record_stream_native_formats_are_wire_ready_one_ft(self):
+        files = self.get_versionedfiles()
+        key = self.get_simple_key('foo')
+        files.add_lines(key, (), ['my text\n', 'content'])
+        stream = files.get_record_stream([key], 'unordered', False)
+        record = stream.next()
+        if record.storage_kind in ('chunked', 'fulltext'):
+            # chunked and fulltext representations are for direct use not wire
+            # serialisation: check they are able to be used that way.
+            self.assertEqual('my text\ncontent',
+                record.get_bytes_as('fulltext'))
+            self.assertEqual('my text\ncontent',
+                ''.join(record.get_bytes_as('fulltext')))
+        else:
+            bytes = [record.get_bytes_as(record.storage_kind)]
+            network_stream = versionedfile.NetworkRecordStream(bytes).read()
+            source_record = record
+            records = []
+            for record in network_stream:
+                records.append(record)
+                self.assertEqual(source_record.storage_kind,
+                    record.storage_kind)
+                self.assertEqual(source_record.parents, record.parents)
+                self.assertEqual(
+                    source_record.get_bytes_as(source_record.storage_kind),
+                    record.get_bytes_as(record.storage_kind))
+            self.assertEqual(1, len(records))
+
     def assertAbsentRecord(self, files, keys, parents, entries):
         """Helper for test_get_record_stream_missing_records_are_absent."""
         seen = set()

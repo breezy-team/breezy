@@ -152,7 +152,7 @@ class FTAnnotatedToUnannotated(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
     def get_bytes(self, factory):
-        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
+        annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         content = self._annotate_factory.parse_fulltext(contents, rec[1])
@@ -164,7 +164,7 @@ class DeltaAnnotatedToUnannotated(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
     def get_bytes(self, factory):
-        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
+        annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         delta = self._annotate_factory.parse_line_delta(contents, rec[1],
@@ -178,7 +178,7 @@ class FTAnnotatedToFullText(KnitAdapter):
     """An adapter from FT annotated knits to unannotated ones."""
 
     def get_bytes(self, factory):
-        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
+        annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         content, delta = self._annotate_factory.parse_record(factory.key[-1],
@@ -190,7 +190,7 @@ class DeltaAnnotatedToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
     def get_bytes(self, factory):
-        annotated_compressed_bytes = factory.get_bytes_as(factory.storage_kind)
+        annotated_compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(annotated_compressed_bytes)
         delta = self._annotate_factory.parse_line_delta(contents, rec[1],
@@ -214,7 +214,7 @@ class FTPlainToFullText(KnitAdapter):
     """An adapter from FT plain knits to unannotated ones."""
 
     def get_bytes(self, factory):
-        compressed_bytes = factory.get_bytes_as(factory.storage_kind)
+        compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
         content, delta = self._plain_factory.parse_record(factory.key[-1],
@@ -226,7 +226,7 @@ class DeltaPlainToFullText(KnitAdapter):
     """An adapter for deltas from annotated to unannotated."""
 
     def get_bytes(self, factory):
-        compressed_bytes = factory.get_bytes_as(factory.storage_kind)
+        compressed_bytes = factory._raw_record
         rec, contents = \
             self._data._parse_record_unchecked(compressed_bytes)
         delta = self._plain_factory.parse_line_delta(contents, rec[1])
@@ -253,7 +253,7 @@ class KnitContentFactory(ContentFactory):
     """
 
     def __init__(self, key, parents, build_details, sha1, raw_record,
-        annotated, knit=None):
+        annotated, knit=None, network_bytes=None):
         """Create a KnitContentFactory for key.
         
         :param key: The key.
@@ -263,6 +263,8 @@ class KnitContentFactory(ContentFactory):
         :param sha1: The sha1 expected from the full text of this object.
         :param raw_record: The bytes of the knit data from disk.
         :param annotated: True if the raw data is annotated.
+        :param network_bytes: None to calculate the network bytes on demand,
+            not-none if they are already known.
         """
         ContentFactory.__init__(self)
         self.sha1 = sha1
@@ -278,12 +280,31 @@ class KnitContentFactory(ContentFactory):
             annotated_kind = ''
         self.storage_kind = 'knit-%s%s-gz' % (annotated_kind, kind)
         self._raw_record = raw_record
+        self._network_bytes = network_bytes
         self._build_details = build_details
         self._knit = knit
 
+    def _create_network_bytes(self):
+        """Create a fully serialised network version for transmission."""
+        # storage_kind, key, parents, Noeol, raw_record
+        key_bytes = '\x00'.join(self.key)
+        if self.parents is None:
+            parent_bytes = 'None:'
+        else:
+            parent_bytes = '\t'.join('\x00'.join(key) for key in self.parents)
+        if self._build_details[1]:
+            noeol = 'N'
+        else:
+            noeol = ' '
+        network_bytes = "%s\n%s\n%s\n%s%s" % (self.storage_kind, key_bytes,
+            parent_bytes, noeol, self._raw_record)
+        self._network_bytes = network_bytes
+
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
-            return self._raw_record
+            if self._network_bytes is None:
+                self._create_network_bytes()
+            return self._network_bytes
         if self._knit is not None:
             if storage_kind == 'chunked':
                 return self._knit.get_lines(self.key[0])
@@ -291,6 +312,38 @@ class KnitContentFactory(ContentFactory):
                 return self._knit.get_text(self.key[0])
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
+
+
+def knit_network_to_record(storage_kind, bytes, line_end):
+    """Convert a network record to a record object.
+
+    :param storage_kind: The storage kind of the record.
+    :param bytes: The bytes of the record on the network.
+    """
+    start = line_end
+    line_end = bytes.find('\n', start)
+    key = bytes[:line_end].split('\x00')
+    start = line_end + 1
+    line_end = bytes.find('\n', start)
+    parent_line = bytes[start:line_end]
+    if parent_line == 'None:':
+        parents = None
+    else:
+        parents = tuple(
+            [segment.split('\x00') for segment in parent_line.split('\t')
+             if segment])
+    start = line_end + 1
+    noeol = bytes[start] != 'N'
+    if 'ft' in storage_kind:
+        method = 'fulltext'
+    else:
+        method = 'line-delta'
+    build_details = (method, noeol)
+    start = start + 1
+    raw_record = bytes[start:]
+    annotated = 'annotated' in storage_kind
+    return KnitContentFactory(key, parents, build_details, None, raw_record,
+        annotated, network_bytes=bytes)
 
 
 class KnitContent(object):
@@ -1416,7 +1469,9 @@ class KnitVersionedFiles(VersionedFiles):
                         adapter = get_adapter(adapter_key)
                     bytes = adapter.get_bytes(record)
                 else:
-                    bytes = record.get_bytes_as(record.storage_kind)
+                    # It's a knit record, it has a _raw_record field (even if
+                    # it was reconstituted from a network stream).
+                    bytes = record._raw_record
                 options = [record._build_details[0]]
                 if record._build_details[1]:
                     options.append('no-eol')
