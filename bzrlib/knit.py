@@ -322,7 +322,7 @@ def knit_network_to_record(storage_kind, bytes, line_end):
     """
     start = line_end
     line_end = bytes.find('\n', start)
-    key = bytes[:line_end].split('\x00')
+    key = tuple(bytes[start:line_end].split('\x00'))
     start = line_end + 1
     line_end = bytes.find('\n', start)
     parent_line = bytes[start:line_end]
@@ -330,10 +330,10 @@ def knit_network_to_record(storage_kind, bytes, line_end):
         parents = None
     else:
         parents = tuple(
-            [segment.split('\x00') for segment in parent_line.split('\t')
+            [tuple(segment.split('\x00')) for segment in parent_line.split('\t')
              if segment])
     start = line_end + 1
-    noeol = bytes[start] != 'N'
+    noeol = bytes[start] == 'N'
     if 'ft' in storage_kind:
         method = 'fulltext'
     else:

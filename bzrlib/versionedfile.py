@@ -1499,7 +1499,9 @@ class NetworkRecordStream(object):
         """
         self._bytes_iterator = bytes_iterator
         self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
+            'knit-delta-gz':knit.knit_network_to_record,
             'knit-annotated-ft-gz':knit.knit_network_to_record,
+            'knit-annotated-delta-gz':knit.knit_network_to_record,
             }
 
     def read(self):
