@@ -1294,6 +1294,7 @@ class ShortLogFormatter(LogFormatter):
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
                 tags, is_merge))
+        self.show_properties(revision.rev, indent+offset)
         if self.show_ids:
             to_file.write(indent + offset + 'revision-id:%s\n'
                           % (revision.rev.revision_id,))
@@ -1360,6 +1361,8 @@ class LineLogFormatter(LogFormatter):
             out.append("%s:" % revno)
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
+        if len(rev.parent_ids) > 1:
+            out.append('[merge]')
         if tags:
             tag_str = '{%s}' % (', '.join(tags))
             out.append(tag_str)

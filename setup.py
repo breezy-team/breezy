@@ -197,8 +197,8 @@ class build_ext_if_possible(build_ext):
         except DistutilsPlatformError, e:
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extensions.\n'
-                         '  Use --allow-python-fallback to use slower'
-                         ' python implementations instead.\n')
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n')
                 raise
             log.warn(str(e))
             log.warn('\n  Extensions cannot be built.\n'
@@ -209,9 +209,9 @@ class build_ext_if_possible(build_ext):
             build_ext.build_extension(self, ext)
         except CCompilerError:
             if not self.allow_python_fallback:
-                log.warn('\n  Failed to build "%s".\n'
-                         '  Use --allow-python-fallback to use slower'
-                         ' python implementations instead.\n'
+                log.warn('\n  Cannot build extensions.\n'
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n'
                          % (ext.name,))
                 raise
             log.warn('\n  Building of "%s" extension failed.\n'
@@ -408,6 +408,10 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
         os.environ["PATH"] = path + os.pathsep + qt_dir
 
 
+def get_svn_py2exe_info(includes, excludes, packages):
+    packages.append('subvertpy')
+
+
 if 'bdist_wininst' in sys.argv:
     def find_docs():
         docs = []
@@ -585,6 +589,9 @@ elif 'py2exe' in sys.argv:
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages)
+
+    if 'svn' in plugins:
+        get_svn_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the

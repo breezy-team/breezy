@@ -1061,7 +1061,7 @@ class BzrDir(object):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None):
+               source_branch=None, create_tree_if_local=True):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -1082,6 +1082,8 @@ class BzrDir(object):
             where possible.
         :param stacked: If true, create a stacked branch referring to the
             location of this control directory.
+        :param create_tree_if_local: If true, a working-tree will be created
+            when working locally.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -1134,8 +1136,9 @@ class BzrDir(object):
             result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
-        if isinstance(target_transport, local.LocalTransport) and (
-            result_repo is None or result_repo.make_working_trees()):
+        if (create_tree_if_local and
+            isinstance(target_transport, local.LocalTransport) and
+            (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink)
             wt.lock_write()
@@ -1335,10 +1338,13 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False, stacked=False):
+               hardlink=False, stacked=False, create_tree_if_local=True):
         """See BzrDir.sprout()."""
         if stacked:
             raise errors.UnstackableBranchFormat(
+                self._format, self.root_transport.base)
+        if not create_tree_if_local:
+            raise errors.MustHaveWorkingTree(
                 self._format, self.root_transport.base)
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1351,6 +1357,7 @@ class BzrDirPreSplitOut(BzrDir):
             self.open_branch().sprout(result, revision_id=revision_id)
         except errors.NotBranchError:
             pass
+
         # we always want a working tree
         WorkingTreeFormat2().initialize(result,
                                         accelerator_tree=accelerator_tree,
@@ -3125,19 +3132,19 @@ format_registry.register_metadir('1.9-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('1.12-preview',
+format_registry.register_metadir('development-wt5',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports views and content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
-format_registry.register_metadir('1.12-preview-rich-root',
+format_registry.register_metadir('development-wt5-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
-    help='A variant of 1.12-preview that supports rich-root data '
+    help='A variant of development-wt5 that supports rich-root data '
          '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
 # The following two formats should always just be aliases.

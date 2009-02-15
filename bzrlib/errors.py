@@ -2658,7 +2658,7 @@ class NoMessageSupplied(BzrError):
 
 class NoMailAddressSpecified(BzrError):
 
-    _fmt = "No mail-to address specified."
+    _fmt = "No mail-to address (--mail-to) or output (-o) specified."
 
 
 class UnknownMailClient(BzrError):
@@ -2946,6 +2946,22 @@ class NoSuchShelfId(BzrError):
         BzrError.__init__(self, shelf_id=shelf_id)
 
 
+class InvalidShelfId(BzrError):
+
+    _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
+
+    def __init__(self, invalid_id):
+        BzrError.__init__(self, invalid_id=invalid_id)
+
+
 class UserAbort(BzrError):
 
     _fmt = 'The user aborted the operation.'
+
+
+class MustHaveWorkingTree(BzrError):
+
+    _fmt = ("Branching '%(url)s'(%(format)s) must create a working tree.")
+
+    def __init__(self, format, url):
+        BzrError.__init__(self, format=format, url=url)

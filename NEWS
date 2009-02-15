@@ -4,8 +4,77 @@ Bazaar Release Notes
 
 .. contents::
 
+
 IN DEVELOPMENT
 --------------
+
+  COMPATIBILITY BREAKS:
+
+    * ``bzr log --line`` now indicates which revisions are merges with
+      `[merge]` after the date.  Scripts which parse the output of this
+      command may need to be adjusted.
+      (Neil Martinsen-Burrell)
+
+  NEW FEATURES:
+
+    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
+      options to change the default tree-creation policy of shared
+      repositories.  (Matthew Fuller, Marius Kruger, #145033)
+
+  IMPROVEMENTS:
+
+    * ``bzr branch`` now has a ``--no-tree`` option which turns off the
+      generation of a working tree in the new branch.
+      (Daniel Watkins, John Klinger, #273993)
+
+  BUG FIXES:
+
+    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
+      shelf id. (Daniel Watkins)
+
+    * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
+      than fetching trees and determining a delta itself. (Jelmer
+      Vernooij, #315048)
+
+  DOCUMENTATION:
+
+    * The documentation for ``shelve`` and ``unshelve`` has been clarified.
+      (Daniel Watkins, #327421, #327425)
+
+  API CHANGES:
+
+  INTERNALS:
+
+    * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
+      supporting the use of different runners. (Robert Collins)
+
+    * New hook Commands['extend_command'] to allow plugins to access a
+      command object before the command is run (or help generated from
+      it), without overriding the command. (Robert Collins)
+
+
+bzr 1.12 "1234567890" 2009-02-13
+--------------------------------
+
+This release of Bazaar contains many improvements to the speed,
+documentation and functionality of ``bzr log`` and the display of logged
+revisions by ``bzr status``.  bzr now also gives a better indication of
+progress, both in the way operations are drawn onto a text terminal, and
+by showing the rate of network IO.
+
+  BUG FIXES:
+
+    * ``bzr init --development-wt5[-rich-root]`` would fail because of
+      circular import errors. (John Arbash Meinel, #328135)
+
+  DOCUMENTATION:
+
+    * Expanded the help for log and added a new help topic called
+      ``log-formats``.  (Ian Clatworthy)
+
+
+bzr 1.12rc1 "1234567890" 2009-02-10
+-----------------------------------
 
   COMPATIBILITY BREAKS:
 
@@ -19,11 +88,21 @@ IN DEVELOPMENT
       from this command, you may need to adjust them accordingly.
       (Ian Clatworthy)
 
+    * ``bzr log --short`` now shows any additional revision properties
+      after the date and before the commit message.  Scripts that parse 
+      output of the log command in this situation may need to adjust.
+      (Neil Martinsen-Burrell)
+
+    * The experimental formats ``1.12-preview`` and ``1.12-preview-rich-root``
+      have been renamed ``development-wt5`` and ``development-wt5-rich-root``
+      respectively, given they are not ready for release in 1.12.
+      (Ian Clatworthy)
+
   NEW FEATURES:
 
-    * Add support for filtering `bzr missing` on revisions.  Remote revisions
-      can be filtered using `bzr missing -r -20..-10` and local revisions can
-      be filtered using `bzr missing --my-revision -20..-10`.
+    * Add support for filtering ``bzr missing`` on revisions.  Remote revisions
+      can be filtered using ``bzr missing -r -20..-10`` and local revisions can
+      be filtered using ``bzr missing --my-revision -20..-10``.
       (Marius Kruger)
 
     * ``bzr log -p`` displays the patch diff for each revision.
@@ -41,11 +120,10 @@ IN DEVELOPMENT
       ``--long`` format, ``bzr log --long -n1``.
       (Ian Clatworthy)
 
-    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
-      options to change the default tree-creation policy of shared
-      repositories.  (Matthew Fuller, Marius Kruger, #145033)
-
   IMPROVEMENTS:
+
+    * ``bzr add`` more clearly communicates success vs failure.
+      (Daniel Watkins)
 
     * ``bzr init`` will now print a little less verbose output.
       (Marius Kruger)
@@ -70,6 +148,10 @@ IN DEVELOPMENT
 
     * Rule-based preferences can now accept multiple patterns for a set of
       rules.  (Marius Kruger)
+
+    * The ``ancestor:`` revision spec will now default to referring to the
+      parent of the branch if no other location is given.
+      (Daniel Watkins, #198417)
 
     * The debugger started as a result of setting ``$BZR_PDB`` works
       around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
@@ -97,6 +179,9 @@ IN DEVELOPMENT
       now interprets filenames in their historical context.
       (Ian Clatworthy, #175520)
 
+    * ``bzr status`` now reports nonexistent files and continues, then
+       errors (with code 3) at the end.  (Karl Fogel, #306394)
+
     * Don't require the present compression base in knits to be the same
       when adding records in knits. (Jelmer Vernooij, #307394)
 
@@ -122,6 +207,8 @@ IN DEVELOPMENT
       handled.
       (John Arbash Meinel, Vincent Ladeuil)
 
+    * Unshelve now handles deleted paths without crashing. (Robert Collins)
+
   DOCUMENTATION:
 
     * Improved plugin developer documentation.  (Martin Pool)
@@ -130,12 +217,16 @@ IN DEVELOPMENT
 
     * ``ProgressBarStack`` is deprecated; instead use
       ``ui_factory.nested_progress_bar`` to create new progress bars.
+      (Martin Pool)
 
     * ForeignVcsMapping() now requires a ForeignVcs object as first
       argument. (Jelmer Vernooij)
 
     * ForeignVcsMapping.show_foreign_revid() has been moved to
       ForeignVcs. (Jelmer Vernooij)
+
+    * ``read_bundle_from_url`` is deprecated in favor of
+      ``read_mergeable_from_url``.  (Vincent Ladeuil)
 
     * Revision specifiers are now registered in
       ``bzrlib.revisionspec.revspec_registry``, and the old list of 
@@ -145,8 +236,6 @@ IN DEVELOPMENT
     * The progress and UI classes have changed; the main APIs remain the
       same but code that provides a new UI or progress bar class may
       need to be updated.  (Martin Pool)
-
-  TESTING:
 
   INTERNALS:
 
