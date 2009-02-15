@@ -70,6 +70,8 @@ format_registry.register_metadir('gc-subtrees',
     experimental=True,
     )
 
+from bzrlib.repository import format_registry as repo_registry
+
 # if we have chk support in bzrlib, use it. Otherwise don't register cause 'bzr
 # info' will die horribly.
 try:
@@ -95,7 +97,6 @@ try:
 except ImportError:
     pass
 
-from bzrlib.repository import format_registry as repo_registry
 repo_registry.register_lazy(
     'Bazaar development format - btree+gc (needs bzr.dev from 1.6)\n',
     'bzrlib.plugins.groupcompress.repofmt',

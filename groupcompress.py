@@ -587,8 +587,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
-                bytes = adapter.get_bytes(record,
-                    record.get_bytes_as(record.storage_kind))
+                bytes = adapter.get_bytes(record)
             found_sha1, end_point = self._compressor.compress(record.key,
                 split_lines(bytes), record.sha1)
             if record.key[-1] is None:
