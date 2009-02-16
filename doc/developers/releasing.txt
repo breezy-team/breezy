@@ -76,7 +76,7 @@ Preparing the tree for release
       
 #. Tag the new release::
 
-     bzr tag 1.12rc1 
+     bzr tag bzr-1.12rc1 
 
 #. Submit those changes to PQM for merge into the appropriate release
    branch::
