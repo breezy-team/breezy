@@ -204,6 +204,96 @@ class cmd_builddeb(Command):
         export_upstream_revision_opt, source_opt, 'revision',
         no_user_conf_opt, result_compat_opt]
 
+    def _get_tree_and_branch(self, location):
+        if location is None:
+            location = "."
+        is_local = urlparse.urlsplit(location)[0] in ('', 'file')
+        if is_local:
+            os.chdir(location)
+        try:
+            tree, _ = WorkingTree.open_containing(location)
+            branch = tree.branch
+        except NoWorkingTree:
+            tree = None
+            branch, _ = Branch.open_containing(location)
+        return tree, branch, is_local
+
+    def _get_build_tree(self, revision, tree, branch):
+        if revision is None and tree is not None:
+            info("Building using working tree")
+            working_tree = True
+        else:
+            if revision is None:
+                revid = branch.last_revision()
+            elif len(revision) == 1:
+                revid = revision[0].in_history(branch).rev_id
+            else:
+                raise BzrCommandError('bzr builddeb --revision takes exactly one '
+                                      'revision specifier.')
+            info("Building branch from revision %s", revid)
+            tree = branch.repository.revision_tree(revid)
+            working_tree = False
+        return tree, working_tree
+
+    def _build_type(self, config, merge, native, split):
+        if not merge:
+            merge = config.merge
+
+        if merge:
+            info("Running in merge mode")
+        else:
+            if not native:
+                native = config.native
+            if native:
+                info("Running in native mode")
+            else:
+                if not split:
+                    split = config.split
+                if split:
+                    info("Running in split mode")
+        return merge, native, split
+
+    def _get_builder(self, config, builder, quick, source, build_options):
+        if builder is None:
+            if quick:
+                builder = config.quick_builder
+                if builder is None:
+                    builder = "fakeroot debian/rules binary"
+            else:
+                if source:
+                    builder = config.source_builder
+                    if builder is None:
+                        builder = "debuild -S"
+                else:
+                    builder = config.builder
+                    if builder is None:
+                        builder = "debuild"
+        if build_options:
+            builder += " " + " ".join(build_options)
+        return builder
+
+    def _get_dirs(self, config, is_local, result_dir, result, build_dir, orig_dir):
+        if result_dir is None:
+            result_dir = result
+        if result_dir is None:
+            if is_local:
+                result_dir = config.result_dir
+            else:
+                result_dir = config.user_result_dir
+        if result_dir is not None:
+            result_dir = os.path.realpath(result_dir)
+        if build_dir is None:
+            if is_local:
+                build_dir = config.build_dir or default_build_dir
+            else:
+                build_dir = config.user_build_dir or 'build-area'
+        if orig_dir is None:
+            if is_local:
+                orig_dir = config.orig_dir or default_orig_dir
+            else:
+                orig_dir = config.user_orig_dir or 'build-area'
+        return result_dir, build_dir, orig_dir
+
     def run(self, branch_or_build_options_list=None, verbose=False,
             working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
@@ -213,175 +303,93 @@ class cmd_builddeb(Command):
             export_upstream=None, export_upstream_revision=None,
             source=False, revision=None, no_user_config=False, result=None):
 
-      branch = None
-      if branch_or_build_options_list is not None:
-          build_options = []
-          for opt in branch_or_build_options_list:
-              if opt.startswith("-") or branch is not None:
-                  build_options.append(opt)
-              else:
-                  branch = opt
+        branch = None
+        build_options = []
+        if branch_or_build_options_list is not None:
+            for opt in branch_or_build_options_list:
+                if opt.startswith("-") or branch is not None:
+                    build_options.append(opt)
+                else:
+                    branch = opt
 
-      if branch is None:
-          branch = "."
+        tree, branch, is_local = self._get_tree_and_branch(branch)
+        tree, working_tree = self._get_build_tree(revision, tree, branch)
+        tree.lock_read()
+        try:
+            config = debuild_config(tree, working_tree, no_user_config)
+            if reuse:
+                info("Reusing existing build dir")
+                dont_purge = True
+                use_existing = True
+            merge, native, split = self._build_type(config, merge, native,
+                    split)
+            builder = self._get_builder(config, builder, quick, source,
+                    build_options)
+            (changelog, larstiq) = find_changelog(tree, merge)
+            config.set_version(changelog.version)
 
+            if export_upstream is None:
+                export_upstream = config.export_upstream
 
-      # Find out if we were passed a local or remote branch
-      is_local = urlparse.urlsplit(branch)[0] in ('', 'file')
-      if is_local:
-          os.chdir(branch)
+            if export_upstream_revision is None:
+                export_upstream_revision = config.export_upstream_revision
 
-      try:
-          tree, _ = WorkingTree.open_containing(branch)
-          branch = tree.branch
-      except NoWorkingTree:
-          tree = None
-          branch, _ = Branch.open_containing(branch)
+            result_dir, build_dir, orig_dir = self._get_dirs(config, is_local,
+                    result_dir, result, build_dir, orig_dir)
+            properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
-      if revision is None and tree is not None:
-          info("Building using working tree")
-          working_tree = True
-      else:
-          if revision is None:
-              revid = branch.last_revision()
-          elif len(revision) == 1:
-              revid = revision[0].in_history(branch).rev_id
-          else:
-              raise BzrCommandError('bzr builddeb --revision takes exactly one '
-                                    'revision specifier.')
-          info("Building branch from revision %s", revid)
-          tree = branch.repository.revision_tree(revid)
-          working_tree = False
+            if merge:
+                if export_upstream is None:
+                    build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
+                else:
+                    prepull_upstream = config.prepull_upstream
+                    stop_on_no_change = config.prepull_upstream_stop
+                    build = DebMergeExportUpstreamBuild(properties, tree, export_upstream,
+                                                        export_upstream_revision,
+                                                        prepull_upstream,
+                                                        stop_on_no_change,
+                                                        _is_working_tree=working_tree)
+            elif native:
+                build = DebNativeBuild(properties, tree, _is_working_tree=working_tree)
+            elif split:
+                build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
+            else:
+                if export_upstream is None:
+                    build = DebBuild(properties, tree, _is_working_tree=working_tree)
+                else:
+                    prepull_upstream = config.prepull_upstream
+                    stop_on_no_change = config.prepull_upstream_stop
+                    build = DebExportUpstreamBuild(properties, tree, export_upstream,
+                                                   export_upstream_revision,
+                                                   prepull_upstream,
+                                                   stop_on_no_change,
+                                                   _is_working_tree=working_tree)
 
-      tree.lock_read()
-      try:
-          config = debuild_config(tree, working_tree, no_user_config)
+            build.prepare(use_existing)
 
-          if reuse:
-              info("Reusing existing build dir")
-              dont_purge = True
-              use_existing = True
+            run_hook(tree, 'pre-export', config)
 
-          if not merge:
-              merge = config.merge
+            try:
+                build.export(use_existing)
+            except StopBuild, e:
+                warning('Stopping the build: %s.', e.reason)
+                return
 
-          if merge:
-              info("Running in merge mode")
-          else:
-              if not native:
-                  native = config.native
-              if native:
-                  info("Running in native mode")
-              else:
-                  if not split:
-                      split = config.split
-                  if split:
-                      info("Running in split mode")
-
-          if builder is None:
-              if quick:
-                  builder = config.quick_builder
-                  if builder is None:
-                      builder = "fakeroot debian/rules binary"
-              else:
-                  if source:
-                      builder = config.source_builder
-                      if builder is None:
-                          builder = "debuild -S"
-                  else:
-                      builder = config.builder
-                      if builder is None:
-                          builder = "debuild"
-          if build_options:
-              builder += " " + " ".join(build_options)
-
-          (changelog, larstiq) = find_changelog(tree, merge)
-
-          config.set_version(changelog.version)
-
-          if export_upstream is None:
-              export_upstream = config.export_upstream
-
-          if export_upstream_revision is None:
-              export_upstream_revision = config.export_upstream_revision
-
-          if result_dir is None:
-              result_dir = result
-
-          if result_dir is None:
-              if is_local:
-                  result_dir = config.result_dir
-              else:
-                  result_dir = config.user_result_dir
-          if result_dir is not None:
-              result_dir = os.path.realpath(result_dir)
-
-          if build_dir is None:
-              if is_local:
-                  build_dir = config.build_dir or default_build_dir
-              else:
-                  build_dir = config.user_build_dir or 'build-area'
-
-          if orig_dir is None:
-              if is_local:
-                  orig_dir = config.orig_dir or default_orig_dir
-              else:
-                  orig_dir = config.user_orig_dir or 'build-area'
-
-          properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
-
-          if merge:
-              if export_upstream is None:
-                  build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
-              else:
-                  prepull_upstream = config.prepull_upstream
-                  stop_on_no_change = config.prepull_upstream_stop
-                  build = DebMergeExportUpstreamBuild(properties, tree, export_upstream,
-                                                      export_upstream_revision,
-                                                      prepull_upstream,
-                                                      stop_on_no_change,
-                                                      _is_working_tree=working_tree)
-          elif native:
-              build = DebNativeBuild(properties, tree, _is_working_tree=working_tree)
-          elif split:
-              build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
-          else:
-              if export_upstream is None:
-                  build = DebBuild(properties, tree, _is_working_tree=working_tree)
-              else:
-                  prepull_upstream = config.prepull_upstream
-                  stop_on_no_change = config.prepull_upstream_stop
-                  build = DebExportUpstreamBuild(properties, tree, export_upstream,
-                                                 export_upstream_revision,
-                                                 prepull_upstream,
-                                                 stop_on_no_change,
-                                                 _is_working_tree=working_tree)
-
-          build.prepare(use_existing)
-
-          run_hook(tree, 'pre-export', config)
-
-          try:
-              build.export(use_existing)
-          except StopBuild, e:
-              warning('Stopping the build: %s.', e.reason)
-              return
-
-          if not export_only:
-              run_hook(tree, 'pre-build', config, wd=properties.source_dir())
-              build.build(builder)
-              run_hook(tree, 'post-build', config, wd=properties.source_dir())
-              if not dont_purge:
-                  build.clean()
-              arch = None
-              if source:
-                  arch = "source"
-              if result_dir is not None:
-                  build.move_result(result_dir, arch=arch)
-              else:
-                  build.move_result(default_result_dir, allow_missing=True, arch=arch)
-      finally:
-          tree.unlock()
+            if not export_only:
+                run_hook(tree, 'pre-build', config, wd=properties.source_dir())
+                build.build(builder)
+                run_hook(tree, 'post-build', config, wd=properties.source_dir())
+                if not dont_purge:
+                    build.clean()
+                arch = None
+                if source:
+                    arch = "source"
+                if result_dir is not None:
+                    build.move_result(result_dir, arch=arch)
+                else:
+                    build.move_result(default_result_dir, allow_missing=True, arch=arch)
+        finally:
+            tree.unlock()
 
 
 
@@ -488,7 +496,8 @@ class cmd_merge_upstream(Command):
                     raise BzrCommandError("The target file %s already exists, and is either "
                                           "different to the new upstream tarball, or they "
                                           "are of different formats. Either delete the target "
-                                          "file, or use it as the argument to import.")
+                                          "file, or use it as the argument to import."
+                                          % dest_name)
                 tarball_filename = os.path.join(orig_dir, dest_name)
                 distribution = distribution.lower()
                 distribution_name = lookup_distribution(distribution)
