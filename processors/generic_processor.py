@@ -843,9 +843,11 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def deleteall_handler(self, filecmd):
         self.debug("deleting all files (and also all directories)")
-        for path, fileid in self.cache_mgr.file_ids.items():
-            del self.inventory[fileid]
-            self.cache_mgr._delete_path(path)
+        # Would be nice to have an inventory.clear() method here
+        root_items = [ie for (name, ie) in
+            self.inventory.root.children.iteritems()]
+        for root_item in root_items:
+            self.inventory.remove_recursive_id(root_item.file_id)
 
     def bzr_file_id_and_new(self, path):
         """Get a Bazaar file identifier and new flag for a path.

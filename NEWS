@@ -71,6 +71,12 @@ IN DEVELOPMENT
     * Recursively delete children when a directory is deleted.
       (Scott James Remnant)
 
+    * The ``deleteall`` command now only tries to delete files in the
+      nominated branch, not all known files. As a consequence,
+      it should now be possible (if it wasn't before) to import
+      multiple Darcs branches (via darcs-fast-export) at once.
+      (Ian Clatworthy)
+
   API BREAKS:
 
   TESTING:
