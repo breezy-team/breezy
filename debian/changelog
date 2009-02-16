@@ -17,6 +17,7 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   * Switch to debuild instead of dpkg-buildpackage -rfakeroot -uc -us. The most
     noticeable change will be that it now tries to sign by default. Add a NEWS
     entry to explain this.
+  * Support passing extra options to the builder using "bzr bd -- --foo" syntax.
 
   [ Kees Cook ]
   * builder.py: switch to using external tar command to replace buggy

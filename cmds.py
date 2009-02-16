@@ -168,9 +168,8 @@ class cmd_builddeb(Command):
 
     --source allows you to build a source package without having to
     specify a builder to do so with --builder. It uses the source-builder
-    option from your configuration files, and defaults to 'dpkg-buildpackage 
-    -rfakeroot -uc -us -S'. It is overriden if either --builder or --quick are
-    used.
+    option from your configuration files, and defaults to 'debuild -S'.
+    It is overriden if either --builder or --quick are used.
 
     """
     working_tree_opt = Option('working-tree', help="This option has no effect",
@@ -192,11 +191,11 @@ class cmd_builddeb(Command):
                        +"the upstream tarball each time. Implies --dont-purge "
                        +"and --use-existing")
     source_opt = Option('source', help="Build a source package, uses "
-                        +"source-builder, which defaults to \"dpkg-buildpackage "
-                        +"-rfakeroot -uc -us -S\"", short_name='S')
+                        +"source-builder, which defaults to \"debuild "
+                        +"-S\"", short_name='S')
     result_compat_opt = Option('result', help="Present only for compatibility "
             "with bzr-builddeb <= 2.0. Use --result-dir instead.")
-    takes_args = ['branch?']
+    takes_args = ['branch_or_build_options*']
     aliases = ['bd']
     takes_options = [working_tree_opt, export_only_opt,
         dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
@@ -205,7 +204,8 @@ class cmd_builddeb(Command):
         export_upstream_revision_opt, source_opt, 'revision',
         no_user_conf_opt, result_compat_opt]
 
-    def run(self, branch=None, verbose=False, working_tree=False,
+    def run(self, branch_or_build_options_list=None, verbose=False,
+            working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
             result_dir=None, builder=None, merge=False, build_dir=None,
             orig_dir=None, ignore_changes=False, ignore_unknowns=False,
@@ -213,8 +213,18 @@ class cmd_builddeb(Command):
             export_upstream=None, export_upstream_revision=None,
             source=False, revision=None, no_user_config=False, result=None):
 
+      branch = None
+      if branch_or_build_options_list is not None:
+          build_options = []
+          for opt in branch_or_build_options_list:
+              if opt.startswith("-") or branch is not None:
+                  build_options.append(opt)
+              else:
+                  branch = opt
+
       if branch is None:
           branch = "."
+
 
       # Find out if we were passed a local or remote branch
       is_local = urlparse.urlsplit(branch)[0] in ('', 'file')
@@ -277,11 +287,13 @@ class cmd_builddeb(Command):
                   if source:
                       builder = config.source_builder
                       if builder is None:
-                          builder = "dpkg-buildpackage -rfakeroot -uc -us -S"
+                          builder = "debuild -S"
                   else:
                       builder = config.builder
                       if builder is None:
-                          builder = "dpkg-buildpackage -uc -us -rfakeroot"
+                          builder = "debuild"
+          if build_options:
+              builder += " " + " ".join(build_options)
 
           (changelog, larstiq) = find_changelog(tree, merge)
 

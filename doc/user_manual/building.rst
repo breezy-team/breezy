@@ -30,6 +30,16 @@ See the `Configuration Files`_ section for how to do this.
 
 .. _Configuration Files: configuration.html
 
+If you wish to pass extra options to the builder, such as ``-v`` then you
+can do it by specifying them after ``--`` on the command line, e.g.
+
+::
+
+  $ bzr builddeb -- -v0.1-1
+
+At this point you should specify the ``-S`` option before the ``--`` so that
+the tool knows that you are building a source package.
+
 If you have a slow builder defined in your configuration (see `Configuration
 Files`_) then you may want to bypass this sometimes. If you are trying to
 quickly test changes to a package you might just want a quick build. It
