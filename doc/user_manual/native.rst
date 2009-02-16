@@ -13,7 +13,7 @@ Setting up the package is rather easy. If you already have some versions of
 the package then you can import the history, see the `Importing History`_
 section below. If you are starting a new package, and you like to use
 ``dh_make``, then the easiest way is to do that as normal, then build a
-source package using ``dpkg-buildpackage -S``, and then import that as
+source package using ``debuild -S``, and then import that as
 outlined in `Importing History`_.
 
 If you wish to create a new package without using a tool like ``dh_make``

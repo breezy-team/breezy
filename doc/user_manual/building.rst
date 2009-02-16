@@ -16,10 +16,9 @@ also an alias of ``bd`` provided for this, so that
 
 will do the same thing.
 
-By default it uses ``dpkg-buildpackage -uc -us -rfakeroot`` to build the
-package. If you would prefer to use something else then you can use the
-``--builder`` option to control this. For instance to build in a pbuilder
-chroot you can run
+By default it uses ``debuild`` to build the package. If you would prefer
+to use something else then you can use the ``--builder`` option to control
+this. For instance to build in a pbuilder chroot you can run
 
 ::
 

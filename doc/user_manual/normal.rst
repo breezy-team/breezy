@@ -8,7 +8,7 @@ This is the mode that works most like packaging without Bazaar. When you issue
 the command to build the package the plugin exports the source to the build
 directory, and places the upstream tarball there as well. It then calls the
 build command in the exported source directory. Most build commands (like
-``dpkg-buildpackage``) know how to work in this situation, and create a source
+``debuild``) know how to work in this situation, and create a source
 package using the upstream tarball and generating the diff against it.
 
 This arrangement means that any changes you make to the source in the branch
@@ -44,7 +44,7 @@ the formats.
 If you have started packaging, but do have not completed the first version
 of the package yet, for instance you have used ``dh_make``, but have not
 completed the packaging, the best approach to convert this to a bzr branch is
-to build a source package (with ``dpkg-buildpackage -S``, and then import
+to build a source package (with ``debuild -S``, and then import
 this with ``import-dsc`` as described in `Importing History`_.
 
 If however you are starting a completely new package you can follow the steps

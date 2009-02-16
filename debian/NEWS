@@ -1,3 +1,11 @@
+bzr-builddeb (2.1) jaunty; urgency=low
+
+  The build command now defaults to "debuild" instead of
+  "dpkg-buildpackage -rfakeroot -uc -us". The most obvious change here will be
+  that it tries to sign packages by default.
+
+ -- James Westby <james.westby@ubuntu.com>  Mon, 16 Feb 2009 16:11:44 +0000
+
 bzr-builddeb (2.0) unstable; urgency=low
 
   There have been several compatibility breaks in this release.

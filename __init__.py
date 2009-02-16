@@ -176,9 +176,8 @@ class cmd_builddeb(Command):
 
     --source allows you to build a source package without having to
     specify a builder to do so with --builder. It uses the source-builder
-    option from your configuration files, and defaults to 'dpkg-buildpackage 
-    -rfakeroot -uc -us -S'. It is overriden if either --builder or --quick are
-    used.
+    option from your configuration files, and defaults to 'debuild -S'.
+    It is overriden if either --builder or --quick are used.
 
     """
     working_tree_opt = Option('working-tree', help="This option has no effect",
@@ -200,8 +199,8 @@ class cmd_builddeb(Command):
                        +"the upstream tarball each time. Implies --dont-purge "
                        +"and --use-existing")
     source_opt = Option('source', help="Build a source package, uses "
-                        +"source-builder, which defaults to \"dpkg-buildpackage "
-                        +"-rfakeroot -uc -us -S\"", short_name='S')
+                        +"source-builder, which defaults to \"debuild -S\"",
+                        short_name='S')
     result_compat_opt = Option('result', help="Present only for compatibility "
             "with bzr-builddeb <= 2.0. Use --result-dir instead.")
     takes_args = ['branch?']
@@ -273,11 +272,11 @@ class cmd_builddeb(Command):
                 if source:
                     builder = config.source_builder
                     if builder is None:
-                        builder = "dpkg-buildpackage -rfakeroot -uc -us -S"
+                        builder = "debuild -S"
                 else:
                     builder = config.builder
                     if builder is None:
-                        builder = "dpkg-buildpackage -uc -us -rfakeroot"
+                        builder = "debuild"
         return builder
 
     def _get_dirs(self, config, is_local, result_dir, result, build_dir, orig_dir):

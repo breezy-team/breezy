@@ -12,6 +12,9 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
 
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
+  * Switch to debuild instead of dpkg-buildpackage -rfakeroot -uc -us. The most
+    noticeable change will be that it now tries to sign by default. Add a NEWS
+    entry to explain this.
 
  -- James Westby <james.westby@canonical.com>  Thu, 28 Aug 2008 11:41:35 +0100
 
