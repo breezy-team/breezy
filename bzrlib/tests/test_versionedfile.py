@@ -1739,6 +1739,40 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                     record.get_bytes_as(record.storage_kind))
             self.assertEqual(1, len(records))
 
+    def assertStreamMetaEqual(self, records, expected, stream):
+        """Assert that streams expected and stream have the same records.
+        
+        :param records: A list to collect the seen records.
+        :return: A generator of the records in stream.
+        """
+        # We make assertions during copying to catch things early for
+        # easier debugging.
+        for record, ref_record in izip(stream, expected):
+            records.append(record)
+            self.assertEqual(ref_record.key, record.key)
+            self.assertEqual(ref_record.storage_kind, record.storage_kind)
+            self.assertEqual(ref_record.parents, record.parents)
+            yield record
+
+    def stream_to_bytes_or_skip_counter(self, skipped_records, full_texts,
+        stream):
+        """Convert a stream to a bytes iterator.
+
+        :param skipped_records: A list with one element to increment when a
+            record is skipped.
+        :param full_texts: A dict from key->fulltext representation, for 
+            checking chunked or fulltext stored records.
+        :param stream: A record_stream.
+        :return: An iterator over the bytes of each record.
+        """
+        for record in stream:
+            if record.storage_kind in ('chunked', 'fulltext'):
+                skipped_records[0] += 1
+                # check the content is correct for direct use.
+                self.assertRecordHasContent(record, full_texts[record.key])
+            else:
+                yield record.get_bytes_as(record.storage_kind)
+
     def test_get_record_stream_native_formats_are_wire_ready_ft_delta(self):
         files = self.get_versionedfiles()
         target_files = self.get_versionedfiles('target')
@@ -1753,36 +1787,19 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         local = files.get_record_stream([key, key_delta], 'unordered', False)
         ref = files.get_record_stream([key, key_delta], 'unordered', False)
         skipped_records = [0]
-        def to_bytes(stream):
-            for record in stream:
-                if record.storage_kind in ('chunked', 'fulltext'):
-                    skipped_records[0] += 1
-                    # check the content is correct for direct use.
-                    if record.key == key:
-                        self.assertRecordHasContent(record, "my text\ncontent")
-                    else:
-                        self.assertRecordHasContent(record,
-                            "different\ncontent\n")
-                else:
-                    yield record.get_bytes_as(record.storage_kind)
-        byte_stream = to_bytes(local)
+        full_texts = {
+            key: "my text\ncontent",
+            key_delta: "different\ncontent\n",
+            }
+        byte_stream = self.stream_to_bytes_or_skip_counter(
+            skipped_records, full_texts, local)
         network_stream = versionedfile.NetworkRecordStream(byte_stream).read()
         records = []
-        # We assume that the order of local and ref will be identical given the
-        # same parameters to the same source objects.
-        def check_stream(network_stream, reference_stream):
-            # We make assertions during copying to catch things early for
-            # easier debugging.
-            for record, ref_record in izip(network_stream, reference_stream):
-                records.append(record)
-                self.assertEqual(ref_record.key, record.key)
-                self.assertEqual(ref_record.storage_kind, record.storage_kind)
-                self.assertEqual(ref_record.parents, record.parents)
-                yield record
         # insert the stream from the network into a versioned files object so we can
         # check the content was carried across correctly without doing delta
         # inspection.
-        target_files.insert_record_stream(check_stream(network_stream, ref))
+        target_files.insert_record_stream(
+            self.assertStreamMetaEqual(records, ref, network_stream))
         # No duplicates on the wire thank you!
         self.assertEqual(2, len(records) + skipped_records[0])
         if len(records):
@@ -1801,42 +1818,60 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         else:
             delta_parents = ()
         files.add_lines(key_delta, delta_parents, ['different\n', 'content\n'])
+        # Copy the basis text across so we can reconstruct the delta during
+        # insertion into target.
         target_files.insert_record_stream(files.get_record_stream([key],
             'unordered', False))
         local = files.get_record_stream([key_delta], 'unordered', False)
         ref = files.get_record_stream([key_delta], 'unordered', False)
         skipped_records = [0]
-        def to_bytes(stream):
-            for record in stream:
-                if record.storage_kind in ('chunked', 'fulltext'):
-                    skipped_records[0] += 1
-                    # check the content is correct for direct use.
-                    self.assertRecordHasContent(record, "different\ncontent\n")
-                else:
-                    yield record.get_bytes_as(record.storage_kind)
-        byte_stream = to_bytes(local)
+        full_texts = {
+            key_delta: "different\ncontent\n",
+            }
+        byte_stream = self.stream_to_bytes_or_skip_counter(
+            skipped_records, full_texts, local)
         network_stream = versionedfile.NetworkRecordStream(byte_stream).read()
         records = []
-        # We assume that the order of local and ref will be identical given the
-        # same parameters to the same source objects.
-        def check_stream(network_stream, reference_stream):
-            # We make assertions during copying to catch things early for
-            # easier debugging.
-            for record, ref_record in izip(network_stream, reference_stream):
-                records.append(record)
-                self.assertEqual(ref_record.key, record.key)
-                self.assertEqual(ref_record.storage_kind, record.storage_kind)
-                self.assertEqual(ref_record.parents, record.parents)
-                yield record
         # insert the stream from the network into a versioned files object so we can
         # check the content was carried across correctly without doing delta
         # inspection during check_stream.
-        target_files.insert_record_stream(check_stream(network_stream, ref))
+        target_files.insert_record_stream(
+            self.assertStreamMetaEqual(records, ref, network_stream))
         # No duplicates on the wire thank you!
         self.assertEqual(1, len(records) + skipped_records[0])
         if len(records):
             # if any content was copied it all must have all been
             self.assertIdenticalVersionedFile(files, target_files)
+
+    def test_get_record_stream_wire_ready_delta_closure_included(self):
+        # copy a delta over the wire with the ability to get its full text.
+        files = self.get_versionedfiles()
+        key = self.get_simple_key('ft')
+        key_delta = self.get_simple_key('delta')
+        files.add_lines(key, (), ['my text\n', 'content'])
+        if self.graph:
+            delta_parents = (key,)
+        else:
+            delta_parents = ()
+        files.add_lines(key_delta, delta_parents, ['different\n', 'content\n'])
+        local = files.get_record_stream([key_delta], 'unordered', True)
+        ref = files.get_record_stream([key_delta], 'unordered', True)
+        skipped_records = [0]
+        full_texts = {
+            key_delta: "different\ncontent\n",
+            }
+        byte_stream = self.stream_to_bytes_or_skip_counter(
+            skipped_records, full_texts, local)
+        network_stream = versionedfile.NetworkRecordStream(byte_stream).read()
+        records = []
+        # insert the stream from the network into a versioned files object so we can
+        # check the content was carried across correctly without doing delta
+        # inspection during check_stream.
+        for record in self.assertStreamMetaEqual(records, ref, network_stream):
+            # we have to be able to get the full text out:
+            self.assertRecordHasContent(record, full_texts[record.key])
+        # No duplicates on the wire thank you!
+        self.assertEqual(1, len(records) + skipped_records[0])
 
     def assertAbsentRecord(self, files, keys, parents, entries):
         """Helper for test_get_record_stream_missing_records_are_absent."""
