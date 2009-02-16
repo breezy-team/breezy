@@ -135,13 +135,13 @@ class CommitCommand(ImportCommand):
         if self.merges is None:
             merge_lines = ""
         else:
-            merge_lines = "\n" + "\n".join(["merge :%s" % m
+            merge_lines = "".join(["\nmerge :%s" % (m,)
                 for m in self.merges])
         if self.file_iter is None:
             filecommands = ""
         else:
-            filecommands = "\n" + "\n".join([repr(c)
-                for c in self.file_iter])
+            filecommands = "".join(["\n%r" % (c,)
+                for c in iter(self.file_iter)])
         return "commit %s%s%s\n%s%s%s%s%s" % (self.ref, mark_line, author_line,
             committer, msg, from_line, merge_lines, filecommands)
 
@@ -236,7 +236,7 @@ class FileModifyCommand(FileCommand):
             dataref = "inline"
             datastr = "\ndata %d\n%s" % (len(self.data), self.data)
         else:
-            dataref = ":%s" % (self.dataref,)
+            dataref = "%s" % (self.dataref,)
             datastr = ""
         return "M %s %s %s%s" % (mode, dataref, self.path, datastr)
 

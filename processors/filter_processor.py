@@ -65,14 +65,10 @@ class FilterProcessor(processor.ImportProcessor):
     def post_handler(self, cmd):
         if not self.keep:
             return
-        # TODO: print referenced blobs (once print method exists)
+        # print referenced blobs and the command
         for blob_id in self.referenced_blobs:
-            blob = self.blobs[blob_id]
-            #print "%r" % blob
-            print "%s" % blob.dump_str(verbose=True)
-        # TODO: print command (once print method exists)
-        #print "%r" % self.command
-        print "%s" % self.command.dump_str(verbose=True)
+            self._print_command(self.blobs[blob_id])
+        self._print_command(self.command)
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
@@ -96,7 +92,7 @@ class FilterProcessor(processor.ImportProcessor):
         # These pass through if they meet the filtering conditions
         interesting_filecmds = self._filter_filecommands(cmd.file_iter)
         if interesting_filecmds:
-            cmd.file_commands = interesting_filecmds
+            cmd.file_iter = iter(interesting_filecmds)
             self.keep = True
             self.interesting_commits.add(cmd.mark)
             # record the referenced blobs
@@ -127,6 +123,14 @@ class FilterProcessor(processor.ImportProcessor):
         else:
             self.keep = True
 
+    def _print_command(self, cmd):
+        """Wrapper to avoid adding unnecessary blank lines."""
+        text = repr(cmd)
+        if text.endswith("\n"):
+            print "%s" % text[:-1]
+        else:
+            print "%s" % text
+
     def _find_new_root(self, paths):
         """Find the deepest common directory for a list of paths."""
         if not paths:
@@ -142,9 +146,12 @@ class FilterProcessor(processor.ImportProcessor):
             return None
 
     def _filter_filecommands(self, filecmd_iter):
-        """Return the filecommands filtered by includes & excludes."""
+        """Return the filecommands filtered by includes & excludes.
+        
+        :return: a list of FileCommand objects
+        """
         if self.includes is None and self.excludes is None:
-            return list(filecmd_iter())
+            return list(filecmd_iter)
 
         # Do the filtering, adjusting for the new_root
         result = []

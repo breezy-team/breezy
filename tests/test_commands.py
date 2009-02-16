@@ -116,11 +116,11 @@ class TestCommitDisplay(tests.TestCase):
             repr(c))
 
     def test_commit_with_filecommands(self):
-        file_cmds = [
+        file_cmds = iter([
             commands.FileDeleteCommand('readme.txt'),
             commands.FileModifyCommand('NEWS', 'file', False, None,
                 'blah blah blah'),
-            ]
+            ])
         # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", None, committer,
@@ -185,11 +185,11 @@ class TestTagDisplay(tests.TestCase):
 class TestFileModifyDisplay(tests.TestCase):
 
     def test_filemodify_file(self):
-        c = commands.FileModifyCommand("foo/bar", "file", False, "23", None)
+        c = commands.FileModifyCommand("foo/bar", "file", False, ":23", None)
         self.assertEqual("M 644 :23 foo/bar", repr(c))
 
     def test_filemodify_file_executable(self):
-        c = commands.FileModifyCommand("foo/bar", "file", True, "23", None)
+        c = commands.FileModifyCommand("foo/bar", "file", True, ":23", None)
         self.assertEqual("M 755 :23 foo/bar", repr(c))
 
     def test_filemodify_file_internal(self):
