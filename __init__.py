@@ -67,7 +67,6 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscComp,
         )
 from bzrlib.plugins.builddeb.properties import BuildProperties
-from bzrlib.plugins.builddeb import revspec
 from bzrlib.plugins.builddeb.util import (find_changelog,
         lookup_distribution,
         suite_to_distribution,
@@ -827,6 +826,14 @@ register_command(cmd_test_builddeb)
 directories.register_lazy("deb:", 'bzrlib.plugins.builddeb.directory', 
         'VcsDirectory', 
         "Directory that uses Debian Vcs-* control fields to look up branches")
+
+try:
+    from bzrlib.revisionspec import revspec_registry
+    revspec_registry.register_lazy("package:", "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
+except ImportError:
+    from bzrlib.revisionspec import SPEC_TYPES
+    from bzrlib.plugins.builddeb.revspec import RevisionSpec_package
+    SPEC_TYPES.append(RevisionSpec_package)
 
 if __name__ == '__main__':
     print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
