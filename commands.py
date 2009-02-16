@@ -76,11 +76,21 @@ class BlobCommand(ImportCommand):
             self.id = ':' + mark
         self._binary = ['data']
 
+    def __repr__(self):
+        if self.mark is None:
+            mark_line = ""
+        else:
+            mark_line = "\nmark :%s" % self.mark
+        return "blob%s\ndata %d\n%s" % (mark_line, len(self.data), self.data)
+
 
 class CheckpointCommand(ImportCommand):
 
     def __init__(self):
         ImportCommand.__init__(self, 'checkpoint')
+
+    def __repr__(self):
+        return "checkpoint"
 
 
 class CommitCommand(ImportCommand):
@@ -104,6 +114,37 @@ class CommitCommand(ImportCommand):
         else:
             self.id = ':' + mark
 
+    def __repr__(self):
+        if self.mark is None:
+            mark_line = ""
+        else:
+            mark_line = "\nmark :%s" % self.mark
+        if self.author is None:
+            author_line = ""
+        else:
+            author_line = "\nauthor %s" % _format_who_when(self.author)
+        committer = "committer %s" % _format_who_when(self.committer)
+        if self.message is None:
+            msg = ""
+        else:
+            msg = "\ndata %d\n%s" % (len(self.message), self.message)
+        if self.from_ is None:
+            from_line = ""
+        else:
+            from_line = "\nfrom :%s" % self.from_
+        if self.merges is None:
+            merge_lines = ""
+        else:
+            merge_lines = "\n" + "\n".join(["merge :%s" % m
+                for m in self.merges])
+        if self.file_iter is None:
+            filecommands = ""
+        else:
+            filecommands = "\n" + "\n".join([repr(c)
+                for c in self.file_iter])
+        return "commit %s%s%s\n%s%s%s%s%s" % (self.ref, mark_line, author_line,
+            committer, msg, from_line, merge_lines, filecommands)
+
     def dump_str(self, names=None, child_lists=None, verbose=False):
         result = [ImportCommand.dump_str(self, names, verbose=verbose)]
         for f in self.file_iter():
@@ -123,6 +164,9 @@ class ProgressCommand(ImportCommand):
         ImportCommand.__init__(self, 'progress')
         self.message = message
 
+    def __repr__(self):
+        return "progress %s" % (self.message,)
+
 
 class ResetCommand(ImportCommand):
 
@@ -130,6 +174,13 @@ class ResetCommand(ImportCommand):
         ImportCommand.__init__(self, 'reset')
         self.ref = ref
         self.from_ = from_
+
+    def __repr__(self):
+        if self.from_ is None:
+            from_line = ""
+        else:
+            from_line = "\nfrom :%s" % self.from_
+        return "reset %s%s" % (self.ref, from_line)
 
 
 class TagCommand(ImportCommand):
@@ -140,6 +191,21 @@ class TagCommand(ImportCommand):
         self.from_ = from_
         self.tagger = tagger
         self.message = message
+
+    def __repr__(self):
+        if self.from_ is None:
+            from_line = ""
+        else:
+            from_line = "\nfrom :%s" % self.from_
+        if self.tagger is None:
+            tagger_line = ""
+        else:
+            tagger_line = "\ntagger %s" % _format_who_when(self.tagger)
+        if self.message is None:
+            msg = ""
+        else:
+            msg = "\ndata %d\n%s" % (len(self.message), self.message)
+        return "tag %s%s%s%s" % (self.id, from_line, tagger_line, msg)
 
 
 class FileCommand(ImportCommand):
@@ -159,12 +225,30 @@ class FileModifyCommand(FileCommand):
         self.data = data
         self._binary = ['data']
 
+    def __repr__(self):
+        if self.kind == 'symlink':
+            mode = "120000"
+        elif self.is_executable:
+            mode = "755"
+        else:
+            mode = "644"
+        if self.dataref is None:
+            dataref = "inline"
+            datastr = "\ndata %d\n%s" % (len(self.data), self.data)
+        else:
+            dataref = ":%s" % (self.dataref,)
+            datastr = ""
+        return "M %s %s %s%s" % (mode, dataref, self.path, datastr)
+
 
 class FileDeleteCommand(FileCommand):
 
     def __init__(self, path):
         FileCommand.__init__(self, 'filedelete')
         self.path = path
+
+    def __repr__(self):
+        return "D %s" % (self.path,)
 
 
 class FileCopyCommand(FileCommand):
@@ -174,6 +258,9 @@ class FileCopyCommand(FileCommand):
         self.src_path = src_path
         self.dest_path = dest_path
 
+    def __repr__(self):
+        return "C %s %s" % (_quote_path(self.src_path), self.dest_path)
+
 
 class FileRenameCommand(FileCommand):
 
@@ -182,8 +269,36 @@ class FileRenameCommand(FileCommand):
         self.old_path = old_path
         self.new_path = new_path
 
+    def __repr__(self):
+        return "R %s %s" % (_quote_path(self.old_path), self.new_path)
+
 
 class FileDeleteAllCommand(FileCommand):
 
     def __init__(self):
         FileCommand.__init__(self, 'filedeleteall')
+
+    def __repr__(self):
+        return "deleteall"
+
+
+def _quote_path(s):
+    """Surround a path with quotes if it contains spaces."""
+    if ' ' in s:
+        return '"%s"' % (s,)
+    else:
+        return s
+
+
+def _format_who_when(fields):
+    """Format a tuple of name,email,secs-since-epoch,utc-offset-secs as a string."""
+    offset = fields[3]
+    if offset < 0:
+        offset_sign = '-'
+        offset = abs(offset)
+    else:
+        offset_sign = '+'
+    offset_hours = offset / 3600
+    offset_minutes = offset / 60 - offset_hours * 60
+    offset_str = "%s%02d%02d" % (offset_sign, offset_hours, offset_minutes)
+    return "%s <%s> %d %s" % (fields[0], fields[1], fields[2], offset_str)
