@@ -23,6 +23,9 @@ IN DEVELOPMENT
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
 
+    * The ``bzr shelve`` prompt now includes a '?' help option to explain the
+      short options better. (Daniel Watkins, #327429)
+
   BUG FIXES:
 
     * ``bzr unshelve`` gives a more palatable error if passed a non-integer
@@ -148,9 +151,6 @@ bzr 1.12rc1 "1234567890" 2009-02-10
     * The ``ancestor:`` revision spec will now default to referring to the
       parent of the branch if no other location is given.
       (Daniel Watkins, #198417)
-
-    * The ``bzr shelve`` prompt now includes a '?' help option to explain the
-      short options better. (Daniel Watkins, #327429)
 
     * The debugger started as a result of setting ``$BZR_PDB`` works
       around a bug in ``pdb``, http://bugs.python.org/issue4150.  The bug
