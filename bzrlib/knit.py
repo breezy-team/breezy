@@ -1478,9 +1478,8 @@ class KnitVersionedFiles(VersionedFiles):
         # If there were any deltas which had a missing basis parent, error.
         if buffered_index_entries:
             from pprint import pformat
-            raise errors.BzrCheckError(
-                "record_stream refers to compression parents not in %r:\n%s"
-                % (self, pformat(sorted(buffered_index_entries.keys()))))
+            raise errors.RevisionNotPresent(
+                pformat(sorted(buffered_index_entries.keys())), '<?>')
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.

@@ -1971,13 +1971,16 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def test_insert_record_stream_delta_missing_basis_no_corruption(self):
         """Insertion where a needed basis is not included aborts safely."""
-        # We use a knit always here to be sure we are getting a binary delta.
+        # We use a knit source with a graph always here to be sure we are
+        # getting a binary delta.
         mapper = self.get_mapper()
         source_transport = self.get_transport('source')
         source_transport.mkdir('.')
         source = make_file_factory(False, mapper)(source_transport)
-        self.get_diamond_files(source)
-        entries = source.get_record_stream(['origin', 'merged'], 'unordered', False)
+        get_diamond_files(source, self.key_length, trailing_eol=True,
+            nograph=False, left_only=False)
+        entries = source.get_record_stream([self.get_simple_key('origin'),
+            self.get_simple_key('merged')], 'unordered', False)
         files = self.get_versionedfiles()
         self.assertRaises(RevisionNotPresent, files.insert_record_stream,
             entries)
