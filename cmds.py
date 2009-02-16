@@ -146,7 +146,12 @@ class cmd_builddeb(Command):
 
     To leave the build directory when the build is completed use --dont-purge.
 
-    Specify the command to use when building using the --builder option,
+    Specify the command to use when building using the --builder option, by
+    default "debuild" is used. It can be overriden by setting the "builder"
+    variable in you configuration. You can specify extra options to build with
+    by adding them to the end of the command, after using "--" to indicate the
+    end of the options to builddeb itself. The builder that you specify must
+    accept the options you provide at the end of its command line.
 
     You can also specify directories to use for different things. --build-dir
     is the directory to build the packages beneath, which defaults to
@@ -164,13 +169,7 @@ class cmd_builddeb(Command):
     --quick allows you to define a quick-builder in your configuration files, 
     which will be used when this option is passed. It defaults to 'fakeroot 
     debian/rules binary'. It is overriden if --builder is passed. Using this
-    and --reuse allows for fast rebuilds. 
-
-    --source allows you to build a source package without having to
-    specify a builder to do so with --builder. It uses the source-builder
-    option from your configuration files, and defaults to 'debuild -S'.
-    It is overriden if either --builder or --quick are used.
-
+    and --reuse allows for fast rebuilds.
     """
     working_tree_opt = Option('working-tree', help="This option has no effect",
                               short_name='w')
@@ -190,9 +189,7 @@ class cmd_builddeb(Command):
                        +"build. Only works in merge mode; it saves unpacking "
                        +"the upstream tarball each time. Implies --dont-purge "
                        +"and --use-existing")
-    source_opt = Option('source', help="Build a source package, uses "
-                        +"source-builder, which defaults to \"debuild "
-                        +"-S\"", short_name='S')
+    source_opt = Option('source', help="Build a source package", short_name='S')
     result_compat_opt = Option('result', help="Present only for compatibility "
             "with bzr-builddeb <= 2.0. Use --result-dir instead.")
     takes_args = ['branch_or_build_options*']
@@ -253,21 +250,16 @@ class cmd_builddeb(Command):
                     info("Running in split mode")
         return merge, native, split
 
-    def _get_builder(self, config, builder, quick, source, build_options):
+    def _get_builder(self, config, builder, quick, build_options):
         if builder is None:
             if quick:
                 builder = config.quick_builder
                 if builder is None:
                     builder = "fakeroot debian/rules binary"
             else:
-                if source:
-                    builder = config.source_builder
-                    if builder is None:
-                        builder = "debuild -S"
-                else:
-                    builder = config.builder
-                    if builder is None:
-                        builder = "debuild"
+                builder = config.builder
+                if builder is None:
+                    builder = "debuild"
         if build_options:
             builder += " " + " ".join(build_options)
         return builder
@@ -294,6 +286,25 @@ class cmd_builddeb(Command):
                 orig_dir = config.user_orig_dir or 'build-area'
         return result_dir, build_dir, orig_dir
 
+    def _branch_and_build_options(self, branch_or_build_options_list,
+            source=False):
+        branch = None
+        build_options = []
+        source_opt = False
+        if branch_or_build_options_list is not None:
+            for opt in branch_or_build_options_list:
+                if opt.startswith("-") or branch is not None:
+                    build_options.append(opt)
+                    if opt == "-S" or opt == "--source":
+                        source_opt = True
+                else:
+                    branch = opt
+        if source and not source_opt:
+            build_options.append("-S")
+        if source_opt:
+            source = True
+        return branch, build_options, source
+
     def run(self, branch_or_build_options_list=None, verbose=False,
             working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
@@ -302,16 +313,8 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=False, split=False,
             export_upstream=None, export_upstream_revision=None,
             source=False, revision=None, no_user_config=False, result=None):
-
-        branch = None
-        build_options = []
-        if branch_or_build_options_list is not None:
-            for opt in branch_or_build_options_list:
-                if opt.startswith("-") or branch is not None:
-                    build_options.append(opt)
-                else:
-                    branch = opt
-
+        branch, build_options, source = self._branch_and_build_options(
+                branch_or_build_options_list, source)
         tree, branch, is_local = self._get_tree_and_branch(branch)
         tree, working_tree = self._get_build_tree(revision, tree, branch)
         tree.lock_read()
@@ -323,8 +326,7 @@ class cmd_builddeb(Command):
                 use_existing = True
             merge, native, split = self._build_type(config, merge, native,
                     split)
-            builder = self._get_builder(config, builder, quick, source,
-                    build_options)
+            builder = self._get_builder(config, builder, quick, build_options)
             (changelog, larstiq) = find_changelog(tree, merge)
             config.set_version(changelog.version)
 

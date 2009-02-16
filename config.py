@@ -231,9 +231,6 @@ class DebBuildConfig(object):
   quick_builder = _opt_property('quick-builder',
                           "A quick command to build with", True)
 
-  source_builder = _opt_property('source-builder',
-                          "The command to build source packages with", True)
-
   native = _bool_property('native', "Build a native package")
 
   split = _bool_property('split', "Split a full source package")

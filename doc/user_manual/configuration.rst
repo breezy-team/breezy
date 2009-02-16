@@ -151,13 +151,6 @@ situations.
     (Defaults to ``fakeroot debian/rules binary``). Will only be read from
     the config file in your home directory.
 
-  * ``source-builder = command``
-
-    The command used to build a source package if the ``--short`` or ``-S``
-    options are used. Overriden if ``--builder`` or ``--quick`` are given on
-    the command line. (Defaults to ``debuild -S``). Will only be read from the
-    config file in your home directory.
-
 The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
 that apply to the package on all systems, or that there is a default that is 
 wanted that differs from the default provided. ``merge = True`` is a perfect 
