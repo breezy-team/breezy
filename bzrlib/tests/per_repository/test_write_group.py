@@ -118,6 +118,9 @@ class TestWriteGroup(TestCaseWithRepository):
         if token is not None:
             repo.leave_lock_in_place()
 
+
+class TestResumeableWriteGroup(TestCaseWithRepository):
+
     def make_write_locked_repo(self):
         repo = self.make_repository('repo')
         repo.lock_write()
@@ -155,9 +158,7 @@ class TestWriteGroup(TestCaseWithRepository):
             # See also test_pack_repository's test of the same name.
 
     def test_resume_write_group_then_abort(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -215,9 +216,7 @@ class TestWriteGroup(TestCaseWithRepository):
         same_repo.abort_write_group()
 
     def test_no_op_suspend_resume(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
