@@ -802,13 +802,15 @@ def load_tests(basic_tests, module, test_loader):
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          dict(format_name='development4',
+              # merge-bbc-dev4-to-bzr.dev
               format_string="Bazaar development format 4 "
-                  "(needs bzr.dev from before 1.13)\n",
+                  "(needs bzr.dev from before 1.11)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          dict(format_name='development4-subtree',
+              # merge-bbc-dev4-to-bzr.dev
               format_string="Bazaar development format 4 "
-                  "with subtree support (needs bzr.dev from before 1.13)\n",
+                  "with subtree support (needs bzr.dev from before 1.11)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]
