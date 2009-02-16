@@ -149,8 +149,8 @@ class Reconfigure(object):
             raise errors.ReconfigurationNotSupported(reconfiguration.bzrdir)
         if with_trees and reconfiguration.repository.make_working_trees():
             raise errors.AlreadyWithTrees(bzrdir)
-        elif (not with_trees and
-                not reconfiguration.repository.make_working_trees()):
+        elif (not with_trees
+              and not reconfiguration.repository.make_working_trees()):
             raise errors.AlreadyWithNoTrees(bzrdir)
         else:
             reconfiguration._repository_trees = with_trees

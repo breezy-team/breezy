@@ -4980,31 +4980,30 @@ class cmd_reconfigure(Command):
 
     _see_also = ['branches', 'checkouts', 'standalone-trees', 'working-trees']
     takes_args = ['location?']
-    takes_options = [RegistryOption.from_kwargs('target_type',
-                     title='Target type',
-                     help='The type to reconfigure the directory to.',
-                     value_switches=True, enum_switch=False,
-                     branch='Reconfigure to be an unbound branch '
-                        'with no working tree.',
-                     tree='Reconfigure to be an unbound branch '
-                        'with a working tree.',
-                     checkout='Reconfigure to be a bound branch '
-                        'with a working tree.',
-                     lightweight_checkout='Reconfigure to be a lightweight'
-                     ' checkout (with no local history).',
-                     standalone='Reconfigure to be a standalone branch '
-                        '(i.e. stop using shared repository).',
-                     use_shared='Reconfigure to use a shared repository.',
-                     with_trees='Reconfigure repository to create '
-                        'working trees on branches by default',
-                     with_no_trees='Reconfigure repository to not create '
-                        'working trees on branches by default'),
-                     Option('bind-to', help='Branch to bind checkout to.',
-                            type=str),
-                     Option('force',
-                        help='Perform reconfiguration even if local changes'
-                        ' will be lost.')
-                     ]
+    takes_options = [
+        RegistryOption.from_kwargs(
+            'target_type',
+            title='Target type',
+            help='The type to reconfigure the directory to.',
+            value_switches=True, enum_switch=False,
+            branch='Reconfigure to be an unbound branch with no working tree.',
+            tree='Reconfigure to be an unbound branch with a working tree.',
+            checkout='Reconfigure to be a bound branch with a working tree.',
+            lightweight_checkout='Reconfigure to be a lightweight'
+                ' checkout (with no local history).',
+            standalone='Reconfigure to be a standalone branch '
+                '(i.e. stop using shared repository).',
+            use_shared='Reconfigure to use a shared repository.',
+            with_trees='Reconfigure repository to create '
+                'working trees on branches by default.',
+            with_no_trees='Reconfigure repository to not create '
+                'working trees on branches by default.'
+            ),
+        Option('bind-to', help='Branch to bind checkout to.', type=str),
+        Option('force',
+               help='Perform reconfiguration even if local changes'
+               ' will be lost.')
+        ]
 
     def run(self, location=None, target_type=None, bind_to=None, force=False):
         directory = bzrdir.BzrDir.open(location)
@@ -5015,8 +5014,8 @@ class cmd_reconfigure(Command):
         elif target_type == 'tree':
             reconfiguration = reconfigure.Reconfigure.to_tree(directory)
         elif target_type == 'checkout':
-            reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
-                                                                  bind_to)
+            reconfiguration = reconfigure.Reconfigure.to_checkout(
+                directory, bind_to)
         elif target_type == 'lightweight-checkout':
             reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
                 directory, bind_to)
