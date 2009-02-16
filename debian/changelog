@@ -10,6 +10,7 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   * Try to retrieve upstream tarball using get-orig-source rule in
     debian/rules if everything else fails. (Closes: #498622)
   * Support Vcs-Git in the deb: directory service if bzr-git is installed.
+  * Use svn-buildpackage configuration when present. 
 
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.

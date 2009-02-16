@@ -20,9 +20,10 @@
 
 from debian_bundle.changelog import Version
 
+from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.builddeb.config import DebBuildConfig
+from bzrlib.plugins.builddeb.config import DebBuildConfig, SvnBuildPackageMappedConfig
 
 
 class DebBuildConfigTests(TestCaseWithTransport):
@@ -89,5 +90,45 @@ class DebBuildConfigTests(TestCaseWithTransport):
     self.assertEqual(self.config.export_upstream_revision, '300')
     self.config.set_version(Version('0.2~svn200'))
     self.assertEqual(self.config.export_upstream_revision, 'svn:200')
+
+try:
+  from bzrlib.plugins.svn.config import SubversionBuildPackageConfig
+except ImportError:
+  pass
+else:
+  from bzrlib.plugins.svn.tests import SubversionTestCase
+
+  class DebuildSvnBpTests(SubversionTestCase):
+
+    def test_from_properties(self):
+      repos_url = self.make_repository("d")
+
+      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+      self.assertEquals(False, cfg.merge)
+
+      dc = self.get_commit_editor(repos_url)
+      d = dc.add_dir("debian")
+      d.change_prop("mergeWithUpstream", "1")
+      d.change_prop("svn-bp:origDir", "someorigdir")
+      dc.close()
+
+      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+      self.assertEquals(True, cfg.merge)
+      self.assertEquals("someorigdir", cfg.orig_dir)
+
+    def test_from_svn_layout_file(self):
+      repos_url = self.make_repository("d")
+
+      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+      self.assertEquals(False, cfg.merge)
+
+      dc = self.get_commit_editor(repos_url)
+      d = dc.add_dir("debian")
+      f = d.add_file("debian/svn-layout")
+      f.modify("origDir = someorigdir\n")
+      dc.close()
+
+      cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
+      self.assertEquals("someorigdir", cfg.orig_dir)
 
 # vim: ts=2 sts=2 sw=2
