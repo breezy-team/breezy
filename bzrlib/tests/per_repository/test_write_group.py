@@ -118,10 +118,20 @@ class TestWriteGroup(TestCaseWithRepository):
         if token is not None:
             repo.leave_lock_in_place()
 
-    def test_suspend_write_group(self):
+    def make_write_locked_repo(self):
         repo = self.make_repository('repo')
         repo.lock_write()
         self.addCleanup(repo.unlock)
+        return repo
+
+    def reopen_repo(self, repo):
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        return same_repo
+
+    def test_suspend_write_group(self):
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -163,9 +173,7 @@ class TestWriteGroup(TestCaseWithRepository):
                 errors.UnsuspendableWriteGroup, repo.resume_write_group, [])
         else:
             #self.assertEqual([], list(repo.texts.keys()))
-            same_repo = repo.bzrdir.open_repository()
-            same_repo.lock_write()
-            self.addCleanup(same_repo.unlock)
+            same_repo = self.reopen_repo(repo)
             same_repo.resume_write_group(wg_tokens)
             self.assertEqual([text_key], list(same_repo.texts.keys()))
             self.assertTrue(same_repo.is_in_write_group())
@@ -174,9 +182,7 @@ class TestWriteGroup(TestCaseWithRepository):
             # See also test_pack_repository's test of the same name.
 
     def test_multiple_resume_write_group(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -189,9 +195,7 @@ class TestWriteGroup(TestCaseWithRepository):
             raise TestNotApplicable(
                 'Cannot test multiple resume of repo that does not support '
                 'suspending')
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         self.assertTrue(same_repo.is_in_write_group())
         second_key = ('file-id', 'second-revid')
@@ -204,9 +208,7 @@ class TestWriteGroup(TestCaseWithRepository):
             raise e[0], e[1], e[2]
         self.assertEqual(2, len(new_wg_tokens))
         self.assertSubset(wg_tokens, new_wg_tokens)
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(new_wg_tokens)
         both_keys = set([first_key, second_key])
         self.assertEqual(both_keys, same_repo.texts.keys())
@@ -228,23 +230,17 @@ class TestWriteGroup(TestCaseWithRepository):
             raise TestNotApplicable(
                 'Cannot test multiple resume of repo that does not support '
                 'suspending')
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         new_wg_tokens = same_repo.suspend_write_group()
         self.assertEqual(wg_tokens, new_wg_tokens)
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         self.assertEqual([text_key], list(same_repo.texts.keys()))
         same_repo.abort_write_group()
 
     def test_read_after_suspend_fails(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -260,9 +256,7 @@ class TestWriteGroup(TestCaseWithRepository):
         self.assertEqual([], list(repo.texts.keys()))
 
     def test_read_after_second_suspend_fails(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -275,17 +269,13 @@ class TestWriteGroup(TestCaseWithRepository):
             raise TestNotApplicable(
                 'Cannot test multiple resume of repo that does not support '
                 'suspending')
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.suspend_write_group()
         self.assertEqual([], list(same_repo.texts.keys()))
 
     def test_read_after_resume_abort_fails(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -298,17 +288,13 @@ class TestWriteGroup(TestCaseWithRepository):
             raise TestNotApplicable(
                 'Cannot test multiple resume of repo that does not support '
                 'suspending')
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.abort_write_group()
         self.assertEqual([], list(same_repo.texts.keys()))
 
     def test_cannot_resume_aborted_write_group(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -321,22 +307,16 @@ class TestWriteGroup(TestCaseWithRepository):
             raise TestNotApplicable(
                 'Cannot test multiple resume of repo that does not support '
                 'suspending')
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.abort_write_group()
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         self.assertRaises(
             errors.UnresumableWriteGroups, same_repo.resume_write_group,
             wg_tokens)
 
     def test_commit_resumed_write_group_no_new_data(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -349,9 +329,7 @@ class TestWriteGroup(TestCaseWithRepository):
             raise TestNotApplicable(
                 'Cannot test multiple resume of repo that does not support '
                 'suspending')
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.commit_write_group()
         self.assertEqual([text_key], list(same_repo.texts.keys()))
@@ -363,9 +341,7 @@ class TestWriteGroup(TestCaseWithRepository):
             wg_tokens)
 
     def test_commit_resumed_write_group_plus_new_data(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
+        repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
@@ -378,9 +354,7 @@ class TestWriteGroup(TestCaseWithRepository):
             raise TestNotApplicable(
                 'Cannot test multiple resume of repo that does not support '
                 'suspending')
-        same_repo = repo.bzrdir.open_repository()
-        same_repo.lock_write()
-        self.addCleanup(same_repo.unlock)
+        same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         second_key = ('file-id', 'second-revid')
         same_repo.texts.add_lines(second_key, (first_key,), ['more lines'])
