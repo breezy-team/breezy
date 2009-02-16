@@ -88,7 +88,7 @@ Preconditions
     sudo apt-get install build-essential devscripts dput quilt patch libcrypt-ssleay-perl debhelper cdbs python-docutils
 
   Please update this document if you encounter unmet dependencies or find a
-  shortest way to express them.
+  shorter way to express them.
 
 * You will also want to have the `bzr-builddeb`_ plugin installed, which
   depends on `bzrtools`_.
@@ -119,7 +119,7 @@ Long Form
 
 #. You will end up checking out a separate directory for each supported
    release. Such as ``~/dev/bzr/releases/packaging/hardy``. In each of these
-   branches, you will produce the package for the realease.
+   branches, you will produce the package for the release.
 
 #. Decide on the final version number.  It should be of this form::
 
@@ -168,7 +168,7 @@ Long Form
    to specify it.
 
    Make sure you have the correct email address for yourself (you may need
-   export DEBEMAIL=`bzr whomai` if it isn't arelay set), version number, and
+   export DEBEMAIL=`bzr whoami` if it isn't already set), version number, and
    distribution.  It should look something like this::
 
        bzr (1.6~beta3-1~bazaar1~hardy1) hardy; urgency=low
