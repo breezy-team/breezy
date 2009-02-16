@@ -9,6 +9,7 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
   * Add -d option to merge-upstream.
   * Try to retrieve upstream tarball using get-orig-source rule in
     debian/rules if everything else fails. (Closes: #498622)
+  * Support Vcs-Git in the deb: directory service if bzr-git is installed.
 
   [ James Westby ]
   * Support repacking of .zips. Thanks Daniel Hahler.
