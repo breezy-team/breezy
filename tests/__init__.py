@@ -135,7 +135,7 @@ def test_suite():
              'config'
              ]
     for mod in doctest_mod_names:
-      suite.addTest(doctest.DocTestSuite(mod))
+      suite.addTest(doctest.DocTestSuite("bzrlib.plugins.builddeb." + mod))
 
     adapt_modules(['%s.test_repack_tarball' % __name__],
                   RepackTarballAdaptor(), loader, suite)

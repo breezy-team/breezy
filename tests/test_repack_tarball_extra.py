@@ -22,7 +22,7 @@ import os
 import shutil
 import tarfile
 
-from repack_tarball import repack_tarball
+from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 
 from bzrlib.errors import BzrCommandError, FileExists
 from bzrlib.tests import TestCaseInTempDir
