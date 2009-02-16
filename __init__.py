@@ -37,7 +37,7 @@ online help for the commands::
 
   bzr help fast-import
   bzr help fast-import-info
-  bzr help fast-import-filter
+  bzr help fast-import-query
 
 To report bugs or publish enhancements, visit the bzr-fastimport project
 page on Launchpad, https://launchpad.net/bzr-fastimport.
@@ -148,7 +148,7 @@ class cmd_fast_import(Command):
         Import a Mercurial repository into Bazaar.
     """
     hidden = True
-    _see_also = ['fast-import-info', 'fast-import-filter']
+    _see_also = ['fast-import-info', 'fast-import-query']
     takes_args = ['source']
     takes_options = ['verbose',
                     Option('info', type=str,
@@ -227,8 +227,8 @@ class cmd_fast_import_info(Command):
         return _run(source, info_processor.InfoProcessor, None, {}, verbose)
 
 
-class cmd_fast_import_filter(Command):
-    """Filter a fast-import stream displaying selected commands.
+class cmd_fast_import_query(Command):
+    """Query a fast-import stream displaying selected commands.
 
     To specify standard input as the input stream, use a source
     name of '-'. To specify the commands to display, use the -C
@@ -247,11 +247,11 @@ class cmd_fast_import_filter(Command):
     Examples::
 
       front-end > xxx.fi
-      bzr fast-import-filter xxx.fi -Creset -Ctag
+      bzr fast-import-query xxx.fi -Creset -Ctag
 
         Show all the fields of the reset and tag commands.
 
-      bzr fast-import-filter xxx.fi -Ccommit=mark,merge
+      bzr fast-import-query xxx.fi -Ccommit=mark,merge
 
         Show the mark and merge fields of the commit commands.
     """
@@ -265,13 +265,13 @@ class cmd_fast_import_filter(Command):
                      ]
     aliases = []
     def run(self, source, verbose=False, commands=None):
-        from bzrlib.plugins.fastimport.processors import filter_processor
+        from bzrlib.plugins.fastimport.processors import query_processor
         from bzrlib.plugins.fastimport import helpers
         params = helpers.defines_to_dict(commands)
-        return _run(source, filter_processor.FilterProcessor, None, params,
+        return _run(source, query_processor.QueryProcessor, None, params,
             verbose)
 
 
 register_command(cmd_fast_import)
 register_command(cmd_fast_import_info)
-register_command(cmd_fast_import_filter)
+register_command(cmd_fast_import_query)

@@ -9,6 +9,10 @@ IN DEVELOPMENT
 
   COMPATIBILITY BREAKS:
 
+    * The ``fast-import-filter`` command is now called
+      ``fast-import-query``.
+      (Ian Clatworthy)
+
     * The ``--inv-fulltext`` option is no longer supported. It was
       only used in experimental mode for old versions of bzrlib so
       it added more complexity than value. (Ian Clatworthy)

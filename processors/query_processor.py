@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Import processor that filters the input (and doesn't import)."""
+"""Import processor that queries the input (and doesn't import)."""
 
 
 from bzrlib.plugins.fastimport import (
@@ -23,8 +23,8 @@ from bzrlib.plugins.fastimport import (
     )
 
 
-class FilterProcessor(processor.ImportProcessor):
-    """An import processor that filters the input.
+class QueryProcessor(processor.ImportProcessor):
+    """An import processor that queries the input.
 
     No changes to the current repository are made.
     """
