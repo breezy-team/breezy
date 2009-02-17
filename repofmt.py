@@ -51,6 +51,7 @@ try:
     CHKInventoryRepository,
     RepositoryFormatPackDevelopment5,
     RepositoryFormatPackDevelopment5Hash16,
+    RepositoryFormatPackDevelopment5Hash255,
     )
     chk_support = True
 except ImportError:
@@ -441,13 +442,29 @@ if chk_support:
             return ("Development repository format - hash16chk+groupcompress")
 
 
+    class RepositoryFormatPackGCPlainCHK255(RepositoryFormatPackDevelopment5Hash255):
+        """A hashed CHK+group compress pack repository."""
+
+        repository_class = GCCHKPackRepository
+
+        def get_format_string(self):
+            """See RepositoryFormat.get_format_string()."""
+            return ('Bazaar development format - hash255chk+gc'
+                    ' (needs bzr.dev from 1.13)\n')
+
+        def get_format_description(self):
+            """See RepositoryFormat.get_format_description()."""
+            return ("Development repository format - hash255chk+groupcompress")
+
+
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     """Be incompatible with the regular fetch code."""
     formats = (RepositoryFormatPackGCPlain, RepositoryFormatPackGCRichRoot,
         RepositoryFormatPackGCSubtrees)
     if chk_support:
         formats = formats + (RepositoryFormatPackGCPlainCHK,
-                             RepositoryFormatPackGCPlainCHK16)
+                             RepositoryFormatPackGCPlainCHK16,
+                             RepositoryFormatPackGCPlainCHK255)
     if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
     else:
