@@ -27,6 +27,7 @@
 #
 
 from bz2 import BZ2File
+import itertools
 import os
 from StringIO import StringIO
 
@@ -292,5 +293,24 @@ def merge_upstream(tree, source, version_number):
     tree.commit('import upstream from %s' % os.path.basename(source))
     tree.branch.tags.set_tag(make_upstream_tag(version_number),
                              tree.branch.last_revision())
+
+
+def package_version(merged_version, distribution_name):
+  """Determine the package version from the merged version.
+
+  :param merged_version: Merged version string
+  :param distribution_name: Distribution the package is for
+  """
+  ret = Version(merged_version)
+  if merged_version.debian_version is not None:
+    prev_packaging_revnum = int("".join(itertools.takewhile(lambda x: x.isdigit(), merged_version.debian_version)))
+  else:
+    prev_packaging_revnum = 0
+  if distribution_name == "ubuntu":
+    ret.debian_version = "%dubuntu1" % prev_packaging_revnum
+  else:
+    ret.debian_version = "%d" % (prev_packaging_revnum+1)
+  return ret
+
 
 # vim: ts=2 sts=2 sw=2

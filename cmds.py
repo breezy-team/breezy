@@ -436,7 +436,7 @@ class cmd_merge_upstream(Command):
             no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.merge_upstream import merge_upstream_branch
+        from bzrlib.plugins.builddeb.merge_upstream import (merge_upstream_branch, package_version)
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -464,6 +464,9 @@ class cmd_merge_upstream(Command):
                 current_version = changelog.version
                 if package is None:
                     package = changelog.package
+                if distribution is None:
+                    distribution = changelog.distributions.split(" ")[0]
+                    info("Using distribution %s" % distribution)
             except MissingChangelogError:
                 current_version = None
 
@@ -477,15 +480,21 @@ class cmd_merge_upstream(Command):
                 upstream_branch = Branch.open(location)
             except NotBranchError:
                 upstream_branch = None
- 
+
+            if distribution is None:
+                raise BzrCommandError("You must specify the target distribution "
+                        "using --distribution.")
+            distribution = distribution.lower()
+            distribution_name = lookup_distribution(distribution)
+            if distribution_name is None:
+                raise BzrCommandError("Unknown target distribution: %s" \
+                            % distribution)
+
             if upstream_branch is None:
                 if version is None:
                     raise BzrCommandError("You must specify the version number using "
                                           "--version.")
                 version = Version(version)
-                if distribution is None:
-                    raise BzrCommandError("You must specify the target distribution "
-                            "using --distribution.")
                 if revision is not None:
                     raise BzrCommandError("--revision is not allowed when merging a tarball")
 
@@ -501,11 +510,6 @@ class cmd_merge_upstream(Command):
                                           "file, or use it as the argument to import."
                                           % dest_name)
                 tarball_filename = os.path.join(orig_dir, dest_name)
-                distribution = distribution.lower()
-                distribution_name = lookup_distribution(distribution)
-                if distribution_name is None:
-                    raise BzrCommandError("Unknown target distribution: %s" \
-                                % distribution)
                 db = DistributionBranch(distribution_name, tree.branch, None,
                         tree=tree)
                 dbs = DistributionBranchSet()
@@ -531,10 +535,9 @@ class cmd_merge_upstream(Command):
             entry_description = "New upstream release."
 
         info("The new upstream version has been imported. You should "
-             "now update the changelog (try dch -v %s-1 \"%s\"), resolve any "
-             "conflicts, and then commit." % (str(version), entry_description))
-
-
+             "now update the changelog (try dch -v %s \"%s\"), resolve any "
+             "conflicts, and then commit."
+             % (package_version(version, distribution), entry_description))
 
 
 class cmd_import_dsc(Command):

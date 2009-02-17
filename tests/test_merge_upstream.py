@@ -42,6 +42,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         )
 from bzrlib.plugins.builddeb.merge_upstream import (
         merge_upstream, 
+        package_version,
         upstream_branch_version,
         upstream_tag_to_version,
         upstream_version_add_revision
@@ -379,6 +380,24 @@ class TestUpstreamTagToVersion(TestCase):
   def test_package_prefix(self):
     self.assertEquals(Version("42.0"), upstream_tag_to_version("bla-42.0", "bla"))
 
+
+class TestPackageVersion(TestCase):
+
+  def test_simple_debian(self):
+    self.assertEquals(Version("1.2-1"), 
+        package_version(Version("1.2"), "debian"))
+
+  def test_simple_ubuntu(self):
+    self.assertEquals(Version("1.2-0ubuntu1"), 
+        package_version(Version("1.2"), "ubuntu"))
+
+  def test_debian_merges_ubuntu(self):
+    self.assertEquals(Version("1.2-1"), 
+        package_version(Version("1.2-0ubuntu1"), "debian"))
+
+  def test_ubuntu_merges_debian(self):
+    self.assertEquals(Version("1.2-1ubuntu1"), 
+        package_version(Version("1.2-1"), "ubuntu"))
 
 # vim: ts=2 sts=2 sw=2
 
