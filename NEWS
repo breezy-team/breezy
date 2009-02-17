@@ -19,6 +19,9 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * Copying of files and symbolic links is now supported.
+      (Ian Clatworthy)
+
     * Initial cut at reset support. (Brian de Alwis, Ian Clatworthy)
 
   IMPROVEMENTS:
