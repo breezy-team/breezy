@@ -1142,7 +1142,6 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 
     https_request = http_request # FIXME: Need test
 
-import kerberos
 
 class NegotiateAuthHandler(AbstractAuthHandler):
     """A authentication handler that handles WWW-Authenticate: Negotiate.
@@ -1168,20 +1167,31 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         if match:
             self.update_auth(auth, 'realm', match.groups()[0])
         self.update_auth(auth, 'scheme', scheme)
+        resp = self._auth_match_kerberos(auth)
+        if resp is None:
+            return False
+        # Optionally should try to authenticate using NTLM here
+        self.update_auth(auth, 'negotiate_response', resp)
+        return True
+
+    def _auth_match_kerberos(self, auth):
+        """Try to create a GSSAPI response for authenticating against a host."""
+        try:
+            import kerberos
+        except ImportError:
+            return None
         ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
         if ret < 1:
             trace.warning('Unable to create GSSAPI context for %(host)s', auth)
-            return False
+            return None
         ret = kerberos.authGSSClientStep(vc, "")
         if ret < 0:
             trace.mutter('authGSSClientStep failed: %d', ret)
-            return False
-        self.update_auth(auth, 'gssapi_ctx', vc)
-        return True
+            return None
+        return kerberos.authGSSClientResponse(vc)
 
     def build_auth_header(self, auth, request):
-        return "Negotiate %s" % kerberos.authGSSClientResponse(
-            auth['gssapi_ctx'])
+        return "Negotiate %s" % auth['negotiate_response']
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
