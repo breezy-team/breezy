@@ -95,7 +95,7 @@ class FilterProcessor(processor.ImportProcessor):
         if interesting_filecmds:
             cmd.file_iter = iter(interesting_filecmds)
             self.keep = True
-            self.interesting_commits.add(cmd.mark)
+            self.interesting_commits.add(":" + cmd.mark)
             # record the referenced blobs
             for fc in interesting_filecmds:
                 if isinstance(fc, commands.FileModifyCommand):
@@ -111,7 +111,7 @@ class FilterProcessor(processor.ImportProcessor):
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
         # These pass through if they reference something we kept
-        if self.from_ is not None:
+        if cmd.from_ is not None:
             self.keep = cmd.from_ in self.interesting_commits
         else:
             self.keep = True
@@ -119,7 +119,7 @@ class FilterProcessor(processor.ImportProcessor):
     def tag_handler(self, cmd):
         """Process a TagCommand."""
         # These pass through if they reference something we kept
-        if self.from_ is not None:
+        if cmd.from_ is not None:
             self.keep = cmd.from_ in self.interesting_commits
         else:
             self.keep = True
@@ -127,10 +127,9 @@ class FilterProcessor(processor.ImportProcessor):
     def _print_command(self, cmd):
         """Wrapper to avoid adding unnecessary blank lines."""
         text = repr(cmd)
-        if text.endswith("\n"):
-            print "%s" % text[:-1]
-        else:
-            print "%s" % text
+        self.outf.write(text)
+        if not text.endswith("\n"):
+            self.outf.write("\n")
 
     def _find_new_root(self, paths):
         """Find the deepest common directory for a list of paths."""
@@ -152,7 +151,7 @@ class FilterProcessor(processor.ImportProcessor):
         :return: a list of FileCommand objects
         """
         if self.includes is None and self.excludes is None:
-            return list(filecmd_iter)
+            return list(filecmd_iter())
 
         # Do the filtering, adjusting for the new_root
         result = []

@@ -149,7 +149,7 @@ class TestProgressDisplay(tests.TestCase):
 class TestResetDisplay(tests.TestCase):
 
     def test_reset(self):
-        c = commands.ResetCommand("refs/tags/v1.0", "xxx")
+        c = commands.ResetCommand("refs/tags/v1.0", ":xxx")
         self.assertEqual("reset refs/tags/v1.0\nfrom :xxx", repr(c))
 
     def test_reset_no_from(self):
@@ -162,7 +162,7 @@ class TestTagDisplay(tests.TestCase):
     def test_tag(self):
         # tagger tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
         tagger = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
-        c = commands.TagCommand("refs/tags/v1.0", "xxx", tagger, "create v1.0")
+        c = commands.TagCommand("refs/tags/v1.0", ":xxx", tagger, "create v1.0")
         self.assertEqual(
             "tag refs/tags/v1.0\n"
             "from :xxx\n"

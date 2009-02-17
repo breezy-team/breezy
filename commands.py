@@ -179,7 +179,7 @@ class ResetCommand(ImportCommand):
         if self.from_ is None:
             from_line = ""
         else:
-            from_line = "\nfrom :%s" % self.from_
+            from_line = "\nfrom %s" % self.from_
         return "reset %s%s" % (self.ref, from_line)
 
 
@@ -196,7 +196,7 @@ class TagCommand(ImportCommand):
         if self.from_ is None:
             from_line = ""
         else:
-            from_line = "\nfrom :%s" % self.from_
+            from_line = "\nfrom %s" % self.from_
         if self.tagger is None:
             tagger_line = ""
         else:
