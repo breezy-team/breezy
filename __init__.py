@@ -242,20 +242,21 @@ class cmd_fast_import_filter(Command):
     _see_also = ['fast-import']
     takes_args = ['source']
     takes_options = ['verbose',
-                    ListOption('includes', short_name='i', type=str,
-                        help="Only include commits affecting these files."
+                    ListOption('include_paths', short_name='i', type=str,
+                        help="Only include commits affecting these paths."
                              " Directories should have a trailing /."
                         ),
-                    ListOption('excludes', short_name='x', type=str,
-                        help="Exclude these files from commits."
+                    ListOption('exclude_paths', short_name='x', type=str,
+                        help="Exclude these paths from commits."
                         ),
                      ]
     aliases = []
-    def run(self, source, verbose=False, includes=None, excludes=None):
+    def run(self, source, verbose=False, include_paths=None,
+        exclude_paths=None):
         from bzrlib.plugins.fastimport.processors import filter_processor
         params = {
-            'includes': includes,
-            'excludes': excludes,
+            'include_paths': include_paths,
+            'exclude_paths': exclude_paths,
             }
         return _run(source, filter_processor.FilterProcessor, None, params,
             verbose)

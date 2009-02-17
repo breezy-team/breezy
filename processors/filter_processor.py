@@ -34,20 +34,21 @@ class FilterProcessor(processor.ImportProcessor):
 
     Here are the supported parameters:
 
-    * includes - a list of paths that commits must change in order to
+    * include_paths - a list of paths that commits must change in order to
       be kept in the output stream
 
-    * excludes - a list of paths that should not appear in the output stream
+    * exclude_paths - a list of paths that should not appear in the output
+      stream
     """
 
     known_params = [
-        'includes',
-        'excludes',
+        'include_paths',
+        'exclude_paths',
         ]
 
     def pre_process(self):
-        self.includes = self.params['includes']
-        self.excludes = self.params['excludes']
+        self.includes = self.params.get('include_paths')
+        self.excludes = self.params.get('exclude_paths')
         # Buffer of blobs until we know we need them: mark -> cmd
         self.blobs = {}
         # These are the commits we've output so far
