@@ -1478,6 +1478,12 @@ class KnitVersionedFiles(VersionedFiles):
                     del buffered_index_entries[key]
 
     def get_missing_compression_parent_keys(self):
+        """Return an iterable of keys of missing compression parents.
+
+        Check this after calling insert_record_stream to find out if there are
+        any missing compression parents.  If there are, the records that
+        depend on them are *not* yet inserted.
+        """
         return self._buffered_index_entries.keys()
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):

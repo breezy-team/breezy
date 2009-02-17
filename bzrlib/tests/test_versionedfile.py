@@ -2015,7 +2015,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """Insertion where a needed basis is not included notifies the caller
         of the missing basis.  That basis can be added in a second
         insert_record_stream call that does not need to repeat records present
-        in the previous stream.
+        in the previous stream.  The record(s) that required that basis are
+        fully inserted once their basis is no longer missing.
         """
         if not self.support_partial_insertion:
             raise TestNotApplicable(
