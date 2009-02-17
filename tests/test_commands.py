@@ -47,7 +47,7 @@ class TestCommitDisplay(tests.TestCase):
         # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", None, committer,
-            "release v1.0", "aaa", None, None)
+            "release v1.0", ":aaa", None, None)
         self.assertEqualDiff(
             "commit refs/heads/master\n"
             "mark :bbb\n"
@@ -61,7 +61,7 @@ class TestCommitDisplay(tests.TestCase):
         # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", None, None, committer,
-            "release v1.0", "aaa", None, None)
+            "release v1.0", ":aaa", None, None)
         self.assertEqualDiff(
             "commit refs/heads/master\n"
             "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
@@ -88,7 +88,7 @@ class TestCommitDisplay(tests.TestCase):
         author = ('Sue Wong', 'sue@example.com', 1234565432, -6 * 3600)
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", author,
-            committer, "release v1.0", "aaa", None, None)
+            committer, "release v1.0", ":aaa", None, None)
         self.assertEqualDiff(
             "commit refs/heads/master\n"
             "mark :bbb\n"
@@ -103,7 +103,7 @@ class TestCommitDisplay(tests.TestCase):
         # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "ddd", None, committer,
-            "release v1.0", "aaa", ['bbb', 'ccc'], None)
+                "release v1.0", ":aaa", [':bbb', ':ccc'], None)
         self.assertEqualDiff(
             "commit refs/heads/master\n"
             "mark :ddd\n"
@@ -124,7 +124,7 @@ class TestCommitDisplay(tests.TestCase):
         # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", None, committer,
-            "release v1.0", "aaa", None, file_cmds)
+            "release v1.0", ":aaa", None, file_cmds)
         self.assertEqualDiff(
             "commit refs/heads/master\n"
             "mark :bbb\n"

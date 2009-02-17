@@ -131,11 +131,11 @@ class CommitCommand(ImportCommand):
         if self.from_ is None:
             from_line = ""
         else:
-            from_line = "\nfrom :%s" % self.from_
+            from_line = "\nfrom %s" % self.from_
         if self.merges is None:
             merge_lines = ""
         else:
-            merge_lines = "".join(["\nmerge :%s" % (m,)
+            merge_lines = "".join(["\nmerge %s" % (m,)
                 for m in self.merges])
         if self.file_iter is None:
             filecommands = ""
