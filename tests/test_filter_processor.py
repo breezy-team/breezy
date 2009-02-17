@@ -264,3 +264,146 @@ from :100
 M 644 :3 README.txt
 M 644 :4 index.txt
 """)
+
+
+class TestExcludePaths(TestCaseWithFiltering):
+
+    def test_file_in_root(self):
+        params = {'exclude_paths': ['NEWS']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 doc/README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 doc/README.txt
+M 644 :4 doc/index.txt
+""")
+
+    def test_file_in_subdir(self):
+        params = {'exclude_paths': ['doc/README.txt']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :2
+data 17
+Life
+is
+good ...
+commit refs/heads/master
+mark :101
+committer a <b@c> 1234798653 +0000
+data 8
+test
+ing
+M 644 :2 NEWS
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :101
+M 644 :4 doc/index.txt
+""")
+
+    def test_subdir(self):
+        params = {'exclude_paths': ['doc/']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :2
+data 17
+Life
+is
+good ...
+commit refs/heads/master
+mark :101
+committer a <b@c> 1234798653 +0000
+data 8
+test
+ing
+M 644 :2 NEWS
+""")
+
+    def test_multple_files(self):
+        params = {'exclude_paths': ['doc/index.txt', 'NEWS']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 doc/README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 doc/README.txt
+""")
+
+
+class TestIncludeAndExcludePaths(TestCaseWithFiltering):
+
+    def test_included_dir_and_excluded_file(self):
+        params = {'include_paths': ['doc/'], 'exclude_paths': ['doc/index.txt']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+""")
