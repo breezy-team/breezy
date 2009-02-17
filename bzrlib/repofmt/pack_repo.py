@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -1562,6 +1563,11 @@ class RepositoryPackCollection(object):
         :param name: The name of the pack - e.g. '123456'
         :return: A Pack object.
         """
+        if not re.match('[a-f0-9]{32}', name):
+            # Tokens should be md5sums of the suspended pack file, i.e. 32 hex
+            # digits.
+            raise errors.UnresumableWriteGroups(
+                self.repo, [name], 'Malformed write group token')
         try:
             rev_index = self._make_index(name, '.rix', resume=True)
             inv_index = self._make_index(name, '.iix', resume=True)

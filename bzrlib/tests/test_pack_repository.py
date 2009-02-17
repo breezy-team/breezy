@@ -610,6 +610,26 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(
             [], same_repo._pack_collection._pack_transport.list_dir(''))
 
+    def test_resume_malformed_token(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        # Make a repository with a suspended write group
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Make a new repository
+        new_repo = self.make_repository('new_repo')
+        token = new_repo.lock_write()
+        self.addCleanup(new_repo.unlock)
+        hacked_wg_token = (
+            '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
+        self.assertRaises(
+            errors.UnresumableWriteGroups,
+            new_repo.resume_write_group, [hacked_wg_token])
+
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
 
