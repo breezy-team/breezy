@@ -44,7 +44,7 @@ checkpoint
 progress first import done
 reset refs/remote/origin/master
 from :2
-tag refs/tags/v0.1
+tag v0.1
 from :2
 tagger Joe <joe@example.com> 1234567890 +1000
 data 12
@@ -799,4 +799,79 @@ test
 ing
 deleteall
 M 644 :4 index.txt
+""")
+
+
+_SAMPLE_WITH_TAGS = _SAMPLE_WITH_DIR + \
+"""tag v0.1
+from :100
+tagger d <b@c> 1234798653 +0000
+data 12
+release v0.1
+tag v0.2
+from :102
+tagger d <b@c> 1234798653 +0000
+data 12
+release v0.2
+"""
+
+class TestIncludePathsWithTags(TestCaseWithFiltering):
+
+    def test_tag_retention(self):
+        # If a tag references a commit with a parent we kept,
+        # keep the tag but adjust 'from' accordingly.
+        # Otherwise, delete the tag command.
+        params = {'include_paths': ['NEWS']}
+        self.assertFiltering(_SAMPLE_WITH_TAGS, params, \
+"""blob
+mark :2
+data 17
+Life
+is
+good ...
+commit refs/heads/master
+mark :101
+committer a <b@c> 1234798653 +0000
+data 8
+test
+ing
+M 644 :2 NEWS
+tag v0.2
+from :101
+tagger d <b@c> 1234798653 +0000
+data 12
+release v0.2
+""")
+
+
+_SAMPLE_WITH_RESETS = _SAMPLE_WITH_DIR + \
+"""reset refs/heads/foo
+reset refs/heads/bar
+from :102
+"""
+
+class TestIncludePathsWithResets(TestCaseWithFiltering):
+
+    def test_reset_retention(self):
+        # Resets init'ing a branch (without a from) are passed through.
+        # If a reset references a commit with a parent we kept,
+        # keep the reset but adjust 'from' accordingly.
+        params = {'include_paths': ['NEWS']}
+        self.assertFiltering(_SAMPLE_WITH_RESETS, params, \
+"""blob
+mark :2
+data 17
+Life
+is
+good ...
+commit refs/heads/master
+mark :101
+committer a <b@c> 1234798653 +0000
+data 8
+test
+ing
+M 644 :2 NEWS
+reset refs/heads/foo
+reset refs/heads/bar
+from :101
 """)

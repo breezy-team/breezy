@@ -127,19 +127,20 @@ class FilterProcessor(processor.ImportProcessor):
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
-        # These pass through if they reference something we kept
-        if cmd.from_ is not None:
-            self.keep = cmd.from_ in self.interesting_commits
-        else:
+        if cmd.from_ is None:
+            # We pass through resets that init a branch because we have to
+            # assume the branch might be interesting.
             self.keep = True
+        else:
+            # Keep resets if they indirectly reference something we kept
+            cmd.from_ = self._find_interesting_from(cmd.from_)
+            self.keep = cmd.from_ is not None
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
-        # These pass through if they reference something we kept
-        if cmd.from_ is not None:
-            self.keep = cmd.from_ in self.interesting_commits
-        else:
-            self.keep = True
+        # Keep tags if they indirectly reference something we kept
+        cmd.from_ = self._find_interesting_from(cmd.from_)
+        self.keep = cmd.from_ is not None
 
     def _print_command(self, cmd):
         """Wrapper to avoid adding unnecessary blank lines."""
