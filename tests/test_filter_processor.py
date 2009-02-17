@@ -28,6 +28,7 @@ from bzrlib.plugins.fastimport.processors.filter_processor import (
     )
 
 
+# A sample input stream containing all (top level) import commands
 _SAMPLE_ALL = \
 """blob
 mark :1
@@ -51,6 +52,57 @@ release v0.1
 """
 
 
+# A sample input stream creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+_SAMPLE_WITH_DIR = \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 doc/README.txt
+blob
+mark :2
+data 17
+Life
+is
+good ...
+commit refs/heads/master
+mark :101
+committer a <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :2 NEWS
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :101
+M 644 :3 doc/README.txt
+M 644 :4 doc/index.txt
+"""
+
+
 class TestCaseWithFiltering(tests.TestCase):
 
     def assertFiltering(self, input, params, expected):
@@ -61,7 +113,7 @@ class TestCaseWithFiltering(tests.TestCase):
         p = parser.ImportParser(s)
         proc.process(p.iter_commands)
         out = outf.getvalue()
-        self.assertEqualDiff(out, expected)
+        self.assertEqualDiff(expected, out)
 
 
 class TestNoFiltering(TestCaseWithFiltering):
@@ -72,3 +124,76 @@ class TestNoFiltering(TestCaseWithFiltering):
     def test_params_are_none(self):
         params = {'include_paths': None, 'exclude_paths': None}
         self.assertFiltering(_SAMPLE_ALL, params, _SAMPLE_ALL)
+
+
+class TestIncludePaths(TestCaseWithFiltering):
+
+    def test_file_in_root(self):
+        # Things to note:
+        # * only referenced blobs are retained
+        # * from clause is dropped from the first command
+        params = {'include_paths': ['NEWS']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :2
+data 17
+Life
+is
+good ...
+commit refs/heads/master
+mark :101
+committer a <b@c> 1234798653 +0000
+data 8
+test
+ing
+M 644 :2 NEWS
+""")
+
+    def test_file_in_subdir(self):
+        #  Additional things to note:
+        # * new root: path is now index.txt, not doc/index.txt
+        # * other files changed in matching commits are excluded
+        params = {'include_paths': ['doc/index.txt']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+M 644 :4 index.txt
+""")
+
+    def test_file_with_changes(self):
+        #  Additional things to note:
+        # * from updated to reference parents in the output
+        params = {'include_paths': ['doc/README.txt']}
+        self.assertFiltering(_SAMPLE_WITH_DIR, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+""")

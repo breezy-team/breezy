@@ -49,12 +49,14 @@ class FilterProcessor(processor.ImportProcessor):
     def pre_process(self):
         self.includes = self.params.get('include_paths')
         self.excludes = self.params.get('exclude_paths')
+        # What's the new root, if any
+        self.new_root = self._find_new_root(self.includes)
         # Buffer of blobs until we know we need them: mark -> cmd
         self.blobs = {}
         # These are the commits we've output so far
         self.interesting_commits = set()
-        # What's the new root, if any
-        self.new_root = self._find_new_root(self.includes)
+        # Map of commit-id to list of parents
+        self.parents = {}
 
     def pre_handler(self, cmd):
         self.command = cmd
@@ -95,18 +97,26 @@ class FilterProcessor(processor.ImportProcessor):
         if interesting_filecmds:
             cmd.file_iter = iter(interesting_filecmds)
             self.keep = True
-            self.interesting_commits.add(":" + cmd.mark)
-            # record the referenced blobs
+
+            # Record the referenced blobs
             for fc in interesting_filecmds:
                 if isinstance(fc, commands.FileModifyCommand):
                     if fc.dataref is not None:
                         self.referenced_blobs.append(fc.dataref)
+
+            # Update from and merges to refer to commits in the output
+            cmd.from_ = self._find_interesting_from(cmd.from_)
+            cmd.merges = self._find_interesting_merges(cmd.merges)
+            self.interesting_commits.add(":" + cmd.mark)
+
+        # Keep track of the parents
+        if cmd.from_ and cmd.merges:
+            parents = [cmd.from_] + cmd.merges
+        elif cmd.from_:
+            parents = [cmd.from_]
         else:
-            # This command is disappearing from the output stream so
-            # we'll need to keep its parent information in case a follow-on
-            # CommitCommand uses it as a parent (via from or merge).
-            # TODO
-            pass
+            parents = None
+        self.parents[":" + cmd.mark] = parents
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
@@ -140,7 +150,7 @@ class FilterProcessor(processor.ImportProcessor):
                 return paths[0]
             else:
                 dirname,basename = osutils.split(paths[0])
-                return dirname
+                return dirname + '/'
         else:
             # TODO: handle multiple paths
             return None
@@ -194,6 +204,33 @@ class FilterProcessor(processor.ImportProcessor):
             return path[len(self.new_root):]
         else:
             return path
+
+    def _find_interesting_parent(self, commit_ref):
+        while True:
+            if commit_ref in self.interesting_commits:
+                return commit_ref
+            parents = self.parents.get(commit_ref)
+            if not parents:
+                return None
+            commit_ref = parents[0]
+
+    def _find_interesting_from(self, commit_ref):
+        if commit_ref is None:
+            return None
+        return self._find_interesting_parent(commit_ref)
+
+    def _find_interesting_merges(self, commit_refs):
+        if commit_refs is None:
+            return None
+        merges = []
+        for commit_ref in commit_refs:
+            parent = self._find_interesting_parent(commit_ref)
+            if parent is not None:
+                merges.append(parent)
+        if merges:
+            return merges
+        else:
+            return None
 
     def _convert_rename(self, fc):
         """Convert a FileRenameCommand into a new FileCommand.
