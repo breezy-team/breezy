@@ -407,3 +407,336 @@ ing
 from :100
 M 644 :3 README.txt
 """)
+
+
+# A sample input stream creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+#
+# It then renames doc/README.txt => doc/README
+_SAMPLE_WITH_RENAME_INSIDE = _SAMPLE_WITH_DIR + \
+"""commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+R doc/README.txt doc/README
+"""
+
+# A sample input stream creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+#
+# It then renames doc/README.txt => README
+_SAMPLE_WITH_RENAME_TO_OUTSIDE = _SAMPLE_WITH_DIR + \
+"""commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+R doc/README.txt README
+"""
+
+# A sample input stream creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+#
+# It then renames NEWS => doc/NEWS
+_SAMPLE_WITH_RENAME_TO_INSIDE = _SAMPLE_WITH_DIR + \
+"""commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+R NEWS doc/NEWS
+"""
+
+class TestIncludePathsWithRenames(TestCaseWithFiltering):
+
+    def test_rename_all_inside(self):
+        # These rename commands ought to be kept but adjusted for the new root
+        params = {'include_paths': ['doc/']}
+        self.assertFiltering(_SAMPLE_WITH_RENAME_INSIDE, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+M 644 :4 index.txt
+commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+R README.txt README
+""")
+
+    def test_rename_to_outside(self):
+        # These rename commands become deletes
+        params = {'include_paths': ['doc/']}
+        self.assertFiltering(_SAMPLE_WITH_RENAME_TO_OUTSIDE, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+M 644 :4 index.txt
+commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+D README.txt
+""")
+
+    def test_rename_to_inside(self):
+        # This ought to create a new file but doesn't yet
+        params = {'include_paths': ['doc/']}
+        self.assertFiltering(_SAMPLE_WITH_RENAME_TO_INSIDE, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+M 644 :4 index.txt
+""")
+
+
+# A sample input stream creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+#
+# It then copies doc/README.txt => doc/README
+_SAMPLE_WITH_COPY_INSIDE = _SAMPLE_WITH_DIR + \
+"""commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+C doc/README.txt doc/README
+"""
+
+# A sample input stream creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+#
+# It then copies doc/README.txt => README
+_SAMPLE_WITH_COPY_TO_OUTSIDE = _SAMPLE_WITH_DIR + \
+"""commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+C doc/README.txt README
+"""
+
+# A sample input stream creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+#
+# It then copies NEWS => doc/NEWS
+_SAMPLE_WITH_COPY_TO_INSIDE = _SAMPLE_WITH_DIR + \
+"""commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+C NEWS doc/NEWS
+"""
+
+class TestIncludePathsWithCopies(TestCaseWithFiltering):
+
+    def test_copy_all_inside(self):
+        # These copy commands ought to be kept but adjusted for the new root
+        params = {'include_paths': ['doc/']}
+        self.assertFiltering(_SAMPLE_WITH_COPY_INSIDE, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+M 644 :4 index.txt
+commit refs/heads/master
+mark :103
+committer d <b@c> 1234798653 +0000
+data 10
+move intro
+from :102
+C README.txt README
+""")
+
+    def test_copy_to_outside(self):
+        # This can be ignored
+        params = {'include_paths': ['doc/']}
+        self.assertFiltering(_SAMPLE_WITH_COPY_TO_OUTSIDE, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+M 644 :4 index.txt
+""")
+
+    def test_copy_to_inside(self):
+        # This ought to create a new file but doesn't yet
+        params = {'include_paths': ['doc/']}
+        self.assertFiltering(_SAMPLE_WITH_COPY_TO_INSIDE, params, \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+M 644 :1 README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+M 644 :3 README.txt
+M 644 :4 index.txt
+""")

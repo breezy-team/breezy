@@ -251,6 +251,7 @@ class FilterProcessor(processor.ImportProcessor):
         elif keep_old:
             # The file has been renamed to a non-interesting location.
             # Delete it!
+            old = self._adjust_for_new_root(old)
             return commands.FileDeleteCommand(old)
         elif keep_new:
             # The file has been renamed into an interesting location
@@ -260,7 +261,7 @@ class FilterProcessor(processor.ImportProcessor):
             # remember all renames and a config file can be passed
             # into here ala fast-import?
             warning("cannot turn rename of %s into an add of %s yet" %
-                (old,new))
+                (old, new))
         return None
 
     def _convert_copy(self, fc):
@@ -271,17 +272,17 @@ class FilterProcessor(processor.ImportProcessor):
           paths are inside or outside of the interesting locations.
           """
         src = fc.src_path
-        dest = fc.new_path
+        dest = fc.dest_path
         keep_src = self._path_to_be_kept(src)
         keep_dest = self._path_to_be_kept(dest)
         if keep_src and keep_dest:
-            fc.src_path = self._adjust_for_dest_root(src)
-            fc.dest_path = self._adjust_for_dest_root(dest)
+            fc.src_path = self._adjust_for_new_root(src)
+            fc.dest_path = self._adjust_for_new_root(dest)
             return fc
         elif keep_src:
             # The file has been copied to a non-interesting location.
-            # Delete it!
-            return commands.FileDeleteCommand(src)
+            # Ignore it!
+            return None
         elif keep_dest:
             # The file has been copied into an interesting location
             # We really ought to add it but we don't currently buffer
@@ -290,5 +291,5 @@ class FilterProcessor(processor.ImportProcessor):
             # remember all copies and a config file can be passed
             # into here ala fast-import?
             warning("cannot turn copy of %s into an add of %s yet" %
-                (src,dest))
+                (src, dest))
         return None
