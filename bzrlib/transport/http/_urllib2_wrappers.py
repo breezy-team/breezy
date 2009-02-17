@@ -47,6 +47,12 @@ DEBUG = 0
 # ensure that.
 
 import httplib
+try:
+    import kerberos
+except ImportError:
+    have_kerberos = False
+else:
+    have_kerberos = True
 import socket
 import urllib
 import urllib2
@@ -65,13 +71,6 @@ from bzrlib import (
     transport,
     ui,
     )
-
-try:
-    import kerberos
-except ImportError:
-    have_kerberos = False
-else:
-    have_kerberos = True
 
 
 class _ReportingFileSocket(object):
@@ -1177,8 +1176,8 @@ class NegotiateAuthHandler(AbstractAuthHandler):
             return None
         ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
         if ret < 1:
-            trace.warning('Unable to create GSSAPI context for %(host)s: %d',
-                auth, ret)
+            trace.warning('Unable to create GSSAPI context for %s: %d',
+                auth['host'], ret)
             return None
         ret = kerberos.authGSSClientStep(vc, "")
         if ret < 0:
