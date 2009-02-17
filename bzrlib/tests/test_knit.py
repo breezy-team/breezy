@@ -42,6 +42,7 @@ from bzrlib.knit import (
     KnitSequenceMatcher,
     KnitVersionedFiles,
     PlainKnitContent,
+    _VFContentMapGenerator,
     _DirectPackAccess,
     _KndxIndex,
     _KnitGraphIndex,
@@ -63,6 +64,7 @@ from bzrlib.tuned_gzip import GzipFile
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
+    network_bytes_to_kind_and_offset,
     RecordingVersionedFilesDecorator,
     )
 
@@ -1296,7 +1298,7 @@ class KnitTests(TestCaseWithTransport):
 class TestBadShaError(KnitTests):
     """Tests for handling of sha errors."""
 
-    def test_exception_has_text(self):
+    def test_sha_exception_has_text(self):
         # having the failed text included in the error allows for recovery.
         source = self.make_test_knit()
         target = self.make_test_knit(name="target")
@@ -1313,7 +1315,8 @@ class TestBadShaError(KnitTests):
         target.insert_record_stream(
             source.get_record_stream([broken], 'unordered', False))
         err = self.assertRaises(errors.KnitCorrupt,
-            target.get_record_stream([broken], 'unordered', True).next)
+            target.get_record_stream([broken], 'unordered', True
+            ).next().get_bytes_as, 'chunked')
         self.assertEqual(['gam\n', 'bar\n'], err.content)
         # Test for formatting with live data
         self.assertStartsWith(str(err), "Knit ")
@@ -1936,7 +1939,10 @@ class TestStacking(KnitTests):
                 True).next()
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
-            self.assertEqual(record.storage_kind, result[2])
+            # We used to check that the storage kind matched, but actually it
+            # depends on whether it was sourced from the basis, or in a single
+            # group, because asking for full texts returns proxy objects to a
+            # _ContentMapGenerator object; so checking the kind is unneeded.
             self.assertEqual(record.get_bytes_as('fulltext'), result[3])
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
@@ -2173,3 +2179,65 @@ class TestStacking(KnitTests):
         self.assertEqual(set([key_left, key_right]), set(last_call[1]))
         self.assertEqual('unordered', last_call[2])
         self.assertEqual(True, last_call[3])
+
+
+class TestNetworkBehaviour(KnitTests):
+    """Tests for getting data out of/into knits over the network."""
+
+    def test_include_delta_closure_generates_a_knit_delta_closure(self):
+        vf = self.make_test_knit(name='test')
+        # put in three texts, giving ft, delta, delta
+        vf.add_lines(('base',), (), ['base\n', 'content\n'])
+        vf.add_lines(('d1',), (('base',),), ['d1\n'])
+        vf.add_lines(('d2',), (('d1',),), ['d2\n'])
+        # But heuristics could interfere, so check what happened:
+        self.assertEqual(['knit-ft-gz', 'knit-delta-gz', 'knit-delta-gz'],
+            [record.storage_kind for record in
+             vf.get_record_stream([('base',), ('d1',), ('d2',)],
+                'topological', False)])
+        # generate a stream of just the deltas include_delta_closure=True,
+        # serialise to the network, and check that we get a delta closure on the wire.
+        stream = vf.get_record_stream([('d1',), ('d2',)], 'topological', True)
+        netb = [record.get_bytes_as(record.storage_kind) for record in stream]
+        # The first bytes should be a memo from _ContentMapGenerator, and the
+        # second bytes should be empty (because its a API proxy not something
+        # for wire serialisation.
+        self.assertEqual('', netb[1])
+        bytes = netb[0]
+        kind, line_end = network_bytes_to_kind_and_offset(bytes)
+        self.assertEqual('knit-delta-closure', kind)
+
+
+class TestContentMapGenerator(KnitTests):
+    """Tests for ContentMapGenerator"""
+
+    def test_get_record_stream_gives_records(self):
+        vf = self.make_test_knit(name='test')
+        # put in three texts, giving ft, delta, delta
+        vf.add_lines(('base',), (), ['base\n', 'content\n'])
+        vf.add_lines(('d1',), (('base',),), ['d1\n'])
+        vf.add_lines(('d2',), (('d1',),), ['d2\n'])
+        keys = [('d1',), ('d2',)]
+        generator = _VFContentMapGenerator(vf, keys,
+            global_map=vf.get_parent_map(keys))
+        for record in generator.get_record_stream():
+            if record.key == ('d1',):
+                self.assertEqual('d1\n', record.get_bytes_as('fulltext'))
+            else:
+                self.assertEqual('d2\n', record.get_bytes_as('fulltext'))
+
+    def test_get_record_stream_kinds_are_raw(self):
+        vf = self.make_test_knit(name='test')
+        # put in three texts, giving ft, delta, delta
+        vf.add_lines(('base',), (), ['base\n', 'content\n'])
+        vf.add_lines(('d1',), (('base',),), ['d1\n'])
+        vf.add_lines(('d2',), (('d1',),), ['d2\n'])
+        keys = [('base',), ('d1',), ('d2',)]
+        generator = _VFContentMapGenerator(vf, keys,
+            global_map=vf.get_parent_map(keys))
+        kinds = {('base',): 'knit-delta-closure',
+            ('d1',): 'knit-delta-closure-ref',
+            ('d2',): 'knit-delta-closure-ref',
+            }
+        for record in generator.get_record_stream():
+            self.assertEqual(kinds[record.key], record.storage_kind)

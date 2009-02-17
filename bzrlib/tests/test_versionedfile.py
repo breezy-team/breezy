@@ -1559,7 +1559,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             ['mpdiff', 'knit-annotated-ft', 'knit-annotated-delta',
              'knit-ft', 'knit-delta', 'chunked', 'fulltext',
              'knit-annotated-ft-gz', 'knit-annotated-delta-gz', 'knit-ft-gz',
-             'knit-delta-gz'])
+             'knit-delta-gz',
+             'knit-delta-closure', 'knit-delta-closure-ref'])
 
     def capture_stream(self, f, entries, on_seen, parents):
         """Capture a stream for testing."""

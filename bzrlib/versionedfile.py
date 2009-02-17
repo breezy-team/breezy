@@ -1502,6 +1502,7 @@ class NetworkRecordStream(object):
             'knit-delta-gz':knit.knit_network_to_record,
             'knit-annotated-ft-gz':knit.knit_network_to_record,
             'knit-annotated-delta-gz':knit.knit_network_to_record,
+            'knit-delta-closure':knit.knit_delta_closure_to_records,
             }
 
     def read(self):
@@ -1511,5 +1512,6 @@ class NetworkRecordStream(object):
         """
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
-            yield self._kind_factory[storage_kind](
-                storage_kind, bytes, line_end)
+            for record in self._kind_factory[storage_kind](
+                storage_kind, bytes, line_end):
+                yield record
