@@ -822,7 +822,33 @@ class GenericCommitHandler(processor.CommitHandler):
         self.warning("ignoring delete of %s as not in parent inventories", path)
 
     def copy_handler(self, filecmd):
-        raise NotImplementedError(self.copy_handler)
+        src_path = filecmd.src_path
+        dest_path = filecmd.dest_path
+        self.debug("copying %s to %s", src_path, dest_path)
+        if not self.parents:
+            self.warning("ignoring copy of %s to %s - no parent revisions",
+                src_path, dest_path)
+            return
+        file_id = self.inventory.path2id(src_path)
+        if file_id is None:
+            self.warning("ignoring copy of %s to %s - source does not exist",
+                src_path, dest_path)
+            return
+        ie = self.inventory[file_id]
+        kind = ie.kind
+        if kind == 'file':
+            content = self._get_content_from_repo(self.parents[0], file_id)
+            self._modify_inventory(dest_path, kind, ie.executable, content)
+        elif kind == 'symlink':
+            self._modify_inventory(dest_path, kind, False, ie.symlink_target)
+        else:
+            self.warning("ignoring copy of %s %s - feature not yet supported",
+                kind, path)
+
+    def _get_content_from_repo(self, revision_id, file_id):
+        """Get the content of a file for a revision-id."""
+        revtree = self.repo.revision_tree(revision_id)
+        return revtree.get_file_text(file_id)
 
     def rename_handler(self, filecmd):
         old_path = filecmd.old_path
