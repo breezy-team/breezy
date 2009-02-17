@@ -31,30 +31,47 @@ from bzrlib.plugins.fastimport.processors import (
     )
 
 
-class TestRename(tests.TestCaseWithTransport):
+class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
     def get_handler(self):
         branch = self.make_branch('.')
         handler = generic_processor.GenericProcessor(branch.bzrdir)
-        return (handler, branch)
-
-    def get_command_iter(self, old_path, new_path):
-        def command_list():
-            author = ['', 'bugs@a.com', time.time(), time.timezone]
-            committer = ['', 'elmer@a.com', time.time(), time.timezone]
-            def files_one():
-                yield commands.FileModifyCommand(old_path, 'file', False,
-                        None, "aaa")
-            yield commands.CommitCommand('head', '1', author,
-                committer, "commit 1", None, [], files_one)
-            def files_two():
-                yield commands.FileRenameCommand(old_path, new_path)
-            yield commands.CommitCommand('head', '2', author,
-                committer, "commit 2", ":1", [], files_two)
-        return command_list
+        return handler, branch
 
     # FIXME: [] as a default is bad, as it is mutable, but I want
     # to use None to mean "don't check this".
+    def assertChanges(self, branch, revno, expected_added=[],
+            expected_removed=[], expected_modified=[],
+            expected_renamed=[]):
+        """Check the changes introduced in a revision of a branch.
+
+        This method checks that a revision introduces expected changes.
+        The required changes are passed in as a list, where
+        each entry contains the needed information about the change.
+
+        If you do not wish to assert anything about a particular
+        category then pass None instead.
+
+        branch: The branch.
+        revno: revision number of revision to check.
+        expected_added: a list of (filename,) tuples that must have
+            been added in the delta.
+        expected_removed: a list of (filename,) tuples that must have
+            been removed in the delta.
+        expected_modified: a list of (filename,) tuples that must have
+            been modified in the delta.
+        expected_renamed: a list of (old_path, new_path) tuples that
+            must have been renamed in the delta.
+        :return: revtree1, revtree2
+        """
+        repo = branch.repository
+        revtree1 = repo.revision_tree(branch.revision_history()[revno - 1])
+        revtree2 = repo.revision_tree(branch.revision_history()[revno])
+        changes = revtree2.changes_from(revtree1)
+        self.check_changes(changes, expected_added, expected_removed,
+            expected_modified, expected_renamed)
+        return revtree1, revtree2
+
     def check_changes(self, changes, expected_added=[],
             expected_removed=[], expected_modified=[],
             expected_renamed=[]):
@@ -115,54 +132,53 @@ class TestRename(tests.TestCaseWithTransport):
                     "%s is not modified, %s are" % (str(expected_modified_entry),
                         modified_files))
 
+
+class TestRename(TestCaseForGenericProcessor):
+
+    def get_command_iter(self, old_path, new_path):
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(old_path, 'file', False,
+                        None, "aaa")
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileRenameCommand(old_path, new_path)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
     def test_rename_in_root(self):
-        (handler, branch) = self.get_handler()
+        handler, branch = self.get_handler()
         old_path = 'a'
         new_path = 'b'
-        command_list = self.get_command_iter(old_path, new_path)
-        handler.process(command_list)
-        repo = branch.repository
-        revtree1 = repo.revision_tree(branch.revision_history()[0])
-        revtree2 = repo.revision_tree(branch.revision_history()[1])
-        changes = revtree2.changes_from(revtree1)
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree1, revtree2 = self.assertChanges(branch, 1,
+            expected_renamed=[(old_path, new_path)])
         self.assertEqual(revtree1.get_revision_id(),
                          revtree1.inventory.root.children['a'].revision)
         self.assertEqual(revtree2.get_revision_id(),
                          revtree2.inventory.root.children['b'].revision)
-        self.check_changes(changes, expected_renamed=[(old_path, new_path)])
 
     def test_rename_in_subdir(self):
-        (handler, branch) = self.get_handler()
+        handler, branch = self.get_handler()
         old_path = 'a/a'
         new_path = 'a/b'
-        command_list = self.get_command_iter(old_path, new_path)
-        handler.process(command_list)
-        repo = branch.repository
-        revtree1 = repo.revision_tree(branch.revision_history()[0])
-        revtree2 = repo.revision_tree(branch.revision_history()[1])
-        changes = revtree2.changes_from(revtree1)
-        self.check_changes(changes, expected_renamed=[(old_path, new_path)])
+        handler.process(self.get_command_iter(old_path, new_path))
+        self.assertChanges(branch, 1, expected_renamed=[(old_path, new_path)])
 
     def test_move_to_new_dir(self):
-        (handler, branch) = self.get_handler()
+        handler, branch = self.get_handler()
         old_path = 'a/a'
         new_path = 'b/a'
-        command_list = self.get_command_iter(old_path, new_path)
-        handler.process(command_list)
-        repo = branch.repository
-        revtree1 = repo.revision_tree(branch.revision_history()[0])
-        revtree2 = repo.revision_tree(branch.revision_history()[1])
-        changes = revtree2.changes_from(revtree1)
-        self.check_changes(changes, expected_renamed=[(old_path, new_path)],
+        handler.process(self.get_command_iter(old_path, new_path))
+        self.assertChanges(branch, 1, expected_renamed=[(old_path, new_path)],
             expected_added=[('b',)])
 
 
-class TestFileKinds(tests.TestCaseWithTransport):
-
-    def get_handler(self):
-        branch = self.make_branch('.')
-        handler = generic_processor.GenericProcessor(branch.bzrdir)
-        return (handler, branch)
+class TestFileKinds(TestCaseForGenericProcessor):
 
     def get_command_iter(self, path, kind, content):
         def command_list():
@@ -175,10 +191,9 @@ class TestFileKinds(tests.TestCaseWithTransport):
         return command_list
 
     def test_import_plainfile(self):
-        (handler, branch) = self.get_handler()
-        command_list = self.get_command_iter('foo', 'file', 'aaa')
+        handler, branch = self.get_handler()
+        handler.process(self.get_command_iter('foo', 'file', 'aaa'))
 
     def test_import_symlink(self):
-        (handler, branch) = self.get_handler()
-        command_list = self.get_command_iter('foo', 'symlink', 'bar')
-        handler.process(command_list)
+        handler, branch = self.get_handler()
+        handler.process(self.get_command_iter('foo', 'symlink', 'bar'))
