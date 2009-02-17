@@ -60,35 +60,43 @@ def invert_dictset(d):
     return result
 
 
-def common_path(l1, l2, common=[]):
-    """Find the common bit of 2 paths."""
+def _common_path_and_rest(l1, l2, common=[]):
     # From http://code.activestate.com/recipes/208993/
     if len(l1) < 1: return (common, l1, l2)
     if len(l2) < 1: return (common, l1, l2)
     if l1[0] != l2[0]: return (common, l1, l2)
-    return common_path(l1[1:], l2[1:], common+[l1[0]])
+    return _common_path_and_rest(l1[1:], l2[1:], common+[l1[0]])
+
+
+def common_path(path1, path2):
+    """Find the common bit of 2 paths."""
+    return ''.join(_common_path_and_rest(path1, path2)[0])
 
 
 def common_directory(paths):
     """Find the deepest common directory of a list of paths.
     
-    :return: if no paths are provided, None is returned,
-      otherwise a directory with a trailing /.
+    :return: if no paths are provided, None is returned;
+      if there is no common directory, '' is returned;
+      otherwise the common directory with a trailing / is returned.
     """
     from bzrlib import osutils
     def get_dir_with_slash(path):
-        if path.endswith('/'):
+        if path == '' or path.endswith('/'):
             return path
         else:
             dirname, basename = osutils.split(path)
-            return dirname + '/'
+            if dirname == '':
+                return dirname
+            else:
+                return dirname + '/'
 
     if not paths:
         return None
     elif len(paths) == 1:
         return get_dir_with_slash(paths[0])
     else:
-        common = common_path(paths[0], paths[1])[0]
+        common = common_path(paths[0], paths[1])
         for path in paths[2:]:
             common = common_path(common, path)
-        return get_dir_with_slash(''.join(common))
+        return get_dir_with_slash(common)
