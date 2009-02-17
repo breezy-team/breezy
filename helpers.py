@@ -48,6 +48,7 @@ def invert_dict(d):
         keys.append(k)
     return result
 
+
 def invert_dictset(d):
     """Invert a dictionary with keys matching a set of values, turned into lists."""
     # Based on recipe from ASPN
@@ -57,3 +58,37 @@ def invert_dictset(d):
             keys = result.setdefault(v, [])
             keys.append(k)
     return result
+
+
+def common_path(l1, l2, common=[]):
+    """Find the common bit of 2 paths."""
+    # From http://code.activestate.com/recipes/208993/
+    if len(l1) < 1: return (common, l1, l2)
+    if len(l2) < 1: return (common, l1, l2)
+    if l1[0] != l2[0]: return (common, l1, l2)
+    return common_path(l1[1:], l2[1:], common+[l1[0]])
+
+
+def common_directory(paths):
+    """Find the deepest common directory of a list of paths.
+    
+    :return: if no paths are provided, None is returned,
+      otherwise a directory with a trailing /.
+    """
+    from bzrlib import osutils
+    def get_dir_with_slash(path):
+        if path.endswith('/'):
+            return path
+        else:
+            dirname, basename = osutils.split(path)
+            return dirname + '/'
+
+    if not paths:
+        return None
+    elif len(paths) == 1:
+        return get_dir_with_slash(paths[0])
+    else:
+        common = common_path(paths[0], paths[1])[0]
+        for path in paths[2:]:
+            common = common_path(common, path)
+        return get_dir_with_slash(''.join(common))

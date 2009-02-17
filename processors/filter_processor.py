@@ -23,6 +23,7 @@ from bzrlib.trace import (
     )
 from bzrlib.plugins.fastimport import (
     commands,
+    helpers,
     processor,
     )
 
@@ -50,7 +51,7 @@ class FilterProcessor(processor.ImportProcessor):
         self.includes = self.params.get('include_paths')
         self.excludes = self.params.get('exclude_paths')
         # What's the new root, if any
-        self.new_root = self._find_new_root(self.includes)
+        self.new_root = helpers.common_directory(self.includes)
         # Buffer of blobs until we know we need them: mark -> cmd
         self.blobs = {}
         # These are the commits we've output so far
