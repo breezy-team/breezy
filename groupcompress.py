@@ -47,6 +47,7 @@ from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
     AbsentContentFactory,
+    ChunkedContentFactory,
     FulltextContentFactory,
     VersionedFiles,
     )
@@ -367,10 +368,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # an empty tuple instead.
             parents = ()
         # double handling for now. Make it work until then.
-        bytes = ''.join(lines)
-        record = FulltextContentFactory(key, parents, None, bytes)
+        length = sum(map(len, lines))
+        record = ChunkedContentFactory(key, parents, None, lines)
         sha1 = list(self._insert_record_stream([record], random_id=random_id))[0]
-        return sha1, len(bytes), None
+        return sha1, length, None
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
@@ -519,9 +520,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
                 lines = apply_delta(plain, delta)
-            bytes = ''.join(lines)
-            yield FulltextContentFactory(key, parents, sha1, bytes)
-            
+            yield ChunkedContentFactory(key, parents, sha1, lines)
+
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
         result = {}
