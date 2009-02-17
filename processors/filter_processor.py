@@ -96,19 +96,25 @@ class FilterProcessor(processor.ImportProcessor):
         # These pass through if they meet the filtering conditions
         interesting_filecmds = self._filter_filecommands(cmd.file_iter)
         if interesting_filecmds:
-            cmd.file_iter = iter(interesting_filecmds)
-            self.keep = True
+            # If all we have is a single deleteall, skip this commit
+            if len(interesting_filecmds) == 1 and isinstance(
+                interesting_filecmds[0], commands.FileDeleteAllCommand):
+                pass
+            else:
+                # Remember just the interesting file commands
+                self.keep = True
+                cmd.file_iter = iter(interesting_filecmds)
 
-            # Record the referenced blobs
-            for fc in interesting_filecmds:
-                if isinstance(fc, commands.FileModifyCommand):
-                    if fc.dataref is not None:
-                        self.referenced_blobs.append(fc.dataref)
+                # Record the referenced blobs
+                for fc in interesting_filecmds:
+                    if isinstance(fc, commands.FileModifyCommand):
+                        if fc.dataref is not None:
+                            self.referenced_blobs.append(fc.dataref)
 
-            # Update from and merges to refer to commits in the output
-            cmd.from_ = self._find_interesting_from(cmd.from_)
-            cmd.merges = self._find_interesting_merges(cmd.merges)
-            self.interesting_commits.add(":" + cmd.mark)
+                # Update from and merges to refer to commits in the output
+                cmd.from_ = self._find_interesting_from(cmd.from_)
+                cmd.merges = self._find_interesting_merges(cmd.merges)
+                self.interesting_commits.add(cmd.id)
 
         # Keep track of the parents
         if cmd.from_ and cmd.merges:
@@ -141,20 +147,6 @@ class FilterProcessor(processor.ImportProcessor):
         self.outf.write(text)
         if not text.endswith("\n"):
             self.outf.write("\n")
-
-    def _find_new_root(self, paths):
-        """Find the deepest common directory for a list of paths."""
-        if not paths:
-            return None
-        elif len(paths) == 1:
-            if paths[0].endswith('/'):
-                return paths[0]
-            else:
-                dirname,basename = osutils.split(paths[0])
-                return dirname + '/'
-        else:
-            # TODO: handle multiple paths
-            return None
 
     def _filter_filecommands(self, filecmd_iter):
         """Return the filecommands filtered by includes & excludes.

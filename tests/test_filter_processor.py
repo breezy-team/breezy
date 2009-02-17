@@ -630,6 +630,7 @@ from :102
 C NEWS doc/NEWS
 """
 
+
 class TestIncludePathsWithCopies(TestCaseWithFiltering):
 
     def test_copy_all_inside(self):
@@ -738,5 +739,64 @@ test
 ing
 from :100
 M 644 :3 README.txt
+M 644 :4 index.txt
+""")
+
+
+# A sample input stream with deleteall's creating the following tree:
+#
+#  NEWS
+#  doc/README.txt
+#  doc/index.txt
+_SAMPLE_WITH_DELETEALL = \
+"""blob
+mark :1
+data 9
+Welcome!
+commit refs/heads/master
+mark :100
+committer a <b@c> 1234798653 +0000
+data 4
+test
+deleteall
+M 644 :1 doc/README.txt
+blob
+mark :3
+data 19
+Welcome!
+my friend
+blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+from :100
+deleteall
+M 644 :3 doc/README.txt
+M 644 :4 doc/index.txt
+"""
+
+
+class TestIncludePathsWithDeleteAll(TestCaseWithFiltering):
+
+    def test_deleteall(self):
+        params = {'include_paths': ['doc/index.txt']}
+        self.assertFiltering(_SAMPLE_WITH_DELETEALL, params, \
+"""blob
+mark :4
+data 11
+== Docs ==
+commit refs/heads/master
+mark :102
+committer d <b@c> 1234798653 +0000
+data 8
+test
+ing
+deleteall
 M 644 :4 index.txt
 """)
