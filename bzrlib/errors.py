@@ -2955,9 +2955,9 @@ class MustHaveWorkingTree(BzrError):
         BzrError.__init__(self, format=format, url=url)
 
 
-class UnresumableWriteGroups(BzrError):
+class UnresumableWriteGroup(BzrError):
     
-    _fmt = ("Repository %(repository)s cannot resume write group(s) "
+    _fmt = ("Repository %(repository)s cannot resume write group "
             "%(write_groups)r: %(reason)s")
 
     internal_error = True

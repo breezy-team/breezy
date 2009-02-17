@@ -627,7 +627,7 @@ class TestPackRepository(TestCaseWithTransport):
         hacked_wg_token = (
             '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
         self.assertRaises(
-            errors.UnresumableWriteGroups,
+            errors.UnresumableWriteGroup,
             new_repo.resume_write_group, [hacked_wg_token])
 
 

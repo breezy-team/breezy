@@ -583,13 +583,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual('"foo" is not a valid shelf id, '
             'try a number instead.', str(err))
 
-    def test_unresumable_write_groups(self):
+    def test_unresumable_write_group(self):
         repo = "dummy repo"
         wg_tokens = ['token']
         reason = "a reason"
-        err = errors.UnresumableWriteGroups(repo, wg_tokens, reason)
+        err = errors.UnresumableWriteGroup(repo, wg_tokens, reason)
         self.assertEqual(
-            "Repository dummy repo cannot resume write group(s) "
+            "Repository dummy repo cannot resume write group "
             "['token']: a reason", str(err))
 
     def test_unsuspendable_write_group(self):

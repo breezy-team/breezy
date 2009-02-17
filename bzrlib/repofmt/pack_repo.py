@@ -1563,7 +1563,7 @@ class RepositoryPackCollection(object):
         if not re.match('[a-f0-9]{32}', name):
             # Tokens should be md5sums of the suspended pack file, i.e. 32 hex
             # digits.
-            raise errors.UnresumableWriteGroups(
+            raise errors.UnresumableWriteGroup(
                 self.repo, [name], 'Malformed write group token')
         try:
             rev_index = self._make_index(name, '.rix', resume=True)
@@ -1574,7 +1574,7 @@ class RepositoryPackCollection(object):
                 sig_index, self._upload_transport, self._pack_transport,
                 self._index_transport, self)
         except errors.NoSuchFile, e:
-            raise errors.UnresumableWriteGroups(self.repo, [name], str(e))
+            raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
         self._resumed_packs.append(result)
         return result

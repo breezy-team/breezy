@@ -298,7 +298,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.abort_write_group()
         same_repo = self.reopen_repo(repo)
         self.assertRaises(
-            errors.UnresumableWriteGroups, same_repo.resume_write_group,
+            errors.UnresumableWriteGroup, same_repo.resume_write_group,
             wg_tokens)
 
     def test_commit_resumed_write_group_no_new_data(self):
@@ -319,7 +319,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             'lines', same_repo.texts.get_record_stream([text_key],
                 'unordered', True).next().get_bytes_as('fulltext'))
         self.assertRaises(
-            errors.UnresumableWriteGroups, same_repo.resume_write_group,
+            errors.UnresumableWriteGroup, same_repo.resume_write_group,
             wg_tokens)
 
     def test_commit_resumed_write_group_plus_new_data(self):
@@ -365,7 +365,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
 #            'lines', same_repo.texts.get_record_stream([text_key],
 #                'unordered', True).next().get_bytes_as('fulltext'))
 #        self.assertRaises(
-#            errors.UnresumableWriteGroups, same_repo.resume_write_group,
+#            errors.UnresumableWriteGroup, same_repo.resume_write_group,
 #            wg_tokens)
 
     def test_commit_resumed_write_group_adding_missing_parents(self):
