@@ -122,12 +122,13 @@ class CommitCommand(ImportCommand):
         if self.author is None:
             author_line = ""
         else:
-            author_line = "\nauthor %s" % _format_who_when(self.author)
-        committer = "committer %s" % _format_who_when(self.committer)
+            author_line = "\nauthor %s" % format_who_when(self.author)
+        committer = "committer %s" % format_who_when(self.committer)
         if self.message is None:
-            msg = ""
+            msg_section = ""
         else:
-            msg = "\ndata %d\n%s" % (len(self.message), self.message)
+            msg = self.message.encode('utf8')
+            msg_section = "\ndata %d\n%s" % (len(msg), msg)
         if self.from_ is None:
             from_line = ""
         else:
@@ -143,7 +144,7 @@ class CommitCommand(ImportCommand):
             filecommands = "".join(["\n%r" % (c,)
                 for c in iter(self.file_iter)])
         return "commit %s%s%s\n%s%s%s%s%s" % (self.ref, mark_line, author_line,
-            committer, msg, from_line, merge_lines, filecommands)
+            committer, msg_section, from_line, merge_lines, filecommands)
 
     def dump_str(self, names=None, child_lists=None, verbose=False):
         result = [ImportCommand.dump_str(self, names, verbose=verbose)]
@@ -200,12 +201,13 @@ class TagCommand(ImportCommand):
         if self.tagger is None:
             tagger_line = ""
         else:
-            tagger_line = "\ntagger %s" % _format_who_when(self.tagger)
+            tagger_line = "\ntagger %s" % format_who_when(self.tagger)
         if self.message is None:
-            msg = ""
+            msg_section = ""
         else:
-            msg = "\ndata %d\n%s" % (len(self.message), self.message)
-        return "tag %s%s%s%s" % (self.id, from_line, tagger_line, msg)
+            msg = self.message.encode('utf8')
+            msg_section = "\ndata %d\n%s" % (len(msg), msg)
+        return "tag %s%s%s%s" % (self.id, from_line, tagger_line, msg_section)
 
 
 class FileCommand(ImportCommand):
@@ -238,7 +240,8 @@ class FileModifyCommand(FileCommand):
         else:
             dataref = "%s" % (self.dataref,)
             datastr = ""
-        return "M %s %s %s%s" % (mode, dataref, self.path, datastr)
+        path = format_path(self.path)
+        return "M %s %s %s%s" % (mode, dataref, path, datastr)
 
 
 class FileDeleteCommand(FileCommand):
@@ -248,7 +251,7 @@ class FileDeleteCommand(FileCommand):
         self.path = path
 
     def __repr__(self):
-        return "D %s" % (self.path,)
+        return "D %s" % (format_path(self.path),)
 
 
 class FileCopyCommand(FileCommand):
@@ -259,7 +262,9 @@ class FileCopyCommand(FileCommand):
         self.dest_path = dest_path
 
     def __repr__(self):
-        return "C %s %s" % (_quote_path(self.src_path), self.dest_path)
+        return "C %s %s" % (
+            format_path(self.src_path, quote_spaces=True),
+            format_path(self.dest_path))
 
 
 class FileRenameCommand(FileCommand):
@@ -270,7 +275,9 @@ class FileRenameCommand(FileCommand):
         self.new_path = new_path
 
     def __repr__(self):
-        return "R %s %s" % (_quote_path(self.old_path), self.new_path)
+        return "R %s %s" % (
+            format_path(self.old_path, quote_spaces=True),
+            format_path(self.new_path))
 
 
 class FileDeleteAllCommand(FileCommand):
@@ -282,15 +289,20 @@ class FileDeleteAllCommand(FileCommand):
         return "deleteall"
 
 
-def _quote_path(s):
-    """Surround a path with quotes if it contains spaces."""
-    if ' ' in s:
-        return '"%s"' % (s,)
+def format_path(p, quote_spaces=False):
+    """Format a path in utf8, quoting it if necessary."""
+    if '\n' in p:
+        import re
+        p = re.sub('\n', '\\n', p)
+        quote = True
     else:
-        return s
+        quote = p[0] == '"' or (quote_spaces and ' ' in p)
+    if quote:
+        p = '"%s"' % p
+    return p.encode('utf8')
 
 
-def _format_who_when(fields):
+def format_who_when(fields):
     """Format a tuple of name,email,secs-since-epoch,utc-offset-secs as a string."""
     offset = fields[3]
     if offset < 0:
@@ -301,4 +313,5 @@ def _format_who_when(fields):
     offset_hours = offset / 3600
     offset_minutes = offset / 60 - offset_hours * 60
     offset_str = "%s%02d%02d" % (offset_sign, offset_hours, offset_minutes)
-    return "%s <%s> %d %s" % (fields[0], fields[1], fields[2], offset_str)
+    name = fields[0].encode('utf8')
+    return "%s <%s> %d %s" % (name, fields[1], fields[2], offset_str)
