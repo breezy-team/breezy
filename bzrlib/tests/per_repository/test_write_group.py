@@ -121,8 +121,8 @@ class TestWriteGroup(TestCaseWithRepository):
 
 class TestResumeableWriteGroup(TestCaseWithRepository):
 
-    def make_write_locked_repo(self):
-        repo = self.make_repository('repo')
+    def make_write_locked_repo(self, relpath='repo'):
+        repo = self.make_repository(relpath)
         repo.lock_write()
         self.addCleanup(repo.unlock)
         return repo
@@ -132,6 +132,17 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.lock_write()
         self.addCleanup(same_repo.unlock)
         return same_repo
+
+    def require_suspendable_write_groups(self, reason):
+        repo = self.make_repository('__suspend_test')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        try:
+            wg_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            repo.abort_write_group()
+            raise TestNotApplicable(reason)
 
     def test_suspend_write_group(self):
         repo = self.make_write_locked_repo()
@@ -183,19 +194,15 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             # See also test_pack_repository's test of the same name.
 
     def test_multiple_resume_write_group(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         first_key = ('file-id', 'revid')
         repo.texts.add_lines(first_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         self.assertTrue(same_repo.is_in_write_group())
@@ -216,19 +223,15 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.abort_write_group()
 
     def test_no_op_suspend_resume(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         new_wg_tokens = same_repo.suspend_write_group()
@@ -239,73 +242,57 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.abort_write_group()
 
     def test_read_after_suspend_fails(self):
+        self.require_suspendable_write_groups(
+            'Cannot test suspend on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         self.assertEqual([], list(repo.texts.keys()))
 
     def test_read_after_second_suspend_fails(self):
+        self.require_suspendable_write_groups(
+            'Cannot test suspend on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.suspend_write_group()
         self.assertEqual([], list(same_repo.texts.keys()))
 
     def test_read_after_resume_abort_fails(self):
+        self.require_suspendable_write_groups(
+            'Cannot test suspend on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.abort_write_group()
         self.assertEqual([], list(same_repo.texts.keys()))
 
     def test_cannot_resume_aborted_write_group(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.abort_write_group()
@@ -315,19 +302,15 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             wg_tokens)
 
     def test_commit_resumed_write_group_no_new_data(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         same_repo.commit_write_group()
@@ -340,19 +323,15 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             wg_tokens)
 
     def test_commit_resumed_write_group_plus_new_data(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         first_key = ('file-id', 'revid')
         repo.texts.add_lines(first_key, (), ['lines'])
-        try:
-            wg_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            repo.abort_write_group()
-            raise TestNotApplicable(
-                'Cannot test multiple resume of repo that does not support '
-                'suspending')
+        wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
         second_key = ('file-id', 'second-revid')
@@ -367,5 +346,65 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             'more lines', same_repo.texts.get_record_stream([second_key],
                 'unordered', True).next().get_bytes_as('fulltext'))
 
-#    def test_suspend_empty_write_group(self):
+#    def test_commit_resumed_write_group_with_missing_parents(self):
+#        self.require_suspendable_write_groups(
+#            'Cannot test resume on repo that does not support suspending')
+#        repo = self.make_write_locked_repo()
+#        repo.start_write_group()
+#        # Add some content so this isn't an empty write group (which may return
+#        # 0 tokens)
+#        text_key = ('file-id', 'revid')
+#        missing_parent = ('file-id', 'missing-revid')
+#        repo.texts.add_lines(text_key, (missing_parent,), ['lines'])
+#        wg_tokens = repo.suspend_write_group()
+#        same_repo = self.reopen_repo(repo)
+#        same_repo.resume_write_group(wg_tokens)
+#        same_repo.commit_write_group()
+#        self.assertEqual([text_key], list(same_repo.texts.keys()))
+#        self.assertEqual(
+#            'lines', same_repo.texts.get_record_stream([text_key],
+#                'unordered', True).next().get_bytes_as('fulltext'))
+#        self.assertRaises(
+#            errors.UnresumableWriteGroups, same_repo.resume_write_group,
+#            wg_tokens)
+
+    def test_commit_resumed_write_group_adding_missing_parents(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
+        repo = self.make_write_locked_repo()
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        same_repo = self.reopen_repo(repo)
+        same_repo.resume_write_group(wg_tokens)
+        second_key = ('file-id', 'second-revid')
+        missing_parent = ('file-id', 'missing-revid')
+        same_repo.texts.add_lines(
+            second_key, (missing_parent,), ['more lines'])
+        self.assertRaises(
+            errors.RevisionNotPresent, same_repo.commit_write_group)
+        same_repo.abort_write_group()
+
+    def test_suspend_empty_initial_write_group(self):
+        """Suspending a write group with no writes returns an empty token
+        list.
+        """
+        self.require_suspendable_write_groups(
+            'Cannot test suspend on repo that does not support suspending')
+        repo = self.make_write_locked_repo()
+        repo.start_write_group()
+        wg_tokens = repo.suspend_write_group()
+        self.assertEqual([], wg_tokens)
+
+    def test_suspend_empty_initial_write_group(self):
+        """Resuming an empty token list is equivalent to start_write_group."""
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
+        repo = self.make_write_locked_repo()
+        repo.resume_write_group([])
+        repo.abort_write_group()
+        
 
