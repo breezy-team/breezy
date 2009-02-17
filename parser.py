@@ -318,7 +318,7 @@ class ImportParser(LineBasedParser):
                 yield commands.FileRenameCommand(old, new)
             elif line.startswith('C '):
                 src, dest = self._path_pair(line[2:])
-                yield commands.FileRenameCommand(src, dest)
+                yield commands.FileCopyCommand(src, dest)
             elif line.startswith('deleteall'):
                 yield commands.FileDeleteAllCommand()
             else:
