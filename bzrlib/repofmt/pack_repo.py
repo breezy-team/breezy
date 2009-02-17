@@ -252,9 +252,6 @@ class ResumedPack(ExistingPack):
         self.index_class = pack_collection._index_class
         self._state = 'resumed'
         # XXX: perhaps check that the .pack file exists?
-        # XXX: should sanity check name: what if a client uses a 'name' of
-        #      "../../../something/private"?  could steal suspended wg from
-        #      another repo!
 
     def access_tuple(self):
         if self._state == 'finished':
