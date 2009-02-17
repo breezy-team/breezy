@@ -27,6 +27,9 @@ IN DEVELOPMENT
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
 
+    * Bazaar will now point out ``bzr+ssh://`` to the user when they 
+      use ssh://. (Jelmer Vernooij, #330535)
+
   BUG FIXES:
 
     * ``bzr unshelve`` gives a more palatable error if passed a non-integer
