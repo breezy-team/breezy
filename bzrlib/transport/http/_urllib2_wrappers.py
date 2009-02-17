@@ -66,6 +66,13 @@ from bzrlib import (
     ui,
     )
 
+try:
+    import kerberos
+except ImportError:
+    have_kerberos = False
+else:
+    have_kerberos = True
+
 
 class _ReportingFileSocket(object):
 
@@ -1166,13 +1173,12 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 
     def _auth_match_kerberos(self, auth):
         """Try to create a GSSAPI response for authenticating against a host."""
-        try:
-            import kerberos
-        except ImportError:
+        if not have_kerberos:
             return None
         ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
         if ret < 1:
-            trace.warning('Unable to create GSSAPI context for %(host)s', auth)
+            trace.warning('Unable to create GSSAPI context for %(host)s: %d',
+                auth, ret)
             return None
         ret = kerberos.authGSSClientStep(vc, "")
         if ret < 0:
@@ -1187,7 +1193,8 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         # If the auth scheme is known, it means a previous
         # authentication was successful, all information is
         # available, no further checks are needed.
-        return auth.get('scheme', None) == 'negotiate'
+        return (auth.get('scheme', None) == 'negotiate' and 
+                auth.get('negotiate_response', None) is not None)
 
 
 class BasicAuthHandler(AbstractAuthHandler):

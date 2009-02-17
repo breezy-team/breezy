@@ -27,7 +27,8 @@ IN DEVELOPMENT
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
 
-    * Support for GSSAPI authentication when using HTTP. (Jelmer Vernooij)
+    * Support for GSSAPI authentication when using HTTP or HTTPS. 
+      (Jelmer Vernooij)
 
   BUG FIXES:
 
