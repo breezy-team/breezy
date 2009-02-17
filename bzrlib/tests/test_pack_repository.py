@@ -612,7 +612,18 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             mismatching_format_name = 'pack-0.92'
         else:
             if repo._format.supports_chks:
-                matching_format_name = 'development5'
+                hash_key = repo._format._serializer.search_key_name
+                # At the moment, we don't allow stacking between various hash
+                # keys.
+                if hash_key == 'plain':
+                    matching_format_name = 'development5'
+                elif hash_key == 'hash-16-way':
+                    matching_format_name = 'development5-hash16'
+                else:
+                    if hash_key != 'hash-255-way':
+                        raise AssertionError("unhandled hash key: %s"
+                                             % (hash_key,))
+                    matching_format_name = 'development5-hash255'
             else:
                 matching_format_name = 'pack-0.92'
             mismatching_format_name = 'pack-0.92-subtree'
