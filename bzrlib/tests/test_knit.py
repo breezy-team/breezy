@@ -862,6 +862,8 @@ class LowLevelKnitDataTests(TestCase):
 
 class LowLevelKnitIndexTests(TestCase):
 
+    # XXX call new API blows up
+
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
         orig = knit._load_data
@@ -1600,6 +1602,33 @@ class TestGraphIndexKnit(KnitTests):
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)]),
              (('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
+
+    # XXX: duplicate these test methods in other test cases.
+    def test_add_good_unvalidated_index(self):
+        index = _KnitGraphIndex(CombinedGraphIndex([]), lambda: True)
+        class HappyIndex(object):
+            def _external_references(self):
+                return []
+        index._add_unvalidated_index(HappyIndex())
+        self.assertEqual(frozenset(), index.get_missing_compression_parents())
+
+    def test_add_incomplete_unvalidated_index(self):
+        index = _KnitGraphIndex(CombinedGraphIndex([]), lambda: True)
+        class SadIndex(object):
+            def _external_references(self):
+                return [('missing',)]
+        index._add_unvalidated_index(SadIndex())
+        self.assertEqual(
+            frozenset([('missing',)]), index.get_missing_compression_parents())
+
+    def test_add_unvalidated_index_with_present_external_references(self):
+        index = self.two_graph_index(deltas=True)
+        class SadIndex(object):
+            def _external_references(self):
+                # 'parent' exists in the index returned from two_graph_index
+                return [('parent',)]
+        index._add_unvalidated_index(SadIndex())
+        self.assertEqual(frozenset(), index.get_missing_compression_parents())
 
 
 class TestNoParentsGraphIndexKnit(KnitTests):
