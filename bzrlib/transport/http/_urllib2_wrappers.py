@@ -1152,20 +1152,10 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 
     handler_order = 480
 
-    auth_regexp = re.compile('realm="([^"]*)"', re.I)
-
     def auth_match(self, header, auth):
-        try:
-            scheme, raw_auth = header.split(None, 1)
-        except ValueError:
-            scheme = header
-            raw_auth = ""
-        scheme = scheme.lower()
+        scheme = header.lower()
         if scheme != 'negotiate':
             return False
-        match = self.auth_regexp.search(raw_auth)
-        if match:
-            self.update_auth(auth, 'realm', match.groups()[0])
         self.update_auth(auth, 'scheme', scheme)
         resp = self._auth_match_kerberos(auth)
         if resp is None:
