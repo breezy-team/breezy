@@ -127,7 +127,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     :rtype: WorkingTree
     """
     self.make_first_upstream_commit()
-    self.wt.branch.tags.set_tag('upstream-debian-0.1',
+    self.wt.branch.tags.set_tag('upstream-0.1',
             self.wt.branch.last_revision())
     self.make_first_debian_commit()
     self.make_new_upstream()
@@ -173,7 +173,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     self.assertEqual(len(parents), 2)
     self.assertEqual(wt.conflicts(), [])
     rh = wt.branch.revision_history()
-    self.assertEqual(wt.branch.tags.lookup_tag('upstream-debian-0.2'),
+    self.assertEqual(wt.branch.tags.lookup_tag('upstream-0.2'),
             parents[1])
 
   def test_merge_upstream(self):
@@ -182,7 +182,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
 
   def test_merge_upstream_handles_no_source(self):
     self.make_first_upstream_commit()
-    self.wt.branch.tags.set_tag('upstream-debian-0.1',
+    self.wt.branch.tags.set_tag('upstream-0.1',
             self.wt.branch.last_revision())
     self.make_first_debian_commit()
     db = self.make_distribution_branch()
@@ -194,11 +194,11 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
 
   def test_merge_upstream_new_tag_extant(self):
     self.make_first_upstream_commit()
-    self.wt.branch.tags.set_tag('upstream-debian-0.1',
+    self.wt.branch.tags.set_tag('upstream-0.1',
             self.wt.branch.last_revision())
     self.make_first_debian_commit()
     self.make_new_upstream()
-    self.wt.branch.tags.set_tag('upstream-debian-0.2',
+    self.wt.branch.tags.set_tag('upstream-0.2',
             self.wt.branch.last_revision())
     db = self.make_distribution_branch()
     self.assertRaises(UpstreamAlreadyImported, db.merge_upstream,
@@ -207,7 +207,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
 
   def perform_conflicted_merge(self):
     self.make_first_upstream_commit()
-    self.wt.branch.tags.set_tag('upstream-debian-0.1',
+    self.wt.branch.tags.set_tag('upstream-0.1',
             self.wt.branch.last_revision())
     write_to_file('CHANGELOG', 'debian version\n')
     self.make_first_debian_commit()
@@ -266,7 +266,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
   def test_merge_upstream_tags_new_version(self):
     wt = self.perform_conflicted_merge()
     rh = wt.branch.revision_history()
-    self.assertEqual(wt.branch.tags.lookup_tag('upstream-debian-0.2'),
+    self.assertEqual(wt.branch.tags.lookup_tag('upstream-0.2'),
             wt.get_parent_ids()[1])
 
 

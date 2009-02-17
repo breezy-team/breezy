@@ -18,6 +18,11 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
     noticeable change will be that it now tries to sign by default. Add a NEWS
     entry to explain this.
   * Support passing extra options to the builder using "bzr bd -- --foo" syntax.
+  * Don't use the distribution name in the tags, fixing myriad issues, but
+    giving us a compatibility headache. Old clients won't see the new tags,
+    but using the old tags lead to bugs, and the only way to fix that is to
+    use the new tags. Not a good situation, but moving forwards we will have
+    a much better situation.
 
   [ Kees Cook ]
   * builder.py: switch to using external tar command to replace buggy

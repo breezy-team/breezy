@@ -93,7 +93,7 @@ class TestMarkUploaded(BuilddebTestCase):
     def test_mark_uploaded(self):
         self.make_unuploaded()
         self.run_bzr("mark-uploaded")
-        tagged_revision = self.wt.branch.tags.lookup_tag('debian-0.1-1')
+        tagged_revision = self.wt.branch.tags.lookup_tag('0.1-1')
         self.assertEqual(tagged_revision, self.wt.branch.last_revision())
 
     def test_mark_uploaded_force(self):
@@ -103,5 +103,5 @@ class TestMarkUploaded(BuilddebTestCase):
         self.wt.add(["foo"])
         self.wt.commit("two")
         self.run_bzr("mark-uploaded --force")
-        tagged_revision = self.wt.branch.tags.lookup_tag('debian-0.1-1')
+        tagged_revision = self.wt.branch.tags.lookup_tag('0.1-1')
         self.assertEqual(tagged_revision, self.wt.branch.last_revision())

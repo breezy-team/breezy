@@ -42,46 +42,15 @@ class RevisionSpec_package(RevisionSpec):
     prefix = 'package:'
 
     def _match_on(self, branch, revs):
-        loc = self.spec.find(':')
-        if loc == -1:
-            version_spec = self.spec
-            dist_spec = None
-        else:
-            version_spec = self.spec[:loc]
-            dist_spec = self.spec[loc+1:]
+        version_spec = self.spec
+        dist_spec = None
 
         if version_spec == '':
             raise VersionNotSpecified
-        else:
-            if dist_spec:
-                # We were told a distribution, so use that
-                dist_name = lookup_distribution(dist_spec)
-                if dist_name is None:
-                    if dist_spec not in ("debian", "ubuntu"):
-                        raise UnknownDistribution(dist_spec)
-                    dist_name = dist_spec
-                tags_to_lookup = ("%s-%s" % (dist_name, version_spec),)
-            else:
-                # We weren't given a distribution, so try both and
-                # see if there is ambiguity.
-                tags_to_lookup = ("debian-%s" % version_spec,
-                                  "ubuntu-%s" % version_spec)
 
-        revision_id = None
-        for tag_name in tags_to_lookup:
-            tag_revid = None
-            try:
-                tag_revid = branch.tags.lookup_tag(tag_name)
-            except NoSuchTag:
-                pass
-            if tag_revid is not None:
-                if revision_id is not None:
-                    raise AmbiguousPackageSpecification(self.prefix+self.spec)
-                revision_id = tag_revid
-
-        if revision_id is None:
+        try:
+            revision_id = branch.tags.lookup_tag(version_spec)
+            return RevisionInfo.from_revision_id(branch,
+                    revision_id, revs)
+        except NoSuchTag:
             raise UnknownVersion(version_spec)
-        return RevisionInfo.from_revision_id(branch,
-                revision_id, revs)
-
-

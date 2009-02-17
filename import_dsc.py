@@ -1011,7 +1011,7 @@ class DistributionBranch(object):
         :param version: the Version object that the tag should refer to.
         :return: a String with the name of the tag.
         """
-        return self.name + "-" + str(version)
+        return str(version)
 
     def upstream_tag_name(self, version):
         """Gets the tag name for the upstream part of version.

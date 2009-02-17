@@ -1,8 +1,15 @@
 bzr-builddeb (2.1) jaunty; urgency=low
 
-  The build command now defaults to "debuild" instead of
-  "dpkg-buildpackage -rfakeroot -uc -us". The most obvious change here will be
-  that it tries to sign packages by default.
+  * The build command now defaults to "debuild" instead of
+    "dpkg-buildpackage -rfakeroot -uc -us". The most obvious change here will be
+    that it tries to sign packages by default.
+
+  * The tags that were used for tracking versions have changed format. The
+    old format caused bugs, so this had to be done, but it does cause issues
+    for existing branches. To migrate you can rename the tags:
+    - debian-<version> or ubuntu-<version> simply become <version>
+    - upstream-debian-<version> or upstream-ubuntu-<version> become
+      upstream-<version>
 
  -- James Westby <james.westby@ubuntu.com>  Mon, 16 Feb 2009 16:11:44 +0000
 

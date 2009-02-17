@@ -1352,8 +1352,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         db = self.db1
         version_no = "0.1-1"
         version = Version(version_no)
-        self.assertEqual(db.tag_name(version),
-                self.name1 + "-" + version_no)
+        self.assertEqual(db.tag_name(version), version_no)
 
     def test_upstream_tag_name(self):
         db = self.db1
@@ -1361,7 +1360,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         version_no = upstream_v_no + "-1"
         version = Version(version_no)
         self.assertEqual(db.upstream_tag_name(version),
-                "upstream-" + self.name1 + "-" + upstream_v_no)
+                "upstream-" + upstream_v_no)
 
     def test_tag_version(self):
         db = self.db1
