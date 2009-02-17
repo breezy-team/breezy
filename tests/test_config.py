@@ -80,7 +80,6 @@ class DebBuildConfigTests(TestCaseWithTransport):
 
   def test_no_entry(self):
     self.assertEqual(self.config.merge, False)
-    self.assertEqual(self.config.source_builder, None)
 
   def test_interpolation(self):
     self.assertEqual(self.config.export_upstream_revision, 'tag:upstream-0.1')
