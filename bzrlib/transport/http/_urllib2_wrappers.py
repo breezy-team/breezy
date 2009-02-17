@@ -943,7 +943,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     preventively set authentication headers after the first
     successful authentication.
 
-    This can be used for http and proxy, as well as for basic and
+    This can be used for http and proxy, as well as for basic, negotiate and
     digest authentications.
 
     This provides an unified interface for all authentication handlers
@@ -1141,6 +1141,53 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         return request
 
     https_request = http_request # FIXME: Need test
+
+import kerberos
+
+class NegotiateAuthHandler(AbstractAuthHandler):
+    """A authentication handler that handles WWW-Authenticate: Negotiate.
+
+    At the moment this handler supports just Kerberos. In the future, 
+    NTLM support may also be added.
+    """
+
+    handler_order = 480
+
+    auth_regexp = re.compile('realm="([^"]*)"', re.I)
+
+    def auth_match(self, header, auth):
+        try:
+            scheme, raw_auth = header.split(None, 1)
+        except ValueError:
+            scheme = header
+            raw_auth = ""
+        scheme = scheme.lower()
+        if scheme != 'negotiate':
+            return False
+        match = self.auth_regexp.search(raw_auth)
+        if match:
+            self.update_auth(auth, 'realm', match.groups()[0])
+        self.update_auth(auth, 'scheme', scheme)
+        ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
+        if ret < 1:
+            trace.warning('Unable to create GSSAPI context for %(host)s', auth)
+            return False
+        ret = kerberos.authGSSClientStep(vc, "")
+        if ret < 0:
+            trace.mutter('authGSSClientStep failed: %d', ret)
+            return False
+        self.update_auth(auth, 'gssapi_ctx', vc)
+        return True
+
+    def build_auth_header(self, auth, request):
+        return "Negotiate %s" % kerberos.authGSSClientResponse(
+            auth['gssapi_ctx'])
+
+    def auth_params_reusable(self, auth):
+        # If the auth scheme is known, it means a previous
+        # authentication was successful, all information is
+        # available, no further checks are needed.
+        return auth.get('scheme', None) == 'negotiate'
 
 
 class BasicAuthHandler(AbstractAuthHandler):
@@ -1368,6 +1415,14 @@ class ProxyDigestAuthHandler(DigestAuthHandler, ProxyAuthHandler):
     """Custom proxy basic authentication handler"""
 
 
+class HTTPNegotiateAuthHandler(NegotiateAuthHandler, HTTPAuthHandler):
+    """Custom http negotiate authentication handler"""
+
+
+class ProxyNegotiateAuthHandler(NegotiateAuthHandler, ProxyAuthHandler):
+    """Custom proxy negotiate authentication handler"""
+
+
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     """Process HTTP error responses.
 
@@ -1432,8 +1487,10 @@ class Opener(object):
             ProxyHandler(),
             HTTPBasicAuthHandler(),
             HTTPDigestAuthHandler(),
+            HTTPNegotiateAuthHandler(),
             ProxyBasicAuthHandler(),
             ProxyDigestAuthHandler(),
+            ProxyNegotiateAuthHandler(),
             HTTPHandler,
             HTTPSHandler,
             HTTPDefaultErrorHandler,
