@@ -1159,6 +1159,10 @@ class ThunkedVersionedFiles(VersionedFiles):
                 sha1s[prefix + (suffix,)] = sha1
         return sha1s
 
+    def get_missing_compression_parent_keys(self):
+        # XXX
+        return []
+    
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 

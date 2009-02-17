@@ -735,6 +735,7 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitPlainFactory()
         self._fallback_vfs = []
         self._reload_func = reload_func
+        self._buffered_index_entries = {}
 
     def __repr__(self):
         return "%s(%r, %r)" % (
@@ -1374,7 +1375,7 @@ class KnitVersionedFiles(VersionedFiles):
         # parents must be present to avoid expanding to a fulltext.
         #
         # key = basis_parent, value = index entry to add
-        buffered_index_entries = {}
+        buffered_index_entries = self._buffered_index_entries
         for record in stream:
             parents = record.parents
             if record.storage_kind in delta_types:
@@ -1475,11 +1476,9 @@ class KnitVersionedFiles(VersionedFiles):
                     added_keys.extend(
                         [index_entry[0] for index_entry in index_entries])
                     del buffered_index_entries[key]
-        # If there were any deltas which had a missing basis parent, error.
-        if buffered_index_entries:
-            from pprint import pformat
-            raise errors.RevisionNotPresent(
-                pformat(sorted(buffered_index_entries.keys())), '<?>')
+
+    def get_missing_compression_parent_keys(self):
+        return self._buffered_index_entries.keys()
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
