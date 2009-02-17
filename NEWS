@@ -19,6 +19,14 @@ IN DEVELOPMENT
 
   FEATURES:
 
+    * Added ``fast-import-filter`` command for splitting out a
+      subdirectory or bunch of files into their own project. It can
+      also be used to create a new repository without any history
+      for nominated files and directories. This is useful for
+      removing information which is a security risk, huge binary
+      files like ISO images, etc.
+      (Ian Clatworthy)
+
     * Initial cut at reset support. (Brian de Alwis, Ian Clatworthy)
 
   IMPROVEMENTS:
