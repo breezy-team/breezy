@@ -24,7 +24,6 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.tests import (
-    TestCase,
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )

@@ -1361,6 +1361,8 @@ class LineLogFormatter(LogFormatter):
             out.append("%s:" % revno)
         out.append(self.truncate(self.short_author(rev), 20))
         out.append(self.date_string(rev))
+        if len(rev.parent_ids) > 1:
+            out.append('[merge]')
         if tags:
             tag_str = '{%s}' % (', '.join(tags))
             out.append(tag_str)

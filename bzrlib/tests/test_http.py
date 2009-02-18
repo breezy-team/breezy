@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,6 +43,9 @@ from bzrlib import (
     transport,
     ui,
     urlutils,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
     )
 from bzrlib.tests import (
     http_server,
@@ -1260,7 +1263,8 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     def test_read_redirected_bundle_from_url(self):
         from bzrlib.bundle import read_bundle_from_url
         url = self.old_transport.abspath('bundle')
-        bundle = read_bundle_from_url(url)
+        bundle = self.applyDeprecated(deprecated_in((1, 12, 0)),
+                read_bundle_from_url, url)
         # If read_bundle_from_url was successful we get an empty bundle
         self.assertEqual([], bundle.revisions)
 

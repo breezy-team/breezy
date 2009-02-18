@@ -64,6 +64,7 @@ from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     local,
+    remote as remote_transport,
     )
 from bzrlib.weave import Weave
 """)
@@ -1061,7 +1062,7 @@ class BzrDir(object):
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None):
+               source_branch=None, create_tree_if_local=True):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -1082,6 +1083,8 @@ class BzrDir(object):
             where possible.
         :param stacked: If true, create a stacked branch referring to the
             location of this control directory.
+        :param create_tree_if_local: If true, a working-tree will be created
+            when working locally.
         """
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
@@ -1134,8 +1137,9 @@ class BzrDir(object):
             result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
-        if isinstance(target_transport, local.LocalTransport) and (
-            result_repo is None or result_repo.make_working_trees()):
+        if (create_tree_if_local and
+            isinstance(target_transport, local.LocalTransport) and
+            (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
                 hardlink=hardlink)
             wt.lock_write()
@@ -1335,10 +1339,13 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False, stacked=False):
+               hardlink=False, stacked=False, create_tree_if_local=True):
         """See BzrDir.sprout()."""
         if stacked:
             raise errors.UnstackableBranchFormat(
+                self._format, self.root_transport.base)
+        if not create_tree_if_local:
+            raise errors.MustHaveWorkingTree(
                 self._format, self.root_transport.base)
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1351,6 +1358,7 @@ class BzrDirPreSplitOut(BzrDir):
             self.open_branch().sprout(result, revision_id=revision_id)
         except errors.NotBranchError:
             pass
+
         # we always want a working tree
         WorkingTreeFormat2().initialize(result,
                                         accelerator_tree=accelerator_tree,
@@ -1729,7 +1737,12 @@ class BzrDirFormat(object):
                     mode=file_mode)
         finally:
             control_files.unlock()
-        return self.open(transport, _found=True)
+        # If we initialized using VFS methods on a RemoteTransport, return a
+        # Remote object: No need for it to be slower than necessary.
+        if isinstance(transport, remote_transport.RemoteTransport):
+            return self.open(transport)
+        else:
+            return self.open(transport, _found=True)
 
     def is_supported(self):
         """Is this format supported?
@@ -1774,6 +1787,9 @@ class BzrDirFormat(object):
                 raise AssertionError("%s was asked to open %s, but it seems to need "
                         "format %s" 
                         % (self, transport, found_format))
+            # Allow subclasses - use the found format.
+            self._supply_sub_formats_to(found_format)
+            return found_format._open(transport)
         return self._open(transport)
 
     def _open(self, transport):
@@ -1818,6 +1834,18 @@ class BzrDirFormat(object):
     def __str__(self):
         # Trim the newline
         return self.get_format_string().rstrip()
+
+    def _supply_sub_formats_to(self, other_format):
+        """Give other_format the same values for sub formats as this has.
+
+        This method is expected to be used when parameterising a
+        RemoteBzrDirFormat instance with the parameters from a
+        BzrDirMetaFormat1 instance.
+
+        :param other_format: other_format is a format which should be
+            compatible with whatever sub formats are supported by self.
+        :return: None.
+        """
 
     @classmethod
     def unregister_format(klass, format):
@@ -2081,11 +2109,30 @@ class BzrDirMetaFormat1(BzrDirFormat):
         from bzrlib.repository import RepositoryFormat
         return RepositoryFormat.get_default_format()
 
-    def __set_repository_format(self, value):
+    def _set_repository_format(self, value):
         """Allow changing the repository format for metadir formats."""
         self._repository_format = value
 
-    repository_format = property(__return_repository_format, __set_repository_format)
+    repository_format = property(__return_repository_format,
+        _set_repository_format)
+
+    def _supply_sub_formats_to(self, other_format):
+        """Give other_format the same values for sub formats as this has.
+
+        This method is expected to be used when parameterising a
+        RemoteBzrDirFormat instance with the parameters from a
+        BzrDirMetaFormat1 instance.
+
+        :param other_format: other_format is a format which should be
+            compatible with whatever sub formats are supported by self.
+        :return: None.
+        """
+        if getattr(self, '_repository_format', None) is not None:
+            other_format.repository_format = self.repository_format
+        if self._branch_format is not None:
+            other_format._branch_format = self._branch_format
+        if self._workingtree_format is not None:
+            other_format.workingtree_format = self.workingtree_format
 
     def __get_workingtree_format(self):
         if self._workingtree_format is None:
@@ -2672,20 +2719,33 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         response = client.call('BzrDirFormat.initialize', path)
         if response[0] != 'ok':
             raise errors.SmartProtocolError('unexpected response code %s' % (response,))
-        return remote.RemoteBzrDir(transport)
+        format = RemoteBzrDirFormat()
+        self._supply_sub_formats_to(format)
+        return remote.RemoteBzrDir(transport, format)
 
     def _open(self, transport):
-        return remote.RemoteBzrDir(transport)
+        return remote.RemoteBzrDir(transport, self)
 
     def __eq__(self, other):
         if not isinstance(other, RemoteBzrDirFormat):
             return False
         return self.get_format_description() == other.get_format_description()
 
-    @property
-    def repository_format(self):
-        # Using a property to avoid early loading of remote
-        return remote.RemoteRepositoryFormat()
+    def __return_repository_format(self):
+        # Always return a RemoteRepositoryFormat object, but if a specific bzr
+        # repository format has been asked for, tell the RemoteRepositoryFormat
+        # that it should use that for init() etc.
+        result =  remote.RemoteRepositoryFormat()
+        custom_format = getattr(self, '_repository_format', None)
+        if custom_format:
+            # We will use the custom format to create repositories over the
+            # wire; expose its details like rich_root_data for code to query
+            result._custom_format = custom_format
+            result.rich_root_data = custom_format.rich_root_data
+        return result
+
+    repository_format = property(__return_repository_format,
+        BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
 BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
@@ -3127,19 +3187,19 @@ format_registry.register_metadir('1.9-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('1.12-preview',
+format_registry.register_metadir('development-wt5',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports views and content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
-format_registry.register_metadir('1.12-preview-rich-root',
+format_registry.register_metadir('development-wt5-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
-    help='A variant of 1.12-preview that supports rich-root data '
+    help='A variant of development-wt5 that supports rich-root data '
          '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
 # The following two formats should always just be aliases.

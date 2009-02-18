@@ -408,6 +408,10 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
         os.environ["PATH"] = path + os.pathsep + qt_dir
 
 
+def get_svn_py2exe_info(includes, excludes, packages):
+    packages.append('subvertpy')
+
+
 if 'bdist_wininst' in sys.argv:
     def find_docs():
         docs = []
@@ -585,6 +589,9 @@ elif 'py2exe' in sys.argv:
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages)
+
+    if 'svn' in plugins:
+        get_svn_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the

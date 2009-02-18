@@ -73,6 +73,16 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True):
                                      (e.path, file_list[0]))
 
 
+def _get_one_revision(command_name, revisions):
+    if revisions is None:
+        return None
+    if len(revisions) != 1:
+        raise errors.BzrCommandError(
+            'bzr %s --revision takes exactly one revision identifier' % (
+                command_name,))
+    return revisions[0]
+
+
 def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
     if branch is None:
         branch = tree.branch
@@ -82,11 +92,8 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
         else:
             rev_tree = branch.basis_tree()
     else:
-        if len(revisions) != 1:
-            raise errors.BzrCommandError(
-                'bzr %s --revision takes exactly one revision identifier' % (
-                    command_name,))
-        rev_tree = revisions[0].as_tree(branch)
+        revision = _get_one_revision(command_name, revisions)
+        rev_tree = revision.as_tree(branch)
     return rev_tree
 
 
@@ -600,15 +607,12 @@ class cmd_inventory(Command):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
+        revision = _get_one_revision('inventory', revision)
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
         try:
             if revision is not None:
-                if len(revision) > 1:
-                    raise errors.BzrCommandError(
-                        'bzr inventory --revision takes exactly one revision'
-                        ' identifier')
-                tree = revision[0].as_tree(work_tree.branch)
+                tree = revision.as_tree(work_tree.branch)
 
                 extra_trees = [work_tree]
                 tree.lock_read()
@@ -833,6 +837,7 @@ class cmd_pull(Command):
                     self.outf.write("Using saved parent location: %s\n" % display_url)
                 location = stored_loc
 
+        revision = _get_one_revision('pull', revision)
         if mergeable is not None:
             if revision is not None:
                 raise errors.BzrCommandError(
@@ -849,11 +854,7 @@ class cmd_pull(Command):
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
-            if len(revision) == 1:
-                revision_id = revision[0].as_revision_id(branch_from)
-            else:
-                raise errors.BzrCommandError(
-                    'bzr pull --revision takes one value.')
+            revision_id = revision.as_revision_id(branch_from)
 
         branch_to.lock_write()
         try:
@@ -938,12 +939,9 @@ class cmd_push(Command):
         if directory is None:
             directory = '.'
         br_from = Branch.open_containing(directory)[0]
+        revision = _get_one_revision('push', revision)
         if revision is not None:
-            if len(revision) == 1:
-                revision_id = revision[0].in_history(br_from).rev_id
-            else:
-                raise errors.BzrCommandError(
-                    'bzr push --revision takes one value.')
+            revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = br_from.last_revision()
 
@@ -1001,6 +999,8 @@ class cmd_branch(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision', Option('hardlink',
         help='Hard-link working tree files where possible.'),
+        Option('no-tree',
+            help="Create a branch without a working-tree."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
@@ -1011,20 +1011,16 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, stacked=False, standalone=False):
+            hardlink=False, stacked=False, standalone=False, no_tree=False):
         from bzrlib.tag import _merge_tags_if_possible
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr branch --revision takes exactly 1 revision value')
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
-            if len(revision) == 1 and revision[0] is not None:
-                revision_id = revision[0].as_revision_id(br_from)
+            if revision is not None:
+                revision_id = revision.as_revision_id(br_from)
             else:
                 # FIXME - wt.last_revision, fallback to branch, fall back to
                 # None or perhaps NULL_REVISION to mean copy nothing
@@ -1048,12 +1044,13 @@ class cmd_branch(Command):
                                             accelerator_tree=accelerator_tree,
                                             hardlink=hardlink, stacked=stacked,
                                             force_new_repo=standalone,
+                                            create_tree_if_local=not no_tree,
                                             source_branch=br_from)
                 branch = dir.open_branch()
             except errors.NoSuchRevision:
                 to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location,
-                    revision[0])
+                    revision)
                 raise errors.BzrCommandError(msg)
             _merge_tags_if_possible(br_from, branch)
             # If the source branch is stacked, the new branch may
@@ -1110,20 +1107,16 @@ class cmd_checkout(Command):
 
     def run(self, branch_location=None, to_location=None, revision=None,
             lightweight=False, files_from=None, hardlink=False):
-        if revision is None:
-            revision = [None]
-        elif len(revision) > 1:
-            raise errors.BzrCommandError(
-                'bzr checkout --revision takes exactly 1 revision value')
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
+        revision = _get_one_revision('checkout', revision)
         if files_from is not None:
             accelerator_tree = WorkingTree.open(files_from)
-        if len(revision) == 1 and revision[0] is not None:
-            revision_id = revision[0].as_revision_id(source)
+        if revision is not None:
+            revision_id = revision.as_revision_id(source)
         else:
             revision_id = None
         if to_location is None:
@@ -1829,31 +1822,173 @@ def _parse_levels(s):
 
 
 class cmd_log(Command):
-    """Show log of a branch, file, or directory.
+    """Show historical log for a branch or subset of a branch.
 
-    By default show the log of the branch containing the working directory.
+    log is bzr's default tool for exploring the history of a branch.
+    The branch to use is taken from the first parameter. If no parameters
+    are given, the branch containing the working directory is logged.
+    Here are some simple examples::
 
-    To request a range of logs, you can use the command -r begin..end
-    -r revision requests a specific revision, -r ..end or -r begin.. are
-    also valid.
+      bzr log                       log the current branch
+      bzr log foo.py                log a file in its branch
+      bzr log http://server/branch  log a branch on a server
 
-    :Examples:
-        Log the current branch::
+    The filtering, ordering and information shown for each revision can
+    be controlled as explained below. By default, all revisions are
+    shown sorted (topologically) so that newer revisions appear before
+    older ones and descendants always appear before ancestors. If displayed,
+    merged revisions are shown indented under the revision in which they
+    were merged.
 
-            bzr log
+    :Output control:
+ 
+      The log format controls how information about each revision is
+      displayed. The standard log formats are called ``long``, ``short``
+      and ``line``. The default is long. See ``bzr help log-formats``
+      for more details on log formats.
 
-        Log a file::
+      The following options can be used to control what information is
+      displayed::
+  
+        -l N        display a maximum of N revisions
+        -n N        display N levels of revisions (0 for all, 1 for collapsed)
+        -v          display a status summary (delta) for each revision
+        -p          display a diff (patch) for each revision
+        --show-ids  display revision-ids (and file-ids), not just revnos
+  
+      Note that the default number of levels to display is a function of the
+      log format. If the -n option is not used, ``short`` and ``line`` show
+      just the top level (mainline) while ``long`` shows all levels of merged
+      revisions.
+  
+      Status summaries are shown using status flags like A, M, etc. To see
+      the changes explained using words like ``added`` and ``modified``
+      instead, use the -vv option.
+  
+    :Ordering control:
+  
+      To display revisions from oldest to newest, use the --forward option.
+      In most cases, using this option will have little impact on the total
+      time taken to produce a log, though --forward does not incrementally
+      display revisions like --reverse does when it can.
+  
+    :Revision filtering:
+  
+      The -r option can be used to specify what revision or range of revisions
+      to filter against. The various forms are shown below::
+  
+        -rX      display revision X
+        -rX..    display revision X and later
+        -r..Y    display up to and including revision Y
+        -rX..Y   display from X to Y inclusive
+  
+      See ``bzr help revisionspec`` for details on how to specify X and Y.
+      Some common examples are given below::
+  
+        -r-1                show just the tip
+        -r-10..             show the last 10 mainline revisions
+        -rsubmit:..         show what's new on this branch
+        -rancestor:path..   show changes since the common ancestor of this
+                            branch and the one at location path
+        -rdate:yesterday..  show changes since yesterday
+  
+      When logging a range of revisions using -rX..Y, log starts at
+      revision Y and searches back in history through the primary
+      ("left-hand") parents until it finds X. When logging just the
+      top level (using -n1), an error is reported if X is not found
+      along the way. If multi-level logging is used (-n0), X may be
+      a nested merge revision and the log will be truncated accordingly.
 
-            bzr log foo.c
-
-        Log the last 10 revisions of a branch::
-
-            bzr log -r -10.. http://server/branch
+    :Path filtering:
+  
+      If a parameter is given and it's not a branch, the log will be filtered
+      to show only those revisions that changed the nominated file or
+      directory.
+  
+      Filenames are interpreted within their historical context. To log a
+      deleted file, specify a revision range so that the file existed at
+      the end or start of the range.
+  
+      Historical context is also important when interpreting pathnames of
+      renamed files/directories. Consider the following example:
+  
+      * revision 1: add tutorial.txt
+      * revision 2: modify tutorial.txt
+      * revision 3: rename tutorial.txt to guide.txt; add tutorial.txt
+  
+      In this case:
+  
+      * ``bzr log guide.txt`` will log the file added in revision 1
+  
+      * ``bzr log tutorial.txt`` will log the new file added in revision 3
+  
+      * ``bzr log -r2 -p tutorial.txt`` will show the changes made to
+        the original file in revision 2.
+  
+      * ``bzr log -r2 -p guide.txt`` will display an error message as there
+        was no file called guide.txt in revision 2.
+  
+      Renames are always followed by log. By design, there is no need to
+      explicitly ask for this (and no way to stop logging a file back
+      until it was last renamed).
+  
+      Note: If the path is a directory, only revisions that directly changed
+      that directory object are currently shown. This is considered a bug.
+      (Support for filtering against multiple files and for files within a
+      directory is under development.)
+  
+    :Other filtering:
+  
+      The --message option can be used for finding revisions that match a
+      regular expression in a commit message.
+  
+    :Tips & tricks:
+  
+      GUI tools and IDEs are often better at exploring history than command
+      line tools. You may prefer qlog or glog from the QBzr and Bzr-Gtk packages
+      respectively for example. (TortoiseBzr uses qlog for displaying logs.) See
+      http://bazaar-vcs.org/BzrPlugins and http://bazaar-vcs.org/IDEIntegration.
+  
+      Web interfaces are often better at exploring history than command line
+      tools, particularly for branches on servers. You may prefer Loggerhead
+      or one of its alternatives. See http://bazaar-vcs.org/WebInterface.
+  
+      You may find it useful to add the aliases below to ``bazaar.conf``::
+  
+        [ALIASES]
+        tip = log -r-1 -n1
+        top = log -r-10.. --short --forward
+        show = log -v -p -n1 --long
+  
+      ``bzr tip`` will then show the latest revision while ``bzr top``
+      will show the last 10 mainline revisions. To see the details of a
+      particular revision X,  ``bzr show -rX``.
+  
+      As many GUI tools and Web interfaces do, you may prefer viewing
+      history collapsed initially. If you are interested in looking deeper
+      into a particular merge X, use ``bzr log -n0 -rX``. If you like
+      working this way, you may wish to either:
+  
+      * change your default log format to short (or line)
+      * add this alias: log = log -n1
+  
+      ``bzr log -v`` on a branch with lots of history is currently
+      very slow. A fix for this issue is currently under development.
+      With or without that fix, it is recommended that a revision range
+      be given when using the -v option.
+  
+      bzr has a generic full-text matching plugin, bzr-search, that can be
+      used to find revisions matching user names, commit messages, etc.
+      Among other features, this plugin can find all revisions containing
+      a list of words but not others.
+  
+      When exploring non-mainline history on large projects with deep
+      history, the performance of log can be greatly improved by installing
+      the revnocache plugin. This plugin buffers historical information
+      trading disk space for faster speed.
     """
-
-    # TODO: Make --revision support uuid: and hash: [future tag:] notation.
-
     takes_args = ['location?']
+    _see_also = ['log-formats', 'revisionspec']
     takes_options = [
             Option('forward',
                    help='Show from oldest to newest.'),
@@ -2919,6 +3054,10 @@ class cmd_selftest(Command):
                      ]
     encoding_type = 'replace'
 
+    def __init__(self):
+        Command.__init__(self)
+        self.additional_selftest_args = {}
+
     def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
             lsprof_timed=None, cache_dir=None,
@@ -2956,22 +3095,24 @@ class cmd_selftest(Command):
             test_suite_factory = None
             benchfile = None
         try:
-            result = selftest(verbose=verbose,
-                              pattern=pattern,
-                              stop_on_failure=one,
-                              transport=transport,
-                              test_suite_factory=test_suite_factory,
-                              lsprof_timed=lsprof_timed,
-                              bench_history=benchfile,
-                              matching_tests_first=first,
-                              list_only=list_only,
-                              random_seed=randomize,
-                              exclude_pattern=exclude,
-                              strict=strict,
-                              load_list=load_list,
-                              debug_flags=debugflag,
-                              starting_with=starting_with,
-                              )
+            selftest_kwargs = {"verbose": verbose,
+                              "pattern": pattern,
+                              "stop_on_failure": one,
+                              "transport": transport,
+                              "test_suite_factory": test_suite_factory,
+                              "lsprof_timed": lsprof_timed,
+                              "bench_history": benchfile,
+                              "matching_tests_first": first,
+                              "list_only": list_only,
+                              "random_seed": randomize,
+                              "exclude_pattern": exclude,
+                              "strict": strict,
+                              "load_list": load_list,
+                              "debug_flags": debugflag,
+                              "starting_with": starting_with
+                              }
+            selftest_kwargs.update(self.additional_selftest_args)
+            result = selftest(**selftest_kwargs)
         finally:
             if benchfile is not None:
                 benchfile.close()
@@ -4839,27 +4980,30 @@ class cmd_reconfigure(Command):
 
     _see_also = ['branches', 'checkouts', 'standalone-trees', 'working-trees']
     takes_args = ['location?']
-    takes_options = [RegistryOption.from_kwargs('target_type',
-                     title='Target type',
-                     help='The type to reconfigure the directory to.',
-                     value_switches=True, enum_switch=False,
-                     branch='Reconfigure to be an unbound branch '
-                        'with no working tree.',
-                     tree='Reconfigure to be an unbound branch '
-                        'with a working tree.',
-                     checkout='Reconfigure to be a bound branch '
-                        'with a working tree.',
-                     lightweight_checkout='Reconfigure to be a lightweight'
-                     ' checkout (with no local history).',
-                     standalone='Reconfigure to be a standalone branch '
-                        '(i.e. stop using shared repository).',
-                     use_shared='Reconfigure to use a shared repository.'),
-                     Option('bind-to', help='Branch to bind checkout to.',
-                            type=str),
-                     Option('force',
-                        help='Perform reconfiguration even if local changes'
-                        ' will be lost.')
-                     ]
+    takes_options = [
+        RegistryOption.from_kwargs(
+            'target_type',
+            title='Target type',
+            help='The type to reconfigure the directory to.',
+            value_switches=True, enum_switch=False,
+            branch='Reconfigure to be an unbound branch with no working tree.',
+            tree='Reconfigure to be an unbound branch with a working tree.',
+            checkout='Reconfigure to be a bound branch with a working tree.',
+            lightweight_checkout='Reconfigure to be a lightweight'
+                ' checkout (with no local history).',
+            standalone='Reconfigure to be a standalone branch '
+                '(i.e. stop using shared repository).',
+            use_shared='Reconfigure to use a shared repository.',
+            with_trees='Reconfigure repository to create '
+                'working trees on branches by default.',
+            with_no_trees='Reconfigure repository to not create '
+                'working trees on branches by default.'
+            ),
+        Option('bind-to', help='Branch to bind checkout to.', type=str),
+        Option('force',
+               help='Perform reconfiguration even if local changes'
+               ' will be lost.')
+        ]
 
     def run(self, location=None, target_type=None, bind_to=None, force=False):
         directory = bzrdir.BzrDir.open(location)
@@ -4870,8 +5014,8 @@ class cmd_reconfigure(Command):
         elif target_type == 'tree':
             reconfiguration = reconfigure.Reconfigure.to_tree(directory)
         elif target_type == 'checkout':
-            reconfiguration = reconfigure.Reconfigure.to_checkout(directory,
-                                                                  bind_to)
+            reconfiguration = reconfigure.Reconfigure.to_checkout(
+                directory, bind_to)
         elif target_type == 'lightweight-checkout':
             reconfiguration = reconfigure.Reconfigure.to_lightweight_checkout(
                 directory, bind_to)
@@ -4879,6 +5023,12 @@ class cmd_reconfigure(Command):
             reconfiguration = reconfigure.Reconfigure.to_use_shared(directory)
         elif target_type == 'standalone':
             reconfiguration = reconfigure.Reconfigure.to_standalone(directory)
+        elif target_type == 'with-trees':
+            reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+                directory, True)
+        elif target_type == 'with-no-trees':
+            reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+                directory, False)
         reconfiguration.apply(force)
 
 
@@ -4961,7 +5111,9 @@ class cmd_shelve(Command):
 
     Shelve allows you to temporarily put changes you've made "on the shelf",
     ie. out of the way, until a later time when you can bring them back from
-    the shelf with the 'unshelve' command.
+    the shelf with the 'unshelve' command.  The changes are stored alongside
+    your working tree, and so they aren't propagated along with your branch nor
+    will they survive its deletion.
 
     If shelve --list is specified, previously-shelved changes are listed.
 
@@ -5029,8 +5181,8 @@ class cmd_unshelve(Command):
     """Restore shelved changes.
 
     By default, the most recently shelved changes are restored. However if you
-    specify a patch by name those changes will be restored instead.  This
-    works best when the changes don't depend on each other.
+    specify a shelf by id those changes will be restored instead.  This works
+    best when the changes don't depend on each other.
     """
 
     takes_args = ['shelf_id?']

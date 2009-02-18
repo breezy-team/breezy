@@ -50,6 +50,7 @@ from bzrlib import (
 
 from bzrlib import registry
 # Compatibility
+from bzrlib.hooks import Hooks
 from bzrlib.option import Option
 
 
@@ -170,7 +171,11 @@ def get_cmd_object(cmd_name, plugins_override=True):
         If true, plugin commands can override builtins.
     """
     try:
-        return _get_cmd_object(cmd_name, plugins_override)
+        cmd = _get_cmd_object(cmd_name, plugins_override)
+        # Allow plugins to extend commands
+        for hook in Command.hooks['extend_command']:
+            hook(cmd)
+        return cmd
     except KeyError:
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
@@ -216,9 +221,8 @@ def _get_cmd_object(cmd_name, plugins_override=True):
         except errors.NoPluginAvailable:
             pass
         else:
-            raise errors.CommandAvailableInPlugin(cmd_name, 
+            raise errors.CommandAvailableInPlugin(cmd_name,
                                                   plugin_metadata, provider)
-
     raise KeyError
 
 
@@ -279,6 +283,7 @@ class Command(object):
             sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
 
+    :cvar hooks: An instance of CommandHooks.
     """
     aliases = []
     takes_args = []
@@ -341,7 +346,7 @@ class Command(object):
             raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
 
         # Extract the summary (purpose) and sections out from the text
-        purpose,sections = self._get_help_parts(doc)
+        purpose,sections,order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
         if sections.has_key('Usage'):
@@ -379,9 +384,9 @@ class Command(object):
         # Add the custom sections (e.g. Examples). Note that there's no need
         # to indent these as they must be indented already in the source.
         if sections:
-            labels = sorted(sections.keys())
-            for label in labels:
-                result += ':%s:\n%s\n\n' % (label,sections[label])
+            for label in order:
+                if sections.has_key(label):
+                    result += ':%s:\n%s\n\n' % (label,sections[label])
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
@@ -416,38 +421,41 @@ class Command(object):
     def _get_help_parts(text):
         """Split help text into a summary and named sections.
 
-        :return: (summary,sections) where summary is the top line and
+        :return: (summary,sections,order) where summary is the top line and
             sections is a dictionary of the rest indexed by section name.
+            order is the order the section appear in the text.
             A section starts with a heading line of the form ":xxx:".
             Indented text on following lines is the section value.
             All text found outside a named section is assigned to the
             default section which is given the key of None.
         """
-        def save_section(sections, label, section):
+        def save_section(sections, order, label, section):
             if len(section) > 0:
                 if sections.has_key(label):
                     sections[label] += '\n' + section
                 else:
+                    order.append(label)
                     sections[label] = section
 
         lines = text.rstrip().splitlines()
         summary = lines.pop(0)
         sections = {}
+        order = []
         label,section = None,''
         for line in lines:
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
-                save_section(sections, label, section)
+                save_section(sections, order, label, section)
                 label,section = line[1:-1],''
             elif (label is not None) and len(line) > 1 and not line[0].isspace():
-                save_section(sections, label, section)
+                save_section(sections, order, label, section)
                 label,section = None,line
             else:
                 if len(section) > 0:
                     section += '\n' + line
                 else:
                     section = line
-        save_section(sections, label, section)
-        return summary, sections
+        save_section(sections, order, label, section)
+        return summary, sections, order
 
     def get_help_topic(self):
         """Return the commands help topic - its name."""
@@ -571,6 +579,25 @@ class Command(object):
             return mod_parts[2]
         else:
             return None
+
+
+class CommandHooks(Hooks):
+    """Hooks related to Command object creation/enumeration."""
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        Hooks.__init__(self)
+        # Introduced in 1.13:
+        # invoked after creating a command object to allow modifications such
+        # as adding or removing options, docs etc. Invoked with the command
+        # object.
+        self['extend_command'] = []
+
+Command.hooks = CommandHooks()
 
 
 def parse_args(command, argv, alias_argv=None):
@@ -845,6 +872,7 @@ def run_bzr(argv):
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
         option._verbosity_level = saved_verbosity_level
+
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""

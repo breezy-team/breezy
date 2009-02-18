@@ -833,8 +833,12 @@ class TestRepository(TestCaseWithRepository):
         if isinstance(repo, remote.RemoteRepository):
             repo._ensure_real()
             repo = repo._real_repository
+        target_repo = target.open_repository()
+        if isinstance(target_repo, remote.RemoteRepository):
+            target_repo._ensure_real()
+            target_repo = target_repo._real_repository
         # The repository format is preserved.
-        self.assertEqual(repo._format, target.open_repository()._format)
+        self.assertEqual(repo._format, target_repo._format)
 
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns
