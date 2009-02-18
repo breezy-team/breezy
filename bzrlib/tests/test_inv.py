@@ -171,9 +171,9 @@ class TestDescribeChanges(TestCase):
 class TestCHKInventory(TestCaseWithTransport):
     
     def get_chk_bytes(self):
-        # The eassiest way to get a CHK store is a development3 repository and
+        # The eassiest way to get a CHK store is a development5 repository and
         # then work with the chk_bytes attribute directly.
-        repo = self.make_repository(".", format="development3")
+        repo = self.make_repository(".", format="development5")
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -221,7 +221,7 @@ class TestCHKInventory(TestCaseWithTransport):
             'chkinventory:\n',
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
-            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
         self.assertEqual('plain', chk_inv._search_key_name)
@@ -238,8 +238,8 @@ class TestCHKInventory(TestCaseWithTransport):
             'chkinventory:\n',
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
-            'parent_id_basename_to_file_id: sha1:46f33678d1c8cfd9b6d00dc658b6c8a9ac7bb0f0\n',
-            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
         self.assertEqual('plain', chk_inv._search_key_name)
@@ -258,8 +258,8 @@ class TestCHKInventory(TestCaseWithTransport):
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
             'search_key_name: hash-16-way\n',
-            'parent_id_basename_to_file_id: sha1:46f33678d1c8cfd9b6d00dc658b6c8a9ac7bb0f0\n',
-            'id_to_entry: sha1:c9d15ff2621b8774506f702ff4ffd5f4af885a51\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
         self.assertEqual('hash-16-way', chk_inv._search_key_name)

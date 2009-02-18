@@ -1391,18 +1391,18 @@ class CHKInventory(CommonInventory):
                 exec_str = "Y"
             else:
                 exec_str = "N"
-            return "file: %s\x00%s\x00%s\x00%s\x00%s\x00%d\x00%s" % (
+            return "file: %s\n%s\n%s\n%s\n%s\n%d\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision,
                 entry.text_sha1, entry.text_size, exec_str)
         elif entry.kind == 'directory':
-            return "dir: %s\x00%s\x00%s\x00%s" % (
+            return "dir: %s\n%s\n%s\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision)
         elif entry.kind == 'symlink':
-            return "symlink: %s\x00%s\x00%s\x00%s\x00%s" % (
+            return "symlink: %s\n%s\n%s\n%s\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision,
                 entry.symlink_target.encode("utf8"))
         elif entry.kind == 'tree-reference':
-            return "tree: %s\x00%s\x00%s\x00%s\x00%s" % (
+            return "tree: %s\n%s\n%s\n%s\n%s" % (
                 entry.file_id, parent_str, name_str, entry.revision,
                 entry.reference_revision)
         else:
@@ -1410,7 +1410,7 @@ class CHKInventory(CommonInventory):
 
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
-        sections = bytes.split('\x00')
+        sections = bytes.split('\n')
         if sections[0].startswith("file: "):
             result = InventoryFile(sections[0][6:],
                 sections[2].decode('utf8'),

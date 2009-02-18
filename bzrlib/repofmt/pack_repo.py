@@ -2873,97 +2873,10 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
             "1.6.1-subtree with B+Tree indices.\n")
 
 
-class RepositoryFormatPackDevelopment3(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5(RepositoryFormatPack):
     """A no-subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.11.
-
-    This is pack-1.9 with CHKMap based inventories.
-    """
-
-    repository_class = CHKInventoryRepository
-    _commit_builder_class = PackCommitBuilder
-    _serializer = chk_serializer.chk_serializer
-    supports_external_lookups = True
-    # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
-    supports_chks = True
-    _commit_inv_deltas = True
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development3')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 3 (needs bzr.dev from before 1.10)\n"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "1.9 with B+Trees and chk support.\n")
-
-    def check_conversion_target(self, target_format):
-        pass
-
-
-class RepositoryFormatPackDevelopment3Subtree(RepositoryFormatPack):
-    """A subtrees development repository.
-
-    This format should be retained until the second release after bzr 1.11.
-
-    1.9-subtree[as it might have been] with CHKMap based inventories.
-    """
-
-    repository_class = CHKInventoryRepository
-    _commit_builder_class = PackRootCommitBuilder
-    rich_root_data = True
-    supports_tree_reference = True
-    _serializer = chk_serializer.chk_serializer_subtree
-    supports_external_lookups = True
-    # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
-    supports_chks = True
-    _commit_inv_deltas = True
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir(
-            'development3-subtree')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
-            
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format 3 with subtree support "
-            "(needs bzr.dev from before 1.10)\n")
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "1.9-subtree with B+Tree and chk support.\n")
-
-
-class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
-    """A no-subtrees development repository.
-
-    This format should be retained until the second release after bzr 1.11.
+    This format should be retained until the second release after bzr 1.13.
 
     This is pack-1.9 with CHKMap based inventories.
     """
@@ -2979,7 +2892,7 @@ class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
     _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development4')
+        return bzrdir.format_registry.make_bzrdir('development5')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -2988,25 +2901,25 @@ class RepositoryFormatPackDevelopment4(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        # This will need to be updated (at least replacing 1.11 with the target
+        # This will need to be updated (at least replacing 1.13 with the target
         # bzr release) once we merge brisbane-core into bzr.dev, I've used
         # 'merge-bbc-dev4-to-bzr.dev' into comments at relevant places to make
         # them easily greppable.  -- vila 2009016
-        return "Bazaar development format 4 (needs bzr.dev from before 1.11)\n"
+        return "Bazaar development format 5 (needs bzr.dev from before 1.13)\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "1.9 with B+Trees and chk support.\n")
+        return ("Development repository format, currently the same as"
+                " 1.9 with B+Trees and chk support.\n")
 
     def check_conversion_target(self, target_format):
         pass
 
 
-class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5Subtree(RepositoryFormatPack):
     """A subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.11.
+    This format should be retained until the second release after bzr 1.13.
 
     1.9-subtree[as it might have been] with CHKMap based inventories.
     """
@@ -3025,7 +2938,7 @@ class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development4-subtree')
+            'development5-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -3043,19 +2956,19 @@ class RepositoryFormatPackDevelopment4Subtree(RepositoryFormatPack):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         # merge-bbc-dev4-to-bzr.dev
-        return ("Bazaar development format 4 with subtree support "
-            "(needs bzr.dev from before 1.11)\n")
+        return ("Bazaar development format 5 with subtree support"
+                " (needs bzr.dev from before 1.13)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "1.9-subtree with B+Tree and chk support.\n")
+        return ("Development repository format, currently the same as"
+                " 1.9-subtree with B+Tree and chk support.\n")
 
 
-class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5Hash16(RepositoryFormatPack):
     """A no-subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.12.
+    This format should be retained until the second release after bzr 1.13.
 
     This is pack-1.9 with CHKMap based inventories with 16-way hash tries.
     """
@@ -3071,7 +2984,7 @@ class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
     _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development4-hash16')
+        return bzrdir.format_registry.make_bzrdir('development5-hash16')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -3080,21 +2993,22 @@ class RepositoryFormatPackDevelopment4Hash16(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 4 hash 16 (needs bzr.dev from before 1.13)\n"
+        return ("Bazaar development format 5 hash 16"
+                " (needs bzr.dev from before 1.13)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "1.9 with B+Trees and chk support and 16-way hash tries\n")
+        return ("Development repository format, currently the same as"
+                " 1.9 with B+Trees and chk support and 16-way hash tries\n")
 
     def check_conversion_target(self, target_format):
         pass
 
 
-class RepositoryFormatPackDevelopment4Hash255(RepositoryFormatPack):
+class RepositoryFormatPackDevelopment5Hash255(RepositoryFormatPack):
     """A no-subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.12.
+    This format should be retained until the second release after bzr 1.13.
 
     This is pack-1.9 with CHKMap based inventories with 255-way hash tries.
     """
@@ -3110,7 +3024,7 @@ class RepositoryFormatPackDevelopment4Hash255(RepositoryFormatPack):
     _commit_inv_deltas = True
 
     def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development4-hash255')
+        return bzrdir.format_registry.make_bzrdir('development5-hash255')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -3119,12 +3033,13 @@ class RepositoryFormatPackDevelopment4Hash255(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 4 hash 255 (needs bzr.dev from before 1.13)\n"
+        return ("Bazaar development format 5 hash 255"
+                " (needs bzr.dev from before 1.13)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "1.9 with B+Trees and chk support and 255-way hash tries\n")
+        return ("Development repository format, currently the same as"
+                " 1.9 with B+Trees and chk support and 255-way hash tries\n")
 
     def check_conversion_target(self, target_format):
         pass

@@ -603,7 +603,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # metadata
             if getattr(repo._format, 'supports_tree_reference', False):
                 if repo._format.supports_chks:
-                    matching_format_name = 'development3-subtree'
+                    matching_format_name = 'development5-subtree'
                 else:
                     matching_format_name = 'pack-0.92-subtree'
             else:
@@ -611,7 +611,18 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             mismatching_format_name = 'pack-0.92'
         else:
             if repo._format.supports_chks:
-                matching_format_name = 'development3'
+                hash_key = repo._format._serializer.search_key_name
+                # At the moment, we don't allow stacking between various hash
+                # keys.
+                if hash_key == 'plain':
+                    matching_format_name = 'development5'
+                elif hash_key == 'hash-16-way':
+                    matching_format_name = 'development5-hash16'
+                else:
+                    if hash_key != 'hash-255-way':
+                        raise AssertionError("unhandled hash key: %s"
+                                             % (hash_key,))
+                    matching_format_name = 'development5-hash255'
             else:
                 matching_format_name = 'pack-0.92'
             mismatching_format_name = 'pack-0.92-subtree'
@@ -633,7 +644,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # can only stack on repositories that have compatible internal
             # metadata
             if repo._format.supports_chks:
-                matching_format_name = 'development3-subtree'
+                matching_format_name = 'development5-subtree'
             else:
                 matching_format_name = 'pack-0.92-subtree'
             mismatching_format_name = 'rich-root-pack'
@@ -791,26 +802,28 @@ def load_tests(basic_tests, module, test_loader):
                   "with subtree support (needs bzr.dev from before 1.8)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
-         dict(format_name='development3',
-              format_string="Bazaar development format 3 "
-                  "(needs bzr.dev from before 1.10)\n",
-              format_supports_external_lookups=True,
-              index_class=BTreeGraphIndex),
-         dict(format_name='development3-subtree',
-              format_string="Bazaar development format 3 "
-                  "with subtree support (needs bzr.dev from before 1.10)\n",
-              format_supports_external_lookups=True,
-              index_class=BTreeGraphIndex),
-         dict(format_name='development4',
+         dict(format_name='development5',
               # merge-bbc-dev4-to-bzr.dev
-              format_string="Bazaar development format 4 "
-                  "(needs bzr.dev from before 1.11)\n",
+              format_string="Bazaar development format 5 "
+                  "(needs bzr.dev from before 1.13)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
-         dict(format_name='development4-subtree',
+         dict(format_name='development5-subtree',
               # merge-bbc-dev4-to-bzr.dev
-              format_string="Bazaar development format 4 "
-                  "with subtree support (needs bzr.dev from before 1.11)\n",
+              format_string="Bazaar development format 5 "
+                  "with subtree support (needs bzr.dev from before 1.13)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='development5-hash16',
+              # merge-bbc-dev4-to-bzr.dev
+              format_string="Bazaar development format 5 hash 16"
+                            " (needs bzr.dev from before 1.13)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='development5-hash255',
+              # merge-bbc-dev4-to-bzr.dev
+              format_string="Bazaar development format 5 hash 255"
+                            " (needs bzr.dev from before 1.13)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]

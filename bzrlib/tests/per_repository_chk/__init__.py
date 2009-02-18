@@ -30,7 +30,7 @@ from bzrlib import (
 from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt.pack_repo import (
     RepositoryFormatKnitPack5,
-    RepositoryFormatPackDevelopment3,
+    RepositoryFormatPackDevelopment5,
     )
 from bzrlib.tests import (
                           adapt_modules,
@@ -64,7 +64,7 @@ def load_tests(standard_tests, module, loader):
         if isinstance(format, remote.RemoteRepositoryFormat):
             with_support = dict(scenario_info)
             with_support['repository_format'] = \
-                RepositoryFormatPackDevelopment3()
+                RepositoryFormatPackDevelopment5()
             supported.append((test_name + "(Supported)", with_support))
             no_support = dict(scenario_info)
             no_support['repository_format'] = RepositoryFormatKnitPack5()

@@ -48,6 +48,7 @@ from bzrlib import versionedfile
 """)
 from bzrlib import (
     lru_cache,
+    osutils,
     registry,
     )
 
@@ -562,16 +563,18 @@ class LeafNode(Node):
         """
         if self._common_serialised_prefix is None:
             bytes_for_items = 0
+            prefix_len = 0
         else:
             # We will store a single string with the common prefix
             # And then that common prefix will not be stored in any of the
             # entry lines
             prefix_len = len(self._common_serialised_prefix)
-            bytes_for_items = (self._raw_size - (prefix_len * (self._len - 1)))
-        return (13 # bytes overhead for the header and separators
-            + len(str(self._maximum_size))
-            + len(str(self._key_width))
-            + len(str(self._len))
+            bytes_for_items = (self._raw_size - (prefix_len * self._len))
+        return (9 # 'chkleaf:\n'
+            + len(str(self._maximum_size)) + 1
+            + len(str(self._key_width)) + 1
+            + len(str(self._len)) + 1
+            + prefix_len + 1
             + bytes_for_items)
 
     @classmethod
@@ -594,21 +597,27 @@ class LeafNode(Node):
         width = int(lines[2])
         length = int(lines[3])
         prefix = lines[4]
-        for line in lines[5:]:
-            line = prefix + line
-            elements = line.split('\x00', width)
-            items[tuple(elements[:-1])] = elements[-1]
+        pos = 5
+        while pos < len(lines):
+            elements = (prefix + lines[pos]).split('\x00')
+            pos += 1
+            assert len(elements) == width + 1
+            num_value_lines = int(elements[-1])
+            value_lines = lines[pos:pos+num_value_lines]
+            pos += num_value_lines
+            value = '\n'.join(value_lines)
+            items[tuple(elements[:-1])] = value
         if len(items) != length:
             raise AssertionError("item count (%d) mismatch for key %s,"
                 " bytes %r" % (length, key, bytes))
         result._items = items
         result._len = length
-        assert length == len(lines) - 5
         result._maximum_size = maximum_size
         result._key = key
         result._key_width = width
         result._raw_size = (sum(map(len, lines[5:])) # the length of the suffix
-            + (length)*(len(prefix)+1)) # prefix + '\n'
+            + (length)*(len(prefix))
+            + (len(lines)-5))
         result._compute_search_prefix()
         result._compute_serialised_prefix()
         if len(bytes) != result._current_size():
@@ -643,7 +652,9 @@ class LeafNode(Node):
     def _key_value_len(self, key, value):
         # TODO: Should probably be done without actually joining the key, but
         #       then that can be done via the C extension
-        return 2 + len(self._serialise_key(key)) + len(value)
+        return (len(self._serialise_key(key)) + 1
+                + len(str(value.count('\n'))) + 1
+                + len(value) + 1)
 
     def _search_key(self, key):
         return self._search_key_func(key)
@@ -739,13 +750,18 @@ class LeafNode(Node):
         lines.append("%d\n" % self._len)
         if self._common_serialised_prefix is None:
             lines.append('\n')
+            assert len(self._items) == 0
         else:
             lines.append('%s\n' % (self._common_serialised_prefix,))
             prefix_len = len(self._common_serialised_prefix)
         for key, value in sorted(self._items.items()):
-            serialized = "%s\x00%s\n" % (self._serialise_key(key), value)
+            # Add always add a final newline
+            value_lines = osutils.chunks_to_lines([value + '\n'])
+            serialized = "%s\x00%s\n" % (self._serialise_key(key),
+                                         len(value_lines))
             assert serialized.startswith(self._common_serialised_prefix)
             lines.append(serialized[prefix_len:])
+            lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
         bytes = ''.join(lines)
