@@ -1179,10 +1179,12 @@ class DistributionBranch(object):
         to the version provided.
 
         :param version: the Version object to derive the tag name from.
+        :return: Name of the tag set
         """
         tag_name = self.tag_name(version)
         self.branch.tags.set_tag(tag_name,
                 self.branch.last_revision())
+        return tag_name
 
     def tag_upstream_version(self, version):
         """Tags the upstream branch's last revision with an upstream version.

@@ -806,7 +806,8 @@ class cmd_mark_uploaded(Command):
                     raise BzrCommandError("This version has already been "
                             "marked uploaded. Use --force to force marking "
                             "this new version.")
-            db.tag_version(changelog.version)
+            tag_name = db.tag_version(changelog.version)
+            self.outf.write("Tag '%s' created.\n" % tag_name)
         finally:
             t.unlock()
 
