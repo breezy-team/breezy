@@ -705,28 +705,13 @@ class GenericCommitHandler(processor.CommitHandler):
            timestamp=committer[2],
            timezone=committer[3],
            committer=who,
-           message=self._escape_commit_message(self.command.message),
+           message=helpers.escape_commit_message(self.command.message),
            revision_id=self.revision_id,
            properties=rev_props,
            parent_ids=self.parents)
         self.loader.load(rev, self.inventory, None,
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
-
-    def _escape_commit_message(self, message):
-        """Replace xml-incompatible control characters."""
-        # It's crap that we need to do this at this level (but we do)
-        # Code copied from bzrlib.commit.
-        
-        # Python strings can include characters that can't be
-        # represented in well-formed XML; escape characters that
-        # aren't listed in the XML specification
-        # (http://www.w3.org/TR/REC-xml/#NT-Char).
-        message, _ = re.subn(
-            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-            lambda match: match.group(0).encode('unicode_escape'),
-            message)
-        return message
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
