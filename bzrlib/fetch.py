@@ -233,20 +233,20 @@ class RepoFetcher(object):
     def _fetch_inventory_weave(self, revs, pb):
         pb.update("fetch inventory", 0, 2)
         to_weave = self.to_repository.inventories
+        # just merge, this is optimisable and its means we don't
+        # copy unreferenced data such as not-needed inventories.
+        pb.update("fetch inventory", 1, 3)
+        from_weave = self.from_repository.inventories
+        pb.update("fetch inventory", 2, 3)
+        # we fetch only the referenced inventories because we do not
+        # know for unselected inventories whether all their required
+        # texts are present in the other repository - it could be
+        # corrupt.
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            # just merge, this is optimisable and its means we don't
-            # copy unreferenced data such as not-needed inventories.
-            pb.update("fetch inventory", 1, 3)
-            from_weave = self.from_repository.inventories
-            pb.update("fetch inventory", 2, 3)
-            # we fetch only the referenced inventories because we do not
-            # know for unselected inventories whether all their required
-            # texts are present in the other repository - it could be
-            # corrupt.
             if (self.from_repository._format.supports_chks and
                 self.to_repository._format.supports_chks):
-                self._fetch_chk_inventories(revs, pb)
+                self._fetch_chk_inventories(revs, child_pb)
             elif (self.from_repository._format.supports_chks or
                 self.to_repository._format.supports_chks):
                 # Hack to make not-chk->chk fetch: copy the inventories as
@@ -254,7 +254,7 @@ class RepoFetcher(object):
                 total = len(revs)
                 for pos, inv in enumerate(
                     self.from_repository.iter_inventories(revs)):
-                    pb.update("Copying inventories", pos, total)
+                    child_pb.update("Copying inventories", pos, total)
                     self.to_repository.add_inventory(inv.revision_id, inv, [])
             else:
                 to_weave.insert_record_stream(from_weave.get_record_stream(
@@ -263,6 +263,7 @@ class RepoFetcher(object):
                     not self.to_repository._fetch_uses_deltas))
         finally:
             child_pb.finished()
+        pb.update("fetch inventory", 3, 3)
 
     def _fetch_revision_texts(self, revs, pb):
         # fetch signatures first and then the revision texts
