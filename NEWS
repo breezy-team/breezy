@@ -111,6 +111,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Refactored ``processors/generic_processor.py`` into a bunch of modules.
+      (Ian Clatworthy)
+
 
 0.7 09-Feb-2009
 ---------------

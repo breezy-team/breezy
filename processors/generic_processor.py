@@ -17,12 +17,10 @@
 """Import processor that supports all Bazaar repository formats."""
 
 
-import re
 import time
 from bzrlib import (
     builtins,
     bzrdir,
-    debug,
     delta,
     errors,
     generate_ids,
@@ -35,17 +33,15 @@ from bzrlib import (
     transport,
     )
 from bzrlib.repofmt import pack_repo
-from bzrlib.trace import (
-    error,
-    mutter,
-    note,
-    warning,
-    )
+from bzrlib.trace import note
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
+    branch_updater,
+    cache_manager,
     errors as plugin_errors,
     helpers,
     idmapfile,
+    marks_file,
     processor,
     revisionloader,
     )
@@ -71,7 +67,6 @@ class GenericProcessor(processor.ImportProcessor):
     * checkpoints automatically happen at a configurable frequency
       over and above the stream requested checkpoints
     * timestamped progress reporting, both automatic and stream requested
-    * LATER: reset support, tags for each branch
     * some basic statistics are dumped on completion.
 
     At checkpoints and on completion, the commit-id -> revision-id map is
@@ -121,80 +116,16 @@ class GenericProcessor(processor.ImportProcessor):
         'export-marks',
         ]
 
-    def note(self, msg, *args):
-        """Output a note but timestamp it."""
-        msg = "%s %s" % (self._time_of_day(), msg)
-        note(msg, *args)
-
-    def warning(self, msg, *args):
-        """Output a warning but timestamp it."""
-        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
-        warning(msg, *args)
-
-    def debug(self, mgs, *args):
-        """Output a debug message if the appropriate -D option was given."""
-        if "fast-import" in debug.debug_flags:
-            msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
-            mutter(msg, *args)
-
-    def _time_of_day(self):
-        """Time of day as a string."""
-        # Note: this is a separate method so tests can patch in a fixed value
-        return time.strftime("%H:%M:%S")
-
-    def _import_marks(self, filename):
-        try:
-            f = file(filename)
-        except IOError:
-            self.warning(
-                "Could not open import-marks file, not importing marks")
-            return
-
-        firstline = f.readline()
-        match = re.match(r'^format=(\d+)$', firstline)
-        if not match:
-            print >>sys.stderr, "%r doesn't look like a mark file" % \
-                (filename,)
-            sys.exit(1)
-        elif match.group(1) != '1':
-            print >>sys.stderr, 'format version in mark file not supported'
-            sys.exit(1)
-
-        for string in f.readline().rstrip('\n').split('\0'):
-            if not string:
-                continue
-            name, integer = string.rsplit('.', 1)
-            # We really can't do anything with the branch information, so we
-            # just skip it
-            
-        self.cache_mgr.revision_ids = {}
-        for line in f:
-            line = line.rstrip('\n')
-            mark, revid = line.split(' ', 1)
-            self.cache_mgr.revision_ids[mark] = revid
-        f.close()
-    
-    def export_marks(self, filename):
-        try:
-            f = file(filename, 'w')
-        except IOError:
-            self.warning(
-                "Could not open export-marks file, not exporting marks")
-            return
-        f.write('format=1\n')
-        f.write('\0tmp.0\n')
-        for mark, revid in self.cache_mgr.revision_ids.iteritems():
-            f.write('%s %s\n' % (mark, revid))
-        f.close()
-        
     def pre_process(self):
         self._start_time = time.time()
         self._load_info_and_params()
-        self.cache_mgr = GenericCacheManager(self.info, self.verbose,
+        self.cache_mgr = cache_manager.CacheManager(self.info, self.verbose,
             self.inventory_cache_size)
         
         if self.params.get("import-marks") is not None:
-            self._import_marks(self.params.get("import-marks"))
+            mark_map = marks_file.import_marks(self.params.get("import-marks"))
+            if mark_map is not None:
+                self.cache_mgr.revision_ids = mark_map
             self.skip_total = False
             self.first_incremental_commit = True
         else:
@@ -310,12 +241,13 @@ class GenericProcessor(processor.ImportProcessor):
         self._save_id_map()
 
         if self.params.get("export-marks") is not None:
-            self.export_marks(self.params.get("export-marks"))
+            marks_file.export_marks(self.params.get("export-marks"),
+                self.cache_mgr.revision_ids)
 
         # Update the branches
         self.note("Updating branch information ...")
-        updater = GenericBranchUpdater(self.repo, self.branch, self.cache_mgr,
-            helpers.invert_dictset(self.cache_mgr.heads),
+        updater = branch_updater.BranchUpdater(self.repo, self.branch,
+            self.cache_mgr, helpers.invert_dictset(self.cache_mgr.heads),
             self.cache_mgr.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
@@ -539,11 +471,6 @@ class GenericProcessor(processor.ImportProcessor):
 	# another branch.  Create a method for resolving commitish's.
         if cmd.from_ is not None:
             self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
-            # Why is this required now vs at the end?
-            #updater = GenericBranchUpdater(self.repo, self.branch, self.cache_mgr,
-            #    helpers.invert_dictset(self.cache_mgr.heads),
-            #    self.cache_mgr.last_ref, self.tags)
-            #updater.update()
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
@@ -557,89 +484,6 @@ class GenericProcessor(processor.ImportProcessor):
         bzr_tag_name = name.decode('utf-8', 'replace')
         bzr_rev_id = self.cache_mgr.revision_ids[from_]
         self.tags[bzr_tag_name] = bzr_rev_id
-
-
-class GenericCacheManager(object):
-    """A manager of caches for the GenericProcessor."""
-
-    def __init__(self, info, verbose=False, inventory_cache_size=10):
-        """Create a manager of caches.
-
-        :param info: a ConfigObj holding the output from
-            the --info processor, or None if no hints are available
-        """
-        self.verbose = verbose
-
-        # dataref -> data. datref is either :mark or the sha-1.
-        # Sticky blobs aren't removed after being referenced.
-        self._blobs = {}
-        self._sticky_blobs = {}
-
-        # revision-id -> Inventory cache
-        # these are large and we probably don't need too many as
-        # most parents are recent in history
-        self.inventories = lru_cache.LRUCache(inventory_cache_size)
-
-        # import commmit-ids -> revision-id lookup table
-        # we need to keep all of these but they are small
-        self.revision_ids = {}
-
-        # path -> file-ids - as generated
-        self.file_ids = {}
-
-        # Head tracking: last ref, last id per ref & map of commit ids to ref*s*
-        self.last_ref = None
-        self.last_ids = {}
-        self.heads = {}
-
-        # Work out the blobs to make sticky - None means all
-        self._blobs_to_keep = None
-        if info is not None:
-            try:
-                self._blobs_to_keep = info['Blob usage tracking']['multi']
-            except KeyError:
-                # info not in file - possible when no blobs used
-                pass
-
-    def store_blob(self, id, data):
-        """Store a blob of data."""
-        if (self._blobs_to_keep is None or data == '' or
-            id in self._blobs_to_keep):
-            self._sticky_blobs[id] = data
-        else:
-            self._blobs[id] = data
-
-    def fetch_blob(self, id):
-        """Fetch a blob of data."""
-        try:
-            return self._sticky_blobs[id]
-        except KeyError:
-            return self._blobs.pop(id)
-
-    def _delete_path(self, path):
-        """Remove a path from caches."""
-        # we actually want to remember what file-id we gave a path,
-        # even when that file is deleted, so doing nothing is correct
-        pass
-
-    def _rename_path(self, old_path, new_path):
-        """Rename a path in the caches."""
-        # In this case, we need to forget the file-id we gave a path,
-        # otherwise, we'll get duplicate file-ids in the repository.
-        self.file_ids[new_path] = self.file_ids[old_path]
-        del self.file_ids[old_path]
-
-    def track_heads_for_ref(self, cmd_ref, cmd_id, parents=None):
-        if parents is not None:
-            for parent in parents:
-                refs = self.heads.get(parent)
-                if refs:
-                    refs.discard(cmd_ref)
-                    if not refs:
-                        del self.heads[parent]
-        self.heads.setdefault(cmd_id, set()).add(cmd_ref)
-        self.last_ids[cmd_ref] = cmd_id
-        self.last_ref = cmd_ref
 
 
 def _track_heads(cmd, cache_mgr):
@@ -673,22 +517,6 @@ class GenericCommitHandler(processor.CommitHandler):
         self.loader = loader
         self.verbose = verbose
         self._experimental = _experimental
-
-    def note(self, msg, *args):
-        """Output a note but add context."""
-        msg = "%s (%s)" % (msg, self.command.id)
-        note(msg, *args)
-
-    def warning(self, msg, *args):
-        """Output a warning but add context."""
-        msg = "WARNING: %s (%s)" % (msg, self.command.id)
-        warning(msg, *args)
-
-    def debug(self, msg, *args):
-        """Output a mutter if the appropriate -D option was given."""
-        if "fast-import" in debug.debug_flags:
-            msg = "%s (%s)" % (msg, self.command.id)
-            mutter(msg, *args)
 
     def pre_process_files(self):
         """Prepare for committing."""
@@ -746,28 +574,13 @@ class GenericCommitHandler(processor.CommitHandler):
            timestamp=committer[2],
            timezone=committer[3],
            committer=who,
-           message=self._escape_commit_message(self.command.message),
+           message=helpers.escape_commit_message(self.command.message),
            revision_id=self.revision_id,
            properties=rev_props,
            parent_ids=self.parents)
         self.loader.load(rev, self.inventory, None,
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
-
-    def _escape_commit_message(self, message):
-        """Replace xml-incompatible control characters."""
-        # It's crap that we need to do this at this level (but we do)
-        # Code copied from bzrlib.commit.
-        
-        # Python strings can include characters that can't be
-        # represented in well-formed XML; escape characters that
-        # aren't listed in the XML specification
-        # (http://www.w3.org/TR/REC-xml/#NT-Char).
-        message, _ = re.subn(
-            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-            lambda match: match.group(0).encode('unicode_escape'),
-            message)
-        return message
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
@@ -806,7 +619,7 @@ class GenericCommitHandler(processor.CommitHandler):
             else:
                 raise
         try:
-            self.cache_mgr._delete_path(path)
+            self.cache_mgr.delete_path(path)
         except KeyError:
             pass
 
@@ -864,7 +677,7 @@ class GenericCommitHandler(processor.CommitHandler):
         lines = self.loader._get_lines(file_id, ie.revision)
         self.lines_for_commit[file_id] = lines
         self.inventory.rename(file_id, new_parent_id, basename)
-        self.cache_mgr._rename_path(old_path, new_path)
+        self.cache_mgr.rename_path(old_path, new_path)
         self.inventory[file_id].revision = self.revision_id
 
     def deleteall_handler(self, filecmd):
@@ -1017,157 +830,3 @@ class GenericCommitHandler(processor.CommitHandler):
         #print "adding dir for %s" % path
         self.inventory.add(ie)
         return basename, ie
-
-
-class GenericBranchUpdater(object):
-
-    def __init__(self, repo, branch, cache_mgr, heads_by_ref, last_ref, tags):
-        """Create an object responsible for updating branches.
-
-        :param heads_by_ref: a dictionary where
-          names are git-style references like refs/heads/master;
-          values are one item lists of commits marks.
-        """
-        self.repo = repo
-        self.branch = branch
-        self.cache_mgr = cache_mgr
-        self.heads_by_ref = heads_by_ref
-        self.last_ref = last_ref
-        self.tags = tags
-
-    def update(self):
-        """Update the Bazaar branches and tips matching the heads.
-
-        If the repository is shared, this routine creates branches
-        as required. If it isn't, warnings are produced about the
-        lost of information.
-
-        :return: updated, lost_heads where
-          updated = the list of branches updated
-          lost_heads = a list of (bazaar-name,revision) for branches that
-            would have been created had the repository been shared
-        """
-        updated = []
-        branch_tips, lost_heads = self._get_matching_branches()
-        for br, tip in branch_tips:
-            if self._update_branch(br, tip):
-                updated.append(br)
-        return updated, lost_heads
-
-    def _get_matching_branches(self):
-        """Get the Bazaar branches.
-
-        :return: default_tip, branch_tips, lost_heads where
-          default_tip = the last commit mark for the default branch
-          branch_tips = a list of (branch,tip) tuples for other branches.
-          lost_heads = a list of (bazaar-name,revision) for branches that
-            would have been created had the repository been shared and
-            everything succeeded
-        """
-        branch_tips = []
-        lost_heads = []
-        ref_names = self.heads_by_ref.keys()
-        if self.branch is not None:
-            trunk = self.select_trunk(ref_names)
-            default_tip = self.heads_by_ref[trunk][0]
-            branch_tips.append((self.branch, default_tip))
-            ref_names.remove(trunk)
-
-        # Convert the reference names into Bazaar speak
-        bzr_names = self._get_bzr_names_from_ref_names(ref_names)
-
-        # Policy for locating branches
-        def dir_under_current(name, ref_name):
-            # Using the Bazaar name, get a directory under the current one
-            return name
-        def dir_sister_branch(name, ref_name):
-            # Using the Bazaar name, get a sister directory to the branch
-            return osutils.pathjoin(self.branch.base, "..", name)
-        if self.branch is not None:
-            dir_policy = dir_sister_branch
-        else:
-            dir_policy = dir_under_current
-
-        # Create/track missing branches
-        shared_repo = self.repo.is_shared()
-        for name in sorted(bzr_names.keys()):
-            ref_name = bzr_names[name]
-            tip = self.heads_by_ref[ref_name][0]
-            if shared_repo:
-                location = dir_policy(name, ref_name)
-                try:
-                    br = self.make_branch(location)
-                    branch_tips.append((br,tip))
-                    continue
-                except errors.BzrError, ex:
-                    error("ERROR: failed to create branch %s: %s",
-                        location, ex)
-            lost_head = self.cache_mgr.revision_ids[tip]
-            lost_info = (name, lost_head)
-            lost_heads.append(lost_info)
-        return branch_tips, lost_heads
-
-    def select_trunk(self, ref_names):
-        """Given a set of ref names, choose one as the trunk."""
-        for candidate in ['refs/heads/master']:
-            if candidate in ref_names:
-                return candidate
-        # Use the last reference in the import stream
-        return self.last_ref
-
-    def make_branch(self, location):
-        """Make a branch in the repository if not already there."""
-        try:
-            return bzrdir.BzrDir.open(location).open_branch()
-        except errors.NotBranchError, ex:
-            return bzrdir.BzrDir.create_branch_convenience(location)
-
-    def _get_bzr_names_from_ref_names(self, ref_names):
-        """Generate Bazaar branch names from import ref names.
-        
-        :return: a dictionary with Bazaar names as keys and
-          the original reference names as values.
-        """
-        bazaar_names = {}
-        for ref_name in sorted(ref_names):
-            parts = ref_name.split('/')
-            if parts[0] == 'refs':
-                parts.pop(0)
-            full_name = "--".join(parts)
-            bazaar_name = parts[-1]
-            if bazaar_name in bazaar_names:
-                if parts[0] == 'remotes':
-                    bazaar_name += ".remote"
-                else:
-                    bazaar_name = full_name
-            bazaar_names[bazaar_name] = ref_name
-        return bazaar_names
-
-    def _update_branch(self, br, last_mark):
-        """Update a branch with last revision and tag information.
-        
-        :return: whether the branch was changed or not
-        """
-        last_rev_id = self.cache_mgr.revision_ids[last_mark]
-        revs = list(self.repo.iter_reverse_revision_history(last_rev_id))
-        revno = len(revs)
-        existing_revno, existing_last_rev_id = br.last_revision_info()
-        changed = False
-        if revno != existing_revno or last_rev_id != existing_last_rev_id:
-            br.set_last_revision_info(revno, last_rev_id)
-            changed = True
-        # apply tags known in this branch
-        my_tags = {}
-        if self.tags:
-            for tag,rev in self.tags.items():
-                if rev in revs:
-                    my_tags[tag] = rev
-            if my_tags:
-                br.tags._set_tag_dict(my_tags)
-                changed = True
-        if changed:
-            tagno = len(my_tags)
-            note("\t branch %s now has %d %s and %d %s", br.nick,
-                revno, helpers.single_plural(revno, "revision", "revisions"),
-                tagno, helpers.single_plural(tagno, "tag", "tags"))
-        return changed

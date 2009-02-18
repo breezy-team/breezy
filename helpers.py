@@ -100,3 +100,20 @@ def common_directory(paths):
         for path in paths[2:]:
             common = common_path(common, path)
         return get_dir_with_slash(common)
+
+
+def escape_commit_message(message):
+    """Replace xml-incompatible control characters."""
+    # This really ought to be provided by bzrlib.
+    # Code copied from bzrlib.commit.
+    
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    import re
+    message, _ = re.subn(
+        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+        lambda match: match.group(0).encode('unicode_escape'),
+        message)
+    return message
