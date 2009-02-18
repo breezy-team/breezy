@@ -148,7 +148,7 @@ class cmd_fast_import(Command):
 
         Import a Mercurial repository into Bazaar.
     """
-    hidden = True
+    hidden = False
     _see_also = ['fast-import-info', 'fast-import-query']
     takes_args = ['source']
     takes_options = ['verbose',
@@ -284,7 +284,7 @@ class cmd_fast_import_info(Command):
 
        Create a hints file for running fast-import on a large repository.
     """
-    hidden = True
+    hidden = False
     _see_also = ['fast-import']
     takes_args = ['source']
     takes_options = ['verbose']
@@ -323,7 +323,7 @@ class cmd_fast_import_query(Command):
         Show the mark and merge fields of the commit commands.
     """
     hidden = True
-    _see_also = ['fast-import']
+    _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source']
     takes_options = ['verbose',
                     ListOption('commands', short_name='C', type=str,
