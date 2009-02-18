@@ -75,7 +75,8 @@ format_registry.register_metadir('gc-subtrees',
 # info' will die horribly.
 try:
     from bzrlib.repofmt.pack_repo import (
-    RepositoryFormatPackDevelopment4,
+    RepositoryFormatPackDevelopment5,
+    RepositoryFormatPackDevelopment5Hash16,
     )
     format_registry.register_metadir('gc-plain-chk',
         'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlainCHK',
@@ -84,14 +85,46 @@ try:
             'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
             'before use.',
         branch_format='bzrlib.branch.BzrBranchFormat7',
-        tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+        tree_format='bzrlib.workingtree.WorkingTreeFormat5',
         hidden=False,
         experimental=True,
         )
     repo_registry.register_lazy(
-        'Bazaar development format - chk+gc (needs bzr.dev from 1.12)\n',
+        'Bazaar development format - chk+gc (needs bzr.dev from 1.13)\n',
         'bzrlib.plugins.groupcompress.repofmt',
         'RepositoryFormatPackGCPlainCHK',
+        )
+    format_registry.register_metadir('gc-plain-chk16',
+        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlainCHK16',
+        help='pack-1.9 with 16-way hashed CHK inv and group compress. '
+            'Please read '
+            'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+            'before use.',
+        branch_format='bzrlib.branch.BzrBranchFormat7',
+        tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+        hidden=False,
+        experimental=True,
+        )
+    repo_registry.register_lazy(
+        'Bazaar development format - hash16chk+gc (needs bzr.dev from 1.13)\n',
+        'bzrlib.plugins.groupcompress.repofmt',
+        'RepositoryFormatPackGCPlainCHK16',
+        )
+    format_registry.register_metadir('gc-plain-chk255',
+        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlainCHK255',
+        help='pack-1.9 with 255-way hashed CHK inv and group compress. '
+            'Please read '
+            'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+            'before use.',
+        branch_format='bzrlib.branch.BzrBranchFormat7',
+        tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+        hidden=False,
+        experimental=True,
+        )
+    repo_registry.register_lazy(
+        'Bazaar development format - hash255chk+gc (needs bzr.dev from 1.13)\n',
+        'bzrlib.plugins.groupcompress.repofmt',
+        'RepositoryFormatPackGCPlainCHK255',
         )
 except ImportError:
     pass
