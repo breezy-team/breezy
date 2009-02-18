@@ -97,6 +97,62 @@ UNLEN = 256
 MAX_COMPUTERNAME_LENGTH = 31
 
 
+def debug_memory_win32api(message='', short=True):
+    """Use trace.note() to dump the running memory info."""
+    from bzrlib import trace
+    if has_win32api:
+        import win32process
+        proc = win32process.GetCurrentProcess()
+        info = win32process.GetProcessMemoryInfo(proc)
+    elif has_ctypes:
+        class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
+            """Used by GetProcessMemoryInfo"""
+            _fields_ = [('cb', ctypes.c_ulong),
+                        ('PageFaultCount', ctypes.c_ulong),
+                        ('PeakWorkingSetSize', ctypes.c_size_t),
+                        ('WorkingSetSize', ctypes.c_size_t),
+                        ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
+                        ('PagefileUsage', ctypes.c_size_t),
+                        ('PeakPagefileUsage', ctypes.c_size_t),
+                        ('PrivateUsage', ctypes.c_size_t),
+                       ]
+        cur_process = ctypes.windll.kernel32.GetCurrentProcess()
+        mem_struct = PROCESS_MEMORY_COUNTERS_EX()
+        ret = ctypes.windll.psapi.GetProcessMemoryInfo(cur_process,
+            ctypes.byref(mem_struct),
+            ctypes.sizeof(mem_struct))
+        if not ret:
+            trace.note('Failed to GetProcessMemoryInfo()')
+            return
+        info = {'PageFaultCount': mem_struct.PageFaultCount,
+                'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
+                'WorkingSetSize': mem_struct.WorkingSetSize,
+                'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
+                'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
+                'QuotaPeakNonPagedPoolUsage': mem_struct.QuotaPeakNonPagedPoolUsage,
+                'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
+                'PagefileUsage': mem_struct.PagefileUsage,
+                'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
+                'PrivateUsage': mem_struct.PrivateUsage,
+               }
+    else:
+        trace.note('Cannot debug memory on win32 without ctypes'
+                   ' or win32process')
+        return
+    trace.note('WorkingSize       %8d kB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d kB', info['PeakWorkingSetSize'] / 1024)
+    if short:
+        return
+    # PagefileUsage et al seem to always be identical....
+    trace.note('PagefileUsage     %8d kB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d kB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d kB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
+
+
 def get_console_size(defaultx=80, defaulty=25):
     """Return size of current console.
 
