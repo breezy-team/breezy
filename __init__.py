@@ -395,6 +395,7 @@ class cmd_fast_export(Command):
                         ),
                      ]
     aliases = []
+    encoding_type = 'exact'
     def run(self, source, verbose=False, git_branch="master", checkpoint=1000,
         marks=None, import_marks=None, export_marks=None):
         from bzrlib.plugins.fastimport import bzr_exporter
