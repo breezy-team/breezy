@@ -1987,6 +1987,15 @@ class DistributionBranch(object):
                 self._create_empty_upstream_tree(tempdir)
             if self._has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
+            if upstream_branch is not None:
+                if upstream_revision is not None:
+                    upstream_revision = upstream_branch.last_revision()
+                graph = self.branch.repository.get_graph(
+                        other_repository=upstream_branch.repository)
+                if graph.is_ancestor(upstream_revision,
+                        self.branch.last_revision()):
+                    info("Nothing to do, upstream branch already merged.")
+                    return
             tarball_filename = os.path.abspath(tarball_filename)
             m = md5.new()
             m.update(open(tarball_filename).read())
