@@ -140,7 +140,7 @@ run
 
   $ bzr init scruff
   $ cd scruff
-  $ bzr import-dsc --distribution debian ../*.dsc
+  $ bzr import-dsc ../*.dsc
 
 which will create a branch named ``scruff``, which will have the history
 populated with the information in the source packages. You can see this
@@ -156,8 +156,7 @@ It is also possible to retrieve the .dsc files over ``HTTP``, ``FTP`` or
 ``SFTP`` automatically. Just give the URIs to the files on the command line
 instead of local paths. For instance::
 
-  $ bzr import-dsc --distribution debian \
-    http://ftp.debian.org/pool/main/s/scruff/scruff_0.1-1.dsc
+  $ bzr import-dsc http://ftp.debian.org/pool/main/s/scruff/scruff_0.1-1.dsc
 
 As it is unwieldy to provide lots of URIs on the command line it is also
 possible to supply them in a text file. To do this create a text file where
@@ -168,7 +167,7 @@ needed to ensure the history is correct. For instance if the file
 
 ::
 
-  $ bzr import-dsc --distribution debian -F package-sources
+  $ bzr import-dsc -F package-sources
 
 will import all of the ``.dsc`` files listed. You can provide both a file
 and a list of packages on the command line if you like.
@@ -210,27 +209,43 @@ tarball that represents this release. This tarball can be local or remote.
 For instance when the ``0.2`` version of ``scruff`` is released the command
 to update to the new version is::
 
-  $ bzr merge-upstream --version 0.2-1 --distribution debian \
+  $ bzr merge-upstream --version 0.2 \
         http://scruff.org/releases/scruff-0.2.tar.gz
 
 This command downloads the new version, and imports it in to the branch. It
 then merges in the packaging changes to the new version.
 
 If there are any conflicts caused by the merge of the packaging changes you
-will be notified. You must resolve the conflicts in the normal way. One thing
-that you need to do is update the version in ``debian/changelog``. ``dch``
-can help with this. In the above example the following command would work::
+will be notified. You must resolve the conflicts in the normal way.
 
-  $ dch -v 0.2-1
-
-Once you have resolved any conflicts, updated the changelog, and edited any
-other files as you require, you can commit the changes, and then attempt to
+Once you have resolved any conflicts, edited any other files as you require,
+and reviewed the diff, you can commit the changes, and then attempt to
 build the new version.
 
 ::
 
   $ bzr commit -m 'New upstream version'
   $ bzr builddeb
+
+If upstream is stored in bzr, or in a VCS that there is bzr foreign branch
+support for then you can also merge the branch at the same time. Specify the
+branch as an extra argument to the ``merge-upstream`` command, and use the
+``--revision`` argument to specify the revision that the release corresponds
+to.
+
+::
+
+  $ bzr merge-upstream --version 0.2 \
+        http://scruff.org/releases/scruff-0.2.tar.gz \
+        http://scruff.org/bzr/scruff.dev -r tag:scruff-0.2
+
+If upstream doesn't release tarballs, or you would like to package a
+snapshot then you can just specify a branch, instead of a tarball,
+and ``bzr-builddeb`` will create the tarball for you.
+
+::
+
+  $ bzr merge-upstream --version 0.2 http://scruff.org/bzr/scruff.dev
 
 Importing a source package from elsewhere
 #########################################
