@@ -53,8 +53,6 @@ from bzrlib.versionedfile import (
     )
 
 
-total_copy_neg = 0
-
 def parse(line_list):
     result = []
     lines = iter(line_list)
@@ -77,7 +75,7 @@ def parse(line_list):
             result.append((op, None, numbers[0], contents))
     return label, sha1, result
 
-def apply_delta(basis, delta, delta_bytes_start):
+def apply_delta(basis, delta):
     """Apply delta to this object to become new_version_id."""
     lines = []
     last_offset = 0
@@ -85,8 +83,6 @@ def apply_delta(basis, delta, delta_bytes_start):
     # start, end refer to offsets in basis
     for op, start, count, delta_lines in delta:
         if op == 'c':
-            if start < 0:
-                start = delta_bytes_start + start
             lines.append(basis[start:start+count])
         else:
             lines.extend(delta_lines)
@@ -241,14 +237,7 @@ class GroupCompressor(object):
             else:
                 start_byte = self.line_offsets[copy_start - 1]
             bytes = stop_byte - start_byte
-            neg_offset = start_byte - self.endpoint
             copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
-            assert neg_offset < 0
-            copy_neg = "c,%d,%d\n" % (neg_offset, bytes)
-            if len(copy_neg) < len(copy_control_instruction):
-                global total_copy_neg
-                total_copy_neg += len(copy_neg) - len(copy_control_instruction)
-                # copy_control_instruction = copy_neg
             if (bytes + len(insert_instruction) >
                 len(copy_control_instruction)):
                 new_lines.append(copy_control_instruction)
@@ -530,7 +519,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 label, sha1, delta = parse(delta_lines)
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-                lines = apply_delta(plain, delta, index_memo[3])
+                lines = apply_delta(plain, delta)
             yield ChunkedContentFactory(key, parents, sha1, lines)
 
     def get_sha1s(self, keys):
@@ -589,7 +578,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, "%d %d %s" % (start, length, reads), refs))
-            print '\ntotal neg %s' % (total_copy_neg,)
             self._index.add_records(nodes, random_id=random_id)
         for record in stream:
             # Raise an error when a record is missing.
