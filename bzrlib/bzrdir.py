@@ -2719,7 +2719,9 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         response = client.call('BzrDirFormat.initialize', path)
         if response[0] != 'ok':
             raise errors.SmartProtocolError('unexpected response code %s' % (response,))
-        return remote.RemoteBzrDir(transport, self)
+        format = RemoteBzrDirFormat()
+        self._supply_sub_formats_to(format)
+        return remote.RemoteBzrDir(transport, format)
 
     def _open(self, transport):
         return remote.RemoteBzrDir(transport, self)
