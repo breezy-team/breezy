@@ -67,8 +67,15 @@ class DebBuildConfig(object):
     If branch is not None then it will be used in preference to all others.
     It will not be considered trusted.
 
-    >>> c = DebBuildConfig([('local.conf', False),
-    ... ('user.conf', True), ('default.conf', False)])
+    The sample files used in this test are included in the builddeb source tree.
+
+    >>> import os
+    >>> import bzrlib.plugins.builddeb
+    >>> d = os.path.dirname(bzrlib.plugins.builddeb.__file__) + '/'
+    >>> c = DebBuildConfig([
+    ...      (d + 'local.conf', False),
+    ...      (d + 'user.conf', True), 
+    ...      (d + 'default.conf', False)])
     >>> print c.orig_dir
     None
     >>> print c.merge
