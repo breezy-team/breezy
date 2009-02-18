@@ -116,7 +116,8 @@ class BzrFastExporter(object):
             return
  
         ncommits = len(self.revid_to_mark)
-        if self.checkpoint > 0 and ncommits % self.checkpoint == 0:
+        if (self.checkpoint > 0 and ncommits
+            and ncommits % self.checkpoint == 0):
             self.debug(
                 "Exported %i commits; forcing checkpoint" % ncommits)
             self._save_marks()
