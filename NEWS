@@ -30,6 +30,9 @@ IN DEVELOPMENT
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
 
+    * Support for GSSAPI authentication when using HTTP or HTTPS. 
+      (Jelmer Vernooij)
+
     * The ``bzr shelve`` prompt now includes a '?' help option to explain the
       short options better. (Daniel Watkins, #327429)
 
