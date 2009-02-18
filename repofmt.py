@@ -229,6 +229,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         self.repo.signatures._index._add_callback = self.signature_index.add_callback
         self.repo.texts._index._add_callback = self.text_index.add_callback
 
+    def _do_autopack(self):
+        return False
+
 
 
 class GCPackRepository(KnitPackRepository):
@@ -301,6 +304,14 @@ class GCPackRepository(KnitPackRepository):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
+        # Note: We cannot unpack a delta that references a text we haven't seen yet.
+        #       there are 2 options, work in fulltexts, or require topological
+        #       sorting. Using fulltexts is more optimal for local operations,
+        #       because the source can be smart about extracting multiple
+        #       in-a-row (and sharing strings). Topological is better for
+        #       remote, because we access less data.
+        self._fetch_order = 'topological'
+        self._fetch_uses_deltas = False
 
 
 if chk_support:
@@ -362,6 +373,8 @@ if chk_support:
             self._reconcile_does_inventory_gc = True
             self._reconcile_fixes_text_parents = True
             self._reconcile_backsup_inventory = False
+            self._fetch_order = 'topological'
+            self._fetch_uses_deltas = False
 
 
 class RepositoryFormatPackGCPlain(RepositoryFormatPackDevelopment2):
