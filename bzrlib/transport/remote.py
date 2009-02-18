@@ -580,6 +580,14 @@ class RemoteHTTPTransport(RemoteTransport):
             return redirected
 
 
+class HintingSSHTransport(transport.Transport):
+    """Simple transport that handles ssh:// and points out bzr+ssh://."""
+
+    def __init__(self, url):
+        raise errors.UnsupportedProtocol(url, 
+            'bzr supports bzr+ssh to operate over ssh, use "bzr+%s".' % url)
+
+
 def get_test_permutations():
     """Return (transport, server) permutations for testing."""
     ### We may need a little more test framework support to construct an

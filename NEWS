@@ -30,6 +30,9 @@ IN DEVELOPMENT
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
 
+    * Bazaar will now point out ``bzr+ssh://`` to the user when they 
+      use ssh://. (Jelmer Vernooij, #330535)
+
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
 
