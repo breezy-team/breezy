@@ -1209,7 +1209,10 @@ class BasicAuthHandler(AbstractAuthHandler):
         return auth_header
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
+        try:
+            scheme, raw_auth = header.split(None, 1)
+        except ValueError:
+            return False
         scheme = scheme.lower()
         if scheme != 'basic':
             return False
@@ -1267,7 +1270,10 @@ class DigestAuthHandler(AbstractAuthHandler):
         return auth.get('scheme', None) == 'digest'
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
+        try:
+            scheme, raw_auth = header.split(None, 1)
+        except ValueError:
+            return False
         scheme = scheme.lower()
         if scheme != 'digest':
             return False
