@@ -100,11 +100,7 @@ MAX_COMPUTERNAME_LENGTH = 31
 def debug_memory_win32api(message='', short=True):
     """Use trace.note() to dump the running memory info."""
     from bzrlib import trace
-    if has_win32api:
-        import win32process
-        proc = win32process.GetCurrentProcess()
-        info = win32process.GetProcessMemoryInfo(proc)
-    elif has_ctypes:
+    if has_ctypes:
         class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
             """Used by GetProcessMemoryInfo"""
             _fields_ = [('cb', ctypes.c_ulong),
@@ -138,6 +134,12 @@ def debug_memory_win32api(message='', short=True):
                 'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
                 'PrivateUsage': mem_struct.PrivateUsage,
                }
+    elif has_win32api:
+        import win32process
+        # win32process does not return PrivateUsage, because it doesn't use
+        # PROCESS_MEMORY_COUNTERS_EX (it uses the one without _EX).
+        proc = win32process.GetCurrentProcess()
+        info = win32process.GetProcessMemoryInfo(proc)
     else:
         trace.note('Cannot debug memory on win32 without ctypes'
                    ' or win32process')
@@ -146,10 +148,9 @@ def debug_memory_win32api(message='', short=True):
     trace.note('PeakWorking       %8d kB', info['PeakWorkingSetSize'] / 1024)
     if short:
         return
-    # PagefileUsage et al seem to always be identical....
     trace.note('PagefileUsage     %8d kB', info.get('PagefileUsage', 0) / 1024)
     trace.note('PeakPagefileUsage %8d kB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d kB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d kB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
