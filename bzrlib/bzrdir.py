@@ -3187,7 +3187,7 @@ format_registry.register_metadir('development-wt5',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports views and content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
 format_registry.register_metadir('development-wt5-rich-root',
@@ -3195,7 +3195,7 @@ format_registry.register_metadir('development-wt5-rich-root',
     help='A variant of development-wt5 that supports rich-root data '
          '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
 # The following two formats should always just be aliases.

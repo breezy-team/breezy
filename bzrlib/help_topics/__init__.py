@@ -744,6 +744,8 @@ topic_registry.register('conflicts', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('hooks', _load_from_file,
                         'Points at which custom processing can be added')
+topic_registry.register('log-formats', _load_from_file,
+                        'Details on the logging formats available')
 
 
 # Register concept topics.

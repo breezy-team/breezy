@@ -17,6 +17,10 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
+      options to change the default tree-creation policy of shared
+      repositories.  (Matthew Fuller, Marius Kruger, #145033)
+
   IMPROVEMENTS:
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
@@ -27,6 +31,10 @@ IN DEVELOPMENT
 
     * ``bzr unshelve`` gives a more palatable error if passed a non-integer
       shelf id. (Daniel Watkins)
+
+    * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
+      than fetching trees and determining a delta itself. (Jelmer
+      Vernooij, #315048)
 
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
@@ -54,14 +62,28 @@ IN DEVELOPMENT
       RemoteBranch). (Robert Collins, Andrew Bennetts)
 
 
+bzr 1.12 "1234567890" 2009-02-13
+--------------------------------
+
+This release of Bazaar contains many improvements to the speed,
+documentation and functionality of ``bzr log`` and the display of logged
+revisions by ``bzr status``.  bzr now also gives a better indication of
+progress, both in the way operations are drawn onto a text terminal, and
+by showing the rate of network IO.
+
+  BUG FIXES:
+
+    * ``bzr init --development-wt5[-rich-root]`` would fail because of
+      circular import errors. (John Arbash Meinel, #328135)
+
+  DOCUMENTATION:
+
+    * Expanded the help for log and added a new help topic called
+      ``log-formats``.  (Ian Clatworthy)
+
+
 bzr 1.12rc1 "1234567890" 2009-02-10
 -----------------------------------
-
-This release of Bazaar contains many improvements to the speed and
-functionality of ``bzr log`` and the display of logged revisions by ``bzr
-status``.  bzr now also gives a better indication of progress, both in the
-way operations are drawn onto a text terminal, and by showing the rate of
-network IO.
 
   COMPATIBILITY BREAKS:
 
