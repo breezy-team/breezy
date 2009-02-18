@@ -29,6 +29,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
+from bzrlib.smart import client, server
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
@@ -178,6 +179,40 @@ class TestPush(ExternalBase):
         self.run_bzr('push -d %s %s' 
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.failUnlessExists('to-two')
+
+    def _reset_smart_call_log(self):
+        self.hpss_calls = []
+
+    def _setup_smart_call_log(self):
+        self.transport_server = server.SmartTCPServer_for_testing
+        self.hpss_calls = []
+        def capture_hpss_call(params):
+            self.hpss_calls.append(params.method)
+        client._SmartClient.hooks.install_named_hook(
+            'call', capture_hpss_call, None)
+
+    def test_push_smart_non_stacked_streaming_acceptance(self):
+        self._setup_smart_call_log()
+        t = self.make_branch_and_tree('from')
+        t.commit(allow_pointless=True, message='first commit')
+        self._reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        rpc_count = len(self.hpss_calls)
+        self.assertEqual(99, rpc_count)
+
+    def test_push_smart_stacked_streaming_acceptance(self):
+        self._setup_smart_call_log()
+        parent = self.make_branch_and_tree('parent', format='1.9')
+        parent.commit(message='first commit')
+        local = parent.bzrdir.sprout('local').open_workingtree()
+        local.commit(message='local commit')
+        self._reset_smart_call_log()
+        self.run_bzr(['push', '--stacked', '--stacked-on', '../parent',
+            self.get_url('public')], working_dir='local')
+        rpc_count = len(self.hpss_calls)
+        self.assertEqual(123, rpc_count)
+        remote = Branch.open('public')
+        self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
