@@ -31,17 +31,15 @@ GIT_FAST_IMPORT_NEEDS_EXTRA_SPACE_AFTER_QUOTE = False
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-import os
-import re
 import sys
-from email.Utils import quote, parseaddr
+from email.Utils import parseaddr
 
 import bzrlib.branch
 import bzrlib.revision
 from bzrlib import errors as bazErrors
 from bzrlib.trace import note, warning
 
-from bzrlib.plugins.fastimport import helpers, marks_file
+from bzrlib.plugins.fastimport import commands, helpers, marks_file
 
 
 class BzrFastExporter(object):
@@ -49,6 +47,7 @@ class BzrFastExporter(object):
     def __init__(self, source, git_branch=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None):
         self.source = source
+        self.outf = sys.stdout
         self.git_branch = git_branch
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file
@@ -86,12 +85,15 @@ class BzrFastExporter(object):
     def warning(self, message):
         warning("bzr fast-export: %s" % message)
 
+    def print_cmd(self, cmd):
+        self.outf.write("%r\n" % cmd)
+
     def _save_marks(self):
         if self.export_marks_file:
             revision_ids = helpers.invert_dict(self.revid_to_mark)
             marks_file.export_marks(self.export_marks_file, revision_ids,
                 self.branch_names)
-    
+ 
     def is_empty_dir(self, tree, path):
         path_id = tree.path2id(path)
         if path_id == None:
@@ -113,6 +115,7 @@ class BzrFastExporter(object):
         if revid in self.revid_to_mark:
             return
 
+        # Get the Revision object
         try:
             revobj = self.branch.repository.get_revision(revid)
         except bazErrors.NoSuchRevision:
@@ -120,132 +123,137 @@ class BzrFastExporter(object):
             self.revid_to_mark[revid] = -1
             return
  
+        # Checkpoint if it's time for that
         ncommits = len(self.revid_to_mark)
         if (self.checkpoint > 0 and ncommits
             and ncommits % self.checkpoint == 0):
-            self.note("Exported %i commits; forcing checkpoint" % ncommits)
+            self.note("Exported %i commits - checkpointing" % ncommits)
             self._save_marks()
-            sys.stdout.write("checkpoint\n")
+            self.print_cmd(commands.CheckpointCommand())
+        mark = self.revid_to_mark[revid] = ncommits + 1
 
-        mark = self.revid_to_mark[revid] = len(self.revid_to_mark) + 1
+        # Emit parents
         nparents = len(revobj.parent_ids)
+        if nparents:
+            for parent in revobj.parent_ids:
+                self.emit_commit(parent, git_branch)
 
-        # This is a parentless commit. We need to create a new branch
-        # otherwise git-fast-import will assume the previous commit
-        # was this one's parent
-        for parent in revobj.parent_ids:
-            self.emit_commit(parent, git_branch)
-
+        # Get the primary parent
         if nparents == 0:
+            # This is a parentless commit. We need to create a new branch
+            # otherwise git-fast-import will assume the previous commit
+            # was this one's parent
             git_branch = self.next_available_branch_name()
             parent = bzrlib.revision.NULL_REVISION
         else:
             parent = revobj.parent_ids[0]
 
-        stream = 'commit refs/heads/%s\nmark :%d\n' % (git_branch, mark)
+        # Print the commit
+        git_ref = 'refs/heads/%s' % (git_branch,)
+        file_cmds = self._get_filecommands(parent, revid)
+        self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
+            file_cmds))
 
-        rawdate = '%d %s' % (int(revobj.timestamp), '%+03d%02d' % (
-                    revobj.timezone / 3600, (revobj.timezone / 60) % 60))
-
+    def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
+        # Get the committer and author info
+        committer = revobj.committer
+        name, email = parseaddr(committer)
+        committer_info = (name, email, revobj.timestamp, revobj.timezone)
         author = revobj.get_apparent_author()
-        if author != revobj.committer:
-            stream += 'author %s %s\n' % (
-                self.name_with_angle_brackets(author), rawdate)
+        if author != committer:
+            name, email = parseaddr(author)
+            author_info = (name, email, revobj.timestamp, revobj.timezone)
+        else:
+            author_info = None
 
-        stream += 'committer %s %s\n' % (
-                self.name_with_angle_brackets(revobj.committer), rawdate)
-
-        message = revobj.message.encode('utf-8')
-        stream += 'data %d\n%s\n' % (len(message), revobj.message)
-
-        didFirstParent = False
+        # Get the parents in terms of marks
+        non_ghost_parents = []
         for p in revobj.parent_ids:
-            if self.revid_to_mark[p] == -1:
-                self.note("This is a merge with a ghost-commit. Skipping "
-                    "second parent.")
-                continue
+            parent_mark = self.revid_to_mark[p]
+            if parent_mark != -1:
+                non_ghost_parents.append(":%s" % parent_mark)
+        if non_ghost_parents:
+            from_ = non_ghost_parents[0]
+            merges = non_ghost_parents[1:]
+        else:
+            from_ = None
+            merges = None
 
-            if p == parent and not didFirstParent:
-                s = "from"
-                didFirstParent = True
-            else:
-                s = "merge"
-            stream += '%s :%d\n' % (s, self.revid_to_mark[p])
+        # Build and return the result
+        return commands.CommitCommand(git_ref, mark, author_info,
+            committer_info, revobj.message, from_, merges, iter(file_cmds))
 
-        sys.stdout.write(stream.encode('utf-8'))
-
-        ##
-
+    def _get_revision_trees(self, parent, revision_id):
         try:
             tree_old = self.branch.repository.revision_tree(parent)
         except bazErrors.UnexpectedInventoryFormat:
-            self.note("Parent is malformed.. diffing against previous parent")
+            self.warning("Parent is malformed - diffing against previous parent")
             # We can't find the old parent. Let's diff against his parent
             pp = self.branch.repository.get_revision(parent)
             tree_old = self.branch.repository.revision_tree(pp.parent_ids[0])
-        
         tree_new = None
         try:
-            tree_new = self.branch.repository.revision_tree(revobj.revision_id)
+            tree_new = self.branch.repository.revision_tree(revision_id)
         except bazErrors.UnexpectedInventoryFormat:
             # We can't really do anything anymore
-            self.note("This commit is malformed. Skipping diff")
-            return
+            self.warning("Revision %s is malformed - skipping", revision_id)
+        return tree_old, tree_new
 
+    def _get_filecommands(self, parent, revision_id):
+        """Get the list of FileCommands for the changes between two revisions."""
+        tree_old, tree_new = self._get_revision_trees(parent, revision_id)
         changes = tree_new.changes_from(tree_old)
 
-        # make "modified" have 3-tuples, as added does
+        # Make "modified" have 3-tuples, as added does
         my_modified = [ x[0:3] for x in changes.modified ]
 
         # We have to keep track of previous renames in this commit
+        file_cmds = []
         renamed = []
         for (oldpath, newpath, id_, kind,
                 text_modified, meta_modified) in changes.renamed:
-            
             if (self.is_empty_dir(tree_old, oldpath)):
                 self.note("Skipping empty dir %s in rev %s" % (oldpath,
-                    revobj.revision_id))
+                    revision_id))
                 continue
-
             for old, new in renamed:
                 # If a previous rename is found in this rename, we should
                 # adjust the path
                 if old in oldpath:
                     oldpath = oldpath.replace(old + "/", new + "/") 
                     self.note("Fixing recursive rename for %s" % oldpath)
-
             renamed.append([oldpath, newpath])
-
-            sys.stdout.write('R %s %s\n' % (self.my_quote(oldpath, True),
-                                                    self.my_quote(newpath)))
+            file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
             if text_modified or meta_modified:
                 my_modified.append((newpath, id_, kind))
 
+        # Record deletes
         for path, id_, kind in changes.removed:
             for old, new in renamed:
                 path = path.replace(old + "/", new + "/")
-            sys.stdout.write('D %s\n' % (self.my_quote(path),))
+            file_cmds.append(commands.FileDeleteCommand(path))
 
+        # Map kind changes to a delete followed by an add
         for path, id_, kind1, kind2 in changes.kind_changed:
             for old, new in renamed:
                 path = path.replace(old + "/", new + "/")
-            sys.stdout.write('D %s\n' % (self.my_quote(path),))
+            file_cmds.append(commands.FileDeleteCommand(path))
             my_modified.append((path, id_, kind2))
 
+        # Record modifications
         for path, id_, kind in changes.added + my_modified:
-            if kind in ('file', 'symlink'):
-                entry = tree_new.inventory[id_]
-                if kind == 'file':
-                    mode = entry.executable and '755' or '644'
-                    text = tree_new.get_file_text(id_)
-                else: # symlink
-                    mode = '120000'
-                    text = entry.symlink_target
+            if kind == 'file':
+                text = tree_new.get_file_text(id_)
+                file_cmds.append(commands.FileModifyCommand(path, 'file',
+                    tree_new.is_executable(id_), None, text))
+            elif kind == 'symlink':
+                file_cmds.append(commands.FileModifyCommand(path, 'symlink',
+                    False, None, tree_new.get_symlink_target(id_)))
             else:
+                # Should we do something here for importers that
+                # can handle directory and tree-reference changes?
                 continue
-
-            sys.stdout.write('M %s inline %s\n' % (mode, self.my_quote(path)))
-            sys.stdout.write('data %d\n%s\n' % (len(text), text))
+        return file_cmds
 
     def emit_tags(self):
         for tag, revid in self.branch.tags.get_tag_dict().items():
@@ -255,51 +263,15 @@ class BzrFastExporter(object):
                 self.warning('not creating tag %r pointing to non-existent '
                     'revision %s' % (tag, revid))
             else:
-                # According to git-fast-import(1), the extra LF is optional here;
-                # however, versions of git up to 1.5.4.3 had a bug by which the LF
-                # was needed. Always emit it, since it doesn't hurt and maintains
-                # compatibility with older versions.
-                # http://git.kernel.org/?p=git/git.git;a=commit;h=655e8515f279c01f525745d443f509f97cd805ab
-                sys.stdout.write('reset refs/tags/%s\nfrom :%d\n\n' % (
-                    tag, mark))
-
-    ##
-
-    def my_quote(self, string, quote_spaces=False):
-        """Encode path in UTF-8 and quote it if necessary.
-
-        A quote is needed if path starts with a quote character ("). If
-        :param quote_spaces: is True, the path will be quoted if it contains any
-        space (' ') characters.
-        """
-        # TODO: escape LF
-        string = string.encode('utf-8')
-        if string.startswith('"') or quote_spaces and ' ' in string:
-            return '"%s"%s' % (quote(string),
-                    GIT_FAST_IMPORT_NEEDS_EXTRA_SPACE_AFTER_QUOTE and ' ' or '')
-        else:
-            return string
-
-    def name_with_angle_brackets(self, string):
-        """Ensure there is a part with angle brackets in string."""
-        name, email = parseaddr(string)
-        if not name:
-            if '@' in email or '<' in string:
-                return '<%s>' % (email,)
-            else:
-                return '%s <>' % (string,)
-        else:
-            return '%s <%s>' % (name, email)
+                git_ref = 'refs/tags/%s' % tag
+                self.print_cmd(commands.ResetCommand(git_ref, ":" + mark))
 
     def next_available_branch_name(self):
-        """Return an unique branch name. The name will start with "tmp".
-        """
+        """Return a unique branch name. The name will start with "tmp"."""
         prefix = 'tmp'
-
         if prefix not in self.branch_names:
             self.branch_names[prefix] = 0
         else:
             self.branch_names[prefix] += 1
             prefix = '%s.%d' % (prefix, self.branch_names[prefix])
-
         return prefix

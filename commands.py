@@ -122,7 +122,7 @@ class CommitCommand(ImportCommand):
         if mark is None:
             self.id = '@%d' % lineno
         else:
-            self.id = ':' + mark
+            self.id = ':%s' % mark
 
     def __repr__(self):
         if self.mark is None:
@@ -330,4 +330,8 @@ def format_who_when(fields):
     offset_minutes = offset / 60 - offset_hours * 60
     offset_str = "%s%02d%02d" % (offset_sign, offset_hours, offset_minutes)
     name = fields[0].encode('utf8')
-    return "%s <%s> %d %s" % (name, fields[1], fields[2], offset_str)
+    if name == '':
+        sep = ''
+    else:
+        sep = ' '
+    return "%s%s<%s> %d %s" % (name, sep, fields[1], fields[2], offset_str)
