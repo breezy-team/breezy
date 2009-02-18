@@ -39,6 +39,8 @@ from email.Utils import quote, parseaddr
 import bzrlib.branch
 import bzrlib.revision
 from bzrlib import errors as bazErrors
+from bzrlib.plugins.fastimport import helpers, marks_file
+
 
 class BzrFastExporter(object):
 
@@ -49,11 +51,14 @@ class BzrFastExporter(object):
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file
         self.export_marks_file = export_marks_file
+
         self.revid_to_mark = {}
         self.branch_names = {}
-        
         if self.import_marks_file:
-            self.import_marks()
+            marks_info = marks_file.import_marks(self.import_marks_file)
+            if marks_info is not None:
+                self.revid_to_mark = helpers.invert_dict(marks_info[0])
+                self.branch_names = marks_info[1]
         
     def run(self):
         # Open the source
@@ -71,11 +76,16 @@ class BzrFastExporter(object):
             self.branch.repository.unlock()
 
         # Save the marks if requested
-        if self.export_marks_file:
-            self.export_marks()
+        self._save_marks()
 
     def debug(self, message):
         sys.stderr.write("*** BzrFastExport: %s\n" % message)
+
+    def _save_marks(self):
+        if self.export_marks_file:
+            revision_ids = helpers.invert_dict(self.revid_to_mark)
+            marks_file.export_marks(self.export_marks_file, revision_ids,
+                self.branch_names)
     
     def is_empty_dir(self, tree, path):
         path_id = tree.path2id(path)
@@ -109,8 +119,7 @@ class BzrFastExporter(object):
         if self.checkpoint > 0 and ncommits % self.checkpoint == 0:
             self.debug(
                 "Exported %i commits; forcing checkpoint" % ncommits)
-            if self.export_marks_file:
-                self.export_marks()
+            self._save_marks()
             sys.stdout.write("checkpoint\n")
 
         mark = self.revid_to_mark[revid] = len(self.revid_to_mark) + 1
@@ -288,45 +297,3 @@ class BzrFastExporter(object):
             prefix = '%s.%d' % (prefix, self.branch_names[prefix])
 
         return prefix
-
-    def export_marks(self):
-        f = file(self.export_marks_file, 'w')
-        f.write('format=1\n')
-
-        branch_names = [ '%s.%d' % x for x in self.branch_names.iteritems() ]
-        f.write('\0'.join(branch_names) + '\n')
-
-        for mark, revid in sorted((y, x)
-                for x, y in self.revid_to_mark.iteritems()):
-            f.write(':%d %s\n' % (mark, revid))
-
-        f.close()
-
-    def import_marks(self):
-        try:
-            f = file(self.import_marks_file)
-        except IOError:
-            self.debug("Could not open import-marks file, not importing marks")
-            return
-
-        firstline = f.readline()
-        match = re.match(r'^format=(\d+)$', firstline)
-
-        if not match:
-            print >>sys.stderr, "%r doesn't look like a mark file" % (filename,)
-            sys.exit(1)
-        elif match.group(1) != '1':
-            print >>sys.stderr, 'format version in mark file not supported'
-            sys.exit(1)
-
-        for string in f.readline().rstrip('\n').split('\0'):
-            if not string:
-                continue
-            name, integer = string.rsplit('.', 1)
-            self.branch_names[name] = int(integer)
-
-        for line in f:
-            line = line.rstrip('\n')
-            mark, revid = line.split(' ', 1)
-            mark = mark[1:] # strip colon
-            self.revid_to_mark[revid] = int(mark)

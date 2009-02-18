@@ -123,9 +123,9 @@ class GenericProcessor(processor.ImportProcessor):
             self.inventory_cache_size)
         
         if self.params.get("import-marks") is not None:
-            mark_map = marks_file.import_marks(self.params.get("import-marks"))
-            if mark_map is not None:
-                self.cache_mgr.revision_ids = mark_map
+            mark_info = marks_file.import_marks(self.params.get("import-marks"))
+            if mark_info is not None:
+                self.cache_mgr.revision_ids = mark_info[0]
             self.skip_total = False
             self.first_incremental_commit = True
         else:
