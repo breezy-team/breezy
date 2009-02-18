@@ -65,17 +65,7 @@ def _search_key_plain(key):
     return '\x00'.join(key)
 
 
-def _search_key_16(key):
-    """Map the key tuple into a search key string which has 16-way fan out."""
-    return '\x00'.join(['%08X' % abs(zlib.crc32(bit)) for bit in key])
-
-
-def _search_key_255(key):
-    """Map the key tuple into a search key string which has 255-way fan out.
-
-    We use 255-way because '\n' is used as a delimiter, and causes problems
-    while parsing.
-    """
+def _crc32(bit):
     # Depending on python version and platform, zlib.crc32 will return either a
     # signed (<= 2.5 >= 3.0) or an unsigned (2.5, 2.6).
     # http://docs.python.org/library/zlib.html recommends using a mask to force
@@ -87,8 +77,21 @@ def _search_key_255(key):
     #       anyway.
     #       Though we really don't need that 32nd bit of accuracy. (even 2**24
     #       is probably enough node fan out for realistic trees.)
-    bytes = '\x00'.join([struct.pack('>L', zlib.crc32(bit)&0xFFFFFFFF)
-                         for bit in key])
+    return zlib.crc32(bit)&0xFFFFFFFF
+
+
+def _search_key_16(key):
+    """Map the key tuple into a search key string which has 16-way fan out."""
+    return '\x00'.join(['%08X' % _crc32(bit) for bit in key])
+
+
+def _search_key_255(key):
+    """Map the key tuple into a search key string which has 255-way fan out.
+
+    We use 255-way because '\n' is used as a delimiter, and causes problems
+    while parsing.
+    """
+    bytes = '\x00'.join([struct.pack('>L', _crc32(bit)) for bit in key])
     return bytes.replace('\n', '_')
 
 

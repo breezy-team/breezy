@@ -1105,7 +1105,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('2',) 'bar'\n"
                              "  '6' LeafNode\n"
                              "      ('3',) 'baz'\n"
-                             "  '7' LeafNode\n"
+                             "  '8' LeafNode\n"
                              "      ('1',) 'foo'\n"
                              , chkmap._dump_tree())
         root_key = chkmap._save()
@@ -1119,7 +1119,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                              "      ('2',) 'bar'\n"
                              "  '6' LeafNode\n"
                              "      ('3',) 'baz'\n"
-                             "  '7' LeafNode\n"
+                             "  '8' LeafNode\n"
                              "      ('1',) 'foo'\n"
                              , chkmap._dump_tree())
 
