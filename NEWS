@@ -21,6 +21,9 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * The ``-Dmemory`` flag now gives memory information on Windows.
+      (John Arbash Meinel)
+
   IMPROVEMENTS:
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
