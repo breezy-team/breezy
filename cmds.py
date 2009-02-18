@@ -467,6 +467,8 @@ class cmd_merge_upstream(Command):
                     no_tarball = True
                 except NotBranchError:
                     upstream_branch = None
+            else:
+                upstream_branch = Branch.open(upstream_branch)
 
             distribution = distribution.lower()
             distribution_name = lookup_distribution(distribution)

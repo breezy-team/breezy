@@ -1987,41 +1987,46 @@ class DistributionBranch(object):
                 self._create_empty_upstream_tree(tempdir)
             if self._has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
-            if upstream_branch is not None:
-                if upstream_revision is not None:
-                    upstream_revision = upstream_branch.last_revision()
-                graph = self.branch.repository.get_graph(
-                        other_repository=upstream_branch.repository)
-                if graph.is_ancestor(upstream_revision,
-                        self.branch.last_revision()):
-                    info("Nothing to do, upstream branch already merged.")
-                    return
-            tarball_filename = os.path.abspath(tarball_filename)
-            m = md5.new()
-            m.update(open(tarball_filename).read())
-            md5sum = m.hexdigest()
-            tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
             try:
-                # FIXME: should use upstream_parents()?
-                parents = []
-                if self.upstream_branch.last_revision() != NULL_REVISION:
-                    parents = [self.upstream_branch.last_revision()]
-                new_revid = self.import_upstream(tarball_dir, version,
-                        md5sum, parents, upstream_tarball=tarball_filename,
-                        upstream_branch=upstream_branch,
-                        upstream_revision=upstream_revision)
-                self._fetch_upstream_to_branch(new_revid)
+                if upstream_branch is not None:
+                    upstream_branch.lock_read()
+                    if upstream_revision is not None:
+                        upstream_revision = upstream_branch.last_revision()
+                    graph = self.branch.repository.get_graph(
+                            other_repository=upstream_branch.repository)
+                    if graph.is_ancestor(upstream_revision,
+                            self.branch.last_revision()):
+                        info("Nothing to do, upstream branch already merged.")
+                        return
+                tarball_filename = os.path.abspath(tarball_filename)
+                m = md5.new()
+                m.update(open(tarball_filename).read())
+                md5sum = m.hexdigest()
+                tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
+                try:
+                    # FIXME: should use upstream_parents()?
+                    parents = []
+                    if self.upstream_branch.last_revision() != NULL_REVISION:
+                        parents = [self.upstream_branch.last_revision()]
+                    new_revid = self.import_upstream(tarball_dir, version,
+                            md5sum, parents, upstream_tarball=tarball_filename,
+                            upstream_branch=upstream_branch,
+                            upstream_revision=upstream_revision)
+                    self._fetch_upstream_to_branch(new_revid)
+                finally:
+                    shutil.rmtree(tarball_dir)
+                if self.branch.last_revision() != NULL_REVISION:
+                    conflicts = self.tree.merge_from_branch(self.upstream_branch)
+                else:
+                    # Pull so that merge-upstream allows you to start a branch
+                    # from upstream tarball.
+                    conflicts = 0
+                    self.tree.pull(self.upstream_branch)
+                self.upstream_branch.tags.merge_to(self.branch.tags)
+                return conflicts
             finally:
-                shutil.rmtree(tarball_dir)
-            if self.branch.last_revision() != NULL_REVISION:
-                conflicts = self.tree.merge_from_branch(self.upstream_branch)
-            else:
-                # Pull so that merge-upstream allows you to start a branch
-                # from upstream tarball.
-                conflicts = 0
-                self.tree.pull(self.upstream_branch)
-            self.upstream_branch.tags.merge_to(self.branch.tags)
-            return conflicts
+                if upstream_branch is not None:
+                    upstream_branch.unlock()
         finally:
             shutil.rmtree(tempdir)
 
