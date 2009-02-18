@@ -122,7 +122,11 @@ def _upstream_branch_version(revhistory, reverse_tag_dict, package,
 
 def upstream_branch_version(upstream_branch, upstream_revision, package,
         previous_version):
-  revno = upstream_branch.revision_id_to_dotted_revno(upstream_revision)
+  dotted_revno = upstream_branch.revision_id_to_dotted_revno(upstream_revision)
+  if len(dotted_revno) > 1:
+    revno = -2
+  else:
+    revno = dotted_revno[0]
   revhistory = upstream_branch.revision_history()
   previous_revision = get_snapshot_revision(previous_version)
   if previous_revision is not None:
@@ -132,9 +136,9 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
     # before the revision of the previous version
   else:
     previous_revno = 0
-  revhistory = revhistory[previous_revno:upstream_revno+1]
+  revhistory = revhistory[previous_revno:revno+1]
   return _upstream_branch_version(revhistory,
-          upstream_branch.get_reverse_tag_dict(), package,
+          upstream_branch.tags.get_reverse_tag_dict(), package,
           previous_version,
           lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
 

@@ -240,6 +240,9 @@ class DebBuildConfig(object):
 
   split = _bool_property('split', "Split a full source package")
 
+  upstream_branch = _opt_property('upstream-branch',
+          "The upstream branch to merge from")
+
 def _test():
   import doctest
   doctest.testmod()

@@ -396,7 +396,7 @@ class cmd_merge_upstream(Command):
     will change the name of the source package then you can use this option
     to set the new name.
     """
-    takes_args = ['location', 'upstream_branch?']
+    takes_args = ['location?', 'upstream_branch?']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
@@ -493,7 +493,7 @@ class cmd_merge_upstream(Command):
                 if upstream_branch and no_tarball:
                     version = upstream_branch_version(upstream_branch,
                             upstream_revision, package,
-                            current_version.upstream_revision)
+                            current_version.upstream_version)
                     info("Using version string %s for upstream branch." % (version))
                 else:
                     raise BzrCommandError("You must specify the "
