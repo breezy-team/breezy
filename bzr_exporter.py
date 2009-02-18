@@ -120,13 +120,13 @@ class BzrFastExporter(object):
             self.note("Exported %i commits - checkpointing" % ncommits)
             self._save_marks()
             self.print_cmd(commands.CheckpointCommand())
-        mark = self.revid_to_mark[revid] = ncommits + 1
 
         # Emit parents
         nparents = len(revobj.parent_ids)
         if nparents:
             for parent in revobj.parent_ids:
                 self.emit_commit(parent, git_branch)
+            ncommits = len(self.revid_to_mark)
 
         # Get the primary parent
         if nparents == 0:
@@ -140,6 +140,7 @@ class BzrFastExporter(object):
 
         # Print the commit
         git_ref = 'refs/heads/%s' % (git_branch,)
+        mark = self.revid_to_mark[revid] = ncommits + 1
         file_cmds = self._get_filecommands(parent, revid)
         self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
             file_cmds))
