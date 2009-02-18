@@ -39,6 +39,8 @@ from email.Utils import quote, parseaddr
 import bzrlib.branch
 import bzrlib.revision
 from bzrlib import errors as bazErrors
+from bzrlib.trace import note, warning
+
 from bzrlib.plugins.fastimport import helpers, marks_file
 
 
@@ -78,8 +80,11 @@ class BzrFastExporter(object):
         # Save the marks if requested
         self._save_marks()
 
-    def debug(self, message):
-        sys.stderr.write("*** BzrFastExport: %s\n" % message)
+    def note(self, message):
+        note("bzr fast-export: %s" % message)
+
+    def warning(self, message):
+        warning("bzr fast-export: %s" % message)
 
     def _save_marks(self):
         if self.export_marks_file:
@@ -90,7 +95,7 @@ class BzrFastExporter(object):
     def is_empty_dir(self, tree, path):
         path_id = tree.path2id(path)
         if path_id == None:
-            sys.stderr.write("Skipping empty_dir detection, could not find path_id...\n")
+            warning("Skipping empty_dir detection, could not find path_id...")
             return False
 
         # Continue if path is not a directory
@@ -118,8 +123,7 @@ class BzrFastExporter(object):
         ncommits = len(self.revid_to_mark)
         if (self.checkpoint > 0 and ncommits
             and ncommits % self.checkpoint == 0):
-            self.debug(
-                "Exported %i commits; forcing checkpoint" % ncommits)
+            self.note("Exported %i commits; forcing checkpoint" % ncommits)
             self._save_marks()
             sys.stdout.write("checkpoint\n")
 
@@ -157,7 +161,8 @@ class BzrFastExporter(object):
         didFirstParent = False
         for p in revobj.parent_ids:
             if self.revid_to_mark[p] == -1:
-                self.debug("This is a merge with a ghost-commit. Skipping second parent.")
+                self.note("This is a merge with a ghost-commit. Skipping "
+                    "second parent.")
                 continue
 
             if p == parent and not didFirstParent:
@@ -174,7 +179,7 @@ class BzrFastExporter(object):
         try:
             tree_old = self.branch.repository.revision_tree(parent)
         except bazErrors.UnexpectedInventoryFormat:
-            self.debug("Parent is malformed.. diffing against previous parent")
+            self.note("Parent is malformed.. diffing against previous parent")
             # We can't find the old parent. Let's diff against his parent
             pp = self.branch.repository.get_revision(parent)
             tree_old = self.branch.repository.revision_tree(pp.parent_ids[0])
@@ -184,7 +189,7 @@ class BzrFastExporter(object):
             tree_new = self.branch.repository.revision_tree(revobj.revision_id)
         except bazErrors.UnexpectedInventoryFormat:
             # We can't really do anything anymore
-            self.debug("This commit is malformed. Skipping diff")
+            self.note("This commit is malformed. Skipping diff")
             return
 
         changes = tree_new.changes_from(tree_old)
@@ -198,7 +203,8 @@ class BzrFastExporter(object):
                 text_modified, meta_modified) in changes.renamed:
             
             if (self.is_empty_dir(tree_old, oldpath)):
-                sys.stderr.write("Skipping empty dir %s in rev %s\n" % (oldpath, revobj.revision_id))
+                self.note("Skipping empty dir %s in rev %s" % (oldpath,
+                    revobj.revision_id))
                 continue
 
             for old, new in renamed:
@@ -206,7 +212,7 @@ class BzrFastExporter(object):
                 # adjust the path
                 if old in oldpath:
                     oldpath = oldpath.replace(old + "/", new + "/") 
-                    self.debug("Fixing recursive rename for %s" % oldpath)
+                    self.note("Fixing recursive rename for %s" % oldpath)
 
             renamed.append([oldpath, newpath])
 
@@ -246,9 +252,8 @@ class BzrFastExporter(object):
             try:
                 mark = self.revid_to_mark[revid]
             except KeyError:
-                print >>sys.stderr, \
-                    'W: not creating tag %r pointing to non-existant revision %s' % (
-                            tag, revid)
+                self.warning('not creating tag %r pointing to non-existent '
+                    'revision %s' % (tag, revid))
             else:
                 # According to git-fast-import(1), the extra LF is optional here;
                 # however, versions of git up to 1.5.4.3 had a bug by which the LF
