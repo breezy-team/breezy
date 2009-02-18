@@ -585,7 +585,7 @@ class HintingSSHTransport(transport.Transport):
 
     def __init__(self, url):
         raise errors.UnsupportedProtocol(url, 
-            'For the bzr smart server, use "bzr+%s".' % url)
+            'bzr supports bzr+ssh to operate over ssh, use "bzr+%s".' % url)
 
 
 def get_test_permutations():
