@@ -1450,6 +1450,12 @@ class DistributionBranch(object):
                 self.pull_upstream_from_branch(pull_branch, version)
             else:
                 assert False, "Can't find the needed upstream part"
+        if (native and self.upstream_branch.last_revision() == NULL_REVISION
+            and pull_branch.upstream_branch.last_revision() != NULL_REVISION):
+            # in case the package wasn't native before then we pull
+            # the upstream. These checks may be a bit restrictive.
+            self.upstream_tree.pull(pull_branch.upstream_branch)
+            pull_branch.upstream_branch.tags.merge_to(self.upstream_branch.tags)
         elif native:
             mutter("Not checking for upstream as it is a native package")
         else:
@@ -1835,9 +1841,45 @@ class DistributionBranch(object):
     def get_native_parents(self, version, versions):
         last_contained_version = self.last_contained_version(versions)
         if last_contained_version is None:
-            return []
+            parents = []
         else:
-            return [self.revid_of_version(last_contained_version)]
+            parents = [self.revid_of_version(last_contained_version)]
+        missing_versions = self.missing_versions(versions)
+        for branch in reversed(self.get_lesser_branches()):
+            merged, missing_versions = \
+                branch.contained_versions(missing_versions)
+            if merged:
+                revid = branch.revid_of_version(merged[0])
+                parents.append(revid)
+                mutter("Adding merge from lesser of %s for version %s from "
+                    "branch %s" % (revid, str(merged[0]), branch.name))
+                #FIXME: should this really be here?
+                branch.branch.tags.merge_to(self.branch.tags)
+                self.branch.fetch(branch.branch,
+                        last_revision=revid)
+                if self.upstream_branch.last_revision() == NULL_REVISION:
+                    self.upstream_tree.pull(branch.upstream_branch)
+                    branch.upstream_branch.tags.merge_to(self.upstream_branch.tags)
+        for branch in self.get_greater_branches():
+            merged, missing_versions = \
+                branch.contained_versions(missing_versions)
+            if merged:
+                revid = branch.revid_of_version(merged[0])
+                parents.append(revid)
+                mutter("Adding merge from greater of %s for version %s from "
+                    "branch %s" % (revid, str(merged[0]), branch.name))
+                #FIXME: should this really be here?
+                branch.branch.tags.merge_to(self.branch.tags)
+                self.branch.fetch(branch.branch,
+                        last_revision=revid)
+                if self.upstream_branch.last_revision() == NULL_REVISION:
+                    self.upstream_tree.pull(branch.upstream_branch)
+                    branch.upstream_branch.tags.merge_to(self.upstream_branch.tags)
+        if (self.branch.last_revision() != NULL_REVISION
+                and not self.branch.last_revision() in parents):
+            parents.insert(0, self.branch.last_revision())
+        return parents
+
 
     def _import_native_package(self, version, versions, debian_part, md5):
         pull_branch = self.branch_to_pull_version_from(version, md5)
