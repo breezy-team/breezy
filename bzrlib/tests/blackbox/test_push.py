@@ -187,7 +187,7 @@ class TestPush(ExternalBase):
         self.transport_server = server.SmartTCPServer_for_testing
         self.hpss_calls = []
         def capture_hpss_call(params):
-            self.hpss_calls.append(params.method)
+            self.hpss_calls.append(params)
         client._SmartClient.hooks.install_named_hook(
             'call', capture_hpss_call, None)
 
@@ -198,7 +198,7 @@ class TestPush(ExternalBase):
         self._reset_smart_call_log()
         self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
         rpc_count = len(self.hpss_calls)
-        self.assertEqual(99, rpc_count)
+        self.assertEqual(107, rpc_count)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self._setup_smart_call_log()
@@ -210,7 +210,7 @@ class TestPush(ExternalBase):
         self.run_bzr(['push', '--stacked', '--stacked-on', '../parent',
             self.get_url('public')], working_dir='local')
         rpc_count = len(self.hpss_calls)
-        self.assertEqual(123, rpc_count)
+        self.assertEqual(132, rpc_count)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
