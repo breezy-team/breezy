@@ -31,6 +31,7 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
     can be built directly from the branch. In particular merge-upstream and
     import-dsc now store this information. This will avoid problems with
     the .orig.tar.gz changing between uploads. (LP: #317111)
+  * Depend on pristine-tar.
 
   [ Kees Cook ]
   * builder.py: switch to using external tar command to replace buggy
