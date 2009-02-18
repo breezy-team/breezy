@@ -220,7 +220,7 @@ class TestDefaultBuilder(BuilderTestCase):
       wt = self.make_branch_and_tree('.')
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebBuild(properties, wt, _is_working_tree=True)
+    return DebBuild(properties, wt, wt.branch, _is_working_tree=True)
 
   def test_prepare_creates_build_dir(self):
     """Test that the build dir is created correctly."""
@@ -445,7 +445,8 @@ class TestNativeBuilder(BuilderTestCase):
       wt = self.make_branch_and_tree('.')
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebNativeBuild(properties, wt, _is_working_tree=True)
+    return DebNativeBuild(properties, wt, wt.branch,
+            _is_working_tree=True)
 
   def test_export_creates_source_dir(self):
     """Test that the source dir is created by export."""
@@ -492,7 +493,8 @@ class TestSplitBuilder(BuilderTestCase):
       wt = self.make_branch_and_tree('.')
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebSplitBuild(properties, wt, _is_working_tree=True)
+    return DebSplitBuild(properties, wt, wt.branch,
+            _is_working_tree=True)
 
   def test_export_creates_source_dir(self):
     """Test that the source dir is created by export."""
@@ -562,7 +564,8 @@ class TestMergeBuilder(BuilderTestCase):
       wt = self.make_branch_and_tree('.')
     changelog = self.make_changelog(version=version)
     properties = self.make_properties(changelog, larstiq)
-    return DebMergeBuild(properties, wt, _is_working_tree=True)
+    return DebMergeBuild(properties, wt, wt.branch,
+            _is_working_tree=True)
 
   upstream_files = ['a', 'b', 'dir/', 'dir/c']
   debian_files = ['control', 'changelog', 'patches/', 'patches/patch']

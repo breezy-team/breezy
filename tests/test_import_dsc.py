@@ -1338,7 +1338,6 @@ class DistributionBranchTests(TestCaseWithTransport):
     def test_create(self):
         db = self.db1
         self.assertNotEqual(db, None)
-        self.assertEqual(db.name, self.name1)
         self.assertEqual(db.branch, self.tree1.branch)
         self.assertEqual(db.upstream_branch, self.up_tree1.branch)
         self.assertEqual(db.tree, self.tree1)

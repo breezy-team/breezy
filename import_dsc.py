@@ -1530,7 +1530,8 @@ class DistributionBranch(object):
         self.upstream_branch.tags.merge_to(self.branch.tags)
 
     def import_upstream(self, upstream_part, version, md5, upstream_parents,
-            upstream_tarball=None):
+            upstream_tarball=None, upstream_branch=None,
+            upstream_revision=None):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -1564,15 +1565,22 @@ class DistributionBranch(object):
             for o in other_branches]
         import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
-        uuencoded = None
+        if upstream_branch is not None:
+            if upstream_revision is None:
+                upstream_revision = upstream_branch.last_revision()
+            self.upstream_branch.fetch(upstream_branch,
+                    last_revision=upstream_revision)
+            upstream_parents.append(upstream_revision)
+        self.upstream_tree.set_parent_ids(upstream_parents)
+        revprops = {"deb-md5": md5}
         if upstream_tarball is not None:
             delta = self.make_pristine_tar_delta(self.upstream_tree,
                     upstream_tarball)
             uuencoded = standard_b64encode(delta)
-        self.upstream_tree.set_parent_ids(upstream_parents)
+            revprops["deb-pristine-delta"] = uuencoded
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (str(version.upstream_version),),
-                revprops={"deb-md5":md5, "deb-pristine-delta":uuencoded})
+                revprops=revprops)
         self.tag_upstream_version(version)
         return revid
 
@@ -1882,7 +1890,8 @@ class DistributionBranch(object):
         for part in dsc['files']:
             if part['name'].endswith(".orig.tar.gz"):
                 assert upstream_tarball is None, "Two .orig.tar.gz?"
-                upstream_tarball = os.path.join(base_path, part['name'])
+                upstream_tarball = os.path.abspath(
+                        os.path.join(base_path, part['name']))
         tempdir = self.extract_dsc(dsc_filename)
         try:
             # TODO: make more robust against strange .dsc files.
@@ -1964,7 +1973,8 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         return self.branch.tags.lookup_tag(tag_name)
 
-    def merge_upstream(self, tarball_filename, version, previous_version):
+    def merge_upstream(self, tarball_filename, version, previous_version,
+            upstream_branch=None, upstream_revision=None):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
@@ -1977,6 +1987,7 @@ class DistributionBranch(object):
                 self._create_empty_upstream_tree(tempdir)
             if self._has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
+            tarball_filename = os.path.abspath(tarball_filename)
             m = md5.new()
             m.update(open(tarball_filename).read())
             md5sum = m.hexdigest()
@@ -1987,7 +1998,9 @@ class DistributionBranch(object):
                 if self.upstream_branch.last_revision() != NULL_REVISION:
                     parents = [self.upstream_branch.last_revision()]
                 new_revid = self.import_upstream(tarball_dir, version,
-                        md5sum, parents, upstream_tarball=tarball_filename)
+                        md5sum, parents, upstream_tarball=tarball_filename,
+                        upstream_branch=upstream_branch,
+                        upstream_revision=upstream_revision)
                 self._fetch_upstream_to_branch(new_revid)
             finally:
                 shutil.rmtree(tarball_dir)

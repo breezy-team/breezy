@@ -332,13 +332,17 @@ class cmd_builddeb(Command):
             properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
             if merge:
-                build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
+                build = DebMergeBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
             elif native:
-                build = DebNativeBuild(properties, tree, _is_working_tree=working_tree)
+                build = DebNativeBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
             elif split:
-                build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
+                build = DebSplitBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
             else:
-                build = DebBuild(properties, tree, branch, _is_working_tree=working_tree)
+                build = DebBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
 
             build.prepare(use_existing)
 
@@ -391,7 +395,7 @@ class cmd_merge_upstream(Command):
     will change the name of the source package then you can use this option
     to set the new name.
     """
-    takes_args = ['tarball', 'upstream_branch?']
+    takes_args = ['location', 'upstream_branch?']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
@@ -406,7 +410,7 @@ class cmd_merge_upstream(Command):
     takes_options = [package_opt, no_user_conf_opt, version_opt,
             distribution_opt, directory_opt, 'revision']
 
-    def run(self, tarball=None, upstream_branch=None, version=None, distribution=None,
+    def run(self, location=None, upstream_branch=None, version=None, distribution=None,
             package=None, no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
@@ -429,8 +433,11 @@ class cmd_merge_upstream(Command):
             if config.split:
                 raise BzrCommandError("Split mode is not yet supported.")
 
-            if tarball is None:
-                raise BzrCommandError("No tarball specified to merge")
+            if location is None:
+                if config.upstream_branch is not None:
+                    location = config.upstream_branch
+                else:
+                    raise BzrCommandError("No location specified to merge")
             try:
                 changelog = find_changelog(tree, False)[0]
                 current_version = changelog.version
@@ -452,10 +459,13 @@ class cmd_merge_upstream(Command):
                         "package name, which is needed to know the name to "
                         "give the .orig.tar.gz. Please specify --package.")
 
-            try:
-                upstream_branch = Branch.open(location)
-            except NotBranchError:
-                upstream_branch = None
+            no_tarball = False
+            if upstream_branch is None:
+                try:
+                    upstream_branch = Branch.open(location)
+                    no_tarball = True
+                except NotBranchError:
+                    upstream_branch = None
 
             distribution = distribution.lower()
             distribution_name = lookup_distribution(distribution)
@@ -463,41 +473,45 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError("Unknown target distribution: %s" \
                             % distribution)
 
-            if upstream_branch is None:
-                if version is None:
-                    raise BzrCommandError("You must specify the version number using "
-                                          "--version.")
-                version = Version(version)
-                if revision is not None:
-                    raise BzrCommandError("--revision is not allowed when merging a tarball")
-
-                orig_dir = config.orig_dir or default_orig_dir
-                orig_dir = os.path.join(tree.basedir, orig_dir)
-                dest_name = tarball_name(package, version.upstream_version)
-                try:
-                    repack_tarball(location, dest_name, target_dir=orig_dir)
-                except FileExists:
-                    raise BzrCommandError("The target file %s already exists, and is either "
-                                          "different to the new upstream tarball, or they "
-                                          "are of different formats. Either delete the target "
-                                          "file, or use it as the argument to import."
-                                          % dest_name)
-                tarball_filename = os.path.join(orig_dir, dest_name)
-                db = DistributionBranch(tree.branch, None, tree=tree)
-                dbs = DistributionBranchSet()
-                dbs.add_branch(db)
-                conflicts = db.merge_upstream(tarball_filename, version,
-                        current_version)
-            else:
+            upstream_revision = None
+            if upstream_branch:
                 if revision is not None:
                     if len(revision) > 1:
                         raise BzrCommandError("merge-upstream takes only a single --revision")
                     upstream_revspec = revision[0]
-                else:
-                    upstream_revspec = None
+                    upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
+
+            if upstream_branch and no_tarball:
+                info("Exporting the upstream branch to create the tarball")
                 version, conflicts = merge_upstream_branch(tree, upstream_branch, package, 
                                                 upstream_revspec, version)
                 info("Using version string %s for upstream branch." % (version))
+            else:
+                if version is None:
+                    raise BzrCommandError("You must specify the version number using "
+                                          "--version.")
+                version = Version(version)
+            if no_tarball and revision is not None:
+                raise BzrCommandError("--revision is not allowed when merging a tarball")
+
+            orig_dir = config.orig_dir or default_orig_dir
+            orig_dir = os.path.join(tree.basedir, orig_dir)
+            dest_name = tarball_name(package, version.upstream_version)
+            try:
+                repack_tarball(location, dest_name, target_dir=orig_dir)
+            except FileExists:
+                raise BzrCommandError("The target file %s already exists, and is either "
+                                      "different to the new upstream tarball, or they "
+                                      "are of different formats. Either delete the target "
+                                      "file, or use it as the argument to import."
+                                      % dest_name)
+            tarball_filename = os.path.join(orig_dir, dest_name)
+            db = DistributionBranch(tree.branch, None, tree=tree)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
+            conflicts = db.merge_upstream(tarball_filename, version,
+                    current_version, upstream_branch=upstream_branch,
+                    upstream_revision=upstream_revision)
 
             if "~bzr" in str(version) or "+bzr" in str(version):
                 entry_description = "New upstream snapshot."
@@ -549,7 +563,7 @@ class cmd_import_dsc(Command):
                           "packages to import.", type=str, argname="filename",
                           short_name='F')
 
-    takes_options = [filename_opt, distribution_opt]
+    takes_options = [filename_opt]
 
     def import_many(self, db, files_list, orig_target):
         cache = DscCache()
@@ -680,7 +694,8 @@ class cmd_bd_do(Command):
             orig_dir = default_orig_dir
         properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
-        build = DebMergeBuild(properties, t, _is_working_tree=True)
+        build = DebMergeBuild(properties, t, t.branch,
+                _is_working_tree=True)
 
         build.prepare()
         try:
