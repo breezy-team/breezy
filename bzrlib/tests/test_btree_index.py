@@ -869,7 +869,7 @@ class TestBTreeIndex(BTreeTestCase):
             (index, ('name', 'fin2'), 'beta', ((), ))]),
             set(index.iter_entries_prefix([('name', None)])))
 
-    # XXX: external_references tests are duplicated in test__index.  We
+    # XXX: external_references tests are duplicated in test_index.  We
     # probably should have per_graph_index tests...
     def test_external_references_no_refs(self):
         index = self.make_index(ref_lists=0, nodes=[])
