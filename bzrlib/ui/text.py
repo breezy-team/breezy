@@ -162,7 +162,7 @@ class TextProgressView(object):
     def _format_task(self, task):
         if not task.show_count:
             s = ''
-        elif task.total_cnt is not None:
+        elif task.current_cnt is not None and task.total_cnt is not None:
             s = ' %d/%d' % (task.current_cnt, task.total_cnt)
         elif task.current_cnt is not None:
             s = ' %d' % (task.current_cnt)
