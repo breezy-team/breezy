@@ -130,10 +130,12 @@ class BzrFastExporter(object):
 
         # Get the primary parent
         if nparents == 0:
-            # This is a parentless commit. We need to create a new branch
-            # otherwise git-fast-import will assume the previous commit
-            # was this one's parent
-            git_branch = self.next_available_branch_name()
+            if ncommits:
+                # This is a parentless commit but it's not the first one
+                # output. We need to create a new temporary branch for it
+                # otherwise git-fast-import will assume the previous commit
+                # was this one's parent
+                git_branch = self._next_tmp_branch_name()
             parent = bzrlib.revision.NULL_REVISION
         else:
             parent = revobj.parent_ids[0]
@@ -257,7 +259,7 @@ class BzrFastExporter(object):
                 git_ref = 'refs/tags/%s' % tag
                 self.print_cmd(commands.ResetCommand(git_ref, ":" + mark))
 
-    def next_available_branch_name(self):
+    def _next_tmp_branch_name(self):
         """Return a unique branch name. The name will start with "tmp"."""
         prefix = 'tmp'
         if prefix not in self.branch_names:
