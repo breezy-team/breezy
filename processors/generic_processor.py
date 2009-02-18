@@ -17,6 +17,7 @@
 """Import processor that supports all Bazaar repository formats."""
 
 
+import os
 import time
 from bzrlib import (
     builtins,
