@@ -59,8 +59,7 @@ class FakeControlFiles(object):
 
 
 class cmd_dpush(Command):
-    """Push diffs into a foreign version control system without any 
-    Bazaar-specific metadata.
+    """Push diffs into a foreign branch without any bzr-specific metadata.
 
     This will afterwards rebase the local Bazaar branch on the remote
     branch unless the --no-rebase option is used, in which case 
@@ -151,8 +150,7 @@ class cmd_dpush(Command):
 
 
 class cmd_foreign_mapping_upgrade(Command):
-    """Upgrade revisions mapped from a foreign version control system 
-    in a Bazaar branch.
+    """Upgrade revisions mapped from a foreign version control system.
     
     This will change the identity of revisions whose parents 
     were mapped from revisions in the other version control system.
