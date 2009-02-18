@@ -80,6 +80,12 @@ def _search_key_255(key):
     # http://docs.python.org/library/zlib.html recommends using a mask to force
     # an unsigned value to ensure the same numeric value (unsigned) is obtained
     # across all python versions and platforms.
+    # Note: However, on 32-bit platforms this causes an upcast to PyLong, which
+    #       are generally slower than PyInts. However, if performance becomes
+    #       critical, we should probably write the whole thing as an extension
+    #       anyway.
+    #       Though we really don't need that 32nd bit of accuracy. (even 2**24
+    #       is probably enough node fan out for realistic trees.)
     bytes = '\x00'.join([struct.pack('>L', zlib.crc32(bit)&0xFFFFFFFF)
                          for bit in key])
     return bytes.replace('\n', '_')
