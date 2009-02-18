@@ -157,8 +157,8 @@ def merge_upstream_branch(tree, upstream_branch, package,
                 upstream_branch.tags.get_reverse_tag_dict(), package,
                 previous_version, 
                 lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
-  tree.merge_from_branch(upstream_branch)
-  return version
+  conflicts = tree.merge_from_branch(upstream_branch)
+  return version, conflicts
 
 
 def make_upstream_tag(version):

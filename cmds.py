@@ -523,21 +523,29 @@ class cmd_merge_upstream(Command):
                     upstream_revspec = revision[0]
                 else:
                     upstream_revspec = None
-                version = merge_upstream_branch(tree, upstream_branch, package, 
+                version, conflicts = merge_upstream_branch(tree, upstream_branch, package, 
                                                 upstream_revspec, version)
                 info("Using version string %s for upstream branch." % (version))
+
+            if "~bzr" in str(version) or "+bzr" in str(version):
+                entry_description = "New upstream snapshot."
+            else:
+                entry_description = "New upstream release."
+            proc = subprocess.Popen(["/usr/bin/dch", "-v",
+                    str(package_version(version, distribution)),
+                    entry_description], cwd=tree.basedir)
+            proc.wait()
+            if proc.returncode != 0:
+                raise BzrCommandError('Adding a new changelog stanza after the '
+                        'merge had completed failed. Add the new changelog entry '
+                        'yourself, review the merge, and then commit.')
         finally:
             tree.unlock()
-
-        if "~bzr" in str(version) or "+bzr" in str(version):
-            entry_description = "New upstream snapshot."
+        info("The new upstream version has been imported.")
+        if conflicts:
+            info("You should now resolve the conflicts, review the changes, and then commit.")
         else:
-            entry_description = "New upstream release."
-
-        info("The new upstream version has been imported. You should "
-             "now update the changelog (try dch -v %s \"%s\"), resolve any "
-             "conflicts, and then commit."
-             % (package_version(version, distribution), entry_description))
+            info("You should now review the changes and then commit.")
 
 
 class cmd_import_dsc(Command):
