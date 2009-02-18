@@ -97,6 +97,10 @@ class UpstreamAlreadyImported(BzrError):
         BzrError.__init__(self, version=str(version))
 
 
+class UpstreamBranchAlreadyMerged(BzrError):
+    _fmt = 'That revision of the upstream branch has already been merged.'
+
+
 class AmbiguousPackageSpecification(BzrError):
     _fmt = ('You didn\'t specify a distribution with the package '
             'specification, and tags exists that state that the '

@@ -75,6 +75,7 @@ from bzrlib.plugins.builddeb.errors import (ImportError,
                 PristineTarError,
                 UnknownType,
                 UpstreamAlreadyImported,
+                UpstreamBranchAlreadyMerged,
                 )
 from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
                 upstream_tag_to_version,
@@ -1996,8 +1997,7 @@ class DistributionBranch(object):
                             other_repository=upstream_branch.repository)
                     if graph.is_ancestor(upstream_revision,
                             self.branch.last_revision()):
-                        info("Nothing to do, upstream branch already merged.")
-                        return
+                        raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
                 m = md5.new()
                 m.update(open(tarball_filename).read())
