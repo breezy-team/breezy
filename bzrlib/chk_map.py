@@ -512,8 +512,9 @@ class Node(object):
         # Is there a better way to do this?
         for pos, (left, right) in enumerate(zip(prefix, key)):
             if left != right:
+                pos -= 1
                 break
-        common = prefix[:pos]
+        common = prefix[:pos+1]
         return common
 
     @classmethod

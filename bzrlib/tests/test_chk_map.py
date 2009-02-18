@@ -33,26 +33,26 @@ from bzrlib.chk_map import (
 
 class TestNode(tests.TestCase):
 
-    def assertCommonPrefix(self, prefix, key):
+    def assertCommonPrefix(self, expected_common, prefix, key):
         common = Node.common_prefix(prefix, key)
         self.assertTrue(len(common) <= len(prefix))
         self.assertTrue(len(common) <= len(key))
         self.assertStartsWith(prefix, common)
         self.assertStartsWith(key, common)
+        self.assertEquals(expected_common, common)
 
     def test_common_prefix(self):
-        self.assertCommonPrefix('beg', 'begin')
+        self.assertCommonPrefix('beg', 'beg', 'begin')
 
     def test_no_common_prefix(self):
-        self.assertCommonPrefix('begin', 'end')
+        import pdb; pdb.set_trace()
+        self.assertCommonPrefix('', 'begin', 'end')
 
     def test_equal(self):
-        self.assertCommonPrefix('begin', 'begin')
+        self.assertCommonPrefix('begin', 'begin', 'begin')
 
     def test_not_a_prefix(self):
-        self.assertCommonPrefix('begin', 'b')
-
-
+        self.assertCommonPrefix('b', 'begin', 'b')
 class TestCaseWithStore(tests.TestCaseWithTransport):
 
     def get_chk_bytes(self):
