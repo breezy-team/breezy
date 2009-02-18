@@ -44,6 +44,7 @@ from bzrlib.plugins.builddeb.errors import (DebianError,
                     StopBuild,
                     MissingChanges,
                     )
+from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import recursive_copy, tarball_name
 
 def remove_dir(base, dir):
@@ -130,7 +131,7 @@ def move_file(src, dest):
 class DebBuild(object):
   """The object that does the building work."""
 
-  def __init__(self, properties, tree, _is_working_tree=False):
+  def __init__(self, properties, tree, branch, _is_working_tree=False):
     """Create a builder.
 
     properties:
@@ -141,6 +142,7 @@ class DebBuild(object):
     """
     self._properties = properties
     self._tree = tree
+    self.branch = branch
     self._is_working_tree = _is_working_tree
 
   def _prepare_working_tree(self):
@@ -245,7 +247,6 @@ class DebBuild(object):
     sources.Restart()
     package = self._properties.package()
     version = self._properties.upstream_version()
-    found = False
     while sources.Lookup(package):
       if version == Version(sources.Version).upstream_version:
         tarball_dir = self._properties.tarball_dir()
@@ -258,9 +259,23 @@ class DebBuild(object):
         if proc.returncode != 0:
           return False
         return True
-    if not found:
-      return False
+    return False
 
+  def _get_upstream_from_pristine(self):
+    db = DistributionBranch("ubuntu", self.branch, None, tree=self._tree)
+    package = self._properties.package()
+    version = Version(self._properties.upstream_version())
+    if not db._has_upstream_version_in_packaging_branch(version):
+        return False
+    revid = db._revid_of_upstream_version_from_branch(version)
+    if not db.has_pristine_tar_delta(revid):
+        return False
+    tarball_dir = self._properties.tarball_dir()
+    if not os.path.exists(tarball_dir):
+        os.makedirs(tarball_dir)
+    dest_filename = os.path.abspath(os.path.join(tarball_dir, self._tarball_name()))
+    db.reconstruct_pristine_tar(revid, package, version, dest_filename)
+    return True
 
   def _find_tarball(self):
     """Find the upstream tarball and return it's location.
@@ -287,6 +302,8 @@ class DebBuild(object):
         else:
           if not os.path.isdir(tarballdir):
             raise NotADirectory(tarballdir)
+        if self._get_upstream_from_pristine():
+          return tarball
         if self._get_upstream_from_archive():
           return tarball
         if self._has_watch():

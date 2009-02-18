@@ -135,3 +135,10 @@ class UnsupportedRepackFormat(BzrError):
 
     def __init__(self, location):
         BzrError.__init__(self, location=location)
+
+
+class PristineTarError(BzrError):
+    _fmt = 'There was an error using pristine-tar: %(error)s.'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)

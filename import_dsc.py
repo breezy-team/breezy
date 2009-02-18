@@ -25,6 +25,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from base64 import (
+        standard_b64decode,
+        standard_b64encode,
+        )
 import gzip
 import md5
 import os
@@ -53,6 +57,7 @@ from bzrlib.errors import (FileExists,
         NoRepositoryPresent,
         AlreadyBranchError,
         )
+from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info, mutter
@@ -67,6 +72,7 @@ from bzrlib.plugins.bzrtools.upstream_import import (
 
 from bzrlib.plugins.builddeb.errors import (ImportError,
                 OnlyImportSingleDsc,
+                PristineTarError,
                 UnknownType,
                 UpstreamAlreadyImported,
                 )
@@ -1525,7 +1531,8 @@ class DistributionBranch(object):
         self.branch.fetch(self.upstream_branch, last_revision=revid)
         self.upstream_branch.tags.merge_to(self.branch.tags)
 
-    def import_upstream(self, upstream_part, version, md5, upstream_parents):
+    def import_upstream(self, upstream_part, version, md5, upstream_parents,
+            upstream_tarball=None):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -1559,10 +1566,15 @@ class DistributionBranch(object):
             for o in other_branches]
         import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
+        uuencoded = None
+        if upstream_tarball is not None:
+            delta = self.make_pristine_tar_delta(self.upstream_tree,
+                    upstream_tarball)
+            uuencoded = standard_b64encode(delta)
         self.upstream_tree.set_parent_ids(upstream_parents)
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (str(version.upstream_version),),
-                revprops={"deb-md5":md5})
+                revprops={"deb-md5":md5, "deb-pristine-delta":uuencoded})
         self.tag_upstream_version(version)
         return revid
 
@@ -1804,7 +1816,7 @@ class DistributionBranch(object):
         return tempdir
 
     def _do_import_package(self, version, versions, debian_part, md5,
-            upstream_part, upstream_md5):
+            upstream_part, upstream_md5, upstream_tarball=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version)
@@ -1823,7 +1835,8 @@ class DistributionBranch(object):
                     # from another branch:
                     upstream_parents = self.upstream_parents(versions)
                     new_revid = self.import_upstream(upstream_part, version,
-                            upstream_md5, upstream_parents)
+                            upstream_md5, upstream_parents,
+                            upstream_tarball=upstream_tarball)
                     self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
@@ -1867,6 +1880,11 @@ class DistributionBranch(object):
         dsc = deb822.Dsc(open(dsc_filename).read())
         version = Version(dsc['Version'])
         name = dsc['Source']
+        upstream_tarball = None
+        for part in dsc['files']:
+            if part['name'].endswith(".orig.tar.gz"):
+                assert upstream_tarball is None, "Two .orig.tar.gz?"
+                upstream_tarball = os.path.join(base_path, part['name'])
         tempdir = self.extract_dsc(dsc_filename)
         try:
             # TODO: make more robust against strange .dsc files.
@@ -1891,7 +1909,8 @@ class DistributionBranch(object):
             # should happen if it isn't.
             if not native:
                 self._do_import_package(version, versions, debian_part, md5,
-                        upstream_part, upstream_md5)
+                        upstream_part, upstream_md5,
+                        upstream_tarball=upstream_tarball)
             else:
                 self._import_native_package(version, versions, debian_part,
                         md5)
@@ -1971,7 +1990,7 @@ class DistributionBranch(object):
                 if self.upstream_branch.last_revision() != NULL_REVISION:
                     parents = [self.upstream_branch.last_revision()]
                 new_revid = self.import_upstream(tarball_dir, version,
-                        md5sum, parents)
+                        md5sum, parents, upstream_tarball=tarball_filename)
                 self._fetch_upstream_to_branch(new_revid)
             finally:
                 shutil.rmtree(tarball_dir)
@@ -1986,3 +2005,48 @@ class DistributionBranch(object):
             return conflicts
         finally:
             shutil.rmtree(tempdir)
+
+    def has_pristine_tar_delta(self, revid):
+        rev = self.branch.repository.get_revision(revid)
+        return 'deb-pristine-delta' in rev.properties
+
+    def pristine_tar_delta(self, revid):
+        rev = self.branch.repository.get_revision(revid)
+        uuencoded = rev.properties['deb-pristine-delta']
+        delta = standard_b64decode(uuencoded)
+        return delta
+
+    def reconstruct_pristine_tar(self, revid, package, version,
+            dest_filename):
+        tree = self.branch.repository.revision_tree(revid)
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
+        try:
+            dest = os.path.join(tmpdir, "orig")
+            export(tree, dest, format='dir')
+            delta = self.pristine_tar_delta(revid)
+            command = ["/usr/bin/pristine-tar", "gentar", "-",
+                       dest_filename]
+            print command
+            proc = Popen(command, stdin=PIPE, cwd=dest)
+            proc.stdin.write(delta)
+            proc.stdin.close()
+            ret = proc.wait()
+            if ret != 0:
+                raise PristineTarError("Generating tar from delta failed")
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def make_pristine_tar_delta(self, tree, tarball_path):
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
+        try:
+            dest = os.path.join(tmpdir, "orig")
+            export(tree, dest, format='dir')
+            command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
+            info(" ".join(command))
+            proc = Popen(command, stdout=PIPE, cwd=dest)
+            ret = proc.wait()
+            if ret != 0:
+                raise PristineTarError("Generating delta from tar failed")
+            return proc.stdout.read()
+        finally:
+            shutil.rmtree(tmpdir)
