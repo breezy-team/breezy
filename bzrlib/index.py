@@ -435,6 +435,16 @@ class GraphIndex(object):
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
 
+    def _external_references(self, ref_list_num=None):
+        """Return references that are not present in this index.
+        """
+        self._buffer_all()
+        refs = set()
+        for key, (value, ref_lists) in self._nodes.iteritems():
+            ref_list = ref_lists[ref_list_num]
+            refs.update(ref_list)
+        return refs - self._keys
+
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
             nodes_by_key = {}

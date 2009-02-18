@@ -2264,7 +2264,7 @@ class _KnitGraphIndex(object):
                 result.append((key, value))
         self._add_callback(result)
         
-    def _add_unvalidated_index(self, graph_index):
+    def _scan_unvalidated_index(self, graph_index):
         """Inform this _KnitGraphIndex that there is an unvalidated index.
 
         This allows this _KnitGraphIndex to keep track of any missing
@@ -2274,7 +2274,7 @@ class _KnitGraphIndex(object):
         :param graph_index: A GraphIndex
         """
         self._missing_compression_parents.update(
-            graph_index._external_references())
+            graph_index._external_references(ref_list_num=1))
         self._missing_compression_parents.difference_update(
             self.get_parent_map(self._missing_compression_parents))
 
