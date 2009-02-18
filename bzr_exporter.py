@@ -18,16 +18,7 @@
 
 """Core engine for the fast-export command."""
 
-# There is a bug in git 1.5.4.3 and older by which unquoting a string consumes
-# one extra character. Set this variable to True to work-around it. It only
-# happens when renaming a file whose name contains spaces and/or quotes, and
-# the symptom is:
-#   % git-fast-import
-#   fatal: Missing space after source: R "file 1.txt" file 2.txt
-# http://git.kernel.org/?p=git/git.git;a=commit;h=c8744d6a8b27115503565041566d97c21e722584
-GIT_FAST_IMPORT_NEEDS_EXTRA_SPACE_AFTER_QUOTE = False
-
-# TODO: if a new_git_branch below gets merged repeteadly, the tip of the branch
+# TODO: if a new_git_branch below gets merged repeatedly, the tip of the branch
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
@@ -68,7 +59,6 @@ class BzrFastExporter(object):
         # Export the data
         self.branch.repository.lock_read()
         try:
-            self.revmap = self.branch.get_revision_id_to_revno_map()
             for revid in self.branch.revision_history():
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
