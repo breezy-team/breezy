@@ -21,7 +21,7 @@ The fastimport plugin provides stream-based importing of data into Bazaar.
 A bzr-fast-export.py script is also included providing exporting of data
 out of Bazaar to the same format. As well as enabling interchange between
 multiple VCS tools, fastimport/export can be useful for complex branch
-operatons, e.g. partitioning off part of a code base in order to Open
+operations, e.g. partitioning off part of a code base in order to Open
 Source it.
 
 The normal import recipe is::
@@ -36,6 +36,7 @@ For further details, see http://bazaar-vcs.org/BzrFastImport and the
 online help for the commands::
 
   bzr help fast-import
+  bzr help fast-import-filter
   bzr help fast-import-info
   bzr help fast-import-query
 
@@ -195,6 +196,72 @@ class cmd_fast_import(Command):
             params, verbose)
 
 
+class cmd_fast_import_filter(Command):
+    """Filter a fast-import stream to include/exclude files & directories.
+
+    This command is useful for splitting a subdirectory or bunch of
+    files out from a project to create a new project complete with history
+    for just those files. It can also be used to create a new project
+    repository that removes all references to files that should not have
+    been committed, e.g. security-related information (like passwords),
+    commercially sensitive material, files with an incompatible license or
+    large binary files like CD images.
+
+    When filtering out a subdirectory (or file), the new stream uses the
+    subdirectory (or subdirectory containing the file) as the root. As
+    fast-import doesn't know in advance whether a path is a file or
+    directory in the stream, you need to specify a trailing '/' on
+    directories passed to the --includes option. If multiple files or
+    directories are given, the new root is the deepest common directory.
+
+    To specify standard input as the input stream, use a source
+    name of '-'.
+
+    Note: If a path has been renamed, take care to specify the *original*
+    path name, not the final name that it ends up with.
+
+    Examples::
+
+      Create a new project from a library. (Note the trailing / on the
+      directory name of the library.)
+
+        front-end | bzr fast-import-filter -i lib/xxx/ > xxx.fi
+        bzr init-repo mylibrary
+        cd mylibrary
+        bzr fast-import ../xxx.fi
+        (lib/xxx/foo is now foo)
+
+      Create a new repository without a sensitive file.
+
+        front-end | bzr fast-import-filter -x missile-codes.txt > clean.fi
+        bzr init-repo project.clean
+        cd project.clean
+        bzr fast-import ../clean.fi
+    """
+    hidden = False
+    _see_also = ['fast-import']
+    takes_args = ['source']
+    takes_options = ['verbose',
+                    ListOption('include_paths', short_name='i', type=str,
+                        help="Only include commits affecting these paths."
+                             " Directories should have a trailing /."
+                        ),
+                    ListOption('exclude_paths', short_name='x', type=str,
+                        help="Exclude these paths from commits."
+                        ),
+                     ]
+    aliases = []
+    def run(self, source, verbose=False, include_paths=None,
+        exclude_paths=None):
+        from bzrlib.plugins.fastimport.processors import filter_processor
+        params = {
+            'include_paths': include_paths,
+            'exclude_paths': exclude_paths,
+            }
+        return _run(source, filter_processor.FilterProcessor, None, params,
+            verbose)
+
+
 class cmd_fast_import_info(Command):
     """Output information about a fast-import stream.
 
@@ -273,5 +340,6 @@ class cmd_fast_import_query(Command):
 
 
 register_command(cmd_fast_import)
+register_command(cmd_fast_import_filter)
 register_command(cmd_fast_import_info)
 register_command(cmd_fast_import_query)

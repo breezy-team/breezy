@@ -9,8 +9,10 @@ IN DEVELOPMENT
 
   COMPATIBILITY BREAKS:
 
-    * The ``fast-import-filter`` command is now called
-      ``fast-import-query``.
+    * The old ``fast-import-filter`` command is now called
+      ``fast-import-query``. ``fast-import-filter`` now
+      really filters the input to produce a fast-import stream
+      based on filtering criteria. See below.
       (Ian Clatworthy)
 
     * The ``--inv-fulltext`` option is no longer supported. It was
@@ -18,6 +20,14 @@ IN DEVELOPMENT
       it added more complexity than value. (Ian Clatworthy)
 
   FEATURES:
+
+    * Added ``fast-import-filter`` command for splitting out a
+      subdirectory or bunch of files into their own project. It can
+      also be used to create a new repository without any history
+      for nominated files and directories. This is useful for
+      removing information which is a security risk, huge binary
+      files like ISO images, etc.
+      (Ian Clatworthy)
 
     * Copying of files and symbolic links is now supported.
       (Ian Clatworthy)
@@ -95,6 +105,9 @@ IN DEVELOPMENT
   API BREAKS:
 
   TESTING:
+
+    * A large number of tests have been added.
+      (Ian Clatworthy)
 
   INTERNALS:
 

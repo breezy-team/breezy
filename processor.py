@@ -20,7 +20,7 @@ This module provides core processing functionality including an abstract class
 for basing real processors on. See the processors package for examples.
 """
 
-
+import sys
 from bzrlib.errors import NotBranchError
 import errors
 
@@ -35,6 +35,7 @@ class ImportProcessor(object):
     known_params = []
 
     def __init__(self, bzrdir, params=None, verbose=False):
+        self.outf = sys.stdout
         self.verbose = verbose
         if params is None:
             self.params = {}

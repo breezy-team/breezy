@@ -22,8 +22,11 @@ from bzrlib.tests.TestUtil import TestLoader, TestSuite
 
 def test_suite():
     module_names = [
+        'bzrlib.plugins.fastimport.tests.test_commands',
         'bzrlib.plugins.fastimport.tests.test_errors',
+        'bzrlib.plugins.fastimport.tests.test_filter_processor',
         'bzrlib.plugins.fastimport.tests.test_generic_processor',
+        'bzrlib.plugins.fastimport.tests.test_helpers',
         'bzrlib.plugins.fastimport.tests.test_parser',
         ]
     loader = TestLoader()
