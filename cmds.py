@@ -380,17 +380,18 @@ class cmd_merge_upstream(Command):
     archive, or a directory. The source may also be a remote file.
 
     You must supply the version number of the new upstream release
-    using --version, and the target distribution using --distribution.
-    The target distribtution is the distribution that you aim to upload to,
-    one of "debian" or "ubuntu". You can also specify the target used in
-    the changelog, e.g. "unstable", and it will be resolved automatically.
+    using --version.
+
+    The distribution this version is targetted at can be specified with
+    --distribution. This will be used to guess the version number, so you
+    can always correct it in the changelog.
 
     If there is no debian changelog in the branch to retrieve the package
     name from then you must pass the --package option. If this version
     will change the name of the source package then you can use this option
     to set the new name.
     """
-    takes_args = ['location?']
+    takes_args = ['tarball', 'upstream_branch?']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
@@ -405,8 +406,8 @@ class cmd_merge_upstream(Command):
     takes_options = [package_opt, no_user_conf_opt, version_opt,
             distribution_opt, directory_opt, 'revision']
 
-    def run(self, location=None, version=None, distribution=None, package=None,
-            no_user_config=None, directory=".", revision=None):
+    def run(self, tarball=None, upstream_branch=None, version=None, distribution=None,
+            package=None, no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import (merge_upstream_branch, package_version)
@@ -425,13 +426,11 @@ class cmd_merge_upstream(Command):
             if config.native:
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "yet supported.")
-            if config.export_upstream and location is None:
-                location = config.export_upstream
             if config.split:
                 raise BzrCommandError("Split mode is not yet supported.")
 
-            if location is None:
-                raise BzrCommandError("No location specified to merge")
+            if tarball is None:
+                raise BzrCommandError("No tarball specified to merge")
             try:
                 changelog = find_changelog(tree, False)[0]
                 current_version = changelog.version
@@ -442,6 +441,10 @@ class cmd_merge_upstream(Command):
                     info("Using distribution %s" % distribution)
             except MissingChangelogError:
                 current_version = None
+                if distribution is None:
+                    info("No distribution specified, and no changelog, "
+                            "assuming 'debian'")
+                    distribution = "debian"
 
             if package is None:
                 raise BzrCommandError("You did not specify --package, and "
@@ -454,9 +457,6 @@ class cmd_merge_upstream(Command):
             except NotBranchError:
                 upstream_branch = None
 
-            if distribution is None:
-                raise BzrCommandError("You must specify the target distribution "
-                        "using --distribution.")
             distribution = distribution.lower()
             distribution_name = lookup_distribution(distribution)
             if distribution_name is None:
@@ -504,7 +504,7 @@ class cmd_merge_upstream(Command):
             else:
                 entry_description = "New upstream release."
             proc = subprocess.Popen(["/usr/bin/dch", "-v",
-                    str(package_version(version, distribution)),
+                    str(package_version(version, distribution_name)),
                     "-D", "UNRELEASED", entry_description], cwd=tree.basedir)
             proc.wait()
             if proc.returncode != 0:
