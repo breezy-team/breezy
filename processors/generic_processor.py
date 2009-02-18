@@ -22,7 +22,6 @@ import time
 from bzrlib import (
     builtins,
     bzrdir,
-    debug,
     delta,
     errors,
     generate_ids,
@@ -37,9 +36,7 @@ from bzrlib import (
 from bzrlib.repofmt import pack_repo
 from bzrlib.trace import (
     error,
-    mutter,
     note,
-    warning,
     )
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
@@ -71,7 +68,6 @@ class GenericProcessor(processor.ImportProcessor):
     * checkpoints automatically happen at a configurable frequency
       over and above the stream requested checkpoints
     * timestamped progress reporting, both automatic and stream requested
-    * LATER: reset support, tags for each branch
     * some basic statistics are dumped on completion.
 
     At checkpoints and on completion, the commit-id -> revision-id map is
@@ -120,27 +116,6 @@ class GenericProcessor(processor.ImportProcessor):
         'import-marks',
         'export-marks',
         ]
-
-    def note(self, msg, *args):
-        """Output a note but timestamp it."""
-        msg = "%s %s" % (self._time_of_day(), msg)
-        note(msg, *args)
-
-    def warning(self, msg, *args):
-        """Output a warning but timestamp it."""
-        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
-        warning(msg, *args)
-
-    def debug(self, mgs, *args):
-        """Output a debug message if the appropriate -D option was given."""
-        if "fast-import" in debug.debug_flags:
-            msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
-            mutter(msg, *args)
-
-    def _time_of_day(self):
-        """Time of day as a string."""
-        # Note: this is a separate method so tests can patch in a fixed value
-        return time.strftime("%H:%M:%S")
 
     def _import_marks(self, filename):
         try:
@@ -673,22 +648,6 @@ class GenericCommitHandler(processor.CommitHandler):
         self.loader = loader
         self.verbose = verbose
         self._experimental = _experimental
-
-    def note(self, msg, *args):
-        """Output a note but add context."""
-        msg = "%s (%s)" % (msg, self.command.id)
-        note(msg, *args)
-
-    def warning(self, msg, *args):
-        """Output a warning but add context."""
-        msg = "WARNING: %s (%s)" % (msg, self.command.id)
-        warning(msg, *args)
-
-    def debug(self, msg, *args):
-        """Output a mutter if the appropriate -D option was given."""
-        if "fast-import" in debug.debug_flags:
-            msg = "%s (%s)" % (msg, self.command.id)
-            mutter(msg, *args)
 
     def pre_process_files(self):
         """Prepare for committing."""

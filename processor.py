@@ -21,7 +21,15 @@ for basing real processors on. See the processors package for examples.
 """
 
 import sys
+import time
+
+from bzrlib import debug
 from bzrlib.errors import NotBranchError
+from bzrlib.trace import (
+    mutter,
+    note,
+    warning,
+    )
 import errors
 
 
@@ -109,6 +117,27 @@ class ImportProcessor(object):
                 break
         self.post_process()
 
+    def note(self, msg, *args):
+        """Output a note but timestamp it."""
+        msg = "%s %s" % (self._time_of_day(), msg)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but timestamp it."""
+        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
+        warning(msg, *args)
+
+    def debug(self, mgs, *args):
+        """Output a debug message if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
+            mutter(msg, *args)
+
+    def _time_of_day(self):
+        """Time of day as a string."""
+        # Note: this is a separate method so tests can patch in a fixed value
+        return time.strftime("%H:%M:%S")
+
     def pre_process(self):
         """Hook for logic at start of processing."""
         pass
@@ -170,6 +199,22 @@ class CommitHandler(object):
             else:
                 handler(self, fc)
         self.post_process_files()
+
+    def note(self, msg, *args):
+        """Output a note but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but add context."""
+        msg = "WARNING: %s (%s)" % (msg, self.command.id)
+        warning(msg, *args)
+
+    def debug(self, msg, *args):
+        """Output a mutter if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s (%s)" % (msg, self.command.id)
+            mutter(msg, *args)
 
     def pre_process_files(self):
         """Prepare for committing."""
