@@ -415,7 +415,7 @@ class cmd_merge_upstream(Command):
             package=None, no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.merge_upstream import (merge_upstream_branch, package_version)
+        from bzrlib.plugins.builddeb.merge_upstream import (upstream_branch_version, package_version)
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -488,13 +488,14 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError("--revision is not allowed when merging a tarball")
 
             if version is None:
-                raise BzrCommandError("You must specify the "
-                        "version number using --version.")
-                #if upstream_branch and no_tarball:
-                # TODO: guess the version number
-                    #version, conflicts = merge_upstream_branch(tree, upstream_branch, package, 
-                            #upstream_revspec, version)
-                    #info("Using version string %s for upstream branch." % (version))
+                if upstream_branch and no_tarball:
+                    version = upstream_branch_version(upstream_branch,
+                            upstream_revision, package,
+                            current_version.upstream_revision)
+                    info("Using version string %s for upstream branch." % (version))
+                else:
+                    raise BzrCommandError("You must specify the "
+                            "version number using --version.")
 
             version = Version(version)
             orig_dir = config.orig_dir or default_orig_dir

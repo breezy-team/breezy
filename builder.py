@@ -27,21 +27,16 @@ import os
 
 from debian_bundle.changelog import Version
 
-from bzrlib.branch import Branch
 from bzrlib.errors import (
-        NoWorkingTree,
         NotADirectory,
         )
 from bzrlib.export import export
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import info, mutter
-from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb.changes import DebianChanges
 from bzrlib.plugins.builddeb.errors import (DebianError,
                     NoSourceDirError,
                     BuildFailedError,
-                    StopBuild,
                     MissingChanges,
                     )
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
