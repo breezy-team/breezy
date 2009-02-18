@@ -1,27 +1,22 @@
-#! /usr/bin/env python
+# Copyright (C) 2008 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 # vim: fileencoding=utf-8
-#
-# Copyright (c) 2008 Adeodato Simó (dato@net.com.org.es)
-#
-# This software may be used and distributed according to the terms
-# of the MIT License, incorporated herein by reference.
 
-"""bzr frontend for git-fast-import(1).
-
-This program generates a stream from a bzr branch in the format required by
-git-fast-import(1). It preserves merges correctly, even merged branches with
-no common history (`bzr merge -r 0..-1`).
-
-To import several unmerged but related branches into the same repository, use
-the --{export,import}-marks options, and specify a name for !master branches.
-For example:
-
-    % bzr-fast-export --export-marks=marks.bzr project.dev |
-          GIT_DIR=project/.git git-fast-import --export-marks=marks.git
-
-    % bzr-fast-export --import-marks=marks.bzr -b other project.other |
-          GIT_DIR=project/.git git-fast-import --import-marks=marks.git
-"""
+"""Core engine for the fast-export command."""
 
 # There is a bug in git 1.5.4.3 and older by which unquoting a string consumes
 # one extra character. Set this variable to True to work-around it. It only
@@ -32,59 +27,52 @@ For example:
 # http://git.kernel.org/?p=git/git.git;a=commit;h=c8744d6a8b27115503565041566d97c21e722584
 GIT_FAST_IMPORT_NEEDS_EXTRA_SPACE_AFTER_QUOTE = False
 
-# TODO: progress
-
 # TODO: if a new_git_branch below gets merged repeteadly, the tip of the branch
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-##
-
 import os
 import re
 import sys
-import optparse
 from email.Utils import quote, parseaddr
 
 import bzrlib.branch
 import bzrlib.revision
 from bzrlib import errors as bazErrors
 
-class BzrFastExporter:
+class BzrFastExporter(object):
 
-    def __init__(self, options):
-        self.options = options
+    def __init__(self, source, git_branch=None, checkpoint=-1,
+        import_marks_file=None, export_marks_file=None):
+        self.source = source
+        self.git_branch = git_branch
+        self.checkpoint = checkpoint
+        self.import_marks_file = import_marks_file
+        self.export_marks_file = export_marks_file
         self.revid_to_mark = {}
         self.branch_names = {}
         
-        if options.marks:                                              
-            options.import_marks = options.export_marks = options.marks
-        
-        if options.import_marks:
+        if self.import_marks_file:
             self.import_marks()
         
-        if options.checkpoint:
-            self.checkpoint = int(options.checkpoint)
-        else:
-            self.checkpoint = -1
-        
-        self.branch = bzrlib.branch.Branch.open_containing(options.repo)[0]
-        self.branch.repository.lock_read()
-        self.revmap = self.branch.get_revision_id_to_revno_map()
-            
     def run(self):
+        # Open the source
+        self.branch = bzrlib.branch.Branch.open_containing(self.source)[0]
+
+        # Export the data
+        self.branch.repository.lock_read()
         try:
+            self.revmap = self.branch.get_revision_id_to_revno_map()
             for revid in self.branch.revision_history():
-                if revid not in self.revid_to_mark:
-                    self.emit_commit(revid, options.git_branch)
+                self.emit_commit(revid, self.git_branch)
+            if self.branch.supports_tags():
+                self.emit_tags()
         finally:
             self.branch.repository.unlock()
 
-        if self.branch.supports_tags():
-            self.emit_tags()
-
-        ##
-        self.export_marks()
+        # Save the marks if requested
+        if self.export_marks_file:
+            self.export_marks()
 
     def debug(self, message):
         sys.stderr.write("*** BzrFastExport: %s\n" % message)
@@ -121,7 +109,8 @@ class BzrFastExporter:
         if self.checkpoint > 0 and ncommits % self.checkpoint == 0:
             self.debug(
                 "Exported %i commits; forcing checkpoint" % ncommits)
-            self.export_marks()
+            if self.export_marks_file:
+                self.export_marks()
             sys.stdout.write("checkpoint\n")
 
         mark = self.revid_to_mark[revid] = len(self.revid_to_mark) + 1
@@ -301,10 +290,7 @@ class BzrFastExporter:
         return prefix
 
     def export_marks(self):
-        if not self.options.export_marks:
-            return
-            
-        f = file(self.options.export_marks, 'w')
+        f = file(self.export_marks_file, 'w')
         f.write('format=1\n')
 
         branch_names = [ '%s.%d' % x for x in self.branch_names.iteritems() ]
@@ -318,7 +304,7 @@ class BzrFastExporter:
 
     def import_marks(self):
         try:
-            f = file(options.import_marks)
+            f = file(self.import_marks_file)
         except IOError:
             self.debug("Could not open import-marks file, not importing marks")
             return
@@ -344,37 +330,3 @@ class BzrFastExporter:
             mark, revid = line.split(' ', 1)
             mark = mark[1:] # strip colon
             self.revid_to_mark[revid] = int(mark)
-##
-
-def parse_options():
-    p = optparse.OptionParser(usage='%prog [options] BZR_BRANCH')
-
-    p.add_option('-b', '--git-branch', default='master', metavar='NAME',
-            help='name of the git branch to create (default: master)')
-
-    p.add_option('--export-marks', metavar='FILE',
-            help='export marks to FILE, useful to import further related branches')
-
-    p.add_option('--import-marks', metavar='FILE',
-            help='import a mark file previously created with --export-marks')
-
-    p.add_option("--marks", metavar='FILE',
-            help='import marks, and export them to the same file.')
-
-    p.add_option("--checkpoint", metavar="NUM", default=1000,
-            help='Checkpoint every N revisions')
-    
-    options, args = p.parse_args()
-
-    if len(args) != 1:
-        p.error('need a branch to export')
-    options.repo = args[0]
-
-    return options, args
-
-##
-
-if __name__ == '__main__':
-    options, arguments = parse_options()
-    exporter = BzrFastExporter(options)
-    sys.exit(exporter.run())

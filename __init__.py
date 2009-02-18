@@ -36,6 +36,7 @@ For further details, see http://bazaar-vcs.org/BzrFastImport and the
 online help for the commands::
 
   bzr help fast-import
+  bzr help fast-export
   bzr help fast-import-filter
   bzr help fast-import-info
   bzr help fast-import-query
@@ -149,7 +150,7 @@ class cmd_fast_import(Command):
         Import a Mercurial repository into Bazaar.
     """
     hidden = True
-    _see_also = ['fast-import-info', 'fast-import-query']
+    _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
     takes_args = ['source']
     takes_options = ['verbose',
                     Option('info', type=str,
@@ -171,9 +172,11 @@ class cmd_fast_import(Command):
                         help="Enable experimental features.",
                         ),
                     Option('import-marks', type=str,
-                        help="Import marks from file."),
+                        help="Import marks from file."
+                        ),
                     Option('export-marks', type=str,
-                        help="Export marks to file."),
+                        help="Export marks to file."
+                        ),
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
@@ -339,7 +342,59 @@ class cmd_fast_import_query(Command):
             verbose)
 
 
+class cmd_fast_export(Command):
+    """Generate a fast-import stream from a Bazaar branch.
+
+    This program generates a stream from a bzr branch in the format required by
+    git-fast-import(1). It preserves merges correctly, even merged branches with
+    no common history (`bzr merge -r 0..-1`).
+
+    To import several unmerged but related branches into the same repository,
+    use the --{export,import}-marks options, and specify a name for the git
+    branch like this::
+    
+        % bzr-fast-export --export-marks=marks.bzr project.dev |
+              GIT_DIR=project/.git git-fast-import --export-marks=marks.git
+
+        % bzr-fast-export --import-marks=marks.bzr -b other project.other |
+              GIT_DIR=project/.git git-fast-import --import-marks=marks.git
+    """
+    hidden = True
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source']
+    takes_options = ['verbose',
+                    Option('git-branch', short_name='b', type=str,
+                        argname='FILE',
+                        help='Name of the git branch to create (default=master).'
+                        ),
+                    Option('checkpoint', type=int, argname='N',
+                        help="Checkpoint every N revisions (default=1000)."
+                        ),
+                    Option('marks', type=str, argname='FILE',
+                        help="Import marks from and export marks to file."
+                        ),
+                    Option('import-marks', type=str, argname='FILE',
+                        help="Import marks from file."
+                        ),
+                    Option('export-marks', type=str, argname='FILE',
+                        help="Export marks to file."
+                        ),
+                     ]
+    aliases = []
+    def run(self, source, verbose=False, git_branch="master", checkpoint=1000,
+        marks=None, import_marks=None, export_marks=None):
+        from bzrlib.plugins.fastimport import bzr_exporter
+
+        if marks:                                              
+            import_marks = export_marks = marks
+        exporter = bzr_exporter.BzrFastExporter(source,
+            git_branch=git_branch, checkpoint=checkpoint,
+            import_marks_file=import_marks, export_marks_file=export_marks)
+        return exporter.run()
+
+
 register_command(cmd_fast_import)
 register_command(cmd_fast_import_filter)
 register_command(cmd_fast_import_info)
 register_command(cmd_fast_import_query)
+register_command(cmd_fast_export)
