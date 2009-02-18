@@ -1179,10 +1179,10 @@ class TestSearchKeyFuncs(tests.TestCase):
         self.assertEqual(expected, actual, 'actual: %r' % (actual,))
 
     def test_simple_16(self):
-        self.assertSearchKey16('738C9ADF', ('foo',))
-        self.assertSearchKey16('738C9ADF\x00738C9ADF', ('foo', 'foo'))
-        self.assertSearchKey16('738C9ADF\x0076FF8CAA', ('foo', 'bar'))
-        self.assertSearchKey16('127D32EF', ('abcd',))
+        self.assertSearchKey16('8C736521', ('foo',))
+        self.assertSearchKey16('8C736521\x008C736521', ('foo', 'foo'))
+        self.assertSearchKey16('8C736521\x0076FF8CAA', ('foo', 'bar'))
+        self.assertSearchKey16('ED82CD11', ('abcd',))
 
     def test_simple_255(self):
         self.assertSearchKey255('\x8cse!', ('foo',))
