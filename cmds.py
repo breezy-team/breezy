@@ -39,6 +39,7 @@ from bzrlib.errors import (BzrCommandError,
                            NotBranchError,
                            FileExists,
                            )
+from bzrlib.export import export
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
 from bzrlib.transport import get_transport
@@ -480,32 +481,42 @@ class cmd_merge_upstream(Command):
                         raise BzrCommandError("merge-upstream takes only a single --revision")
                     upstream_revspec = revision[0]
                     upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
+                else:
+                    upstream_revision = upstream_branch.last_revision()
 
-            if upstream_branch and no_tarball:
-                info("Exporting the upstream branch to create the tarball")
-                version, conflicts = merge_upstream_branch(tree, upstream_branch, package, 
-                                                upstream_revspec, version)
-                info("Using version string %s for upstream branch." % (version))
-            else:
-                if version is None:
-                    raise BzrCommandError("You must specify the version number using "
-                                          "--version.")
-                version = Version(version)
             if no_tarball and revision is not None:
                 raise BzrCommandError("--revision is not allowed when merging a tarball")
 
+            if version is None:
+                raise BzrCommandError("You must specify the "
+                        "version number using --version.")
+                #if upstream_branch and no_tarball:
+                # TODO: guess the version number
+                    #version, conflicts = merge_upstream_branch(tree, upstream_branch, package, 
+                            #upstream_revspec, version)
+                    #info("Using version string %s for upstream branch." % (version))
+
+            version = Version(version)
             orig_dir = config.orig_dir or default_orig_dir
             orig_dir = os.path.join(tree.basedir, orig_dir)
             dest_name = tarball_name(package, version.upstream_version)
-            try:
-                repack_tarball(location, dest_name, target_dir=orig_dir)
-            except FileExists:
-                raise BzrCommandError("The target file %s already exists, and is either "
-                                      "different to the new upstream tarball, or they "
-                                      "are of different formats. Either delete the target "
-                                      "file, or use it as the argument to import."
-                                      % dest_name)
             tarball_filename = os.path.join(orig_dir, dest_name)
+
+            if upstream_branch and no_tarball:
+                info("Exporting the upstream branch to create the tarball")
+                rev_tree = upstream_branch.repository.revision_tree(
+                        upstream_revision)
+                export(rev_tree, tarball_filename, format='tgz',
+                        root="%s-%s" % (package, version.upstream_version))
+            else:
+                try:
+                    repack_tarball(location, dest_name, target_dir=orig_dir)
+                except FileExists:
+                    raise BzrCommandError("The target file %s already exists, and is either "
+                                          "different to the new upstream tarball, or they "
+                                          "are of different formats. Either delete the target "
+                                          "file, or use it as the argument to import."
+                                          % dest_name)
             db = DistributionBranch(tree.branch, None, tree=tree)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
