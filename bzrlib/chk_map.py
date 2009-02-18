@@ -76,7 +76,13 @@ def _search_key_255(key):
     We use 255-way because '\n' is used as a delimiter, and causes problems
     while parsing.
     """
-    bytes = '\x00'.join([struct.pack('>i', zlib.crc32(bit)) for bit in key])
+    # Depending on python version and platform, zlib.crc32 will return either a
+    # signed (<= 2.5 >= 3.0) or an unsigned (2.5, 2.6).
+    # http://docs.python.org/library/zlib.html recommends using a mask to force
+    # an unsigned value to ensure the same numeric value (unsigned) is obtained
+    # across all python versions and platforms.
+    bytes = '\x00'.join([struct.pack('>L', zlib.crc32(bit)&0xFFFFFFFF)
+                         for bit in key])
     return bytes.replace('\n', '_')
 
 

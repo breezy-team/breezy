@@ -2901,6 +2901,10 @@ class RepositoryFormatPackDevelopment5(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
+        # This will need to be updated (at least replacing 1.13 with the target
+        # bzr release) once we merge brisbane-core into bzr.dev, I've used
+        # 'merge-bbc-dev4-to-bzr.dev' into comments at relevant places to make
+        # them easily greppable.  -- vila 2009016
         return "Bazaar development format 5 (needs bzr.dev from before 1.13)\n"
 
     def get_format_description(self):
@@ -2951,6 +2955,7 @@ class RepositoryFormatPackDevelopment5Subtree(RepositoryFormatPack):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
+        # merge-bbc-dev4-to-bzr.dev
         return ("Bazaar development format 5 with subtree support"
                 " (needs bzr.dev from before 1.13)\n")
 

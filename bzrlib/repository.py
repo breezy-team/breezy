@@ -2552,23 +2552,27 @@ format_registry.register_lazy(
     )
 # 1.9->1.110 go below here
 format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
     "Bazaar development format 5 (needs bzr.dev from before 1.13)\n",
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment5',
     )
 format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
     ("Bazaar development format 5 with subtree support"
      " (needs bzr.dev from before 1.13)\n"),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment5Subtree',
     )
 format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
     ('Bazaar development format 5 hash 16'
      ' (needs bzr.dev from before 1.13)\n'),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment5Hash16',
     )
 format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
     ('Bazaar development format 5 hash 255'
      ' (needs bzr.dev from before 1.13)\n'),
     'bzrlib.repofmt.pack_repo',
