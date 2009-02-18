@@ -58,7 +58,7 @@ from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 from bzrlib.upgrade import upgrade
-from bzrlib.remote import RemoteBzrDir
+from bzrlib.remote import RemoteBzrDir, RemoteRepository
 from bzrlib.repofmt import weaverepo
 
 
@@ -558,6 +558,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         target_repo = target_bzrdir.open_repository()
         source_branch = bzrlib.branch.Branch.open(
             self.get_vfs_only_url('source'))
+        if isinstance(target_repo, RemoteRepository):
+            target_repo._ensure_real()
+            target_repo = target_repo._real_repository
         self.assertEqual(target_repo._format, source_branch.repository._format)
 
     def test_revert_inventory(self):

@@ -21,6 +21,9 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * The ``-Dmemory`` flag now gives memory information on Windows.
+      (John Arbash Meinel)
+
   IMPROVEMENTS:
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
@@ -30,6 +33,12 @@ IN DEVELOPMENT
     * Bazaar will now point out ``bzr+ssh://`` to the user when they 
       use ssh://. (Jelmer Vernooij, #330535)
 
+    * Support for GSSAPI authentication when using HTTP or HTTPS. 
+      (Jelmer Vernooij)
+
+    * The ``bzr shelve`` prompt now includes a '?' help option to explain the
+      short options better. (Daniel Watkins, #327429)
+
   BUG FIXES:
 
     * ``bzr unshelve`` gives a more palatable error if passed a non-integer
@@ -38,6 +47,11 @@ IN DEVELOPMENT
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
+
+    * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
+      branches, and this was not noticed due to a bug in the test logic
+      for branches. This is now fixed and a test added to prevent it
+      reoccuring. (Robert Collins, Andrew Bennetts)
 
   DOCUMENTATION:
 
@@ -54,6 +68,10 @@ IN DEVELOPMENT
     * New hook Commands['extend_command'] to allow plugins to access a
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
+
+    * Some methods have been pulled up from ``BzrBranch`` to ``Branch``
+      to aid branch types that are not bzr branch objects (like
+      RemoteBranch). (Robert Collins, Andrew Bennetts)
 
 
 bzr 1.12 "1234567890" 2009-02-13

@@ -71,13 +71,13 @@ class _RpcHelper(object):
 class RemoteBzrDir(BzrDir, _RpcHelper):
     """Control directory on a remote server, accessed via bzr:// or similar."""
 
-    def __init__(self, transport, _client=None):
+    def __init__(self, transport, format, _client=None):
         """Construct a RemoteBzrDir.
 
         :param _client: Private parameter for testing. Disables probing and the
             use of a real bzrdir.
         """
-        BzrDir.__init__(self, transport, RemoteBzrDirFormat())
+        BzrDir.__init__(self, transport, format)
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
         self._real_bzrdir = None
@@ -113,9 +113,13 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         return self._real_bzrdir.cloning_metadir(stacked)
 
     def create_repository(self, shared=False):
-        self._ensure_real()
-        self._real_bzrdir.create_repository(shared=shared)
-        return self.open_repository()
+        # as per meta1 formats - just delegate to the format object which may
+        # be parameterised.
+        result = self._format.repository_format.initialize(self, shared)
+        if not isinstance(result, RemoteRepository):
+            return self.open_repository()
+        else:
+            return result
 
     def destroy_repository(self):
         """See BzrDir.destroy_repository"""
@@ -123,9 +127,13 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._real_bzrdir.destroy_repository()
 
     def create_branch(self):
-        self._ensure_real()
-        real_branch = self._real_bzrdir.create_branch()
-        return RemoteBranch(self, self.find_repository(), real_branch)
+        # as per meta1 formats - just delegate to the format object which may
+        # be parameterised.
+        real_branch = self._format.get_branch_format().initialize(self)
+        if not isinstance(real_branch, RemoteBranch):
+            return RemoteBranch(self, self.find_repository(), real_branch)
+        else:
+            return real_branch
 
     def destroy_branch(self):
         """See BzrDir.destroy_branch"""
@@ -261,13 +269,28 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     _matchingbzrdir = RemoteBzrDirFormat()
 
+    def __init__(self):
+        repository.RepositoryFormat.__init__(self)
+        self._custom_format = None
+
     def initialize(self, a_bzrdir, shared=False):
+        if self._custom_format:
+            # This returns a custom instance - e.g. a pack repo, not a remote
+            # repo.
+            return self._custom_format.initialize(a_bzrdir, shared=shared)
         if not isinstance(a_bzrdir, RemoteBzrDir):
             prior_repo = self._creating_bzrdir.open_repository()
             prior_repo._ensure_real()
             return prior_repo._real_repository._format.initialize(
                 a_bzrdir, shared=shared)
-        return a_bzrdir.create_repository(shared=shared)
+        # delegate to a real object at this point (remoteBzrDir delegate to the
+        # repository format which would lead to infinite recursion).
+        a_bzrdir._ensure_real()
+        result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
+        if not isinstance(result, RemoteRepository):
+            return self.open(a_bzrdir)
+        else:
+            return result
     
     def open(self, a_bzrdir):
         if not isinstance(a_bzrdir, RemoteBzrDir):
@@ -1261,7 +1284,18 @@ class RemoteBranchFormat(branch.BranchFormat):
         return a_bzrdir.open_branch()
 
     def initialize(self, a_bzrdir):
-        return a_bzrdir.create_branch()
+        # Delegate to a _real object here - the RemoteBzrDir format now
+        # supports delegating to parameterised branch formats and as such
+        # this RemoteBranchFormat method is only called when no specific format
+        # is selected.
+        if not isinstance(a_bzrdir, RemoteBzrDir):
+            result = a_bzrdir.create_branch()
+        else:
+            a_bzrdir._ensure_real()
+            result = a_bzrdir._real_bzrdir.create_branch()
+        if not isinstance(result, RemoteBranch):
+            result = RemoteBranch(a_bzrdir, a_bzrdir.find_repository(), result)
+        return result
 
     def supports_tags(self):
         # Remote branches might support tags, but we won't know until we
@@ -1580,6 +1614,15 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def _set_last_revision_descendant(self, revision_id, other_branch,
             allow_diverged=False, allow_overwrite_descendant=False):
+        # This performs additional work to meet the hook contract; while its
+        # undesirable, we have to synthesise the revno to call the hook, and
+        # not calling the hook is worse as it means changes can't be prevented.
+        # Having calculated this though, we can't just call into
+        # set_last_revision_info as a simple call, because there is a set_rh
+        # hook that some folk may still be using.
+        old_revno, old_revid = self.last_revision_info()
+        history = self._lefthand_history(revision_id)
+        self._run_pre_change_branch_tip_hooks(len(history), revision_id)
         err_context = {'other_branch': other_branch}
         response = self._call('Branch.set_last_revision_ex',
             self._remote_path(), self._lock_token, self._repo_lock_token,
@@ -1590,17 +1633,28 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         new_revno, new_revision_id = response[1:]
         self._last_revision_info_cache = new_revno, new_revision_id
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
         if self._real_branch is not None:
             cache = new_revno, new_revision_id
             self._real_branch._last_revision_info_cache = cache
 
     def _set_last_revision(self, revision_id):
+        old_revno, old_revid = self.last_revision_info()
+        # This performs additional work to meet the hook contract; while its
+        # undesirable, we have to synthesise the revno to call the hook, and
+        # not calling the hook is worse as it means changes can't be prevented.
+        # Having calculated this though, we can't just call into
+        # set_last_revision_info as a simple call, because there is a set_rh
+        # hook that some folk may still be using.
+        history = self._lefthand_history(revision_id)
+        self._run_pre_change_branch_tip_hooks(len(history), revision_id)
         self._clear_cached_state()
         response = self._call('Branch.set_last_revision',
             self._remote_path(), self._lock_token, self._repo_lock_token,
             revision_id)
         if response != ('ok',):
             raise errors.UnexpectedSmartServerResponse(response)
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
@@ -1612,15 +1666,30 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         else:
             rev_id = rev_history[-1]
         self._set_last_revision(rev_id)
+        for hook in branch.Branch.hooks['set_rh']:
+            hook(self, rev_history)
         self._cache_revision_history(rev_history)
 
     def get_parent(self):
         self._ensure_real()
         return self._real_branch.get_parent()
+
+    def _get_parent_location(self):
+        # Used by tests, when checking normalisation of given vs stored paths.
+        self._ensure_real()
+        return self._real_branch._get_parent_location()
         
     def set_parent(self, url):
         self._ensure_real()
         return self._real_branch.set_parent(url)
+
+    def _set_parent_location(self, url):
+        # Used by tests, to poke bad urls into branch configurations
+        if url is None:
+            self.set_parent(url)
+        else:
+            self._ensure_real()
+            return self._real_branch._set_parent_location(url)
         
     def set_stacked_on_url(self, stacked_location):
         """Set the URL this branch is stacked against.
@@ -1678,6 +1747,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        # XXX: These should be returned by the set_last_revision_info verb
+        old_revno, old_revid = self.last_revision_info()
+        self._run_pre_change_branch_tip_hooks(revno, revision_id)
         revision_id = ensure_null(revision_id)
         try:
             response = self._call('Branch.set_last_revision_info',
@@ -1692,6 +1764,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         if response == ('ok',):
             self._clear_cached_state()
             self._last_revision_info_cache = revno, revision_id
+            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
             # Update the _real_branch's cache too.
             if self._real_branch is not None:
                 cache = self._last_revision_info_cache
@@ -1704,6 +1777,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                                   other_branch=None):
         medium = self._client._medium
         if not medium._is_remote_before((1, 6)):
+            # Use a smart method for 1.6 and above servers
             try:
                 self._set_last_revision_descendant(revision_id, other_branch,
                     allow_diverged=True, allow_overwrite_descendant=True)
@@ -1711,9 +1785,8 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1, 6))
         self._clear_cached_state_of_remote_branch_only()
-        self._ensure_real()
-        self._real_branch.generate_revision_history(
-            revision_id, last_rev=last_rev, other_branch=other_branch)
+        self.set_revision_history(self._lefthand_history(revision_id,
+            last_rev=last_rev,other_branch=other_branch))
 
     @property
     def tags(self):

@@ -58,6 +58,11 @@ class TestTestCaseWithBranch(TestCaseWithBranch):
         self.assertIs(self.branch_format.__class__,
                       bzrdir_branch_format.__class__)
 
+    def test_make_branch_gets_expected_format(self):
+        branch = self.make_branch('.')
+        self.assertIs(self.branch_format.__class__,
+            branch._format.__class__)
+
 
 class TestBranch(TestCaseWithBranch):
 

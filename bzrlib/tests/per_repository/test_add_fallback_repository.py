@@ -61,6 +61,8 @@ class TestAddFallbackRepository(TestCaseWithRepository):
             repo.get_graph().get_parent_map([revision_id]))
         # ... or on the repository's graph, when there is an other repository.
         other = self.make_repository('other')
+        other.lock_read()
+        self.addCleanup(other.unlock)
         self.assertEqual({revision_id: (NULL_REVISION,)},
             repo.get_graph(other).get_parent_map([revision_id]))
 
