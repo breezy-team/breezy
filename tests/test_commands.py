@@ -150,7 +150,7 @@ class TestResetDisplay(tests.TestCase):
 
     def test_reset(self):
         c = commands.ResetCommand("refs/tags/v1.0", ":xxx")
-        self.assertEqual("reset refs/tags/v1.0\nfrom :xxx", repr(c))
+        self.assertEqual("reset refs/tags/v1.0\nfrom :xxx\n", repr(c))
 
     def test_reset_no_from(self):
         c = commands.ResetCommand("refs/remotes/origin/master", None)

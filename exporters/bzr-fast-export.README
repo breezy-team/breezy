@@ -1,13 +1,7 @@
-bzr-fast-export is a front end for git-fast-import(1). It reads Bazaar
-branches, and outputs a stream which git-fast-import wan convert into a
-git repository.
+bzr-fast-export is no longer provided as a separate script.
+Instead a fast-export command is now available. For help, run ...
 
-Converting multiple related branches into a same git repository is
-supported. You'll need to invoke bzr-fast-export once per branch, and
-they'll "communicate" via mark files. See the docstring of the script
-for a sample invocation.
+  bzr help fast-export
 
-If you get a "Missing space after source" error from git-fast-import,
-see the top of the script for a work-around.
-
- -- Adeodato Simó <dato@net.com.org.es>  Fri, 07 Mar 2008 12:39:48 +0100
+Ian C.
+18-Feb-2009

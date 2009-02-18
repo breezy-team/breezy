@@ -9,6 +9,14 @@ IN DEVELOPMENT
 
   COMPATIBILITY BREAKS:
 
+    * ``exporters/bzr-fast-export`` has been replaced with a
+      ``fast-export`` command. Some minor issues have been
+      fixed at the same time: the first commit now goes into
+      refs/heads/master (not refs/head/tmp); there's no
+      checkpoint at the top of the stream; parent commits are
+      now always given lower mark numbers than the commits they
+      are merged into. (Ian Clatworthy)
+
     * The old ``fast-import-filter`` command is now called
       ``fast-import-query``. ``fast-import-filter`` now
       really filters the input to produce a fast-import stream

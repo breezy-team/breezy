@@ -25,8 +25,11 @@ def import_marks(filename):
     """Read the mapping of marks to revision-ids from a file.
 
     :param filename: the file to read from
-    :return: a dictionary with marks as keys and revision-ids as values,
-      or None if an error was encountered
+    :return: None if an error is encountered or (revision_ids, branch_names)
+      where
+      * revision_ids is a dictionary with marks as keys and revision-ids
+        as values
+      * branch_names is a dictionary mapping branch names to some magic #
     """
     # Check that the file is readable and in the right format
     try:
@@ -46,27 +49,30 @@ def import_marks(filename):
             'marks', filename)
         return None
 
+    # Read the branch info
+    branch_names = {}
     for string in f.readline().rstrip('\n').split('\0'):
         if not string:
             continue
         name, integer = string.rsplit('.', 1)
-        # We really can't do anything with the branch information, so we
-        # just skip it
-        
+        branch_names[name] = int(integer)
+ 
+    # Read the revision info
     revision_ids = {}
     for line in f:
         line = line.rstrip('\n')
         mark, revid = line.split(' ', 1)
         revision_ids[mark] = revid
     f.close()
-    return revision_ids
+    return (revision_ids, branch_names)
 
 
-def export_marks(filename, revision_ids):
+def export_marks(filename, revision_ids, branch_names=None):
     """Save marks to a file.
 
     :param filename: filename to save data to
     :param revision_ids: dictionary mapping marks -> bzr revision-ids
+    :param branch_names: dictionary mapping branch names to some magic #
     """
     try:
         f = file(filename, 'w')
@@ -75,7 +81,15 @@ def export_marks(filename, revision_ids):
             filename)
         return
     f.write('format=1\n')
-    f.write('\0tmp.0\n')
+
+    # Write the branch names line
+    if branch_names:
+        branch_names = [ '%s.%d' % x for x in branch_names.iteritems() ]
+        f.write('\0'.join(branch_names) + '\n')
+    else:
+        f.write('\0tmp.0\n')
+
+    # Write the revision info
     for mark, revid in revision_ids.iteritems():
         f.write('%s %s\n' % (mark, revid))
     f.close()

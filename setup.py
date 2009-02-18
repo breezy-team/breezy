@@ -15,7 +15,7 @@ if __name__ == '__main__':
           author_email="bazaar@lists.canonical.com",
           license = "GNU GPL v2",
           url="https://launchpad.net/bzr-fastimport",
-          scripts=['exporters/bzr-fast-export'],
+          scripts=[],
           packages=['bzrlib.plugins.fastimport',
                     'bzrlib.plugins.fastimport.processors',
                     'bzrlib.plugins.fastimport.tests',
