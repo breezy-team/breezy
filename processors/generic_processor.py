@@ -40,6 +40,7 @@ from bzrlib.trace import (
     )
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
+    cache_manager,
     errors as plugin_errors,
     helpers,
     idmapfile,
@@ -165,7 +166,7 @@ class GenericProcessor(processor.ImportProcessor):
     def pre_process(self):
         self._start_time = time.time()
         self._load_info_and_params()
-        self.cache_mgr = GenericCacheManager(self.info, self.verbose,
+        self.cache_mgr = cache_manager.CacheManager(self.info, self.verbose,
             self.inventory_cache_size)
         
         if self.params.get("import-marks") is not None:
@@ -534,89 +535,6 @@ class GenericProcessor(processor.ImportProcessor):
         self.tags[bzr_tag_name] = bzr_rev_id
 
 
-class GenericCacheManager(object):
-    """A manager of caches for the GenericProcessor."""
-
-    def __init__(self, info, verbose=False, inventory_cache_size=10):
-        """Create a manager of caches.
-
-        :param info: a ConfigObj holding the output from
-            the --info processor, or None if no hints are available
-        """
-        self.verbose = verbose
-
-        # dataref -> data. datref is either :mark or the sha-1.
-        # Sticky blobs aren't removed after being referenced.
-        self._blobs = {}
-        self._sticky_blobs = {}
-
-        # revision-id -> Inventory cache
-        # these are large and we probably don't need too many as
-        # most parents are recent in history
-        self.inventories = lru_cache.LRUCache(inventory_cache_size)
-
-        # import commmit-ids -> revision-id lookup table
-        # we need to keep all of these but they are small
-        self.revision_ids = {}
-
-        # path -> file-ids - as generated
-        self.file_ids = {}
-
-        # Head tracking: last ref, last id per ref & map of commit ids to ref*s*
-        self.last_ref = None
-        self.last_ids = {}
-        self.heads = {}
-
-        # Work out the blobs to make sticky - None means all
-        self._blobs_to_keep = None
-        if info is not None:
-            try:
-                self._blobs_to_keep = info['Blob usage tracking']['multi']
-            except KeyError:
-                # info not in file - possible when no blobs used
-                pass
-
-    def store_blob(self, id, data):
-        """Store a blob of data."""
-        if (self._blobs_to_keep is None or data == '' or
-            id in self._blobs_to_keep):
-            self._sticky_blobs[id] = data
-        else:
-            self._blobs[id] = data
-
-    def fetch_blob(self, id):
-        """Fetch a blob of data."""
-        try:
-            return self._sticky_blobs[id]
-        except KeyError:
-            return self._blobs.pop(id)
-
-    def _delete_path(self, path):
-        """Remove a path from caches."""
-        # we actually want to remember what file-id we gave a path,
-        # even when that file is deleted, so doing nothing is correct
-        pass
-
-    def _rename_path(self, old_path, new_path):
-        """Rename a path in the caches."""
-        # In this case, we need to forget the file-id we gave a path,
-        # otherwise, we'll get duplicate file-ids in the repository.
-        self.file_ids[new_path] = self.file_ids[old_path]
-        del self.file_ids[old_path]
-
-    def track_heads_for_ref(self, cmd_ref, cmd_id, parents=None):
-        if parents is not None:
-            for parent in parents:
-                refs = self.heads.get(parent)
-                if refs:
-                    refs.discard(cmd_ref)
-                    if not refs:
-                        del self.heads[parent]
-        self.heads.setdefault(cmd_id, set()).add(cmd_ref)
-        self.last_ids[cmd_ref] = cmd_id
-        self.last_ref = cmd_ref
-
-
 def _track_heads(cmd, cache_mgr):
     """Track the repository heads given a CommitCommand.
     
@@ -750,7 +668,7 @@ class GenericCommitHandler(processor.CommitHandler):
             else:
                 raise
         try:
-            self.cache_mgr._delete_path(path)
+            self.cache_mgr.delete_path(path)
         except KeyError:
             pass
 
@@ -808,7 +726,7 @@ class GenericCommitHandler(processor.CommitHandler):
         lines = self.loader._get_lines(file_id, ie.revision)
         self.lines_for_commit[file_id] = lines
         self.inventory.rename(file_id, new_parent_id, basename)
-        self.cache_mgr._rename_path(old_path, new_path)
+        self.cache_mgr.rename_path(old_path, new_path)
         self.inventory[file_id].revision = self.revision_id
 
     def deleteall_handler(self, filecmd):
