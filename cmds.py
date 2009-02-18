@@ -39,6 +39,7 @@ from bzrlib.errors import (BzrCommandError,
                            NotBranchError,
                            FileExists,
                            )
+from bzrlib.export import export
 from bzrlib.option import Option
 from bzrlib.trace import info, warning
 from bzrlib.transport import get_transport
@@ -58,8 +59,6 @@ from bzrlib.plugins.builddeb.builder import (
                      DebMergeBuild,
                      DebNativeBuild,
                      DebSplitBuild,
-                     DebMergeExportUpstreamBuild,
-                     DebExportUpstreamBuild,
                      )
 from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (StopBuild,
@@ -311,7 +310,6 @@ class cmd_builddeb(Command):
             result_dir=None, builder=None, merge=False, build_dir=None,
             orig_dir=None, ignore_changes=False, ignore_unknowns=False,
             quick=False, reuse=False, native=False, split=False,
-            export_upstream=None, export_upstream_revision=None,
             source=False, revision=None, no_user_config=False, result=None):
         branch, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
@@ -330,42 +328,22 @@ class cmd_builddeb(Command):
             (changelog, larstiq) = find_changelog(tree, merge)
             config.set_version(changelog.version)
 
-            if export_upstream is None:
-                export_upstream = config.export_upstream
-
-            if export_upstream_revision is None:
-                export_upstream_revision = config.export_upstream_revision
-
             result_dir, build_dir, orig_dir = self._get_dirs(config, is_local,
                     result_dir, result, build_dir, orig_dir)
             properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
             if merge:
-                if export_upstream is None:
-                    build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
-                else:
-                    prepull_upstream = config.prepull_upstream
-                    stop_on_no_change = config.prepull_upstream_stop
-                    build = DebMergeExportUpstreamBuild(properties, tree, export_upstream,
-                                                        export_upstream_revision,
-                                                        prepull_upstream,
-                                                        stop_on_no_change,
-                                                        _is_working_tree=working_tree)
+                build = DebMergeBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
             elif native:
-                build = DebNativeBuild(properties, tree, _is_working_tree=working_tree)
+                build = DebNativeBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
             elif split:
-                build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
+                build = DebSplitBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
             else:
-                if export_upstream is None:
-                    build = DebBuild(properties, tree, _is_working_tree=working_tree)
-                else:
-                    prepull_upstream = config.prepull_upstream
-                    stop_on_no_change = config.prepull_upstream_stop
-                    build = DebExportUpstreamBuild(properties, tree, export_upstream,
-                                                   export_upstream_revision,
-                                                   prepull_upstream,
-                                                   stop_on_no_change,
-                                                   _is_working_tree=working_tree)
+                build = DebBuild(properties, tree, branch,
+                        _is_working_tree=working_tree)
 
             build.prepare(use_existing)
 
@@ -407,17 +385,18 @@ class cmd_merge_upstream(Command):
     archive, or a directory. The source may also be a remote file.
 
     You must supply the version number of the new upstream release
-    using --version, and the target distribution using --distribution.
-    The target distribtution is the distribution that you aim to upload to,
-    one of "debian" or "ubuntu". You can also specify the target used in
-    the changelog, e.g. "unstable", and it will be resolved automatically.
+    using --version.
+
+    The distribution this version is targetted at can be specified with
+    --distribution. This will be used to guess the version number, so you
+    can always correct it in the changelog.
 
     If there is no debian changelog in the branch to retrieve the package
     name from then you must pass the --package option. If this version
     will change the name of the source package then you can use this option
     to set the new name.
     """
-    takes_args = ['location?']
+    takes_args = ['location', 'upstream_branch?']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
@@ -432,11 +411,11 @@ class cmd_merge_upstream(Command):
     takes_options = [package_opt, no_user_conf_opt, version_opt,
             distribution_opt, directory_opt, 'revision']
 
-    def run(self, location=None, version=None, distribution=None, package=None,
-            no_user_config=None, directory=".", revision=None):
+    def run(self, location=None, upstream_branch=None, version=None, distribution=None,
+            package=None, no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.merge_upstream import (merge_upstream_branch, package_version)
+        from bzrlib.plugins.builddeb.merge_upstream import (upstream_branch_version, package_version)
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -452,13 +431,14 @@ class cmd_merge_upstream(Command):
             if config.native:
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "yet supported.")
-            if config.export_upstream and location is None:
-                location = config.export_upstream
             if config.split:
                 raise BzrCommandError("Split mode is not yet supported.")
 
             if location is None:
-                raise BzrCommandError("No location specified to merge")
+                if config.upstream_branch is not None:
+                    location = config.upstream_branch
+                else:
+                    raise BzrCommandError("No location specified to merge")
             try:
                 changelog = find_changelog(tree, False)[0]
                 current_version = changelog.version
@@ -469,6 +449,10 @@ class cmd_merge_upstream(Command):
                     info("Using distribution %s" % distribution)
             except MissingChangelogError:
                 current_version = None
+                if distribution is None:
+                    info("No distribution specified, and no changelog, "
+                            "assuming 'debian'")
+                    distribution = "debian"
 
             if package is None:
                 raise BzrCommandError("You did not specify --package, and "
@@ -476,31 +460,58 @@ class cmd_merge_upstream(Command):
                         "package name, which is needed to know the name to "
                         "give the .orig.tar.gz. Please specify --package.")
 
-            try:
-                upstream_branch = Branch.open(location)
-            except NotBranchError:
-                upstream_branch = None
+            no_tarball = False
+            if upstream_branch is None:
+                try:
+                    upstream_branch = Branch.open(location)
+                    no_tarball = True
+                except NotBranchError:
+                    upstream_branch = None
+            else:
+                upstream_branch = Branch.open(upstream_branch)
 
-            if distribution is None:
-                raise BzrCommandError("You must specify the target distribution "
-                        "using --distribution.")
             distribution = distribution.lower()
             distribution_name = lookup_distribution(distribution)
             if distribution_name is None:
                 raise BzrCommandError("Unknown target distribution: %s" \
                             % distribution)
 
-            if upstream_branch is None:
-                if version is None:
-                    raise BzrCommandError("You must specify the version number using "
-                                          "--version.")
-                version = Version(version)
+            upstream_revision = None
+            if upstream_branch:
                 if revision is not None:
-                    raise BzrCommandError("--revision is not allowed when merging a tarball")
+                    if len(revision) > 1:
+                        raise BzrCommandError("merge-upstream takes only a single --revision")
+                    upstream_revspec = revision[0]
+                    upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
+                else:
+                    upstream_revision = upstream_branch.last_revision()
 
-                orig_dir = config.orig_dir or default_orig_dir
-                orig_dir = os.path.join(tree.basedir, orig_dir)
-                dest_name = tarball_name(package, version.upstream_version)
+            if no_tarball and revision is not None:
+                raise BzrCommandError("--revision is not allowed when merging a tarball")
+
+            if version is None:
+                if upstream_branch and no_tarball:
+                    version = upstream_branch_version(upstream_branch,
+                            upstream_revision, package,
+                            current_version.upstream_revision)
+                    info("Using version string %s for upstream branch." % (version))
+                else:
+                    raise BzrCommandError("You must specify the "
+                            "version number using --version.")
+
+            version = Version(version)
+            orig_dir = config.orig_dir or default_orig_dir
+            orig_dir = os.path.join(tree.basedir, orig_dir)
+            dest_name = tarball_name(package, version.upstream_version)
+            tarball_filename = os.path.join(orig_dir, dest_name)
+
+            if upstream_branch and no_tarball:
+                info("Exporting the upstream branch to create the tarball")
+                rev_tree = upstream_branch.repository.revision_tree(
+                        upstream_revision)
+                export(rev_tree, tarball_filename, format='tgz',
+                        root="%s-%s" % (package, version.upstream_version))
+            else:
                 try:
                     repack_tarball(location, dest_name, target_dir=orig_dir)
                 except FileExists:
@@ -509,30 +520,19 @@ class cmd_merge_upstream(Command):
                                           "are of different formats. Either delete the target "
                                           "file, or use it as the argument to import."
                                           % dest_name)
-                tarball_filename = os.path.join(orig_dir, dest_name)
-                db = DistributionBranch(distribution_name, tree.branch, None,
-                        tree=tree)
-                dbs = DistributionBranchSet()
-                dbs.add_branch(db)
-                conflicts = db.merge_upstream(tarball_filename, version,
-                        current_version)
-            else:
-                if revision is not None:
-                    if len(revision) > 1:
-                        raise BzrCommandError("merge-upstream takes only a single --revision")
-                    upstream_revspec = revision[0]
-                else:
-                    upstream_revspec = None
-                version, conflicts = merge_upstream_branch(tree, upstream_branch, package, 
-                                                upstream_revspec, version)
-                info("Using version string %s for upstream branch." % (version))
+            db = DistributionBranch(tree.branch, None, tree=tree)
+            dbs = DistributionBranchSet()
+            dbs.add_branch(db)
+            conflicts = db.merge_upstream(tarball_filename, version,
+                    current_version, upstream_branch=upstream_branch,
+                    upstream_revision=upstream_revision)
 
             if "~bzr" in str(version) or "+bzr" in str(version):
                 entry_description = "New upstream snapshot."
             else:
                 entry_description = "New upstream release."
             proc = subprocess.Popen(["/usr/bin/dch", "-v",
-                    str(package_version(version, distribution)),
+                    str(package_version(version, distribution_name)),
                     "-D", "UNRELEASED", entry_description], cwd=tree.basedir)
             proc.wait()
             if proc.returncode != 0:
@@ -576,10 +576,8 @@ class cmd_import_dsc(Command):
     filename_opt = Option('file', help="File containing URIs of source "
                           "packages to import.", type=str, argname="filename",
                           short_name='F')
-    distribution_opt = Option('distribution', help="The distribution that "
-            "these packages were uploaded to.", type=str)
 
-    takes_options = [filename_opt, distribution_opt]
+    takes_options = [filename_opt]
 
     def import_many(self, db, files_list, orig_target):
         cache = DscCache()
@@ -604,16 +602,8 @@ class cmd_import_dsc(Command):
                 get_dsc_part(from_transport, name)
             db.import_package(os.path.join(orig_target, filename))
 
-    def run(self, files_list, distribution=None, filename=None):
+    def run(self, files_list, filename=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
-        if distribution is None:
-            raise BzrCommandError("You must specify the distribution "
-                    "these packages were uploaded to using --distribution.")
-        distribution = distribution.lower()
-        distribution_name = lookup_distribution(distribution)
-        if distribution_name is None:
-            raise BzrCommandError("Unknown target distribution: %s" \
-                    % distribution)
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:
@@ -641,8 +631,7 @@ class cmd_import_dsc(Command):
             config = debuild_config(tree, tree, False)
             orig_dir = config.orig_dir or default_orig_dir
             orig_target = os.path.join(tree.basedir, default_orig_dir)
-            db = DistributionBranch(distribution_name, tree.branch,
-                    None, tree=tree)
+            db = DistributionBranch(tree.branch, None, tree=tree)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             try:
@@ -718,19 +707,9 @@ class cmd_bd_do(Command):
         if orig_dir is None:
             orig_dir = default_orig_dir
         properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
-        export_upstream = config.export_upstream
-        export_upstream_revision = config.export_upstream_revision
 
-        if export_upstream is None:
-            build = DebMergeBuild(properties, t, _is_working_tree=True)
-        else:
-            prepull_upstream = config.prepull_upstream
-            stop_on_no_change = config.prepull_upstream_stop
-            build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
-                                                export_upstream_revision,
-                                                prepull_upstream,
-                                                stop_on_no_change,
-                                                _is_working_tree=True)
+        build = DebMergeBuild(properties, t, t.branch,
+                _is_working_tree=True)
 
         build.prepare()
         try:
@@ -798,7 +777,7 @@ class cmd_mark_uploaded(Command):
             if distribution_name is None:
                 raise BzrCommandError("Unknown target distribution: %s" \
                         % target_dist)
-            db = DistributionBranch(distribution_name, t.branch, None)
+            db = DistributionBranch(t.branch, None)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             if db.has_version(changelog.version):

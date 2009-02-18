@@ -41,35 +41,35 @@ class StopBuild(BzrError):
     _fmt = "Stopping the build: %(reason)s."
 
     def __init__(self, reason):
-        self.reason = reason
+        BzrError.__init__(self, reason=reason)
 
 
 class MissingChangelogError(BzrError):
     _fmt = 'Could not find changelog at %(locations)s.'
 
     def __init__(self, locations):
-        self.location = locations
+        BzrError.__init__(self, location=locations)
 
 
 class AddChangelogError(BzrError):
     _fmt = 'Please add "%(changelog)s" to the branch using bzr add.'
 
     def __init__(self, changelog):
-        self.changelog = changelog
+        BzrError.__init__(self, changelog=changelog)
 
 
 class ImportError(BzrError):
     _fmt = "The files could not be imported: %(reason)s"
 
     def __init__(self, reason):
-        self.reason = reason
+        BzrError.__init__(self, reason=reason)
 
 
 class HookFailedError(BzrError):
     _fmt = 'The "%(hook_name)s" hook failed.'
 
     def __init__(self, hook_name):
-        self.hook_name = hook_name
+        BzrError.__init__(self, hook_name=hook_name)
 
 
 class OnlyImportSingleDsc(BzrError):
@@ -80,21 +80,25 @@ class UnknownType(BzrError):
     _fmt = 'Cannot extract "%(path)s" from archive as it is an unknown type.'
 
     def __init__(self, path):
-        self.path = path
+        BzrError.__init__(self, path=path)
 
 
 class MissingChanges(BzrError):
     _fmt = "Could not find .changes file: %(changes)s."
 
     def __init__(self, changes):
-        self.changes = changes
+        BzrError.__init__(self, changes=changes)
 
 
 class UpstreamAlreadyImported(BzrError):
     _fmt = 'Upstream version "%(version)s" has already been imported.'
 
     def __init__(self, version):
-        self.version = str(version)
+        BzrError.__init__(self, version=str(version))
+
+
+class UpstreamBranchAlreadyMerged(BzrError):
+    _fmt = 'That revision of the upstream branch has already been merged.'
 
 
 class AmbiguousPackageSpecification(BzrError):
@@ -106,7 +110,7 @@ class AmbiguousPackageSpecification(BzrError):
             '":ubuntu" to the revision specifier: %(specifier)s')
 
     def __init__(self, specifier):
-        self.specifier = specifier
+        BzrError.__init__(self, specifier=specifier)
 
 
 class UnknownVersion(BzrError):
@@ -114,14 +118,14 @@ class UnknownVersion(BzrError):
             '"%(version)s" has been uploaded.')
 
     def __init__(self, version):
-        self.version = version
+        BzrError.__init__(self, version=version)
 
 
 class UnknownDistribution(BzrError):
     _fmt = "Unknown distribution: %(distribution)s."
 
     def __init__(self, distribution):
-        self.distribution = distribution
+        BzrError.__init__(self, distribution=distribution)
 
 
 class VersionNotSpecified(BzrError):
@@ -134,4 +138,11 @@ class UnsupportedRepackFormat(BzrError):
             'remote directory.')
 
     def __init__(self, location):
-        self.location = location
+        BzrError.__init__(self, location=location)
+
+
+class PristineTarError(BzrError):
+    _fmt = 'There was an error using pristine-tar: %(error)s.'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)

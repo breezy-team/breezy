@@ -27,23 +27,19 @@ import os
 
 from debian_bundle.changelog import Version
 
-from bzrlib.branch import Branch
 from bzrlib.errors import (
-        NoWorkingTree,
         NotADirectory,
         )
 from bzrlib.export import export
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import info, mutter
-from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb.changes import DebianChanges
 from bzrlib.plugins.builddeb.errors import (DebianError,
                     NoSourceDirError,
                     BuildFailedError,
-                    StopBuild,
                     MissingChanges,
                     )
+from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import recursive_copy, tarball_name
 
 def remove_dir(base, dir):
@@ -65,61 +61,6 @@ def remove_debian_dir(dir):
   remove_dir(dir, "debian")
 
 
-class UpstreamExporter(object):
-
-  def __init__(self, branch, dest, tarball_base, export_prepull=False,
-               export_revision=None, stop_on_no_change=False):
-    self.branch = branch
-    self.dest = dest
-    self.tarball_base = tarball_base
-    self.export_prepull = export_prepull
-    self.export_revision = export_revision
-    self.stop_on_no_change = stop_on_no_change
-
-  def export(self):
-    if self.export_prepull:
-      try:
-        tree_to = WorkingTree.open(self.branch)
-        branch_to = tree_to.branch
-      except NoWorkingTree:
-        tree_to = None
-        branch_to = Branch.open(self.branch)
-      location = branch_to.get_parent()
-      if location is None:
-        raise DebianError('No default pull location for '+self.branch+ \
-                          ', run "bzr pull location" in that branch to set ' \
-                          'one up')
-      branch_from = Branch.open(location)
-      info('Pulling the upstream branch.')
-      if branch_from.last_revision() == branch_to.last_revision():
-        if self.stop_on_no_change:
-          raise StopBuild('No changes to upstream branch')
-        info('Nothing to pull')
-      else:
-        if tree_to is not None:
-          count = tree_to.pull(branch_from)
-        else:
-          count = branch_to.pull(branch_from)
-        info('Pulled %d revision(s).', int(count))
-      b = branch_to
-    else:
-      b = Branch.open(self.branch)
-
-    if self.export_revision is None:
-      rev_id = b.last_revision()
-    else:
-      rev_spec = RevisionSpec.from_string(self.export_revision)
-      rev_id = rev_spec.in_history(b).rev_id
-
-    info('Exporting upstream source from %s, revision %s',
-         self.branch, rev_id)
-
-    t = b.repository.revision_tree(rev_id)
-    info(self.tarball_base)
-    export(t, self.dest, 'tgz', self.tarball_base)
-    return True
-
-
 def move_file(src, dest):
     base = os.path.basename(src)
     target = os.path.join(dest, base)
@@ -130,7 +71,7 @@ def move_file(src, dest):
 class DebBuild(object):
   """The object that does the building work."""
 
-  def __init__(self, properties, tree, _is_working_tree=False):
+  def __init__(self, properties, tree, branch, _is_working_tree=False):
     """Create a builder.
 
     properties:
@@ -141,6 +82,7 @@ class DebBuild(object):
     """
     self._properties = properties
     self._tree = tree
+    self.branch = branch
     self._is_working_tree = _is_working_tree
 
   def _prepare_working_tree(self):
@@ -245,7 +187,6 @@ class DebBuild(object):
     sources.Restart()
     package = self._properties.package()
     version = self._properties.upstream_version()
-    found = False
     while sources.Lookup(package):
       if version == Version(sources.Version).upstream_version:
         tarball_dir = self._properties.tarball_dir()
@@ -258,9 +199,23 @@ class DebBuild(object):
         if proc.returncode != 0:
           return False
         return True
-    if not found:
-      return False
+    return False
 
+  def _get_upstream_from_pristine(self):
+    db = DistributionBranch(self.branch, None, tree=self._tree)
+    package = self._properties.package()
+    version = Version(self._properties.upstream_version())
+    if not db._has_upstream_version_in_packaging_branch(version):
+        return False
+    revid = db._revid_of_upstream_version_from_branch(version)
+    if not db.has_pristine_tar_delta(revid):
+        return False
+    tarball_dir = self._properties.tarball_dir()
+    if not os.path.exists(tarball_dir):
+        os.makedirs(tarball_dir)
+    dest_filename = os.path.abspath(os.path.join(tarball_dir, self._tarball_name()))
+    db.reconstruct_pristine_tar(revid, package, version, dest_filename)
+    return True
 
   def _find_tarball(self):
     """Find the upstream tarball and return it's location.
@@ -287,6 +242,8 @@ class DebBuild(object):
         else:
           if not os.path.isdir(tarballdir):
             raise NotADirectory(tarballdir)
+        if self._get_upstream_from_pristine():
+          return tarball
         if self._get_upstream_from_archive():
           return tarball
         if self._has_watch():
@@ -393,29 +350,6 @@ class DebBuild(object):
         +" release. If you do not release it...")
 
 
-class DebExportUpstreamBuild(DebBuild):
-
-  def __init__(self, properties, tree, export_upstream, export_revision,
-               export_prepull, stop_on_no_change, _is_working_tree=False):
-    DebBuild.__init__(self, properties, tree,
-                      _is_working_tree=_is_working_tree)
-    build_dir = self._properties.build_dir()
-    dest = os.path.join(build_dir, self._tarball_name())
-    tarball_base = self._properties.source_dir(False)
-    self.exporter = UpstreamExporter(export_upstream, dest, tarball_base,
-                                     export_prepull=export_prepull,
-                                     export_revision=export_revision,
-                                     stop_on_no_change=stop_on_no_change,
-                                     )
-
-  def _export_upstream_branch(self):
-    return self.exporter.export()
-
-  def _find_tarball(self):
-    build_dir = self._properties.build_dir()
-    return os.path.join(build_dir, self._tarball_name())
-
-
 class DebMergeBuild(DebBuild):
   """A subclass of DebBuild that uses the merge method."""
 
@@ -519,29 +453,5 @@ class DebSplitBuild(DebBuild):
     finally:
       tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
-
-class DebMergeExportUpstreamBuild(DebMergeBuild):
-  """Subclass of DebMergeBuild that will export an upstream branch to
-     .orig.tar.gz before building."""
-
-  def __init__(self, properties, tree, export_upstream, export_revision,
-               export_prepull, stop_on_no_change, _is_working_tree=False):
-    DebMergeBuild.__init__(self, properties, tree,
-                           _is_working_tree=_is_working_tree)
-    build_dir = self._properties.build_dir()
-    dest = os.path.join(build_dir, self._tarball_name())
-    tarball_base = self._properties.source_dir(False)
-    self.exporter = UpstreamExporter(export_upstream, dest, tarball_base,
-                                     export_prepull=export_prepull,
-                                     export_revision=export_revision,
-                                     stop_on_no_change=stop_on_no_change,
-                                     )
-
-  def _export_upstream_branch(self):
-    return self.exporter.export()
-
-  def _find_tarball(self):
-    build_dir = self._properties.build_dir()
-    return os.path.join(build_dir, self._tarball_name())
 
 # vim: ts=2 sts=2 sw=2

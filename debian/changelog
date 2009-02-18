@@ -26,6 +26,7 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
     a much better situation.
   * Update the changelog after merge-upstream, rather than telling the user
     exactly what to run. (LP: #296516)
+  * Remove export-upstream mode in favour of merge-upstream, see NEWS.Debian.
 
   [ Kees Cook ]
   * builder.py: switch to using external tar command to replace buggy

@@ -80,8 +80,6 @@ class DebBuildConfig(object):
     None
     >>> print c.merge
     True
-    >>> print c.export_upstream
-    localexport
     >>> print c.build_dir
     defaultbuild
     >>> print c.result_dir
@@ -241,30 +239,6 @@ class DebBuildConfig(object):
   native = _bool_property('native', "Build a native package")
 
   split = _bool_property('split', "Split a full source package")
-
-  export_upstream = _opt_property('export-upstream',
-                         "Get the upstream source from another branch")
-
-  prepull_upstream = _bool_property('export-upstream-prepull',
-                         "Pull the upstream branch before exporting it.")
-
-  prepull_upstream_stop = _bool_property('export-upstream-stop-on-trivial-pull',
-                         "Stop the build if the upstream pull does nothing.")
-
-  def _get_export_upstream_revision(self):
-    rev = None
-    if self.version is not None:
-      rev = get_snapshot_revision(str(self.version.upstream_version))
-    if rev is None:
-      rev = self._get_best_opt('export-upstream-revision')
-      if rev is not None and self.version is not None:
-        rev = rev.replace('$UPSTREAM_VERSION',
-                          str(self.version.upstream_version))
-    return rev
-
-  export_upstream_revision = property(_get_export_upstream_revision, None,
-                         None,
-                         "The revision of the upstream branch to export.")
 
 def _test():
   import doctest

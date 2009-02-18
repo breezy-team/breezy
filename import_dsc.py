@@ -25,6 +25,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+from base64 import (
+        standard_b64decode,
+        standard_b64encode,
+        )
 import gzip
 import md5
 import os
@@ -53,6 +57,7 @@ from bzrlib.errors import (FileExists,
         NoRepositoryPresent,
         AlreadyBranchError,
         )
+from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info, mutter
@@ -67,8 +72,10 @@ from bzrlib.plugins.bzrtools.upstream_import import (
 
 from bzrlib.plugins.builddeb.errors import (ImportError,
                 OnlyImportSingleDsc,
+                PristineTarError,
                 UnknownType,
                 UpstreamAlreadyImported,
+                UpstreamBranchAlreadyMerged,
                 )
 from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
                 upstream_tag_to_version,
@@ -945,21 +952,19 @@ class DistributionBranch(object):
     have a total ordering with respect to these relationships.
     """
 
-    def __init__(self, name, branch, upstream_branch, tree=None,
+    def __init__(self, branch, upstream_branch, tree=None,
             upstream_tree=None):
         """Create a distribution branch.
 
         You can only import packages on to the DistributionBranch
         if both tree and upstream_tree are provided.
 
-        :param name: a String which is used as a descriptive name.
         :param branch: the Branch for the packaging part.
         :param upstream_branch: the Branch for the upstream part, if any.
         :param tree: an optional tree for the branch.
         :param upstream_tree: an optional upstream_tree for the
             upstream_branch.
         """
-        self.name = name
         self.branch = branch
         self.upstream_branch = upstream_branch
         self.tree = tree
@@ -1372,8 +1377,8 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append((branch, merged[0], revid))
-                mutter("Adding merge from lesser of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
+                mutter("Adding merge from lesser of %s for version %s"
+                        % (revid, str(merged[0])))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
@@ -1384,8 +1389,8 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append((branch, merged[0], revid))
-                mutter("Adding merge from greater of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
+                mutter("Adding merge from greater of %s for version %s"
+                    % (revid, str(merged[0])))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
@@ -1408,8 +1413,8 @@ class DistributionBranch(object):
         :param version: the Version to use the upstream part of.
         """
         pull_revision = pull_branch.revid_of_upstream_version(version)
-        mutter("Pulling upstream part of %s from revision %s of %s" % \
-                (str(version), pull_revision, pull_branch.name))
+        mutter("Pulling upstream part of %s from revision %s" % \
+                (str(version), pull_revision))
         up_pull_branch = pull_branch.upstream_branch
         assert self.upstream_tree is not None, \
             "Can't pull upstream with no tree"
@@ -1440,8 +1445,8 @@ class DistributionBranch(object):
             imported.
         """
         pull_revision = pull_branch.revid_of_version(version)
-        mutter("%s already has version %s so pulling from revision %s"
-                % (pull_branch.name, str(version), pull_revision))
+        mutter("already has version %s so pulling from revision %s"
+                % (str(version), pull_revision))
         assert self.tree is not None, "Can't pull branch with no tree"
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
         self.tag_version(version)
@@ -1531,7 +1536,9 @@ class DistributionBranch(object):
         self.branch.fetch(self.upstream_branch, last_revision=revid)
         self.upstream_branch.tags.merge_to(self.branch.tags)
 
-    def import_upstream(self, upstream_part, version, md5, upstream_parents):
+    def import_upstream(self, upstream_part, version, md5, upstream_parents,
+            upstream_tarball=None, upstream_branch=None,
+            upstream_revision=None):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -1565,10 +1572,22 @@ class DistributionBranch(object):
             for o in other_branches]
         import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
+        if upstream_branch is not None:
+            if upstream_revision is None:
+                upstream_revision = upstream_branch.last_revision()
+            self.upstream_branch.fetch(upstream_branch,
+                    last_revision=upstream_revision)
+            upstream_parents.append(upstream_revision)
         self.upstream_tree.set_parent_ids(upstream_parents)
+        revprops = {"deb-md5": md5}
+        if upstream_tarball is not None:
+            delta = self.make_pristine_tar_delta(self.upstream_tree,
+                    upstream_tarball)
+            uuencoded = standard_b64encode(delta)
+            revprops["deb-pristine-delta"] = uuencoded
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (str(version.upstream_version),),
-                revprops={"deb-md5":md5})
+                revprops=revprops)
         self.tag_upstream_version(version)
         return revid
 
@@ -1810,7 +1829,7 @@ class DistributionBranch(object):
         return tempdir
 
     def _do_import_package(self, version, versions, debian_part, md5,
-            upstream_part, upstream_md5):
+            upstream_part, upstream_md5, upstream_tarball=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version)
@@ -1829,7 +1848,8 @@ class DistributionBranch(object):
                     # from another branch:
                     upstream_parents = self.upstream_parents(versions)
                     new_revid = self.import_upstream(upstream_part, version,
-                            upstream_md5, upstream_parents)
+                            upstream_md5, upstream_parents,
+                            upstream_tarball=upstream_tarball)
                     self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
@@ -1909,6 +1929,12 @@ class DistributionBranch(object):
         dsc = deb822.Dsc(open(dsc_filename).read())
         version = Version(dsc['Version'])
         name = dsc['Source']
+        upstream_tarball = None
+        for part in dsc['files']:
+            if part['name'].endswith(".orig.tar.gz"):
+                assert upstream_tarball is None, "Two .orig.tar.gz?"
+                upstream_tarball = os.path.abspath(
+                        os.path.join(base_path, part['name']))
         tempdir = self.extract_dsc(dsc_filename)
         try:
             # TODO: make more robust against strange .dsc files.
@@ -1933,7 +1959,8 @@ class DistributionBranch(object):
             # should happen if it isn't.
             if not native:
                 self._do_import_package(version, versions, debian_part, md5,
-                        upstream_part, upstream_md5)
+                        upstream_part, upstream_md5,
+                        upstream_tarball=upstream_tarball)
             else:
                 self._import_native_package(version, versions, debian_part,
                         md5)
@@ -1945,7 +1972,7 @@ class DistributionBranch(object):
         # tree for it.
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
-        to_location = os.path.join(basedir, self.name + "-upstream")
+        to_location = os.path.join(basedir, "upstream")
         dir_to = self.branch.bzrdir.sprout(to_location,
                 revision_id=upstream_tip,
                 accelerator_tree=self.tree)
@@ -1953,8 +1980,7 @@ class DistributionBranch(object):
         self.upstream_branch = self.upstream_tree.branch
 
     def _create_empty_upstream_tree(self, basedir):
-        to_location = os.path.join(basedir,
-                self.name + "-upstream")
+        to_location = os.path.join(basedir, "upstream")
         to_transport = transport.get_transport(to_location)
         to_transport.ensure_base()
         format = bzrdir.format_registry.make_bzrdir('default')
@@ -1990,7 +2016,8 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         return self.branch.tags.lookup_tag(tag_name)
 
-    def merge_upstream(self, tarball_filename, version, previous_version):
+    def merge_upstream(self, tarball_filename, version, previous_version,
+            upstream_branch=None, upstream_revision=None):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
@@ -2003,28 +2030,89 @@ class DistributionBranch(object):
                 self._create_empty_upstream_tree(tempdir)
             if self._has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
-            m = md5.new()
-            m.update(open(tarball_filename).read())
-            md5sum = m.hexdigest()
-            tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
             try:
-                # FIXME: should use upstream_parents()?
-                parents = []
-                if self.upstream_branch.last_revision() != NULL_REVISION:
-                    parents = [self.upstream_branch.last_revision()]
-                new_revid = self.import_upstream(tarball_dir, version,
-                        md5sum, parents)
-                self._fetch_upstream_to_branch(new_revid)
+                if upstream_branch is not None:
+                    upstream_branch.lock_read()
+                    if upstream_revision is not None:
+                        upstream_revision = upstream_branch.last_revision()
+                    graph = self.branch.repository.get_graph(
+                            other_repository=upstream_branch.repository)
+                    if graph.is_ancestor(upstream_revision,
+                            self.branch.last_revision()):
+                        raise UpstreamBranchAlreadyMerged
+                tarball_filename = os.path.abspath(tarball_filename)
+                m = md5.new()
+                m.update(open(tarball_filename).read())
+                md5sum = m.hexdigest()
+                tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
+                try:
+                    # FIXME: should use upstream_parents()?
+                    parents = []
+                    if self.upstream_branch.last_revision() != NULL_REVISION:
+                        parents = [self.upstream_branch.last_revision()]
+                    new_revid = self.import_upstream(tarball_dir, version,
+                            md5sum, parents, upstream_tarball=tarball_filename,
+                            upstream_branch=upstream_branch,
+                            upstream_revision=upstream_revision)
+                    self._fetch_upstream_to_branch(new_revid)
+                finally:
+                    shutil.rmtree(tarball_dir)
+                if self.branch.last_revision() != NULL_REVISION:
+                    conflicts = self.tree.merge_from_branch(self.upstream_branch)
+                else:
+                    # Pull so that merge-upstream allows you to start a branch
+                    # from upstream tarball.
+                    conflicts = 0
+                    self.tree.pull(self.upstream_branch)
+                self.upstream_branch.tags.merge_to(self.branch.tags)
+                return conflicts
             finally:
-                shutil.rmtree(tarball_dir)
-            if self.branch.last_revision() != NULL_REVISION:
-                conflicts = self.tree.merge_from_branch(self.upstream_branch)
-            else:
-                # Pull so that merge-upstream allows you to start a branch
-                # from upstream tarball.
-                conflicts = 0
-                self.tree.pull(self.upstream_branch)
-            self.upstream_branch.tags.merge_to(self.branch.tags)
-            return conflicts
+                if upstream_branch is not None:
+                    upstream_branch.unlock()
         finally:
             shutil.rmtree(tempdir)
+
+    def has_pristine_tar_delta(self, revid):
+        rev = self.branch.repository.get_revision(revid)
+        return 'deb-pristine-delta' in rev.properties
+
+    def pristine_tar_delta(self, revid):
+        rev = self.branch.repository.get_revision(revid)
+        uuencoded = rev.properties['deb-pristine-delta']
+        delta = standard_b64decode(uuencoded)
+        return delta
+
+    def reconstruct_pristine_tar(self, revid, package, version,
+            dest_filename):
+        tree = self.branch.repository.revision_tree(revid)
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
+        try:
+            dest = os.path.join(tmpdir, "orig")
+            export(tree, dest, format='dir')
+            delta = self.pristine_tar_delta(revid)
+            command = ["/usr/bin/pristine-tar", "gentar", "-",
+                       dest_filename]
+            print command
+            proc = Popen(command, stdin=PIPE, cwd=dest)
+            proc.stdin.write(delta)
+            proc.stdin.close()
+            ret = proc.wait()
+            if ret != 0:
+                raise PristineTarError("Generating tar from delta failed")
+        finally:
+            shutil.rmtree(tmpdir)
+
+    def make_pristine_tar_delta(self, tree, tarball_path):
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
+        try:
+            dest = os.path.join(tmpdir, "orig")
+            export(tree, dest, format='dir')
+            command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
+            info(" ".join(command))
+            proc = Popen(command, stdout=PIPE, cwd=dest)
+            ret = proc.wait()
+            if ret != 0:
+                raise PristineTarError("Generating delta from tar failed")
+            return proc.stdout.read()
+        finally:
+            shutil.rmtree(tmpdir)

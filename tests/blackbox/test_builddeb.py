@@ -142,27 +142,4 @@ class TestBuilddeb(BuilddebTestCase):
     self.failUnlessExists('pre-export')
     self.assertInBuildDir(['pre-build', 'post-build'])
 
-  def test_export_upstream_uses_variable_upstream_version(self):
-    """Check that $UPSTREAM_VERSION is supported in export upstream."""
-    tree = self.make_unpacked_source()
-    upstream = self.make_branch_and_tree('upstream')
-    self.build_tree(['upstream/a'])
-    upstream.add(['a'])
-    upstream.commit('one')
-    upstream.branch.tags.set_tag('test-0.1', upstream.branch.last_revision())
-    self.build_tree(['upstream/b'])
-    upstream.add(['b'])
-    upstream.commit('two')
-    os.mkdir('.bzr-builddeb/')
-    f = open('.bzr-builddeb/default.conf', 'wb')
-    try:
-      f.write('[BUILDDEB]\nmerge = True\nexport-upstream = upstream\n')
-      f.write('export-upstream-revision = tag:test-$UPSTREAM_VERSION\n')
-    finally:
-      f.close()
-    self.run_bzr('add .bzr-builddeb/default.conf')
-    self.run_bzr('bd --no-user-conf --dont-purge --builder true')
-    self.assertInBuildDir(['a'])
-    self.assertNotInBuildDir(['b'])
-
 # vim: ts=2 sts=2 sw=2

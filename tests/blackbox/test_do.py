@@ -172,19 +172,4 @@ class TestDo(ExternalBase):
       os.environ['SHELL'] = old_shell
     self.failUnlessExists('debian/shell')
 
-  def test_export_upstream(self):
-    tree = self.make_unpacked_source()
-    self.make_merge_mode_config(tree)
-    f = open('.bzr-builddeb/default.conf', 'ab')
-    try:
-      f.write('export-upstream = upstream\n')
-    finally:
-      f.close()
-    upstream = self.make_branch_and_tree('upstream')
-    self.build_tree(['upstream/a'])
-    upstream.add(['a'])
-    upstream.commit('one')
-    self.run_bzr(['bd-do', 'mkdir debian/dir'])
-    self.failUnlessExists('debian/dir')
-
 # vim: ts=2 sts=2 sw=2

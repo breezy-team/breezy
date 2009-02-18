@@ -44,14 +44,12 @@ The modes are
   * `Normal mode`_
   * `Native mode`_
   * `Merge mode`_
-  * `Export-upstream mode`_
   * `Split mode`_
 
 .. _Normal mode: normal.html
 .. _Merge mode: merge.html
 .. _Native mode: native.html
 .. _Split mode: split.html
-.. _Export-upstream mode: export_upstream.html
 
 The remainder of the documentation explains general features of the package.
 These sections are
