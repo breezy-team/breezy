@@ -358,8 +358,11 @@ class cmd_fast_export(Command):
 
         % bzr-fast-export --import-marks=marks.bzr -b other project.other |
               GIT_DIR=project/.git git-fast-import --import-marks=marks.git
+
+    If you get a "Missing space after source" error from git-fast-import,
+    see the top of the commands.py module for a work-around.
     """
-    hidden = True
+    hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source']
     takes_options = ['verbose',
