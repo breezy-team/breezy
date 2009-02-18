@@ -45,7 +45,6 @@ class TestNode(tests.TestCase):
         self.assertCommonPrefix('beg', 'beg', 'begin')
 
     def test_no_common_prefix(self):
-        import pdb; pdb.set_trace()
         self.assertCommonPrefix('', 'begin', 'end')
 
     def test_equal(self):
