@@ -1676,15 +1676,6 @@ class TestGraphIndexKnit(KnitTests):
             frozenset([]), index.get_missing_compression_parents())
         
 
-class MissingKeysGraphIndex(object):
-    
-    def __init__(self, missing_keys):
-        self.missing_keys = missing_keys
-
-    def _external_references(self):
-        return self.missing_keys
-
-
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using _KnitGraphIndex with no parents."""
 
