@@ -533,7 +533,7 @@ class cmd_merge_upstream(Command):
                 entry_description = "New upstream release."
             proc = subprocess.Popen(["/usr/bin/dch", "-v",
                     str(package_version(version, distribution)),
-                    entry_description], cwd=tree.basedir)
+                    "-D", "UNRELEASED", entry_description], cwd=tree.basedir)
             proc.wait()
             if proc.returncode != 0:
                 raise BzrCommandError('Adding a new changelog stanza after the '

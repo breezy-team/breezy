@@ -24,6 +24,8 @@ bzr-builddeb (2.1) UNRELEASED; urgency=low
     but using the old tags lead to bugs, and the only way to fix that is to
     use the new tags. Not a good situation, but moving forwards we will have
     a much better situation.
+  * Update the changelog after merge-upstream, rather than telling the user
+    exactly what to run. (LP: #296516)
 
   [ Kees Cook ]
   * builder.py: switch to using external tar command to replace buggy
