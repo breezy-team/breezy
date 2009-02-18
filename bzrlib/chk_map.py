@@ -1367,11 +1367,13 @@ def iter_interesting_nodes(store, interesting_root_keys,
     interesting_keys.difference_update(all_uninteresting_chks)
 
     chks_to_read = interesting_keys
+    counter = 0
     while chks_to_read:
         next_chks = set()
         for record in store.get_record_stream(chks_to_read, 'unordered', False):
+            counter += 1
             if pb is not None:
-                pb.tick()
+                pb.update('find chk pages', counter)
             # TODO: Handle 'absent'?
             if record.storage_kind in ('fulltext', 'chunked'):
                 bytes = record.get_bytes_as('fulltext')
