@@ -17,7 +17,6 @@
 """Import processor that supports all Bazaar repository formats."""
 
 
-import re
 import time
 from bzrlib import (
     builtins,
@@ -42,6 +41,7 @@ from bzrlib.plugins.fastimport import (
     errors as plugin_errors,
     helpers,
     idmapfile,
+    marks_file,
     processor,
     revisionloader,
     )
@@ -116,51 +116,6 @@ class GenericProcessor(processor.ImportProcessor):
         'export-marks',
         ]
 
-    def _import_marks(self, filename):
-        try:
-            f = file(filename)
-        except IOError:
-            self.warning(
-                "Could not open import-marks file, not importing marks")
-            return
-
-        firstline = f.readline()
-        match = re.match(r'^format=(\d+)$', firstline)
-        if not match:
-            print >>sys.stderr, "%r doesn't look like a mark file" % \
-                (filename,)
-            sys.exit(1)
-        elif match.group(1) != '1':
-            print >>sys.stderr, 'format version in mark file not supported'
-            sys.exit(1)
-
-        for string in f.readline().rstrip('\n').split('\0'):
-            if not string:
-                continue
-            name, integer = string.rsplit('.', 1)
-            # We really can't do anything with the branch information, so we
-            # just skip it
-            
-        self.cache_mgr.revision_ids = {}
-        for line in f:
-            line = line.rstrip('\n')
-            mark, revid = line.split(' ', 1)
-            self.cache_mgr.revision_ids[mark] = revid
-        f.close()
-    
-    def export_marks(self, filename):
-        try:
-            f = file(filename, 'w')
-        except IOError:
-            self.warning(
-                "Could not open export-marks file, not exporting marks")
-            return
-        f.write('format=1\n')
-        f.write('\0tmp.0\n')
-        for mark, revid in self.cache_mgr.revision_ids.iteritems():
-            f.write('%s %s\n' % (mark, revid))
-        f.close()
-        
     def pre_process(self):
         self._start_time = time.time()
         self._load_info_and_params()
@@ -168,7 +123,9 @@ class GenericProcessor(processor.ImportProcessor):
             self.inventory_cache_size)
         
         if self.params.get("import-marks") is not None:
-            self._import_marks(self.params.get("import-marks"))
+            mark_map = marks_file.import_marks(self.params.get("import-marks"))
+            if mark_map is not None:
+                self.cache_mgr.revision_ids = mark_map
             self.skip_total = False
             self.first_incremental_commit = True
         else:
@@ -284,7 +241,8 @@ class GenericProcessor(processor.ImportProcessor):
         self._save_id_map()
 
         if self.params.get("export-marks") is not None:
-            self.export_marks(self.params.get("export-marks"))
+            marks_file.export_marks(self.params.get("export-marks"),
+                self.cache_mgr.revision_ids)
 
         # Update the branches
         self.note("Updating branch information ...")
