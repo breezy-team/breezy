@@ -17,6 +17,16 @@
 """Import command classes."""
 
 
+# There is a bug in git 1.5.4.3 and older by which unquoting a string consumes
+# one extra character. Set this variable to True to work-around it. It only
+# happens when renaming a file whose name contains spaces and/or quotes, and
+# the symptom is:
+#   % git-fast-import
+#   fatal: Missing space after source: R "file 1.txt" file 2.txt
+# http://git.kernel.org/?p=git/git.git;a=commit;h=c8744d6a8b27115503565041566d97c21e722584
+GIT_FAST_IMPORT_NEEDS_EXTRA_SPACE_AFTER_QUOTE = False
+
+
 # Lists of command names
 COMMAND_NAMES = ['blob', 'checkpoint', 'commit', 'progress', 'reset', 'tag']
 FILE_COMMAND_NAMES = ['filemodify', 'filedelete', 'filecopy', 'filerename',
@@ -180,7 +190,12 @@ class ResetCommand(ImportCommand):
         if self.from_ is None:
             from_line = ""
         else:
-            from_line = "\nfrom %s" % self.from_
+            # According to git-fast-import(1), the extra LF is optional here;
+            # however, versions of git up to 1.5.4.3 had a bug by which the LF
+            # was needed. Always emit it, since it doesn't hurt and maintains
+            # compatibility with older versions.
+            # http://git.kernel.org/?p=git/git.git;a=commit;h=655e8515f279c01f525745d443f509f97cd805ab
+            from_line = "\nfrom %s\n" % self.from_
         return "reset %s%s" % (self.ref, from_line)
 
 
@@ -298,7 +313,8 @@ def format_path(p, quote_spaces=False):
     else:
         quote = p[0] == '"' or (quote_spaces and ' ' in p)
     if quote:
-        p = '"%s"' % p
+        extra = GIT_FAST_IMPORT_NEEDS_EXTRA_SPACE_AFTER_QUOTE and ' ' or ''
+        p = '"%s"%s' % (p, extra)
     return p.encode('utf8')
 
 
