@@ -40,7 +40,6 @@ class DebBuildConfigTests(TestCaseWithTransport):
       f.write('build-dir = default build dir\n')
       f.write('orig-dir = default orig dir\n')
       f.write('result-dir = default result dir\n')
-      f.write('export-upstream-revision = tag:upstream-$UPSTREAM_VERSION\n')
     finally:
       f.close()
     f = open('user.conf', 'wb')
@@ -80,15 +79,6 @@ class DebBuildConfigTests(TestCaseWithTransport):
 
   def test_no_entry(self):
     self.assertEqual(self.config.merge, False)
-
-  def test_interpolation(self):
-    self.assertEqual(self.config.export_upstream_revision, 'tag:upstream-0.1')
-    self.config.set_version(Version('0.2'))
-    self.assertEqual(self.config.export_upstream_revision, 'tag:upstream-0.2')
-    self.config.set_version(Version('0.2~bzr300'))
-    self.assertEqual(self.config.export_upstream_revision, '300')
-    self.config.set_version(Version('0.2~svn200'))
-    self.assertEqual(self.config.export_upstream_revision, 'svn:200')
 
 try:
   from bzrlib.plugins.svn.config import SubversionBuildPackageConfig

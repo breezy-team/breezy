@@ -90,50 +90,6 @@ on the type of package you are building. If none of these are set then
 .. _native mode: native.html
 .. _split mode: split.html
 
-Interaction with an upstream branch
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-When the upstream source is in ``bazaar`` it is possible to have the
-``.orig.tar.gz`` created by exporting the upstream branch. To do this set
-the ``export-upstream`` option. This only works for normal and merge modes.
-
-  * ``export-upstream = path``
-
-    This option takes a path (remote or local) to a bzr branch that contains
-    the upstream code. If this is set then the plugin will export the code
-    from that branch to create the ``.orig.tar.gz``. This option only has no
-    effect if ``native`` or ``split`` is set, and causes any ``orig-dir``
-    setting to be ignored. See `export-upstream mode`.
-
-  * ``export-upstream-revision = revision``
-
-    This sets the revision that the upstream code will be branched at. It takes
-    the same revision spec as the normal --revision parameter. Use it to
-    associate an upstream version number with a particular revision of the
-    upstream code. This has no effect if ``export-upstream`` is not set.
-
-  * ``export-upstream-prepull = True``
-
-    This allows for the case where you want to use a local mirror of the
-    upstream source, but want to build automatically. It does a pull in the
-    local branch before exporting it. It is your responsibility to setup
-    the default pull location for the branch. It probably doesn't make too
-    much sense to use this option with the ``export-upstream-revision`` one
-    as this will change the tip, but then won't use it. However this is allowed.
-    This option only has an effect if ``export-upstream`` is set. Also note
-    that this option cannot be used when ``export-upstream`` is set to a 
-    remote branch. [Not a command line option.]
-
-  * ``export-upstream-stop-on-trivial-pull = True``
-
-    This allows you to stop the build if the upstream pull doesn't pull any
-    revisions. It is designed for automated builds where you don't want
-    to bother building if there have been no changes. It has no effect unless
-    the ``export-upstream-prepull`` option is true. [Not a command line
-    option.]
-
-.. _export-upstream mode: export_upstream.html
-
 Builders
 ^^^^^^^^
 

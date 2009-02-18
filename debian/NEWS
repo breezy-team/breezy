@@ -11,6 +11,13 @@ bzr-builddeb (2.1) jaunty; urgency=low
     - upstream-debian-<version> or upstream-ubuntu-<version> become
       upstream-<version>
 
+  * export-upstream mode has been deprected in favour of using merge-upstream.
+    Where you once used export-upstream to export the tarball to build against
+    then now use merge-upstream against the branch to merge the code. pristine-tar
+    integration will then ensure the tarball is available at build time, without
+    the problems that export-upstream had. If the merge-upstream does not give
+    any conflicts then you can commit and test-build.
+
  -- James Westby <james.westby@ubuntu.com>  Mon, 16 Feb 2009 16:11:44 +0000
 
 bzr-builddeb (2.0) unstable; urgency=low

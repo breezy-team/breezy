@@ -15,13 +15,11 @@ package, and who are not making the upstream tarball releases.
 This mode is a mixture of most of the other modes. You have the upstream
 code and the packaging in the same branch like `normal mode`_ and
 `native mode`_, but the only packaging changes can be in the ``debian/``
-directory, like `merge mode`_. It also saves you having to manually create
-an upstream tarball, like `export-upstream mode`_.
+directory, like `merge mode`_.
 
 .. _normal mode: normal.html
 .. _native mode: native.html
 .. _merge mode: merge.html
-.. _export-upstream mode: export_upstream.html
 
 Setting up the package
 ######################

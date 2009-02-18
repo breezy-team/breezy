@@ -58,8 +58,6 @@ from bzrlib.plugins.builddeb.builder import (
                      DebMergeBuild,
                      DebNativeBuild,
                      DebSplitBuild,
-                     DebMergeExportUpstreamBuild,
-                     DebExportUpstreamBuild,
                      )
 from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (StopBuild,
@@ -311,7 +309,6 @@ class cmd_builddeb(Command):
             result_dir=None, builder=None, merge=False, build_dir=None,
             orig_dir=None, ignore_changes=False, ignore_unknowns=False,
             quick=False, reuse=False, native=False, split=False,
-            export_upstream=None, export_upstream_revision=None,
             source=False, revision=None, no_user_config=False, result=None):
         branch, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
@@ -330,42 +327,18 @@ class cmd_builddeb(Command):
             (changelog, larstiq) = find_changelog(tree, merge)
             config.set_version(changelog.version)
 
-            if export_upstream is None:
-                export_upstream = config.export_upstream
-
-            if export_upstream_revision is None:
-                export_upstream_revision = config.export_upstream_revision
-
             result_dir, build_dir, orig_dir = self._get_dirs(config, is_local,
                     result_dir, result, build_dir, orig_dir)
             properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
 
             if merge:
-                if export_upstream is None:
-                    build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
-                else:
-                    prepull_upstream = config.prepull_upstream
-                    stop_on_no_change = config.prepull_upstream_stop
-                    build = DebMergeExportUpstreamBuild(properties, tree, export_upstream,
-                                                        export_upstream_revision,
-                                                        prepull_upstream,
-                                                        stop_on_no_change,
-                                                        _is_working_tree=working_tree)
+                build = DebMergeBuild(properties, tree, _is_working_tree=working_tree)
             elif native:
                 build = DebNativeBuild(properties, tree, _is_working_tree=working_tree)
             elif split:
                 build = DebSplitBuild(properties, tree, _is_working_tree=working_tree)
             else:
-                if export_upstream is None:
-                    build = DebBuild(properties, tree, branch, _is_working_tree=working_tree)
-                else:
-                    prepull_upstream = config.prepull_upstream
-                    stop_on_no_change = config.prepull_upstream_stop
-                    build = DebExportUpstreamBuild(properties, tree, export_upstream,
-                                                   export_upstream_revision,
-                                                   prepull_upstream,
-                                                   stop_on_no_change,
-                                                   _is_working_tree=working_tree)
+                build = DebBuild(properties, tree, branch, _is_working_tree=working_tree)
 
             build.prepare(use_existing)
 
@@ -706,19 +679,8 @@ class cmd_bd_do(Command):
         if orig_dir is None:
             orig_dir = default_orig_dir
         properties = BuildProperties(changelog, build_dir, orig_dir, larstiq)
-        export_upstream = config.export_upstream
-        export_upstream_revision = config.export_upstream_revision
 
-        if export_upstream is None:
-            build = DebMergeBuild(properties, t, _is_working_tree=True)
-        else:
-            prepull_upstream = config.prepull_upstream
-            stop_on_no_change = config.prepull_upstream_stop
-            build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
-                                                export_upstream_revision,
-                                                prepull_upstream,
-                                                stop_on_no_change,
-                                                _is_working_tree=True)
+        build = DebMergeBuild(properties, t, _is_working_tree=True)
 
         build.prepare()
         try:

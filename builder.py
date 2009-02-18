@@ -66,61 +66,6 @@ def remove_debian_dir(dir):
   remove_dir(dir, "debian")
 
 
-class UpstreamExporter(object):
-
-  def __init__(self, branch, dest, tarball_base, export_prepull=False,
-               export_revision=None, stop_on_no_change=False):
-    self.branch = branch
-    self.dest = dest
-    self.tarball_base = tarball_base
-    self.export_prepull = export_prepull
-    self.export_revision = export_revision
-    self.stop_on_no_change = stop_on_no_change
-
-  def export(self):
-    if self.export_prepull:
-      try:
-        tree_to = WorkingTree.open(self.branch)
-        branch_to = tree_to.branch
-      except NoWorkingTree:
-        tree_to = None
-        branch_to = Branch.open(self.branch)
-      location = branch_to.get_parent()
-      if location is None:
-        raise DebianError('No default pull location for '+self.branch+ \
-                          ', run "bzr pull location" in that branch to set ' \
-                          'one up')
-      branch_from = Branch.open(location)
-      info('Pulling the upstream branch.')
-      if branch_from.last_revision() == branch_to.last_revision():
-        if self.stop_on_no_change:
-          raise StopBuild('No changes to upstream branch')
-        info('Nothing to pull')
-      else:
-        if tree_to is not None:
-          count = tree_to.pull(branch_from)
-        else:
-          count = branch_to.pull(branch_from)
-        info('Pulled %d revision(s).', int(count))
-      b = branch_to
-    else:
-      b = Branch.open(self.branch)
-
-    if self.export_revision is None:
-      rev_id = b.last_revision()
-    else:
-      rev_spec = RevisionSpec.from_string(self.export_revision)
-      rev_id = rev_spec.in_history(b).rev_id
-
-    info('Exporting upstream source from %s, revision %s',
-         self.branch, rev_id)
-
-    t = b.repository.revision_tree(rev_id)
-    info(self.tarball_base)
-    export(t, self.dest, 'tgz', self.tarball_base)
-    return True
-
-
 def move_file(src, dest):
     base = os.path.basename(src)
     target = os.path.join(dest, base)
@@ -410,29 +355,6 @@ class DebBuild(object):
         +" release. If you do not release it...")
 
 
-class DebExportUpstreamBuild(DebBuild):
-
-  def __init__(self, properties, tree, export_upstream, export_revision,
-               export_prepull, stop_on_no_change, _is_working_tree=False):
-    DebBuild.__init__(self, properties, tree,
-                      _is_working_tree=_is_working_tree)
-    build_dir = self._properties.build_dir()
-    dest = os.path.join(build_dir, self._tarball_name())
-    tarball_base = self._properties.source_dir(False)
-    self.exporter = UpstreamExporter(export_upstream, dest, tarball_base,
-                                     export_prepull=export_prepull,
-                                     export_revision=export_revision,
-                                     stop_on_no_change=stop_on_no_change,
-                                     )
-
-  def _export_upstream_branch(self):
-    return self.exporter.export()
-
-  def _find_tarball(self):
-    build_dir = self._properties.build_dir()
-    return os.path.join(build_dir, self._tarball_name())
-
-
 class DebMergeBuild(DebBuild):
   """A subclass of DebBuild that uses the merge method."""
 
@@ -536,29 +458,5 @@ class DebSplitBuild(DebBuild):
     finally:
       tree.unlock()
     remove_bzrbuilddeb_dir(source_dir)
-
-class DebMergeExportUpstreamBuild(DebMergeBuild):
-  """Subclass of DebMergeBuild that will export an upstream branch to
-     .orig.tar.gz before building."""
-
-  def __init__(self, properties, tree, export_upstream, export_revision,
-               export_prepull, stop_on_no_change, _is_working_tree=False):
-    DebMergeBuild.__init__(self, properties, tree,
-                           _is_working_tree=_is_working_tree)
-    build_dir = self._properties.build_dir()
-    dest = os.path.join(build_dir, self._tarball_name())
-    tarball_base = self._properties.source_dir(False)
-    self.exporter = UpstreamExporter(export_upstream, dest, tarball_base,
-                                     export_prepull=export_prepull,
-                                     export_revision=export_revision,
-                                     stop_on_no_change=stop_on_no_change,
-                                     )
-
-  def _export_upstream_branch(self):
-    return self.exporter.export()
-
-  def _find_tarball(self):
-    build_dir = self._properties.build_dir()
-    return os.path.join(build_dir, self._tarball_name())
 
 # vim: ts=2 sts=2 sw=2
