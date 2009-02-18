@@ -2744,6 +2744,18 @@ class AlreadyStandalone(BzrDirError):
     _fmt = "'%(display_url)s' is already standalone."
 
 
+class AlreadyWithTrees(BzrDirError):
+
+    _fmt = ("Shared repository '%(display_url)s' already creates "
+            "working trees.")
+
+
+class AlreadyWithNoTrees(BzrDirError):
+
+    _fmt = ("Shared repository '%(display_url)s' already doesn't create "
+            "working trees.")
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
