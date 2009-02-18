@@ -198,6 +198,11 @@ class TestPush(ExternalBase):
         self._reset_smart_call_log()
         self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
         rpc_count = len(self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
         self.assertEqual(107, rpc_count)
 
     def test_push_smart_stacked_streaming_acceptance(self):
@@ -210,6 +215,11 @@ class TestPush(ExternalBase):
         self.run_bzr(['push', '--stacked', '--stacked-on', '../parent',
             self.get_url('public')], working_dir='local')
         rpc_count = len(self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
         self.assertEqual(132, rpc_count)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
