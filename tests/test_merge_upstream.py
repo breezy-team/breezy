@@ -115,8 +115,7 @@ class TestMergeUpstreamNormal(TestCaseWithTransport):
     self.build_tarball()
 
   def make_distribution_branch(self):
-    db = DistributionBranch("debian", self.wt.branch, None,
-            tree=self.wt)
+    db = DistributionBranch(self.wt.branch, None, tree=self.wt)
     dbs = DistributionBranchSet()
     dbs.add_branch(db)
     return db

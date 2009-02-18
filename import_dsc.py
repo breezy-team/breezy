@@ -951,21 +951,19 @@ class DistributionBranch(object):
     have a total ordering with respect to these relationships.
     """
 
-    def __init__(self, name, branch, upstream_branch, tree=None,
+    def __init__(self, branch, upstream_branch, tree=None,
             upstream_tree=None):
         """Create a distribution branch.
 
         You can only import packages on to the DistributionBranch
         if both tree and upstream_tree are provided.
 
-        :param name: a String which is used as a descriptive name.
         :param branch: the Branch for the packaging part.
         :param upstream_branch: the Branch for the upstream part, if any.
         :param tree: an optional tree for the branch.
         :param upstream_tree: an optional upstream_tree for the
             upstream_branch.
         """
-        self.name = name
         self.branch = branch
         self.upstream_branch = upstream_branch
         self.tree = tree
@@ -1378,8 +1376,8 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append((branch, merged[0], revid))
-                mutter("Adding merge from lesser of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
+                mutter("Adding merge from lesser of %s for version %s"
+                        % (revid, str(merged[0])))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
@@ -1390,8 +1388,8 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append((branch, merged[0], revid))
-                mutter("Adding merge from greater of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
+                mutter("Adding merge from greater of %s for version %s"
+                    % (revid, str(merged[0])))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
@@ -1414,8 +1412,8 @@ class DistributionBranch(object):
         :param version: the Version to use the upstream part of.
         """
         pull_revision = pull_branch.revid_of_upstream_version(version)
-        mutter("Pulling upstream part of %s from revision %s of %s" % \
-                (str(version), pull_revision, pull_branch.name))
+        mutter("Pulling upstream part of %s from revision %s" % \
+                (str(version), pull_revision))
         up_pull_branch = pull_branch.upstream_branch
         assert self.upstream_tree is not None, \
             "Can't pull upstream with no tree"
@@ -1446,8 +1444,8 @@ class DistributionBranch(object):
             imported.
         """
         pull_revision = pull_branch.revid_of_version(version)
-        mutter("%s already has version %s so pulling from revision %s"
-                % (pull_branch.name, str(version), pull_revision))
+        mutter("already has version %s so pulling from revision %s"
+                % (str(version), pull_revision))
         assert self.tree is not None, "Can't pull branch with no tree"
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
         self.tag_version(version)
@@ -1922,7 +1920,7 @@ class DistributionBranch(object):
         # tree for it.
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
-        to_location = os.path.join(basedir, self.name + "-upstream")
+        to_location = os.path.join(basedir, "upstream")
         dir_to = self.branch.bzrdir.sprout(to_location,
                 revision_id=upstream_tip,
                 accelerator_tree=self.tree)
@@ -1930,8 +1928,7 @@ class DistributionBranch(object):
         self.upstream_branch = self.upstream_tree.branch
 
     def _create_empty_upstream_tree(self, basedir):
-        to_location = os.path.join(basedir,
-                self.name + "-upstream")
+        to_location = os.path.join(basedir, "upstream")
         to_transport = transport.get_transport(to_location)
         to_transport.ensure_base()
         format = bzrdir.format_registry.make_bzrdir('default')

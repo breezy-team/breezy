@@ -262,7 +262,7 @@ class DebBuild(object):
     return False
 
   def _get_upstream_from_pristine(self):
-    db = DistributionBranch("ubuntu", self.branch, None, tree=self._tree)
+    db = DistributionBranch(self.branch, None, tree=self._tree)
     package = self._properties.package()
     version = Version(self._properties.upstream_version())
     if not db._has_upstream_version_in_packaging_branch(version):

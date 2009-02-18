@@ -510,8 +510,7 @@ class cmd_merge_upstream(Command):
                                           "file, or use it as the argument to import."
                                           % dest_name)
                 tarball_filename = os.path.join(orig_dir, dest_name)
-                db = DistributionBranch(distribution_name, tree.branch, None,
-                        tree=tree)
+                db = DistributionBranch(tree.branch, None, tree=tree)
                 dbs = DistributionBranchSet()
                 dbs.add_branch(db)
                 conflicts = db.merge_upstream(tarball_filename, version,
@@ -576,8 +575,6 @@ class cmd_import_dsc(Command):
     filename_opt = Option('file', help="File containing URIs of source "
                           "packages to import.", type=str, argname="filename",
                           short_name='F')
-    distribution_opt = Option('distribution', help="The distribution that "
-            "these packages were uploaded to.", type=str)
 
     takes_options = [filename_opt, distribution_opt]
 
@@ -604,16 +601,8 @@ class cmd_import_dsc(Command):
                 get_dsc_part(from_transport, name)
             db.import_package(os.path.join(orig_target, filename))
 
-    def run(self, files_list, distribution=None, filename=None):
+    def run(self, files_list, filename=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
-        if distribution is None:
-            raise BzrCommandError("You must specify the distribution "
-                    "these packages were uploaded to using --distribution.")
-        distribution = distribution.lower()
-        distribution_name = lookup_distribution(distribution)
-        if distribution_name is None:
-            raise BzrCommandError("Unknown target distribution: %s" \
-                    % distribution)
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:
@@ -641,8 +630,7 @@ class cmd_import_dsc(Command):
             config = debuild_config(tree, tree, False)
             orig_dir = config.orig_dir or default_orig_dir
             orig_target = os.path.join(tree.basedir, default_orig_dir)
-            db = DistributionBranch(distribution_name, tree.branch,
-                    None, tree=tree)
+            db = DistributionBranch(tree.branch, None, tree=tree)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             try:
@@ -798,7 +786,7 @@ class cmd_mark_uploaded(Command):
             if distribution_name is None:
                 raise BzrCommandError("Unknown target distribution: %s" \
                         % target_dist)
-            db = DistributionBranch(distribution_name, t.branch, None)
+            db = DistributionBranch(t.branch, None)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
             if db.has_version(changelog.version):
