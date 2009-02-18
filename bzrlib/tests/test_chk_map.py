@@ -27,11 +27,33 @@ from bzrlib.chk_map import (
     CHKMap,
     InternalNode,
     LeafNode,
+    Node,
     )
-from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCaseWithStore(TestCaseWithTransport):
+class TestNode(tests.TestCase):
+
+    def assertCommonPrefix(self, prefix, key):
+        common = Node.common_prefix(prefix, key)
+        self.assertTrue(len(common) <= len(prefix))
+        self.assertTrue(len(common) <= len(key))
+        self.assertStartsWith(prefix, common)
+        self.assertStartsWith(key, common)
+
+    def test_common_prefix(self):
+        self.assertCommonPrefix('beg', 'begin')
+
+    def test_no_common_prefix(self):
+        self.assertCommonPrefix('begin', 'end')
+
+    def test_equal(self):
+        self.assertCommonPrefix('begin', 'begin')
+
+    def test_not_a_prefix(self):
+        self.assertCommonPrefix('begin', 'b')
+
+
+class TestCaseWithStore(tests.TestCaseWithTransport):
 
     def get_chk_bytes(self):
         # The eassiest way to get a CHK store is a development5 repository and

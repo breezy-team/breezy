@@ -509,12 +509,8 @@ class Node(object):
         # Is there a better way to do this?
         for pos, (left, right) in enumerate(zip(prefix, key)):
             if left != right:
-                pos -= 1
                 break
-        assert pos <= len(prefix)
-        assert pos <= len(key)
-        common = prefix[:pos+1]
-        assert key.startswith(common)
+        common = prefix[:pos]
         return common
 
     @classmethod
