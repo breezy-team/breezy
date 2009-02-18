@@ -2274,7 +2274,7 @@ class _KnitGraphIndex(object):
         :param graph_index: A GraphIndex
         """
         self._missing_compression_parents.update(
-            graph_index._external_references(ref_list_num=1))
+            graph_index.external_references(ref_list_num=1))
         self._missing_compression_parents.difference_update(
             self.get_parent_map(self._missing_compression_parents))
 
