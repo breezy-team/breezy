@@ -66,9 +66,14 @@ def _run(source, processor_factory, control, params, verbose):
         import sys
         stream = sys.stdin
         try:
-            import msvcrt
             import os
-            msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
+            if os.name == 'nt':
+                fileno = getattr(sys.stdin, 'fileno', None)
+                if fileno:
+                    no = fileno()
+                    if no >= 0:     # -1 means we're working as subprocess
+                        import msvcrt
+                        msvcrt.setmode(no, os.O_BINARY)
         except ImportError:
             pass
     else:
@@ -251,6 +256,7 @@ class cmd_fast_import_filter(Command):
                         ),
                      ]
     aliases = []
+    encoding_type = 'exact'
     def run(self, source, verbose=False, include_paths=None,
         exclude_paths=None):
         from bzrlib.plugins.fastimport.processors import filter_processor
