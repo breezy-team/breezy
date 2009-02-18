@@ -17,6 +17,9 @@
 """A manager of caches."""
 
 
+from bzrlib import lru_cache
+
+
 class CacheManager(object):
 
     def __init__(self, info, verbose=False, inventory_cache_size=10):
