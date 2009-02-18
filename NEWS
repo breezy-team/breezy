@@ -36,6 +36,11 @@ IN DEVELOPMENT
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
 
+    * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
+      branches, and this was not noticed due to a bug in the test logic
+      for branches. This is now fixed and a test added to prevent it
+      reoccuring. (Robert Collins, Andrew Bennetts)
+
   DOCUMENTATION:
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
@@ -51,6 +56,10 @@ IN DEVELOPMENT
     * New hook Commands['extend_command'] to allow plugins to access a
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
+
+    * Some methods have been pulled up from ``BzrBranch`` to ``Branch``
+      to aid branch types that are not bzr branch objects (like
+      RemoteBranch). (Robert Collins, Andrew Bennetts)
 
 
 bzr 1.12 "1234567890" 2009-02-13
