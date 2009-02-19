@@ -36,6 +36,12 @@ class AbstractRevisionLoader(object):
         :param repository: the target repository
         """
         self.repo = repo
+        self.try_inv_deltas = getattr(self.repo._format, '_commit_inv_deltas',
+            False)
+
+    def expects_rich_root(self):
+        """Does this loader expect inventories with rich roots?"""
+        return self.repo.supports_rich_root()
 
     def load(self, rev, inv, signature, text_provider,
         inventories_provider=None):
@@ -60,7 +66,7 @@ class AbstractRevisionLoader(object):
             text_provider)
         try:
             rev.inventory_sha1 = self._add_inventory(rev.revision_id,
-                inv, present_parents)
+                inv, present_parents, parent_invs)
         except errors.RevisionAlreadyPresent:
             pass
         if signature is not None:
@@ -74,22 +80,32 @@ class AbstractRevisionLoader(object):
 
         :param revision_id: the revision identifier
         :param entries: iterator over the inventory entries
-        :param parent_inv: the parent inventories
+        :param parent_invs: the parent inventories
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
         """
         raise NotImplementedError(self._load_texts)
 
-    def _add_inventory(self, revision_id, inv, parents):
+    def _add_inventory(self, revision_id, inv, parents, parent_invs):
         """Add the inventory inv to the repository as revision_id.
         
         :param parents: The revision ids of the parents that revision_id
                         is known to have and are in the repository already.
+        :param parent_invs: the parent inventories
 
         :returns: The validator(which is a sha1 digest, though what is sha'd is
             repository format specific) of the serialized inventory.
         """
-        return self.repo.add_inventory(revision_id, inv, parents)
+        if self.try_inv_deltas and len(parents):
+            # Do we need to search for the first non-empty inventory?
+            # parent_invs can be a longer list than parents if there
+            # are ghosts????
+            basis_inv = parent_invs[0]
+            delta = inv._make_delta(basis_inv)
+            return self.repo.add_inventory_by_delta(parents[0], delta,
+                revision_id, parents)
+        else:
+            return self.repo.add_inventory(revision_id, inv, parents)
 
     def _add_revision(self, rev, inv):
         """Add a revision and its inventory to a repository.
@@ -232,7 +248,7 @@ class ImportRevisionLoader1(RevisionLoader1):
         self.random_ids = random_ids
         self.revision_count = 0
 
-    def _add_inventory(self, revision_id, inv, parents):
+    def _add_inventory(self, revision_id, inv, parents, parent_invs):
         """See RevisionLoader._add_inventory."""
         # Code taken from bzrlib.repository.add_inventory
         assert self.repo.is_in_write_group()

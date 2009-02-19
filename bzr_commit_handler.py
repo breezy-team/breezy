@@ -31,10 +31,11 @@ from bzrlib.plugins.fastimport import helpers, processor
 class GenericCommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
-    def __init__(self, command, cache_mgr, repo, verbose=False):
+    def __init__(self, command, cache_mgr, repo, loader, verbose=False):
         super(GenericCommitHandler, self).__init__(command)
         self.cache_mgr = cache_mgr
         self.repo = repo
+        self.loader = loader
         self.verbose = verbose
 
     def pre_process_files(self):
@@ -42,7 +43,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
-        if self.repo.supports_rich_root():
+        if self.loader.expects_rich_root():
             self.lines_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
@@ -129,22 +130,9 @@ class GenericCommitHandler(processor.CommitHandler):
                 return
         self.warning("ignoring delete of %s as not in parent inventories", path)
 
-    def _modify_inventory(self, path, kind, is_executable, data):
-        """Add to or change an item in the inventory."""
-        raise NotImplementedError(self._modify_inventory)
-
-
-class DeltaCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves inventory deltas."""
-
 
 class InventoryCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves inventories."""
-
-    def __init__(self, command, cache_mgr, repo, loader, verbose=False):
-        super(InventoryCommitHandler, self).__init__(command, cache_mgr,
-            repo, verbose=verbose)
-        self.loader = loader
+    """A CommitHandler that builds and saves full inventories."""
 
     def pre_process_files(self):
         super(InventoryCommitHandler, self).pre_process_files()
@@ -157,7 +145,7 @@ class InventoryCommitHandler(GenericCommitHandler):
             inv = self.get_inventory(self.parents[0])
             # TODO: Shallow copy - deep inventory copying is expensive
             self.inventory = inv.copy()
-        if self.repo.supports_rich_root():
+        if self.loader.expects_rich_root():
             self.inventory.revision_id = self.revision_id
         else:
             # In this repository, root entries have no knit or weave. When

@@ -134,10 +134,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.tags = {}
 
         # Create the revision loader to use for committing, if any
-        if self.use_deltas:
-            self.loader = None
-        else:
-            self.loader = self._loader_factory()
+        self.loader = self._loader_factory()
 
         # Disable autopacking if the repo format supports it.
         # THIS IS A HACK - there is no sanctioned way of doing this yet.
@@ -169,9 +166,6 @@ class GenericProcessor(processor.ImportProcessor):
             self.info = configobj.ConfigObj(info_path)
         else:
             self.info = None
-
-        # Decide whether to use full inventories or inventory deltas
-        self.use_deltas = self._experimental
 
         # Decide how often to automatically report progress
         # (not a parameter yet)
@@ -401,12 +395,8 @@ class GenericProcessor(processor.ImportProcessor):
             self._gen_file_ids_cache(parents)
 
         # 'Commit' the revision and report progress
-        if self.use_deltas:
-            handler = bzr_commit_handler.DeltaCommitHandler(cmd,
-                self.cache_mgr, self.repo, verbose=self.verbose)
-        else:
-            handler = bzr_commit_handler.InventoryCommitHandler(cmd,
-                self.cache_mgr, self.repo, self.loader, verbose=self.verbose)
+        handler = bzr_commit_handler.InventoryCommitHandler(cmd,
+            self.cache_mgr, self.repo, self.loader, verbose=self.verbose)
         handler.process()
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
         self._revision_count += 1
