@@ -1519,9 +1519,17 @@ class CHKInventory(CommonInventory):
         if lines[0] != 'chkinventory:':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
         info = {}
+        allowed_keys = frozenset(['root_id', 'revision_id', 'search_key_name',
+                                  'parent_id_basename_to_file_id',
+                                  'id_to_entry'])
         for line in lines[1:]:
             key, value = line.split(': ', 1)
-            assert key not in info
+            if key not in allowed_keys:
+                raise errors.BzrError('Unknown key in inventory: %r\n%r'
+                                      % (key, bytes))
+            if key in info:
+                raise errors.BzrError('Duplicate key in inventory: %r\n%r'
+                                      % (key, bytes))
             info[key] = value
         revision_id = info['revision_id']
         root_id = info['root_id']
