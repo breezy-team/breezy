@@ -1881,6 +1881,14 @@ class _KndxIndex(object):
                 self._kndx_cache[prefix] = (orig_cache, orig_history)
                 raise
 
+    def scan_unvalidated_index(self, graph_index):
+        """See _KnitGraphIndex.scan_unvalidated_index."""
+        raise NotImplementedError(self.scan_unvalidated_index)
+
+    def get_missing_compression_parents(self):
+        """See _KnitGraphIndex.get_missing_compression_parents."""
+        return frozenset()
+    
     def _cache_key(self, key, options, pos, size, parent_keys):
         """Cache a version record in the history array and index cache.
 
@@ -2264,7 +2272,7 @@ class _KnitGraphIndex(object):
                 result.append((key, value))
         self._add_callback(result)
         
-    def _scan_unvalidated_index(self, graph_index):
+    def scan_unvalidated_index(self, graph_index):
         """Inform this _KnitGraphIndex that there is an unvalidated index.
 
         This allows this _KnitGraphIndex to keep track of any missing
