@@ -599,7 +599,7 @@ class GenericCommitHandler(processor.CommitHandler):
         if (fileid in self.inventory and
             isinstance(self.inventory[fileid], inventory.InventoryDirectory)):
             for child_path in self.inventory[fileid].children.keys():
-                self._delete_recursive(os.utils.pathjoin(path, child_path))
+                self._delete_recursive(osutils.pathjoin(path, child_path))
         try:
             if self.inventory.id2path(fileid) == path:
                 del self.inventory[fileid]
