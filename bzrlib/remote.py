@@ -205,7 +205,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             format.supports_external_lookups = (response[4] == 'yes')
             # Used to support creating a real format instance when needed.
             format._creating_bzrdir = self
-            return RemoteRepository(self, format)
+            remote_repo = RemoteRepository(self, format)
+            format._creating_repo = remote_repo
+            return remote_repo
         else:
             raise errors.NoRepositoryPresent(self)
 
@@ -265,6 +267,13 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
     the class level.
+
+    :ivar _custom_format: If set, a specific concrete repository format that 
+        will be used when initializing a repository with this
+        RemoteRepositoryFormat.
+    :ivar _creating_repo: If set, the repository object that this
+        RemoteRepositoryFormat was created for: it can be called into
+        to obtain data like te network name.
     """
 
     _matchingbzrdir = RemoteBzrDirFormat()
@@ -311,6 +320,10 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
+
+    def network_name(self):
+        self._creating_repo._ensure_real()
+        return self._creating_repo._real_repository._format.network_name()
 
 
 class RemoteRepository(_RpcHelper):

@@ -69,6 +69,9 @@ IN DEVELOPMENT
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
 
+    * ``RepositoryFormat`` objects now have a ``network_name`` for passing
+      the format across RPC calls. (Robert Collins, Andrew Bennetts)
+
     * Some methods have been pulled up from ``BzrBranch`` to ``Branch``
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)

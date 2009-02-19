@@ -108,3 +108,16 @@ Location:
         self.run_bzr("init-repo --no-trees notrees")
         repo = BzrDir.open("notrees").open_repository()
         self.assertEqual(False, repo.make_working_trees())
+
+    def test_init_repo_smart_acceptance(self):
+        # The amount of hpss calls made on init-repo to a smart server should
+        # be fixed.
+        self.setup_smart_server_with_call_log()
+        self.run_bzr(['init-repo', self.get_url('repo')])
+        rpc_count = len(self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertEqual(40, rpc_count)
