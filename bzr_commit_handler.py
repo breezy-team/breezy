@@ -58,7 +58,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # Keep the basis inventory. This needs to be treated as read-only.
         if len(self.parents) == 0:
-            self.basis_inventory = self.gen_initial_inventory()
+            self.basis_inventory = self.init_inventory()
         else:
             self.basis_inventory = self.get_inventory(self.parents[0])
         self.inventory_root = self.basis_inventory.root
@@ -66,7 +66,7 @@ class GenericCommitHandler(processor.CommitHandler):
         # directory-path -> inventory-entry for current inventory
         self.directory_entries = dict(self.basis_inventory.directories())
 
-    def gen_initial_inventory(self):
+    def init_inventory(self):
         """Generate an inventory for a parentless revision."""
         inv = inventory.Inventory(revision_id=self.revision_id)
         if self.rev_store.expects_rich_root():
@@ -85,24 +85,6 @@ class GenericCommitHandler(processor.CommitHandler):
             inv = self.rev_store.get_inventory(revision_id)
             self.cache_mgr.inventories[revision_id] = inv
         return inv
-
-    def build_revision(self):
-        rev_props = {}
-        committer = self.command.committer
-        who = "%s <%s>" % (committer[0],committer[1])
-        author = self.command.author
-        if author is not None:
-            author_id = "%s <%s>" % (author[0],author[1])
-            if author_id != who:
-                rev_props['author'] = author_id
-        return revision.Revision(
-           timestamp=committer[2],
-           timezone=committer[3],
-           committer=who,
-           message=helpers.escape_commit_message(self.command.message),
-           revision_id=self.revision_id,
-           properties=rev_props,
-           parent_ids=self.parents)
 
     def bzr_file_id_and_new(self, path):
         """Get a Bazaar file identifier and new flag for a path.
@@ -135,13 +117,23 @@ class GenericCommitHandler(processor.CommitHandler):
         timestamp = committer[2]
         return generate_ids.gen_revision_id(who, timestamp)
 
-    def _warn_unless_in_merges(self, fileid, path):
-        if len(self.parents) <= 1:
-            return
-        for parent in self.parents[1:]:
-            if fileid in self.get_inventory(parent):
-                return
-        self.warning("ignoring delete of %s as not in parent inventories", path)
+    def build_revision(self):
+        rev_props = {}
+        committer = self.command.committer
+        who = "%s <%s>" % (committer[0],committer[1])
+        author = self.command.author
+        if author is not None:
+            author_id = "%s <%s>" % (author[0],author[1])
+            if author_id != who:
+                rev_props['author'] = author_id
+        return revision.Revision(
+           timestamp=committer[2],
+           timezone=committer[3],
+           committer=who,
+           message=helpers.escape_commit_message(self.command.message),
+           revision_id=self.revision_id,
+           properties=rev_props,
+           parent_ids=self.parents)
 
     def _modify_item(self, path, kind, is_executable, data):
         """Add to or change an item in the inventory."""
@@ -197,6 +189,59 @@ class GenericCommitHandler(processor.CommitHandler):
         self.lines_for_commit[dir_file_id] = []
         self.record_new(dirname, ie)
         return basename, ie
+
+    def _delete_item(self, path, inv):
+        file_id = inv.path2id(path)
+        ie = inv[file_id]
+        kind = ie.kind
+        if kind == 'file' or file == 'symlink':
+            self.record_delete(path, ie)
+        elif kind == 'directory':
+            for path, entry in inv.iter_entries_by_dir(from_dir=ie):
+                self.record_delete(path, entry)
+        else:
+            self.warning("ignoring delete of %s %s - feature not yet supported",
+                kind, path)
+
+    def _copy_item(self, src_path, dest_path, inv):
+        if not self.parents:
+            self.warning("ignoring copy of %s to %s - no parent revisions",
+                src_path, dest_path)
+            return
+        file_id = inv.path2id(src_path)
+        if file_id is None:
+            self.warning("ignoring copy of %s to %s - source does not exist",
+                src_path, dest_path)
+            return
+        ie = inv[file_id]
+        kind = ie.kind
+        if kind == 'file':
+            content = self.rev_store.get_file_text(self.parents[0], file_id)
+            self._modify_item(dest_path, kind, ie.executable, content)
+        elif kind == 'symlink':
+            self._modify_item(dest_path, kind, False, ie.symlink_target)
+        else:
+            self.warning("ignoring copy of %s %s - feature not yet supported",
+                kind, path)
+
+    def _rename_item(self, old_path, new_path, inv):
+        # TODO: Generalise to use record_* and inv!!!!
+        file_id = self.bzr_file_id(old_path)
+        basename, new_parent_ie = self._ensure_directory(new_path)
+        new_parent_id = new_parent_ie.file_id
+        existing_id = inv.path2id(new_path)
+        if existing_id is not None:
+            self.inventory.remove_recursive_id(existing_id)
+        ie = self.inventory[file_id]
+        lines = self.rev_store._get_lines(file_id, ie.revision)
+        self.lines_for_commit[file_id] = lines
+        self.inventory.rename(file_id, new_parent_id, basename)
+        self.cache_mgr.rename_path(old_path, new_path)
+        self.inventory[file_id].revision = self.revision_id
+
+    def _delete_all_items(self, inv):
+        for name, root_item in inv.root.children.iteritems():
+            inv.remove_recursive_id(root_item.file_id)
 
 
 class InventoryCommitHandler(GenericCommitHandler):
@@ -256,31 +301,33 @@ class InventoryCommitHandler(GenericCommitHandler):
                     inv = self.get_inventory(revision_id)
                     present.append(revision_id)
                 except:
-                    inv = self.gen_initial_inventory()
+                    inv = self.init_inventory()
                 self.cache_mgr.inventories[revision_id] = inv
             inventories.append(inv)
         return present, inventories
 
-    def modify_handler(self, filecmd):
-        if filecmd.dataref is not None:
-            data = self.cache_mgr.fetch_blob(filecmd.dataref)
-        else:
-            data = filecmd.data
-        self.debug("modifying %s", filecmd.path)
-        self._modify_item(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data)
+    def record_new(self, path, ie):
+        self.inventory.add(ie)
 
-    def delete_handler(self, filecmd):
-        self._delete_recursive(filecmd.path)
+    def record_changed(self, path, ie, parent_ie=None):
+        # HACK: no API for this (del+add does more than it needs to)
+        self.inventory._byid[ie.file_id] = ie
+        if parent_ie is None:
+            parent_ie = self.inventory._byid[ie.parent_id]
+        parent_ie.children[ie.name] = ie
 
-    def _delete_recursive(self, path):
-        self.debug("deleting %s", path)
+    def _delete_item(self, path):
+        # NOTE: I'm retaining this method for now, instead of using the
+        # one in the superclass, because it's taken quite a lot of tweaking
+        # to cover all the edge cases seen in the wild. Long term, it can
+        # probably go once the higher level method does "warn_unless_in_merges"
+        # and handles all the various special cases ...
         fileid = self.bzr_file_id(path)
         dirname, basename = osutils.split(path)
         if (fileid in self.inventory and
             isinstance(self.inventory[fileid], inventory.InventoryDirectory)):
             for child_path in self.inventory[fileid].children.keys():
-                self._delete_recursive(osutils.pathjoin(path, child_path))
+                self._delete_item(osutils.pathjoin(path, child_path))
         try:
             if self.inventory.id2path(fileid) == path:
                 del self.inventory[fileid]
@@ -305,64 +352,42 @@ class InventoryCommitHandler(GenericCommitHandler):
         except KeyError:
             pass
 
+    def _warn_unless_in_merges(self, fileid, path):
+        if len(self.parents) <= 1:
+            return
+        for parent in self.parents[1:]:
+            if fileid in self.get_inventory(parent):
+                return
+        self.warning("ignoring delete of %s as not in parent inventories", path)
+
+    def modify_handler(self, filecmd):
+        if filecmd.dataref is not None:
+            data = self.cache_mgr.fetch_blob(filecmd.dataref)
+        else:
+            data = filecmd.data
+        self.debug("modifying %s", filecmd.path)
+        self._modify_item(filecmd.path, filecmd.kind,
+            filecmd.is_executable, data)
+
+    def delete_handler(self, filecmd):
+        self.debug("deleting %s", path)
+        self._delete_item(filecmd.path)
+
     def copy_handler(self, filecmd):
         src_path = filecmd.src_path
         dest_path = filecmd.dest_path
         self.debug("copying %s to %s", src_path, dest_path)
-        if not self.parents:
-            self.warning("ignoring copy of %s to %s - no parent revisions",
-                src_path, dest_path)
-            return
-        file_id = self.inventory.path2id(src_path)
-        if file_id is None:
-            self.warning("ignoring copy of %s to %s - source does not exist",
-                src_path, dest_path)
-            return
-        ie = self.inventory[file_id]
-        kind = ie.kind
-        if kind == 'file':
-            content = self.rev_store.get_file_text(self.parents[0], file_id)
-            self._modify_item(dest_path, kind, ie.executable, content)
-        elif kind == 'symlink':
-            self._modify_item(dest_path, kind, False, ie.symlink_target)
-        else:
-            self.warning("ignoring copy of %s %s - feature not yet supported",
-                kind, path)
+        self._copy_item(src_path, dest_path, self.inventory)
 
     def rename_handler(self, filecmd):
         old_path = filecmd.old_path
         new_path = filecmd.new_path
         self.debug("renaming %s to %s", old_path, new_path)
-        file_id = self.bzr_file_id(old_path)
-        basename, new_parent_ie = self._ensure_directory(new_path)
-        new_parent_id = new_parent_ie.file_id
-        existing_id = self.inventory.path2id(new_path)
-        if existing_id is not None:
-            self.inventory.remove_recursive_id(existing_id)
-        ie = self.inventory[file_id]
-        lines = self.rev_store._get_lines(file_id, ie.revision)
-        self.lines_for_commit[file_id] = lines
-        self.inventory.rename(file_id, new_parent_id, basename)
-        self.cache_mgr.rename_path(old_path, new_path)
-        self.inventory[file_id].revision = self.revision_id
+        self._rename_item(old_path, new_path, self.inventory)
 
     def deleteall_handler(self, filecmd):
         self.debug("deleting all files (and also all directories)")
-        # Would be nice to have an inventory.clear() method here
-        root_items = [ie for (name, ie) in
-            self.inventory.root.children.iteritems()]
-        for root_item in root_items:
-            self.inventory.remove_recursive_id(root_item.file_id)
-
-    def record_new(self, path, ie):
-        self.inventory.add(ie)
-
-    def record_changed(self, path, ie, parent_ie=None):
-        # HACK: no API for this (del+add does more than it needs to)
-        self.inventory._byid[ie.file_id] = ie
-        if parent_ie is None:
-            parent_ie = self.inventory._byid[ie.parent_id]
-        parent_ie.children[ie.name] = ie
+        self._delete_all_items(self.inventory)
 
 
 class DeltaCommitHandler(GenericCommitHandler):
@@ -380,6 +405,15 @@ class DeltaCommitHandler(GenericCommitHandler):
         inv.apply_delta(self.delta)
         self.cache_mgr.inventories[self.revision_id] = inv
 
+    def record_new(self, path, ie):
+        self.delta.append((None, path, ie.file_id, ie))
+
+    def record_changed(self, path, ie, parent_ie=None):
+        self.delta.append((path, path, ie.file_id, ie))
+
+    def record_delete(self, path, ie):
+        self.delta.append((path, None, ie.file_id, None))
+
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
             data = self.cache_mgr.fetch_blob(filecmd.dataref)
@@ -391,41 +425,26 @@ class DeltaCommitHandler(GenericCommitHandler):
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        path = filecmd.path
-        file_id = self.basis_inventory.path2id(path)
-        ie = self.basis_inventory[file_id]
-        kind = ie.kind
-        if kind == 'file' or file == 'symlink':
-            self.record_delete(path, ie)
-        elif kind == 'directory':
-            for path, entry in self.basis_inventory.iter_entries_by_dir(
-                from_dir=ie):
-                self.record_delete(path, entry)
-        else:
-            self.warning("ignoring delete of %s %s - feature not yet supported",
-                kind, path)
+        delete_item(filecmd.path, self.basis_inventory)
 
     def copy_handler(self, filecmd):
         src_path = filecmd.src_path
         dest_path = filecmd.dest_path
         self.debug("copying %s to %s", src_path, dest_path)
-        raise NotImplementedError(self.copy_handler)
+        self.copy_item(src_path, dest_path, self.basis_inventory)
 
     def rename_handler(self, filecmd):
         old_path = filecmd.old_path
         new_path = filecmd.new_path
         self.debug("renaming %s to %s", old_path, new_path)
-        raise NotImplementedError(self.rename_handler)
+        self._rename_item(old_path, new_path, self.basis_inventory)
 
     def deleteall_handler(self, filecmd):
         self.debug("deleting all files (and also all directories)")
-        raise NotImplementedError(self.deleteall_handler)
-
-    def record_new(self, path, ie):
-        self.delta.append((None, path, ie.file_id, ie))
-
-    def record_changed(self, path, ie, parent_ie=None):
-        self.delta.append((path, path, ie.file_id, ie))
-
-    def record_delete(self, path, ie):
-        self.delta.append((path, None, ie.file_id, None))
+        # I'm not 100% sure this will work in the delta case.
+        # But clearing out the basis inventory so that everything
+        # is added sounds ok in theory ...
+        # We grab a copy as the basis is likely to be cached and
+        # we don't want to destroy the cached version
+        self.basis_inventory = self.basis_inventory.copy()
+        self._delete_all_items(self.basis_inventory)
