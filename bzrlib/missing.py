@@ -37,16 +37,7 @@ def iter_log_revisions(revisions, revision_source, verbose):
             revno, rev_id, merge_depth = rev
         rev = revision_source.get_revision(rev_id)
         if verbose:
-            remote_tree = revision_source.revision_tree(rev_id)
-            parent_rev_id = rev.parent_ids[0]
-            if last_rev_id == parent_rev_id:
-                parent_tree = last_tree
-            else:
-                parent_tree = revision_source.revision_tree(parent_rev_id)
-            revision_tree = revision_source.revision_tree(rev_id)
-            last_rev_id = rev_id
-            last_tree = revision_tree
-            delta = revision_tree.changes_from(parent_tree)
+            delta = revision_source.get_revision_delta(rev_id)
         else:
             delta = None
         yield log.LogRevision(rev, revno, merge_depth, delta=delta)

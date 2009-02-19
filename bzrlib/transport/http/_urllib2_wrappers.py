@@ -47,6 +47,12 @@ DEBUG = 0
 # ensure that.
 
 import httplib
+try:
+    import kerberos
+except ImportError:
+    have_kerberos = False
+else:
+    have_kerberos = True
 import socket
 import urllib
 import urllib2
@@ -943,7 +949,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     preventively set authentication headers after the first
     successful authentication.
 
-    This can be used for http and proxy, as well as for basic and
+    This can be used for http and proxy, as well as for basic, negotiate and
     digest authentications.
 
     This provides an unified interface for all authentication handlers
@@ -1141,6 +1147,53 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         return request
 
     https_request = http_request # FIXME: Need test
+
+
+class NegotiateAuthHandler(AbstractAuthHandler):
+    """A authentication handler that handles WWW-Authenticate: Negotiate.
+
+    At the moment this handler supports just Kerberos. In the future, 
+    NTLM support may also be added.
+    """
+
+    handler_order = 480
+
+    def auth_match(self, header, auth):
+        scheme = header.lower()
+        if scheme != 'negotiate':
+            return False
+        self.update_auth(auth, 'scheme', scheme)
+        resp = self._auth_match_kerberos(auth)
+        if resp is None:
+            return False
+        # Optionally should try to authenticate using NTLM here
+        self.update_auth(auth, 'negotiate_response', resp)
+        return True
+
+    def _auth_match_kerberos(self, auth):
+        """Try to create a GSSAPI response for authenticating against a host."""
+        if not have_kerberos:
+            return None
+        ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
+        if ret < 1:
+            trace.warning('Unable to create GSSAPI context for %s: %d',
+                auth['host'], ret)
+            return None
+        ret = kerberos.authGSSClientStep(vc, "")
+        if ret < 0:
+            trace.mutter('authGSSClientStep failed: %d', ret)
+            return None
+        return kerberos.authGSSClientResponse(vc)
+
+    def build_auth_header(self, auth, request):
+        return "Negotiate %s" % auth['negotiate_response']
+
+    def auth_params_reusable(self, auth):
+        # If the auth scheme is known, it means a previous
+        # authentication was successful, all information is
+        # available, no further checks are needed.
+        return (auth.get('scheme', None) == 'negotiate' and 
+                auth.get('negotiate_response', None) is not None)
 
 
 class BasicAuthHandler(AbstractAuthHandler):
@@ -1368,6 +1421,14 @@ class ProxyDigestAuthHandler(DigestAuthHandler, ProxyAuthHandler):
     """Custom proxy basic authentication handler"""
 
 
+class HTTPNegotiateAuthHandler(NegotiateAuthHandler, HTTPAuthHandler):
+    """Custom http negotiate authentication handler"""
+
+
+class ProxyNegotiateAuthHandler(NegotiateAuthHandler, ProxyAuthHandler):
+    """Custom proxy negotiate authentication handler"""
+
+
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     """Process HTTP error responses.
 
@@ -1432,8 +1493,10 @@ class Opener(object):
             ProxyHandler(),
             HTTPBasicAuthHandler(),
             HTTPDigestAuthHandler(),
+            HTTPNegotiateAuthHandler(),
             ProxyBasicAuthHandler(),
             ProxyDigestAuthHandler(),
+            ProxyNegotiateAuthHandler(),
             HTTPHandler,
             HTTPSHandler,
             HTTPDefaultErrorHandler,

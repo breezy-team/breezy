@@ -76,6 +76,7 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
+from bzrlib.smart import client, server
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -2040,6 +2041,19 @@ class TestCaseWithMemoryTransport(TestCase):
         self.__readonly_server = None
         self.__server = None
         self.reduceLockdirTimeout()
+
+    def setup_smart_server_with_call_log(self):
+        """Sets up a smart server as the transport server with a call log."""
+        self.transport_server = server.SmartTCPServer_for_testing
+        self.hpss_calls = []
+        def capture_hpss_call(params):
+            import traceback
+            self.hpss_calls.append((params, traceback.format_stack()))
+        client._SmartClient.hooks.install_named_hook(
+            'call', capture_hpss_call, None)
+
+    def reset_smart_call_log(self):
+        self.hpss_calls = []
 
      
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
