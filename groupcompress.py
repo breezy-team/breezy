@@ -156,6 +156,7 @@ class GroupCompressor(object):
         self.line_locations = self._equivalence_table_class([])
         self.lines = self.line_locations.lines
         self.labels_deltas = {}
+        self._present_prefixes = set()
 
     def get_matching_blocks(self, lines):
         """Return an the ranges in lines which match self.lines.
@@ -216,7 +217,15 @@ class GroupCompressor(object):
         range_start = 0
         flush_range = self.flush_range
         copy_ends = None
-        blocks = self.get_matching_blocks(lines)
+        blocks = None
+        if len(key) > 1:
+            prefix = key[0]
+            if prefix not in self._present_prefixes:
+                self._present_prefixes.add(prefix)
+                # Mark this as not matching anything
+                blocks = [(0, len(lines), 0)]
+        if blocks is None:
+            blocks = self.get_matching_blocks(lines)
         current_pos = 0
         # We either copy a range (while there are reusable lines) or we 
         # insert new lines. To find reusable lines we traverse 
