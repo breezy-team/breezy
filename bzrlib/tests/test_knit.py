@@ -862,8 +862,6 @@ class LowLevelKnitDataTests(TestCase):
 
 class LowLevelKnitIndexTests(TestCase):
 
-    # XXX call new API blows up
-
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
         orig = knit._load_data
