@@ -188,8 +188,8 @@ class BzrDir(object):
         """
         transport.ensure_base()
         require_stacking = (stacked_on is not None)
-        metadir = self.cloning_metadir(require_stacking)
-        result = metadir.initialize_on_transport(transport)
+        format = self.cloning_metadir(require_stacking)
+        result = format.initialize_on_transport(transport)
         repository_policy = None
         try:
             local_repo = self.find_repository()
@@ -1707,7 +1707,29 @@ class BzrDirFormat(object):
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
-        # Since we don't have a .bzr directory, inherit the
+        try:
+            # can we hand off the request to the smart server rather than using
+            # vfs calls?
+            client_medium = transport.get_smart_medium()
+        except errors.NoSmartMedium:
+            return self._initialize_on_transport_vfs(transport)
+        else:
+            # Current RPC's only know how to create bzr metadir1 instances, so
+            # we still delegate to vfs methods if the requested format is not a
+            # metadir1
+            if type(self) != BzrDirMetaFormat1:
+                return self._initialize_on_transport_vfs(transport)
+            remote_format = RemoteBzrDirFormat()
+            self._supply_sub_formats_to(remote_format)
+            return remote_format.initialize_on_transport(transport)
+
+    def _initialize_on_transport_vfs(self, transport):
+        """Initialize a new bzrdir using VFS calls.
+        
+        :param transport: The transport to create the .bzr directory in.
+        :return: A
+        """
+        # Since we are creating a .bzr directory, inherit the
         # mode from the root directory
         temp_control = lockable_files.LockableFiles(transport,
                             '', lockable_files.TransportLock)
@@ -1737,12 +1759,7 @@ class BzrDirFormat(object):
                     mode=file_mode)
         finally:
             control_files.unlock()
-        # If we initialized using VFS methods on a RemoteTransport, return a
-        # Remote object: No need for it to be slower than necessary.
-        if isinstance(transport, remote_transport.RemoteTransport):
-            return self.open(transport)
-        else:
-            return self.open(transport, _found=True)
+        return self.open(transport, _found=True)
 
     def is_supported(self):
         """Is this format supported?

@@ -40,6 +40,16 @@ from bzrlib.workingtree import WorkingTree
 
 class TestPush(ExternalBase):
 
+    def test_push_error_on_vfs_http(self):
+        """ pushing a branch to a HTTP server fails cleanly. """
+        # the trunk is published on a web server
+        self.transport_readonly_server = HttpServer
+        self.make_branch('source')
+        public_url = self.get_readonly_url('target')
+        self.run_bzr_error(['http does not support mkdir'],
+                           ['push', public_url],
+                           working_dir='source')
+
     def test_push_remember(self):
         """Push changes from one branch to another and test push location."""
         transport = self.get_transport()
@@ -180,22 +190,11 @@ class TestPush(ExternalBase):
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.failUnlessExists('to-two')
 
-    def _reset_smart_call_log(self):
-        self.hpss_calls = []
-
-    def _setup_smart_call_log(self):
-        self.transport_server = server.SmartTCPServer_for_testing
-        self.hpss_calls = []
-        def capture_hpss_call(params):
-            self.hpss_calls.append(params)
-        client._SmartClient.hooks.install_named_hook(
-            'call', capture_hpss_call, None)
-
     def test_push_smart_non_stacked_streaming_acceptance(self):
-        self._setup_smart_call_log()
+        self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('from')
         t.commit(allow_pointless=True, message='first commit')
-        self._reset_smart_call_log()
+        self.reset_smart_call_log()
         self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
         rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
@@ -203,15 +202,15 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(107, rpc_count)
+        self.assertEqual(94, rpc_count)
 
     def test_push_smart_stacked_streaming_acceptance(self):
-        self._setup_smart_call_log()
+        self.setup_smart_server_with_call_log()
         parent = self.make_branch_and_tree('parent', format='1.9')
         parent.commit(message='first commit')
         local = parent.bzrdir.sprout('local').open_workingtree()
         local.commit(message='local commit')
-        self._reset_smart_call_log()
+        self.reset_smart_call_log()
         self.run_bzr(['push', '--stacked', '--stacked-on', '../parent',
             self.get_url('public')], working_dir='local')
         rpc_count = len(self.hpss_calls)
@@ -220,7 +219,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(132, rpc_count)
+        self.assertEqual(119, rpc_count)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
