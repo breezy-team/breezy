@@ -492,6 +492,27 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     result[key] = self._unadded_refs[key]
         return result
 
+    def _get_group_and_delta_lines(self, index_memo):
+        read_memo = index_memo[0:3]
+        # get the group:
+        try:
+            plain = self._group_cache[read_memo]
+        except KeyError:
+            # read the group
+            zdata = self._access.get_raw_records([read_memo]).next()
+            # decompress - whole thing - this is not a bug, as it
+            # permits caching. We might want to store the partially
+            # decompresed group and decompress object, so that recent
+            # texts are not penalised by big groups.
+            plain = zlib.decompress(zdata) #, index_memo[4])
+            self._group_cache[read_memo] = plain
+        # cheapo debugging:
+        # print len(zdata), len(plain)
+        # parse - requires split_lines, better to have byte offsets
+        # here (but not by much - we only split the region for the
+        # recipe, and we often want to end up with lines anyway.
+        return plain, split_lines(plain[index_memo[3]:index_memo[4]])
+
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """Get a stream of records for keys.
 
@@ -555,26 +576,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
-                read_memo = index_memo[0:3]
-                # get the group:
-                try:
-                    plain = self._group_cache[read_memo]
-                except KeyError:
-                    # read the group
-                    zdata = self._access.get_raw_records([read_memo]).next()
-                    # decompress - whole thing - this is not a bug, as it
-                    # permits caching. We might want to store the partially
-                    # decompresed group and decompress object, so that recent
-                    # texts are not penalised by big groups.
-                    decomp = zlib.decompressobj()
-                    plain = decomp.decompress(zdata) #, index_memo[4])
-                    self._group_cache[read_memo] = plain
-                # cheapo debugging:
-                # print len(zdata), len(plain)
-                # parse - requires split_lines, better to have byte offsets
-                # here (but not by much - we only split the region for the
-                # recipe, and we often want to end up with lines anyway.
-                delta_lines = split_lines(plain[index_memo[3]:index_memo[4]])
+                plain, delta_lines = self._get_group_and_delta_lines(index_memo)
                 label, sha1, delta = parse(delta_lines)
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
