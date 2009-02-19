@@ -1577,6 +1577,7 @@ class DistributionBranch(object):
                 upstream_revision = upstream_branch.last_revision()
             self.upstream_branch.fetch(upstream_branch,
                     last_revision=upstream_revision)
+            upstream_branch.tags.merge_to(self.upstream_branch.tags)
             upstream_parents.append(upstream_revision)
         self.upstream_tree.set_parent_ids(upstream_parents)
         revprops = {"deb-md5": md5}
