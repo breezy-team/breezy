@@ -17,7 +17,6 @@
 """CommitHandlers that build and save revisions & their inventories."""
 
 
-import os
 from bzrlib import (
     errors,
     generate_ids,
@@ -31,11 +30,10 @@ from bzrlib.plugins.fastimport import helpers, processor
 class GenericCommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
-    def __init__(self, command, cache_mgr, repo, loader, verbose=False):
+    def __init__(self, command, cache_mgr, rev_store, verbose=False):
         super(GenericCommitHandler, self).__init__(command)
         self.cache_mgr = cache_mgr
-        self.repo = repo
-        self.loader = loader
+        self.rev_store = rev_store
         self.verbose = verbose
 
     def pre_process_files(self):
@@ -43,7 +41,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
-        if self.loader.expects_rich_root():
+        if self.rev_store.expects_rich_root():
             self.lines_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
@@ -114,13 +112,10 @@ class GenericCommitHandler(processor.CommitHandler):
         except KeyError:
             if self.verbose:
                 self.note("get_inventory cache miss for %s", revision_id)
-            # Not cached so reconstruct from repository
-            inv = self.revision_tree(revision_id).inventory
+            # Not cached so reconstruct from the RevisionStore
+            inv = self.rev_store.get_inventory(revision_id)
             self.cache_mgr.inventories[revision_id] = inv
         return inv
-
-    def revision_tree(self, revision_id):
-        return self.repo.revision_tree(revision_id)
 
     def _warn_unless_in_merges(self, fileid, path):
         if len(self.parents) <= 1:
@@ -145,12 +140,12 @@ class InventoryCommitHandler(GenericCommitHandler):
             inv = self.get_inventory(self.parents[0])
             # TODO: Shallow copy - deep inventory copying is expensive
             self.inventory = inv.copy()
-        if self.loader.expects_rich_root():
+        if self.rev_store.expects_rich_root():
             self.inventory.revision_id = self.revision_id
         else:
-            # In this repository, root entries have no knit or weave. When
-            # serializing out to disk and back in, root.revision is always
-            # the new revision_id.
+            # In this revision store, root entries have no knit or weave.
+            # When serializing out to disk and back in, root.revision is
+            # always the new revision_id.
             self.inventory.root.revision = self.revision_id
 
         # directory-path -> inventory-entry for current inventory
@@ -159,7 +154,7 @@ class InventoryCommitHandler(GenericCommitHandler):
     def gen_initial_inventory(self):
         """Generate an inventory for a parentless revision."""
         inv = inventory.Inventory(revision_id=self.revision_id)
-        if self.repo.supports_rich_root():
+        if self.rev_store.expects_rich_root():
             # The very first root needs to have the right revision
             inv.root.revision = self.revision_id
         return inv
@@ -168,7 +163,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         """Save the revision."""
         self.cache_mgr.inventories[self.revision_id] = self.inventory
         rev = self.build_revision()
-        self.loader.load(rev, self.inventory, None,
+        self.rev_store.load(rev, self.inventory, None,
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
 
@@ -185,7 +180,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         present = []
         inventories = []
         # If an inventory is in the cache, we assume it was
-        # successfully loaded into the repsoitory
+        # successfully loaded into the revision store
         for revision_id in revision_ids:
             try:
                 inv = self.cache_mgr.inventories[revision_id]
@@ -193,13 +188,12 @@ class InventoryCommitHandler(GenericCommitHandler):
             except KeyError:
                 if self.verbose:
                     self.note("get_inventories cache miss for %s", revision_id)
-                # Not cached so reconstruct from repository
-                if self.repo.has_revision(revision_id):
-                    rev_tree = self.revision_tree(revision_id)
+                # Not cached so reconstruct from the revision store
+                try:
+                    inv = self.get_inventory(revision_id)
                     present.append(revision_id)
-                else:
-                    rev_tree = self.revision_tree(None)
-                inv = rev_tree.inventory
+                except:
+                    inv = self.gen_initial_inventory()
                 self.cache_mgr.inventories[revision_id] = inv
             inventories.append(inv)
         return present, inventories
@@ -223,7 +217,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         if (fileid in self.inventory and
             isinstance(self.inventory[fileid], inventory.InventoryDirectory)):
             for child_path in self.inventory[fileid].children.keys():
-                self._delete_recursive(os.utils.pathjoin(path, child_path))
+                self._delete_recursive(osutils.pathjoin(path, child_path))
         try:
             if self.inventory.id2path(fileid) == path:
                 del self.inventory[fileid]
@@ -264,8 +258,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         ie = self.inventory[file_id]
         kind = ie.kind
         if kind == 'file':
-            revtree = self.revision_tree(self.parents[0])
-            content = revtree.get_file_text(file_id)
+            content = self.rev_store.get_file_text(self.parents[0], file_id)
             self._modify_inventory(dest_path, kind, ie.executable, content)
         elif kind == 'symlink':
             self._modify_inventory(dest_path, kind, False, ie.symlink_target)
@@ -284,7 +277,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         if existing_id is not None:
             self.inventory.remove_recursive_id(existing_id)
         ie = self.inventory[file_id]
-        lines = self.loader._get_lines(file_id, ie.revision)
+        lines = self.rev_store._get_lines(file_id, ie.revision)
         self.lines_for_commit[file_id] = lines
         self.inventory.rename(file_id, new_parent_id, basename)
         self.cache_mgr.rename_path(old_path, new_path)

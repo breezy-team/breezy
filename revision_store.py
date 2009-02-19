@@ -14,17 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Parameterised loading of revisions into a repository."""
+"""An abstraction of a repository providing just the bits importing needs."""
 
 
 from bzrlib import errors, knit, lru_cache, osutils
 from bzrlib import revision as _mod_revision
 
 
-class AbstractRevisionLoader(object):
-    # NOTE: This is effectively bzrlib.repository._install_revision
-    # refactored to be a class. When importing, we want more flexibility
-    # in how previous revisions are cached, data is feed in, etc.
+class AbstractRevisionStore(object):
 
     def __init__(self, repo):
         """An object responsible for loading revisions into a repository.
@@ -40,12 +37,21 @@ class AbstractRevisionLoader(object):
             False)
 
     def expects_rich_root(self):
-        """Does this loader expect inventories with rich roots?"""
+        """Does this store expect inventories with rich roots?"""
         return self.repo.supports_rich_root()
+
+    def get_inventory(self, revision_id):
+        """Get a stored inventory."""
+        return self.repo.get_inventory(revision_id)
+
+    def get_file_text(self, revision_id, file_id):
+        """Get the text stored for a file in a given revision."""
+        revtree = self.repo.revision_tree(revision_id)
+        return revtree.get_file_text(file_id)
 
     def load(self, rev, inv, signature, text_provider,
         inventories_provider=None):
-        """Load a revision into a repository.
+        """Load a revision.
 
         :param rev: the Revision
         :param inv: the inventory
@@ -59,6 +65,9 @@ class AbstractRevisionLoader(object):
                 including an empty inventory for the missing revisions
             If None, a default implementation is provided.
         """
+        # NOTE: This is bzrlib.repository._install_revision refactored to
+        # to provide more flexibility in how previous revisions are cached,
+        # data is feed in, etc.
         if inventories_provider is None:
             inventories_provider = self._default_inventories_provider
         present_parents, parent_invs = inventories_provider(rev.parent_ids)
@@ -113,7 +122,7 @@ class AbstractRevisionLoader(object):
         :param rev: the Revision
         :param inv: the inventory
         """
-        repo.add_revision(rev.revision_id, rev, inv)
+        self.repo.add_revision(rev.revision_id, rev, inv)
 
     def _default_inventories_provider(self, revision_ids):
         """An inventories provider that queries the repository."""
@@ -129,14 +138,14 @@ class AbstractRevisionLoader(object):
         return present, inventories
 
 
-class RevisionLoader1(AbstractRevisionLoader):
-    """A RevisionLoader that uses the old bzrlib Repository API.
+class RevisionStore1(AbstractRevisionStore):
+    """A RevisionStore that uses the old bzrlib Repository API.
     
     The old API was present until bzr.dev rev 3510.
     """
 
     def _load_texts(self, revision_id, entries, parent_invs, text_provider):
-        """See RevisionLoader._load_texts()."""
+        """See RevisionStore._load_texts()."""
         # Backwards compatibility hack: skip the root id.
         if not self.repo.supports_rich_root():
             path, root = entries.next()
@@ -181,11 +190,11 @@ class RevisionLoader1(AbstractRevisionLoader):
         self.repo._revision_store.add_revision(rev, self.repo.get_transaction())
 
 
-class RevisionLoader2(AbstractRevisionLoader):
-    """A RevisionLoader that uses the new bzrlib Repository API."""
+class RevisionStore2(AbstractRevisionStore):
+    """A RevisionStore that uses the new bzrlib Repository API."""
 
     def _load_texts(self, revision_id, entries, parent_invs, text_provider):
-        """See RevisionLoader._load_texts()."""
+        """See RevisionStore._load_texts()."""
         # Backwards compatibility hack: skip the root id.
         if not self.repo.supports_rich_root():
             path, root = entries.next()
@@ -217,16 +226,17 @@ class RevisionLoader2(AbstractRevisionLoader):
             raise errors.RevisionNotPresent(record.key, self.repo)
         return osutils.split_lines(record.get_bytes_as('fulltext'))
 
-    def _add_revision(self, rev, inv):
-        # There's no need to do everything repo.add_revision does and
-        # doing so (since bzr.dev 3392) can be pretty slow for long
-        # delta chains on inventories. Just do the essentials here ...
-        _mod_revision.check_not_reserved_id(rev.revision_id)
-        self.repo._add_revision(rev)
+    # This is breaking imports into brisbane-core currently
+    #def _add_revision(self, rev, inv):
+    #    # There's no need to do everything repo.add_revision does and
+    #    # doing so (since bzr.dev 3392) can be pretty slow for long
+    #    # delta chains on inventories. Just do the essentials here ...
+    #    _mod_revision.check_not_reserved_id(rev.revision_id)
+    #    self.repo._add_revision(rev)
  
 
-class ImportRevisionLoader1(RevisionLoader1):
-    """A RevisionLoader (old Repository API) optimised for importing.
+class ImportRevisionStore1(RevisionStore1):
+    """A RevisionStore (old Repository API) optimised for importing.
 
     This implementation caches serialised inventory texts and provides
     fine-grained control over when inventories are stored as fulltexts.
@@ -234,7 +244,7 @@ class ImportRevisionLoader1(RevisionLoader1):
 
     def __init__(self, repo, parent_texts_to_cache=1, fulltext_when=None,
         random_ids=True):
-        """See AbstractRevisionLoader.__init__.
+        """See AbstractRevisionStore.__init__.
 
         :param repository: the target repository
         :param parent_text_to_cache: the number of parent texts to cache
@@ -242,14 +252,14 @@ class ImportRevisionLoader1(RevisionLoader1):
           whether to fulltext the inventory or not. The revision count
           is passed as a parameter and the result is treated as a boolean.
         """
-        RevisionLoader1.__init__(self, repo)
+        RevisionStore1.__init__(self, repo)
         self.inv_parent_texts = lru_cache.LRUCache(parent_texts_to_cache)
         self.fulltext_when = fulltext_when
         self.random_ids = random_ids
         self.revision_count = 0
 
     def _add_inventory(self, revision_id, inv, parents, parent_invs):
-        """See RevisionLoader._add_inventory."""
+        """See RevisionStore._add_inventory."""
         # Code taken from bzrlib.repository.add_inventory
         assert self.repo.is_in_write_group()
         _mod_revision.check_not_reserved_id(revision_id)

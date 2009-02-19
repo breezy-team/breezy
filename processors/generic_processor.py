@@ -37,7 +37,7 @@ from bzrlib.plugins.fastimport import (
     idmapfile,
     marks_file,
     processor,
-    revisionloader,
+    revision_store,
     )
 
 
@@ -133,8 +133,8 @@ class GenericProcessor(processor.ImportProcessor):
         # mapping of tag name to revision_id
         self.tags = {}
 
-        # Create the revision loader to use for committing, if any
-        self.loader = self._loader_factory()
+        # Create the revision store to use for committing, if any
+        self.rev_store = self._revision_store_factory()
 
         # Disable autopacking if the repo format supports it.
         # THIS IS A HACK - there is no sanctioned way of doing this yet.
@@ -200,13 +200,13 @@ class GenericProcessor(processor.ImportProcessor):
         else:
             self.total_commits = self.max_commits
 
-    def _loader_factory(self):
-        """Make a RevisionLoader based on what the repository supports."""
+    def _revision_store_factory(self):
+        """Make a RevisionStore based on what the repository supports."""
         new_repo_api = hasattr(self.repo, 'revisions')
         if new_repo_api:
-            return revisionloader.RevisionLoader2(self.repo)
+            return revision_store.RevisionStore2(self.repo)
         elif not self._experimental:
-            return revisionloader.RevisionLoader1(self.repo)
+            return revision_store.RevisionStore1(self.repo)
         else:
             def fulltext_when(count):
                 total = self.total_commits
@@ -220,7 +220,7 @@ class GenericProcessor(processor.ImportProcessor):
                         count)
                 return fulltext
 
-            return revisionloader.ImportRevisionLoader1(
+            return revision_store.ImportRevisionStore1(
                 self.repo, self.inventory_cache_size,
                 fulltext_when=fulltext_when)
 
@@ -396,7 +396,7 @@ class GenericProcessor(processor.ImportProcessor):
 
         # 'Commit' the revision and report progress
         handler = bzr_commit_handler.InventoryCommitHandler(cmd,
-            self.cache_mgr, self.repo, self.loader, verbose=self.verbose)
+            self.cache_mgr, self.rev_store, verbose=self.verbose)
         handler.process()
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
         self._revision_count += 1
