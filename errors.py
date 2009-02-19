@@ -33,6 +33,13 @@ class NoSourceDirError(BzrError):
             "--export-only or --dont-purge to get one that can be used")
 
 
+class MissingUpstreamTarball(BzrError):
+    _fmt = "Unable to find the needed upstream tarball: %(tarball_name)s."
+
+    def __init__(self, tarball_name):
+        BzrError.__init__(self, tarball_name=tarball_name)
+
+
 class BuildFailedError(BzrError):
     _fmt = "The build failed."
 

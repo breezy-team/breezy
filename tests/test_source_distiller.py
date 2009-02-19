@@ -25,9 +25,14 @@ from bzrlib.errors import (
         )
 from bzrlib.tests import TestCaseWithTransport
 
+from bzrlib.plugins.builddeb.errors import MissingUpstreamTarball
 from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
         NativeSourceDistiller,
+        )
+from bzrlib.plugins.builddeb.upstream import (
+        _MissingUpstreamProvider,
+        _TouchUpstreamProvider,
         )
 
 
@@ -37,7 +42,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        sd = NativeSourceDistiller(wt)
+        sd = NativeSourceDistiller(wt, None)
         self.build_tree(['target/'])
         self.assertRaises(FileExists, sd.distill, 'target')
 
@@ -49,7 +54,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         wt.add(['a'])
         revid = wt.commit("one")
         rev_tree = wt.basis_tree()
-        sd = NativeSourceDistiller(rev_tree)
+        sd = NativeSourceDistiller(rev_tree, None)
         sd.distill('target')
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
@@ -64,7 +69,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
                 '.bzr-builddeb/default.conf'])
         revid = wt.commit("one")
         rev_tree = wt.basis_tree()
-        sd = NativeSourceDistiller(rev_tree)
+        sd = NativeSourceDistiller(rev_tree, None)
         sd.distill('target')
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
@@ -77,7 +82,7 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        sd = FullSourceDistiller(wt, "tarball")
+        sd = FullSourceDistiller(wt, None)
         self.build_tree(['target/'])
         self.assertRaises(FileExists, sd.distill, 'target')
 
@@ -85,16 +90,14 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.build_tree(['source/'])
-        sd = FullSourceDistiller(wt, "source/tarball")
-        self.assertRaises(NoSuchFile, sd.distill, 'target')
+        sd = FullSourceDistiller(wt, _MissingUpstreamProvider())
+        self.assertRaises(MissingUpstreamTarball, sd.distill, 'target')
 
     def test_distill_tarball_exists(self):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.build_tree(['tarball'])
-        sd = FullSourceDistiller(wt, "tarball")
+        sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'))
         sd.distill('target')
         self.failUnlessExists('tarball')
 
@@ -102,9 +105,9 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_write()
         self.addCleanup(wt.unlock)
-        self.build_tree(['source/', 'source/tarball', 'a', '.bzr-builddeb'])
+        self.build_tree(['a', '.bzr-builddeb'])
         wt.add(['a', '.bzr-builddeb'])
-        sd = FullSourceDistiller(wt, "source/tarball")
+        sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'))
         sd.distill('target')
         self.failUnlessExists('tarball')
         self.failUnlessExists('target')

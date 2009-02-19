@@ -1,5 +1,5 @@
 #    source_distiller.py -- Getting the source to build from a branch
-#    Copyright (C) 2008 Canonical Ltd.
+#    Copyright (C) 2008, 2009 Canonical Ltd.
 #
 #    This file is part of bzr-builddeb.
 #
@@ -32,12 +32,15 @@ class SourceDistiller(object):
     a location of your choice.
     """
 
-    def __init__(self):
-        """Create a SourceDistiller to distill from the specified branch.
+    def __init__(self, tree, upstream_provider):
+        """Create a SourceDistiller to distill from the specified tree.
 
-        See the specific subclass for required arguments.
+        :param tree: The tree to use as the source.
+        :param upstream_provider: an UpstreamProvider to provide the upstream
+            tarball if needed.
         """
-        raise NotImplementedError(self.__init__)
+        self.tree = tree
+        self.upstream_provider = upstream_provider
 
     def distill(self, target):
         """Extract the source to a tree rooted at the given location.
@@ -60,14 +63,6 @@ class SourceDistiller(object):
 class NativeSourceDistiller(SourceDistiller):
     """A SourceDistiller for unpacking a native package from a branch."""
 
-    def __init__(self, tree):
-        """Create a NativeSourceDistiller.
-
-        :param tree: the tree containing the native package source. Should
-            be locked at least for read.
-        """
-        self.tree = tree
-
     def _distill(self, target):
         export(self.tree, target, None, None)
 
@@ -75,33 +70,7 @@ class NativeSourceDistiller(SourceDistiller):
 class FullSourceDistiller(SourceDistiller):
     """A SourceDistiller for full-source branches, a.k.a. normal mode"""
 
-    def __init__(self, tree, tarfile_path):
-        """Create a FullSourceDistiller.
-
-        :param tree: the tree to export with all of the source code. Should
-            be locked at least for read.
-        :param tarfile_path: a string containg the path to a tarfile
-            containing the upstream code. This will be placed in the parent
-            directory of the target when distill() is called.
-        """
-        self.tree = tree
-        self.tarfile_path = tarfile_path
-
-    def _copy_tarfile_to_parent(self, target):
-        parent_dir = os.path.dirname(target)
-        tarfile_name = os.path.basename(self.tarfile_path)
-        target_location = os.path.join(parent_dir, tarfile_name)
-        if (os.path.exists(self.tarfile_path)
-                and os.path.exists(target_location)
-                and os.path.samefile(self.tarfile_path, target_location)):
-            return
-        try:
-            shutil.copyfile(self.tarfile_path, target_location)
-        except IOError, e:
-            if e.errno == 2:
-                raise bzr_errors.NoSuchFile(self.tarfile_path)
-            raise
-
     def _distill(self, target):
-        self._copy_tarfile_to_parent(target)
+        parent_dir = os.path.dirname(target)
+        self.upstream_provider.provide(parent_dir)
         export(self.tree, target, None, None)
