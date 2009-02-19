@@ -65,6 +65,8 @@ class AbstractRevisionStore(object):
                 including an empty inventory for the missing revisions
             If None, a default implementation is provided.
         """
+        # HACK for testing performance
+        #return
         # NOTE: This is bzrlib.repository._install_revision refactored to
         # to provide more flexibility in how previous revisions are cached,
         # data is feed in, etc.

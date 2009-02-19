@@ -395,8 +395,12 @@ class GenericProcessor(processor.ImportProcessor):
             self._gen_file_ids_cache(parents)
 
         # 'Commit' the revision and report progress
-        handler = bzr_commit_handler.InventoryCommitHandler(cmd,
-            self.cache_mgr, self.rev_store, verbose=self.verbose)
+        if self._experimental:
+            handler = bzr_commit_handler.DeltaCommitHandler(cmd,
+                self.cache_mgr, self.rev_store, verbose=self.verbose)
+        else:
+            handler = bzr_commit_handler.InventoryCommitHandler(cmd,
+                self.cache_mgr, self.rev_store, verbose=self.verbose)
         handler.process()
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
         self._revision_count += 1
@@ -465,8 +469,6 @@ class GenericProcessor(processor.ImportProcessor):
                     % tag_name)
             return
 
-	# FIXME: cmd.from_ is a committish and thus could reference
-	# another branch.  Create a method for resolving commitish's.
         if cmd.from_ is not None:
             self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
 

@@ -56,6 +56,36 @@ class GenericCommitHandler(processor.CommitHandler):
         self.debug("%s id: %s, parents: %s", self.command.id,
             self.revision_id, str(self.parents))
 
+        # Keep the basis inventory. This needs to be treated as read-only.
+        if len(self.parents) == 0:
+            self.basis_inventory = self.gen_initial_inventory()
+        else:
+            self.basis_inventory = self.get_inventory(self.parents[0])
+        self.inventory_root = self.basis_inventory.root
+
+        # directory-path -> inventory-entry for current inventory
+        self.directory_entries = dict(self.basis_inventory.directories())
+
+    def gen_initial_inventory(self):
+        """Generate an inventory for a parentless revision."""
+        inv = inventory.Inventory(revision_id=self.revision_id)
+        if self.rev_store.expects_rich_root():
+            # The very first root needs to have the right revision
+            inv.root.revision = self.revision_id
+        return inv
+
+    def get_inventory(self, revision_id):
+        """Get the inventory for a revision id."""
+        try:
+            inv = self.cache_mgr.inventories[revision_id]
+        except KeyError:
+            if self.verbose:
+                self.note("get_inventory cache miss for %s", revision_id)
+            # Not cached so reconstruct from the RevisionStore
+            inv = self.rev_store.get_inventory(revision_id)
+            self.cache_mgr.inventories[revision_id] = inv
+        return inv
+
     def build_revision(self):
         rev_props = {}
         committer = self.command.committer
@@ -105,18 +135,6 @@ class GenericCommitHandler(processor.CommitHandler):
         timestamp = committer[2]
         return generate_ids.gen_revision_id(who, timestamp)
 
-    def get_inventory(self, revision_id):
-        """Get the inventory for a revision id."""
-        try:
-            inv = self.cache_mgr.inventories[revision_id]
-        except KeyError:
-            if self.verbose:
-                self.note("get_inventory cache miss for %s", revision_id)
-            # Not cached so reconstruct from the RevisionStore
-            inv = self.rev_store.get_inventory(revision_id)
-            self.cache_mgr.inventories[revision_id] = inv
-        return inv
-
     def _warn_unless_in_merges(self, fileid, path):
         if len(self.parents) <= 1:
             return
@@ -124,6 +142,61 @@ class GenericCommitHandler(processor.CommitHandler):
             if fileid in self.get_inventory(parent):
                 return
         self.warning("ignoring delete of %s as not in parent inventories", path)
+
+    def _modify_item(self, path, kind, is_executable, data):
+        """Add to or change an item in the inventory."""
+        # Create the new InventoryEntry
+        basename, parent_ie = self._ensure_directory(path)
+        file_id = self.bzr_file_id(path)
+        ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
+        ie.revision = self.revision_id
+        if isinstance(ie, inventory.InventoryFile):
+            ie.executable = is_executable
+            lines = osutils.split_lines(data)
+            ie.text_sha1 = osutils.sha_strings(lines)
+            ie.text_size = sum(map(len, lines))
+            self.lines_for_commit[file_id] = lines
+        elif isinstance(ie, inventory.InventoryLink):
+            ie.symlink_target = data.encode('utf8')
+            # There are no lines stored for a symlink so
+            # make sure the cache used by get_lines knows that
+            self.lines_for_commit[file_id] = []
+        else:
+            raise errors.BzrError("Cannot import items of kind '%s' yet" %
+                (kind,))
+        # Record it
+        if file_id in self.basis_inventory:
+            self.record_changed(path, ie, parent_ie)
+        else:
+            self.record_new(path, ie)
+
+    def _ensure_directory(self, path):
+        """Ensure that the containing directory exists for 'path'"""
+        dirname, basename = osutils.split(path)
+        if dirname == '':
+            # the root node doesn't get updated
+            return basename, self.inventory_root
+        try:
+            ie = self.directory_entries[dirname]
+        except KeyError:
+            # We will create this entry, since it doesn't exist
+            pass
+        else:
+            return basename, ie
+
+        # No directory existed, we will just create one, first, make sure
+        # the parent exists
+        dir_basename, parent_ie = self._ensure_directory(dirname)
+        dir_file_id = self.bzr_file_id(dirname)
+        ie = inventory.entry_factory['directory'](dir_file_id,
+            dir_basename, parent_ie.file_id)
+        ie.revision = self.revision_id
+        self.directory_entries[dirname] = ie
+        # There are no lines stored for a directory so
+        # make sure the cache used by get_lines knows that
+        self.lines_for_commit[dir_file_id] = []
+        self.record_new(dirname, ie)
+        return basename, ie
 
 
 class InventoryCommitHandler(GenericCommitHandler):
@@ -134,12 +207,13 @@ class InventoryCommitHandler(GenericCommitHandler):
 
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
-            self.inventory = self.gen_initial_inventory()
+            self.inventory = self.basis_inventory
         else:
-            # use the bzr_revision_id to lookup the inv cache
-            inv = self.get_inventory(self.parents[0])
             # TODO: Shallow copy - deep inventory copying is expensive
-            self.inventory = inv.copy()
+            self.inventory = self.basis_inventory.copy()
+        self.inventory_root = self.inventory.root
+
+        # Initialise the inventory revision info as required
         if self.rev_store.expects_rich_root():
             self.inventory.revision_id = self.revision_id
         else:
@@ -147,17 +221,6 @@ class InventoryCommitHandler(GenericCommitHandler):
             # When serializing out to disk and back in, root.revision is
             # always the new revision_id.
             self.inventory.root.revision = self.revision_id
-
-        # directory-path -> inventory-entry for current inventory
-        self.directory_entries = dict(self.inventory.directories())
-
-    def gen_initial_inventory(self):
-        """Generate an inventory for a parentless revision."""
-        inv = inventory.Inventory(revision_id=self.revision_id)
-        if self.rev_store.expects_rich_root():
-            # The very first root needs to have the right revision
-            inv.root.revision = self.revision_id
-        return inv
 
     def post_process_files(self):
         """Save the revision."""
@@ -174,7 +237,7 @@ class InventoryCommitHandler(GenericCommitHandler):
     def _get_inventories(self, revision_ids):
         """Get the inventories for revision-ids.
         
-        This is a callback used by the RepositoryLoader to
+        This is a callback used by the RepositoryStore to
         speed up inventory reconstruction.
         """
         present = []
@@ -204,7 +267,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
-        self._modify_inventory(filecmd.path, filecmd.kind,
+        self._modify_item(filecmd.path, filecmd.kind,
             filecmd.is_executable, data)
 
     def delete_handler(self, filecmd):
@@ -259,9 +322,9 @@ class InventoryCommitHandler(GenericCommitHandler):
         kind = ie.kind
         if kind == 'file':
             content = self.rev_store.get_file_text(self.parents[0], file_id)
-            self._modify_inventory(dest_path, kind, ie.executable, content)
+            self._modify_item(dest_path, kind, ie.executable, content)
         elif kind == 'symlink':
-            self._modify_inventory(dest_path, kind, False, ie.symlink_target)
+            self._modify_item(dest_path, kind, False, ie.symlink_target)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
                 kind, path)
@@ -291,62 +354,78 @@ class InventoryCommitHandler(GenericCommitHandler):
         for root_item in root_items:
             self.inventory.remove_recursive_id(root_item.file_id)
 
-    def _modify_inventory(self, path, kind, is_executable, data):
-        """Add to or change an item in the inventory."""
-        # Create the new InventoryEntry
-        basename, parent_ie = self._ensure_directory(path)
-        file_id = self.bzr_file_id(path)
-        ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
-        ie.revision = self.revision_id
-        if isinstance(ie, inventory.InventoryFile):
-            ie.executable = is_executable
-            lines = osutils.split_lines(data)
-            ie.text_sha1 = osutils.sha_strings(lines)
-            ie.text_size = sum(map(len, lines))
-            self.lines_for_commit[file_id] = lines
-        elif isinstance(ie, inventory.InventoryLink):
-            ie.symlink_target = data.encode('utf8')
-            # There are no lines stored for a symlink so
-            # make sure the cache used by get_lines knows that
-            self.lines_for_commit[file_id] = []
-        else:
-            raise errors.BzrError("Cannot import items of kind '%s' yet" %
-                (kind,))
-
-        # Record this new inventory entry
-        if file_id in self.inventory:
-            # HACK: no API for this (del+add does more than it needs to)
-            self.inventory._byid[file_id] = ie
-            parent_ie.children[basename] = ie
-        else:
-            self.inventory.add(ie)
-
-    def _ensure_directory(self, path):
-        """Ensure that the containing directory exists for 'path'"""
-        dirname, basename = osutils.split(path)
-        if dirname == '':
-            # the root node doesn't get updated
-            return basename, self.inventory.root
-        try:
-            ie = self.directory_entries[dirname]
-        except KeyError:
-            # We will create this entry, since it doesn't exist
-            pass
-        else:
-            return basename, ie
-
-        # No directory existed, we will just create one, first, make sure
-        # the parent exists
-        dir_basename, parent_ie = self._ensure_directory(dirname)
-        dir_file_id = self.bzr_file_id(dirname)
-        ie = inventory.entry_factory['directory'](dir_file_id,
-                                                  dir_basename,
-                                                  parent_ie.file_id)
-        ie.revision = self.revision_id
-        self.directory_entries[dirname] = ie
-        # There are no lines stored for a directory so
-        # make sure the cache used by get_lines knows that
-        self.lines_for_commit[dir_file_id] = []
-        #print "adding dir for %s" % path
+    def record_new(self, path, ie):
         self.inventory.add(ie)
-        return basename, ie
+
+    def record_changed(self, path, ie, parent_ie=None):
+        # HACK: no API for this (del+add does more than it needs to)
+        self.inventory._byid[ie.file_id] = ie
+        if parent_ie is None:
+            parent_ie = self.inventory._byid[ie.parent_id]
+        parent_ie.children[ie.name] = ie
+
+
+class DeltaCommitHandler(GenericCommitHandler):
+    """A CommitHandler that builds and saves inventory deltas."""
+
+    def pre_process_files(self):
+        super(DeltaCommitHandler, self).pre_process_files()
+        self.delta = []
+
+    def post_process_files(self):
+        """Save the revision."""
+        rev = self.build_revision()
+        # FIXME: store the delta
+        inv = self.basis_inventory
+        inv.apply_delta(self.delta)
+        self.cache_mgr.inventories[self.revision_id] = inv
+
+    def modify_handler(self, filecmd):
+        if filecmd.dataref is not None:
+            data = self.cache_mgr.fetch_blob(filecmd.dataref)
+        else:
+            data = filecmd.data
+        self.debug("modifying %s", filecmd.path)
+        self._modify_item(filecmd.path, filecmd.kind,
+            filecmd.is_executable, data)
+
+    def delete_handler(self, filecmd):
+        self.debug("deleting %s", filecmd.path)
+        path = filecmd.path
+        file_id = self.basis_inventory.path2id(path)
+        ie = self.basis_inventory[file_id]
+        kind = ie.kind
+        if kind == 'file' or file == 'symlink':
+            self.record_delete(path, ie)
+        elif kind == 'directory':
+            for path, entry in self.basis_inventory.iter_entries_by_dir(
+                from_dir=ie):
+                self.record_delete(path, entry)
+        else:
+            self.warning("ignoring delete of %s %s - feature not yet supported",
+                kind, path)
+
+    def copy_handler(self, filecmd):
+        src_path = filecmd.src_path
+        dest_path = filecmd.dest_path
+        self.debug("copying %s to %s", src_path, dest_path)
+        raise NotImplementedError(self.copy_handler)
+
+    def rename_handler(self, filecmd):
+        old_path = filecmd.old_path
+        new_path = filecmd.new_path
+        self.debug("renaming %s to %s", old_path, new_path)
+        raise NotImplementedError(self.rename_handler)
+
+    def deleteall_handler(self, filecmd):
+        self.debug("deleting all files (and also all directories)")
+        raise NotImplementedError(self.deleteall_handler)
+
+    def record_new(self, path, ie):
+        self.delta.append((None, path, ie.file_id, ie))
+
+    def record_changed(self, path, ie, parent_ie=None):
+        self.delta.append((path, path, ie.file_id, ie))
+
+    def record_delete(self, path, ie):
+        self.delta.append((path, None, ie.file_id, None))
