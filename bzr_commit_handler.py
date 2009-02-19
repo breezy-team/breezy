@@ -28,14 +28,13 @@ from bzrlib import (
 from bzrlib.plugins.fastimport import helpers, processor
 
 
-class InventoryCommitHandler(processor.CommitHandler):
-    """A CommitHandler that builds and saves inventories."""
+class GenericCommitHandler(processor.CommitHandler):
+    """Base class for Bazaar CommitHandlers."""
 
-    def __init__(self, command, cache_mgr, repo, loader, verbose=False):
-        processor.CommitHandler.__init__(self, command)
+    def __init__(self, command, cache_mgr, repo, verbose=False):
+        super(GenericCommitHandler, self).__init__(command)
         self.cache_mgr = cache_mgr
         self.repo = repo
-        self.loader = loader
         self.verbose = verbose
 
     def pre_process_files(self):
@@ -58,6 +57,98 @@ class InventoryCommitHandler(processor.CommitHandler):
         self.debug("%s id: %s, parents: %s", self.command.id,
             self.revision_id, str(self.parents))
 
+    def build_revision(self):
+        rev_props = {}
+        committer = self.command.committer
+        who = "%s <%s>" % (committer[0],committer[1])
+        author = self.command.author
+        if author is not None:
+            author_id = "%s <%s>" % (author[0],author[1])
+            if author_id != who:
+                rev_props['author'] = author_id
+        return revision.Revision(
+           timestamp=committer[2],
+           timezone=committer[3],
+           committer=who,
+           message=helpers.escape_commit_message(self.command.message),
+           revision_id=self.revision_id,
+           properties=rev_props,
+           parent_ids=self.parents)
+
+    def bzr_file_id_and_new(self, path):
+        """Get a Bazaar file identifier and new flag for a path.
+        
+        :return: file_id, is_new where
+          is_new = True if the file_id is newly created
+        """
+        try:
+            id = self.cache_mgr.file_ids[path]
+            return id, False
+        except KeyError:
+            id = generate_ids.gen_file_id(path)
+            self.cache_mgr.file_ids[path] = id
+            self.debug("Generated new file id %s for '%s'", id, path)
+            return id, True
+
+    def bzr_file_id(self, path):
+        """Get a Bazaar file identifier for a path."""
+        return self.bzr_file_id_and_new(path)[0]
+
+    def gen_revision_id(self):
+        """Generate a revision id.
+
+        Subclasses may override this to produce deterministic ids say.
+        """
+        committer = self.command.committer
+        # Perhaps 'who' being the person running the import is ok? If so,
+        # it might be a bit quicker and give slightly better compression?
+        who = "%s <%s>" % (committer[0],committer[1])
+        timestamp = committer[2]
+        return generate_ids.gen_revision_id(who, timestamp)
+
+    def get_inventory(self, revision_id):
+        """Get the inventory for a revision id."""
+        try:
+            inv = self.cache_mgr.inventories[revision_id]
+        except KeyError:
+            if self.verbose:
+                self.note("get_inventory cache miss for %s", revision_id)
+            # Not cached so reconstruct from repository
+            inv = self.revision_tree(revision_id).inventory
+            self.cache_mgr.inventories[revision_id] = inv
+        return inv
+
+    def revision_tree(self, revision_id):
+        return self.repo.revision_tree(revision_id)
+
+    def _warn_unless_in_merges(self, fileid, path):
+        if len(self.parents) <= 1:
+            return
+        for parent in self.parents[1:]:
+            if fileid in self.get_inventory(parent):
+                return
+        self.warning("ignoring delete of %s as not in parent inventories", path)
+
+    def _modify_inventory(self, path, kind, is_executable, data):
+        """Add to or change an item in the inventory."""
+        raise NotImplementedError(self._modify_inventory)
+
+
+class DeltaCommitHandler(GenericCommitHandler):
+    """A CommitHandler that builds and saves inventory deltas."""
+
+
+class InventoryCommitHandler(GenericCommitHandler):
+    """A CommitHandler that builds and saves inventories."""
+
+    def __init__(self, command, cache_mgr, repo, loader, verbose=False):
+        super(InventoryCommitHandler, self).__init__(command, cache_mgr,
+            repo, verbose=verbose)
+        self.loader = loader
+
+    def pre_process_files(self):
+        super(InventoryCommitHandler, self).pre_process_files()
+
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
             self.inventory = self.gen_initial_inventory()
@@ -77,30 +168,53 @@ class InventoryCommitHandler(processor.CommitHandler):
         # directory-path -> inventory-entry for current inventory
         self.directory_entries = dict(self.inventory.directories())
 
+    def gen_initial_inventory(self):
+        """Generate an inventory for a parentless revision."""
+        inv = inventory.Inventory(revision_id=self.revision_id)
+        if self.repo.supports_rich_root():
+            # The very first root needs to have the right revision
+            inv.root.revision = self.revision_id
+        return inv
+
     def post_process_files(self):
         """Save the revision."""
         self.cache_mgr.inventories[self.revision_id] = self.inventory
-
-        # Load the revision into the repository
-        rev_props = {}
-        committer = self.command.committer
-        who = "%s <%s>" % (committer[0],committer[1])
-        author = self.command.author
-        if author is not None:
-            author_id = "%s <%s>" % (author[0],author[1])
-            if author_id != who:
-                rev_props['author'] = author_id
-        rev = revision.Revision(
-           timestamp=committer[2],
-           timezone=committer[3],
-           committer=who,
-           message=helpers.escape_commit_message(self.command.message),
-           revision_id=self.revision_id,
-           properties=rev_props,
-           parent_ids=self.parents)
+        rev = self.build_revision()
         self.loader.load(rev, self.inventory, None,
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
+
+    def _get_lines(self, file_id):
+        """Get the lines for a file-id."""
+        return self.lines_for_commit[file_id]
+
+    def _get_inventories(self, revision_ids):
+        """Get the inventories for revision-ids.
+        
+        This is a callback used by the RepositoryLoader to
+        speed up inventory reconstruction.
+        """
+        present = []
+        inventories = []
+        # If an inventory is in the cache, we assume it was
+        # successfully loaded into the repsoitory
+        for revision_id in revision_ids:
+            try:
+                inv = self.cache_mgr.inventories[revision_id]
+                present.append(revision_id)
+            except KeyError:
+                if self.verbose:
+                    self.note("get_inventories cache miss for %s", revision_id)
+                # Not cached so reconstruct from repository
+                if self.repo.has_revision(revision_id):
+                    rev_tree = self.revision_tree(revision_id)
+                    present.append(revision_id)
+                else:
+                    rev_tree = self.revision_tree(None)
+                inv = rev_tree.inventory
+                self.cache_mgr.inventories[revision_id] = inv
+            inventories.append(inv)
+        return present, inventories
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
@@ -110,6 +224,9 @@ class InventoryCommitHandler(processor.CommitHandler):
         self.debug("modifying %s", filecmd.path)
         self._modify_inventory(filecmd.path, filecmd.kind,
             filecmd.is_executable, data)
+
+    def delete_handler(self, filecmd):
+        self._delete_recursive(filecmd.path)
 
     def _delete_recursive(self, path):
         self.debug("deleting %s", path)
@@ -143,17 +260,6 @@ class InventoryCommitHandler(processor.CommitHandler):
         except KeyError:
             pass
 
-    def delete_handler(self, filecmd):
-        self._delete_recursive(filecmd.path)
-
-    def _warn_unless_in_merges(self, fileid, path):
-        if len(self.parents) <= 1:
-            return
-        for parent in self.parents[1:]:
-            if fileid in self.get_inventory(parent):
-                return
-        self.warning("ignoring delete of %s as not in parent inventories", path)
-
     def copy_handler(self, filecmd):
         src_path = filecmd.src_path
         dest_path = filecmd.dest_path
@@ -170,18 +276,14 @@ class InventoryCommitHandler(processor.CommitHandler):
         ie = self.inventory[file_id]
         kind = ie.kind
         if kind == 'file':
-            content = self._get_content_from_repo(self.parents[0], file_id)
+            revtree = self.revision_tree(self.parents[0])
+            content = revtree.get_file_text(file_id)
             self._modify_inventory(dest_path, kind, ie.executable, content)
         elif kind == 'symlink':
             self._modify_inventory(dest_path, kind, False, ie.symlink_target)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
                 kind, path)
-
-    def _get_content_from_repo(self, revision_id, file_id):
-        """Get the content of a file for a revision-id."""
-        revtree = self.repo.revision_tree(revision_id)
-        return revtree.get_file_text(file_id)
 
     def rename_handler(self, filecmd):
         old_path = filecmd.old_path
@@ -207,89 +309,6 @@ class InventoryCommitHandler(processor.CommitHandler):
             self.inventory.root.children.iteritems()]
         for root_item in root_items:
             self.inventory.remove_recursive_id(root_item.file_id)
-
-    def bzr_file_id_and_new(self, path):
-        """Get a Bazaar file identifier and new flag for a path.
-        
-        :return: file_id, is_new where
-          is_new = True if the file_id is newly created
-        """
-        try:
-            id = self.cache_mgr.file_ids[path]
-            return id, False
-        except KeyError:
-            id = generate_ids.gen_file_id(path)
-            self.cache_mgr.file_ids[path] = id
-            self.debug("Generated new file id %s for '%s'", id, path)
-            return id, True
-
-    def bzr_file_id(self, path):
-        """Get a Bazaar file identifier for a path."""
-        return self.bzr_file_id_and_new(path)[0]
-
-    def gen_initial_inventory(self):
-        """Generate an inventory for a parentless revision."""
-        inv = inventory.Inventory(revision_id=self.revision_id)
-        if self.repo.supports_rich_root():
-            # The very first root needs to have the right revision
-            inv.root.revision = self.revision_id
-        return inv
-
-    def gen_revision_id(self):
-        """Generate a revision id.
-
-        Subclasses may override this to produce deterministic ids say.
-        """
-        committer = self.command.committer
-        # Perhaps 'who' being the person running the import is ok? If so,
-        # it might be a bit quicker and give slightly better compression?
-        who = "%s <%s>" % (committer[0],committer[1])
-        timestamp = committer[2]
-        return generate_ids.gen_revision_id(who, timestamp)
-
-    def get_inventory(self, revision_id):
-        """Get the inventory for a revision id."""
-        try:
-            inv = self.cache_mgr.inventories[revision_id]
-        except KeyError:
-            if self.verbose:
-                self.note("get_inventory cache miss for %s", revision_id)
-            # Not cached so reconstruct from repository
-            inv = self.repo.revision_tree(revision_id).inventory
-            self.cache_mgr.inventories[revision_id] = inv
-        return inv
-
-    def _get_inventories(self, revision_ids):
-        """Get the inventories for revision-ids.
-        
-        This is a callback used by the RepositoryLoader to
-        speed up inventory reconstruction.
-        """
-        present = []
-        inventories = []
-        # If an inventory is in the cache, we assume it was
-        # successfully loaded into the repsoitory
-        for revision_id in revision_ids:
-            try:
-                inv = self.cache_mgr.inventories[revision_id]
-                present.append(revision_id)
-            except KeyError:
-                if self.verbose:
-                    self.note("get_inventories cache miss for %s", revision_id)
-                # Not cached so reconstruct from repository
-                if self.repo.has_revision(revision_id):
-                    rev_tree = self.repo.revision_tree(revision_id)
-                    present.append(revision_id)
-                else:
-                    rev_tree = self.repo.revision_tree(None)
-                inv = rev_tree.inventory
-                self.cache_mgr.inventories[revision_id] = inv
-            inventories.append(inv)
-        return present, inventories
-
-    def _get_lines(self, file_id):
-        """Get the lines for a file-id."""
-        return self.lines_for_commit[file_id]
 
     def _modify_inventory(self, path, kind, is_executable, data):
         """Add to or change an item in the inventory."""
@@ -350,12 +369,3 @@ class InventoryCommitHandler(processor.CommitHandler):
         #print "adding dir for %s" % path
         self.inventory.add(ie)
         return basename, ie
-
-
-class DeltaCommitHandler(processor.CommitHandler):
-    """A CommitHandler that builds and saves inventory deltas."""
-
-    def __init__(self, command, cache_mgr, repo, verbose=False):
-        # Hack for now
-        processor.InventoryCommitHandler.__init__(self, command, cache_mgr,
-                repo, loader=None, verbose=verbose)
