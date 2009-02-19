@@ -2198,6 +2198,8 @@ class RepositoryFormatRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name,
                       help=None, info=None,
                       override_existing=False):
+        # Overridden to allow capturing registrations to two seperate
+        # registries in a single call.
         registry.Registry.register_lazy(self, key, module_name, member_name,
                 help=help, info=info, override_existing=override_existing)
         if self._other_registry is not None:
@@ -2212,11 +2214,16 @@ class RepositoryFormatRegistry(registry.Registry):
     
 
 network_format_registry = RepositoryFormatRegistry()
-"""Registry of formats indexed by their network name."""
+"""Registry of formats indexed by their network name.
+
+The network name for a repository format is an identifier that can be used when
+referring to formats with smart server operations. See
+RepositoryFormat.network_name() for more detail.
+"""
 
 
 format_registry = RepositoryFormatRegistry(network_format_registry)
-"""Registry of formats, indexed by their identifying format string.
+"""Registry of formats, indexed by their BzrDirMetaFormat format string.
 
 This can contain either format instances themselves, or classes/factories that
 can be called to obtain one.
@@ -2229,24 +2236,27 @@ can be called to obtain one.
 class RepositoryFormat(object):
     """A repository format.
 
-    Formats provide three things:
+    Formats provide four things:
      * An initialization routine to construct repository data on disk.
-     * a format string which is used when the BzrDir supports versioned
-       children.
+     * a optional format string which is used when the BzrDir supports
+       versioned children.
      * an open routine which returns a Repository instance.
+     * A network name for referring to the format in smart server RPC
+       methods.
 
     There is one and only one Format subclass for each on-disk format. But
     there can be one Repository subclass that is used for several different
     formats. The _format attribute on a Repository instance can be used to
     determine the disk format.
 
-    Formats are placed in an dict by their format string for reference 
-    during opening. These should be subclasses of RepositoryFormat
-    for consistency.
+    Formats are placed in a registry by their format string for reference
+    during opening. These should be subclasses of RepositoryFormat for
+    consistency.
 
     Once a format is deprecated, just deprecate the initialize and open
     methods on the format class. Do not deprecate the object, as the 
-    object will be created every system load.
+    object may be created even when a repository instnace hasn't been
+    created.
 
     Common instance attributes:
     _matchingbzrdir - the bzrdir format that the repository format was
@@ -2359,6 +2369,16 @@ class RepositoryFormat(object):
         """
         return True
 
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        MetaDir repository formats use their disk format string to identify the
+        repository over the wire. All in one formats such as bzr < 0.8, and
+        foreign formats like svn/git and hg should use some marker which is
+        unique and immutable.
+        """
+        raise NotImplementedError(self.network_name)
+
     def check_conversion_target(self, target_format):
         raise NotImplementedError(self.check_conversion_target)
 
@@ -2419,8 +2439,10 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         return self.get_format_string()
 
 
-# Pre-0.8 formats that don't have a disk format string, but do have a network
-# name are just registered in network_format_registry.
+# Pre-0.8 formats that don't have a disk format string (because they are
+# versioned by the matching control directory). We use the control directories
+# disk format string as a key for the network_name because they meet the
+# constraints (simple string, unique, immmutable).
 network_format_registry.register_lazy(
     "Bazaar-NG branch, format 5\n",
     'bzrlib.repofmt.weaverepo',

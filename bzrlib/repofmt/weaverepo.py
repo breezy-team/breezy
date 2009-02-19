@@ -401,9 +401,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         return "Weave repository format 5"
     
     def network_name(self):
-        """The network name for this format is the disk string, which is the
-        bzrdir's string because this is a pre-split-out format.
-        """
+        """The network name for this format is the control dirs disk label."""
         return self._matchingbzrdir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
@@ -451,9 +449,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         return "Weave repository format 6"
 
     def network_name(self):
-        """The network name for this format is the disk string, which is the
-        bzrdir's string because this is a pre-split-out format.
-        """
+        """The network name for this format is the control dirs disk label."""
         return self._matchingbzrdir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):

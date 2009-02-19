@@ -267,6 +267,13 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
     the class level.
+
+    :ivar _custom_format: If set, a specific concrete repository format that 
+        will be used when initializing a repository with this
+        RemoteRepositoryFormat.
+    :ivar _creating_repo: If set, the repository object that this
+        RemoteRepositoryFormat was created for: it can be called into
+        to obtain data like te network name.
     """
 
     _matchingbzrdir = RemoteBzrDirFormat()
