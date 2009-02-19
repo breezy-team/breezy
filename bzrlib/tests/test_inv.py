@@ -171,7 +171,7 @@ class TestDescribeChanges(TestCase):
 class TestCHKInventory(TestCaseWithTransport):
     
     def get_chk_bytes(self):
-        # The eassiest way to get a CHK store is a development5 repository and
+        # The easiest way to get a CHK store is a development5 repository and
         # then work with the chk_bytes attribute directly.
         repo = self.make_repository(".", format="development5")
         repo.lock_write()
