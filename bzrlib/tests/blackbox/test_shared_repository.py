@@ -120,4 +120,4 @@ Location:
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(40, rpc_count)
+        self.assertEqual(19, rpc_count)

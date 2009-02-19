@@ -34,6 +34,7 @@ from bzrlib import (
     pack,
     remote,
     repository,
+    smart,
     tests,
     urlutils,
     )
@@ -446,6 +447,48 @@ class TestBzrDirOpenBranch(tests.TestCase):
             RemoteBzrDirFormat.probe_transport, OldServerTransport())
 
 
+class TestBzrDirCreateRepository(tests.TestCaseWithMemoryTransport):
+
+    def test_backwards_compat(self):
+        self.setup_smart_server_with_call_log()
+        bzrdir = self.make_bzrdir('.')
+        self.reset_smart_call_log()
+        request_handlers = smart.request.request_handlers
+        orig_method = request_handlers.get('BzrDir.create_repository')
+        request_handlers.remove('BzrDir.create_repository')
+        try:
+            repo = bzrdir.create_repository()
+            create_repo_call_count = len([call for call in self.hpss_calls if
+                call[0].method == 'BzrDir.create_repository'])
+            self.assertEqual(1, create_repo_call_count)
+        finally:
+            request_handlers.register('BzrDir.create_repository', orig_method)
+
+    def test_current_server(self):
+        transport = self.get_transport('.')
+        transport = transport.clone('quack')
+        self.make_bzrdir('quack')
+        client = FakeClient(transport.base)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_format = reference_bzrdir_format.repository_format
+        network_name = reference_format.network_name()
+        client.add_expected_call(
+            'BzrDir.create_repository', ('quack/',
+                'Bazaar pack repository format 1 (needs bzr 0.92)\n', 'False'),
+            'success', ('ok', 'no', 'no', 'no', network_name))
+        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        repo = a_bzrdir.create_repository()
+        # We should have got a remote repository
+        self.assertIsInstance(repo, remote.RemoteRepository)
+        # its format should have the settings from the response
+        format = repo._format
+        self.assertFalse(format.rich_root_data)
+        self.assertFalse(format.supports_tree_reference)
+        self.assertFalse(format.supports_external_lookups)
+        self.assertEqual(network_name, format.network_name())
+
+
 class TestBzrDirOpenRepository(tests.TestCase):
 
     def test_backwards_compat_1_2(self):
@@ -453,7 +496,7 @@ class TestBzrDirOpenRepository(tests.TestCase):
         transport.mkdir('quack')
         transport = transport.clone('quack')
         client = FakeClient(transport.base)
-        client.add_unknown_method_response('RemoteRepository.find_repositoryV2')
+        client.add_unknown_method_response('BzrDir.find_repositoryV2')
         client.add_success_response('ok', '', 'no', 'no')
         bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)

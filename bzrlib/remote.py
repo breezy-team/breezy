@@ -21,6 +21,7 @@ import bz2
 
 from bzrlib import (
     branch,
+    bzrdir,
     debug,
     errors,
     graph,
@@ -281,25 +282,65 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     def __init__(self):
         repository.RepositoryFormat.__init__(self)
         self._custom_format = None
+        self._network_name = None
 
     def initialize(self, a_bzrdir, shared=False):
-        if self._custom_format:
-            # This returns a custom instance - e.g. a pack repo, not a remote
-            # repo.
-            return self._custom_format.initialize(a_bzrdir, shared=shared)
+        # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            prior_repo = self._creating_bzrdir.open_repository()
-            prior_repo._ensure_real()
-            return prior_repo._real_repository._format.initialize(
-                a_bzrdir, shared=shared)
-        # delegate to a real object at this point (remoteBzrDir delegate to the
-        # repository format which would lead to infinite recursion).
-        a_bzrdir._ensure_real()
-        result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
-        if not isinstance(result, RemoteRepository):
-            return self.open(a_bzrdir)
+            if self._custom_format:
+                # Custom format requested
+                return self._custom_format.initialize(a_bzrdir, shared=shared)
+            else:
+                # Use the format that the repository we were created to back
+                # has.
+                prior_repo = self._creating_bzrdir.open_repository()
+                prior_repo._ensure_real()
+                return prior_repo._real_repository._format.initialize(
+                    a_bzrdir, shared=shared)
+        # Creating on a remote bzr dir.
+        # 1) get the network name to use.
+        if self._custom_format:
+            network_name = self._custom_format.network_name()
         else:
-            return result
+            # Select the current bzrlib default and ask for that.
+            reference_bzrdir_format = bzrdir.format_registry.get('default')()
+            reference_format = reference_bzrdir_format.repository_format
+            network_name = reference_format.network_name()
+        # 2) try direct creation via RPC
+        path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
+        verb = 'BzrDir.create_repository'
+        if shared:
+            shared_str = 'True'
+        else:
+            shared_str = 'False'
+        try:
+            response = a_bzrdir._call(verb, path, network_name, shared_str)
+        except errors.UnknownSmartMethod:
+            # Fallback - vfs methods
+            if self._custom_format:
+                # This returns a custom instance - e.g. a pack repo, not a remote
+                # repo.
+                return self._custom_format.initialize(a_bzrdir, shared=shared)
+            # delegate to a real object at this point (remoteBzrDir delegate to the
+            # repository format which would lead to infinite recursion).
+            a_bzrdir._ensure_real()
+            result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
+            if not isinstance(result, RemoteRepository):
+                return self.open(a_bzrdir)
+            else:
+                return result
+        else:
+            # Turn the response into a RemoteRepository object.
+            format = RemoteRepositoryFormat()
+            format.rich_root_data = (response[1] == 'yes')
+            format.supports_tree_reference = (response[2] == 'yes')
+            format.supports_external_lookups = (response[3] == 'yes')
+            format._network_name = response[4]
+            # Used to support creating a real format instance when needed.
+            format._creating_bzrdir = a_bzrdir
+            remote_repo = RemoteRepository(a_bzrdir, format)
+            format._creating_repo = remote_repo
+            return remote_repo
     
     def open(self, a_bzrdir):
         if not isinstance(a_bzrdir, RemoteBzrDir):
@@ -322,6 +363,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
                 'Does not support nested trees', target_format)
 
     def network_name(self):
+        if self._network_name:
+            return self._network_name
         self._creating_repo._ensure_real()
         return self._creating_repo._real_repository._format.network_name()
 
