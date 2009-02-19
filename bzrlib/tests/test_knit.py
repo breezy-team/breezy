@@ -1644,9 +1644,11 @@ class TestGraphIndexKnit(KnitTests):
 
     def test_add_unvalidated_index_with_present_external_references(self):
         index = self.two_graph_index(deltas=True)
-        unvalidated = index._graph_index._indices[1] # XXX: ugly!
-        # 'parent' is an external ref of index2 (unvalidated), but is present
-        # in index1.
+        # Ugly hack to get at one of the underlying GraphIndex objects that
+        # two_graph_index built.
+        unvalidated = index._graph_index._indices[1]
+        # 'parent' is an external ref of _indices[1] (unvalidated), but is
+        # present in _indices[0].
         index.scan_unvalidated_index(unvalidated)
         self.assertEqual(frozenset(), index.get_missing_compression_parents())
 
