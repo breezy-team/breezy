@@ -1124,13 +1124,15 @@ class TestNewPack(TestCaseWithTransport):
         pack_transport = self.get_transport('pack')
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
-        collection = pack_repo.RepositoryPackCollection(repo=None,
+        collection = pack_repo.RepositoryPackCollection(
+            repo=None,
             transport=self.get_transport('.'),
             index_transport=index_transport,
             upload_transport=upload_transport,
             pack_transport=pack_transport,
             index_builder_class=BTreeBuilder,
-            index_class=BTreeGraphIndex)
+            index_class=BTreeGraphIndex,
+            use_chk_index=False)
         pack = pack_repo.NewPack(collection)
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
