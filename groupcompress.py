@@ -75,6 +75,7 @@ def parse(line_list):
             result.append((op, None, numbers[0], contents))
     return label, sha1, result
 
+
 def apply_delta(basis, delta):
     """Apply delta to this object to become new_version_id."""
     lines = []
@@ -95,6 +96,34 @@ def trim_encoding_newline(lines):
         del lines[-1]
     else:
         lines[-1] = lines[-1][:-1]
+
+
+
+def sort_gc_optimal(parent_map):
+    """Sort and group the keys in parent_map into gc-optimal order.
+
+    gc-optimal is defined (currently) as reverse-topological order, grouped by
+    the key prefix.
+
+    :return: A sorted-list of keys
+    """
+    # gc-optimal ordering is approximately reverse topological,
+    # properly grouped by file-id.
+    per_prefix_map = {'': []}
+    present_keys = []
+    for item in parent_map.iteritems():
+        key = item[0]
+        if isinstance(key, str) or len(key) == 1:
+            per_prefix_map[''].append(item)
+        else:
+            try:
+                per_prefix_map[key[0]].append(item)
+            except KeyError:
+                per_prefix_map[key[0]] = [item]
+
+    for prefix in sorted(per_prefix_map):
+        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
+    return present_keys
 
 
 class GroupCompressor(object):
@@ -145,8 +174,6 @@ class GroupCompressor(object):
         # insert new lines. To find reusable lines we traverse 
         locations = None
         max_pos = len(lines)
-        max_time = 0.0
-        max_info = None
         result_append = result.append
         while pos < max_pos:
             block, pos, locations = _get_longest_match(line_locations, pos,
@@ -481,13 +508,22 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 parent_map[key] = self._unadded_refs[key]
             present_keys = topo_sort(parent_map)
             # Now group by source:
-        # TODO: Support a group-compress 'optimal' ordering
+        elif ordering == 'gc-optimal':
+            parent_map = dict((key, details[2]) for key, details in
+                locations.iteritems())
+            for key in local_keys:
+                parent_map[key] = self._unadded_refs[key]
+            # XXX: This only optimizes for the target ordering. We may need to
+            #      balance that with the time it takes to extract ordering, by
+            #      somehow grouping based on locations[key][0:3]
+            present_keys = sort_gc_optimal(parent_map)
         else:
             # We want to yield the keys in a semi-optimal (read-wise) ordering.
             # Otherwise we thrash the _group_cache and destroy performance
             def get_group(key):
-                # This is the group the bytes are stored in
-                return locations[key][0:3]
+                # This is the group the bytes are stored in, followed by the
+                # location in the group
+                return locations[key][0]
             present_keys = sorted(locations.iterkeys(), key=get_group)
             # We don't have an ordering for keys in the in-memory object, but
             # lets process the in-memory ones first.

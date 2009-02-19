@@ -311,6 +311,7 @@ class GCPackRepository(KnitPackRepository):
         #       in-a-row (and sharing strings). Topological is better for
         #       remote, because we access less data.
         self._fetch_order = 'topological'
+        self._fetch_gc_optimal = True
         self._fetch_uses_deltas = False
 
 
@@ -374,6 +375,7 @@ if chk_support:
             self._reconcile_fixes_text_parents = True
             self._reconcile_backsup_inventory = False
             self._fetch_order = 'topological'
+            self._fetch_gc_optimal = True
             self._fetch_uses_deltas = False
 
 
