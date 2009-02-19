@@ -744,9 +744,14 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         return bzrdir.format_registry.make_bzrdir(self.format_name)
 
     def test_autopack_rpc_is_used_when_using_hpss(self):
+        format = self.get_format()
+        if format._repository_format.supports_chks:
+            self.knownFailure(
+                'Remote autopack calls for CHK repos'
+                ' is being postponed until fetching is improved')
         # Make local and remote repos
-        tree = self.make_branch_and_tree('local', format=self.get_format())
-        self.make_branch_and_tree('remote', format=self.get_format())
+        tree = self.make_branch_and_tree('local', format=format)
+        self.make_branch_and_tree('remote', format=format)
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         # Make 9 local revisions, and push them one at a time to the remote
