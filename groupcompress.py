@@ -204,6 +204,10 @@ class GroupCompressor(object):
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
         # setup good encoding for trailing \n support.
+        if not lines:
+            lines_is_empty = True
+        else:
+            lines_is_empty = False
         if not lines or lines[-1].endswith('\n'):
             lines.append('\n')
         else:
@@ -218,7 +222,11 @@ class GroupCompressor(object):
         flush_range = self.flush_range
         copy_ends = None
         blocks = None
-        if len(key) > 1:
+        if lines_is_empty:
+            # Empty texts are given a simple 'i1\n\n' insertion instruction.
+            # This prevents us from trying to match against an empty text.
+            blocks = [(0, len(lines), 0)]
+        if blocks is None and len(key) > 1:
             prefix = key[0]
             if prefix not in self._present_prefixes:
                 self._present_prefixes.add(prefix)
@@ -642,6 +650,20 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 bytes = adapter.get_bytes(record,
                     record.get_bytes_as(record.storage_kind))
                 lines = osutils.split_lines(bytes)
+            if len(record.key) > 1:
+                prefix = record.key[0]
+                if (prefix not in self._compressor._present_prefixes
+                    and basis_end > 1024 * 1024 * 10):
+                    # This is a new file id we are inserting.
+                    # And the file is already more than half full. This record
+                    # would be added as full lines, so go ahead and start a new
+                    # group
+                    flush()
+                    self._compressor = GroupCompressor(self._delta)
+                    self._unadded_refs = {}
+                    keys_to_add = []
+                    basis_end = 0
+                    groups += 1
             found_sha1, end_point = self._compressor.compress(record.key,
                 lines, record.sha1)
             if record.key[-1] is None:
