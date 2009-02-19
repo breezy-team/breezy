@@ -665,31 +665,6 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class TestDevelopment3(TestCaseWithTransport):
-
-    def test_add_inventory_uses_chk_map(self):
-        repo = self.make_repository('repo', format="development5")
-        source = self.make_branch_and_tree("source", format="pack-0.92")
-        revid = source.commit("foo", rev_id="foo")
-        # get the inventory from the committed revision
-        basis = source.basis_tree()
-        basis.lock_read()
-        self.addCleanup(basis.unlock)
-        inv = basis.inventory
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
-        repo.add_inventory(revid, inv, [])
-        self.assertEqual(set([(revid,)]), repo.inventories.keys())
-        self.assertEqual(
-            set([('sha1:6210160e6bc65e395d08bb63cc0aa2f47434631a',)]),
-            repo.chk_bytes.keys())
-        inv = repo.get_inventory(revid)
-        inv.id_to_entry._ensure_root()
-        self.assertEqual(4096, inv.id_to_entry._root_node.maximum_size)
-
-
 class TestDevelopment5(TestCaseWithTransport):
 
     def test_inventories_use_chk_map_with_parent_base_dict(self):
@@ -710,7 +685,7 @@ class TestDevelopment5FindRevisionOutsideSet(TestCaseWithTransport):
     """Tests for _find_revision_outside_set."""
 
     def setUp(self):
-        super(TestDevelopment3FindRevisionOutsideSet, self).setUp()
+        super(TestDevelopment5FindRevisionOutsideSet, self).setUp()
         self.builder = self.make_branch_builder('source', format='development5')
         self.builder.start_series()
         self.builder.build_snapshot('initial', None,
