@@ -1611,7 +1611,6 @@ class TestGraphIndexKnit(KnitTests):
              (('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
-    # XXX: duplicate these test methods in other test cases.
     def make_g_index_missing_compression_parent(self):
         graph_index = self.make_g_index('missing_comp', 2,
             [(('tip', ), ' 100 78',
