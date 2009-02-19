@@ -29,7 +29,6 @@ import urlparse
 from debian_bundle.changelog import Version
 
 from bzrlib import (
-    bzrdir,
     urlutils,
     )
 from bzrlib.branch import Branch

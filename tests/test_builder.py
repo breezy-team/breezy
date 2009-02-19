@@ -26,13 +26,8 @@ import tarfile
 
 from debian_bundle.changelog import Version
 
-from bzrlib.errors import (
-        NotBranchError,
-        NotADirectory,
-        )
 from bzrlib.tests import (TestCaseInTempDir,
                           )
-from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb.builder import (remove_dir,
                      remove_bzrbuilddeb_dir,

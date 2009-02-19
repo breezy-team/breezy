@@ -18,9 +18,8 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.config import ConfigObj, IniBasedConfig, TreeConfig
+from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter
-from bzrlib.plugins.builddeb.util import get_snapshot_revision
 
 
 class SvnBuildPackageMappedConfig(object):

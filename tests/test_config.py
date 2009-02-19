@@ -23,7 +23,7 @@ from debian_bundle.changelog import Version
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.builddeb.config import DebBuildConfig, SvnBuildPackageMappedConfig
+from bzrlib.plugins.builddeb.config import DebBuildConfig
 
 
 class DebBuildConfigTests(TestCaseWithTransport):

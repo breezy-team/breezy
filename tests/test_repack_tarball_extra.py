@@ -24,7 +24,7 @@ import tarfile
 
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 
-from bzrlib.errors import BzrCommandError, FileExists
+from bzrlib.errors import FileExists
 from bzrlib.tests import TestCaseInTempDir
 
 from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat

@@ -28,8 +28,6 @@ import os
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
 
-from bzrlib.plugins.builddeb.version import version_info
-
 commands = {
         "test_builddeb": [],
         "builddeb": ["bd"],

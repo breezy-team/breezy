@@ -22,12 +22,9 @@ from bzrlib.errors import NoSuchTag
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 
 from bzrlib.plugins.builddeb.errors import (
-        AmbiguousPackageSpecification,
-        UnknownDistribution,
         UnknownVersion,
         VersionNotSpecified,
         )
-from bzrlib.plugins.builddeb.util import lookup_distribution
 
 
 class RevisionSpec_package(RevisionSpec):

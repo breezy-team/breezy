@@ -21,13 +21,11 @@
 
 import gzip
 import os
-import select
 import shutil
-import subprocess
 import sys
 import tarfile
 
-from debian_bundle.changelog import Version, Changelog
+from debian_bundle.changelog import Version
 
 from bzrlib.config import ConfigObj
 from bzrlib.conflicts import TextConflict
@@ -42,6 +40,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
         )
+from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
 
 def write_to_file(filename, contents):
   f = open(filename, 'wb')

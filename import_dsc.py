@@ -54,7 +54,6 @@ from bzrlib.errors import (FileExists,
         BzrError,
         UncommittedChanges,
         NotBranchError,
-        NoRepositoryPresent,
         AlreadyBranchError,
         )
 from bzrlib.export import export
@@ -1995,7 +1994,7 @@ class DistributionBranch(object):
                     possible_transports=[to_transport])
         else:
             if existing_bzrdir.has_branch():
-                raise AlreadyBranchError(location)
+                raise AlreadyBranchError(to_location)
             else:
                 branch = existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()

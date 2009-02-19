@@ -22,7 +22,7 @@ import shutil
 import os
 import re
 
-from bzrlib.trace import info, mutter
+from bzrlib.trace import mutter
 
 from debian_bundle.changelog import Changelog
 
