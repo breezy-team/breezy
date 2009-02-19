@@ -469,24 +469,30 @@ class GroupCompressVersionedFiles(VersionedFiles):
             ordering = 'unordered'
         # Cheap: iterate
         locations = self._index.get_build_details(keys)
+        local_keys = frozenset(keys).intersection(set(self._unadded_refs))
+        locations.update((key, None) for key in local_keys)
         if ordering == 'topological':
             # would be better to not globally sort initially but instead
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
                 locations.iteritems())
-            local = frozenset(keys).intersection(set(self._unadded_refs))
-            for key in local:
+            for key in local_keys:
                 parent_map[key] = self._unadded_refs[key]
-                locations[key] = None
             present_keys = topo_sort(parent_map)
             # Now group by source:
+        # TODO: Support a group-compress 'optimal' ordering
         else:
-            present_keys = locations.keys()
-            local = frozenset(keys).intersection(set(self._unadded_refs))
-            for key in local:
-                present_keys.append(key)
-                locations[key] = None
+            # We want to yield the keys in a semi-optimal (read-wise) ordering.
+            # Otherwise we thrash the _group_cache and destroy performance
+            def get_group(key):
+                # This is the group the bytes are stored in
+                return locations[key][0:3]
+            present_keys = sorted(locations.iterkeys(), key=get_group)
+            # We don't have an ordering for keys in the in-memory object, but
+            # lets process the in-memory ones first.
+            local = list(local_keys)
+            present_keys = list(local_keys) + present_keys
         absent_keys = keys.difference(set(locations))
         for key in absent_keys:
             yield AbsentContentFactory(key)
