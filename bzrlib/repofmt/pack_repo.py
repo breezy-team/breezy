@@ -1971,6 +1971,13 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
+        vfs = [self.revisions, self.inventories, self.texts, self.signatures]
+        for vf in vfs:
+            missing = vf._index.get_missing_compression_parents()
+            if missing:
+                raise errors.BzrCheckError(
+                    "Repository %s has missing compression parent(s) %r "
+                    "in %r" % (self, list(missing), vf))
         return self._pack_collection._commit_write_group()
 
     def get_transaction(self):
