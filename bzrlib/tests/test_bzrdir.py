@@ -32,6 +32,7 @@ from bzrlib import (
     repository,
     osutils,
     symbol_versioning,
+    remote,
     urlutils,
     win32utils,
     workingtree,
@@ -884,6 +885,22 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree', format='knit')
         self.assertTrue(tree.bzrdir.needs_format_conversion(
             new_format))
+
+    def test_initialize_on_format_uses_smart_transport(self):
+        self.setup_smart_server_with_call_log()
+        new_format = bzrdir.format_registry.make_bzrdir('dirstate')
+        transport = self.get_transport('target')
+        transport.ensure_base()
+        self.reset_smart_call_log()
+        instance = new_format.initialize_on_transport(transport)
+        self.assertIsInstance(instance, remote.RemoteBzrDir)
+        rpc_count = len(self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertEqual(15, rpc_count)
 
 
 class TestFormat5(TestCaseWithTransport):
