@@ -135,20 +135,20 @@ class GenericCommitHandler(processor.CommitHandler):
            properties=rev_props,
            parent_ids=self.parents)
 
-    def _modify_item(self, path, kind, is_executable, data):
+    def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
         # Create the new InventoryEntry
         basename, parent_ie = self._ensure_directory(path)
         file_id = self.bzr_file_id(path)
         ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
         ie.revision = self.revision_id
-        if isinstance(ie, inventory.InventoryFile):
+        if kind == 'file':
             ie.executable = is_executable
             lines = osutils.split_lines(data)
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             self.lines_for_commit[file_id] = lines
-        elif isinstance(ie, inventory.InventoryLink):
+        elif kind == 'symlink':
             ie.symlink_target = data.encode('utf8')
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
@@ -157,7 +157,7 @@ class GenericCommitHandler(processor.CommitHandler):
             raise errors.BzrError("Cannot import items of kind '%s' yet" %
                 (kind,))
         # Record it
-        if file_id in self.basis_inventory:
+        if file_id in inv:
             self.record_changed(path, ie, parent_ie)
         else:
             self.record_new(path, ie)
@@ -217,27 +217,32 @@ class GenericCommitHandler(processor.CommitHandler):
         kind = ie.kind
         if kind == 'file':
             content = self.rev_store.get_file_text(self.parents[0], file_id)
-            self._modify_item(dest_path, kind, ie.executable, content)
+            self._modify_item(dest_path, kind, ie.executable, content, inv)
         elif kind == 'symlink':
-            self._modify_item(dest_path, kind, False, ie.symlink_target)
+            self._modify_item(dest_path, kind, False, ie.symlink_target, inv)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
                 kind, path)
 
     def _rename_item(self, old_path, new_path, inv):
-        # TODO: Generalise to use record_* and inv!!!!
-        file_id = self.bzr_file_id(old_path)
-        basename, new_parent_ie = self._ensure_directory(new_path)
+        # TODO: Generalise to use record_*
+        old_file_id = inv.path2id(old_path)
+        old_ie = inv[old_file_id]
+        new_file_id = inv.path2id(new_path)
+        if new_file_id is not None:
+            inv.remove_recursive_id(new_file_id)
+
+        # The revision-id for this entry needs to be updated and
+        # that means the loader then needs to know what the "new" text is.
+        # We therefore must go back to the revision store to get it.
+        lines = self.rev_store.get_file_lines(old_ie.revision, old_file_id)
+        self.lines_for_commit[old_file_id] = lines
+        inv[old_file_id].revision = self.revision_id
+
+        new_basename, new_parent_ie = self._ensure_directory(new_path)
         new_parent_id = new_parent_ie.file_id
-        existing_id = inv.path2id(new_path)
-        if existing_id is not None:
-            self.inventory.remove_recursive_id(existing_id)
-        ie = self.inventory[file_id]
-        lines = self.rev_store._get_lines(file_id, ie.revision)
-        self.lines_for_commit[file_id] = lines
-        self.inventory.rename(file_id, new_parent_id, basename)
+        inv.rename(old_file_id, new_parent_id, new_basename)
         self.cache_mgr.rename_path(old_path, new_path)
-        self.inventory[file_id].revision = self.revision_id
 
     def _delete_all_items(self, inv):
         for name, root_item in inv.root.children.iteritems():
@@ -257,6 +262,9 @@ class InventoryCommitHandler(GenericCommitHandler):
             # TODO: Shallow copy - deep inventory copying is expensive
             self.inventory = self.basis_inventory.copy()
         self.inventory_root = self.inventory.root
+
+        # directory-path -> inventory-entry for current inventory
+        self.directory_entries = dict(self.inventory.directories())
 
         # Initialise the inventory revision info as required
         if self.rev_store.expects_rich_root():
@@ -307,13 +315,17 @@ class InventoryCommitHandler(GenericCommitHandler):
         return present, inventories
 
     def record_new(self, path, ie):
-        self.inventory.add(ie)
+        try:
+            self.inventory.add(ie)
+        except errors.DuplicateFileId:
+            # Directory already exists as a file or symlink
+            del self.inventory[ie.file_id]
+            # Try again
+            self.inventory.add(ie)
 
-    def record_changed(self, path, ie, parent_ie=None):
+    def record_changed(self, path, ie, parent_ie):
         # HACK: no API for this (del+add does more than it needs to)
         self.inventory._byid[ie.file_id] = ie
-        if parent_ie is None:
-            parent_ie = self.inventory._byid[ie.parent_id]
         parent_ie.children[ie.name] = ie
 
     def _delete_item(self, path):
@@ -367,10 +379,10 @@ class InventoryCommitHandler(GenericCommitHandler):
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
         self._modify_item(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data)
+            filecmd.is_executable, data, self.inventory)
 
     def delete_handler(self, filecmd):
-        self.debug("deleting %s", path)
+        self.debug("deleting %s", filecmd.path)
         self._delete_item(filecmd.path)
 
     def copy_handler(self, filecmd):
@@ -421,7 +433,7 @@ class DeltaCommitHandler(GenericCommitHandler):
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
         self._modify_item(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data)
+            filecmd.is_executable, data, self.basis_inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)

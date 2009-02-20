@@ -49,6 +49,10 @@ class AbstractRevisionStore(object):
         revtree = self.repo.revision_tree(revision_id)
         return revtree.get_file_text(file_id)
 
+    def get_file_lines(self, revision_id, file_id):
+        """Get the lines stored for a file in a given revision."""
+        return osutils.split_lines(revtree.get_file_text(file_id))
+
     def load(self, rev, inv, signature, text_provider,
         inventories_provider=None):
         """Load a revision.
@@ -179,7 +183,7 @@ class RevisionStore1(AbstractRevisionStore):
             vfile = self.repo.weave_store.get_weave_or_empty(ie.file_id,  tx)
             vfile.add_lines(revision_id, text_parents, lines)
 
-    def _get_lines(self, file_id, revision_id):
+    def get_file_lines(self, revision_id, file_id):
         tx = self.repo.get_transaction()
         w = self.repo.weave_store.get_weave(ie.file_id, tx)
         return w.get_lines(revision_id)
@@ -221,7 +225,7 @@ class RevisionStore2(AbstractRevisionStore):
             lines = text_provider(ie.file_id)
             self.repo.texts.add_lines(text_key, text_parents, lines)
 
-    def _get_lines(self, file_id, revision_id):
+    def get_file_lines(self, revision_id, file_id):
         record = self.repo.texts.get_record_stream([(file_id, revision_id)],
             'unordered', True).next()
         if record.storage_kind == 'absent':
