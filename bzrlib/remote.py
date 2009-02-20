@@ -18,6 +18,7 @@
 # across to run on the server.
 
 import bz2
+import struct
 
 from bzrlib import (
     branch,
@@ -325,6 +326,15 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._creating_repo._ensure_real()
         return self._creating_repo._real_repository._format.network_name()
 
+    @property
+    def _serializer(self):
+        # We should only be getting asked for the serializer for
+        # RemoteRepositoryFormat objects except when the RemoteRepositoryFormat
+        # object is a concrete instance for a RemoteRepository. In this case
+        # we know the creating_repo and can use it to supply the serializer.
+        self._creating_repo._ensure_real()
+        return self._creating_repo._real_repository._format._serializer
+
 
 class RemoteRepository(_RpcHelper):
     """Repository accessed over rpc.
@@ -470,6 +480,11 @@ class RemoteRepository(_RpcHelper):
             revision_graph[d[0]] = d[1:]
             
         return revision_graph
+
+    def _get_sink(self):
+        """See Repository._get_sink()."""
+        self._ensure_real()
+        return self._real_repository._get_sink()
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
@@ -1254,6 +1269,10 @@ class RemoteRepository(_RpcHelper):
             self._real_repository._pack_collection.reload_pack_names()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+
+
+def _length_prefix(bytes):
+    return struct.pack('!L', len(bytes))
 
 
 class RemoteBranchLockableFiles(LockableFiles):

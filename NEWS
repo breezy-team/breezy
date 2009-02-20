@@ -62,6 +62,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``bzrlib.fetch`` is now composed of a sender and a sink component
+      allowing for decoupling over a network connection. (Andrew Bennetts,
+      Robert Collins)
+
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
 
@@ -71,6 +75,10 @@ IN DEVELOPMENT
 
     * ``RepositoryFormat`` objects now have a ``network_name`` for passing
       the format across RPC calls. (Robert Collins, Andrew Bennetts)
+
+    * ``RepositoryFormat`` objects now all have a new attribute
+      ``_serializer`` used by fetch when reserialising is required.
+      (Robert Collins, Andrew Bennetts)
 
     * Some methods have been pulled up from ``BzrBranch`` to ``Branch``
       to aid branch types that are not bzr branch objects (like

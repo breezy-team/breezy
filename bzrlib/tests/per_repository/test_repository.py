@@ -840,6 +840,11 @@ class TestRepository(TestCaseWithRepository):
         # The repository format is preserved.
         self.assertEqual(repo._format, target_repo._format)
 
+    def test__get_sink(self):
+        repo = self.make_repository('repo')
+        sink = repo._get_sink()
+        self.assertIsInstance(sink, repository.StreamSink)
+                
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns
         an object with a get_parent_map method.
