@@ -401,6 +401,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
+    'BzrDir.create_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestCreateRepository')
+request_handlers.register_lazy(
     'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV1')
 request_handlers.register_lazy(
     'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV2')
@@ -451,6 +453,9 @@ request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
+request_handlers.register_lazy(
+    'Repository.set_make_working_trees', 'bzrlib.smart.repository',
+    'SmartServerRepositorySetMakeWorkingTrees')
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
 request_handlers.register_lazy(

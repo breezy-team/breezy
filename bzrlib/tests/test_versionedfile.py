@@ -47,6 +47,7 @@ from bzrlib.symbol_versioning import one_four, one_five
 from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
+    TestNotApplicable,
     TestScenarioApplier,
     TestSkipped,
     condition_isinstance,
@@ -94,30 +95,35 @@ def load_tests(standard_tests, module, loader):
                 ConstantMapper('inventory')),
             'graph':True,
             'key_length':1,
+            'support_partial_insertion': False,
             }),
         ('named-knit', {
             'cleanup':None,
             'factory':make_file_factory(False, ConstantMapper('revisions')),
             'graph':True,
             'key_length':1,
+            'support_partial_insertion': False,
             }),
-        ('named-nograph-knit-pack', {
+        ('named-nograph-nodelta-knit-pack', {
             'cleanup':cleanup_pack_knit,
             'factory':make_pack_factory(False, False, 1),
             'graph':False,
             'key_length':1,
+            'support_partial_insertion': False,
             }),
         ('named-graph-knit-pack', {
             'cleanup':cleanup_pack_knit,
             'factory':make_pack_factory(True, True, 1),
             'graph':True,
             'key_length':1,
+            'support_partial_insertion': True,
             }),
         ('named-graph-nodelta-knit-pack', {
             'cleanup':cleanup_pack_knit,
             'factory':make_pack_factory(True, False, 1),
             'graph':True,
             'key_length':1,
+            'support_partial_insertion': False,
             }),
         ]
     len_two_adapter.scenarios = [
@@ -127,18 +133,21 @@ def load_tests(standard_tests, module, loader):
                 PrefixMapper()),
             'graph':True,
             'key_length':2,
+            'support_partial_insertion': False,
             }),
         ('annotated-knit-escape', {
             'cleanup':None,
             'factory':make_file_factory(True, HashEscapedPrefixMapper()),
             'graph':True,
             'key_length':2,
+            'support_partial_insertion': False,
             }),
         ('plain-knit-pack', {
             'cleanup':cleanup_pack_knit,
             'factory':make_pack_factory(True, True, 2),
             'graph':True,
             'key_length':2,
+            'support_partial_insertion': True,
             }),
         ]
     for test in iter_suite_tests(to_adapt):
@@ -2134,20 +2143,72 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         else:
             self.assertIdenticalVersionedFile(source, files)
 
-    def test_insert_record_stream_delta_missing_basis_no_corruption(self):
-        """Insertion where a needed basis is not included aborts safely."""
-        # We use a knit always here to be sure we are getting a binary delta.
+    def get_knit_delta_source(self):
+        """Get a source that can produce a stream with knit delta records,
+        regardless of this test's scenario.
+        """
         mapper = self.get_mapper()
         source_transport = self.get_transport('source')
         source_transport.mkdir('.')
         source = make_file_factory(False, mapper)(source_transport)
-        self.get_diamond_files(source)
-        entries = source.get_record_stream(['origin', 'merged'], 'unordered', False)
+        get_diamond_files(source, self.key_length, trailing_eol=True,
+            nograph=False, left_only=False)
+        return source
+
+    def test_insert_record_stream_delta_missing_basis_no_corruption(self):
+        """Insertion where a needed basis is not included notifies the caller
+        of the missing basis.  In the meantime a record missing its basis is
+        not added.
+        """
+        source = self.get_knit_delta_source()
+        keys = [self.get_simple_key('origin'), self.get_simple_key('merged')]
+        entries = source.get_record_stream(keys, 'unordered', False)
         files = self.get_versionedfiles()
-        self.assertRaises(RevisionNotPresent, files.insert_record_stream,
-            entries)
+        if self.support_partial_insertion:
+            self.assertEqual([],
+                list(files.get_missing_compression_parent_keys()))
+            files.insert_record_stream(entries)
+            missing_bases = files.get_missing_compression_parent_keys()
+            self.assertEqual(set([self.get_simple_key('left')]),
+                set(missing_bases))
+            self.assertEqual(set(keys), set(files.get_parent_map(keys)))
+        else:
+            self.assertRaises(
+                errors.RevisionNotPresent, files.insert_record_stream, entries)
+            files.check()
+
+    def test_insert_record_stream_delta_missing_basis_can_be_added_later(self):
+        """Insertion where a needed basis is not included notifies the caller
+        of the missing basis.  That basis can be added in a second
+        insert_record_stream call that does not need to repeat records present
+        in the previous stream.  The record(s) that required that basis are
+        fully inserted once their basis is no longer missing.
+        """
+        if not self.support_partial_insertion:
+            raise TestNotApplicable(
+                'versioned file scenario does not support partial insertion')
+        source = self.get_knit_delta_source()
+        entries = source.get_record_stream([self.get_simple_key('origin'),
+            self.get_simple_key('merged')], 'unordered', False)
+        files = self.get_versionedfiles()
+        files.insert_record_stream(entries)
+        missing_bases = files.get_missing_compression_parent_keys()
+        self.assertEqual(set([self.get_simple_key('left')]),
+            set(missing_bases))
+        # 'merged' is inserted (although a commit of a write group involving
+        # this versionedfiles would fail).
+        merged_key = self.get_simple_key('merged')
+        self.assertEqual(
+            [merged_key], files.get_parent_map([merged_key]).keys())
+        # Add the full delta closure of the missing records
+        missing_entries = source.get_record_stream(
+            missing_bases, 'unordered', True)
+        files.insert_record_stream(missing_entries)
+        # Now 'merged' is fully inserted (and a commit would succeed).
+        self.assertEqual([], list(files.get_missing_compression_parent_keys()))
+        self.assertEqual(
+            [merged_key], files.get_parent_map([merged_key]).keys())
         files.check()
-        self.assertEqual({}, files.get_parent_map([]))
 
     def test_iter_lines_added_or_present_in_keys(self):
         # test that we get at least an equalset of the lines added by

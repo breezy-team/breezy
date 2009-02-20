@@ -146,7 +146,8 @@ class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
             if not branch.repository.has_revision(new_last_revision_id):
                 return FailedSmartServerResponse(
                     ('NoSuchRevision', new_last_revision_id))
-            branch.generate_revision_history(new_last_revision_id)
+            branch.set_revision_history(branch._lefthand_history(
+                new_last_revision_id, None, None))
         return SuccessfulSmartServerResponse(('ok',))
 
 

@@ -1535,12 +1535,26 @@ class KnitVersionedFiles(VersionedFiles):
                     added_keys.extend(
                         [index_entry[0] for index_entry in index_entries])
                     del buffered_index_entries[key]
-        # If there were any deltas which had a missing basis parent, error.
         if buffered_index_entries:
-            from pprint import pformat
-            raise errors.BzrCheckError(
-                "record_stream refers to compression parents not in %r:\n%s"
-                % (self, pformat(sorted(buffered_index_entries.keys()))))
+            # There were index entries buffered at the end of the stream,
+            # So these need to be added (if the index supports holding such
+            # entries for later insertion)
+            for key in buffered_index_entries:
+                index_entries = buffered_index_entries[key]
+                self._index.add_records(index_entries,
+                    missing_compression_parents=True)
+
+    def get_missing_compression_parent_keys(self):
+        """Return an iterable of keys of missing compression parents.
+
+        Check this after calling insert_record_stream to find out if there are
+        any missing compression parents.  If there are, the records that
+        depend on them are not able to be inserted safely. For atomic
+        KnitVersionedFiles built on packs, the transaction should be aborted or
+        suspended - commit will fail at this point. Nonatomic knits will error
+        earlier because they have no staging area to put pending entries into.
+        """
+        return self._index.get_missing_compression_parents()
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
@@ -2218,14 +2232,23 @@ class _KndxIndex(object):
         self._reset_cache()
         self.has_graph = True
 
-    def add_records(self, records, random_id=False):
+    def add_records(self, records, random_id=False, missing_compression_parents=False):
         """Add multiple records to the index.
         
         :param records: a list of tuples:
                          (key, options, access_memo, parents).
         :param random_id: If True the ids being added were randomly generated
             and no check for existence will be performed.
+        :param missing_compression_parents: If True the records being added are
+            only compressed against texts already in the index (or inside
+            records). If False the records all refer to unavailable texts (or
+            texts inside records) as compression parents.
         """
+        if missing_compression_parents:
+            # It might be nice to get the edge of the records. But keys isn't
+            # _wrong_.
+            keys = sorted(record[0] for record in records)
+            raise errors.RevisionNotPresent(keys, self)
         paths = {}
         for record in records:
             key = record[0]
@@ -2262,6 +2285,18 @@ class _KndxIndex(object):
                 self._kndx_cache[prefix] = (orig_cache, orig_history)
                 raise
 
+    def scan_unvalidated_index(self, graph_index):
+        """See _KnitGraphIndex.scan_unvalidated_index."""
+        # Because kndx files do not support atomic insertion via separate index
+        # files, they do not support this method.
+        raise NotImplementedError(self.scan_unvalidated_index)
+
+    def get_missing_compression_parents(self):
+        """See _KnitGraphIndex.get_missing_compression_parents."""
+        # Because kndx files do not support atomic insertion via separate index
+        # files, they do not support this method.
+        raise NotImplementedError(self.get_missing_compression_parents)
+    
     def _cache_key(self, key, options, pos, size, parent_keys):
         """Cache a version record in the history array and index cache.
 
@@ -2577,11 +2612,13 @@ class _KnitGraphIndex(object):
                 "parent tracking.")
         self.has_graph = parents
         self._is_locked = is_locked
+        self._missing_compression_parents = set()
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._graph_index)
 
-    def add_records(self, records, random_id=False):
+    def add_records(self, records, random_id=False,
+        missing_compression_parents=False):
         """Add multiple records to the index.
         
         This function does not insert data into the Immutable GraphIndex
@@ -2593,6 +2630,10 @@ class _KnitGraphIndex(object):
                          (key, options, access_memo, parents).
         :param random_id: If True the ids being added were randomly generated
             and no check for existence will be performed.
+        :param missing_compression_parents: If True the records being added are
+            only compressed against texts already in the index (or inside
+            records). If False the records all refer to unavailable texts (or
+            texts inside records) as compression parents.
         """
         if not self._add_callback:
             raise errors.ReadOnlyError(self)
@@ -2600,6 +2641,7 @@ class _KnitGraphIndex(object):
         # anymore.
 
         keys = {}
+        compression_parents = set()
         for (key, options, access_memo, parents) in records:
             if self._parents:
                 parents = tuple(parents)
@@ -2616,6 +2658,8 @@ class _KnitGraphIndex(object):
                 if self._deltas:
                     if 'line-delta' in options:
                         node_refs = (parents, (parents[0],))
+                        if missing_compression_parents:
+                            compression_parents.add(parents[0])
                     else:
                         node_refs = (parents, ())
                 else:
@@ -2643,7 +2687,40 @@ class _KnitGraphIndex(object):
             for key, (value, node_refs) in keys.iteritems():
                 result.append((key, value))
         self._add_callback(result)
+        if missing_compression_parents:
+            # This may appear to be incorrect (it does not check for
+            # compression parents that are in the existing graph index),
+            # but such records won't have been buffered, so this is
+            # actually correct: every entry when
+            # missing_compression_parents==True either has a missing parent, or
+            # a parent that is one of the keys in records.
+            compression_parents.difference_update(keys)
+            self._missing_compression_parents.update(compression_parents)
+        # Adding records may have satisfied missing compression parents.
+        self._missing_compression_parents.difference_update(keys)
         
+    def scan_unvalidated_index(self, graph_index):
+        """Inform this _KnitGraphIndex that there is an unvalidated index.
+
+        This allows this _KnitGraphIndex to keep track of any missing
+        compression parents we may want to have filled in to make those
+        indices valid.
+
+        :param graph_index: A GraphIndex
+        """
+        if self._deltas:
+            new_missing = graph_index.external_references(ref_list_num=1)
+            new_missing.difference_update(self.get_parent_map(new_missing))
+            self._missing_compression_parents.update(new_missing)
+
+    def get_missing_compression_parents(self):
+        """Return the keys of missing compression parents.
+
+        Missing compression parents occur when a record stream was missing
+        basis texts, or a index was scanned that had missing basis texts.
+        """
+        return frozenset(self._missing_compression_parents)
+
     def _check_read(self):
         """raise if reads are not permitted."""
         if not self._is_locked():

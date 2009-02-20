@@ -1220,6 +1220,10 @@ class Repository(object):
                 dest_repo = a_bzrdir.open_repository()
         return dest_repo
 
+    def _get_sink(self):
+        """Return a sink for streaming into this repository."""
+        return StreamSink(self)
+
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
@@ -2191,6 +2195,21 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
 class RepositoryFormatRegistry(registry.Registry):
     """Registry of RepositoryFormats."""
 
+    def __init__(self, other_registry=None):
+        registry.Registry.__init__(self)
+        self._other_registry = other_registry
+
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, info=None,
+                      override_existing=False):
+        # Overridden to allow capturing registrations to two seperate
+        # registries in a single call.
+        registry.Registry.register_lazy(self, key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+        if self._other_registry is not None:
+            self._other_registry.register_lazy(key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+
     def get(self, format_string):
         r = registry.Registry.get(self, format_string)
         if callable(r):
@@ -2198,8 +2217,17 @@ class RepositoryFormatRegistry(registry.Registry):
         return r
     
 
-format_registry = RepositoryFormatRegistry()
-"""Registry of formats, indexed by their identifying format string.
+network_format_registry = RepositoryFormatRegistry()
+"""Registry of formats indexed by their network name.
+
+The network name for a repository format is an identifier that can be used when
+referring to formats with smart server operations. See
+RepositoryFormat.network_name() for more detail.
+"""
+
+
+format_registry = RepositoryFormatRegistry(network_format_registry)
+"""Registry of formats, indexed by their BzrDirMetaFormat format string.
 
 This can contain either format instances themselves, or classes/factories that
 can be called to obtain one.
@@ -2212,24 +2240,27 @@ can be called to obtain one.
 class RepositoryFormat(object):
     """A repository format.
 
-    Formats provide three things:
+    Formats provide four things:
      * An initialization routine to construct repository data on disk.
-     * a format string which is used when the BzrDir supports versioned
-       children.
+     * a optional format string which is used when the BzrDir supports
+       versioned children.
      * an open routine which returns a Repository instance.
+     * A network name for referring to the format in smart server RPC
+       methods.
 
     There is one and only one Format subclass for each on-disk format. But
     there can be one Repository subclass that is used for several different
     formats. The _format attribute on a Repository instance can be used to
     determine the disk format.
 
-    Formats are placed in an dict by their format string for reference 
-    during opening. These should be subclasses of RepositoryFormat
-    for consistency.
+    Formats are placed in a registry by their format string for reference
+    during opening. These should be subclasses of RepositoryFormat for
+    consistency.
 
     Once a format is deprecated, just deprecate the initialize and open
     methods on the format class. Do not deprecate the object, as the 
-    object will be created every system load.
+    object may be created even when a repository instnace hasn't been
+    created.
 
     Common instance attributes:
     _matchingbzrdir - the bzrdir format that the repository format was
@@ -2342,6 +2373,16 @@ class RepositoryFormat(object):
         """
         return True
 
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        MetaDir repository formats use their disk format string to identify the
+        repository over the wire. All in one formats such as bzr < 0.8, and
+        foreign formats like svn/git and hg should use some marker which is
+        unique and immutable.
+        """
+        raise NotImplementedError(self.network_name)
+
     def check_conversion_target(self, target_format):
         raise NotImplementedError(self.check_conversion_target)
 
@@ -2397,9 +2438,28 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         finally:
             control_files.unlock()
 
+    def network_name(self):
+        """Metadir formats have matching disk and network format strings."""
+        return self.get_format_string()
 
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.  They're 
+
+# Pre-0.8 formats that don't have a disk format string (because they are
+# versioned by the matching control directory). We use the control directories
+# disk format string as a key for the network_name because they meet the
+# constraints (simple string, unique, immmutable).
+network_format_registry.register_lazy(
+    "Bazaar-NG branch, format 5\n",
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat5',
+)
+network_format_registry.register_lazy(
+    "Bazaar-NG branch, format 6\n",
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat6',
+)
+
+# formats which have no format string are not discoverable or independently
+# creatable on disk, so are not registered in format_registry.  They're 
 # all in bzrlib.repofmt.weaverepo now.  When an instance of one of these is
 # needed, it's constructed directly by the BzrDir.  Non-native formats where
 # the repository is not separately opened are similar.
@@ -3587,3 +3647,80 @@ def _strip_NULL_ghosts(revision_graph):
         revision_graph[key] = tuple(parent for parent in parents if parent
             in revision_graph)
     return revision_graph
+
+
+class StreamSink(object):
+    """An object that can insert a stream into a repository.
+
+    This interface handles the complexity of reserialising inventories and
+    revisions from different formats, and allows unidirectional insertion into
+    stacked repositories without looking for the missing basis parents
+    beforehand.
+    """
+
+    def __init__(self, target_repo):
+        self.target_repo = target_repo
+
+    def insert_stream(self, stream, src_format):
+        """Insert a stream's content into the target repository.
+
+        :param src_format: a bzr repository format.
+
+        :return: an iterable of keys additional items required before the
+        insertion can be completed.
+        """
+        result = []
+        to_serializer = self.target_repo._format._serializer
+        src_serializer = src_format._serializer
+        for substream_type, substream in stream:
+            if substream_type == 'texts':
+                self.target_repo.texts.insert_record_stream(substream)
+            elif substream_type == 'inventories':
+                if src_serializer == to_serializer:
+                    self.target_repo.inventories.insert_record_stream(
+                        substream)
+                else:
+                    self._extract_and_insert_inventories(
+                        substream, src_serializer)
+            elif substream_type == 'revisions':
+                # This may fallback to extract-and-insert more often than
+                # required if the serializers are different only in terms of
+                # the inventory.
+                if src_serializer == to_serializer:
+                    self.target_repo.revisions.insert_record_stream(
+                        substream)
+                else:
+                    self._extract_and_insert_revisions(substream,
+                        src_serializer)
+            elif substream_type == 'signatures':
+                self.target_repo.signatures.insert_record_stream(substream)
+            else:
+                raise AssertionError('kaboom! %s' % (substream_type,))
+        return result
+
+    def _extract_and_insert_inventories(self, substream, serializer):
+        """Generate a new inventory versionedfile in target, converting data.
+        
+        The inventory is retrieved from the source, (deserializing it), and
+        stored in the target (reserializing it in a different format).
+        """
+        for record in substream:
+            bytes = record.get_bytes_as('fulltext')
+            revision_id = record.key[0]
+            inv = serializer.read_inventory_from_string(bytes, revision_id)
+            parents = [key[0] for key in record.parents]
+            self.target_repo.add_inventory(revision_id, inv, parents)
+
+    def _extract_and_insert_revisions(self, substream, serializer):
+        for record in substream:
+            bytes = record.get_bytes_as('fulltext')
+            revision_id = record.key[0]
+            rev = serializer.read_revision_from_string(bytes)
+            if rev.revision_id != revision_id:
+                raise AssertionError('wtf: %s != %s' % (rev, revision_id))
+            self.target_repo.add_revision(revision_id, rev)
+
+    def finished(self):
+        if self.target_repo._fetch_reconcile:
+            self.target_repo.reconcile()
+

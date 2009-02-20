@@ -189,8 +189,6 @@ doc/developers
 
 Automatically-generated API reference information is available at 
 <http://starship.python.net/crew/mwh/bzrlibapi/>.  
-(There is an experimental editable version at 
-<http://starship.python.net/crew/mwh/bzrlibapi-oe/>.)
 
 See also the `Bazaar Architectural Overview  <../../developers/overview.html>`_.
 

@@ -1805,6 +1805,19 @@ class RepositoryPackCollection(object):
         self.repo._text_knit = None
 
     def _commit_write_group(self):
+        all_missing = set()
+        for prefix, versioned_file in (
+                ('revisions', self.repo.revisions),
+                ('inventories', self.repo.inventories),
+                ('texts', self.repo.texts),
+                ('signatures', self.repo.signatures),
+                ):
+            missing = versioned_file.get_missing_compression_parent_keys()
+            all_missing.update([(prefix,) + key for key in missing])
+        if all_missing:
+            raise errors.BzrCheckError(
+                "Repository %s has missing compression parent(s) %r "
+                 % (self.repo, sorted(all_missing)))
         self._remove_pack_indices(self._new_pack)
         if self._new_pack.data_inserted():
             # get all the data to disk and read to use
