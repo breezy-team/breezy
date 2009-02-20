@@ -40,6 +40,13 @@ class MissingUpstreamTarball(BzrError):
         BzrError.__init__(self, tarball_name=tarball_name)
 
 
+class TarFailed(BzrError):
+    _fmt = "There was an error executing tar to %(operation)s %(tarball)s."
+
+    def __init__(self, operation, tarball):
+        BzrError.__init__(self, operation=operation, tarball=tarball)
+
+
 class BuildFailedError(BzrError):
     _fmt = "The build failed."
 

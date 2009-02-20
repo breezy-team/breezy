@@ -22,6 +22,8 @@ import shutil
 import subprocess
 import tempfile
 
+from debian_bundle.changelog import Version
+
 from bzrlib.export import export
 from bzrlib.trace import info
 
@@ -36,19 +38,49 @@ class UpstreamProvider(object):
     instance using pristine-tar, or using apt.
     """
 
-    def __init__(cls, tree, branch, package, version, store_dir,
-            working_tree=False, larstiq=False):
+    def __init__(self, tree, branch, package, version, store_dir,
+            larstiq=False):
+        """Create an UpstreamProvider.
+
+        :param tree: The tree that is being built from.
+        :param branch: The branch that is being built from.
+        :param package: the name of the source package that is being built.
+        :param version: the Version of the package that is being built.
+        :param store_dir: A directory to cache the tarballs.
+        :param larstiq: Whether the tree versions the root of ./debian.
+        """
         self.tree = tree
         self.branch = branch
         self.package = package
         self.version = version
-        self.working_tree = working_tree
-        self.larstiq = larstiq
         self.store_dir = store_dir
+        self.larstiq = larstiq
 
     def provide(self, target_dir):
+        """Provide the upstream tarball any way possible.
+
+        Call this to place the correctly named tarball in to target_dir,
+        through means possible.
+
+        If the tarball is already there then do nothing.
+        If it is in self.store_dir then copy it over.
+        Else retrive it and cache it in self.store_dir, then copy it over:
+           - If pristine-tar metadata is available then that will be used.
+           - Else if apt knows about a source of that version that will be
+             retrieved.
+           - Else if uscan knows about that version it will be downloaded
+             and repacked as needed.
+           - Else a call will be made to get-orig-source to try and retrieve
+             the tarball.
+
+        If the tarball can't be found at all then MissingUpstreamTarball
+        will be raised.
+
+        :param target_dir: The directory to place the tarball in.
+        :return: The path to the tarball.
+        """
         if self.already_exists_in_target(target_dir):
-            return
+            return os.path.join(target_dir, self._tarball_name())
         if not self.already_exists_in_store(target_dir):
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
@@ -61,7 +93,7 @@ class UpstreamProvider(object):
             elif self.provide_with_get_orig_source(self.store_dir):
                 pass
         if self.provide_from_store_dir(target_dir):
-            return True
+            return os.path.join(target_dir, self._tarball_name())
         raise MissingUpstreamTarball(self._tarball_name())
 
     def already_exists_in_target(self, target_dir):
@@ -202,3 +234,17 @@ class _TouchUpstreamProvider(UpstreamProvider):
         f = open(os.path.join(target_dir, self.desired_tarball_name), "wb")
         f.write("I am a tarball, honest\n")
         f.close()
+
+class _SimpleUpstreamProvider(UpstreamProvider):
+    """For tests"""
+
+    def __init__(self, package, version, store_dir):
+        self.package = package
+        self.version = version
+        self.store_dir = store_dir
+
+    def provide(self, target_dir):
+        if self.already_exists_in_target(target_dir) \
+            or self.provide_from_store_dir(target_dir):
+            return os.path.join(target_dir, self._tarball_name())
+        raise MissingUpstreamTarball(self._tarball_name())
