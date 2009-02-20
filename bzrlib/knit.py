@@ -1507,18 +1507,20 @@ class KnitVersionedFiles(VersionedFiles):
             elif record.storage_kind == 'chunked':
                 self.add_lines(record.key, parents,
                     osutils.chunks_to_lines(record.get_bytes_as('chunked')))
-            elif record.storage_kind == 'fulltext':
-                self.add_lines(record.key, parents,
-                    split_lines(record.get_bytes_as('fulltext')))
             else:
-                # Not a fulltext, and not suitable for direct insertion as a
+                # Not suitable for direct insertion as a
                 # delta, either because it's not the right format, or this
                 # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
                 # 0) or because it depends on a base only present in the
                 # fallback kvfs.
-                adapter_key = record.storage_kind, 'fulltext'
-                adapter = get_adapter(adapter_key)
-                lines = split_lines(adapter.get_bytes(record))
+                try:
+                    # Try getting a fulltext directly from the record.
+                    bytes = record.get_bytes_as('fulltext')
+                except errors.UnavailableRepresentation:
+                    adapter_key = record.storage_kind, 'fulltext'
+                    adapter = get_adapter(adapter_key)
+                    bytes = adapter.get_bytes(record)
+                lines = split_lines(bytes)
                 try:
                     self.add_lines(record.key, parents, lines)
                 except errors.RevisionAlreadyPresent:
