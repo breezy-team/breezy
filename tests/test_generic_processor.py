@@ -159,6 +159,12 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
         self.addCleanup(branch.unlock)
         self.assertEqual(tree.get_symlink_target(file_id), target)
 
+    def assertExecutable(self, branch, tree, path, executable):
+        file_id = tree.inventory.path2id(path)
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
+        self.assertEqual(tree.is_executable(file_id), executable)
+
     def assertRevisionRoot(self, revtree, path):
         self.assertEqual(revtree.get_revision_id(),
                          revtree.inventory.root.children[path].revision)
@@ -167,19 +173,23 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 class TestModify(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
-        to_kind=None, to_content='bbb'):
+        executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        # Revno 1: create a file or symlink
+        # Revno 2: modify it
         if to_kind is None:
             to_kind = kind
+        if to_executable is None:
+            to_executable = executable
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, False,
+                yield commands.FileModifyCommand(path, kind, executable,
                         None, content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(path, to_kind, False,
+                yield commands.FileModifyCommand(path, to_kind, to_executable,
                         None, to_content)
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -255,10 +265,36 @@ class TestModify(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree1, path, "aaa")
         self.assertContent(branch, revtree2, path, "bbb")
 
+    def test_modify_file_now_executable(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path,
+            executable=False, to_executable=True, to_content='aaa'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_modified=[(path,)])
+        self.assertExecutable(branch, revtree1, path, False)
+        self.assertExecutable(branch, revtree2, path, True)
+
+    def test_modify_file_no_longer_executable(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path,
+            executable=True, to_executable=False, to_content='aaa'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_modified=[(path,)])
+        self.assertExecutable(branch, revtree1, path, True)
+        self.assertExecutable(branch, revtree2, path, False)
+
 
 class TestDelete(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file'):
+        # Revno 1: create a file or symlink
+        # Revno 2: delete it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
@@ -317,6 +353,8 @@ class TestDelete(TestCaseForGenericProcessor):
 class TestRename(TestCaseForGenericProcessor):
 
     def get_command_iter(self, old_path, new_path):
+        # Revno 1: create a file or symlink
+        # Revno 2: rename it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
@@ -360,6 +398,8 @@ class TestRename(TestCaseForGenericProcessor):
 class TestCopy(TestCaseForGenericProcessor):
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+        # Revno 1: create a file or symlink
+        # Revno 2: copy it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
