@@ -1440,15 +1440,20 @@ class KnitVersionedFiles(VersionedFiles):
                     # They're required to be physically in this
                     # KnitVersionedFiles, not in a fallback.
                     if not self._index.has_key(compression_parent):
-                        pending = buffered_index_entries.setdefault(
-                            compression_parent, [])
-                        pending.append(index_entry)
                         buffered = True
-                # XXX maybe put _insert_unsatisfied_external_refs on
-                # add_records?
-                if not buffered or self._index._insert_unsatisfied_external_refs:
+                if buffered:
+                    pending = buffered_index_entries.setdefault(
+                        compression_parent, [])
+                    if self._index._insert_unsatisfied_external_refs: 
+                        # This index allows us to add immediately, rather than
+                        # buffer.
+                        # XXX maybe put _insert_unsatisfied_external_refs on
+                        # add_records?
+                        self._index.add_records([index_entry])
+                    else:
+                        pending.append(index_entry)
+                if not buffered:
                     self._index.add_records([index_entry])
-                    # XXX if buffered, make sure we don't add to index twice!
             elif record.storage_kind == 'chunked':
                 self.add_lines(record.key, parents,
                     osutils.chunks_to_lines(record.get_bytes_as('chunked')))
@@ -1472,9 +1477,6 @@ class KnitVersionedFiles(VersionedFiles):
             # Add any records whose basis parent is now available.
             added_keys = [record.key]
             while added_keys:
-                # XXX: if missing compression parents have been provided, we
-                # should find the records that aren't yet added to the index
-                # but should be....
                 key = added_keys.pop(0)
                 if key in buffered_index_entries:
                     index_entries = buffered_index_entries[key]
