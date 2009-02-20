@@ -329,9 +329,9 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     @property
     def _serializer(self):
         # We should only be getting asked for the serializer for
-        # RemoteRepositoryFormat objects except when the RemoteRepositoryFormat
-        # object is a concrete instance for a RemoteRepository. In this case
-        # we know the creating_repo and can use it to supply the serializer.
+        # RemoteRepositoryFormat objects when the RemoteRepositoryFormat object
+        # is a concrete instance for a RemoteRepository. In this case we know
+        # the creating_repo and can use it to supply the serializer.
         self._creating_repo._ensure_real()
         return self._creating_repo._real_repository._format._serializer
 
