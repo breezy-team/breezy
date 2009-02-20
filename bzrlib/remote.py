@@ -465,6 +465,14 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.commit_write_group()
 
+    def resume_write_group(self, tokens):
+        self._ensure_real()
+        return self._real_repository.resume_write_group(tokens)
+
+    def suspend_write_group(self):
+        self._ensure_real()
+        return self._real_repository.suspend_write_group()
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 

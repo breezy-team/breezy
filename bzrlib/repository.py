@@ -1094,6 +1094,21 @@ class Repository(object):
         extent possible considering file system caching etc).
         """
 
+    def suspend_write_group(self):
+        raise errors.UnsuspendableWriteGroup(self)
+
+    def resume_write_group(self, tokens):
+        if not self.is_write_locked():
+            raise errors.NotWriteLocked(self)
+        if self._write_group:
+            raise errors.BzrError('already in a write group')
+        self._resume_write_group(tokens)
+        # so we can detect unlock/relock - the write group is now entered.
+        self._write_group = self.get_transaction()
+    
+    def _resume_write_group(self, tokens):
+        raise errors.UnsuspendableWriteGroup(self)
+
     def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
         """Fetch the content required to construct revision_id from source.
 
