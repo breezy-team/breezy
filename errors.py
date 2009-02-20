@@ -22,7 +22,7 @@ from bzrlib.errors import BzrError
 
 
 class DebianError(BzrError):
-    _fmt = "A Debian packaging error occurred: %(asdf)s"
+    _fmt = "A Debian packaging error occurred: %(cause)s"
 
     def __init__(self, cause):
         BzrError.__init__(self, cause=cause)
