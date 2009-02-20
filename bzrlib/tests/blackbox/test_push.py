@@ -40,6 +40,16 @@ from bzrlib.workingtree import WorkingTree
 
 class TestPush(ExternalBase):
 
+    def test_push_error_on_vfs_http(self):
+        """ pushing a branch to a HTTP server fails cleanly. """
+        # the trunk is published on a web server
+        self.transport_readonly_server = HttpServer
+        self.make_branch('source')
+        public_url = self.get_readonly_url('target')
+        self.run_bzr_error(['http does not support mkdir'],
+                           ['push', public_url],
+                           working_dir='source')
+
     def test_push_remember(self):
         """Push changes from one branch to another and test push location."""
         transport = self.get_transport()
