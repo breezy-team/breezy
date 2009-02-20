@@ -668,18 +668,21 @@ class GenericCommitHandler(processor.CommitHandler):
         old_path = filecmd.old_path
         new_path = filecmd.new_path
         self.debug("renaming %s to %s", old_path, new_path)
-        file_id = self.bzr_file_id(old_path)
-        basename, new_parent_ie = self._ensure_directory(new_path)
+        old_file_id = self.inventory.path2id(old_path)
+        old_ie = self.inventory[old_file_id]
+        new_file_id = self.inventory.path2id(new_path)
+        if new_file_id is not None:
+            self.inventory.remove_recursive_id(new_file_id)
+
+        # Why are these lines needed?
+        old_lines = self.loader._get_lines(old_file_id, old_ie.revision)
+        self.lines_for_commit[old_file_id] = old_lines
+        self.inventory[old_file_id].revision = self.revision_id
+
+        new_basename, new_parent_ie = self._ensure_directory(new_path)
         new_parent_id = new_parent_ie.file_id
-        existing_id = self.inventory.path2id(new_path)
-        if existing_id is not None:
-            self.inventory.remove_recursive_id(existing_id)
-        ie = self.inventory[file_id]
-        lines = self.loader._get_lines(file_id, ie.revision)
-        self.lines_for_commit[file_id] = lines
-        self.inventory.rename(file_id, new_parent_id, basename)
+        self.inventory.rename(old_file_id, new_parent_id, new_basename)
         self.cache_mgr.rename_path(old_path, new_path)
-        self.inventory[file_id].revision = self.revision_id
 
     def deleteall_handler(self, filecmd):
         self.debug("deleting all files (and also all directories)")
@@ -829,5 +832,11 @@ class GenericCommitHandler(processor.CommitHandler):
         # make sure the cache used by get_lines knows that
         self.lines_for_commit[dir_file_id] = []
         #print "adding dir for %s" % path
-        self.inventory.add(ie)
+        try:
+            self.inventory.add(ie)
+        except errors.DuplicateFileId:
+            # Directory already exists as a file or symlink
+            del self.inventory[ie.file_id]
+            # Try again
+            self.inventory.add(ie)
         return basename, ie
