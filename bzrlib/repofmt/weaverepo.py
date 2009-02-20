@@ -399,6 +399,10 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 5"
+    
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -443,6 +447,10 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 6"
+
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
