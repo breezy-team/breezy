@@ -18,13 +18,17 @@
 
 import bz2
 import os
+import struct
 import sys
-import tempfile
 import tarfile
+import tempfile
+import threading
+import Queue
 
 from bzrlib import (
     errors,
     osutils,
+    pack,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -32,8 +36,10 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
-from bzrlib.repository import _strip_NULL_ghosts
+from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
+from bzrlib.util import bencode
+from bzrlib.versionedfile import NetworkRecordStream
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -403,3 +409,55 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()
+
+
+class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """StreamSink.insert_stream for a remote repository."""
+        repository.lock_write()
+        repository.start_write_group()
+        self.repository = repository
+        self.stream_decoder = pack.ContainerPushParser()
+        self.src_format = None
+        self.queue = Queue.Queue()
+        self.insert_thread = None
+
+    def do_chunk(self, body_stream_chunk):
+        self.stream_decoder.accept_bytes(body_stream_chunk)
+        for record in self.stream_decoder.read_pending_records():
+            record_names, record_bytes = record
+            if self.src_format is None:
+                src_format_name = record_bytes
+                src_format = network_format_registry.get(src_format_name)
+                self.src_format = src_format
+                self.insert_thread = threading.Thread(target=self._inserter_thread)
+                self.insert_thread.start()
+            else:
+                record_name, = record_names
+                substream_type = record_name[0]
+                stream = NetworkRecordStream([record_bytes])
+                for record in stream.read():
+                    self.queue.put((substream_type, [record]))
+
+    def _inserter_thread(self):
+        self.repository._get_sink().insert_stream(self.blocking_read_stream(),
+                self.src_format)
+
+    def blocking_read_stream(self):
+        while True:
+            item = self.queue.get()
+            if item is StopIteration:
+                return
+            else:
+                yield item
+
+    def do_end(self):
+        self.queue.put(StopIteration)
+        if self.insert_thread is not None:
+            self.insert_thread.join()
+        self.repository.commit_write_group()
+        self.repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
+
+

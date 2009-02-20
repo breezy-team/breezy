@@ -66,6 +66,9 @@ IN DEVELOPMENT
       allowing for decoupling over a network connection. (Andrew Bennetts,
       Robert Collins)
 
+    * There is a RemoteSink object which handles pushing to smart servers.
+      (Andrew Bennetts, Robert Collins)
+
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
 

@@ -1247,11 +1247,13 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_prefixed_body(part)
                 self.flush()
         except Exception:
+            exc_info = sys.exc_info()
             # Iterating the stream failed.  Cleanly abort the request.
             self._write_error_status()
             # Currently the client unconditionally sends ('error',) as the
             # error args.
             self._write_structure(('error',))
+            raise exc_info[0], exc_info[1], exc_info[2]
         self._write_end()
         self._medium_request.finished_writing()
 
