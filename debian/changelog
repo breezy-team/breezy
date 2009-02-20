@@ -3,6 +3,8 @@ bzr-builddeb (2.1~0ubuntu2) UNRELEASED; urgency=low
   * Merge the tags from the upstream branch when doing merge-upstream with
     a branch.
   * Catch and wrap ChangelogParseError to avoid the traceback (LP: #215732)
+  * Warn when a key is defined outside of any sections in a config file.
+    (LP: #309335)
 
  -- James Westby <james.westby@ubuntu.com>  Thu, 19 Feb 2009 09:26:34 +0000
 

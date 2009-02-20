@@ -116,14 +116,16 @@ def debuild_config(tree, working_tree, no_user_config):
     user_config = None
     if (working_tree and tree.has_filename(local_conf)):
         if tree.path2id(local_conf) is None:
-            config_files.append((tree.get_file_byname(local_conf), True))
+            config_files.append((tree.get_file_byname(local_conf), True,
+                        "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.')
     if not no_user_config:
         config_files.append((global_conf, True))
         user_config = global_conf
     if tree.path2id(default_conf):
-        config_files.append((tree.get_file(tree.path2id(default_conf)), False))
+        config_files.append((tree.get_file(tree.path2id(default_conf)), False,
+                    "default.conf"))
     config = DebBuildConfig(config_files)
     config.set_user_config(user_config)
     return config

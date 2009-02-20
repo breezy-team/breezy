@@ -19,7 +19,7 @@
 #
 
 from bzrlib.config import ConfigObj, IniBasedConfig, TreeConfig
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 from bzrlib.plugins.builddeb.util import get_snapshot_revision
 
 
@@ -91,6 +91,8 @@ class DebBuildConfig(object):
     self.version = version
     for input in files:
       config = ConfigObj(input[0])
+      if len(input) > 2:
+        config.filename = input[2]
       self._config_files.append((config, input[1]))
     if branch is not None:
       self._branch_config = TreeConfig(branch)
@@ -133,7 +135,15 @@ class DebBuildConfig(object):
     try:
       return config.get_value(section, key)
     except KeyError:
-      return None
+      pass
+    if config.filename is not None:
+      try:
+        value = config[key]
+        warning("'%s' defines a value for '%s', but it is not in a '%s' "
+             "section, so it is ignored" % (config.filename, key, section))
+      except KeyError:
+        pass
+    return None
 
   def _get_best_opt(self, key, trusted=False, section=None):
     """Returns the value for key, obeying precedence.
@@ -174,7 +184,15 @@ class DebBuildConfig(object):
     try:
       return True, config.get_bool('BUILDDEB', key)
     except KeyError:
-      return False, False
+      pass
+    if config.filename is not None:
+      try:
+        value = config.as_bool(key)
+        warning("'%s' defines a value for '%s', but it is not in a 'BUILDDEB' "
+             "section, so it is ignored" % (config.filename, key))
+      except KeyError:
+        pass
+    return False, False
 
   def _get_best_bool(self, key, trusted=False, default=False):
     """Returns the value of key, obeying precedence.
