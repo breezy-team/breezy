@@ -37,6 +37,13 @@ class BuildFailedError(BzrError):
     _fmt = "The build failed."
 
 
+class UnparseableChangelog(BzrError):
+    _fmt = "There was an error parsing the changelog: %(error)s"
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)
+
+
 class StopBuild(BzrError):
     _fmt = "Stopping the build: %(reason)s."
 

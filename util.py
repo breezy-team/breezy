@@ -24,11 +24,12 @@ import re
 
 from bzrlib.trace import info, mutter
 
-from debian_bundle.changelog import Changelog
+from debian_bundle.changelog import Changelog, ChangelogParseError
 
 from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
                 AddChangelogError,
+                UnparseableChangelog,
                 )
 
 
@@ -101,7 +102,10 @@ def find_changelog(t, merge):
     finally:
        t.unlock()
     changelog = Changelog()
-    changelog.parse_changelog(contents, max_blocks=1, allow_empty_author=True)
+    try:
+        changelog.parse_changelog(contents, max_blocks=1, allow_empty_author=True)
+    except ChangelogParseError, e:
+        raise UnparseableChangelog(str(e))
     return changelog, larstiq
 
 
