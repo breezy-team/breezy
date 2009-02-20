@@ -283,20 +283,40 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         repository.RepositoryFormat.__init__(self)
         self._custom_format = None
         self._network_name = None
+        self._creating_bzrdir = None
+
+    def _vfs_initialize(self, a_bzrdir, shared):
+        """Helper for common code in initialize."""
+        if self._custom_format:
+            # Custom format requested
+            result = self._custom_format.initialize(a_bzrdir, shared=shared)
+        elif self._creating_bzrdir is not None:
+            # Use the format that the repository we were created to back
+            # has.
+            prior_repo = self._creating_bzrdir.open_repository()
+            prior_repo._ensure_real()
+            result = prior_repo._real_repository._format.initialize(
+                a_bzrdir, shared=shared)
+        else:
+            # assume that a_bzr is a RemoteBzrDir but the smart server didn't
+            # support remote initialization.
+            # We delegate to a real object at this point (as RemoteBzrDir
+            # delegate to the repository format which would lead to infinite
+            # recursion if we just called a_bzrdir.create_repository.
+            a_bzrdir._ensure_real()
+            result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
+        if not isinstance(result, RemoteRepository):
+            return self.open(a_bzrdir)
+        else:
+            return result
 
     def initialize(self, a_bzrdir, shared=False):
         # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            if self._custom_format:
-                # Custom format requested
-                return self._custom_format.initialize(a_bzrdir, shared=shared)
-            else:
-                # Use the format that the repository we were created to back
-                # has.
-                prior_repo = self._creating_bzrdir.open_repository()
-                prior_repo._ensure_real()
-                return prior_repo._real_repository._format.initialize(
-                    a_bzrdir, shared=shared)
+            return self._vfs_initialize(a_bzrdir, shared)
+        medium = a_bzrdir._client._medium
+        if medium._is_remote_before((1, 13)):
+            return self._vfs_initialize(a_bzrdir, shared)
         # Creating on a remote bzr dir.
         # 1) get the network name to use.
         if self._custom_format:
@@ -316,19 +336,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         try:
             response = a_bzrdir._call(verb, path, network_name, shared_str)
         except errors.UnknownSmartMethod:
-            # Fallback - vfs methods
-            if self._custom_format:
-                # This returns a custom instance - e.g. a pack repo, not a remote
-                # repo.
-                return self._custom_format.initialize(a_bzrdir, shared=shared)
-            # delegate to a real object at this point (remoteBzrDir delegate to the
-            # repository format which would lead to infinite recursion).
-            a_bzrdir._ensure_real()
-            result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
-            if not isinstance(result, RemoteRepository):
-                return self.open(a_bzrdir)
-            else:
-                return result
+            # Fallback - use vfs methods
+            return self._vfs_initialize(a_bzrdir, shared)
         else:
             # Turn the response into a RemoteRepository object.
             format = RemoteRepositoryFormat()
