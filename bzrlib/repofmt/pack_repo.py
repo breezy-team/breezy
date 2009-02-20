@@ -161,6 +161,35 @@ class Pack(object):
         """Return a tuple (transport, name) for the pack content."""
         return self.pack_transport, self.file_name()
 
+    def _check_references(self):
+        """Make sure our external references are present.
+        
+        Packs are allowed to have deltas whose base is not in the pack, but it
+        must be present somewhere in this collection.  It is not allowed to
+        have deltas based on a fallback repository.
+        (See <https://bugs.launchpad.net/bzr/+bug/288751>)
+        """
+        missing_items = {}
+        for (index_name, external_refs, index) in [
+            ('texts',
+                self._get_external_refs(self.text_index),
+                self._pack_collection.text_index.combined_index),
+            ('inventories',
+                self._get_external_refs(self.inventory_index),
+                self._pack_collection.inventory_index.combined_index),
+            ]:
+            missing = external_refs.difference(
+                k for (idx, k, v, r) in
+                index.iter_entries(external_refs))
+            if missing:
+                missing_items[index_name] = sorted(list(missing))
+        if missing_items:
+            from pprint import pformat
+            raise errors.BzrCheckError(
+                "Newly created pack file %r has delta references to "
+                "items not in its repository:\n%s"
+                % (self, pformat(missing_items)))
+
     def file_name(self):
         """Get the file name for the pack on disk."""
         return self.name + '.pack'
@@ -250,6 +279,7 @@ class ResumedPack(ExistingPack):
             offset = self.index_offset(index_type)
             self.index_sizes[offset] = index._size
         self.index_class = pack_collection._index_class
+        self._pack_collection = pack_collection
         self._state = 'resumed'
         # XXX: perhaps check that the .pack file exists?
 
@@ -269,7 +299,7 @@ class ResumedPack(ExistingPack):
             index._transport.delete(index._name)
 
     def finish(self):
-        #XXX self._check_references()
+        self._check_references()
         new_name = '../packs/' + self.file_name()
         self.upload_transport.rename(self.file_name(), new_name)
         for index_type in ['revision', 'inventory', 'text', 'signature']:
@@ -278,6 +308,9 @@ class ResumedPack(ExistingPack):
             self.upload_transport.rename(old_name, new_name)
             self._replace_index_with_readonly(index_type)
         self._state = 'finished'
+
+    def _get_external_refs(self, index):
+        return index.external_references(1)
 
 
 class NewPack(Pack):
@@ -385,35 +418,6 @@ class NewPack(Pack):
         else:
             raise AssertionError(self._state)
 
-    def _check_references(self):
-        """Make sure our external references are present.
-        
-        Packs are allowed to have deltas whose base is not in the pack, but it
-        must be present somewhere in this collection.  It is not allowed to
-        have deltas based on a fallback repository.
-        (See <https://bugs.launchpad.net/bzr/+bug/288751>)
-        """
-        missing_items = {}
-        for (index_name, external_refs, index) in [
-            ('texts',
-                self.text_index._external_references(),
-                self._pack_collection.text_index.combined_index),
-            ('inventories',
-                self.inventory_index._external_references(),
-                self._pack_collection.inventory_index.combined_index),
-            ]:
-            missing = external_refs.difference(
-                k for (idx, k, v, r) in
-                index.iter_entries(external_refs))
-            if missing:
-                missing_items[index_name] = sorted(list(missing))
-        if missing_items:
-            from pprint import pformat
-            raise errors.BzrCheckError(
-                "Newly created pack file %r has delta references to "
-                "items not in its repository:\n%s"
-                % (self, pformat(missing_items)))
-
     def data_inserted(self):
         """True if data has been added to this pack."""
         return bool(self.get_revision_count() or
@@ -480,6 +484,9 @@ class NewPack(Pack):
             self.write_stream.write(bytes)
             self._hash.update(bytes)
             self._buffer[:] = [[], 0]
+
+    def _get_external_refs(self, index):
+        return index._external_references()
 
     def set_write_cache_size(self, size):
         self._cache_limit = size
@@ -1883,7 +1890,6 @@ class RepositoryPackCollection(object):
     def _abort_write_group(self):
         # FIXME: just drop the transient index.
         # forget what names there are
-        #import pdb; pdb.set_trace()
         if self._new_pack is not None:
             try:
                 self._new_pack.abort()
@@ -1899,8 +1905,11 @@ class RepositoryPackCollection(object):
                 resumed_pack.abort()
             finally:
                 # See comment in previous finally block.
-                self._remove_pack_indices(resumed_pack)
-            del self._resumed_packs[:]
+                try:
+                    self._remove_pack_indices(resumed_pack)
+                except KeyError:
+                    pass
+        del self._resumed_packs[:]
         self.repo._text_knit = None
 
     def _remove_resumed_pack_indices(self):
