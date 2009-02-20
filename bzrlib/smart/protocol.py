@@ -1253,6 +1253,8 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             # Currently the client unconditionally sends ('error',) as the
             # error args.
             self._write_structure(('error',))
+            self._write_end()
+            self._medium_request.finished_writing()
             raise exc_info[0], exc_info[1], exc_info[2]
         self._write_end()
         self._medium_request.finished_writing()
