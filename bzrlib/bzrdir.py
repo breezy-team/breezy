@@ -2757,7 +2757,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         if custom_format:
             # We will use the custom format to create repositories over the
             # wire; expose its details like rich_root_data for code to query
-            result._custom_format = custom_format
+            if isinstance(custom_format, remote.RemoteRepositoryFormat):
+                result._custom_format = custom_format._custom_format
+            else:
+                result._custom_format = custom_format
             result.rich_root_data = custom_format.rich_root_data
         return result
 

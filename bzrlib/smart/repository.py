@@ -336,6 +336,17 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, str_bool_new_value):
+        if str_bool_new_value == 'True':
+            new_value = True
+        else:
+            new_value = False
+        repository.set_make_working_trees(new_value)
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     """Get the raw repository files as a tarball.
 
