@@ -17,15 +17,23 @@
 
 import os
 from StringIO import StringIO
-from unittest import makeSuite
 
-from bzrlib.bzrdir import BzrDir
-from bzrlib.osutils import has_symlinks
-from bzrlib.tests import TestCaseInTempDir
-
-from bzrlib.plugins.bzrtools.clean_tree import clean_tree, iter_deletables
+from bzrlib.bzrdir import (
+    BzrDir,
+    )
+from bzrlib.clean_tree import (
+    clean_tree,
+    iter_deletables,
+    )
+from bzrlib.osutils import (
+    has_symlinks,
+    )
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    )
 
 class TestCleanTree(TestCaseInTempDir):
+
     def test_symlinks(self):
         if has_symlinks() is False:
             return
@@ -70,6 +78,3 @@ class TestCleanTree(TestCaseInTempDir):
             assert [] == dels
         finally:
             tree.unlock()
-
-def test_suite():
-    return makeSuite(TestCleanTree)
