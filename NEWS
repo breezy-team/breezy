@@ -72,6 +72,10 @@ IN DEVELOPMENT
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
 
+    * ``Repository`` objects now have ``suspend_write_group`` and
+      ``resume_write_group`` methods.  These are currently only useful
+      with pack repositories. (Andrew Bennetts, Robert Collins)
+
     * ``RepositoryFormat`` objects now have a ``network_name`` for passing
       the format across RPC calls. (Robert Collins, Andrew Bennetts)
 
