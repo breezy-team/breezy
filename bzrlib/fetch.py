@@ -157,31 +157,31 @@ class RepoFetcher(object):
         # item_keys_introduced_by should have a richer API than it does at the
         # moment, so that it can feed the progress information back to this
         # function?
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             from_format = self.from_repository._format
-            stream = self.get_stream(search, pb, pp)
+            stream = self.get_stream(search, pp)
             self.sink.insert_stream(stream, from_format)
             self.sink.finished()
         finally:
-            if pb is not None:
-                pb.finished()
+            if self.pb is not None:
+                self.pb.finished()
         
-    def get_stream(self, search, pb, pp):
+    def get_stream(self, search, pp):
         phase = 'file'
         revs = search.get_keys()
         graph = self.from_repository.get_graph()
         revs = list(graph.iter_topo_order(revs))
-        data_to_fetch = self.from_repository.item_keys_introduced_by(revs,
-                                                                     pb)
+        data_to_fetch = self.from_repository.item_keys_introduced_by(
+            revs, self.pb)
         text_keys = []
         for knit_kind, file_id, revisions in data_to_fetch:
             if knit_kind != phase:
                 phase = knit_kind
                 # Make a new progress bar for this phase
-                pb.finished()
+                self.pb.finished()
                 pp.next_phase()
-                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
             if knit_kind == "file":
                 # Accumulate file texts
                 text_keys.extend([(file_id, revision) for revision in
@@ -203,7 +203,7 @@ class RepoFetcher(object):
                     yield _
                 # NB: This currently reopens the inventory weave in source;
                 # using a single stream interface instead would avoid this.
-                pb.update("fetch inventory", 0, 1)
+                self.pb.update("fetch inventory", 0, 1)
                 from_weave = self.from_repository.inventories
                 # we fetch only the referenced inventories because we do not
                 # know for unselected inventories whether all their required
@@ -218,7 +218,7 @@ class RepoFetcher(object):
                 # _fetch_revision_texts happens.
                 pass
             elif knit_kind == "revisions":
-                for _ in self._fetch_revision_texts(revs, pb):
+                for _ in self._fetch_revision_texts(revs, self.pb):
                     yield _
             else:
                 raise AssertionError("Unknown knit kind %r" % knit_kind)
