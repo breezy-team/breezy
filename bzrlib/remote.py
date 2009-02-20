@@ -273,7 +273,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         RemoteRepositoryFormat.
     :ivar _creating_repo: If set, the repository object that this
         RemoteRepositoryFormat was created for: it can be called into
-        to obtain data like te network name.
+        to obtain data like the network name.
     """
 
     _matchingbzrdir = RemoteBzrDirFormat()
