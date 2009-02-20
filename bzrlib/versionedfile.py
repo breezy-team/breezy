@@ -31,6 +31,7 @@ import urllib
 from bzrlib import (
     errors,
     index,
+    knit,
     osutils,
     multiparent,
     tsort,
@@ -1472,3 +1473,44 @@ class VirtualVersionedFiles(VersionedFiles):
                 pb.update("iterating texts", i, len(keys))
             for l in self._get_lines(key):
                 yield (l, key)
+
+
+def network_bytes_to_kind_and_offset(network_bytes):
+    """Strip of a record kind from the front of network_bytes.
+
+    :param network_bytes: The bytes of a record.
+    :return: A tuple (storage_kind, offset_of_remaining_bytes)
+    """
+    line_end = network_bytes.find('\n')
+    storage_kind = network_bytes[:line_end]
+    return storage_kind, line_end + 1
+
+
+class NetworkRecordStream(object):
+    """A record_stream which reconstitures a serialised stream."""
+
+    def __init__(self, bytes_iterator):
+        """Create a NetworkRecordStream.
+
+        :param bytes_iterator: An iterator of bytes. Each item in this
+            iterator should have been obtained from a record_streams'
+            record.get_bytes_as(record.storage_kind) call.
+        """
+        self._bytes_iterator = bytes_iterator
+        self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
+            'knit-delta-gz':knit.knit_network_to_record,
+            'knit-annotated-ft-gz':knit.knit_network_to_record,
+            'knit-annotated-delta-gz':knit.knit_network_to_record,
+            'knit-delta-closure':knit.knit_delta_closure_to_records,
+            }
+
+    def read(self):
+        """Read the stream.
+
+        :return: An iterator as per VersionedFiles.get_record_stream().
+        """
+        for bytes in self._bytes_iterator:
+            storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
+            for record in self._kind_factory[storage_kind](
+                storage_kind, bytes, line_end):
+                yield record

@@ -90,6 +90,12 @@ IN DEVELOPMENT
       delta references. The method is ``scan_unvalidated_index``.
       (Andrew Bennetts, Robert Collins)
 
+    * ``VersionedFiles`` record adapters have had their signature change
+      from ``(record, record.get_bytes_as(record.storage_kind))`` to
+      ``(record)`` reducing excess duplication and allowing adapters
+      to access private data in record to obtain content more
+      efficiently. (Robert Collins)
+
 
 bzr 1.12 "1234567890" 2009-02-13
 --------------------------------
