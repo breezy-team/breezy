@@ -1375,7 +1375,6 @@ class KnitVersionedFiles(VersionedFiles):
         #
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
-    
         for record in stream:
             parents = record.parents
             if record.storage_kind in delta_types:
@@ -2296,11 +2295,6 @@ class _KnitGraphIndex(object):
             for key, (value, node_refs) in keys.iteritems():
                 result.append((key, value))
         self._missing_compression_parents.difference_update(keys)
-#        for key in keys:
-#            try:
-#                del self._missing_compression_parents[key]
-#            except KeyError:
-#                pass
         self._add_callback(result)
         
     def scan_unvalidated_index(self, graph_index):
@@ -2317,18 +2311,6 @@ class _KnitGraphIndex(object):
         # filter out refs that are present in this index
         external_refs.difference_update(self.get_parent_map(external_refs))
         self._missing_compression_parents.update(external_refs)
-
-#        # it is assumed graph_index's keys are already in self._graph_index!
-#        external_refs = graph_index.external_references(ref_list_num=1)
-#        # filter out refs that are present in this index
-#        satisfied_refs = self.get_parent_map(external_refs)
-#        for ref in satisfied_refs:
-#            del external_refs[ref]
-#        # update _missing_compression_parents
-#        self._missing_compression_parents.update(external_refs)
-#
-        #self._missing_compression_parents.difference_update(
-        #    self.get_parent_map(self._missing_compression_parents))
 
     def _add_missing_compression_parents(self, keys):
         self._missing_compression_parents.update(keys)
