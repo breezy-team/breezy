@@ -151,6 +151,12 @@ def _export_iter_entries(tree, subdir):
         # .bzrignore and .bzrrules - do not export these
         if entry[0].startswith(".bzr"):
             continue
+        if subdir is None:
+            if not tree.has_filename(entry[0]):
+                continue
+        else:
+            if not tree.has_filename(os.path.join(subdir, entry[0])):
+                continue
         yield entry
 
 
