@@ -1235,6 +1235,10 @@ class Repository(object):
                 dest_repo = a_bzrdir.open_repository()
         return dest_repo
 
+    def _get_sink(self):
+        """Return a sink for streaming into this repository."""
+        return StreamSink(self)
+
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
@@ -3483,6 +3487,17 @@ class InterPackToRemotePack(InterPackRepo):
     
     def _autopack(self):
         self.target.autopack()
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+        """See InterRepository.fetch()."""
+        # Always fetch using the generic streaming fetch code, to allow
+        # streaming fetching into remote servers.
+        from bzrlib.fetch import RepoFetcher
+        fetcher = RepoFetcher(self.target, self.source, revision_id,
+                              pb, find_ghosts)
+        self.target.autopack()
+        return fetcher.count_copied, fetcher.failed_revisions
         
     def _get_target_pack_collection(self):
         return self.target._real_repository._pack_collection
@@ -3658,3 +3673,80 @@ def _strip_NULL_ghosts(revision_graph):
         revision_graph[key] = tuple(parent for parent in parents if parent
             in revision_graph)
     return revision_graph
+
+
+class StreamSink(object):
+    """An object that can insert a stream into a repository.
+
+    This interface handles the complexity of reserialising inventories and
+    revisions from different formats, and allows unidirectional insertion into
+    stacked repositories without looking for the missing basis parents
+    beforehand.
+    """
+
+    def __init__(self, target_repo):
+        self.target_repo = target_repo
+
+    def insert_stream(self, stream, src_format):
+        """Insert a stream's content into the target repository.
+
+        :param src_format: a bzr repository format.
+
+        :return: an iterable of keys additional items required before the
+        insertion can be completed.
+        """
+        result = []
+        to_serializer = self.target_repo._format._serializer
+        src_serializer = src_format._serializer
+        for substream_type, substream in stream:
+            if substream_type == 'texts':
+                self.target_repo.texts.insert_record_stream(substream)
+            elif substream_type == 'inventories':
+                if src_serializer == to_serializer:
+                    self.target_repo.inventories.insert_record_stream(
+                        substream)
+                else:
+                    self._extract_and_insert_inventories(
+                        substream, src_serializer)
+            elif substream_type == 'revisions':
+                # This may fallback to extract-and-insert more often than
+                # required if the serializers are different only in terms of
+                # the inventory.
+                if src_serializer == to_serializer:
+                    self.target_repo.revisions.insert_record_stream(
+                        substream)
+                else:
+                    self._extract_and_insert_revisions(substream,
+                        src_serializer)
+            elif substream_type == 'signatures':
+                self.target_repo.signatures.insert_record_stream(substream)
+            else:
+                raise AssertionError('kaboom! %s' % (substream_type,))
+        return result
+
+    def _extract_and_insert_inventories(self, substream, serializer):
+        """Generate a new inventory versionedfile in target, converting data.
+        
+        The inventory is retrieved from the source, (deserializing it), and
+        stored in the target (reserializing it in a different format).
+        """
+        for record in substream:
+            bytes = record.get_bytes_as('fulltext')
+            revision_id = record.key[0]
+            inv = serializer.read_inventory_from_string(bytes, revision_id)
+            parents = [key[0] for key in record.parents]
+            self.target_repo.add_inventory(revision_id, inv, parents)
+
+    def _extract_and_insert_revisions(self, substream, serializer):
+        for record in substream:
+            bytes = record.get_bytes_as('fulltext')
+            revision_id = record.key[0]
+            rev = serializer.read_revision_from_string(bytes)
+            if rev.revision_id != revision_id:
+                raise AssertionError('wtf: %s != %s' % (rev, revision_id))
+            self.target_repo.add_revision(revision_id, rev)
+
+    def finished(self):
+        if self.target_repo._fetch_reconcile:
+            self.target_repo.reconcile()
+

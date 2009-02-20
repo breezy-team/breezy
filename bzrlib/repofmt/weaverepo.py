@@ -192,14 +192,11 @@ class AllInOneRepository(Repository):
 class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
-    @property
-    def _serializer(self):
-        return xml5.serializer_v5
-
     def __init__(self, _format, a_bzrdir, control_files):
         super(WeaveMetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
         self._fetch_order = 'topological'
         self._fetch_reconcile = True
+        self._serializer = _format._serializer
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -390,6 +387,9 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat5()
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __init__(self):
         super(RepositoryFormat5, self).__init__()
@@ -410,9 +410,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, False, versionedfile.PrefixMapper(),
+            xml5.serializer_v5, False, versionedfile.PrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -438,6 +437,9 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat6()
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
@@ -458,9 +460,8 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, False, versionedfile.HashPrefixMapper(),
+            xml5.serializer_v5, False, versionedfile.HashPrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -489,6 +490,9 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -507,9 +511,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, True, versionedfile.HashPrefixMapper(),
+            xml5.serializer_v5, True, versionedfile.HashPrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
