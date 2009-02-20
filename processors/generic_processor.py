@@ -17,34 +17,27 @@
 """Import processor that supports all Bazaar repository formats."""
 
 
-import os
 import time
 from bzrlib import (
-    builtins,
     bzrdir,
     delta,
     errors,
-    generate_ids,
-    inventory,
-    lru_cache,
     osutils,
     progress,
-    revision,
-    revisiontree,
-    transport,
     )
 from bzrlib.repofmt import pack_repo
 from bzrlib.trace import note
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
     branch_updater,
+    bzr_commit_handler,
     cache_manager,
     errors as plugin_errors,
     helpers,
     idmapfile,
     marks_file,
     processor,
-    revisionloader,
+    revision_store,
     )
 
 
@@ -140,28 +133,8 @@ class GenericProcessor(processor.ImportProcessor):
         # mapping of tag name to revision_id
         self.tags = {}
 
-        # Create the revision loader needed for committing
-        new_repo_api = hasattr(self.repo, 'revisions')
-        if new_repo_api:
-            self.loader = revisionloader.RevisionLoader2(self.repo)
-        elif not self._experimental:
-            self.loader = revisionloader.RevisionLoader1(self.repo)
-        else:
-            def fulltext_when(count):
-                total = self.total_commits
-                if total is not None and count == total:
-                    fulltext = True
-                else:
-                    # Create an inventory fulltext every 200 revisions
-                    fulltext = count % 200 == 0
-                if fulltext:
-                    self.note("%d commits - storing inventory as full-text",
-                        count)
-                return fulltext
-
-            self.loader = revisionloader.ImportRevisionLoader1(
-                self.repo, self.inventory_cache_size,
-                fulltext_when=fulltext_when)
+        # Create the revision store to use for committing, if any
+        self.rev_store = self._revision_store_factory()
 
         # Disable autopacking if the repo format supports it.
         # THIS IS A HACK - there is no sanctioned way of doing this yet.
@@ -226,6 +199,30 @@ class GenericProcessor(processor.ImportProcessor):
                 self.total_commits = self.max_commits
         else:
             self.total_commits = self.max_commits
+
+    def _revision_store_factory(self):
+        """Make a RevisionStore based on what the repository supports."""
+        new_repo_api = hasattr(self.repo, 'revisions')
+        if new_repo_api:
+            return revision_store.RevisionStore2(self.repo)
+        elif not self._experimental:
+            return revision_store.RevisionStore1(self.repo)
+        else:
+            def fulltext_when(count):
+                total = self.total_commits
+                if total is not None and count == total:
+                    fulltext = True
+                else:
+                    # Create an inventory fulltext every 200 revisions
+                    fulltext = count % 200 == 0
+                if fulltext:
+                    self.note("%d commits - storing inventory as full-text",
+                        count)
+                return fulltext
+
+            return revision_store.ImportRevisionStore1(
+                self.repo, self.inventory_cache_size,
+                fulltext_when=fulltext_when)
 
     def _process(self, command_iter):
         # if anything goes wrong, abort the write group if any
@@ -376,7 +373,7 @@ class GenericProcessor(processor.ImportProcessor):
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
         if self.skip_total and self._revision_count < self.skip_total:
-            _track_heads(cmd, self.cache_mgr)
+            self.cache_mgr.track_heads(cmd)
             # Check that we really do know about this commit-id
             if not self.cache_mgr.revision_ids.has_key(cmd.id):
                 raise plugin_errors.BadRestart(cmd.id)
@@ -394,12 +391,16 @@ class GenericProcessor(processor.ImportProcessor):
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
-            parents = _track_heads(cmd, self.cache_mgr)
+            parents = self.cache_mgr.track_heads(cmd)
             self._gen_file_ids_cache(parents)
 
         # 'Commit' the revision and report progress
-        handler = GenericCommitHandler(cmd, self.repo, self.cache_mgr,
-            self.loader, self.verbose, self._experimental)
+        if self._experimental:
+            handler = bzr_commit_handler.DeltaCommitHandler(cmd,
+                self.cache_mgr, self.rev_store, verbose=self.verbose)
+        else:
+            handler = bzr_commit_handler.InventoryCommitHandler(cmd,
+                self.cache_mgr, self.rev_store, verbose=self.verbose)
         handler.process()
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
         self._revision_count += 1
@@ -468,8 +469,6 @@ class GenericProcessor(processor.ImportProcessor):
                     % tag_name)
             return
 
-	# FIXME: cmd.from_ is a committish and thus could reference
-	# another branch.  Create a method for resolving commitish's.
         if cmd.from_ is not None:
             self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
 
@@ -485,358 +484,3 @@ class GenericProcessor(processor.ImportProcessor):
         bzr_tag_name = name.decode('utf-8', 'replace')
         bzr_rev_id = self.cache_mgr.revision_ids[from_]
         self.tags[bzr_tag_name] = bzr_rev_id
-
-
-def _track_heads(cmd, cache_mgr):
-    """Track the repository heads given a CommitCommand.
-    
-    :return: the list of parents in terms of commit-ids
-    """
-    # Get the true set of parents
-    if cmd.from_ is not None:
-        parents = [cmd.from_]
-    else:
-        last_id = cache_mgr.last_ids.get(cmd.ref)
-        if last_id is not None:
-            parents = [last_id]
-        else:
-            parents = []
-    parents.extend(cmd.merges)
-
-    # Track the heads
-    cache_mgr.track_heads_for_ref(cmd.ref, cmd.id, parents)
-    return parents
-
-
-class GenericCommitHandler(processor.CommitHandler):
-
-    def __init__(self, command, repo, cache_mgr, loader, verbose=False,
-        _experimental=False):
-        processor.CommitHandler.__init__(self, command)
-        self.repo = repo
-        self.cache_mgr = cache_mgr
-        self.loader = loader
-        self.verbose = verbose
-        self._experimental = _experimental
-
-    def pre_process_files(self):
-        """Prepare for committing."""
-        self.revision_id = self.gen_revision_id()
-        # cache of texts for this commit, indexed by file-id
-        self.lines_for_commit = {}
-        if self.repo.supports_rich_root():
-            self.lines_for_commit[inventory.ROOT_ID] = []
-
-        # Track the heads and get the real parent list
-        parents = _track_heads(self.command, self.cache_mgr)
-
-        # Convert the parent commit-ids to bzr revision-ids
-        if parents:
-            self.parents = [self.cache_mgr.revision_ids[p]
-                for p in parents]
-        else:
-            self.parents = []
-        self.debug("%s id: %s, parents: %s", self.command.id,
-            self.revision_id, str(self.parents))
-
-        # Seed the inventory from the previous one
-        if len(self.parents) == 0:
-            self.inventory = self.gen_initial_inventory()
-        else:
-            # use the bzr_revision_id to lookup the inv cache
-            inv = self.get_inventory(self.parents[0])
-            # TODO: Shallow copy - deep inventory copying is expensive
-            self.inventory = inv.copy()
-        if self.repo.supports_rich_root():
-            self.inventory.revision_id = self.revision_id
-        else:
-            # In this repository, root entries have no knit or weave. When
-            # serializing out to disk and back in, root.revision is always
-            # the new revision_id.
-            self.inventory.root.revision = self.revision_id
-
-        # directory-path -> inventory-entry for current inventory
-        self.directory_entries = dict(self.inventory.directories())
-
-    def post_process_files(self):
-        """Save the revision."""
-        self.cache_mgr.inventories[self.revision_id] = self.inventory
-
-        # Load the revision into the repository
-        rev_props = {}
-        committer = self.command.committer
-        who = "%s <%s>" % (committer[0],committer[1])
-        author = self.command.author
-        if author is not None:
-            author_id = "%s <%s>" % (author[0],author[1])
-            if author_id != who:
-                rev_props['author'] = author_id
-        rev = revision.Revision(
-           timestamp=committer[2],
-           timezone=committer[3],
-           committer=who,
-           message=helpers.escape_commit_message(self.command.message),
-           revision_id=self.revision_id,
-           properties=rev_props,
-           parent_ids=self.parents)
-        self.loader.load(rev, self.inventory, None,
-            lambda file_id: self._get_lines(file_id),
-            lambda revision_ids: self._get_inventories(revision_ids))
-
-    def modify_handler(self, filecmd):
-        if filecmd.dataref is not None:
-            data = self.cache_mgr.fetch_blob(filecmd.dataref)
-        else:
-            data = filecmd.data
-        self.debug("modifying %s", filecmd.path)
-        self._modify_inventory(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data)
-
-    def _delete_recursive(self, path):
-        self.debug("deleting %s", path)
-        fileid = self.bzr_file_id(path)
-        dirname, basename = osutils.split(path)
-        if (fileid in self.inventory and
-            isinstance(self.inventory[fileid], inventory.InventoryDirectory)):
-            for child_path in self.inventory[fileid].children.keys():
-                self._delete_recursive(osutils.pathjoin(path, child_path))
-        try:
-            if self.inventory.id2path(fileid) == path:
-                del self.inventory[fileid]
-            else:
-                # already added by some other name?
-                if dirname in self.cache_mgr.file_ids:
-                    parent_id = self.cache_mgr.file_ids[dirname]
-                    del self.inventory[parent_id].children[basename]
-        except KeyError:
-            self._warn_unless_in_merges(fileid, path)
-        except errors.NoSuchId:
-            self._warn_unless_in_merges(fileid, path)
-        except AttributeError, ex:
-            if ex.args[0] == 'children':
-                # A directory has changed into a file and then one
-                # of it's children is being deleted!
-                self._warn_unless_in_merges(fileid, path)
-            else:
-                raise
-        try:
-            self.cache_mgr.delete_path(path)
-        except KeyError:
-            pass
-
-    def delete_handler(self, filecmd):
-        self._delete_recursive(filecmd.path)
-
-    def _warn_unless_in_merges(self, fileid, path):
-        if len(self.parents) <= 1:
-            return
-        for parent in self.parents[1:]:
-            if fileid in self.get_inventory(parent):
-                return
-        self.warning("ignoring delete of %s as not in parent inventories", path)
-
-    def copy_handler(self, filecmd):
-        src_path = filecmd.src_path
-        dest_path = filecmd.dest_path
-        self.debug("copying %s to %s", src_path, dest_path)
-        if not self.parents:
-            self.warning("ignoring copy of %s to %s - no parent revisions",
-                src_path, dest_path)
-            return
-        file_id = self.inventory.path2id(src_path)
-        if file_id is None:
-            self.warning("ignoring copy of %s to %s - source does not exist",
-                src_path, dest_path)
-            return
-        ie = self.inventory[file_id]
-        kind = ie.kind
-        if kind == 'file':
-            content = self._get_content_from_repo(self.parents[0], file_id)
-            self._modify_inventory(dest_path, kind, ie.executable, content)
-        elif kind == 'symlink':
-            self._modify_inventory(dest_path, kind, False, ie.symlink_target)
-        else:
-            self.warning("ignoring copy of %s %s - feature not yet supported",
-                kind, path)
-
-    def _get_content_from_repo(self, revision_id, file_id):
-        """Get the content of a file for a revision-id."""
-        revtree = self.repo.revision_tree(revision_id)
-        return revtree.get_file_text(file_id)
-
-    def rename_handler(self, filecmd):
-        old_path = filecmd.old_path
-        new_path = filecmd.new_path
-        self.debug("renaming %s to %s", old_path, new_path)
-        old_file_id = self.inventory.path2id(old_path)
-        old_ie = self.inventory[old_file_id]
-        new_file_id = self.inventory.path2id(new_path)
-        if new_file_id is not None:
-            self.inventory.remove_recursive_id(new_file_id)
-
-        # Why are these lines needed?
-        old_lines = self.loader._get_lines(old_file_id, old_ie.revision)
-        self.lines_for_commit[old_file_id] = old_lines
-        self.inventory[old_file_id].revision = self.revision_id
-
-        new_basename, new_parent_ie = self._ensure_directory(new_path)
-        new_parent_id = new_parent_ie.file_id
-        self.inventory.rename(old_file_id, new_parent_id, new_basename)
-        self.cache_mgr.rename_path(old_path, new_path)
-
-    def deleteall_handler(self, filecmd):
-        self.debug("deleting all files (and also all directories)")
-        # Would be nice to have an inventory.clear() method here
-        root_items = [ie for (name, ie) in
-            self.inventory.root.children.iteritems()]
-        for root_item in root_items:
-            self.inventory.remove_recursive_id(root_item.file_id)
-
-    def bzr_file_id_and_new(self, path):
-        """Get a Bazaar file identifier and new flag for a path.
-        
-        :return: file_id, is_new where
-          is_new = True if the file_id is newly created
-        """
-        try:
-            id = self.cache_mgr.file_ids[path]
-            return id, False
-        except KeyError:
-            id = generate_ids.gen_file_id(path)
-            self.cache_mgr.file_ids[path] = id
-            self.debug("Generated new file id %s for '%s'", id, path)
-            return id, True
-
-    def bzr_file_id(self, path):
-        """Get a Bazaar file identifier for a path."""
-        return self.bzr_file_id_and_new(path)[0]
-
-    def gen_initial_inventory(self):
-        """Generate an inventory for a parentless revision."""
-        inv = inventory.Inventory(revision_id=self.revision_id)
-        if self.repo.supports_rich_root():
-            # The very first root needs to have the right revision
-            inv.root.revision = self.revision_id
-        return inv
-
-    def gen_revision_id(self):
-        """Generate a revision id.
-
-        Subclasses may override this to produce deterministic ids say.
-        """
-        committer = self.command.committer
-        # Perhaps 'who' being the person running the import is ok? If so,
-        # it might be a bit quicker and give slightly better compression?
-        who = "%s <%s>" % (committer[0],committer[1])
-        timestamp = committer[2]
-        return generate_ids.gen_revision_id(who, timestamp)
-
-    def get_inventory(self, revision_id):
-        """Get the inventory for a revision id."""
-        try:
-            inv = self.cache_mgr.inventories[revision_id]
-        except KeyError:
-            if self.verbose:
-                self.note("get_inventory cache miss for %s", revision_id)
-            # Not cached so reconstruct from repository
-            inv = self.repo.revision_tree(revision_id).inventory
-            self.cache_mgr.inventories[revision_id] = inv
-        return inv
-
-    def _get_inventories(self, revision_ids):
-        """Get the inventories for revision-ids.
-        
-        This is a callback used by the RepositoryLoader to
-        speed up inventory reconstruction.
-        """
-        present = []
-        inventories = []
-        # If an inventory is in the cache, we assume it was
-        # successfully loaded into the repsoitory
-        for revision_id in revision_ids:
-            try:
-                inv = self.cache_mgr.inventories[revision_id]
-                present.append(revision_id)
-            except KeyError:
-                if self.verbose:
-                    self.note("get_inventories cache miss for %s", revision_id)
-                # Not cached so reconstruct from repository
-                if self.repo.has_revision(revision_id):
-                    rev_tree = self.repo.revision_tree(revision_id)
-                    present.append(revision_id)
-                else:
-                    rev_tree = self.repo.revision_tree(None)
-                inv = rev_tree.inventory
-                self.cache_mgr.inventories[revision_id] = inv
-            inventories.append(inv)
-        return present, inventories
-
-    def _get_lines(self, file_id):
-        """Get the lines for a file-id."""
-        return self.lines_for_commit[file_id]
-
-    def _modify_inventory(self, path, kind, is_executable, data):
-        """Add to or change an item in the inventory."""
-        # Create the new InventoryEntry
-        basename, parent_ie = self._ensure_directory(path)
-        file_id = self.bzr_file_id(path)
-        ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
-        ie.revision = self.revision_id
-        if isinstance(ie, inventory.InventoryFile):
-            ie.executable = is_executable
-            lines = osutils.split_lines(data)
-            ie.text_sha1 = osutils.sha_strings(lines)
-            ie.text_size = sum(map(len, lines))
-            self.lines_for_commit[file_id] = lines
-        elif isinstance(ie, inventory.InventoryLink):
-            ie.symlink_target = data.encode('utf8')
-            # There are no lines stored for a symlink so
-            # make sure the cache used by get_lines knows that
-            self.lines_for_commit[file_id] = []
-        else:
-            raise errors.BzrError("Cannot import items of kind '%s' yet" %
-                (kind,))
-
-        # Record this new inventory entry
-        if file_id in self.inventory:
-            # HACK: no API for this (del+add does more than it needs to)
-            self.inventory._byid[file_id] = ie
-            parent_ie.children[basename] = ie
-        else:
-            self.inventory.add(ie)
-
-    def _ensure_directory(self, path):
-        """Ensure that the containing directory exists for 'path'"""
-        dirname, basename = osutils.split(path)
-        if dirname == '':
-            # the root node doesn't get updated
-            return basename, self.inventory.root
-        try:
-            ie = self.directory_entries[dirname]
-        except KeyError:
-            # We will create this entry, since it doesn't exist
-            pass
-        else:
-            return basename, ie
-
-        # No directory existed, we will just create one, first, make sure
-        # the parent exists
-        dir_basename, parent_ie = self._ensure_directory(dirname)
-        dir_file_id = self.bzr_file_id(dirname)
-        ie = inventory.entry_factory['directory'](dir_file_id,
-                                                  dir_basename,
-                                                  parent_ie.file_id)
-        ie.revision = self.revision_id
-        self.directory_entries[dirname] = ie
-        # There are no lines stored for a directory so
-        # make sure the cache used by get_lines knows that
-        self.lines_for_commit[dir_file_id] = []
-        #print "adding dir for %s" % path
-        try:
-            self.inventory.add(ie)
-        except errors.DuplicateFileId:
-            # Directory already exists as a file or symlink
-            del self.inventory[ie.file_id]
-            # Try again
-            self.inventory.add(ie)
-        return basename, ie

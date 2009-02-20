@@ -36,6 +36,10 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     def get_handler(self):
         branch = self.make_branch('.')
         handler = generic_processor.GenericProcessor(branch.bzrdir)
+        # Hack in the DeltaCommitHandler using experimental
+        # This really need to be a parameterised test instead
+        #handler = generic_processor.GenericProcessor(branch.bzrdir,
+        #    params = {'experimental': True})
         return handler, branch
 
     # FIXME: [] as a default is bad, as it is mutable, but I want
