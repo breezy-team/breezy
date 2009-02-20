@@ -290,6 +290,83 @@ class TestModify(TestCaseForGenericProcessor):
         self.assertExecutable(branch, revtree2, path, False)
 
 
+class TestModifyTricky(TestCaseForGenericProcessor):
+
+    def file_command_iter(self, path1, path2, kind='file'):
+        # Revno 1: create a file or symlink in a directory
+        # Revno 2: create a second file that implicitly deletes the
+        # first one because either:
+        # * the new file is a in directory with the old file name
+        # * the new file has the same name as the directory of the first
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path1, kind, False,
+                        None, "aaa")
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileModifyCommand(path2, kind, False,
+                        None, "bbb")
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+
+    def test_modify_file_becomes_directory(self):
+        handler, branch = self.get_handler()
+        path1 = 'a/b'
+        path2 = 'a/b/c'
+        handler.process(self.file_command_iter(path1, path2))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path1,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_added=[(path2,)],
+            expected_kind_changed=[(path1, 'file', 'directory')])
+        self.assertContent(branch, revtree1, path1, "aaa")
+        self.assertContent(branch, revtree2, path2, "bbb")
+
+    def test_modify_directory_becomes_file(self):
+        handler, branch = self.get_handler()
+        path1 = 'a/b/c'
+        path2 = 'a/b'
+        handler.process(self.file_command_iter(path1, path2))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), ('a/b',), (path1,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path1,),],
+            expected_kind_changed=[(path2, 'directory', 'file')])
+        self.assertContent(branch, revtree1, path1, "aaa")
+        self.assertContent(branch, revtree2, path2, "bbb")
+
+    def test_modify_symlink_becomes_directory(self):
+        handler, branch = self.get_handler()
+        path1 = 'a/b'
+        path2 = 'a/b/c'
+        handler.process(self.file_command_iter(path1, path2, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path1,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_added=[(path2,)],
+            expected_kind_changed=[(path1, 'symlink', 'directory')])
+        self.assertSymlinkTarget(branch, revtree1, path1, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, path2, "bbb")
+
+    def test_modify_directory_becomes_symlink(self):
+        handler, branch = self.get_handler()
+        path1 = 'a/b/c'
+        path2 = 'a/b'
+        handler.process(self.file_command_iter(path1, path2, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), ('a/b',), (path1,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path1,),],
+            expected_kind_changed=[(path2, 'directory', 'symlink')])
+        self.assertSymlinkTarget(branch, revtree1, path1, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, path2, "bbb")
+
+
 class TestDelete(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file'):

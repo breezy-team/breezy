@@ -829,5 +829,11 @@ class GenericCommitHandler(processor.CommitHandler):
         # make sure the cache used by get_lines knows that
         self.lines_for_commit[dir_file_id] = []
         #print "adding dir for %s" % path
-        self.inventory.add(ie)
+        try:
+            self.inventory.add(ie)
+        except errors.DuplicateFileId:
+            # Directory already exists as a file or symlink
+            del self.inventory[ie.file_id]
+            # Try again
+            self.inventory.add(ie)
         return basename, ie
