@@ -21,6 +21,7 @@ import os
 from StringIO import StringIO
 import re
 import sys
+import time
 
 import bzrlib
 import bzrlib.errors as errors
@@ -237,3 +238,14 @@ class UITests(TestCase):
             r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
+
+    def test_text_tick_after_update(self):
+        ui_factory = TextUIFactory(stdout=StringIO(), stderr=StringIO())
+        pb = ui_factory.nested_progress_bar()
+        try:
+            pb.update('task', 0, 3)
+            # Reset the clock, so that it actually tries to repaint itself
+            ui_factory._progress_view._last_repaint = time.time() - 1.0
+            pb.tick()
+        finally:
+            pb.finished()

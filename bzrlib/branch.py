@@ -174,6 +174,33 @@ class Branch(object):
     def is_locked(self):
         raise NotImplementedError(self.is_locked)
 
+    def _lefthand_history(self, revision_id, last_rev=None,
+                          other_branch=None):
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(4, "_lefthand_history scales with history.")
+        # stop_revision must be a descendant of last_revision
+        graph = self.repository.get_graph()
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+        # make a new revision history from the graph
+        parents_map = graph.get_parent_map([revision_id])
+        if revision_id not in parents_map:
+            raise errors.NoSuchRevision(self, revision_id)
+        current_rev_id = revision_id
+        new_history = []
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
+        # Do not include ghosts or graph origin in revision_history
+        while (current_rev_id in parents_map and
+               len(parents_map[current_rev_id]) > 0):
+            check_not_reserved_id(current_rev_id)
+            new_history.append(current_rev_id)
+            current_rev_id = parents_map[current_rev_id][0]
+            parents_map = graph.get_parent_map([current_rev_id])
+        new_history.reverse()
+        return new_history
+
     def lock_write(self):
         raise NotImplementedError(self.lock_write)
 
@@ -818,6 +845,36 @@ class Branch(object):
     def set_push_location(self, location):
         """Set a new push location for this branch."""
         raise NotImplementedError(self.set_push_location)
+
+    def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
+        """Run the post_change_branch_tip hooks."""
+        hooks = Branch.hooks['post_change_branch_tip']
+        if not hooks:
+            return
+        new_revno, new_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
+            hook(params)
+
+    def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
+        """Run the pre_change_branch_tip hooks."""
+        hooks = Branch.hooks['pre_change_branch_tip']
+        if not hooks:
+            return
+        old_revno, old_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
+            try:
+                hook(params)
+            except errors.TipChangeRejected:
+                raise
+            except Exception:
+                exc_info = sys.exc_info()
+                hook_name = Branch.hooks.get_hook_name(hook)
+                raise errors.HookFailed(
+                    'pre_change_branch_tip', hook_name, exc_info)
 
     def set_parent(self, url):
         raise NotImplementedError(self.set_parent)
@@ -1795,36 +1852,6 @@ class BzrBranch(Branch):
                 new_history = rev.get_history(self.repository)[1:]
         destination.set_revision_history(new_history)
 
-    def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
-        """Run the pre_change_branch_tip hooks."""
-        hooks = Branch.hooks['pre_change_branch_tip']
-        if not hooks:
-            return
-        old_revno, old_revid = self.last_revision_info()
-        params = ChangeBranchTipParams(
-            self, old_revno, new_revno, old_revid, new_revid)
-        for hook in hooks:
-            try:
-                hook(params)
-            except errors.TipChangeRejected:
-                raise
-            except Exception:
-                exc_info = sys.exc_info()
-                hook_name = Branch.hooks.get_hook_name(hook)
-                raise errors.HookFailed(
-                    'pre_change_branch_tip', hook_name, exc_info)
- 
-    def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
-        """Run the post_change_branch_tip hooks."""
-        hooks = Branch.hooks['post_change_branch_tip']
-        if not hooks:
-            return
-        new_revno, new_revid = self.last_revision_info()
-        params = ChangeBranchTipParams(
-            self, old_revno, new_revno, old_revid, new_revid)
-        for hook in hooks:
-            hook(params)
- 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
@@ -1852,33 +1879,6 @@ class BzrBranch(Branch):
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
-
-    def _lefthand_history(self, revision_id, last_rev=None,
-                          other_branch=None):
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(4, "_lefthand_history scales with history.")
-        # stop_revision must be a descendant of last_revision
-        graph = self.repository.get_graph()
-        if last_rev is not None:
-            if not graph.is_ancestor(last_rev, revision_id):
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other_branch)
-        # make a new revision history from the graph
-        parents_map = graph.get_parent_map([revision_id])
-        if revision_id not in parents_map:
-            raise errors.NoSuchRevision(self, revision_id)
-        current_rev_id = revision_id
-        new_history = []
-        check_not_reserved_id = _mod_revision.check_not_reserved_id
-        # Do not include ghosts or graph origin in revision_history
-        while (current_rev_id in parents_map and
-               len(parents_map[current_rev_id]) > 0):
-            check_not_reserved_id(current_rev_id)
-            new_history.append(current_rev_id)
-            current_rev_id = parents_map[current_rev_id][0]
-            parents_map = graph.get_parent_map([current_rev_id])
-        new_history.reverse()
-        return new_history
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
