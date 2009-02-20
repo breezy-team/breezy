@@ -1712,7 +1712,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def assertRecordHasContent(self, record, bytes):
         """Assert that record has the bytes bytes."""
         self.assertEqual(bytes, record.get_bytes_as('fulltext'))
-        self.assertEqual(bytes, ''.join(record.get_bytes_as('fulltext')))
+        self.assertEqual(bytes, ''.join(record.get_bytes_as('chunked')))
 
     def test_get_record_stream_native_formats_are_wire_ready_one_ft(self):
         files = self.get_versionedfiles()

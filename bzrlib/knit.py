@@ -1179,7 +1179,7 @@ class KnitVersionedFiles(VersionedFiles):
         # we have successfully found, and then only request the new records
         # from there. However, _get_components_positions grabs the whole build
         # chain, which means we'll likely try to grab the same records again
-        # anyway. Also, can the build chains change as art of a pack
+        # anyway. Also, can the build chains change as part of a pack
         # operation? We wouldn't want to end up with a broken chain.
         while True:
             try:
@@ -1840,6 +1840,8 @@ class _ContentMapGenerator(object):
 
     def _get_content(self, key):
         """Get the content object for key."""
+        # Note that _get_content is only called when the _ContentMapGenerator
+        # has been constructed with just one key requested for reconstruction.
         if key in self.nonlocal_keys:
             record = self.get_record_stream().next()
             # Create a content object on the fly
@@ -1897,7 +1899,7 @@ class _ContentMapGenerator(object):
         # desired text.
         if requested_key in self._contents_map:
             return self._contents_map[requested_key]
-        # To simply things, parse everything at once - code that wants one text
+        # To simplify things, parse everything at once - code that wants one text
         # probably wants them all.
         # FUTURE: This function could be improved for the 'extract many' case
         # by tracking each component and only doing the copy when the number of

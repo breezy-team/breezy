@@ -40,7 +40,6 @@ from bzrlib import (
     )
 from bzrlib.graph import DictParentsProvider, Graph, _StackedParentsProvider
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.util import bencode
 """)
 from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
