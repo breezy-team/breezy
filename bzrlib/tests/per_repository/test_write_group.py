@@ -368,25 +368,65 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
 #            errors.UnresumableWriteGroup, same_repo.resume_write_group,
 #            wg_tokens)
 
+    def make_source_with_delta_record(self):
+        # Make a source repository with a delta record in it.
+        source_repo = self.make_write_locked_repo('source')
+        source_repo.start_write_group()
+        key_base = ('file-id', 'base') 
+        key_delta = ('file-id', 'delta') 
+        source_repo.texts.add_lines(key_base, (), ['lines\n'])
+        source_repo.texts.add_lines(
+            key_delta, (key_base,), ['more\n', 'lines\n'])
+        source_repo.commit_write_group()
+        return source_repo
+
     def test_commit_resumed_write_group_adding_missing_parents(self):
         self.require_suspendable_write_groups(
             'Cannot test resume on repo that does not support suspending')
+        source_repo = self.make_source_with_delta_record()
+        key_base = ('file-id', 'base') 
+        key_delta = ('file-id', 'delta') 
+        # Start a write group.
         repo = self.make_write_locked_repo()
         repo.start_write_group()
         # Add some content so this isn't an empty write group (which may return
         # 0 tokens)
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
+        # Suspend it, then resume it.
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
         same_repo.resume_write_group(wg_tokens)
-        second_key = ('file-id', 'second-revid')
-        missing_parent = ('file-id', 'missing-revid')
-        same_repo.texts.add_lines(
-            second_key, (missing_parent,), ['more lines'])
+        # Add a record with a missing compression parent
+        stream = source_repo.texts.get_record_stream(
+            [key_delta], 'unordered', False)
+        same_repo.texts.insert_record_stream(stream)
+        # Just like if we'd added that record without a suspend/resume cycle,
+        # commit_write_group fails.
         self.assertRaises(
-            errors.RevisionNotPresent, same_repo.commit_write_group)
+            errors.BzrCheckError, same_repo.commit_write_group)
         same_repo.abort_write_group()
+
+    def test_add_missing_parent_after_resume(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
+        source_repo = self.make_source_with_delta_record()
+        key_base = ('file-id', 'base') 
+        key_delta = ('file-id', 'delta') 
+        # Start a write group, insert just a delta.
+        repo = self.make_write_locked_repo()
+        repo.start_write_group()
+        stream = source_repo.texts.get_record_stream(
+            [key_delta], 'unordered', False)
+        repo.texts.insert_record_stream(stream)
+        # Suspend it, then resume it.
+        wg_tokens = repo.suspend_write_group()
+        same_repo = self.reopen_repo(repo)
+        # Fill in the missing compression parent.
+        stream = source_repo.texts.get_record_stream(
+            [key_base], 'unordered', False)
+        same_repo.texts.insert_record_stream(stream)
+        same_repo.commit_write_group()
 
     def test_suspend_empty_initial_write_group(self):
         """Suspending a write group with no writes returns an empty token
