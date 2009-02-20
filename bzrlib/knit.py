@@ -1482,8 +1482,9 @@ class KnitVersionedFiles(VersionedFiles):
                     added_keys.extend(
                         [index_entry[0] for index_entry in index_entries])
                     del buffered_index_entries[key]
-        self._index._add_missing_compression_parents(
-            buffered_index_entries.keys())
+        if buffered_index_entries:
+            self._index._add_missing_compression_parents(
+                buffered_index_entries.keys())
 
     def get_missing_compression_parent_keys(self):
         """Return an iterable of keys of missing compression parents.
