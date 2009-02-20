@@ -67,6 +67,11 @@ class InfoProcessor(processor.ImportProcessor):
         # Head tracking: map of commit mark to ref
         self.heads = {}
         self.last_ids = {}
+        # Stuff to cache: a map from mark to count
+        self.merges = {}
+        # Stuff to cache: these are maps from ref name to sets
+        self.rename_old_paths = {}
+        self.copy_source_paths = {}
 
     def post_process(self):
         # Dump statistics
@@ -99,6 +104,12 @@ class InfoProcessor(processor.ImportProcessor):
             self._dump_stats_group("Head analysis", heads.keys(),
                 heads.values(), None, _iterable_as_config_list)
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
+            self._dump_stats_group("Merges", self.merges.keys(),
+                self.merges.values(), None)
+            self._dump_stats_group("Rename old paths", self.rename_old_paths.keys(),
+                self.rename_old_paths.values(), len, _iterable_as_config_list)
+            self._dump_stats_group("Copy source paths", self.copy_source_paths.keys(),
+                self.copy_source_paths.values(), len, _iterable_as_config_list)
 
         # Blob stats
         if self.cmd_counts['blob']:
@@ -183,6 +194,11 @@ class InfoProcessor(processor.ImportProcessor):
                         self._track_blob(fc.dataref)
                     else:
                         self.sha_blob_references = True
+            elif isinstance(fc, commands.FileRenameCommand):
+                self.rename_old_paths.setdefault(cmd.ref, set()).add(fc.old_path)
+            elif isinstance(fc, commands.FileCopyCommand):
+                self.copy_source_paths.setdefault(cmd.ref, set()).add(fc.src_path)
+
         # Track the heads
         if cmd.from_ is not None:
             parents = [cmd.from_]
@@ -209,6 +225,15 @@ class InfoProcessor(processor.ImportProcessor):
             self.parent_counts[parent_count] = 1
             if parent_count > self.max_parent_count:
                 self.max_parent_count = parent_count
+
+        # Remember the merges
+        if cmd.merges:
+            #self.merges.setdefault(cmd.ref, set()).update(cmd.merges)
+            for merge in cmd.merges:
+                if merge in self.merges:
+                    self.merges[merge] += 1
+                else:
+                    self.merges[merge] = 1
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""

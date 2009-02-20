@@ -54,6 +54,10 @@ IN DEVELOPMENT
       kernel has revisions with more than that.
       (Ian Clatworthy)
 
+    * ``bzr fast-import-info`` now reports on things that may need caching,
+      i.e. merges, rename old paths and copy source paths.
+      (Ian Clatworthy)
+
     * Tag commands with a missing from clause now produce a warning but
       are otherwise ignored. (Scott James Remnant, Ian Clatworthy)
 
