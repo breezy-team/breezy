@@ -1812,7 +1812,7 @@ class RepositoryPackCollection(object):
                 ('texts', self.repo.texts),
                 ('signatures', self.repo.signatures),
                 ):
-            missing = versioned_file.get_missing_compression_parents()
+            missing = versioned_file.get_missing_compression_parent_keys()
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
