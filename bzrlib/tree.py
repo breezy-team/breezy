@@ -654,36 +654,6 @@ class Tree(object):
         return searcher
 
 
-class EmptyTree(Tree):
-
-    def __init__(self):
-        self._inventory = Inventory(root_id=None)
-        symbol_versioning.warn('EmptyTree is deprecated as of bzr 0.9 please'
-                               ' use repository.revision_tree instead.',
-                               DeprecationWarning, stacklevel=2)
-
-    def get_parent_ids(self):
-        return []
-
-    def get_symlink_target(self, file_id):
-        return None
-
-    def has_filename(self, filename):
-        return False
-
-    def kind(self, file_id):
-        return "directory"
-
-    def list_files(self, include_root=False):
-        return iter([])
-    
-    def __contains__(self, file_id):
-        return (file_id in self._inventory)
-
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        return None
-
-
 ######################################################################
 # diff
 

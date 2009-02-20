@@ -48,6 +48,9 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * Remove deprecated EmptyTree.
+      (Martin Pool)
+
   INTERNALS:
 
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
