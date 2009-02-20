@@ -427,6 +427,46 @@ class TestDelete(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree1, path, "aaa")
 
 
+class TestDeleteDirectory(TestCaseForGenericProcessor):
+
+    def file_command_iter(self, paths, dir):
+        # Revno 1: create multiple files
+        # Revno 2: delete a directory holding those files
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                for i, path in enumerate(paths):
+                    yield commands.FileModifyCommand(path, 'file', False,
+                            None, "aaa%d" % i)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileDeleteCommand(dir)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_delete_dir(self):
+        handler, branch = self.get_handler()
+        paths = ['a/b/c', 'a/b/d', 'a/b/e/f', 'a/g']
+        dir = 'a/b'
+        handler.process(self.file_command_iter(paths, dir))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[
+                ('a',), ('a/b',), ('a/b/c',),
+                ('a/b/d',),
+                ('a/b/e',), ('a/b/e/f',),
+                ('a/g',),
+                ])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[
+                ('a/b',), ('a/b/c',),
+                ('a/b/d',),
+                ('a/b/e',), ('a/b/e/f',),
+                ])
+
+
 class TestRename(TestCaseForGenericProcessor):
 
     def get_command_iter(self, old_path, new_path):
