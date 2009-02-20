@@ -214,6 +214,64 @@ class TestModify(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree2, path, "bbb")
 
 
+class TestDelete(TestCaseForGenericProcessor):
+
+    def file_command_iter(self, path, kind='file'):
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path, kind, False,
+                        None, "aaa")
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileDeleteCommand(path)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_delete_file_in_root(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)])
+        self.assertContent(branch, revtree1, path, "aaa")
+        self.assertRevisionRoot(revtree1, path)
+
+    def test_delete_file_in_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)])
+        self.assertContent(branch, revtree1, path, "aaa")
+
+    def test_delete_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path, kind='symlink'))
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)])
+        self.assertSymlinkTarget(branch, revtree1, path, "aaa")
+        self.assertRevisionRoot(revtree1, path)
+
+    def test_delete_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path, kind='symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)])
+        self.assertSymlinkTarget(branch, revtree1, path, "aaa")
+
+
 class TestRename(TestCaseForGenericProcessor):
 
     def get_command_iter(self, old_path, new_path):
