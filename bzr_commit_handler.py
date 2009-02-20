@@ -86,6 +86,37 @@ class GenericCommitHandler(processor.CommitHandler):
             self.cache_mgr.inventories[revision_id] = inv
         return inv
 
+    def _get_lines(self, file_id):
+        """Get the lines for a file-id."""
+        return self.lines_for_commit[file_id]
+
+    def _get_inventories(self, revision_ids):
+        """Get the inventories for revision-ids.
+        
+        This is a callback used by the RepositoryStore to
+        speed up inventory reconstruction.
+        """
+        present = []
+        inventories = []
+        # If an inventory is in the cache, we assume it was
+        # successfully loaded into the revision store
+        for revision_id in revision_ids:
+            try:
+                inv = self.cache_mgr.inventories[revision_id]
+                present.append(revision_id)
+            except KeyError:
+                if self.verbose:
+                    self.note("get_inventories cache miss for %s", revision_id)
+                # Not cached so reconstruct from the revision store
+                try:
+                    inv = self.get_inventory(revision_id)
+                    present.append(revision_id)
+                except:
+                    inv = self.init_inventory()
+                self.cache_mgr.inventories[revision_id] = inv
+            inventories.append(inv)
+        return present, inventories
+
     def bzr_file_id_and_new(self, path):
         """Get a Bazaar file identifier and new flag for a path.
         
@@ -138,7 +169,7 @@ class GenericCommitHandler(processor.CommitHandler):
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
         # Create the new InventoryEntry
-        basename, parent_ie = self._ensure_directory(path)
+        basename, parent_ie = self._ensure_directory(path, inv)
         file_id = self.bzr_file_id(path)
         ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
         ie.revision = self.revision_id
@@ -158,11 +189,14 @@ class GenericCommitHandler(processor.CommitHandler):
                 (kind,))
         # Record it
         if file_id in inv:
+            old_ie = inv[file_id]
+            if old_ie.kind == 'directory':
+                self.record_delete(path, old_ie)
             self.record_changed(path, ie, parent_ie)
         else:
             self.record_new(path, ie)
 
-    def _ensure_directory(self, path):
+    def _ensure_directory(self, path, inv):
         """Ensure that the containing directory exists for 'path'"""
         dirname, basename = osutils.split(path)
         if dirname == '':
@@ -178,7 +212,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # No directory existed, we will just create one, first, make sure
         # the parent exists
-        dir_basename, parent_ie = self._ensure_directory(dirname)
+        dir_basename, parent_ie = self._ensure_directory(dirname, inv)
         dir_file_id = self.bzr_file_id(dirname)
         ie = inventory.entry_factory['directory'](dir_file_id,
             dir_basename, parent_ie.file_id)
@@ -187,6 +221,11 @@ class GenericCommitHandler(processor.CommitHandler):
         # There are no lines stored for a directory so
         # make sure the cache used by get_lines knows that
         self.lines_for_commit[dir_file_id] = []
+
+        # It's possible that a file or symlink with that file-id
+        # already exists. If it does, we need to delete it.
+        if dir_file_id in inv:
+            self.record_delete(dirname, ie)
         self.record_new(dirname, ie)
         return basename, ie
 
@@ -271,37 +310,6 @@ class InventoryCommitHandler(GenericCommitHandler):
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
 
-    def _get_lines(self, file_id):
-        """Get the lines for a file-id."""
-        return self.lines_for_commit[file_id]
-
-    def _get_inventories(self, revision_ids):
-        """Get the inventories for revision-ids.
-        
-        This is a callback used by the RepositoryStore to
-        speed up inventory reconstruction.
-        """
-        present = []
-        inventories = []
-        # If an inventory is in the cache, we assume it was
-        # successfully loaded into the revision store
-        for revision_id in revision_ids:
-            try:
-                inv = self.cache_mgr.inventories[revision_id]
-                present.append(revision_id)
-            except KeyError:
-                if self.verbose:
-                    self.note("get_inventories cache miss for %s", revision_id)
-                # Not cached so reconstruct from the revision store
-                try:
-                    inv = self.get_inventory(revision_id)
-                    present.append(revision_id)
-                except:
-                    inv = self.init_inventory()
-                self.cache_mgr.inventories[revision_id] = inv
-            inventories.append(inv)
-        return present, inventories
-
     def record_new(self, path, ie):
         try:
             self.inventory.add(ie)
@@ -320,7 +328,8 @@ class InventoryCommitHandler(GenericCommitHandler):
         self.inventory.remove_recursive_id(ie.file_id)
 
     def record_rename(self, old_path, new_path, file_id, ie):
-        new_basename, new_parent_ie = self._ensure_directory(new_path)
+        new_basename, new_parent_ie = self._ensure_directory(new_path,
+            self.inventory)
         new_parent_id = new_parent_ie.file_id
         self.inventory.rename(file_id, new_parent_id, new_basename)
         self.inventory[file_id].revision = self.revision_id
@@ -408,10 +417,14 @@ class DeltaCommitHandler(GenericCommitHandler):
 
     def post_process_files(self):
         """Save the revision."""
+        #for path, entry in self.basis_inventory.iter_entries_by_dir():
+        #    print "ie for %s:\n%r" % (path, entry)
+        #print "delta:\n%r" % (self.delta,)
         rev = self.build_revision()
-        # FIXME: store the delta
-        inv = self.basis_inventory
-        inv.apply_delta(self.delta)
+        inv = self.rev_store.load_using_delta(rev, self.basis_inventory,
+            self.delta, None,
+            lambda file_id: self._get_lines(file_id),
+            lambda revision_ids: self._get_inventories(revision_ids))
         self.cache_mgr.inventories[self.revision_id] = inv
 
     def record_new(self, path, ie):
@@ -421,18 +434,21 @@ class DeltaCommitHandler(GenericCommitHandler):
         self.delta.append((path, path, ie.file_id, ie))
 
     def record_delete(self, path, ie):
-        kind = ie.kind
-        if kind == 'file' or file == 'symlink':
-            self.delta.append((path, None, ie.file_id, None))
-        elif kind == 'directory':
-            for path, entry in inv.iter_entries_by_dir(from_dir=ie):
-                self.delta.append((path, None, entry.file_id, None))
-        else:
-            self.warning("ignoring delete of %s %s - feature not yet supported",
-                kind, path)
+        self.delta.append((path, None, ie.file_id, None))
+        if ie.kind == 'directory':
+            for child_path, entry in \
+                self.basis_inventory.iter_entries_by_dir(from_dir=ie):
+                #print "deleting child %s" % child_path
+                self.delta.append((child_path, None, entry.file_id, None))
 
-    def record_rename(self, old_path, new_path, file_id, ie):
-        self.delta.append((old_path, new_path, file_id, ie))
+    def record_rename(self, old_path, new_path, file_id, old_ie):
+        new_ie = old_ie.copy()
+        new_basename, new_parent_ie = self._ensure_directory(new_path,
+            self.basis_inventory)
+        new_ie.name = new_basename
+        new_ie.parent_id = new_parent_ie.file_id
+        new_ie.revision = self.revision_id
+        self.delta.append((old_path, new_path, file_id, new_ie))
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
@@ -445,13 +461,13 @@ class DeltaCommitHandler(GenericCommitHandler):
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        delete_item(filecmd.path, self.basis_inventory)
+        self._delete_item(filecmd.path, self.basis_inventory)
 
     def copy_handler(self, filecmd):
         src_path = filecmd.src_path
         dest_path = filecmd.dest_path
         self.debug("copying %s to %s", src_path, dest_path)
-        self.copy_item(src_path, dest_path, self.basis_inventory)
+        self._copy_item(src_path, dest_path, self.basis_inventory)
 
     def rename_handler(self, filecmd):
         old_path = filecmd.old_path

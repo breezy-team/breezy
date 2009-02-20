@@ -88,6 +88,29 @@ class AbstractRevisionStore(object):
             self.repo.add_signature_text(rev.revision_id, signature)
         self._add_revision(rev, inv)
 
+    def load_using_delta(self, rev, basis_inv, inv_delta, signature,
+        text_provider, inventories_provider=None):
+        """Load a revision.
+
+        :param rev: the Revision
+        :param basis_inv: the basis inventory
+        :param inv_delta: the inventory delta
+        :param signature: signing information
+        :param text_provider: a callable expecting a file_id parameter
+            that returns the text for that file-id
+        :param inventories_provider: a callable expecting a repository and
+            a list of revision-ids, that returns:
+              * the list of revision-ids present in the repository
+              * the list of inventories for the revision-id's,
+                including an empty inventory for the missing revisions
+            If None, a default implementation is provided.
+        """
+        inv = basis_inv.copy()
+        inv.apply_delta(inv_delta)
+        inv.root.revision = rev.revision_id
+        self.load(rev, inv, signature, text_provider, inventories_provider)
+        return inv
+
     def _load_texts(self, revision_id, entries, parent_invs, text_provider):
         """Load texts to a repository for inventory entries.
         
