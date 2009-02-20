@@ -193,15 +193,7 @@ class GenericCommitHandler(processor.CommitHandler):
     def _delete_item(self, path, inv):
         file_id = inv.path2id(path)
         ie = inv[file_id]
-        kind = ie.kind
-        if kind == 'file' or file == 'symlink':
-            self.record_delete(path, ie.file_id)
-        elif kind == 'directory':
-            for path, entry in inv.iter_entries_by_dir(from_dir=ie):
-                self.record_delete(path, entry.file_id)
-        else:
-            self.warning("ignoring delete of %s %s - feature not yet supported",
-                kind, path)
+        self.record_delete(path, ie)
 
     def _copy_item(self, src_path, dest_path, inv):
         if not self.parents:
@@ -230,7 +222,7 @@ class GenericCommitHandler(processor.CommitHandler):
         rev_id = ie.revision
         new_file_id = inv.path2id(new_path)
         if new_file_id is not None:
-            self.record_delete(new_path, new_file_id)
+            self.record_delete(new_path, inv[new_file_id])
         self.record_rename(old_path, new_path, file_id, ie)
         self.cache_mgr.rename_path(old_path, new_path)
 
@@ -324,8 +316,8 @@ class InventoryCommitHandler(GenericCommitHandler):
         self.inventory._byid[ie.file_id] = ie
         parent_ie.children[ie.name] = ie
 
-    def record_delete(self, path, file_id):
-        self.inventory.remove_recursive_id(file_id)
+    def record_delete(self, path, ie):
+        self.inventory.remove_recursive_id(ie.file_id)
 
     def record_rename(self, old_path, new_path, file_id, ie):
         new_basename, new_parent_ie = self._ensure_directory(new_path)
@@ -428,8 +420,16 @@ class DeltaCommitHandler(GenericCommitHandler):
     def record_changed(self, path, ie, parent_ie=None):
         self.delta.append((path, path, ie.file_id, ie))
 
-    def record_delete(self, path, file_id):
-        self.delta.append((path, None, file_id, None))
+    def record_delete(self, path, ie):
+        kind = ie.kind
+        if kind == 'file' or file == 'symlink':
+            self.delta.append((path, None, ie.file_id, None))
+        elif kind == 'directory':
+            for path, entry in inv.iter_entries_by_dir(from_dir=ie):
+                self.delta.append((path, None, entry.file_id, None))
+        else:
+            self.warning("ignoring delete of %s %s - feature not yet supported",
+                kind, path)
 
     def record_rename(self, old_path, new_path, file_id, ie):
         self.delta.append((old_path, new_path, file_id, ie))
