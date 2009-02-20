@@ -195,10 +195,10 @@ class GenericCommitHandler(processor.CommitHandler):
         ie = inv[file_id]
         kind = ie.kind
         if kind == 'file' or file == 'symlink':
-            self.record_delete(path, ie)
+            self.record_delete(path, ie.file_id)
         elif kind == 'directory':
             for path, entry in inv.iter_entries_by_dir(from_dir=ie):
-                self.record_delete(path, entry)
+                self.record_delete(path, entry.file_id)
         else:
             self.warning("ignoring delete of %s %s - feature not yet supported",
                 kind, path)
@@ -225,24 +225,20 @@ class GenericCommitHandler(processor.CommitHandler):
                 kind, path)
 
     def _rename_item(self, old_path, new_path, inv):
-        # TODO: Generalise to use record_*
-        old_file_id = inv.path2id(old_path)
-        old_ie = inv[old_file_id]
+        file_id = inv.path2id(old_path)
+        ie = inv[file_id]
+        rev_id = ie.revision
         new_file_id = inv.path2id(new_path)
         if new_file_id is not None:
-            inv.remove_recursive_id(new_file_id)
+            self.record_delete(new_path, new_file_id)
+        self.record_rename(old_path, new_path, file_id, ie)
+        self.cache_mgr.rename_path(old_path, new_path)
 
-        # The revision-id for this entry needs to be updated and
+        # The revision-id for this entry will be/has been updated and
         # that means the loader then needs to know what the "new" text is.
         # We therefore must go back to the revision store to get it.
-        lines = self.rev_store.get_file_lines(old_ie.revision, old_file_id)
-        self.lines_for_commit[old_file_id] = lines
-        inv[old_file_id].revision = self.revision_id
-
-        new_basename, new_parent_ie = self._ensure_directory(new_path)
-        new_parent_id = new_parent_ie.file_id
-        inv.rename(old_file_id, new_parent_id, new_basename)
-        self.cache_mgr.rename_path(old_path, new_path)
+        lines = self.rev_store.get_file_lines(rev_id, file_id)
+        self.lines_for_commit[file_id] = lines
 
     def _delete_all_items(self, inv):
         for name, root_item in inv.root.children.iteritems():
@@ -327,6 +323,15 @@ class InventoryCommitHandler(GenericCommitHandler):
         # HACK: no API for this (del+add does more than it needs to)
         self.inventory._byid[ie.file_id] = ie
         parent_ie.children[ie.name] = ie
+
+    def record_delete(self, path, file_id):
+        self.inventory.remove_recursive_id(file_id)
+
+    def record_rename(self, old_path, new_path, file_id, ie):
+        new_basename, new_parent_ie = self._ensure_directory(new_path)
+        new_parent_id = new_parent_ie.file_id
+        self.inventory.rename(file_id, new_parent_id, new_basename)
+        self.inventory[file_id].revision = self.revision_id
 
     def _delete_item(self, path):
         # NOTE: I'm retaining this method for now, instead of using the
@@ -423,8 +428,11 @@ class DeltaCommitHandler(GenericCommitHandler):
     def record_changed(self, path, ie, parent_ie=None):
         self.delta.append((path, path, ie.file_id, ie))
 
-    def record_delete(self, path, ie):
-        self.delta.append((path, None, ie.file_id, None))
+    def record_delete(self, path, file_id):
+        self.delta.append((path, None, file_id, None))
+
+    def record_rename(self, old_path, new_path, file_id, ie):
+        self.delta.append((old_path, new_path, file_id, ie))
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
