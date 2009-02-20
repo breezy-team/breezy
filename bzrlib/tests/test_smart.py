@@ -160,6 +160,23 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
             request.transport_from_client_path('foo/').base)
 
 
+class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.create_repository."""
+
+    def test_makes_repository(self):
+        """When there is a bzrdir present, the call succeeds."""
+        backing = self.get_transport()
+        self.make_bzrdir('.')
+        request_class = bzrlib.smart.bzrdir.SmartServerRequestCreateRepository
+        request = request_class(backing)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_format = reference_bzrdir_format.repository_format
+        network_name = reference_format.network_name()
+        expected = SuccessfulSmartServerResponse(
+            ('ok', 'no', 'no', 'no', network_name))
+        self.assertEqual(expected, request.execute('', network_name, 'True'))
+
+
 class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
     """Tests for BzrDir.find_repository."""
 
@@ -1035,6 +1052,31 @@ class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
         response = request.execute()
         self.assertEqual(
             SmartServerResponse(('yes',)), response)
+
+
+class TestSmartServerRepositorySetMakeWorkingTrees(tests.TestCaseWithMemoryTransport):
+
+    def test_set_false(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(True)
+        request_class = smart.repository.SmartServerRepositorySetMakeWorkingTrees
+        request = request_class(backing)
+        self.assertEqual(SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', 'False'))
+        repo = repo.bzrdir.open_repository()
+        self.assertFalse(repo.make_working_trees())
+
+    def test_set_true(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(False)
+        request_class = smart.repository.SmartServerRepositorySetMakeWorkingTrees
+        request = request_class(backing)
+        self.assertEqual(SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', 'True'))
+        repo = repo.bzrdir.open_repository()
+        self.assertTrue(repo.make_working_trees())
 
 
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):

@@ -174,9 +174,9 @@ class Registry(object):
         :return: a tuple of (object, remainder), where the remainder is the
             portion of the name that did not match the key.
         """
-        for key, value in self.iteritems():
+        for key in self.keys():
             if fullname.startswith(key):
-                return value, fullname[len(key):]
+                return self.get(key), fullname[len(key):]
 
     def _get_key_or_default(self, key=None):
         """Return either 'key' or the default key if key is None"""

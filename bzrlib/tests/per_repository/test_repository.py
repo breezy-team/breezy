@@ -298,6 +298,26 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(self.repository_format,
             self.bzrdir_format.repository_format)
 
+    def test_format_network_name(self):
+        repo = self.make_repository('r')
+        format = repo._format
+        network_name = format.network_name()
+        self.assertIsInstance(network_name, str)
+        # We want to test that the network_name matches the actual format on
+        # disk.  For local repositories, that means that using network_name as
+        # a key in the registry gives back the same format.  For remote
+        # repositories, that means that the network_name of the
+        # RemoteRepositoryFormat we have locally matches the actual format
+        # present on the remote side.
+        if isinstance(format, remote.RemoteRepositoryFormat):
+            repo._ensure_real()
+            real_repo = repo._real_repository
+            self.assertEqual(real_repo._format.network_name(), network_name)
+        else:
+            registry = repository.network_format_registry
+            looked_up_format = registry.get(network_name)
+            self.assertEqual(format.__class__, looked_up_format.__class__)
+
     def test_create_repository(self):
         # bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():
@@ -813,8 +833,12 @@ class TestRepository(TestCaseWithRepository):
         if isinstance(repo, remote.RemoteRepository):
             repo._ensure_real()
             repo = repo._real_repository
+        target_repo = target.open_repository()
+        if isinstance(target_repo, remote.RemoteRepository):
+            target_repo._ensure_real()
+            target_repo = target_repo._real_repository
         # The repository format is preserved.
-        self.assertEqual(repo._format, target.open_repository()._format)
+        self.assertEqual(repo._format, target_repo._format)
 
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns

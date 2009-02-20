@@ -64,6 +64,7 @@ from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     local,
+    remote as remote_transport,
     )
 from bzrlib.weave import Weave
 """)
@@ -187,8 +188,8 @@ class BzrDir(object):
         """
         transport.ensure_base()
         require_stacking = (stacked_on is not None)
-        metadir = self.cloning_metadir(require_stacking)
-        result = metadir.initialize_on_transport(transport)
+        format = self.cloning_metadir(require_stacking)
+        result = format.initialize_on_transport(transport)
         repository_policy = None
         try:
             local_repo = self.find_repository()
@@ -1706,7 +1707,29 @@ class BzrDirFormat(object):
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
-        # Since we don't have a .bzr directory, inherit the
+        try:
+            # can we hand off the request to the smart server rather than using
+            # vfs calls?
+            client_medium = transport.get_smart_medium()
+        except errors.NoSmartMedium:
+            return self._initialize_on_transport_vfs(transport)
+        else:
+            # Current RPC's only know how to create bzr metadir1 instances, so
+            # we still delegate to vfs methods if the requested format is not a
+            # metadir1
+            if type(self) != BzrDirMetaFormat1:
+                return self._initialize_on_transport_vfs(transport)
+            remote_format = RemoteBzrDirFormat()
+            self._supply_sub_formats_to(remote_format)
+            return remote_format.initialize_on_transport(transport)
+
+    def _initialize_on_transport_vfs(self, transport):
+        """Initialize a new bzrdir using VFS calls.
+        
+        :param transport: The transport to create the .bzr directory in.
+        :return: A
+        """
+        # Since we are creating a .bzr directory, inherit the
         # mode from the root directory
         temp_control = lockable_files.LockableFiles(transport,
                             '', lockable_files.TransportLock)
@@ -1781,6 +1804,9 @@ class BzrDirFormat(object):
                 raise AssertionError("%s was asked to open %s, but it seems to need "
                         "format %s" 
                         % (self, transport, found_format))
+            # Allow subclasses - use the found format.
+            self._supply_sub_formats_to(found_format)
+            return found_format._open(transport)
         return self._open(transport)
 
     def _open(self, transport):
@@ -1825,6 +1851,18 @@ class BzrDirFormat(object):
     def __str__(self):
         # Trim the newline
         return self.get_format_string().rstrip()
+
+    def _supply_sub_formats_to(self, other_format):
+        """Give other_format the same values for sub formats as this has.
+
+        This method is expected to be used when parameterising a
+        RemoteBzrDirFormat instance with the parameters from a
+        BzrDirMetaFormat1 instance.
+
+        :param other_format: other_format is a format which should be
+            compatible with whatever sub formats are supported by self.
+        :return: None.
+        """
 
     @classmethod
     def unregister_format(klass, format):
@@ -2088,11 +2126,30 @@ class BzrDirMetaFormat1(BzrDirFormat):
         from bzrlib.repository import RepositoryFormat
         return RepositoryFormat.get_default_format()
 
-    def __set_repository_format(self, value):
+    def _set_repository_format(self, value):
         """Allow changing the repository format for metadir formats."""
         self._repository_format = value
 
-    repository_format = property(__return_repository_format, __set_repository_format)
+    repository_format = property(__return_repository_format,
+        _set_repository_format)
+
+    def _supply_sub_formats_to(self, other_format):
+        """Give other_format the same values for sub formats as this has.
+
+        This method is expected to be used when parameterising a
+        RemoteBzrDirFormat instance with the parameters from a
+        BzrDirMetaFormat1 instance.
+
+        :param other_format: other_format is a format which should be
+            compatible with whatever sub formats are supported by self.
+        :return: None.
+        """
+        if getattr(self, '_repository_format', None) is not None:
+            other_format.repository_format = self.repository_format
+        if self._branch_format is not None:
+            other_format._branch_format = self._branch_format
+        if self._workingtree_format is not None:
+            other_format.workingtree_format = self.workingtree_format
 
     def __get_workingtree_format(self):
         if self._workingtree_format is None:
@@ -2679,20 +2736,36 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         response = client.call('BzrDirFormat.initialize', path)
         if response[0] != 'ok':
             raise errors.SmartProtocolError('unexpected response code %s' % (response,))
-        return remote.RemoteBzrDir(transport)
+        format = RemoteBzrDirFormat()
+        self._supply_sub_formats_to(format)
+        return remote.RemoteBzrDir(transport, format)
 
     def _open(self, transport):
-        return remote.RemoteBzrDir(transport)
+        return remote.RemoteBzrDir(transport, self)
 
     def __eq__(self, other):
         if not isinstance(other, RemoteBzrDirFormat):
             return False
         return self.get_format_description() == other.get_format_description()
 
-    @property
-    def repository_format(self):
-        # Using a property to avoid early loading of remote
-        return remote.RemoteRepositoryFormat()
+    def __return_repository_format(self):
+        # Always return a RemoteRepositoryFormat object, but if a specific bzr
+        # repository format has been asked for, tell the RemoteRepositoryFormat
+        # that it should use that for init() etc.
+        result =  remote.RemoteRepositoryFormat()
+        custom_format = getattr(self, '_repository_format', None)
+        if custom_format:
+            # We will use the custom format to create repositories over the
+            # wire; expose its details like rich_root_data for code to query
+            if isinstance(custom_format, remote.RemoteRepositoryFormat):
+                result._custom_format = custom_format._custom_format
+            else:
+                result._custom_format = custom_format
+            result.rich_root_data = custom_format.rich_root_data
+        return result
+
+    repository_format = property(__return_repository_format,
+        BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
 BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
@@ -3021,6 +3094,9 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 # appear in chronological order and format descriptions can build
 # on previous ones.
 format_registry = BzrDirFormatRegistry()
+# The pre-0.8 formats have their repository format network name registered in
+# repository.py. MetaDir formats have their repository format network name
+# inferred from their disk format string.
 format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
     ' support checkouts or shared repositories.',
@@ -3136,7 +3212,7 @@ format_registry.register_metadir('development-wt5',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports views and content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
 format_registry.register_metadir('development-wt5-rich-root',
@@ -3144,7 +3220,7 @@ format_registry.register_metadir('development-wt5-rich-root',
     help='A variant of development-wt5 that supports rich-root data '
          '(needed for bzr-svn).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
     )
 # The following two formats should always just be aliases.

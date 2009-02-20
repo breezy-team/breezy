@@ -534,6 +534,48 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchRevision,
             missing_ghost.get_inventory, 'ghost')
 
+    def make_write_ready_repo(self):
+        repo = self.make_repository('.', format=self.get_format())
+        repo.lock_write()
+        repo.start_write_group()
+        return repo
+
+    def test_missing_inventories_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.inventories._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_revisions_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.revisions._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_signatures_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.signatures._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_text_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('some', 'junk')
+        repo.texts._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())
         self.assertEqual(self.format_supports_external_lookups,

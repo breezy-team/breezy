@@ -1908,6 +1908,20 @@ class RepositoryPackCollection(object):
         del self._resumed_packs[:]
 
     def _commit_write_group(self):
+        all_missing = set()
+        for prefix, versioned_file in (
+                ('revisions', self.repo.revisions),
+                ('inventories', self.repo.inventories),
+                ('texts', self.repo.texts),
+                ('signatures', self.repo.signatures),
+                ):
+            # We use KnitVersionedFiles exclusively so can rely on _index.
+            missing = versioned_file._index.get_missing_compression_parents()
+            all_missing.update([(prefix,) + key for key in missing])
+        if all_missing:
+            raise errors.BzrCheckError(
+                "Repository %s has missing compression parent(s) %r "
+                 % (self.repo, sorted(all_missing)))
         self._remove_pack_indices(self._new_pack)
         should_autopack = False
         if self._new_pack.data_inserted():

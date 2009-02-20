@@ -123,6 +123,19 @@ class TestTransport(TestCase):
         finally:
             _set_protocol_handlers(saved_handlers)
 
+    def test_ssh_hints(self):
+        """Transport ssh:// should raise an error pointing out bzr+ssh://"""
+        try:
+            get_transport('ssh://fooserver/foo')
+        except UnsupportedProtocol, e:
+            e_str = str(e)
+            self.assertEquals('Unsupported protocol'
+                              ' for url "ssh://fooserver/foo":'
+                              ' bzr supports bzr+ssh to operate over ssh, use "bzr+ssh://fooserver/foo".', 
+                              str(e))
+        else:
+            self.fail('Did not raise UnsupportedProtocol')
+
     def test_LateReadError(self):
         """The LateReadError helper should raise on read()."""
         a_file = LateReadError('a path')
