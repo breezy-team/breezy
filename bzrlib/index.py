@@ -435,7 +435,7 @@ class GraphIndex(object):
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
 
-    def external_references(self, ref_list_num=None):
+    def external_references(self, ref_list_num):
         """Return references that are not present in this index.
         """
         self._buffer_all()

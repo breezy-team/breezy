@@ -407,10 +407,18 @@ def disable_default_logging():
     pass
 
 
-_short_fields = ('VmPeak', 'VmSize', 'VmRSS')
-
 def debug_memory(message='', short=True):
     """Write out a memory dump."""
+    if sys.platform == 'win32':
+        from bzrlib import win32utils
+        win32utils.debug_memory_win32api(message=message, short=short)
+    else:
+        _debug_memory_proc(message=message, short=short)
+
+
+_short_fields = ('VmPeak', 'VmSize', 'VmRSS')
+
+def _debug_memory_proc(message='', short=True):
     try:
         status_file = file('/proc/%s/status' % os.getpid(), 'rb')
     except IOError:

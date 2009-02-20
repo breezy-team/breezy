@@ -1905,11 +1905,15 @@ class _KndxIndex(object):
 
     def scan_unvalidated_index(self, graph_index):
         """See _KnitGraphIndex.scan_unvalidated_index."""
+        # Because kndx files do not support atomic insertion via separate index
+        # files, they do not support this method.
         raise NotImplementedError(self.scan_unvalidated_index)
 
     def get_missing_compression_parents(self):
         """See _KnitGraphIndex.get_missing_compression_parents."""
-        return frozenset()
+        # Because kndx files do not support atomic insertion via separate index
+        # files, they do not support this method.
+        raise NotImplementedError(self.get_missing_compression_parents)
     
     def _cache_key(self, key, options, pos, size, parent_keys):
         """Cache a version record in the history array and index cache.
@@ -2306,11 +2310,10 @@ class _KnitGraphIndex(object):
 
         :param graph_index: A GraphIndex
         """
-        # it is assumed graph_index's keys are already in self._graph_index!
-        external_refs = graph_index.external_references(ref_list_num=1)
-        # filter out refs that are present in this index
-        external_refs.difference_update(self.get_parent_map(external_refs))
-        self._missing_compression_parents.update(external_refs)
+        if self._deltas:
+            new_missing = graph_index.external_references(ref_list_num=1)
+            new_missing.difference_update(self.get_parent_map(new_missing))
+            self._missing_compression_parents.update(new_missing)
 
     def _add_missing_compression_parents(self, keys):
         self._missing_compression_parents.update(keys)

@@ -954,8 +954,6 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([]), index.external_references(0))
 
 
-
-
 class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
 
     def make_index(self, name, ref_lists=0, key_elements=1, nodes=[]):

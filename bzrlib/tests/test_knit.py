@@ -1243,9 +1243,8 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertRaises(
             NotImplementedError, index.scan_unvalidated_index,
             'dummy graph_index')
-        # Because scan_unvalidated_index is not implemented,
-        # get_missing_compression_parents can only return an empty set.
-        self.assertEqual(frozenset(), index.get_missing_compression_parents())
+        self.assertRaises(
+            NotImplementedError, index.get_missing_compression_parents)
 
     def test_short_line(self):
         transport = MockTransport([
@@ -1626,14 +1625,14 @@ class TestGraphIndexKnit(KnitTests):
     def test_add_good_unvalidated_index(self):
         unvalidated = self.make_g_index_no_external_refs()
         combined = CombinedGraphIndex([unvalidated])
-        index = _KnitGraphIndex(combined, lambda: True)
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
         index.scan_unvalidated_index(unvalidated)
         self.assertEqual(frozenset(), index.get_missing_compression_parents())
 
     def test_add_incomplete_unvalidated_index(self):
         unvalidated = self.make_g_index_missing_compression_parent()
         combined = CombinedGraphIndex([unvalidated])
-        index = _KnitGraphIndex(combined, lambda: True)
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
         index.scan_unvalidated_index(unvalidated)
         # This also checks that its only the compression parent that is
         # examined, otherwise 'ghost' would also be reported as a missing
@@ -1663,7 +1662,7 @@ class TestGraphIndexKnit(KnitTests):
         g_index_1 = self.make_new_missing_parent_g_index('one')
         g_index_2 = self.make_new_missing_parent_g_index('two')
         combined = CombinedGraphIndex([g_index_1, g_index_2])
-        index = _KnitGraphIndex(combined, lambda: True)
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
         index.scan_unvalidated_index(g_index_1)
         index.scan_unvalidated_index(g_index_2)
         self.assertEqual(
@@ -1680,7 +1679,7 @@ class TestGraphIndexKnit(KnitTests):
              (('child-of-one', ), ' 100 78',
               ([('parent-one',)], [('parent-one',)]))])
         combined = CombinedGraphIndex([graph_index_a, graph_index_b])
-        index = _KnitGraphIndex(combined, lambda: True)
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
         index.scan_unvalidated_index(graph_index_a)
         index.scan_unvalidated_index(graph_index_b)
         self.assertEqual(
@@ -1698,6 +1697,14 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         trans = self.get_transport()
         size = trans.put_file(name, stream)
         return GraphIndex(trans, name, size)
+
+    def test_add_good_unvalidated_index(self):
+        unvalidated = self.make_g_index('unvalidated')
+        combined = CombinedGraphIndex([unvalidated])
+        index = _KnitGraphIndex(combined, lambda: True, parents=False)
+        index.scan_unvalidated_index(unvalidated)
+        self.assertEqual(frozenset(),
+            index.get_missing_compression_parents())
 
     def test_parents_deltas_incompatible(self):
         index = CombinedGraphIndex([])
