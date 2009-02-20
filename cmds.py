@@ -313,6 +313,8 @@ class cmd_builddeb(Command):
             orig_dir=None, ignore_changes=False, ignore_unknowns=False,
             quick=False, reuse=False, native=False, split=False,
             source=False, revision=None, no_user_config=False, result=None):
+        if result is not None:
+            warning("--result is deprected, use --result-dir instead")
         branch, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
         tree, branch, is_local = self._get_tree_and_branch(branch)
