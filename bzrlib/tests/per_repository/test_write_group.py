@@ -422,6 +422,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         # Suspend it, then resume it.
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
+        same_repo.resume_write_group(wg_tokens)
         # Fill in the missing compression parent.
         stream = source_repo.texts.get_record_stream(
             [key_base], 'unordered', False)

@@ -436,7 +436,8 @@ class NewPack(Pack):
         if self._buffer[1]:
             self._write_data('', flush=True)
         self.name = self._hash.hexdigest()
-        self._check_references()
+        if not suspend:
+            self._check_references()
         # write indices
         # XXX: It'd be better to write them all to temporary names, then
         # rename them all into place, so that the window when only some are
