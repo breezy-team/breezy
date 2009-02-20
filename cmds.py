@@ -175,11 +175,6 @@ class cmd_builddeb(Command):
                              short_name='e')
     use_existing_opt = Option('use-existing',
                               help="Use an existing build directory")
-    ignore_changes_opt = Option('ignore-changes',
-        help="This option has no effect")
-    ignore_unknowns_opt = Option('ignore-unknowns',
-        help="Ignore any unknown files, but still fail if there are any changes"
-           +", the default is to fail if there are unknowns as well.")
     quick_opt = Option('quick', help="Quickly build the package, uses "
                        +"quick-builder, which defaults to \"fakeroot "
                        +"debian/rules binary\"")
@@ -194,7 +189,7 @@ class cmd_builddeb(Command):
     aliases = ['bd']
     takes_options = [working_tree_opt, export_only_opt,
         dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
-        build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
+        build_dir_opt, orig_dir_opt,
         quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
         export_upstream_revision_opt, source_opt, 'revision',
         no_user_conf_opt, result_compat_opt]
@@ -307,7 +302,7 @@ class cmd_builddeb(Command):
             working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
             result_dir=None, builder=None, merge=False, build_dir=None,
-            orig_dir=None, ignore_changes=False, ignore_unknowns=False,
+            orig_dir=None,
             quick=False, reuse=False, native=False, split=False,
             source=False, revision=None, no_user_config=False, result=None):
         branch, build_options, source = self._branch_and_build_options(
