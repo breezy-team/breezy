@@ -930,7 +930,10 @@ class VersionedFiles(object):
 
         Check this after calling insert_record_stream to find out if there are
         any missing compression parents.  If there are, the records that
-        depend on them are *not* yet inserted.
+        depend on them are not able to be inserted safely. The precise
+        behaviour depends on the concrete VersionedFiles class in use.
+
+        Classes that do not support this will raise NotImplementedError.
         """
         raise NotImplementedError(self.get_missing_compression_parent_keys)
 
@@ -1168,11 +1171,6 @@ class ThunkedVersionedFiles(VersionedFiles):
                 sha1s[prefix + (suffix,)] = sha1
         return sha1s
 
-    def get_missing_compression_parent_keys(self):
-        """See VersionedFile.get_missing_compression_parent_keys."""
-        # weaves don't support partial inserts
-        return []
-    
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 

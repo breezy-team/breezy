@@ -1999,8 +1999,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         keys = [self.get_simple_key('origin'), self.get_simple_key('merged')]
         entries = source.get_record_stream(keys, 'unordered', False)
         files = self.get_versionedfiles()
-        self.assertEqual([], list(files.get_missing_compression_parent_keys()))
         if self.support_partial_insertion:
+            self.assertEqual([],
+                list(files.get_missing_compression_parent_keys()))
             files.insert_record_stream(entries)
             missing_bases = files.get_missing_compression_parent_keys()
             self.assertEqual(set([self.get_simple_key('left')]),

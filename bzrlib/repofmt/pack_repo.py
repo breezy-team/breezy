@@ -1812,8 +1812,7 @@ class RepositoryPackCollection(object):
                 ('texts', self.repo.texts),
                 ('signatures', self.repo.signatures),
                 ):
-            # We use KnitVersionedFiles exclusively so can rely on _index.
-            missing = versioned_file._index.get_missing_compression_parents()
+            missing = versioned_file.get_missing_compression_parents()
             all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
