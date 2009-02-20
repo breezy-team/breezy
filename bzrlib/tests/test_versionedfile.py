@@ -102,7 +102,7 @@ def load_tests(standard_tests, module, loader):
             'factory':make_file_factory(False, ConstantMapper('revisions')),
             'graph':True,
             'key_length':1,
-            'support_partial_insertion': True,
+            'support_partial_insertion': False,
             }),
         ('named-nograph-nodelta-knit-pack', {
             'cleanup':cleanup_pack_knit,
@@ -1996,8 +1996,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         not added.
         """
         source = self.get_knit_delta_source()
-        entries = source.get_record_stream([self.get_simple_key('origin'),
-            self.get_simple_key('merged')], 'unordered', False)
+        keys = [self.get_simple_key('origin'), self.get_simple_key('merged')]
+        entries = source.get_record_stream(keys, 'unordered', False)
         files = self.get_versionedfiles()
         self.assertEqual([], list(files.get_missing_compression_parent_keys()))
         if self.support_partial_insertion:
@@ -2005,11 +2005,11 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             missing_bases = files.get_missing_compression_parent_keys()
             self.assertEqual(set([self.get_simple_key('left')]),
                 set(missing_bases))
+            self.assertEqual(set(keys), set(files.get_parent_map(keys)))
         else:
             self.assertRaises(
                 errors.RevisionNotPresent, files.insert_record_stream, entries)
-        files.check()
-        self.assertEqual({}, files.get_parent_map([]))
+            files.check()
 
     def test_insert_record_stream_delta_missing_basis_can_be_added_later(self):
         """Insertion where a needed basis is not included notifies the caller
@@ -2029,18 +2029,20 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         missing_bases = files.get_missing_compression_parent_keys()
         self.assertEqual(set([self.get_simple_key('left')]),
             set(missing_bases))
-        # 'merged' is not yet inserted
-        files.check()
+        # 'merged' is inserted (although a commit of a write group involving
+        # this versionedfiles would fail).
         merged_key = self.get_simple_key('merged')
-        self.assertEqual([], files.get_parent_map([merged_key]).keys())
-        missing_entries = source.get_record_stream(
-            [self.get_simple_key('left')], 'unordered', True)
-        files.insert_record_stream(missing_entries)
-        self.assertEqual([], list(files.get_missing_compression_parent_keys()))
-        # Now 'merged' is fully inserted
-        files.check()
         self.assertEqual(
             [merged_key], files.get_parent_map([merged_key]).keys())
+        # Add the full delta closure of the missing records
+        missing_entries = source.get_record_stream(
+            missing_bases, 'unordered', True)
+        files.insert_record_stream(missing_entries)
+        # Now 'merged' is fully inserted (and a commit would succeed).
+        self.assertEqual([], list(files.get_missing_compression_parent_keys()))
+        self.assertEqual(
+            [merged_key], files.get_parent_map([merged_key]).keys())
+        files.check()
 
     def test_iter_lines_added_or_present_in_keys(self):
         # test that we get at least an equalset of the lines added by
