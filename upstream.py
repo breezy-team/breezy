@@ -81,7 +81,7 @@ class UpstreamProvider(object):
         """
         if self.already_exists_in_target(target_dir):
             return os.path.join(target_dir, self._tarball_name())
-        if not self.already_exists_in_store(target_dir):
+        if not self.already_exists_in_store():
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             if self.provide_with_pristine_tar(self.store_dir):

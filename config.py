@@ -51,7 +51,7 @@ class DebBuildConfig(object):
 
   section = 'BUILDDEB'
 
-  def __init__(self, files, branch=None, tree=None, version=None):
+  def __init__(self, files, branch=None, tree=None):
     """ 
     Creates a config to read from config files in a hierarchy.
 
@@ -87,7 +87,6 @@ class DebBuildConfig(object):
     userbuild
     """
     self._config_files = []
-    self.version = version
     for input in files:
       config = ConfigObj(input[0])
       self._config_files.append((config, input[1]))
@@ -119,10 +118,6 @@ class DebBuildConfig(object):
       except KeyError:
         pass
     return None
-
-  def set_version(self, version):
-    """Set the version used for substitution."""
-    self.version = version
 
   def _get_opt(self, config, key, section=None):
     """Returns the value for key from config, of None if it is not defined in 

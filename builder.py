@@ -18,440 +18,70 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import glob
 import shutil
 import subprocess
-import tarfile
-import tempfile
 import os
 
-from debian_bundle.changelog import Version
+from bzrlib.trace import info
 
-from bzrlib.errors import (
-        NotADirectory,
-        )
-from bzrlib.export import export
-from bzrlib.trace import info, mutter
-
-from bzrlib.plugins.builddeb.changes import DebianChanges
-from bzrlib.plugins.builddeb.errors import (DebianError,
+from bzrlib.plugins.builddeb.errors import (
                     NoSourceDirError,
                     BuildFailedError,
-                    MissingChanges,
                     )
-from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
-from bzrlib.plugins.builddeb.util import recursive_copy, tarball_name
-
-def remove_dir(base, dir):
-  """Removes a directory from within a base."""
-  
-  remove_dir = os.path.join(base, dir)
-  if os.path.isdir(remove_dir) and not os.path.islink(remove_dir):
-    shutil.rmtree(remove_dir)
-
-def remove_bzrbuilddeb_dir(dir):
-  """Removes the .bzr-builddeb dir from the specfied directory."""
-
-  #XXX: Is this what we want??
-  remove_dir(dir, ".bzr-builddeb")
-
-def remove_debian_dir(dir):
-  """Remove the debian/ dir from the specified directory."""
-
-  remove_dir(dir, "debian")
-
-
-def move_file(src, dest):
-    base = os.path.basename(src)
-    target = os.path.join(dest, base)
-    if not (os.path.exists(target) and os.path.samefile(src, target)):
-        shutil.move(src, dest)
 
 
 class DebBuild(object):
-  """The object that does the building work."""
+    """The object that does the building work."""
 
-  def __init__(self, properties, tree, branch, _is_working_tree=False):
-    """Create a builder.
+    def __init__(self, distiller, target_dir, builder, use_existing=False):
+        """Create a builder.
 
-    properties:
-        an instance of a DebBuildProperties class that the builder should
-        query to know where to do it's work.
-    tree:
-        the tree that the user wants to build.
-    """
-    self._properties = properties
-    self._tree = tree
-    self.branch = branch
-    self._is_working_tree = _is_working_tree
+        :param distiller: the SourceDistiller that will get the source to
+            build.
+        :param target_dir: the directory in which to do all the work.
+        :param builder: the build command to use.
+        :param use_existing: whether to re-use the target_dir if it exists.
+        """
+        self.distiller = distiller
+        self.target_dir = target_dir
+        self.builder = builder
+        self.use_existing = use_existing
 
-  def _prepare_working_tree(self):
-    if self._is_working_tree:
-      for (dp, ie) in self._tree.inventory.iter_entries():
-        ie._read_tree_state(dp, self._tree)
+    def prepare(self):
+        """Do any preparatory steps that should be run before the build.
 
-  def prepare(self, keep_source_dir=False):
-    """Do any preparatory steps that should be run before the build.
+        It checks that everything is well, and that some needed dirs are
+        created.
+        """
+        parent_dir = os.path.dirname(self.target_dir)
+        if os.path.basename(self.target_dir) == '':
+            parent_dir = os.path.dirname(parent_dir)
+        if parent_dir != '' and not os.path.exists(parent_dir):
+            os.makedirs(parent_dir)
+        if os.path.exists(self.target_dir):
+            if not self.use_existing:
+                info("Purging the build dir: %s", self.target_dir)
+                shutil.rmtree(self.target_dir)
+            else:
+                info("Not purging build dir as requested: %s",
+                        self.target_dir)
+        else:
+            if self.use_existing:
+                raise NoSourceDirError
 
-    It checks that everything is well, and that some needed dirs are
-    created.
-    """
-    build_dir = self._properties.build_dir()
-    info("Preparing the build area: %s", build_dir);
-    if not os.path.exists(build_dir):
-      os.makedirs(build_dir)
-    source_dir = self._properties.source_dir()
-    if os.path.exists(source_dir):
-      if not keep_source_dir:
-        info("Purging the build dir: %s", source_dir)
-        shutil.rmtree(source_dir)
-      else:
-        info("Not purging build dir as requested: %s", build_dir)
-    else:
-      if keep_source_dir:
-        raise NoSourceDirError
+    def export(self):
+        self.distiller.distill(self.target_dir)
 
-  def _watchfile_name(self):
-    watchfile = 'debian/watch'
-    if self._properties.larstiq():
-      watchfile = 'watch'
-    return watchfile
-
-  def _rulesfile_name(self):
-    rulesfile = 'debian/rules'
-    if self._properties.larstiq():
-      rulesfile = 'rules'
-    return rulesfile
-
-  def _has_watch(self):
-    watchfile = self._watchfile_name()
-    if not self._tree.has_filename(watchfile):
-      info("There is no debian/watch file, so can't use that to"
-           " retrieve upstream tarball")
-      return False
-    if self._tree.path2id(watchfile) is None:
-      info("There is a debian/watch file, but it needs to be added to the "
-           "branch before I can use it to get the upstream tarball")
-      return False
-    return True
-
-  def _get_upstream_using_orig_source(self):
-    info("Using get-orig-source rule to retrieve upstream tarball")
-    rules_name = self._rulesfile_name()
-    if os.path.exists(rules_name):
-      rules_id = self._tree.path2id(self._rulesfile_name())
-      assert rules_id is not None, "rulesfile must be in the tree"
-      fetched_tarball = self._tarball_name()
-      r = os.system("make -f %s get-orig-source" % self._rulesfile_name())
-      if r != 0:
-        raise DebianError("get-orig-source rule failed")
-      if not os.path.exists(fetched_tarball):
-        raise DebianError("get-orig-source did not create %s" % fetched_tarball)
-      desired_tarball = self._tarball_name()
-      from repack_tarball import repack_tarball
-      repack_tarball(fetched_tarball, desired_tarball,
-                     target_dir=self._properties.tarball_dir())
-      os.unlink(fetched_tarball)
-    else:
-      raise DebianError("No debian/rules file to try and use for "
-              "a get-orig-source rule")
-
-  def _get_upstream_from_watch(self):
-    (tmp, tempfilename) = tempfile.mkstemp()
-    tmp = os.fdopen(tmp, 'wb')
-    watch_id = self._tree.path2id(self._watchfile_name())
-    assert watch_id is not None, "watchfile must be in the tree"
-    watch = self._tree.get_file_text(watch_id)
-    tmp.write(watch)
-    tmp.close()
-    info("Using uscan to look for the upstream tarball")
-    try:
-      tarball_dir = self._properties.tarball_dir()
-      if not os.path.exists(tarball_dir):
-          os.makedirs(tarball_dir)
-      r = os.system("uscan --upstream-version %s --force-download --rename "
-                    "--package %s --watchfile %s --check-dirname-level 0 " 
-                    "--download --repack --destdir %s" %
-                    (self._properties.upstream_version(),
-                     self._properties.package(), tempfilename,
-                     tarball_dir))
-      if r != 0:
-        raise DebianError("uscan failed to retrieve the upstream tarball")
-    finally:
-      os.unlink(tempfilename)
-
-  def _get_upstream_from_archive(self):
-    import apt_pkg
-    apt_pkg.init()
-    sources = apt_pkg.GetPkgSrcRecords()
-    sources.Restart()
-    package = self._properties.package()
-    version = self._properties.upstream_version()
-    while sources.Lookup(package):
-      if version == Version(sources.Version).upstream_version:
-        tarball_dir = self._properties.tarball_dir()
-        if not os.path.exists(tarball_dir):
-            os.makedirs(tarball_dir)
-        command = 'apt-get source -y --only-source --tar-only %s=%s' % \
-            (package, sources.Version)
-        proc = subprocess.Popen(command, shell=True, cwd=tarball_dir)
+    def build(self):
+        """This builds the package using the supplied command."""
+        info("Building the package in %s, using %s", self.target_dir,
+                self.builder)
+        proc = subprocess.Popen(self.builder, shell=True, cwd=self.target_dir)
         proc.wait()
         if proc.returncode != 0:
-          return False
-        return True
-    return False
+            raise BuildFailedError
 
-  def _get_upstream_from_pristine(self):
-    db = DistributionBranch(self.branch, None, tree=self._tree)
-    package = self._properties.package()
-    version = Version(self._properties.upstream_version())
-    if not db._has_upstream_version_in_packaging_branch(version):
-        return False
-    revid = db._revid_of_upstream_version_from_branch(version)
-    if not db.has_pristine_tar_delta(revid):
-        return False
-    tarball_dir = self._properties.tarball_dir()
-    if not os.path.exists(tarball_dir):
-        os.makedirs(tarball_dir)
-    dest_filename = os.path.abspath(os.path.join(tarball_dir, self._tarball_name()))
-    db.reconstruct_pristine_tar(revid, package, version, dest_filename)
-    return True
-
-  def _find_tarball(self):
-    """Find the upstream tarball and return it's location.
-
-    This method will check that the upstream tarball is available, and
-    will return its location. If it is not an exception will be raised.
-    """
-    tarballdir = self._properties.tarball_dir()
-    tarball = os.path.join(tarballdir,self._tarball_name())
-    info("Looking for %s to use as upstream source", tarball)
-    if not os.path.exists(tarball):
-      compat_tarballdir = os.path.join('..', 'tarballs')
-      found = False
-      if compat_tarballdir != self._properties.tarball_dir():
-        compat_tarball = os.path.join(compat_tarballdir,self._tarball_name())
-        info("For compatibility looking for %s to use as upstream source",
-                compat_tarball)
-        if os.path.exists(compat_tarball):
-          found = True
-          tarball = compat_tarball
-      if not found:
-        if not os.path.exists(tarballdir):
-          os.makedirs(tarballdir)
-        else:
-          if not os.path.isdir(tarballdir):
-            raise NotADirectory(tarballdir)
-        if self._get_upstream_from_pristine():
-          return tarball
-        if self._get_upstream_from_archive():
-          return tarball
-        if self._has_watch():
-          self._get_upstream_from_watch()
-          return tarball
-        self._get_upstream_using_orig_source()
-        return tarball
-    return tarball
-
-  def _tarball_name(self):
-    """Returns the name that the upstream tarball should have."""
-    package = self._properties.package()
-    version = self._properties.upstream_version()
-    return tarball_name(package, version)
-  
-  def _export_upstream_branch(self):
-    return False
-
-  def export(self, use_existing=False):
-    """Export the package in to a clean dir for building.
-
-    This does all that is needed to set up a clean tree in the build dir
-    so that it can be built later.
-    """
-    # It's not documented the use_existing will use the same 
-    # tarball, and it doesn't save much here, but we will
-    # do it anyway.
-    # TODO: should we still copy the tarball across if the target doesn't
-    # exists when use_existing is True. It would save having to remember
-    # state, but kind of goes against the name.
-    if not use_existing:
-      exported = self._export_upstream_branch()
-      if not exported:
-        # Just copy the tarball across, no need to unpack it.
-        tarball = self._find_tarball()
-        build_dir = self._properties.build_dir()
-        shutil.copyfile(tarball, os.path.join(build_dir, self._tarball_name()))
-    source_dir = self._properties.source_dir()
-    info("Exporting to %s", source_dir)
-    tree = self._tree
-    tree.lock_read()
-    try:
-      self._prepare_working_tree()
-      export(tree,source_dir,None,None)
-    finally:
-      tree.unlock()
-    remove_bzrbuilddeb_dir(source_dir)
-
-  def build(self, builder):
-    """This builds the package using the supplied command."""
-    source_dir = self._properties.source_dir()
-    info("Building the package in %s, using %s", source_dir, builder)
-    proc = subprocess.Popen(builder, shell=True, cwd=source_dir)
-    proc.wait()
-    if proc.returncode != 0:
-      raise BuildFailedError
-
-  def clean(self):
-    """This removes the build directory."""
-    source_dir = self._properties.source_dir()
-    info("Cleaning build dir: %s", source_dir)
-    shutil.rmtree(source_dir)
-
-  def move_result(self, result, allow_missing=False, arch=None):
-    """Moves the files that resulted from the build to the given dir.
-
-    The files are found by reading the changes file.
-    """
-    package = self._properties.package()
-    version = self._properties.full_version_no_epoch()
-    try:
-        changes = DebianChanges(package, version,
-                self._properties.build_dir(), arch=arch)
-    except MissingChanges:
-        if allow_missing:
-            return
-        raise
-    info("Placing result in %s", result)
-    files = changes.files()
-    if not os.path.exists(result):
-      os.makedirs(result)
-    dir, base = os.path.split(changes.filename())
-    if os.path.abspath(dir) == os.path.abspath(result):
-      mutter("Not moving result as source and destination locations "
-             "are the same")
-      return
-    mutter("Moving %s to %s", changes.filename(), result)
-    move_file(changes.filename(), result)
-    mutter("Moving all files given in %s", changes.filename())
-    for file in files:
-      filename = os.path.join(self._properties.build_dir(), file['name'])
-      mutter("Moving %s to %s", filename, result)
-      try:
-        move_file(filename, result)
-      except IOError, e:
-        if e.errno <> 2:
-          raise
-        raise DebianError("The file " + filename + " is described in the " +
-                          ".changes file, but is not present on disk")
-
-  def tag_release(self):
-    #TODO decide what command should be able to remove a tag notice
-    info("If you are happy with the results and upload use tagdeb to tag this"
-        +" release. If you do not release it...")
-
-
-class DebMergeBuild(DebBuild):
-  """A subclass of DebBuild that uses the merge method."""
-
-  def _export_upstream_branch(self):
-    return False
-
-  def export(self, use_existing=False):
-    package = self._properties.package()
-    upstream = self._properties.upstream_version()
-    build_dir = self._properties.build_dir()
-    source_dir = self._properties.source_dir()
-    info("Exporting to %s in merge mode", source_dir)
-    if not use_existing:
-      upstream = self._export_upstream_branch()
-      tarball = self._find_tarball()
-      mutter("Extracting %s to %s", tarball, source_dir)
-      tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-
-      subprocess.call(['tar','-C',tempdir,'-xf',tarball])
-      files = glob.glob(tempdir+'/*')
-      os.makedirs(source_dir)
-      if len(files) == 1:
-        shutil.move(files[0], source_dir)
-        shutil.rmtree(tempdir)
-      else:
-        shutil.move(tempdir, source_dir)
-      if not upstream:
-        shutil.copy(tarball, build_dir)
-    else:
-      info("Reusing existing build dir as requested")
-
-    info("Exporting debian/ part to %s", source_dir)
-    basetempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-    tempdir = os.path.join(basetempdir,"export")
-    if self._properties.larstiq():
-      os.makedirs(tempdir)
-      export_dir = os.path.join(tempdir,'debian')
-    else:
-      export_dir = tempdir
-    tree = self._tree
-    tree.lock_read()
-    try:
-      self._prepare_working_tree()
-      export(tree,export_dir,None,None)
-    finally:
-      tree.unlock()
-    if os.path.exists(os.path.join(source_dir, 'debian')):
-      shutil.rmtree(os.path.join(source_dir, 'debian'))
-    recursive_copy(tempdir, source_dir)
-    shutil.rmtree(basetempdir)
-    if self._properties.larstiq():
-        remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
-    else:
-        remove_bzrbuilddeb_dir(source_dir)
-
-class DebNativeBuild(DebBuild):
-  """A subclass of DebBuild that builds native packages."""
-
-  def export(self, use_existing=False):
-    # Just copy the tree across. use_existing makes no sense here
-    # as there is no tarball.
-    source_dir = self._properties.source_dir()
-    info("Exporting to %s", source_dir)
-    tree = self._tree
-    tree.lock_read()
-    try:
-      self._prepare_working_tree()
-      export(tree,source_dir,None,None)
-    finally:
-      tree.unlock()
-    remove_bzrbuilddeb_dir(source_dir)
-
-class DebSplitBuild(DebBuild):
-  """A subclass of DebBuild that splits the branch to create the 
-     .orig.tar.gz."""
-
-  def export(self, use_existing=False):
-    # To acheive this we export delete debian/ and tar the result,
-    # then we blow that away and export the whole thing again.
-    source_dir = self._properties.source_dir()
-    build_dir = self._properties.build_dir()
-    tarball = os.path.join(build_dir, self._tarball_name())
-    tree = self._tree
-    tree.lock_read()
-    try:
-      self._prepare_working_tree()
-      export(tree,source_dir,None,None)
-      info("Creating .orig.tar.gz: %s", tarball)
-      remove_bzrbuilddeb_dir(source_dir)
-      remove_debian_dir(source_dir)
-      source_dir_rel = self._properties.source_dir(False)
-      tar = tarfile.open(tarball, "w:gz")
-      try:
-        tar.add(source_dir, source_dir_rel)
-      finally:
-        tar.close()
-      shutil.rmtree(source_dir)
-      info("Exporting to %s", source_dir)
-      self._prepare_working_tree()
-      export(tree,source_dir,None,None)
-    finally:
-      tree.unlock()
-    remove_bzrbuilddeb_dir(source_dir)
-
-# vim: ts=2 sts=2 sw=2
+    def clean(self):
+        """This removes the build directory."""
+        info("Cleaning build dir: %s", self.target_dir)
+        shutil.rmtree(self.target_dir)
