@@ -73,6 +73,12 @@ IN DEVELOPMENT
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)
 
+    * The ``_index`` of ``KnitVersionedFiles`` now supports the ability
+      to scan an underlying index that is going to be incorporated into
+      the ``KnitVersionedFiles`` object, to determine if it has missing
+      delta references. The method is ``scan_unvalidated_index``.
+      (Andrew Bennetts, Robert Collins)
+
 
 bzr 1.12 "1234567890" 2009-02-13
 --------------------------------

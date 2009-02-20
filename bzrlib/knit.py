@@ -1881,6 +1881,18 @@ class _KndxIndex(object):
                 self._kndx_cache[prefix] = (orig_cache, orig_history)
                 raise
 
+    def scan_unvalidated_index(self, graph_index):
+        """See _KnitGraphIndex.scan_unvalidated_index."""
+        # Because kndx files do not support atomic insertion via separate index
+        # files, they do not support this method.
+        raise NotImplementedError(self.scan_unvalidated_index)
+
+    def get_missing_compression_parents(self):
+        """See _KnitGraphIndex.get_missing_compression_parents."""
+        # Because kndx files do not support atomic insertion via separate index
+        # files, they do not support this method.
+        raise NotImplementedError(self.get_missing_compression_parents)
+    
     def _cache_key(self, key, options, pos, size, parent_keys):
         """Cache a version record in the history array and index cache.
 
@@ -2196,6 +2208,7 @@ class _KnitGraphIndex(object):
                 "parent tracking.")
         self.has_graph = parents
         self._is_locked = is_locked
+        self._missing_compression_parents = set()
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._graph_index)
@@ -2263,6 +2276,26 @@ class _KnitGraphIndex(object):
                 result.append((key, value))
         self._add_callback(result)
         
+    def scan_unvalidated_index(self, graph_index):
+        """Inform this _KnitGraphIndex that there is an unvalidated index.
+
+        This allows this _KnitGraphIndex to keep track of any missing
+        compression parents we may want to have filled in to make those
+        indices valid.
+
+        :param graph_index: A GraphIndex
+        """
+        if self._deltas:
+            new_missing = graph_index.external_references(ref_list_num=1)
+            new_missing.difference_update(self.get_parent_map(new_missing))
+            self._missing_compression_parents.update(new_missing)
+
+    def get_missing_compression_parents(self):
+        """Return the keys of compression parents missing from unvalidated
+        indices.
+        """
+        return frozenset(self._missing_compression_parents)
+
     def _check_read(self):
         """raise if reads are not permitted."""
         if not self._is_locked():
