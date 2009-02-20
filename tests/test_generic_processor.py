@@ -42,7 +42,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
     # to use None to mean "don't check this".
     def assertChanges(self, branch, revno, expected_added=[],
             expected_removed=[], expected_modified=[],
-            expected_renamed=[]):
+            expected_renamed=[], expected_kind_changed=[]):
         """Check the changes introduced in a revision of a branch.
 
         This method checks that a revision introduces expected changes.
@@ -62,19 +62,21 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             been modified in the delta.
         expected_renamed: a list of (old_path, new_path) tuples that
             must have been renamed in the delta.
+        expected_kind_changed: a list of (path, old_kind, new_kind) tuples
+            that must have been changed in the delta.
         :return: revtree1, revtree2
         """
         repo = branch.repository
         revtree1 = repo.revision_tree(branch.get_rev_id(revno - 1))
         revtree2 = repo.revision_tree(branch.get_rev_id(revno))
         changes = revtree2.changes_from(revtree1)
-        self.check_changes(changes, expected_added, expected_removed,
-            expected_modified, expected_renamed)
+        self._check_changes(changes, expected_added, expected_removed,
+            expected_modified, expected_renamed, expected_kind_changed)
         return revtree1, revtree2
 
-    def check_changes(self, changes, expected_added=[],
+    def _check_changes(self, changes, expected_added=[],
             expected_removed=[], expected_modified=[],
-            expected_renamed=[]):
+            expected_renamed=[], expected_kind_changed=[]):
         """Check the changes in a TreeDelta
 
         This method checks that the TreeDelta contains the expected
@@ -94,11 +96,14 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             been modified in the delta.
         expected_renamed: a list of (old_path, new_path) tuples that
             must have been renamed in the delta.
+        expected_kind_changed: a list of (path, old_kind, new_kind) tuples
+            that must have been changed in the delta.
         """
         renamed = changes.renamed
         added = changes.added
         removed = changes.removed
         modified = changes.modified
+        kind_changed = changes.kind_changed
         if expected_renamed is not None:
             self.assertEquals(len(renamed), len(expected_renamed),
                 "%s is renamed, expected %s" % (renamed, expected_renamed))
@@ -129,8 +134,18 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
             modified_files = [(item[0],) for item in modified]
             for expected_modified_entry in expected_modified:
                 self.assertTrue(expected_modified_entry in modified_files,
-                    "%s is not modified, %s are" % (str(expected_modified_entry),
-                        modified_files))
+                    "%s is not modified, %s are" % (
+                    str(expected_modified_entry), modified_files))
+        if expected_kind_changed is not None:
+            self.assertEquals(len(kind_changed), len(expected_kind_changed),
+                "%s is kind-changed, expected %s" % (kind_changed,
+                    expected_kind_changed))
+            kind_changed_files = [(item[0], item[2], item[3])
+                for item in kind_changed]
+            for expected_kind_changed_entry in expected_kind_changed:
+                self.assertTrue(expected_kind_changed_entry in
+                    kind_changed_files, "%s is not kind-changed, %s are" % (
+                    str(expected_kind_changed_entry), kind_changed_files))
 
     def assertContent(self, branch, tree, path, content):
         file_id = tree.inventory.path2id(path)
@@ -151,18 +166,21 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
 class TestModify(TestCaseForGenericProcessor):
 
-    def file_command_iter(self, path, kind='file'):
+    def file_command_iter(self, path, kind='file', content='aaa',
+        to_kind=None, to_content='bbb'):
+        if to_kind is None:
+            to_kind = kind
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 yield commands.FileModifyCommand(path, kind, False,
-                        None, "aaa")
+                        None, content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(path, kind, False,
-                        None, "bbb")
+                yield commands.FileModifyCommand(path, to_kind, False,
+                        None, to_content)
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
         return command_list
@@ -212,6 +230,30 @@ class TestModify(TestCaseForGenericProcessor):
             expected_modified=[(path,)])
         self.assertSymlinkTarget(branch, revtree1, path, "aaa")
         self.assertSymlinkTarget(branch, revtree2, path, "bbb")
+
+    def test_modify_file_becomes_symlink(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path,
+            kind='file', to_kind='symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_kind_changed=[(path, 'file', 'symlink')])
+        self.assertContent(branch, revtree1, path, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, path, "bbb")
+
+    def test_modify_symlink_becomes_file(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path,
+            kind='symlink', to_kind='file'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_kind_changed=[(path, 'symlink', 'file')])
+        self.assertSymlinkTarget(branch, revtree1, path, "aaa")
+        self.assertContent(branch, revtree2, path, "bbb")
 
 
 class TestDelete(TestCaseForGenericProcessor):
