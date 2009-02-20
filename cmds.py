@@ -91,8 +91,6 @@ orig_dir_opt = Option('orig-dir',
        +"debian/ is versioned", type=str)
 native_opt = Option('native',
     help="Build a native package")
-split_opt = Option('split',
-    help="Automatically create an .orig.tar.gz from a full source branch")
 export_upstream_opt = Option('export-upstream',
     help="Create the .orig.tar.gz from a bzr branch before building",
     type=unicode)
@@ -190,8 +188,8 @@ class cmd_builddeb(Command):
     takes_options = [working_tree_opt, export_only_opt,
         dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
         build_dir_opt, orig_dir_opt,
-        quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
-        export_upstream_revision_opt, source_opt, 'revision',
+        quick_opt, reuse_opt, native_opt,
+        source_opt, 'revision',
         no_user_conf_opt, result_compat_opt]
 
     def _get_tree_and_branch(self, location):
@@ -225,7 +223,7 @@ class cmd_builddeb(Command):
             working_tree = False
         return tree, working_tree
 
-    def _build_type(self, config, merge, native, split):
+    def _build_type(self, config, merge, native):
         if not merge:
             merge = config.merge
 
@@ -236,12 +234,7 @@ class cmd_builddeb(Command):
                 native = config.native
             if native:
                 info("Running in native mode")
-            else:
-                if not split:
-                    split = config.split
-                if split:
-                    info("Running in split mode")
-        return merge, native, split
+        return merge, native
 
     def _get_builder(self, config, builder, quick, build_options):
         if builder is None:
@@ -303,7 +296,7 @@ class cmd_builddeb(Command):
             export_only=False, dont_purge=False, use_existing=False,
             result_dir=None, builder=None, merge=False, build_dir=None,
             orig_dir=None,
-            quick=False, reuse=False, native=False, split=False,
+            quick=False, reuse=False, native=False,
             source=False, revision=None, no_user_config=False, result=None):
         branch, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
@@ -316,8 +309,7 @@ class cmd_builddeb(Command):
                 info("Reusing existing build dir")
                 dont_purge = True
                 use_existing = True
-            merge, native, split = self._build_type(config, merge, native,
-                    split)
+            merge, native = self._build_type(config, merge, native)
             builder = self._get_builder(config, builder, quick, build_options)
             (changelog, larstiq) = find_changelog(tree, merge)
             config.set_version(changelog.version)
@@ -331,9 +323,6 @@ class cmd_builddeb(Command):
                         _is_working_tree=working_tree)
             elif native:
                 build = DebNativeBuild(properties, tree, branch,
-                        _is_working_tree=working_tree)
-            elif split:
-                build = DebSplitBuild(properties, tree, branch,
                         _is_working_tree=working_tree)
             else:
                 build = DebBuild(properties, tree, branch,
