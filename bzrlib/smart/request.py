@@ -454,6 +454,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
 request_handlers.register_lazy(
+    'Repository.set_make_working_trees', 'bzrlib.smart.repository',
+    'SmartServerRepositorySetMakeWorkingTrees')
+request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',

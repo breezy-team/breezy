@@ -1054,6 +1054,31 @@ class TestSmartServerIsReadonly(tests.TestCaseWithMemoryTransport):
             SmartServerResponse(('yes',)), response)
 
 
+class TestSmartServerRepositorySetMakeWorkingTrees(tests.TestCaseWithMemoryTransport):
+
+    def test_set_false(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(True)
+        request_class = smart.repository.SmartServerRepositorySetMakeWorkingTrees
+        request = request_class(backing)
+        self.assertEqual(SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', 'False'))
+        repo = repo.bzrdir.open_repository()
+        self.assertFalse(repo.make_working_trees())
+
+    def test_set_true(self):
+        backing = self.get_transport()
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(False)
+        request_class = smart.repository.SmartServerRepositorySetMakeWorkingTrees
+        request = request_class(backing)
+        self.assertEqual(SuccessfulSmartServerResponse(('ok',)),
+            request.execute('', 'True'))
+        repo = repo.bzrdir.open_repository()
+        self.assertTrue(repo.make_working_trees())
+
+
 class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def make_repo_needing_autopacking(self, path='.'):

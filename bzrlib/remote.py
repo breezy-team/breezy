@@ -1194,8 +1194,20 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.revisions
 
     def set_make_working_trees(self, new_value):
-        self._ensure_real()
-        self._real_repository.set_make_working_trees(new_value)
+        if new_value:
+            new_value_str = "True"
+        else:
+            new_value_str = "False"
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call(
+                'Repository.set_make_working_trees', path, new_value_str)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_repository.set_make_working_trees(new_value)
+        else:
+            if response[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response)
 
     @property
     def signatures(self):
