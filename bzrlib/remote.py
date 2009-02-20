@@ -18,7 +18,6 @@
 # across to run on the server.
 
 import bz2
-import struct
 
 from bzrlib import (
     branch,
@@ -27,6 +26,7 @@ from bzrlib import (
     errors,
     graph,
     lockdir,
+    pack,
     repository,
     revision,
     symbol_versioning,
@@ -43,6 +43,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
+from bzrlib.versionedfile import record_to_fulltext_bytes
 
 
 class _RpcHelper(object):
@@ -543,8 +544,7 @@ class RemoteRepository(_RpcHelper):
 
     def _get_sink(self):
         """See Repository._get_sink()."""
-        self._ensure_real()
-        return self._real_repository._get_sink()
+        return RemoteStreamSink(self)
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
@@ -1343,8 +1343,55 @@ class RemoteRepository(_RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
 
 
-def _length_prefix(bytes):
-    return struct.pack('!L', len(bytes))
+class RemoteStreamSink(repository.StreamSink):
+
+    def _insert_real(self, stream, src_format):
+        self.target_repo._ensure_real()
+        sink = self.target_repo._real_repository._get_sink()
+        return sink.insert_stream(stream, src_format)
+
+    def insert_stream(self, stream, src_format):
+        repo = self.target_repo
+        # Until we can handle deltas in stack repositories we can't hand all
+        # the processing off to a remote server.
+        if self.target_repo._fallback_repositories:
+            return self._insert_real(stream, src_format)
+        client = repo._client
+        path = repo.bzrdir._path_for_remote_call(client)
+        byte_stream = self._stream_to_byte_stream(stream, src_format)
+        try:
+            response = client.call_with_body_stream(
+                ('Repository.insert_stream', path), byte_stream)
+        except errors.UnknownSmartMethod:
+            return self._insert_real(stream, src_format)
+            
+    def _stream_to_byte_stream(self, stream, src_format):
+        bytes = []
+        pack_writer = pack.ContainerWriter(bytes.append)
+        pack_writer.begin()
+        pack_writer.add_bytes_record(src_format.network_name(), '')
+        adapters = {}
+        def get_adapter(adapter_key):
+            try:
+                return adapters[adapter_key]
+            except KeyError:
+                adapter_factory = adapter_registry.get(adapter_key)
+                adapter = adapter_factory(self)
+                adapters[adapter_key] = adapter
+                return adapter
+        for substream_type, substream in stream:
+            for record in substream:
+                if record.storage_kind in ('chunked', 'fulltext'):
+                    serialised = record_to_fulltext_bytes(record)
+                else:
+                    serialised = record.get_bytes_as(record.storage_kind)
+                pack_writer.add_bytes_record(serialised, [(substream_type,)])
+                for b in bytes:
+                    yield b
+                del bytes[:]
+        pack_writer.end()
+        for b in bytes:
+            yield b
 
 
 class RemoteBranchLockableFiles(LockableFiles):

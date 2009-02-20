@@ -3487,6 +3487,17 @@ class InterPackToRemotePack(InterPackRepo):
     
     def _autopack(self):
         self.target.autopack()
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+        """See InterRepository.fetch()."""
+        # Always fetch using the generic streaming fetch code, to allow
+        # streaming fetching into remote servers.
+        from bzrlib.fetch import RepoFetcher
+        fetcher = RepoFetcher(self.target, self.source, revision_id,
+                              pb, find_ghosts)
+        self.target.autopack()
+        return fetcher.count_copied, fetcher.failed_revisions
         
     def _get_target_pack_collection(self):
         return self.target._real_repository._pack_collection
