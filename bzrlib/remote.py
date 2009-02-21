@@ -21,10 +21,12 @@ import bz2
 
 from bzrlib import (
     branch,
+    bzrdir,
     debug,
     errors,
     graph,
     lockdir,
+    pack,
     repository,
     revision,
     symbol_versioning,
@@ -41,6 +43,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
+from bzrlib.versionedfile import record_to_fulltext_bytes
 
 
 class _RpcHelper(object):
@@ -71,13 +74,13 @@ class _RpcHelper(object):
 class RemoteBzrDir(BzrDir, _RpcHelper):
     """Control directory on a remote server, accessed via bzr:// or similar."""
 
-    def __init__(self, transport, _client=None):
+    def __init__(self, transport, format, _client=None):
         """Construct a RemoteBzrDir.
 
         :param _client: Private parameter for testing. Disables probing and the
             use of a real bzrdir.
         """
-        BzrDir.__init__(self, transport, RemoteBzrDirFormat())
+        BzrDir.__init__(self, transport, format)
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
         self._real_bzrdir = None
@@ -113,9 +116,13 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         return self._real_bzrdir.cloning_metadir(stacked)
 
     def create_repository(self, shared=False):
-        self._ensure_real()
-        self._real_bzrdir.create_repository(shared=shared)
-        return self.open_repository()
+        # as per meta1 formats - just delegate to the format object which may
+        # be parameterised.
+        result = self._format.repository_format.initialize(self, shared)
+        if not isinstance(result, RemoteRepository):
+            return self.open_repository()
+        else:
+            return result
 
     def destroy_repository(self):
         """See BzrDir.destroy_repository"""
@@ -123,9 +130,13 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._real_bzrdir.destroy_repository()
 
     def create_branch(self):
-        self._ensure_real()
-        real_branch = self._real_bzrdir.create_branch()
-        return RemoteBranch(self, self.find_repository(), real_branch)
+        # as per meta1 formats - just delegate to the format object which may
+        # be parameterised.
+        real_branch = self._format.get_branch_format().initialize(self)
+        if not isinstance(real_branch, RemoteBranch):
+            return RemoteBranch(self, self.find_repository(), real_branch)
+        else:
+            return real_branch
 
     def destroy_branch(self):
         """See BzrDir.destroy_branch"""
@@ -197,7 +208,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             format.supports_external_lookups = (response[4] == 'yes')
             # Used to support creating a real format instance when needed.
             format._creating_bzrdir = self
-            return RemoteRepository(self, format)
+            remote_repo = RemoteRepository(self, format)
+            format._creating_repo = remote_repo
+            return remote_repo
         else:
             raise errors.NoRepositoryPresent(self)
 
@@ -257,17 +270,88 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
     the class level.
+
+    :ivar _custom_format: If set, a specific concrete repository format that 
+        will be used when initializing a repository with this
+        RemoteRepositoryFormat.
+    :ivar _creating_repo: If set, the repository object that this
+        RemoteRepositoryFormat was created for: it can be called into
+        to obtain data like the network name.
     """
 
     _matchingbzrdir = RemoteBzrDirFormat()
 
-    def initialize(self, a_bzrdir, shared=False):
-        if not isinstance(a_bzrdir, RemoteBzrDir):
+    def __init__(self):
+        repository.RepositoryFormat.__init__(self)
+        self._custom_format = None
+        self._network_name = None
+        self._creating_bzrdir = None
+
+    def _vfs_initialize(self, a_bzrdir, shared):
+        """Helper for common code in initialize."""
+        if self._custom_format:
+            # Custom format requested
+            result = self._custom_format.initialize(a_bzrdir, shared=shared)
+        elif self._creating_bzrdir is not None:
+            # Use the format that the repository we were created to back
+            # has.
             prior_repo = self._creating_bzrdir.open_repository()
             prior_repo._ensure_real()
-            return prior_repo._real_repository._format.initialize(
+            result = prior_repo._real_repository._format.initialize(
                 a_bzrdir, shared=shared)
-        return a_bzrdir.create_repository(shared=shared)
+        else:
+            # assume that a_bzr is a RemoteBzrDir but the smart server didn't
+            # support remote initialization.
+            # We delegate to a real object at this point (as RemoteBzrDir
+            # delegate to the repository format which would lead to infinite
+            # recursion if we just called a_bzrdir.create_repository.
+            a_bzrdir._ensure_real()
+            result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
+        if not isinstance(result, RemoteRepository):
+            return self.open(a_bzrdir)
+        else:
+            return result
+
+    def initialize(self, a_bzrdir, shared=False):
+        # Being asked to create on a non RemoteBzrDir:
+        if not isinstance(a_bzrdir, RemoteBzrDir):
+            return self._vfs_initialize(a_bzrdir, shared)
+        medium = a_bzrdir._client._medium
+        if medium._is_remote_before((1, 13)):
+            return self._vfs_initialize(a_bzrdir, shared)
+        # Creating on a remote bzr dir.
+        # 1) get the network name to use.
+        if self._custom_format:
+            network_name = self._custom_format.network_name()
+        else:
+            # Select the current bzrlib default and ask for that.
+            reference_bzrdir_format = bzrdir.format_registry.get('default')()
+            reference_format = reference_bzrdir_format.repository_format
+            network_name = reference_format.network_name()
+        # 2) try direct creation via RPC
+        path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
+        verb = 'BzrDir.create_repository'
+        if shared:
+            shared_str = 'True'
+        else:
+            shared_str = 'False'
+        try:
+            response = a_bzrdir._call(verb, path, network_name, shared_str)
+        except errors.UnknownSmartMethod:
+            # Fallback - use vfs methods
+            return self._vfs_initialize(a_bzrdir, shared)
+        else:
+            # Turn the response into a RemoteRepository object.
+            format = RemoteRepositoryFormat()
+            format.rich_root_data = (response[1] == 'yes')
+            format.supports_tree_reference = (response[2] == 'yes')
+            format.supports_external_lookups = (response[3] == 'yes')
+            format._network_name = response[4]
+            # Used to support creating a real format instance when needed.
+            format._creating_bzrdir = a_bzrdir
+            remote_repo = RemoteRepository(a_bzrdir, format)
+            format._creating_repo = remote_repo
+            return remote_repo
     
     def open(self, a_bzrdir):
         if not isinstance(a_bzrdir, RemoteBzrDir):
@@ -288,6 +372,21 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
+
+    def network_name(self):
+        if self._network_name:
+            return self._network_name
+        self._creating_repo._ensure_real()
+        return self._creating_repo._real_repository._format.network_name()
+
+    @property
+    def _serializer(self):
+        # We should only be getting asked for the serializer for
+        # RemoteRepositoryFormat objects when the RemoteRepositoryFormat object
+        # is a concrete instance for a RemoteRepository. In this case we know
+        # the creating_repo and can use it to supply the serializer.
+        self._creating_repo._ensure_real()
+        return self._creating_repo._real_repository._format._serializer
 
 
 class RemoteRepository(_RpcHelper):
@@ -367,6 +466,14 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.commit_write_group()
 
+    def resume_write_group(self, tokens):
+        self._ensure_real()
+        return self._real_repository.resume_write_group(tokens)
+
+    def suspend_write_group(self):
+        self._ensure_real()
+        return self._real_repository.suspend_write_group()
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
@@ -434,6 +541,10 @@ class RemoteRepository(_RpcHelper):
             revision_graph[d[0]] = d[1:]
             
         return revision_graph
+
+    def _get_sink(self):
+        """See Repository._get_sink()."""
+        return RemoteStreamSink(self)
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
@@ -1106,8 +1217,20 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.revisions
 
     def set_make_working_trees(self, new_value):
-        self._ensure_real()
-        self._real_repository.set_make_working_trees(new_value)
+        if new_value:
+            new_value_str = "True"
+        else:
+            new_value_str = "False"
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call(
+                'Repository.set_make_working_trees', path, new_value_str)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_repository.set_make_working_trees(new_value)
+        else:
+            if response[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response)
 
     @property
     def signatures(self):
@@ -1220,6 +1343,74 @@ class RemoteRepository(_RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
 
 
+class RemoteStreamSink(repository.StreamSink):
+
+    def _insert_real(self, stream, src_format):
+        self.target_repo._ensure_real()
+        sink = self.target_repo._real_repository._get_sink()
+        return sink.insert_stream(stream, src_format)
+
+    def insert_stream(self, stream, src_format):
+        repo = self.target_repo
+        # Until we can handle deltas in stack repositories we can't hand all
+        # the processing off to a remote server.
+        if self.target_repo._fallback_repositories:
+            return self._insert_real(stream, src_format)
+        client = repo._client
+        medium = client._medium
+        if medium._is_remote_before((1,13)):
+            # No possible way this can work.
+            return self._insert_real(stream, src_format)
+        path = repo.bzrdir._path_for_remote_call(client)
+        # XXX: Ugly but important for correctness, *will* be fixed during 1.13
+        # cycle. Pushing a stream that is interrupted results in a fallback to
+        # the _real_repositories sink *with a partial stream*. Thats bad
+        # because we insert less data than bzr expected. To avoid this we do a
+        # trial push to make sure the verb is accessible, and do not fallback
+        # when actually pushing the stream. A cleanup patch is going to look at
+        # rewinding/restarting the stream/partial buffering etc.
+        byte_stream = self._stream_to_byte_stream([], src_format)
+        try:
+            response = client.call_with_body_stream(
+                ('Repository.insert_stream', path), byte_stream)
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1,13))
+            return self._insert_real(stream, src_format)
+        byte_stream = self._stream_to_byte_stream(stream, src_format)
+        response = client.call_with_body_stream(
+            ('Repository.insert_stream', path), byte_stream)
+        if response[0][0] not in ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
+            
+    def _stream_to_byte_stream(self, stream, src_format):
+        bytes = []
+        pack_writer = pack.ContainerWriter(bytes.append)
+        pack_writer.begin()
+        pack_writer.add_bytes_record(src_format.network_name(), '')
+        adapters = {}
+        def get_adapter(adapter_key):
+            try:
+                return adapters[adapter_key]
+            except KeyError:
+                adapter_factory = adapter_registry.get(adapter_key)
+                adapter = adapter_factory(self)
+                adapters[adapter_key] = adapter
+                return adapter
+        for substream_type, substream in stream:
+            for record in substream:
+                if record.storage_kind in ('chunked', 'fulltext'):
+                    serialised = record_to_fulltext_bytes(record)
+                else:
+                    serialised = record.get_bytes_as(record.storage_kind)
+                pack_writer.add_bytes_record(serialised, [(substream_type,)])
+                for b in bytes:
+                    yield b
+                del bytes[:]
+        pack_writer.end()
+        for b in bytes:
+            yield b
+
+
 class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.
     
@@ -1261,7 +1452,18 @@ class RemoteBranchFormat(branch.BranchFormat):
         return a_bzrdir.open_branch()
 
     def initialize(self, a_bzrdir):
-        return a_bzrdir.create_branch()
+        # Delegate to a _real object here - the RemoteBzrDir format now
+        # supports delegating to parameterised branch formats and as such
+        # this RemoteBranchFormat method is only called when no specific format
+        # is selected.
+        if not isinstance(a_bzrdir, RemoteBzrDir):
+            result = a_bzrdir.create_branch()
+        else:
+            a_bzrdir._ensure_real()
+            result = a_bzrdir._real_bzrdir.create_branch()
+        if not isinstance(result, RemoteBranch):
+            result = RemoteBranch(a_bzrdir, a_bzrdir.find_repository(), result)
+        return result
 
     def supports_tags(self):
         # Remote branches might support tags, but we won't know until we
@@ -1580,6 +1782,15 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def _set_last_revision_descendant(self, revision_id, other_branch,
             allow_diverged=False, allow_overwrite_descendant=False):
+        # This performs additional work to meet the hook contract; while its
+        # undesirable, we have to synthesise the revno to call the hook, and
+        # not calling the hook is worse as it means changes can't be prevented.
+        # Having calculated this though, we can't just call into
+        # set_last_revision_info as a simple call, because there is a set_rh
+        # hook that some folk may still be using.
+        old_revno, old_revid = self.last_revision_info()
+        history = self._lefthand_history(revision_id)
+        self._run_pre_change_branch_tip_hooks(len(history), revision_id)
         err_context = {'other_branch': other_branch}
         response = self._call('Branch.set_last_revision_ex',
             self._remote_path(), self._lock_token, self._repo_lock_token,
@@ -1590,17 +1801,28 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         new_revno, new_revision_id = response[1:]
         self._last_revision_info_cache = new_revno, new_revision_id
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
         if self._real_branch is not None:
             cache = new_revno, new_revision_id
             self._real_branch._last_revision_info_cache = cache
 
     def _set_last_revision(self, revision_id):
+        old_revno, old_revid = self.last_revision_info()
+        # This performs additional work to meet the hook contract; while its
+        # undesirable, we have to synthesise the revno to call the hook, and
+        # not calling the hook is worse as it means changes can't be prevented.
+        # Having calculated this though, we can't just call into
+        # set_last_revision_info as a simple call, because there is a set_rh
+        # hook that some folk may still be using.
+        history = self._lefthand_history(revision_id)
+        self._run_pre_change_branch_tip_hooks(len(history), revision_id)
         self._clear_cached_state()
         response = self._call('Branch.set_last_revision',
             self._remote_path(), self._lock_token, self._repo_lock_token,
             revision_id)
         if response != ('ok',):
             raise errors.UnexpectedSmartServerResponse(response)
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     @needs_write_lock
     def set_revision_history(self, rev_history):
@@ -1612,15 +1834,30 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         else:
             rev_id = rev_history[-1]
         self._set_last_revision(rev_id)
+        for hook in branch.Branch.hooks['set_rh']:
+            hook(self, rev_history)
         self._cache_revision_history(rev_history)
 
     def get_parent(self):
         self._ensure_real()
         return self._real_branch.get_parent()
+
+    def _get_parent_location(self):
+        # Used by tests, when checking normalisation of given vs stored paths.
+        self._ensure_real()
+        return self._real_branch._get_parent_location()
         
     def set_parent(self, url):
         self._ensure_real()
         return self._real_branch.set_parent(url)
+
+    def _set_parent_location(self, url):
+        # Used by tests, to poke bad urls into branch configurations
+        if url is None:
+            self.set_parent(url)
+        else:
+            self._ensure_real()
+            return self._real_branch._set_parent_location(url)
         
     def set_stacked_on_url(self, stacked_location):
         """Set the URL this branch is stacked against.
@@ -1678,6 +1915,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        # XXX: These should be returned by the set_last_revision_info verb
+        old_revno, old_revid = self.last_revision_info()
+        self._run_pre_change_branch_tip_hooks(revno, revision_id)
         revision_id = ensure_null(revision_id)
         try:
             response = self._call('Branch.set_last_revision_info',
@@ -1692,6 +1932,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         if response == ('ok',):
             self._clear_cached_state()
             self._last_revision_info_cache = revno, revision_id
+            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
             # Update the _real_branch's cache too.
             if self._real_branch is not None:
                 cache = self._last_revision_info_cache
@@ -1704,6 +1945,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                                   other_branch=None):
         medium = self._client._medium
         if not medium._is_remote_before((1, 6)):
+            # Use a smart method for 1.6 and above servers
             try:
                 self._set_last_revision_descendant(revision_id, other_branch,
                     allow_diverged=True, allow_overwrite_descendant=True)
@@ -1711,9 +1953,8 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1, 6))
         self._clear_cached_state_of_remote_branch_only()
-        self._ensure_real()
-        self._real_branch.generate_revision_history(
-            revision_id, last_rev=last_rev, other_branch=other_branch)
+        self.set_revision_history(self._lefthand_history(revision_id,
+            last_rev=last_rev,other_branch=other_branch))
 
     @property
     def tags(self):

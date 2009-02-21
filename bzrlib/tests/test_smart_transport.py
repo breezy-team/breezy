@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2270,14 +2270,6 @@ class TestVersionOneFeaturesInProtocolThree(
         self.assertEqual(4, smart_protocol.next_read_size())
 
 
-class NoOpRequest(_mod_request.SmartServerRequest):
-
-    def do(self):
-        return _mod_request.SuccessfulSmartServerResponse(())
-
-dummy_registry = {'ARG': NoOpRequest}
-
-
 class LoggingMessageHandler(object):
 
     def __init__(self):
@@ -2774,7 +2766,8 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             yield 'aaa'
             yield 'bbb'
             raise Exception('Boom!')
-        requester.call_with_body_stream(('one arg',), stream_that_fails())
+        self.assertRaises(Exception, requester.call_with_body_stream,
+            ('one arg',), stream_that_fails())
         self.assertEquals(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x02de' # headers
@@ -3555,34 +3548,3 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         self.assertNotEquals(type(r), type(t))
 
 
-# TODO: Client feature that does get_bundle and then installs that into a
-# branch; this can be used in place of the regular pull/fetch operation when
-# coming from a smart server.
-#
-# TODO: Eventually, want to do a 'branch' command by fetching the whole
-# history as one big bundle.  How?  
-#
-# The branch command does 'br_from.sprout', which tries to preserve the same
-# format.  We don't necessarily even want that.  
-#
-# It might be simpler to handle cmd_pull first, which does a simpler fetch()
-# operation from one branch into another.  It already has some code for
-# pulling from a bundle, which it does by trying to see if the destination is
-# a bundle file.  So it seems the logic for pull ought to be:
-# 
-#  - if it's a smart server, get a bundle from there and install that
-#  - if it's a bundle, install that
-#  - if it's a branch, pull from there
-#
-# Getting a bundle from a smart server is a bit different from reading a
-# bundle from a URL:
-#
-#  - we can reasonably remember the URL we last read from 
-#  - you can specify a revision number to pull, and we need to pass it across
-#    to the server as a limit on what will be requested
-#
-# TODO: Given a URL, determine whether it is a smart server or not (or perhaps
-# otherwise whether it's a bundle?)  Should this be a property or method of
-# the transport?  For the ssh protocol, we always know it's a smart server.
-# For http, we potentially need to probe.  But if we're explicitly given
-# bzr+http:// then we can skip that for now. 

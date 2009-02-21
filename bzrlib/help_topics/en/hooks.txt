@@ -278,3 +278,14 @@ The hook signature is (commit, start_message), where:
 The hook should return a new commit message template.
 
 (New in 1.10.)
+
+extend_command (Commands)
+-------------------------
+
+Invoked by the command line interface when constructing a command object, this
+hook permits the object to be altered after construction - for instance, to add
+options, hook into callbacks that that command offers or more.
+
+The hook signature is hook(cmd) -> None. 
+
+This hook was added in 1.13.

@@ -574,6 +574,10 @@ class SmartClientMedium(SmartMedium):
         """
         if (self._remote_version_is_before is not None and
             version_tuple > self._remote_version_is_before):
+            # We have been told that the remote side is older than some version
+            # which is newer than a previously supplied older-than version.
+            # This indicates that some smart verb call is not guarded
+            # appropriately (it should simply not have been tried).
             raise AssertionError(
                 "_remember_remote_is_before(%r) called, but "
                 "_remember_remote_is_before(%r) was called previously."

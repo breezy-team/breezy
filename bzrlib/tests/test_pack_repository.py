@@ -28,6 +28,7 @@ from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    osutils,
     progress,
     repository,
     revision as _mod_revision,
@@ -533,6 +534,48 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchRevision,
             missing_ghost.get_inventory, 'ghost')
 
+    def make_write_ready_repo(self):
+        repo = self.make_repository('.', format=self.get_format())
+        repo.lock_write()
+        repo.start_write_group()
+        return repo
+
+    def test_missing_inventories_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.inventories._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_revisions_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.revisions._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_signatures_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.signatures._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_text_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('some', 'junk')
+        repo.texts._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())
         self.assertEqual(self.format_supports_external_lookups,
@@ -571,7 +614,64 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertRaises(Exception, repo.abort_write_group)
         if token is not None:
             repo.leave_lock_in_place()
-        
+
+    def test_suspend_write_group(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        expected_pack_name = wg_tokens[0] + '.pack'
+        upload_transport = repo._pack_collection._upload_transport
+        limbo_files = upload_transport.list_dir('')
+        self.assertTrue(expected_pack_name in limbo_files, limbo_files)
+        md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
+        self.assertEqual(wg_tokens[0], md5.hexdigest())
+
+    def test_resume_write_group_then_abort(self):
+        # Create a repo, start a write group, insert some data, suspend.
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Get a fresh repository object for the repo on the filesystem.
+        same_repo = repo.bzrdir.open_repository()
+        # Resume
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.abort_write_group()
+        self.assertEqual(
+            [], same_repo._pack_collection._upload_transport.list_dir(''))
+        self.assertEqual(
+            [], same_repo._pack_collection._pack_transport.list_dir(''))
+
+    def test_resume_malformed_token(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        # Make a repository with a suspended write group
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Make a new repository
+        new_repo = self.make_repository('new_repo')
+        token = new_repo.lock_write()
+        self.addCleanup(new_repo.unlock)
+        hacked_wg_token = (
+            '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
+        self.assertRaises(
+            errors.UnresumableWriteGroup,
+            new_repo.resume_write_group, [hacked_wg_token])
+
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
 

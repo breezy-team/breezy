@@ -1100,7 +1100,7 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
 3: Jane Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
-2: Joe Foo 2005-11-22 {v0.2} rev-2
+2: Joe Foo 2005-11-22 [merge] {v0.2} rev-2
 1: Joe Foo 2005-11-22 rev-1
 """,
                              logfile.getvalue())
@@ -1177,7 +1177,7 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
         formatter = log.LineLogFormatter(to_file=logfile, levels=0)
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
-2: Joe Foo 2005-11-22 rev-2
+2: Joe Foo 2005-11-22 [merge] rev-2
   1.1.1: Joe Foo 2005-11-22 rev-merged
 1: Joe Foo 2005-11-22 rev-1
 """,

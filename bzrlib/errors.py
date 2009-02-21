@@ -2744,6 +2744,18 @@ class AlreadyStandalone(BzrDirError):
     _fmt = "'%(display_url)s' is already standalone."
 
 
+class AlreadyWithTrees(BzrDirError):
+
+    _fmt = ("Shared repository '%(display_url)s' already creates "
+            "working trees.")
+
+
+class AlreadyWithNoTrees(BzrDirError):
+
+    _fmt = ("Shared repository '%(display_url)s' already doesn't create "
+            "working trees.")
+
+
 class ReconfigurationNotSupported(BzrDirError):
 
     _fmt = "Requested reconfiguration of '%(display_url)s' is not supported."
@@ -2934,6 +2946,14 @@ class NoSuchShelfId(BzrError):
         BzrError.__init__(self, shelf_id=shelf_id)
 
 
+class InvalidShelfId(BzrError):
+
+    _fmt = '"%(invalid_id)s" is not a valid shelf id, try a number instead.'
+
+    def __init__(self, invalid_id):
+        BzrError.__init__(self, invalid_id=invalid_id)
+
+
 class UserAbort(BzrError):
 
     _fmt = 'The user aborted the operation.'
@@ -2976,3 +2996,26 @@ class FileOutsideView(BzrError):
     def __init__(self, file_name, view_files):
         self.file_name = file_name
         self.view_str = ", ".join(view_files)
+
+
+class UnresumableWriteGroup(BzrError):
+    
+    _fmt = ("Repository %(repository)s cannot resume write group "
+            "%(write_groups)r: %(reason)s")
+
+    internal_error = True
+
+    def __init__(self, repository, write_groups, reason):
+        self.repository = repository
+        self.write_groups = write_groups
+        self.reason = reason
+
+
+class UnsuspendableWriteGroup(BzrError):
+    
+    _fmt = ("Repository %(repository)s cannot suspend a write group.")
+
+    internal_error = True
+
+    def __init__(self, repository):
+        self.repository = repository
