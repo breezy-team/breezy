@@ -45,6 +45,8 @@ To report bugs or publish enhancements, visit the bzr-fastimport project
 page on Launchpad, https://launchpad.net/bzr-fastimport.
 """
 
+version_info = (0, 8, 0, 'dev', 0)
+
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option, ListOption
 
