@@ -1357,13 +1357,30 @@ class RemoteStreamSink(repository.StreamSink):
         if self.target_repo._fallback_repositories:
             return self._insert_real(stream, src_format)
         client = repo._client
+        medium = client._medium
+        if medium._is_remote_before((1,13)):
+            # No possible way this can work.
+            return self._insert_real(stream, src_format)
         path = repo.bzrdir._path_for_remote_call(client)
-        byte_stream = self._stream_to_byte_stream(stream, src_format)
+        # XXX: Ugly but important for correctness, *will* be fixed during 1.13
+        # cycle. Pushing a stream that is interrupted results in a fallback to
+        # the _real_repositories sink *with a partial stream*. Thats bad
+        # because we insert less data than bzr expected. To avoid this we do a
+        # trial push to make sure the verb is accessible, and do not fallback
+        # when actually pushing the stream. A cleanup patch is going to look at
+        # rewinding/restarting the stream/partial buffering etc.
+        byte_stream = self._stream_to_byte_stream([], src_format)
         try:
             response = client.call_with_body_stream(
                 ('Repository.insert_stream', path), byte_stream)
         except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1,13))
             return self._insert_real(stream, src_format)
+        byte_stream = self._stream_to_byte_stream(stream, src_format)
+        response = client.call_with_body_stream(
+            ('Repository.insert_stream', path), byte_stream)
+        if response[0][0] not in ('ok', ):
+            raise errors.UnexpectedSmartServerResponse(response)
             
     def _stream_to_byte_stream(self, stream, src_format):
         bytes = []
