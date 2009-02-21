@@ -76,6 +76,26 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True,
                                      (e.path, file_list[0]))
 
 
+def tree_files_for_add(file_list):
+    """Add handles files a bit differently so it a custom implementation."""
+    if file_list:
+        tree = WorkingTree.open_containing(file_list[0])[0]
+        if tree.supports_views():
+            view_files = tree.views.lookup_view()
+            for filename in file_list:
+                if not osutils.is_inside_any(view_files, filename):
+                    raise errors.FileOutsideView(filename, view_files)
+    else:
+        tree = WorkingTree.open_containing(u'.')[0]
+        if tree.supports_views():
+            view_files = tree.views.lookup_view()
+            if view_files:
+                file_list = view_files
+                view_str = views.view_display_str(view_files)
+                note("ignoring files outside view: %s" % view_str)
+    return tree, file_list
+
+
 def _get_one_revision(command_name, revisions):
     if revisions is None:
         return None
@@ -559,7 +579,7 @@ class cmd_add(Command):
             base_tree.lock_read()
         try:
             file_list = self._maybe_expand_globs(file_list)
-            tree, file_list = tree_files(file_list)
+            tree, file_list = tree_files_for_add(file_list)
             added, ignored = tree.smart_add(file_list, not
                 no_recurse, action=action, save=not dry_run)
         finally:
