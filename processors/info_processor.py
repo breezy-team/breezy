@@ -65,11 +65,13 @@ class InfoProcessor(processor.ImportProcessor):
         for usage in ['new', 'used', 'multi', 'unknown', 'unmarked']:
             self.blobs[usage] = set()
         # Head tracking: map of commit mark to ref
+        # (Head tracking future - delegate to the cache manager)
         self.heads = {}
         self.last_ids = {}
-        # Stuff to cache: a map from mark to count
+        #self.cache_mgr = cache_manager.CacheManager(inventory_cache_size=0)
+        # Stuff to cache: a map from mark to # of times that mark is merged
         self.merges = {}
-        # Stuff to cache: these are maps from ref name to sets
+        # Stuff to cache: these are maps from mark to sets
         self.rename_old_paths = {}
         self.copy_source_paths = {}
 
@@ -91,6 +93,9 @@ class InfoProcessor(processor.ImportProcessor):
                     count = self.parent_counts[i]
                     p_names.append("parents-%d" % i)
                     p_values.append(count)
+            merges_count = len(self.merges.keys())
+            p_names.append('total revisions merged')
+            p_values.append(merges_count)
             flags = {
                 'separate authors found': self.separate_authors_found,
                 'executables': self.executables_found,
@@ -195,11 +200,12 @@ class InfoProcessor(processor.ImportProcessor):
                     else:
                         self.sha_blob_references = True
             elif isinstance(fc, commands.FileRenameCommand):
-                self.rename_old_paths.setdefault(cmd.ref, set()).add(fc.old_path)
+                self.rename_old_paths.setdefault(cmd.id, set()).add(fc.old_path)
             elif isinstance(fc, commands.FileCopyCommand):
-                self.copy_source_paths.setdefault(cmd.ref, set()).add(fc.src_path)
+                self.copy_source_paths.setdefault(cmd.id, set()).add(fc.src_path)
 
         # Track the heads
+        # (future: parents = self.cache_mgr.track_heads(cmd))
         if cmd.from_ is not None:
             parents = [cmd.from_]
         else:
@@ -218,6 +224,8 @@ class InfoProcessor(processor.ImportProcessor):
                 pass
         self.heads[cmd.id] = cmd.ref
         self.last_ids[cmd.ref] = cmd.id
+
+        # Track the parent counts
         parent_count = len(parents)
         if self.parent_counts.has_key(parent_count):
             self.parent_counts[parent_count] += 1
@@ -242,6 +250,9 @@ class InfoProcessor(processor.ImportProcessor):
             self.lightweight_tags += 1
         else:
             self.named_branches.append(cmd.ref)
+            # future ...
+            #if cmd.from_ is not None:
+            #    self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
