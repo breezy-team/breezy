@@ -25,6 +25,7 @@
 
 import os
 
+from bzrlib import msgeditor
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
 
@@ -56,6 +57,52 @@ default_result_dir = '..'
 directories.register_lazy("deb:", 'bzrlib.plugins.builddeb.directory', 
         'VcsDirectory', 
         "Directory that uses Debian Vcs-* control fields to look up branches")
+
+
+def debian_changelog_commit_message(commit, start_message):
+    if start_message is not None:
+        return start_message
+    cl_path = "debian/changelog"
+    if not commit.work_tree.has_filename(cl_path):
+        return start_message
+    if cl_path in commit.exclude:
+        return start_message
+    if commit.specific_files and cl_path not in commit.specific_files:
+        return start_message
+    changes = []
+    for change in commit.work_tree.iter_changes(commit.work_tree.basis_tree(),
+            specific_files=[cl_path]):
+        # Content not changed
+        if not change[2]:
+            return start_message
+        # Not versioned in new tree
+        if not change[3][1]:
+            return start_message
+        # Not a file in one tree
+        if change[6][0] != 'file' or change[6][1] != 'file':
+            return start_message
+        old_text = commit.work_tree.basis_tree().get_file(change[0],
+                path=change[1][0]).readlines()
+        new_text = commit.work_tree.get_file(change[0],
+                path=change[1][1]).readlines()
+        import difflib
+        sequencematcher = difflib.SequenceMatcher
+        for group in sequencematcher(None, old_text,
+                new_text).get_grouped_opcodes(0):
+            j1, j2 = group[0][3], group[-1][4]
+            changes += new_text[j1:j2]
+    if not changes:
+        return start_message
+    from bzrlib.plugins.builddeb.util import strip_changelog_message
+    changes = strip_changelog_message(changes)
+    return "".join(changes)
+
+
+msgeditor.hooks.install_named_hook("commit_message_template",
+        debian_changelog_commit_message,
+        "Use changes documented in debian/changelog to suggest "
+        "the commit message")
+
 
 try:
     from bzrlib.revisionspec import revspec_registry

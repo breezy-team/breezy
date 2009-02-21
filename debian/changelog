@@ -6,6 +6,9 @@ bzr-builddeb (2.1~0ubuntu2) UNRELEASED; urgency=low
   * Warn when a key is defined outside of any sections in a config file.
     (LP: #309335)
   * Warn when the user uses the deprecated --result option. (LP: #268675)
+  * Provide a commit message template based on additions to debian/changelog,
+    similar to debcommit. Bump version of bzr required to 1.10, which is the
+    release that introduced the hook. (LP: #331993)
 
  -- James Westby <james.westby@ubuntu.com>  Thu, 19 Feb 2009 09:26:34 +0000
 
