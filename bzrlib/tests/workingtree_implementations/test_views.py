@@ -16,7 +16,7 @@
 
 """Views stored within a working tree.
 
-The views are actually in the WorkingTree.views namespace, but these are 
+The views are actually in the WorkingTree.views namespace, but these are
 1:1 with WorkingTree implementations so can be tested from here.
 """
 
@@ -31,7 +31,7 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 class TestTreeViews(TestCaseWithWorkingTree):
 
     def setUp(self):
-        # formats that don't support views can skip the rest of these 
+        # formats that don't support views can skip the rest of these
         # tests...
         fmt = self.workingtree_format
         f = getattr(fmt, 'supports_views')
@@ -157,7 +157,7 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
                               % fmt)
             # it's covered by TestTreeViews
         TestCaseWithWorkingTree.setUp(self)
-    
+ 
     def test_view_methods_raise(self):
         wt = self.make_branch_and_tree('wt')
         self.assertRaises(errors.ViewsNotSupported,

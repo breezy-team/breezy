@@ -2950,7 +2950,7 @@ class MustHaveWorkingTree(BzrError):
 class NoSuchView(BzrError):
     """A view does not exist.
     """
-    
+ 
     _fmt = u"No such view: %(view_name)s."
 
     def __init__(self, view_name):
@@ -2960,7 +2960,7 @@ class NoSuchView(BzrError):
 class ViewsNotSupported(BzrError):
     """Views are not supported by a tree format.
     """
-    
+ 
     _fmt = ("Views are not supported by %(tree)s;"
             " use 'bzr upgrade' to change your tree to a later format.")
 

@@ -4966,7 +4966,7 @@ class cmd_switch(Command):
 
 class cmd_view(Command):
     """Manage filtered views.
-    
+
     Views provide a mask over the tree so that users can focus on
     a subset of a tree when doing their work. After creating a view,
     commands that support a list of files - status, diff, commit, etc -
@@ -4978,7 +4978,7 @@ class cmd_view(Command):
     a selected change and is deleted once that change is committed.
     At other times, you may wish to create one or more named views
     and switch between them.
-    
+
     To disable the current view without deleting it, you can switch to
     the pseudo view called ``off``. This can be useful when you need
     to see the whole tree for an operation or two (e.g. merge) but
