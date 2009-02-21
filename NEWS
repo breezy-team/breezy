@@ -24,6 +24,10 @@ IN DEVELOPMENT
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
 
+    * New command ``bzr launchpad-open`` opens a Launchpad web page for that
+      branch in your web browser, as long as the branch is on Launchpad at all.
+      (Jonathan Lange)
+
   IMPROVEMENTS:
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
