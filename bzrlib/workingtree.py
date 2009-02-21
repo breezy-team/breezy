@@ -72,6 +72,7 @@ from bzrlib import (
     transform,
     ui,
     urlutils,
+    views,
     xml5,
     xml6,
     xml7,
@@ -185,6 +186,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     not listed in the Inventory and vice versa.
     """
 
+    # override this to set the strategy for storing views
+    def _make_views(self):
+        return views.DisabledViews(self)
+
     def __init__(self, basedir='.',
                  branch=DEPRECATED_PARAMETER,
                  _inventory=None,
@@ -247,6 +252,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self._set_inventory(_inventory, dirty=False)
         self._detect_case_handling()
         self._rules_searcher = None
+        self.views = self._make_views()
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
@@ -288,7 +294,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return self._format.supports_content_filtering()
 
     def supports_views(self):
-        return self._format.supports_views()
+        return self.views.supports_views()
 
     def _set_inventory(self, inv, dirty):
         """Set the internal cached inventory.

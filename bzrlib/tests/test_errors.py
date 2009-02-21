@@ -577,6 +577,22 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
                                    " working tree.")
 
+    def test_no_such_view(self):
+        err = errors.NoSuchView('foo')
+        self.assertEquals("No such view: foo.", str(err))
+
+    def test_views_not_supported(self):
+        err = errors.ViewsNotSupported('atree')
+        err_str = str(err)
+        self.assertStartsWith(err_str, "Views are not supported by ")
+        self.assertEndsWith(err_str, "; use 'bzr upgrade' to change your "
+            "tree to a later format.")
+
+    def test_file_outside_view(self):
+        err = errors.FileOutsideView('baz', ['foo', 'bar'])
+        self.assertEquals('Specified file "baz" is outside the current view: '
+            'foo, bar', str(err))
+
     def test_invalid_shelf_id(self):
         invalid_id = "foo"
         err = errors.InvalidShelfId(invalid_id)

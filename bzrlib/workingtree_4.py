@@ -58,6 +58,7 @@ from bzrlib import (
     trace,
     transform,
     urlutils,
+    views,
     xml5,
     xml6,
     )
@@ -129,6 +130,7 @@ class DirStateWorkingTree(WorkingTree3):
         self._setup_directory_is_tree_reference()
         self._detect_case_handling()
         self._rules_searcher = None
+        self.views = self._make_views()
         #--- allow tests to select the dirstate iter_changes implementation
         self._iter_changes = dirstate._process_entry
 
@@ -1304,6 +1306,9 @@ class WorkingTree5(DirStateWorkingTree):
 
     This is new in bzr 1.11.
     """
+
+    def _make_views(self):
+        return views.PathBasedViews(self)
 
 
 class DirStateWorkingTreeFormat(WorkingTreeFormat3):
