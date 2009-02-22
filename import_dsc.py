@@ -2018,7 +2018,7 @@ class DistributionBranch(object):
         return self.branch.tags.lookup_tag(tag_name)
 
     def merge_upstream(self, tarball_filename, version, previous_version,
-            upstream_branch=None, upstream_revision=None):
+            upstream_branch=None, upstream_revision=None, merge_type=None):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
@@ -2059,7 +2059,8 @@ class DistributionBranch(object):
                 finally:
                     shutil.rmtree(tarball_dir)
                 if self.branch.last_revision() != NULL_REVISION:
-                    conflicts = self.tree.merge_from_branch(self.upstream_branch)
+                    conflicts = self.tree.merge_from_branch(
+                            self.upstream_branch, merge_type=merge_type)
                 else:
                     # Pull so that merge-upstream allows you to start a branch
                     # from upstream tarball.

@@ -413,7 +413,7 @@ class cmd_merge_upstream(Command):
                            short_name='d', type=unicode)
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,
-            distribution_opt, directory_opt, 'revision']
+            distribution_opt, directory_opt, 'revision', 'merge-type']
 
     def _update_changelog(self, tree, version, distribution_name, changelog,
             package):
@@ -432,7 +432,8 @@ class cmd_merge_upstream(Command):
                     'yourself, review the merge, and then commit.')
 
     def run(self, location=None, upstream_branch=None, version=None, distribution=None,
-            package=None, no_user_config=None, directory=".", revision=None):
+            package=None, no_user_config=None, directory=".", revision=None,
+            merge_type=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import (upstream_branch_version, package_version)
@@ -546,7 +547,8 @@ class cmd_merge_upstream(Command):
             dbs.add_branch(db)
             conflicts = db.merge_upstream(tarball_filename, version,
                     current_version, upstream_branch=upstream_branch,
-                    upstream_revision=upstream_revision)
+                    upstream_revision=upstream_revision,
+                    merge_type=merge_type)
 
             self._update_changelog(tree, version, distribution_name, changelog,
                     package)
