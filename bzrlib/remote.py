@@ -444,7 +444,7 @@ class RemoteRepository(_RpcHelper):
     def abort_write_group(self, suppress_errors=False):
         """Complete a write group on the decorated repository.
         
-        Smart methods peform operations in a single step so this api
+        Smart methods perform operations in a single step so this api
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
@@ -458,7 +458,7 @@ class RemoteRepository(_RpcHelper):
     def commit_write_group(self):
         """Complete a write group on the decorated repository.
         
-        Smart methods peform operations in a single step so this api
+        Smart methods perform operations in a single step so this api
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
@@ -731,7 +731,7 @@ class RemoteRepository(_RpcHelper):
     def start_write_group(self):
         """Start a write group on the decorated repository.
         
-        Smart methods peform operations in a single step so this api
+        Smart methods perform operations in a single step so this api
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
@@ -772,7 +772,7 @@ class RemoteRepository(_RpcHelper):
             # problem releasing the vfs-based lock.
             if old_mode == 'w':
                 # Only write-locked repositories need to make a remote method
-                # call to perfom the unlock.
+                # call to perform the unlock.
                 old_token = self._lock_token
                 self._lock_token = None
                 if not self._leave_lock:
@@ -1006,7 +1006,7 @@ class RemoteRepository(_RpcHelper):
             # the user will almost certainly have seen a warning about the
             # server version already.
             rg = self.get_revision_graph()
-            # There is an api discrepency between get_parent_map and
+            # There is an api discrepancy between get_parent_map and
             # get_revision_graph. Specifically, a "key:()" pair in
             # get_revision_graph just means a node has no parents. For
             # "get_parent_map" it means the node is a ghost. So fix up the
@@ -1731,7 +1731,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                     self._real_branch.unlock()
                 if mode != 'w':
                     # Only write-locked branched need to make a remote method
-                    # call to perfom the unlock.
+                    # call to perform the unlock.
                     return
                 if not self._lock_token:
                     raise AssertionError('Locked, but no token!')

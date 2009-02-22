@@ -28,7 +28,7 @@ side did shutdown.  For pipes we have read pipe which will have a zero
 read which marks end-of-file.  For HTTP server environment there is no
 end-of-stream because each request coming into the server is independent.
 
-So we need a wrapper around pipes and sockets to seperate out requests
+So we need a wrapper around pipes and sockets to separate out requests
 from substrate and this will give us a single model which is consistent
 for HTTP, sockets and pipes.
 

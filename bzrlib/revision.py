@@ -171,7 +171,7 @@ def __get_closest(intersection):
 def is_reserved_id(revision_id):
     """Determine whether a revision id is reserved
 
-    :return: True if the revision is is reserved, False otherwise
+    :return: True if the revision is reserved, False otherwise
     """
     return isinstance(revision_id, basestring) and revision_id.endswith(':')
 

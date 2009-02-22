@@ -234,7 +234,7 @@ class ContainerReader(BaseReader):
         is a ``list`` and bytes is a function that takes one argument,
         ``max_length``.
 
-        You **must not** call the callable after advancing the interator to the
+        You **must not** call the callable after advancing the iterator to the
         next record.  That is, this code is invalid::
 
             record_iter = container.iter_records()
@@ -245,7 +245,7 @@ class ContainerReader(BaseReader):
         As it will give incorrect results and invalidate the state of the
         ContainerReader.
 
-        :raises ContainerError: if any sort of containter corruption is
+        :raises ContainerError: if any sort of container corruption is
             detected, e.g. UnknownContainerFormatError is the format of the
             container is unrecognised.
         :seealso: ContainerReader.read
@@ -260,7 +260,7 @@ class ContainerReader(BaseReader):
         methods.  Like with iter_records, it is not safe to use a record object
         after advancing the iterator to yield next record.
 
-        :raises ContainerError: if any sort of containter corruption is
+        :raises ContainerError: if any sort of container corruption is
             detected, e.g. UnknownContainerFormatError is the format of the
             container is unrecognised.
         :seealso: iter_records

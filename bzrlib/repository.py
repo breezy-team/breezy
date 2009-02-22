@@ -2217,7 +2217,7 @@ class RepositoryFormatRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name,
                       help=None, info=None,
                       override_existing=False):
-        # Overridden to allow capturing registrations to two seperate
+        # Overridden to allow capturing registrations to two separate
         # registries in a single call.
         registry.Registry.register_lazy(self, key, module_name, member_name,
                 help=help, info=info, override_existing=override_existing)
@@ -2274,7 +2274,7 @@ class RepositoryFormat(object):
 
     Once a format is deprecated, just deprecate the initialize and open
     methods on the format class. Do not deprecate the object, as the 
-    object may be created even when a repository instnace hasn't been
+    object may be created even when a repository instance hasn't been
     created.
 
     Common instance attributes:
@@ -2461,7 +2461,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 # Pre-0.8 formats that don't have a disk format string (because they are
 # versioned by the matching control directory). We use the control directories
 # disk format string as a key for the network_name because they meet the
-# constraints (simple string, unique, immmutable).
+# constraints (simple string, unique, immutable).
 network_format_registry.register_lazy(
     "Bazaar-NG branch, format 5\n",
     'bzrlib.repofmt.weaverepo',
@@ -2879,7 +2879,7 @@ class InterWeaveRepo(InterSameDataRepository):
         # so the first thing is to get a subset of the revisions to 
         # satisfy revision_id in source, and then eliminate those that
         # we do already have. 
-        # this is slow on high latency connection to self, but as as this
+        # this is slow on high latency connection to self, but as this
         # disk format scales terribly for push anyway due to rewriting 
         # inventory.weave, this is considered acceptable.
         # - RBC 20060209

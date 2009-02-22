@@ -824,7 +824,7 @@ class Branch(object):
     def get_public_branch(self):
         """Return the public location of the branch.
 
-        This is is used by merge directives.
+        This is used by merge directives.
         """
         return self._get_config_location('public_branch')
 
@@ -1351,7 +1351,7 @@ class BranchHooks(Hooks):
         # the api signature is
         # (local, master, old_revno, old_revid, new_revno, new_revid) where
         # local is the local branch or None, master is the target branch,
-        # and an empty branch recieves new_revno of 0, new_revid of None.
+        # and an empty branch receives new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
         # Introduced in 1.6
         # Invoked before the tip of a branch changes.

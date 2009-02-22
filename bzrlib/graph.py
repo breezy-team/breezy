@@ -1469,7 +1469,7 @@ class SearchResult(object):
         
         The recipe allows reconstruction of the same results at a later date
         without knowing all the found keys. The essential elements are a list
-        of keys to start and and to stop at. In order to give reproducible
+        of keys to start and to stop at. In order to give reproducible
         results when ghosts are encountered by a search they are automatically
         added to the exclude list (or else ghost filling may alter the
         results).

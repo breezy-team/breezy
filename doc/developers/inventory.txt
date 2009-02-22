@@ -446,7 +446,7 @@ Insertion
    growth without affecting the parent node packing.
 #. Update the CHK pointers - serialise every altered node to generate a CHK,
    and update the CHK placeholder in the nodes parent; then reserialise the
-   parent. CHK pointer propogation can be done lazily when many updates are
+   parent. CHK pointer propagation can be done lazily when many updates are
    expected.
 
 Multiple versions of nodes for the same PREFIX and internal prefix width should

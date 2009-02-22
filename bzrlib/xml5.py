@@ -83,7 +83,7 @@ class Serializer_v5(xml6.Serializer_v6):
         In this version, no checking is done.
 
         :param inv: An inventory about to be serialised, to be checked.
-        :raises: AssertionError if an error has occured.
+        :raises: AssertionError if an error has occurred.
         """
 
     def _append_inventory_root(self, append, inv):

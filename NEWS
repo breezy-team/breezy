@@ -7354,7 +7354,7 @@ bzr 0.6 2005-10-28
       about future directions. (Robert Collins/Martin Pool)
 
     * bzrlib.transport.http has been modified so that only 404 urllib errors
-      are returned as NoSuchFile. Other exceptions will propogate as normal.
+      are returned as NoSuchFile. Other exceptions will propagate as normal.
       This allows debuging of actual errors. (Robert Collins)
 
     * bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths

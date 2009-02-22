@@ -81,7 +81,7 @@ class TestBreakLock(TestCaseWithBranch):
         self.assertRaises(errors.LockBroken, self.branch.unlock)
 
     def test_unlocks_master_branch(self):
-        # break_lock when when the master branch is locked should offer to
+        # break_lock when the master branch is locked should offer to
         # unlock it.
         master = self.make_branch('master')
         try:

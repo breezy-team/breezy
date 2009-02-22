@@ -316,7 +316,7 @@ class BaseVersionedFile(object):
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
-        """Determine whether to perform a a snapshot for this version"""
+        """Determine whether to perform a snapshot for this version"""
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\

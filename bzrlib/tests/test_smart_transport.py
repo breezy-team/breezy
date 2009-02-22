@@ -797,7 +797,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_pipe_like_stream_with_two_requests(self):
         # If two requests are read in one go, then two calls to
         # _serve_one_request should still process both of them as if they had
-        # been received seperately.
+        # been received separately.
         sample_request_bytes = 'command\n'
         to_server = StringIO(sample_request_bytes * 2)
         from_server = StringIO()
@@ -819,7 +819,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_socket_stream_with_two_requests(self):
         # If two requests are read in one go, then two calls to
         # _serve_one_request should still process both of them as if they had
-        # been received seperately.
+        # been received separately.
         sample_request_bytes = 'command\n'
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
@@ -1660,7 +1660,7 @@ class TestVersionOneFeaturesInProtocolOne(
         """
         # What we really want to test here is that SmartClientProtocolOne calls
         # accept_bytes(tuple_based_encoding_of_hello) and reads and parses the
-        # response of tuple-encoded (ok, 1).  Also, seperately we should test
+        # response of tuple-encoded (ok, 1).  Also, separately we should test
         # the error if the response is a non-understood version.
         input = StringIO('ok\x012\n')
         output = StringIO()
@@ -1931,7 +1931,7 @@ class TestVersionOneFeaturesInProtocolTwo(
         """
         # What we really want to test here is that SmartClientProtocolTwo calls
         # accept_bytes(tuple_based_encoding_of_hello) and reads and parses the
-        # response of tuple-encoded (ok, 1).  Also, seperately we should test
+        # response of tuple-encoded (ok, 1).  Also, separately we should test
         # the error if the response is a non-understood version.
         input = StringIO(self.response_marker + 'success\nok\x012\n')
         output = StringIO()

@@ -152,7 +152,7 @@ class SmartTCPServer(object):
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
-        # propogates to the newly accepted socket.
+        # propagates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         handler = medium.SmartServerSocketStreamMedium(
