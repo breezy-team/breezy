@@ -161,12 +161,19 @@ class RepoFetcher(object):
         try:
             from_format = self.from_repository._format
             stream = self.get_stream(search, pp)
-            self.sink.insert_stream(stream, from_format)
+            missing_keys = self.sink.insert_stream(stream, from_format)
+            if missing_keys:
+                stream = self.get_stream_for_missing_keys(missing_keys)
+                missing_keys = self.sink.insert_stream(stream, from_format)
+            if missing_keys:
+                raise AssertionError(
+                    "second push failed to complete a fetch %r." % (
+                        missing_keys,))
             self.sink.finished()
         finally:
             if self.pb is not None:
                 self.pb.finished()
-        
+
     def get_stream(self, search, pp):
         phase = 'file'
         revs = search.get_keys()
@@ -223,6 +230,32 @@ class RepoFetcher(object):
             else:
                 raise AssertionError("Unknown knit kind %r" % knit_kind)
         self.count_copied += len(revs)
+
+    def get_stream_for_missing_keys(self, missing_keys):
+        # missing keys can only occur when we are byte copying and not
+        # translating (because translation means we don't send
+        # unreconstructable deltas ever).
+        keys = {}
+        keys['texts'] = set()
+        keys['revisions'] = set()
+        keys['inventories'] = set()
+        keys['signatures'] = set()
+        for key in missing_keys:
+            keys[key[0]].add(key[1:])
+        if len(keys['revisions']):
+            # If we allowed copying revisions at this point, we could end up
+            # copying a revision without copying its required texts: a
+            # violation of the requirements for repository integrity.
+            raise AssertionError(
+                'cannot copy revisions to fill in missing deltas %s' % (
+                    keys['revisions'],))
+        for substream_kind, keys in keys.iteritems():
+            vf = getattr(self.from_repository, substream_kind)
+            # Ask for full texts always so that we don't need more round trips
+            # after this stream.
+            stream = vf.get_record_stream(keys,
+                self.to_repository._fetch_order, True)
+            yield substream_kind, stream
 
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to

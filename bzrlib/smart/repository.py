@@ -413,10 +413,14 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
 class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
 
-    def do_repository_request(self, repository):
+    def do_repository_request(self, repository, resume_tokens):
         """StreamSink.insert_stream for a remote repository."""
         repository.lock_write()
-        repository.start_write_group()
+        tokens = [token for token in resume_tokens.split(' ') if token]
+        if tokens:
+            repository.resume_write_group(tokens)
+        else:
+            repository.start_write_group()
         self.repository = repository
         self.stream_decoder = pack.ContainerPushParser()
         self.src_format = None
@@ -456,8 +460,32 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
         self.queue.put(StopIteration)
         if self.insert_thread is not None:
             self.insert_thread.join()
+        try:
+            missing_keys = set()
+            for prefix, versioned_file in (
+                ('texts', self.repository.texts),
+                ('inventories', self.repository.inventories),
+                ('revisions', self.repository.revisions),
+                ('signatures', self.repository.signatures),
+                ):
+                missing_keys.update((prefix,) + key for key in
+                    versioned_file.get_missing_compression_parent_keys())
+        except NotImplementedError:
+            # cannot even attempt suspending.
+            pass
+        else:
+            if missing_keys:
+                # suspend the write group and tell the caller what we is
+                # missing. We know we can suspend or else we would not have
+                # entered this code path. (All repositories that can handle
+                # missing keys can handle suspending a write group).
+                write_group_tokens = self.repository.suspend_write_group()
+                # bzip needed? missing keys should typically be a small set.
+                # Should this be a streaming body response ?
+                missing_keys = sorted(missing_keys)
+                bytes = bencode.bencode((write_group_tokens, missing_keys))
+                return SuccessfulSmartServerResponse(('missing-basis', bytes))
+        # All finished.
         self.repository.commit_write_group()
         self.repository.unlock()
         return SuccessfulSmartServerResponse(('ok', ))
-
-

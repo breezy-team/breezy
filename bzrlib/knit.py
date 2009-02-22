@@ -51,14 +51,6 @@ in the deltas to provide line annotation
 
 """
 
-# TODOS:
-# 10:16 < lifeless> make partial index writes safe
-# 10:16 < lifeless> implement 'knit.check()' like weave.check()
-# 10:17 < lifeless> record known ghosts so we can detect when they are filled in rather than the current 'reweave 
-#                    always' approach.
-# move sha1 out of the content so that join is faster at verifying parents
-# record content length ?
-                  
 
 from cStringIO import StringIO
 from itertools import izip, chain
