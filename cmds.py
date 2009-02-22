@@ -415,6 +415,22 @@ class cmd_merge_upstream(Command):
     takes_options = [package_opt, no_user_conf_opt, version_opt,
             distribution_opt, directory_opt, 'revision']
 
+    def _update_changelog(self, tree, version, distribution_name, changelog,
+            package):
+        if "~bzr" in str(version) or "+bzr" in str(version):
+            entry_description = "New upstream snapshot."
+        else:
+            entry_description = "New upstream release."
+        proc = subprocess.Popen(["/usr/bin/dch", "-v",
+                str(package_version(version, distribution_name)),
+                "-D", "UNRELEASED", "--release-heuristic", "changelog",
+                entry_description], cwd=tree.basedir)
+        proc.wait()
+        if proc.returncode != 0:
+            raise BzrCommandError('Adding a new changelog stanza after the '
+                    'merge had completed failed. Add the new changelog entry '
+                    'yourself, review the merge, and then commit.')
+
     def run(self, location=None, upstream_branch=None, version=None, distribution=None,
             package=None, no_user_config=None, directory=".", revision=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
@@ -443,6 +459,7 @@ class cmd_merge_upstream(Command):
                     location = config.upstream_branch
                 else:
                     raise BzrCommandError("No location specified to merge")
+            changelog = None
             try:
                 changelog = find_changelog(tree, False)[0]
                 current_version = changelog.version
@@ -531,18 +548,8 @@ class cmd_merge_upstream(Command):
                     current_version, upstream_branch=upstream_branch,
                     upstream_revision=upstream_revision)
 
-            if "~bzr" in str(version) or "+bzr" in str(version):
-                entry_description = "New upstream snapshot."
-            else:
-                entry_description = "New upstream release."
-            proc = subprocess.Popen(["/usr/bin/dch", "-v",
-                    str(package_version(version, distribution_name)),
-                    "-D", "UNRELEASED", entry_description], cwd=tree.basedir)
-            proc.wait()
-            if proc.returncode != 0:
-                raise BzrCommandError('Adding a new changelog stanza after the '
-                        'merge had completed failed. Add the new changelog entry '
-                        'yourself, review the merge, and then commit.')
+            self._update_changelog(tree, version, distribution_name, changelog,
+                    package)
         finally:
             tree.unlock()
         info("The new upstream version has been imported.")
