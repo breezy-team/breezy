@@ -131,7 +131,7 @@ class TestTransport(TestCase):
             e_str = str(e)
             self.assertEquals('Unsupported protocol'
                               ' for url "ssh://fooserver/foo":'
-                              ' bzr supports bzr+ssh to operate over ssh, use "bzr+ssh://fooserver/foo".', 
+                              ' bzr supports bzr+ssh to operate over ssh, use "bzr+ssh://fooserver/foo".',
                               str(e))
         else:
             self.fail('Did not raise UnsupportedProtocol')

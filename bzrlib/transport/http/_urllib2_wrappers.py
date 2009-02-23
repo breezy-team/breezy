@@ -1152,7 +1152,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 class NegotiateAuthHandler(AbstractAuthHandler):
     """A authentication handler that handles WWW-Authenticate: Negotiate.
 
-    At the moment this handler supports just Kerberos. In the future, 
+    At the moment this handler supports just Kerberos. In the future,
     NTLM support may also be added.
     """
 
@@ -1192,7 +1192,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
         # If the auth scheme is known, it means a previous
         # authentication was successful, all information is
         # available, no further checks are needed.
-        return (auth.get('scheme', None) == 'negotiate' and 
+        return (auth.get('scheme', None) == 'negotiate' and
                 auth.get('negotiate_response', None) is not None)
 
 
