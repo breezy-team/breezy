@@ -69,7 +69,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                 if tree.inventory[file_id].kind == "file":
                     tree.get_file(file_id).read()
 
-        # makes a target version repo 
+        # makes a target version repo
         repo_b = self.make_to_repository('b')
         check_push_rev1(repo_b)
 
@@ -104,7 +104,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         except (errors.BzrCheckError, errors.RevisionNotPresent), e:
             # If an exception is raised, the revision should not be in the
             # target.
-            # 
+            #
             # Can also just raise a generic check errors; stream insertion
             # does this to include all the missing data
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
@@ -140,7 +140,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source_tree = self.make_branch_and_tree('source')
         source = source_tree.branch.repository
         target = self.make_to_repository('target')
-    
+
         # start by adding a file so the data knit for the file exists in
         # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])

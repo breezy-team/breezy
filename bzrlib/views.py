@@ -104,7 +104,7 @@ class PathBasedViews(_Views):
 
     def lookup_view(self, view_name=None):
         """Return the contents of a view.
- 
+
         :param view_Name: name of the view or None to lookup the current view
         :return: the list of files/directories in the requested view
         """
@@ -121,7 +121,7 @@ class PathBasedViews(_Views):
 
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
- 
+
         :param view_name: the name of the view
         :param view_files: the list of files/directories in the view
         :param make_current: make this view the current one or not

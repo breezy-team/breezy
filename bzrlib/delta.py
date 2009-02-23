@@ -285,7 +285,7 @@ class _ChangeReporter(object):
             (i.e. when a tree has just been initted)
         :param output_file: If supplied, a file-like object to write to.
             Only one of output and output_file may be supplied.
-        :param unversioned_filter: A filter function to be called on 
+        :param unversioned_filter: A filter function to be called on
             unversioned files. This should return True to ignore a path.
             By default, no filtering takes place.
         :param view_info: A tuple of view_name,view_files if only

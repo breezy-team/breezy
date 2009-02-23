@@ -211,7 +211,7 @@ class Serializer_v8(Serializer):
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.
-        
+
         :param inv: the inventory to write.
         :param f: the file to write. (May be None if the lines are the desired
             output).

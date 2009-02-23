@@ -35,7 +35,7 @@ class TestPull(TestCaseWithWorkingTree):
         tree.commit('foo', rev_id='A')
         tree_b = self.make_branch_and_tree('to')
         return tree, tree_b
- 
+
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)

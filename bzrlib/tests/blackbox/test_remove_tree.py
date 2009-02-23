@@ -38,7 +38,7 @@ class TestRemoveTree(ExternalBase):
         os.chdir('branch1')
         self.run_bzr('remove-tree')
         self.failIfExists('foo')
-    
+
     def test_remove_tree_original_branch_explicit(self):
         self.run_bzr('remove-tree branch1')
         self.failIfExists('branch1/foo')
@@ -49,7 +49,7 @@ class TestRemoveTree(ExternalBase):
         os.chdir('branch2')
         self.run_bzr('remove-tree')
         self.failIfExists('foo')
-    
+
     def test_remove_tree_sprouted_branch_explicit(self):
         self.tree.bzrdir.sprout('branch2')
         self.failUnlessExists('branch2/foo')
@@ -64,7 +64,7 @@ class TestRemoveTree(ExternalBase):
         self.failIfExists('foo')
         os.chdir('..')
         self.failUnlessExists('branch1/foo')
-    
+
     def test_remove_tree_checkout_explicit(self):
         self.tree.branch.create_checkout('branch2', lightweight=False)
         self.failUnlessExists('branch2/foo')
@@ -84,7 +84,7 @@ class TestRemoveTree(ExternalBase):
         self.failUnlessExists('foo')
         os.chdir('..')
         self.failUnlessExists('branch1/foo')
-    
+
     def test_remove_tree_lightweight_checkout_explicit(self):
         self.tree.branch.create_checkout('branch2', lightweight=True)
         self.failUnlessExists('branch2/foo')

@@ -126,7 +126,7 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
     def cmd_size(self, line):
         """Return the size of a file
 
-        This is overloaded to help the test suite determine if the 
+        This is overloaded to help the test suite determine if the
         target is a directory.
         """
         filename = line[1]
@@ -136,7 +136,7 @@ class ftp_channel(medusa.ftp_server.ftp_channel):
             else:
                 self.respond('550 "%s" is not a file' % (filename,))
         else:
-            self.respond('213 %d' 
+            self.respond('213 %d'
                 % (self.filesystem.stat(filename)[stat.ST_SIZE]),)
 
     def cmd_mkd(self, line):

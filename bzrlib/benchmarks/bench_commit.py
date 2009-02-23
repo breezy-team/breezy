@@ -76,6 +76,6 @@ class CommitBenchmark(Benchmark):
         self.time(self.run_bzr, ['commit', '-m', 'init simple tree'])
 
     def test_cmd_commit_subprocess(self):
-        """Text startup and execution of a simple commit.""" 
+        """Text startup and execution of a simple commit."""
         tree = self.make_simple_tree()
         self.time(self.run_bzr_subprocess, 'commit', '-m', 'init simple tree')

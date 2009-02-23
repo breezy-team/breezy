@@ -20,9 +20,9 @@ A knit is a versioned file implementation that supports efficient append only
 updates.
 
 Knit file layout:
-lifeless: the data file is made up of "delta records".  each delta record has a delta header 
-that contains; (1) a version id, (2) the size of the delta (in lines), and (3)  the digest of 
-the -expanded data- (ie, the delta applied to the parent).  the delta also ends with a 
+lifeless: the data file is made up of "delta records".  each delta record has a delta header
+that contains; (1) a version id, (2) the size of the delta (in lines), and (3)  the digest of
+the -expanded data- (ie, the delta applied to the parent).  the delta also ends with a
 end-marker; simply "end VERSION"
 
 delta can be line or full contents.a
@@ -35,7 +35,7 @@ version robertc@robertcollins.net-20051003014215-ee2990904cc4c7ad 7 c7d23b2a5bd6
 130,130,2
 8         if elt.get('executable') == 'yes':
 8             ie.executable = True
-end robertc@robertcollins.net-20051003014215-ee2990904cc4c7ad 
+end robertc@robertcollins.net-20051003014215-ee2990904cc4c7ad
 
 
 whats in an index:
@@ -130,7 +130,7 @@ class KnitAdapter(object):
 
     def __init__(self, basis_vf):
         """Create an adapter which accesses full texts from basis_vf.
-        
+
         :param basis_vf: A versioned file to access basis texts of deltas from.
             May be None for adapters that do not need to access basis texts.
         """
@@ -240,14 +240,14 @@ class DeltaPlainToFullText(KnitAdapter):
 
 class KnitContentFactory(ContentFactory):
     """Content factory for streaming from knits.
-    
+
     :seealso ContentFactory:
     """
 
     def __init__(self, key, parents, build_details, sha1, raw_record,
         annotated, knit=None, network_bytes=None):
         """Create a KnitContentFactory for key.
-        
+
         :param key: The key.
         :param parents: The parents.
         :param build_details: The build details as returned from
@@ -314,7 +314,7 @@ class LazyKnitContentFactory(ContentFactory):
 
     def __init__(self, key, parents, generator, first):
         """Create a LazyKnitContentFactory.
-        
+
         :param key: The key of the record.
         :param parents: The parents of the record.
         :param generator: A _ContentMapGenerator containing the record for this
@@ -395,9 +395,9 @@ def knit_network_to_record(storage_kind, bytes, line_end):
 
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied.
-    
+
     This is always stored in memory as a list of lines with \n at the end,
-    plus a flag saying if the final ending is really there or not, because that 
+    plus a flag saying if the final ending is really there or not, because that
     corresponds to the on-disk knit representation.
     """
 
@@ -492,7 +492,7 @@ class AnnotatedKnitContent(KnitContent):
 
 class PlainKnitContent(KnitContent):
     """Unannotated content.
-    
+
     When annotate[_iter] is called on this content, the same version is reported
     for all lines. Generally, annotate[_iter] is not useful on PlainKnitContent
     objects.
@@ -753,7 +753,7 @@ def make_file_factory(annotated, mapper):
 
     This is only functional enough to run interface tests, it doesn't try to
     provide a full pack environment.
-    
+
     :param annotated: knit annotations are wanted.
     :param mapper: The mapper from keys to paths.
     """
@@ -769,7 +769,7 @@ def make_pack_factory(graph, delta, keylength):
 
     This is only functional enough to run interface tests, it doesn't try to
     provide a full pack environment.
-    
+
     :param graph: Store a graph.
     :param delta: Delta compress contents.
     :param keylength: How long should keys be.
@@ -811,9 +811,9 @@ class KnitVersionedFiles(VersionedFiles):
 
     Backend storage is managed by indices and data objects.
 
-    :ivar _index: A _KnitGraphIndex or similar that can describe the 
-        parents, graph, compression and data location of entries in this 
-        KnitVersionedFiles.  Note that this is only the index for 
+    :ivar _index: A _KnitGraphIndex or similar that can describe the
+        parents, graph, compression and data location of entries in this
+        KnitVersionedFiles.  Note that this is only the index for
         *this* vfs; if there are fallbacks they must be queried separately.
     """
 
@@ -997,7 +997,7 @@ class KnitVersionedFiles(VersionedFiles):
 
     def _check_header_version(self, rec, version_id):
         """Checks the header version on original format knit records.
-        
+
         These have the last component of the key embedded in the record.
         """
         if rec[1] != version_id:
@@ -1082,7 +1082,7 @@ class KnitVersionedFiles(VersionedFiles):
             if missing and not allow_missing:
                 raise errors.RevisionNotPresent(missing.pop(), self)
         return component_data
-       
+
     def _get_content(self, key, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
@@ -1129,7 +1129,7 @@ class KnitVersionedFiles(VersionedFiles):
 
     def _get_record_map(self, keys, allow_missing=False):
         """Produce a dictionary of knit records.
-        
+
         :return: {key:(record, record_details, digest, next)}
             record
                 data returned from read_records (a KnitContentobject)
@@ -1141,7 +1141,7 @@ class KnitVersionedFiles(VersionedFiles):
                 build-parent of the version, i.e. the leftmost ancestor.
                 Will be None if the record is not a delta.
         :param keys: The keys to build a map for
-        :param allow_missing: If some records are missing, rather than 
+        :param allow_missing: If some records are missing, rather than
             error, just return the data that could be generated.
         """
         raw_map = self._get_record_map_unparsed(keys,
@@ -1150,7 +1150,7 @@ class KnitVersionedFiles(VersionedFiles):
 
     def _raw_map_to_record_map(self, raw_map):
         """Parse the contents of _get_record_map_unparsed.
-        
+
         :return: see _get_record_map.
         """
         result = {}
@@ -1162,7 +1162,7 @@ class KnitVersionedFiles(VersionedFiles):
 
     def _get_record_map_unparsed(self, keys, allow_missing=False):
         """Get the raw data for reconstructing keys without parsing it.
-        
+
         :return: A dict suitable for parsing via _raw_map_to_record_map.
             key-> raw_bytes, (method, noeol), compression_parent
         """
@@ -1380,7 +1380,7 @@ class KnitVersionedFiles(VersionedFiles):
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
-        :param stream: A stream of records to insert. 
+        :param stream: A stream of records to insert.
         :return: None
         :seealso VersionedFiles.get_record_stream:
         """
@@ -1594,7 +1594,7 @@ class KnitVersionedFiles(VersionedFiles):
                         # fulltext
                         line_iterator = self._factory.get_fulltext_content(data)
                     else:
-                        # Delta 
+                        # Delta
                         line_iterator = self._factory.get_linedelta_content(data)
                     # Now that we are yielding the data for this key, remove it
                     # from the list
@@ -1611,7 +1611,7 @@ class KnitVersionedFiles(VersionedFiles):
         # If there are still keys we've not yet found, we look in the fallback
         # vfs, and hope to find them there.  Note that if the keys are found
         # but had no changes or no content, the fallback may not return
-        # anything.  
+        # anything.
         if keys and not self._fallback_vfs:
             # XXX: strictly the second parameter is meant to be the file id
             # but it's not easily accessible here.
@@ -1639,7 +1639,7 @@ class KnitVersionedFiles(VersionedFiles):
                            delta=None, annotated=None,
                            left_matching_blocks=None):
         """Merge annotations for content and generate deltas.
-        
+
         This is done by comparing the annotations based on changes to the text
         and generating a delta on the resulting full texts. If annotations are
         not being created then a simple delta is created.
@@ -1727,7 +1727,7 @@ class KnitVersionedFiles(VersionedFiles):
                                  rec[1], record_contents))
         if last_line != 'end %s\n' % rec[1]:
             raise KnitCorrupt(self,
-                              'unexpected version end line %r, wanted %r' 
+                              'unexpected version end line %r, wanted %r'
                               % (last_line, rec[1]))
         df.close()
         return rec, record_contents
@@ -1750,7 +1750,7 @@ class KnitVersionedFiles(VersionedFiles):
         if not needed_records:
             return
 
-        # The transport optimizes the fetching as well 
+        # The transport optimizes the fetching as well
         # (ie, reads continuous ranges.)
         raw_data = self._access.get_raw_records(
             [index_memo for key, index_memo in needed_records])
@@ -1797,7 +1797,7 @@ class KnitVersionedFiles(VersionedFiles):
 
     def _record_to_data(self, key, digest, lines, dense_lines=None):
         """Convert key, digest, lines into a raw data block.
-        
+
         :param key: The key of the record. Currently keys are always serialised
             using just the trailing component.
         :param dense_lines: The bytes of lines but in a denser form. For
@@ -1866,7 +1866,7 @@ class _ContentMapGenerator(object):
 
     def _work(self):
         """Produce maps of text and KnitContents as dicts.
-        
+
         :return: (text_map, content_map) where text_map contains the texts for
             the requested versions and content_map contains the KnitContents.
         """
@@ -1919,7 +1919,7 @@ class _ContentMapGenerator(object):
                 self._raw_record_map)
         record_map = self._record_map
         # raw_record_map is key:
-        # Have read and parsed records at this point. 
+        # Have read and parsed records at this point.
         for key in self.keys:
             if key in self.nonlocal_keys:
                 # already handled
@@ -2025,7 +2025,7 @@ class _VFContentMapGenerator(_ContentMapGenerator):
     def __init__(self, versioned_files, keys, nonlocal_keys=None,
         global_map=None, raw_record_map=None):
         """Create a _ContentMapGenerator.
-        
+
         :param versioned_files: The versioned files that the texts are being
             extracted from.
         :param keys: The keys to produce content maps for.
@@ -2172,18 +2172,18 @@ class _KndxIndex(object):
 
     Duplicate entries may be written to the index for a single version id
     if this is done then the latter one completely replaces the former:
-    this allows updates to correct version and parent information. 
+    this allows updates to correct version and parent information.
     Note that the two entries may share the delta, and that successive
     annotations and references MUST point to the first entry.
 
     The index file on disc contains a header, followed by one line per knit
     record. The same revision can be present in an index file more than once.
-    The first occurrence gets assigned a sequence number starting from 0. 
-    
+    The first occurrence gets assigned a sequence number starting from 0.
+
     The format of a single line is
     REVISION_ID FLAGS BYTE_OFFSET LENGTH( PARENT_ID|PARENT_SEQUENCE_ID)* :\n
     REVISION_ID is a utf8-encoded revision id
-    FLAGS is a comma separated list of flags about the record. Values include 
+    FLAGS is a comma separated list of flags about the record. Values include
         no-eol, line-delta, fulltext.
     BYTE_OFFSET is the ascii representation of the byte offset in the data file
         that the the compressed data starts at.
@@ -2193,7 +2193,7 @@ class _KndxIndex(object):
     PARENT_SEQUENCE_ID the ascii representation of the sequence number of a
         revision id already in the knit that is a parent of REVISION_ID.
     The ' :' marker is the end of record marker.
-    
+
     partial writes:
     when a write is interrupted to the index file, it will result in a line
     that does not end in ' :'. If the ' :' is not present at the end of a line,
@@ -2226,7 +2226,7 @@ class _KndxIndex(object):
 
     def add_records(self, records, random_id=False, missing_compression_parents=False):
         """Add multiple records to the index.
-        
+
         :param records: a list of tuples:
                          (key, options, access_memo, parents).
         :param random_id: If True the ids being added were randomly generated
@@ -2288,7 +2288,7 @@ class _KndxIndex(object):
         # Because kndx files do not support atomic insertion via separate index
         # files, they do not support this method.
         raise NotImplementedError(self.get_missing_compression_parents)
-    
+
     def _cache_key(self, key, options, pos, size, parent_keys):
         """Cache a version record in the history array and index cache.
 
@@ -2427,7 +2427,7 @@ class _KndxIndex(object):
 
     def get_position(self, key):
         """Return details needed to access the version.
-        
+
         :return: a tuple (key, data position, size) to hand to the access
             logic to get the record.
         """
@@ -2437,7 +2437,7 @@ class _KndxIndex(object):
         return key, entry[2], entry[3]
 
     has_key = _mod_index._has_key_from_parent_map
-    
+
     def _init_index(self, path, extra_lines=[]):
         """Initialize an index."""
         sio = StringIO()
@@ -2452,7 +2452,7 @@ class _KndxIndex(object):
 
     def keys(self):
         """Get all the keys in the collection.
-        
+
         The keys are not ordered.
         """
         result = set()
@@ -2471,7 +2471,7 @@ class _KndxIndex(object):
             for suffix in self._kndx_cache[prefix][1]:
                 result.add(prefix + (suffix,))
         return result
-    
+
     def _load_prefixes(self, prefixes):
         """Load the indices for prefixes."""
         self._check_read()
@@ -2515,7 +2515,7 @@ class _KndxIndex(object):
 
     def _dictionary_compress(self, keys):
         """Dictionary compress keys.
-        
+
         :param keys: The keys to generate references to.
         :return: A string representation of keys. keys which are present are
             dictionary compressed, and others are emitted as fulltext with a
@@ -2585,7 +2585,7 @@ class _KnitGraphIndex(object):
         :param is_locked: A callback to check whether the object should answer
             queries.
         :param deltas: Allow delta-compressed records.
-        :param parents: If True, record knits parents, if not do not record 
+        :param parents: If True, record knits parents, if not do not record
             parents.
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
@@ -2612,7 +2612,7 @@ class _KnitGraphIndex(object):
     def add_records(self, records, random_id=False,
         missing_compression_parents=False):
         """Add multiple records to the index.
-        
+
         This function does not insert data into the Immutable GraphIndex
         backing the KnitGraphIndex, instead it prepares data for insertion by
         the caller and checks that it is safe to insert then calls
@@ -2690,7 +2690,7 @@ class _KnitGraphIndex(object):
             self._missing_compression_parents.update(compression_parents)
         # Adding records may have satisfied missing compression parents.
         self._missing_compression_parents.difference_update(keys)
-        
+
     def scan_unvalidated_index(self, graph_index):
         """Inform this _KnitGraphIndex that there is an unvalidated index.
 
@@ -2778,7 +2778,7 @@ class _KnitGraphIndex(object):
 
     def _get_entries(self, keys, check_present=False):
         """Get the entries for keys.
-        
+
         :param keys: An iterable of index key tuples.
         """
         keys = set(keys)
@@ -2846,7 +2846,7 @@ class _KnitGraphIndex(object):
 
     def get_position(self, key):
         """Return details needed to access the version.
-        
+
         :return: a tuple (index, data position, size) to hand to the access
             logic to get the record.
         """
@@ -2857,12 +2857,12 @@ class _KnitGraphIndex(object):
 
     def keys(self):
         """Get all the keys in the collection.
-        
+
         The keys are not ordered.
         """
         self._check_read()
         return [node[1] for node in self._graph_index.iter_all_entries()]
-    
+
     missing_keys = _mod_index._missing_keys_from_parent_map
 
     def _node_to_position(self, node):
@@ -3012,7 +3012,7 @@ class _DirectPackAccess(object):
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
-        :param memos_for_retrieval: An iterable containing the (index, pos, 
+        :param memos_for_retrieval: An iterable containing the (index, pos,
             length) memo for retrieving the bytes. The Pack access method
             looks up the pack to use for a given record in its index_to_pack
             map.
