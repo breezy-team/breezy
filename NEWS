@@ -37,6 +37,11 @@ IN DEVELOPMENT
     * Bazaar will now point out ``bzr+ssh://`` to the user when they 
       use ssh://. (Jelmer Vernooij, #330535)
 
+    * ``bzr -v info`` now omits the number of committers branch statistic,
+      making it many times faster for large projects. To include that
+      statistic in the output, use ``bzr -vv info``.
+      (Ian Clatworthy)
+
     * ``bzr push`` to a ``bzr`` url (``bzr://``, ``bzr+ssh://`` etc) will
       stream if the server is version 1.13 or greater, reducing roundtrips
       significantly. (Andrew Bennetts, Robert Collins)
