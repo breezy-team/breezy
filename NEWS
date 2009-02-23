@@ -68,6 +68,12 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``bzr selftest`` now fails if the bazaar sources contain trailing
+      whitespace, non-unix style line endings and files not ending in a
+      newline. About 372 files and 3243 lines with trailing whitespace was
+      updated to comply with this. The code already complied with the other
+      criteria, but now it is enforced. (Marius Kruger)
+
   INTERNALS:
 
     * ``bzrlib.fetch`` is now composed of a sender and a sink component
@@ -295,12 +301,6 @@ bzr 1.12rc1 "1234567890" 2009-02-10
     * The progress and UI classes have changed; the main APIs remain the
       same but code that provides a new UI or progress bar class may
       need to be updated.  (Martin Pool)
-
-    * ``bzr selftest`` now fails if the bazaar sources contain trailing
-      whitespace, non-unix style line endings and files not ending in a
-      newline. About 372 files and 3243 lines with trailing whitespace was
-      updated to comply with this. The code already complied with the other
-      criteria, but now it is enforced. (Marius Kruger)
 
   INTERNALS:
 
