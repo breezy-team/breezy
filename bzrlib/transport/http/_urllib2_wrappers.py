@@ -257,7 +257,7 @@ class AbstractHTTPConnection:
         # Preserve our preciousss
         sock = self.sock
         self.sock = None
-        # Let httplib.HTTPConnection do its housekeeping 
+        # Let httplib.HTTPConnection do its housekeeping
         self.close()
         # Restore our preciousss
         self.sock = sock
@@ -371,7 +371,7 @@ class _ConnectRequest(Request):
 
     def __init__(self, request):
         """Constructor
-        
+
         :param request: the first request sent to the proxied host, already
             processed by the opener (i.e. proxied_host is already set).
         """
@@ -698,7 +698,7 @@ class HTTPSHandler(AbstractHTTPHandler):
                         connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
-            # Establish the connection encryption 
+            # Establish the connection encryption
             connection.connect_to_origin()
             # Propagate the connection to the original request
             request.connection = connection
@@ -1069,7 +1069,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         (digest's nonce is an example, digest's nonce_count is a
         *counter-example*). Such parameters must be updated by
         using the update_auth() method.
-        
+
         :param header: The authentication header sent by the server.
         :param auth: The auth parameters already known. They may be
              updated.

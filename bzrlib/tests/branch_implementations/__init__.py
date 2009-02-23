@@ -20,7 +20,7 @@
 """Branch implementation tests for bzr.
 
 These test the conformance of all the branch variations to the expected API.
-Specific tests for individual formats are in the tests/test_branch file 
+Specific tests for individual formats are in the tests/test_branch file
 rather than in tests/branch_implementations/*.py.
 """
 
@@ -57,7 +57,7 @@ class BranchTestProviderAdapter(tests.TestScenarioApplier):
         self._transport_readonly_server = transport_readonly_server
         self._name_suffix = name_suffix
         self.scenarios = self.formats_to_scenarios(formats)
-    
+
     def formats_to_scenarios(self, formats):
         """Transform the input formats to a list of scenarios.
 
@@ -180,7 +180,7 @@ def load_tests(basic_tests, module, loader):
         ]
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
-    combinations = [(format, format._matchingbzrdir) for format in 
+    combinations = [(format, format._matchingbzrdir) for format in
          BranchFormat._formats.values() + _legacy_formats]
     adapter = BranchTestProviderAdapter(
         # None here will cause the default vfs transport server to be used.

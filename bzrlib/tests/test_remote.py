@@ -139,7 +139,7 @@ class FakeProtocol(object):
 
 class FakeClient(_SmartClient):
     """Lookalike for _SmartClient allowing testing."""
-    
+
     def __init__(self, fake_medium_base='fake base'):
         """Create a FakeClient."""
         self.responses = []
@@ -261,7 +261,7 @@ class TestVfsHas(tests.TestCase):
 
 
 class TestRemote(tests.TestCaseWithMemoryTransport):
-    
+
     def disable_verb(self, verb):
         """Disable a verb for one test."""
         request_handlers = smart.request.request_handlers
@@ -304,7 +304,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)
         self.assertEqual(expected, result)
-        
+
     def test_remote_path_from_transport_http(self):
         """Remote paths for HTTP transports are calculated differently to other
         transports.  They are just relative to the client base, not the root
@@ -326,7 +326,7 @@ class Test_ClientMedium_remote_is_at_least(tests.TestCase):
         """
         client_medium = medium.SmartClientMedium('dummy base')
         self.assertFalse(client_medium._is_remote_before((99, 99)))
-    
+
     def test__remember_remote_is_before(self):
         """Calling _remember_remote_is_before ratchets down the known remote
         version.
@@ -546,7 +546,7 @@ class RemoteBranchTestCase(tests.TestCase):
 
     def make_remote_branch(self, transport, client):
         """Make a RemoteBranch using 'client' as its _SmartClient.
-        
+
         A RemoteBzrDir and RemoteRepository will also be created to fill out
         the RemoteBranch, albeit with stub values for some of their attributes.
         """
@@ -1086,7 +1086,7 @@ class TestTransportIsReadonly(tests.TestCase):
 
     def test_error_from_old_server(self):
         """bzr 0.15 and earlier servers don't recognise the is_readonly verb.
-        
+
         Clients should treat it as a "no" response, because is_readonly is only
         advisory anyway (a transport could be read-write, but then the
         underlying filesystem could be readonly anyway).
@@ -1132,18 +1132,18 @@ class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
 
 class TestRemoteRepository(TestRemote):
     """Base for testing RemoteRepository protocol usage.
-    
-    These tests contain frozen requests and responses.  We want any changes to 
+
+    These tests contain frozen requests and responses.  We want any changes to
     what is sent or expected to be require a thoughtful update to these tests
     because they might break compatibility with different-versioned servers.
     """
 
     def setup_fake_client_and_repository(self, transport_path):
         """Create the fake client and repository for testing with.
-        
+
         There's no real server here; we just have canned responses sent
         back one by one.
-        
+
         :param transport_path: Path below the root of the MemoryTransport
             where the repository will be created.
         """
@@ -1346,7 +1346,7 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
 
 
 class TestRepositoryGetRevisionGraph(TestRemoteRepository):
-    
+
     def test_null_revision(self):
         # a null revision has the predictable result {}, we should have no wire
         # traffic when calling it with this argument
@@ -1416,7 +1416,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
             self.applyDeprecated, one_four, repo.get_revision_graph, revid)
         self.assertEqual(('AnUnexpectedError',), e.error_tuple)
 
-        
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
@@ -1608,7 +1608,7 @@ class _StubPackCollection(object):
     def reload_pack_names(self):
         self.calls.append(('pack collection reload_pack_names',))
 
-    
+
 class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
     """Tests for RemoteRepository.autopack implementation."""
 
@@ -1638,7 +1638,7 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
             [('call', 'PackRepository.autopack', ('quack/',)),
              ('pack collection reload_pack_names',)],
             client._calls)
-        
+
     def test_backwards_compatibility(self):
         """If the server does not recognise the PackRepository.autopack verb,
         fallback to the real_repository's implementation.
@@ -1694,7 +1694,7 @@ class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
 
 class TestErrorTranslationSuccess(TestErrorTranslationBase):
     """Unit tests for bzrlib.remote._translate_error.
-    
+
     Given an ErrorFromSmartServer (which has an error tuple from a smart
     server) and some context, _translate_error raises more specific errors from
     bzrlib.errors.
@@ -1805,7 +1805,7 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):
     """Unit tests for bzrlib.remote._translate_error's robustness.
-    
+
     TestErrorTranslationSuccess is for cases where _translate_error can
     translate successfully.  This class about how _translate_err behaves when
     it fails to translate: it re-raises the original error.
@@ -1839,7 +1839,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         self.assertContainsRe(
             self._get_log(keep_log_file=True),
             "Missing key 'branch' in context")
-        
+
     def test_path_missing(self):
         """Some translations (PermissionDenied, ReadError) can determine the
         'path' variable from either the wire or the local context.  If neither
@@ -1857,7 +1857,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
 
 class TestStacking(tests.TestCaseWithTransport):
     """Tests for operations on stacked remote repositories.
-    
+
     The underlying format type must support stacking.
     """
 

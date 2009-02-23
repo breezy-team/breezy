@@ -139,12 +139,12 @@ def _builtin_commands():
             real_name = _unsquish_command_name(name)
             r[real_name] = builtins[name]
     return r
-            
+
 
 def builtin_command_names():
     """Return list of builtin command names."""
     return _builtin_commands().keys()
-    
+
 
 def plugin_command_names():
     return plugin_cmds.keys()
@@ -157,7 +157,7 @@ def _get_cmd_dict(plugins_override=True):
         d.update(plugin_cmds.iteritems())
     return d
 
-    
+
 def get_all_cmds(plugins_override=True):
     """Return canonical name and class for all registered commands."""
     for k, v in _get_cmd_dict(plugins_override=plugins_override).iteritems():
@@ -291,7 +291,7 @@ class Command(object):
     encoding_type = 'strict'
 
     hidden = False
-    
+
     def __init__(self):
         """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
@@ -301,7 +301,7 @@ class Command(object):
 
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
-        
+
         :return: A possibly empty list of unicode paths.
 
         Introduced in bzrlib 0.18.
@@ -333,7 +333,7 @@ class Command(object):
     def get_help_text(self, additional_see_also=None, plain=True,
                       see_also_as_links=False):
         """Return a text string with help for this command.
-        
+
         :param additional_see_also: Additional help topics to be
             cross-referenced.
         :param plain: if False, raw help (reStructuredText) is
@@ -463,7 +463,7 @@ class Command(object):
 
     def get_see_also(self, additional_terms=None):
         """Return a list of help topics that are related to this command.
-        
+
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
         :param additional_terms: Additional help topics to cross-reference.
@@ -602,7 +602,7 @@ Command.hooks = CommandHooks()
 
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
-    
+
     Arguments and options are parsed at this level before being passed
     down to specific command handlers.  This routine knows, from a
     lookup table, something about the available options, what optargs
@@ -657,7 +657,7 @@ def _match_argform(cmd, takes_args, args):
                                % (cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
-            
+
     if args:
         raise errors.BzrCommandError("extra argument to command %s: %s"
                                      % (cmd, args[0]))
@@ -746,7 +746,7 @@ def run_bzr(argv):
        The command-line arguments, without the program name from argv[0]
        These should already be decoded. All library/test code calling
        run_bzr should be passing valid strings (don't need decoding).
-    
+
     Returns a command status or raises an exception.
 
     Special master options: these must come before the command because
@@ -996,8 +996,8 @@ class Provider(object):
 
     def plugin_for_command(self, cmd_name):
         '''Takes a command and returns the information for that plugin
-        
-        :return: A dictionary with all the available information 
+
+        :return: A dictionary with all the available information
         for the requested plugin
         '''
         raise NotImplementedError

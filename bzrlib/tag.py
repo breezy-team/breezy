@@ -16,8 +16,8 @@
 
 """Tag strategies.
 
-These are contained within a branch and normally constructed 
-when the branch is opened.  Clients should typically do 
+These are contained within a branch and normally constructed
+when the branch is opened.  Clients should typically do
 
   Branch.tags.add('name', 'value')
 """
@@ -189,8 +189,8 @@ class BasicTags(_Tags):
 
     def merge_to(self, to_tags, overwrite=False):
         """Copy tags between repositories if necessary and possible.
-        
-        This method has common command-line behaviour about handling 
+
+        This method has common command-line behaviour about handling
         error cases.
 
         All new definitions are copied across, except that tags that already
@@ -199,7 +199,7 @@ class BasicTags(_Tags):
         :param to_tags: Branch to receive these tags
         :param overwrite: Overwrite conflicting tags in the target branch
 
-        :returns: A list of tags that conflicted, each of which is 
+        :returns: A list of tags that conflicted, each of which is
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """

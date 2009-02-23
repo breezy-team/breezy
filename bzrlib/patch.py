@@ -48,7 +48,7 @@ def write_to_cmd(args, input=""):
     if status < 0:
         raise Exception("%s killed by signal %i" (args[0], -status))
     return stdout, stderr, status
-    
+
 
 def patch(patch_contents, filename, output_filename=None, reverse=False):
     """Apply a patch to a file, to produce another output file.  This is should
@@ -72,7 +72,7 @@ def patch(patch_contents, filename, output_filename=None, reverse=False):
         args.extend(("-o", output_filename))
     args.append(filename)
     stdout, stderr, status = write_to_cmd(args, patch_contents)
-    return status 
+    return status
 
 
 def diff3(out_file, mine_path, older_path, yours_path):

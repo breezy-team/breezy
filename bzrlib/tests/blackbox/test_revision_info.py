@@ -22,10 +22,10 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestRevisionInfo(ExternalBase):
-    
+
     def check_error(self, output, *args):
         """Verify that the expected error matches what bzr says.
-        
+
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """

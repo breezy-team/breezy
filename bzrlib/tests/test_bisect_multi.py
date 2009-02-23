@@ -34,7 +34,7 @@ class TestBisectMultiBytes(TestCase):
 
     def test_lookup_missing_key_no_content(self):
         """Doing a lookup in a zero-length file still does a single request.
-        
+
         This makes sense because the bisector cannot tell how long content is
         and its more flexible to only stop when the content object says 'False'
         for a given location, key pair.
@@ -315,7 +315,7 @@ class TestBisectMultiBytes(TestCase):
             ], calls)
 
     def test_change_direction_in_single_key_search(self):
-        # check that we can search down, up, down again - 
+        # check that we can search down, up, down again -
         # so length 8, goes 4, 6, 5
         calls = []
         def missing_at_5(location_keys):

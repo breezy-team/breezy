@@ -149,7 +149,7 @@ class ImportReplacer(ScopeReplacer):
 
         :param scope: The scope that objects should be imported into.
             Typically this is globals()
-        :param name: The variable name. Often this is the same as the 
+        :param name: The variable name. Often this is the same as the
             module_path. 'bzrlib'
         :param module_path: A list for the fully specified module path
             ['bzrlib', 'foo', 'bar']
@@ -157,7 +157,7 @@ class ImportReplacer(ScopeReplacer):
             None, indicating the module is being imported.
         :param children: Children entries to be imported later.
             This should be a map of children specifications.
-            {'foo':(['bzrlib', 'foo'], None, 
+            {'foo':(['bzrlib', 'foo'], None,
                 {'bar':(['bzrlib', 'foo', 'bar'], None {})})
             }
         Examples:

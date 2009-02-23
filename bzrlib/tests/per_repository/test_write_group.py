@@ -50,7 +50,7 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         try:
-            # don't need a specific exception for now - this is 
+            # don't need a specific exception for now - this is
             # really to be sure it's used right, not for signalling
             # semantic information.
             self.assertRaises(errors.BzrError, repo.start_write_group)
@@ -69,7 +69,7 @@ class TestWriteGroup(TestCaseWithRepository):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()
-        # don't need a specific exception for now - this is 
+        # don't need a specific exception for now - this is
         # really to be sure it's used right, not for signalling
         # semantic information.
         self.assertRaises(errors.BzrError, repo.unlock)

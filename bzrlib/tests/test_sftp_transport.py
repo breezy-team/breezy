@@ -258,7 +258,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
       None:       If 'ssh' exists on the machine, then it will be spawned as a
                   child process.
     """
-    
+
     def setUp(self):
         super(SSHVendorConnection, self).setUp()
         from bzrlib.transport.sftp import SFTPFullAbsoluteServer
@@ -368,7 +368,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
     """Test that the testing SFTPServer's latency knob works."""
 
     def test_latency_knob_slows_transport(self):
-        # change the latency knob to 500ms. We take about 40ms for a 
+        # change the latency knob to 500ms. We take about 40ms for a
         # loopback connection ordinarily.
         start_time = time.time()
         self.get_server().add_latency = 0.5
