@@ -141,19 +141,19 @@ class TestamentTests(TestamentSetup):
         inventory = self.b.repository.get_inventory('test@user-2')
         testament_1 = self.testament_class()(revision, inventory)
         text_1 = testament_1.as_short_text()
-        text_2 = self.from_revision(self.b.repository, 
+        text_2 = self.from_revision(self.b.repository,
                                     'test@user-2').as_short_text()
         self.assertEqual(text_1, text_2)
-                    
+
 
 class TestamentTestsStrict(TestamentTests):
-    
+
     def testament_class(self):
         return StrictTestament
 
 
 class TestamentTestsStrict2(TestamentTests):
-    
+
     def testament_class(self):
         return StrictTestament3
 

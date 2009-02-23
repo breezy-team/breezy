@@ -81,12 +81,12 @@ Using shared repository: %s
             out)
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
-        
+
         self.run_bzr_error(['Parent directory of subdir2/nothere does not exist'],
                             'init subdir2/nothere')
         out, err = self.run_bzr('init subdir2/nothere', retcode=3)
         self.assertEqual('', out)
-        
+
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
         self.assertEqual("""Created a standalone tree (format: pack-0.92)\n""",

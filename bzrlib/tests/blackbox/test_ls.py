@@ -26,7 +26,7 @@ class TestLS(TestCaseWithTransport):
 
     def setUp(self):
         super(TestLS, self).setUp()
-        
+
         # Create a simple branch that can be used in testing
         ignores._set_user_ignores(['user-ignore'])
 
@@ -77,7 +77,7 @@ class TestLS(TestCaseWithTransport):
                        'V        a\n',
                        '--verbose')
         self.wt.commit('add')
-        
+
         self.build_tree(['subdir/'])
         self.ls_equals('?        .bzrignore\n'
                        'V        a\n'
@@ -97,12 +97,12 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals(
             '.bzrignore                                         \n'
             'a                                                  a-id\n'
-            'subdir/                                            subdir-id\n', 
+            'subdir/                                            subdir-id\n',
             '--show-ids')
         self.ls_equals(
             '?        .bzrignore\n'
             'V        a                                         a-id\n'
-            'V        subdir/                                   subdir-id\n', 
+            'V        subdir/                                   subdir-id\n',
             '--show-ids --verbose')
         self.ls_equals('.bzrignore\0\0'
                        'a\0a-id\0'
@@ -226,8 +226,8 @@ class TestLS(TestCaseWithTransport):
 
     def test_kinds(self):
         self.build_tree(['subdir/'])
-        self.ls_equals('.bzrignore\n' 
-                       'a\n', 
+        self.ls_equals('.bzrignore\n'
+                       'a\n',
                        '--kind=file')
         self.ls_equals('subdir/\n',
                        '--kind=directory')

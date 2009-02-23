@@ -26,7 +26,7 @@ from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
 class TestUrlToPath(TestCase):
-    
+
     def test_basename(self):
         # bzrlib.urlutils.basename
         # Test bzrlib.urlutils.split()
@@ -83,7 +83,7 @@ class TestUrlToPath(TestCase):
         try:
             u'uni/\xb5'.encode(osutils.get_user_encoding())
         except UnicodeError:
-            # locale cannot handle unicode 
+            # locale cannot handle unicode
             pass
         else:
             norm_file('uni/%C2%B5', u'uni/\xb5')
@@ -226,7 +226,7 @@ class TestUrlToPath(TestCase):
         test('file:///bar/foo', 'file:///bar/', 'foo')
         test('http://host/foo', 'http://host/', 'foo')
         test('http://host/', 'http://host', '')
-        
+
         # Invalid joinings
         # Cannot go above root
         # Implicitly at root:
@@ -264,7 +264,7 @@ class TestUrlToPath(TestCase):
 
         # Test joining to a path with a trailing slash
         test('foo/bar', 'foo/', 'bar')
-        
+
         # Invalid joinings
         # Cannot go above root
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '../baz')
@@ -315,7 +315,7 @@ class TestUrlToPath(TestCase):
         #     to_url('C:/path/to/foo '))
         self.assertEqual('file:///C:/path/to/f%20oo',
             to_url('C:/path/to/f oo'))
-        
+
         self.assertEqual('file:///', to_url('/'))
 
         try:
@@ -513,7 +513,7 @@ class TestUrlToPath(TestCase):
         def test(expected, base, other):
             result = urlutils.relative_url(base, other)
             self.assertEqual(expected, result)
-            
+
         test('a', 'http://host/', 'http://host/a')
         test('http://entirely/different', 'sftp://host/branch',
                     'http://entirely/different')
@@ -528,7 +528,7 @@ class TestUrlToPath(TestCase):
                     'sftp://host/home/jelmer/branch/2b')
         test('../../branch/feature/%2b', 'http://host/home/jelmer/bar/%2b',
                     'http://host/home/jelmer/branch/feature/%2b')
-        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/', 
+        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/',
                     'http://host/home/jelmer/branch/feature/2b')
         # relative_url should preserve a trailing slash
         test('../../branch/feature/2b/', 'http://host/home/jelmer/bar/2b/',
@@ -592,9 +592,9 @@ class TestCwdToURL(TestCaseInTempDir):
 
         os.chdir(u'dod\xe9')
 
-        # On Mac OSX this directory is actually: 
+        # On Mac OSX this directory is actually:
         #   u'/dode\u0301' => '/dode\xcc\x81
-        # but we should normalize it back to 
+        # but we should normalize it back to
         #   u'/dod\xe9' => '/dod\xc3\xa9'
         url = urlutils.local_path_to_url('.')
         self.assertEndsWith(url, '/dod%C3%A9')

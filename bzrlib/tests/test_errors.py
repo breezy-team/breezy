@@ -158,7 +158,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
             "The medium 'a medium' is not connected.", str(error))
- 
+
     def test_no_public_branch(self):
         b = self.make_branch('.')
         error = errors.NoPublicBranch(b)
@@ -171,7 +171,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
-        
+
     def test_no_smart_medium(self):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
@@ -461,7 +461,7 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
-        
+
     def test_check_error(self):
         # This has a member called 'message', which is problematic in
         # python2.5 because that is a slot on the base Exception class
@@ -560,7 +560,7 @@ class TestErrors(TestCaseWithTransport):
         err = errors.UnknownErrorFromSmartServer(orig_err)
         self.assertEquals(
             "Server sent an unexpected error: ('error', 'tuple')", str(err))
-    
+
     def test_smart_message_handler_error(self):
         # Make an exc_info tuple.
         try:
@@ -577,15 +577,46 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
                                    " working tree.")
 
+    def test_no_such_view(self):
+        err = errors.NoSuchView('foo')
+        self.assertEquals("No such view: foo.", str(err))
+
+    def test_views_not_supported(self):
+        err = errors.ViewsNotSupported('atree')
+        err_str = str(err)
+        self.assertStartsWith(err_str, "Views are not supported by ")
+        self.assertEndsWith(err_str, "; use 'bzr upgrade' to change your "
+            "tree to a later format.")
+
+    def test_file_outside_view(self):
+        err = errors.FileOutsideView('baz', ['foo', 'bar'])
+        self.assertEquals('Specified file "baz" is outside the current view: '
+            'foo, bar', str(err))
+
     def test_invalid_shelf_id(self):
         invalid_id = "foo"
         err = errors.InvalidShelfId(invalid_id)
         self.assertEqual('"foo" is not a valid shelf id, '
             'try a number instead.', str(err))
 
+    def test_unresumable_write_group(self):
+        repo = "dummy repo"
+        wg_tokens = ['token']
+        reason = "a reason"
+        err = errors.UnresumableWriteGroup(repo, wg_tokens, reason)
+        self.assertEqual(
+            "Repository dummy repo cannot resume write group "
+            "['token']: a reason", str(err))
+
+    def test_unsuspendable_write_group(self):
+        repo = "dummy repo"
+        err = errors.UnsuspendableWriteGroup(repo)
+        self.assertEqual(
+            'Repository dummy repo cannot suspend a write group.', str(err))
+
 
 class PassThroughError(errors.BzrError):
-    
+
     _fmt = """Pass through %(foo)s and %(bar)s"""
 
     def __init__(self, foo, bar):
@@ -602,7 +633,7 @@ class ErrorWithNoFormat(errors.BzrError):
 
 
 class TestErrorFormatting(TestCase):
-    
+
     def test_always_str(self):
         e = PassThroughError(u'\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
@@ -619,7 +650,7 @@ class TestErrorFormatting(TestCase):
                 ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
                 lambda x: str(x), e)
         ## s = str(e)
-        self.assertEqual(s, 
+        self.assertEqual(s,
                 "This class has a docstring but no format string.")
 
     def test_mismatched_format_args(self):

@@ -43,7 +43,7 @@ from bzrlib.bundle import serializer
 
 class SmartServerRequest(object):
     """Base class for request handlers.
-    
+
     To define a new request, subclass this class and override the `do` method
     (and if appropriate, `do_body` as well).  Request implementors should take
     care to call `translate_client_path` and `transport_from_client_path` as
@@ -78,9 +78,9 @@ class SmartServerRequest(object):
 
     def do(self, *args):
         """Mandatory extension point for SmartServerRequest subclasses.
-        
+
         Subclasses must implement this.
-        
+
         This should return a SmartServerResponse if this command expects to
         receive no body.
         """
@@ -101,10 +101,11 @@ class SmartServerRequest(object):
         """Called if the client sends a body with the request.
 
         The do() method is still called, and must have returned None.
-        
+
         Must return a SmartServerResponse.
         """
-        raise NotImplementedError(self.do_body)
+        if body_bytes != '':
+            raise errors.SmartProtocolError('Request does not expect a body')
 
     def do_chunk(self, chunk_bytes):
         """Called with each body chunk if the request has a streamed body.
@@ -118,7 +119,7 @@ class SmartServerRequest(object):
         body_bytes = ''.join(self._body_chunks)
         self._body_chunks = None
         return self.do_body(body_bytes)
-    
+
     def translate_client_path(self, client_path):
         """Translate a path received from a network client into a local
         relpath.
@@ -157,7 +158,7 @@ class SmartServerRequest(object):
 
 class SmartServerResponse(object):
     """A response to a client request.
-    
+
     This base class should not be used. Instead use
     SuccessfulSmartServerResponse and FailedSmartServerResponse as appropriate.
     """
@@ -207,7 +208,7 @@ class SuccessfulSmartServerResponse(SmartServerResponse):
 
 class SmartServerRequestHandler(object):
     """Protocol logic for smart server.
-    
+
     This doesn't handle serialization at all, it just processes requests and
     creates responses.
     """
@@ -239,7 +240,7 @@ class SmartServerRequestHandler(object):
     def accept_body(self, bytes):
         """Accept body data."""
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
-        
+
     def end_of_body(self):
         """No more body data will be received."""
         self._run_handler_code(self._command.do_end, (), {})
@@ -400,6 +401,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
+    'BzrDir.create_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestCreateRepository')
+request_handlers.register_lazy(
     'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV1')
 request_handlers.register_lazy(
     'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV2')
@@ -447,9 +450,14 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
 request_handlers.register_lazy(
+    'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
+request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
+request_handlers.register_lazy(
+    'Repository.set_make_working_trees', 'bzrlib.smart.repository',
+    'SmartServerRepositorySetMakeWorkingTrees')
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
 request_handlers.register_lazy(

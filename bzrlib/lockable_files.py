@@ -57,28 +57,28 @@ class LockableFiles(object):
     support this.)
 
     Instances of this class are often called control_files.
-    
+
     This object builds on top of a Transport, which is used to actually write
     the files to disk, and an OSLock or LockDir, which controls how access to
     the files is controlled.  The particular type of locking used is set when
     the object is constructed.  In older formats OSLocks are used everywhere.
-    in newer formats a LockDir is used for Repositories and Branches, and 
+    in newer formats a LockDir is used for Repositories and Branches, and
     OSLocks for the local filesystem.
 
-    This class is now deprecated; code should move to using the Transport 
-    directly for file operations and using the lock or CountedLock for 
+    This class is now deprecated; code should move to using the Transport
+    directly for file operations and using the lock or CountedLock for
     locking.
     """
 
     # _lock_mode: None, or 'r' or 'w'
 
     # _lock_count: If _lock_mode is true, a positive count of the number of
-    # times the lock has been taken *by this process*.   
-    
+    # times the lock has been taken *by this process*.
+
     def __init__(self, transport, lock_name, lock_class):
         """Create a LockableFiles group
 
-        :param transport: Transport pointing to the directory holding the 
+        :param transport: Transport pointing to the directory holding the
             control files and lock.
         :param lock_name: Name of the lock guarding these files.
         :param lock_class: Class of lock strategy to use: typically
@@ -132,7 +132,7 @@ class LockableFiles(object):
 
     def _find_modes(self):
         """Determine the appropriate modes for files and directories.
-        
+
         :deprecated: Replaced by BzrDir._find_modes.
         """
         try:
@@ -152,7 +152,7 @@ class LockableFiles(object):
     @deprecated_method(deprecated_in((1, 6, 0)))
     def controlfilename(self, file_or_path):
         """Return location relative to branch.
-        
+
         :deprecated: Use Transport methods instead.
         """
         return self._transport.abspath(self._escape(file_or_path))
@@ -161,7 +161,7 @@ class LockableFiles(object):
     @deprecated_method(deprecated_in((1, 5, 0)))
     def get(self, relpath):
         """Get a file as a bytestream.
-        
+
         :deprecated: Use a Transport instead of LockableFiles.
         """
         relpath = self._escape(relpath)
@@ -171,7 +171,7 @@ class LockableFiles(object):
     @deprecated_method(deprecated_in((1, 5, 0)))
     def get_utf8(self, relpath):
         """Get a file as a unicode stream.
-        
+
         :deprecated: Use a Transport instead of LockableFiles.
         """
         relpath = self._escape(relpath)
@@ -182,7 +182,7 @@ class LockableFiles(object):
     @deprecated_method(deprecated_in((1, 6, 0)))
     def put(self, path, file):
         """Write a file.
-        
+
         :param path: The path to put the file, relative to the .bzr control
                      directory
         :param file: A file-like or string object whose contents should be copied.
@@ -234,7 +234,7 @@ class LockableFiles(object):
 
     def lock_write(self, token=None):
         """Lock this group of files for writing.
-        
+
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
         :returns: a token if this instance supports tokens, otherwise None.
@@ -277,7 +277,7 @@ class LockableFiles(object):
             self._set_transaction(transactions.ReadOnlyTransaction())
             # 5K may be excessive, but hey, its a knob.
             self.get_transaction().set_cache_size(5000)
-                        
+
     def unlock(self):
         if not self._lock_mode:
             raise errors.LockNotHeld(self)
@@ -297,7 +297,7 @@ class LockableFiles(object):
 
     def get_physical_lock_status(self):
         """Return physical lock status.
-        
+
         Returns true if a lock is held on the transport. If no lock is held, or
         the underlying locking mechanism does not support querying lock
         status, false is returned.
@@ -385,4 +385,4 @@ class TransportLock(object):
     def validate_token(self, token):
         if token is not None:
             raise errors.TokenLockingNotSupported(self)
-        
+

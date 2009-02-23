@@ -49,7 +49,7 @@ class TestParseIgnoreFile(TestCase):
 
 
 class TestUserIgnores(TestCaseInTempDir):
-    
+
     def test_create_if_missing(self):
         # $HOME should be set to '.'
         ignore_path = config.user_ignore_config_filename()
@@ -118,7 +118,7 @@ class TestUserIgnores(TestCaseInTempDir):
         added = ignores.add_unique_user_ignores(
             ['xxx', './bar', 'xxx', 'dir1/', 'dir2/', 'dir3\\'])
         self.assertEqual(['xxx', 'dir2'], added)
-        self.assertEqual(set(['foo', './bar', u'b\xe5z', 
+        self.assertEqual(set(['foo', './bar', u'b\xe5z',
                               'xxx', 'dir1', 'dir2', 'dir3']),
                          ignores.get_user_ignores())
 
@@ -158,22 +158,22 @@ class TestTreeIgnores(TestCaseWithTransport):
         tree = self.make_branch_and_tree(".")
         ignores.tree_ignores_add_patterns(tree, ["myentry"])
         self.assertTrue(tree.has_filename(".bzrignore"))
-        self.assertEquals("myentry\n", 
+        self.assertEquals("myentry\n",
                           open(".bzrignore", 'r').read())
 
     def test_add_to_existing(self):
         tree = self.make_branch_and_tree(".")
-        self.build_tree_contents([('.bzrignore', "myentry1\n")]) 
+        self.build_tree_contents([('.bzrignore', "myentry1\n")])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
-        self.assertEquals("myentry1\nmyentry2\nfoo\n", 
+        self.assertEquals("myentry1\nmyentry2\nfoo\n",
                           open(".bzrignore", 'r').read())
 
     def test_adds_ending_newline(self):
         tree = self.make_branch_and_tree(".")
-        self.build_tree_contents([('.bzrignore', "myentry1")]) 
+        self.build_tree_contents([('.bzrignore', "myentry1")])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry2"])
-        self.assertEquals("myentry1\nmyentry2\n", 
+        self.assertEquals("myentry1\nmyentry2\n",
                           open(".bzrignore", 'r').read())
 

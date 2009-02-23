@@ -36,7 +36,7 @@ class MessageHandler(object):
 
     def headers_received(self, headers):
         """Called when message headers are received.
-        
+
         This default implementation just stores them in self.headers.
         """
         self.headers = headers
@@ -67,11 +67,11 @@ class MessageHandler(object):
 
     def protocol_error(self, exception):
         """Called when there is a protocol decoding error.
-        
+
         The default implementation just re-raises the exception.
         """
         raise
-    
+
     def end_received(self):
         """Called when the end of the message is received."""
         # No-op by default.
@@ -172,7 +172,7 @@ class ResponseHandler(object):
 
     def read_response_tuple(self, expect_body=False):
         """Reads and returns the response tuple for the current request.
-        
+
         :keyword expect_body: a boolean indicating if a body is expected in the
             response.  Some protocol versions needs this information to know
             when a response is finished.  If False, read_body_bytes should
@@ -292,7 +292,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self.finished_reading = True
         self._medium_request.finished_reading()
         raise
-        
+
     def read_response_tuple(self, expect_body=False):
         """Read a response tuple from the wire."""
         self._wait_for_response_args()
@@ -307,8 +307,8 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
 
     def read_body_bytes(self, count=-1):
         """Read bytes from the body, decoding into a byte stream.
-        
-        We read all bytes at once to ensure we've checked the trailer for 
+
+        We read all bytes at once to ensure we've checked the trailer for
         errors, and then feed the buffer back as read_body_bytes is called.
 
         Like the builtin file.read in Python, a count of -1 (the default) means

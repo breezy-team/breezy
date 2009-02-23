@@ -237,7 +237,7 @@ class BaseRequest(object):
 
 class DryRunLaunchpadService(LaunchpadService):
     """Service that just absorbs requests without sending to server.
-    
+
     The dummy service does not need authentication.
     """
 

@@ -139,7 +139,7 @@ def format_patch_date(secs, offset=0):
     if offset % 60 != 0:
         raise ValueError(
         "can't represent timezone %s offset by fractional minutes" % offset)
-    # so that we don't need to do calculations on pre-epoch times, 
+    # so that we don't need to do calculations on pre-epoch times,
     # which doesn't work with win32 python gmtime, we always
     # give the epoch in utc
     if secs == 0:

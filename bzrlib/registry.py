@@ -107,7 +107,7 @@ class Registry(object):
         :param obj: The object to register.
         :param help: Help text for this entry. This may be a string or
                 a callable. If it is a callable, it should take two
-                parameters (registry, key): this registry and the key that 
+                parameters (registry, key): this registry and the key that
                 the help was registered under.
         :param info: More information for this entry. Registry.get_info()
                 can be used to get this information. Registry treats this as an
@@ -128,11 +128,11 @@ class Registry(object):
         """Register a new object to be loaded on request.
 
         :param module_name: The python path to the module. Such as 'os.path'.
-        :param member_name: The member of the module to return.  If empty or 
+        :param member_name: The member of the module to return.  If empty or
                 None, get() will return the module itself.
         :param help: Help text for this entry. This may be a string or
                 a callable.
-        :param info: More information for this entry. Registry 
+        :param info: More information for this entry. Registry
         :param override_existing: If True, replace the existing object
                 with the new one. If False, if there is already something
                 registered with the same key, raise a KeyError
@@ -152,7 +152,7 @@ class Registry(object):
         """Return the object register()'ed to the given key.
 
         May raise ImportError if the object was registered lazily and
-        there are any problems, or AttributeError if the module does not 
+        there are any problems, or AttributeError if the module does not
         have the supplied member.
 
         :param key: The key to obtain the object for. If no object has been
@@ -174,9 +174,9 @@ class Registry(object):
         :return: a tuple of (object, remainder), where the remainder is the
             portion of the name that did not match the key.
         """
-        for key, value in self.iteritems():
+        for key in self.keys():
             if fullname.startswith(key):
-                return value, fullname[len(key):]
+                return self.get(key), fullname[len(key):]
 
     def _get_key_or_default(self, key=None):
         """Return either 'key' or the default key if key is None"""

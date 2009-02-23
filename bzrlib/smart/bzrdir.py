@@ -24,6 +24,7 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
+from bzrlib.repository import network_format_registry
 
 
 class SmartServerRequestOpenBzrDir(SmartServerRequest):
@@ -51,7 +52,7 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
         return SuccessfulSmartServerResponse((answer,))
 
 
-class SmartServerRequestFindRepository(SmartServerRequest):
+class SmartServerRequestBzrDir(SmartServerRequest):
 
     def _boolean_to_yes_no(self, a_boolean):
         if a_boolean:
@@ -59,11 +60,55 @@ class SmartServerRequestFindRepository(SmartServerRequest):
         else:
             return 'no'
 
+    def _format_to_capabilities(self, repo_format):
+        rich_root = self._boolean_to_yes_no(repo_format.rich_root_data)
+        tree_ref = self._boolean_to_yes_no(
+            repo_format.supports_tree_reference)
+        external_lookup = self._boolean_to_yes_no(
+            repo_format.supports_external_lookups)
+        return rich_root, tree_ref, external_lookup
+
+
+class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
+
+    def do(self, path, network_name, shared):
+        """Create a repository in the bzr dir at path.
+
+        This operates precisely like 'bzrdir.create_repository'.
+
+        If a bzrdir is not present, an exception is propogated
+        rather than 'no branch' because these are different conditions (and
+        this method should only be called after establishing that a bzr dir
+        exists anyway).
+
+        This is the initial version of this method introduced to the smart
+        server for 1.13.
+
+        :param path: The path to the bzrdir.
+        :param network_name: The network name of the repository type to create.
+        :param shared: The value to pass create_repository for the shared
+            parameter.
+        :return: (ok, rich_root, tree_ref, external_lookup, network_name)
+        """
+        bzrdir = BzrDir.open_from_transport(
+            self.transport_from_client_path(path))
+        shared = shared == 'True'
+        format = network_format_registry.get(network_name)
+        bzrdir.repository_format = format
+        result = format.initialize(bzrdir, shared=shared)
+        rich_root, tree_ref, external_lookup = self._format_to_capabilities(
+            result._format)
+        return SuccessfulSmartServerResponse(('ok', rich_root, tree_ref,
+            external_lookup, result._format.network_name()))
+
+
+class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
+
     def _find(self, path):
         """try to find a repository from path upwards
-        
+
         This operates precisely like 'bzrdir.find_repository'.
-        
+
         :return: (relpath, rich_root, tree_ref, external_lookup) flags. All are
             strings, relpath is a / prefixed path, and the other three are
             either 'yes' or 'no'.
@@ -73,7 +118,7 @@ class SmartServerRequestFindRepository(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(
             self.transport_from_client_path(path))
         repository = bzrdir.find_repository()
-        # the relpath of the bzrdir in the found repository gives us the 
+        # the relpath of the bzrdir in the found repository gives us the
         # path segments to pop-out.
         relpath = repository.bzrdir.root_transport.relpath(
             bzrdir.root_transport.base)
@@ -81,11 +126,8 @@ class SmartServerRequestFindRepository(SmartServerRequest):
             segments = ['..'] * len(relpath.split('/'))
         else:
             segments = []
-        rich_root = self._boolean_to_yes_no(repository.supports_rich_root())
-        tree_ref = self._boolean_to_yes_no(
-            repository._format.supports_tree_reference)
-        external_lookup = self._boolean_to_yes_no(
-            repository._format.supports_external_lookups)
+        rich_root, tree_ref, external_lookup = self._format_to_capabilities(
+            repository._format)
         return '/'.join(segments), rich_root, tree_ref, external_lookup
 
 
@@ -93,9 +135,9 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
     def do(self, path):
         """try to find a repository from path upwards
-        
+
         This operates precisely like 'bzrdir.find_repository'.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
 
@@ -116,9 +158,9 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 
     def do(self, path):
         """try to find a repository from path upwards
-        
+
         This operates precisely like 'bzrdir.find_repository'.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
 
@@ -153,7 +195,7 @@ class SmartServerRequestOpenBranch(SmartServerRequest):
 
     def do(self, path):
         """try to open a branch at path and return ok/nobranch.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
         """

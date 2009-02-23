@@ -49,7 +49,7 @@ def unique_lcs_py(a, b):
         else:
             index[line]= i
     # make btoa[i] = position of line i in a, unless
-    # that line doesn't occur exactly once in both, 
+    # that line doesn't occur exactly once in both,
     # in which case it's set to None
     btoa = [None] * len(b)
     index2 = {}
@@ -79,7 +79,7 @@ def unique_lcs_py(a, b):
             k = len(stacks)
         # as an optimization, check if the next line comes right after
         # the previous line, because usually it does
-        elif stacks and stacks[k] < apos and (k == len(stacks) - 1 or 
+        elif stacks and stacks[k] < apos and (k == len(stacks) - 1 or
                                               stacks[k+1] > apos):
             k += 1
         else:
@@ -230,7 +230,7 @@ class PatienceSequenceMatcher_py(difflib.SequenceMatcher):
         >>> s.get_matching_blocks()
         [(0, 0, 2), (3, 2, 2), (5, 4, 0)]
         """
-        # jam 20060525 This is the python 2.4.1 difflib get_matching_blocks 
+        # jam 20060525 This is the python 2.4.1 difflib get_matching_blocks
         # implementation which uses __helper. 2.4.3 got rid of helper for
         # doing it inline with a queue.
         # We should consider doing the same for recurse_matches

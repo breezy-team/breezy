@@ -47,7 +47,7 @@ def has_revision(branch, revision_id):
 
 def fetch_steps(self, br_a, br_b, writable_a):
     """A foreign test method for testing fetch locally and remotely."""
-     
+
     # TODO RBC 20060201 make this a repository test.
     repo_b = br_b.repository
     self.assertFalse(repo_b.has_revision(br_a.revision_history()[3]))
@@ -74,7 +74,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertEqual(writable_a.fetch(br_b)[0], 1)
     self.assertTrue(has_revision(br_a, br_b.revision_history()[3]))
     self.assertTrue(has_revision(br_a, br_b.revision_history()[4]))
-        
+
     br_b2 = self.make_branch('br_b2')
     self.assertEquals(br_b2.fetch(br_b)[0], 7)
     self.assertTrue(has_revision(br_b2, br_b.revision_history()[4]))
@@ -88,7 +88,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertTrue(has_revision(br_a2, br_a.revision_history()[2]))
 
     br_a3 = self.make_branch('br_a3')
-    # pulling a branch with no revisions grabs nothing, regardless of 
+    # pulling a branch with no revisions grabs nothing, regardless of
     # whats in the inventory.
     self.assertEquals(br_a3.fetch(br_a2)[0], 0)
     for revno in range(4):
@@ -109,7 +109,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     # every branch supports that.  -- mbp 20070814
 
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
-    # Note that this means - updating the weave when ghosts are filled in to 
+    # Note that this means - updating the weave when ghosts are filled in to
     # add the right parents.
 
 
@@ -126,7 +126,7 @@ class TestFetch(TestCaseWithTransport):
 
     def test_fetch_root_knit(self):
         """Ensure that knit2.fetch() updates the root knit
-        
+
         This tests the case where the root has a new revision, but there are no
         corresponding filename, parent, contents or other changes.
         """
@@ -285,21 +285,21 @@ class TestHttpFetch(TestCaseWithWebserver):
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))
         self.assertEqual(target.fetch(source), (2, []))
-        # this is the path to the literal file. As format changes 
+        # this is the path to the literal file. As format changes
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
         self.log("web server logs are:")
         http_logs = self.get_readonly_server().logs
         self.log('\n'.join(http_logs))
-        # unfortunately this log entry is branch format specific. We could 
-        # factor out the 'what files does this format use' to a method on the 
+        # unfortunately this log entry is branch format specific. We could
+        # factor out the 'what files does this format use' to a method on the
         # repository, which would let us to this generically. RBC 20060419
         # RBC 20080408: Or perhaps we can assert that no files are fully read
         # twice?
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
         self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
-        # this r-h check test will prevent regressions, but it currently already 
+        # this r-h check test will prevent regressions, but it currently already
         # passes, before the patch to cache-rh is applied :[
         self.assertTrue(1 >= self._count_log_matches('revision-history',
                                                      http_logs))

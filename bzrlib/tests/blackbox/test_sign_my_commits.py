@@ -79,7 +79,7 @@ class SignMyCommits(TestCaseWithTransport):
         self.assertSigned(repo, 'B')
         self.assertSigned(repo, 'C')
         self.assertUnsigned(repo, 'D')
-            
+
     def test_sign_my_commits_location(self):
         wt = self.setup_tree('other')
         repo = wt.branch.repository
