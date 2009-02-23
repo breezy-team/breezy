@@ -37,6 +37,10 @@ IN DEVELOPMENT
     * Bazaar will now point out ``bzr+ssh://`` to the user when they 
       use ssh://. (Jelmer Vernooij, #330535)
 
+    * ``bzr push`` to a ``bzr`` url (``bzr://``, ``bzr+ssh://`` etc) will
+      stream if the server is version 1.13 or greater, reducing roundtrips
+      significantly. (Andrew Bennetts, Robert Collins)
+
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
 
@@ -67,8 +71,9 @@ IN DEVELOPMENT
   INTERNALS:
 
     * ``bzrlib.fetch`` is now composed of a sender and a sink component
-      allowing for decoupling over a network connection. (Andrew Bennetts,
-      Robert Collins)
+      allowing for decoupling over a network connection. Fetching into
+      a RemoteRepository uses this to stream the operation.
+      (Andrew Bennetts, Robert Collins)
 
     * There is a RemoteSink object which handles pushing to smart servers.
       (Andrew Bennetts, Robert Collins)

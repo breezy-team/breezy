@@ -3496,7 +3496,6 @@ class InterPackToRemotePack(InterPackRepo):
         from bzrlib.fetch import RepoFetcher
         fetcher = RepoFetcher(self.target, self.source, revision_id,
                               pb, find_ghosts)
-        self.target.autopack()
         return fetcher.count_copied, fetcher.failed_revisions
         
     def _get_target_pack_collection(self):

@@ -816,7 +816,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(self.format_name)
 
-    def test_autopack_rpc_is_used_when_using_hpss(self):
+    def test_autopack_or_streaming_rpc_is_used_when_using_hpss(self):
         # Make local and remote repos
         tree = self.make_branch_and_tree('local', format=self.get_format())
         self.make_branch_and_tree('remote', format=self.get_format())
@@ -831,7 +831,21 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         self.hpss_calls = []
         tree.commit('commit triggering pack')
         tree.branch.push(remote_branch)
-        self.assertTrue('PackRepository.autopack' in self.hpss_calls)
+        autopack_calls = len([call for call in self.hpss_calls if call ==
+            'PackRepository.autopack'])
+        streaming_calls = len([call for call in self.hpss_calls if call ==
+            'Repository.insert_stream'])
+        if autopack_calls:
+            # Non streaming server
+            self.assertEqual(1, autopack_calls)
+            self.assertEqual(0, streaming_calls)
+        else:
+            # Streaming was used, which autopacks on the remote end.
+            self.assertEqual(0, autopack_calls)
+            # NB: The 2 calls are because of the sanity check that the server
+            # supports the verb (see remote.py:RemoteSink.insert_stream for
+            # details).
+            self.assertEqual(2, streaming_calls)
 
 
 def load_tests(basic_tests, module, test_loader):

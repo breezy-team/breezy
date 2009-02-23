@@ -43,6 +43,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
+from bzrlib.util import bencode
 from bzrlib.versionedfile import record_to_fulltext_bytes
 
 
@@ -1345,42 +1346,60 @@ class RemoteRepository(_RpcHelper):
 
 class RemoteStreamSink(repository.StreamSink):
 
+    def __init__(self, target_repo):
+        repository.StreamSink.__init__(self, target_repo)
+        self._resume_tokens = []
+
     def _insert_real(self, stream, src_format):
         self.target_repo._ensure_real()
         sink = self.target_repo._real_repository._get_sink()
-        return sink.insert_stream(stream, src_format)
+        result = sink.insert_stream(stream, src_format)
+        if not result:
+            self.target_repo.autopack()
+        return result
 
     def insert_stream(self, stream, src_format):
         repo = self.target_repo
-        # Until we can handle deltas in stack repositories we can't hand all
-        # the processing off to a remote server.
-        if self.target_repo._fallback_repositories:
-            return self._insert_real(stream, src_format)
         client = repo._client
         medium = client._medium
-        if medium._is_remote_before((1,13)):
+        if medium._is_remote_before((1, 13)):
             # No possible way this can work.
             return self._insert_real(stream, src_format)
         path = repo.bzrdir._path_for_remote_call(client)
-        # XXX: Ugly but important for correctness, *will* be fixed during 1.13
-        # cycle. Pushing a stream that is interrupted results in a fallback to
-        # the _real_repositories sink *with a partial stream*. Thats bad
-        # because we insert less data than bzr expected. To avoid this we do a
-        # trial push to make sure the verb is accessible, and do not fallback
-        # when actually pushing the stream. A cleanup patch is going to look at
-        # rewinding/restarting the stream/partial buffering etc.
-        byte_stream = self._stream_to_byte_stream([], src_format)
-        try:
-            response = client.call_with_body_stream(
-                ('Repository.insert_stream', path), byte_stream)
-        except errors.UnknownSmartMethod:
-            medium._remember_remote_is_before((1,13))
-            return self._insert_real(stream, src_format)
+        if not self._resume_tokens:
+            # XXX: Ugly but important for correctness, *will* be fixed during
+            # 1.13 cycle. Pushing a stream that is interrupted results in a
+            # fallback to the _real_repositories sink *with a partial stream*.
+            # Thats bad because we insert less data than bzr expected. To avoid
+            # this we do a trial push to make sure the verb is accessible, and
+            # do not fallback when actually pushing the stream. A cleanup patch
+            # is going to look at rewinding/restarting the stream/partial
+            # buffering etc.
+            byte_stream = self._stream_to_byte_stream([], src_format)
+            try:
+                resume_tokens = ''
+                response = client.call_with_body_stream(
+                    ('Repository.insert_stream', path, resume_tokens), byte_stream)
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before((1,13))
+                return self._insert_real(stream, src_format)
         byte_stream = self._stream_to_byte_stream(stream, src_format)
+        resume_tokens = ' '.join(self._resume_tokens)
         response = client.call_with_body_stream(
-            ('Repository.insert_stream', path), byte_stream)
-        if response[0][0] not in ('ok', ):
+            ('Repository.insert_stream', path, resume_tokens), byte_stream)
+        if response[0][0] not in ('ok', 'missing-basis'):
             raise errors.UnexpectedSmartServerResponse(response)
+        if response[0][0] == 'missing-basis':
+            tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
+            self._resume_tokens = tokens
+            return missing_keys
+        else:
+            if self.target_repo._real_repository is not None:
+                collection = getattr(self.target_repo._real_repository,
+                    '_pack_collection', None)
+                if collection is not None:
+                    collection.reload_pack_names()
+            return []
             
     def _stream_to_byte_stream(self, stream, src_format):
         bytes = []
