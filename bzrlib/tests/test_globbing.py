@@ -20,7 +20,7 @@ from bzrlib.globbing import (
     _OrderedGlobster,
     )
 from bzrlib.tests import (
-    TestCase, 
+    TestCase,
     TestCaseInTempDir,
     )
 
@@ -171,14 +171,14 @@ class TestGlobster(TestCase):
              [u'foo/x', u'foo/bax', u'foo/a.x', u'foo/.x', u'foo/.q.x'],
              [u'foo/bar/bax']),
             (u'*/*x',
-             [u'\u8336/x', u'foo/x', u'foo/bax', u'x/a.x', u'.foo/x', 
+             [u'\u8336/x', u'foo/x', u'foo/bax', u'x/a.x', u'.foo/x',
               u'\u8336/.x', u'foo/.q.x'],
              [u'foo/bar/bax']),
             (u'f*',
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'*bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar', 
+             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
@@ -191,7 +191,7 @@ class TestGlobster(TestCase):
              [u'foox', u'foo/bax', u'foo/.x', u'foo/bar/bax']),
             (u'**/bar',
              [u'bar', u'foo/bar'],
-             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar', 
+             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar',
               u'.bar', u'foo/.bar']),
             # check that we ignore extra *s, so *** is treated like ** not *.
             (u'foo/***/x',
@@ -199,7 +199,7 @@ class TestGlobster(TestCase):
              [u'foox', u'foo/bax', u'foo/.x', u'foo/bar/bax']),
             (u'***/bar',
              [u'bar', u'foo/bar'],
-             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar', 
+             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar',
               u'.bar', u'foo/.bar']),
             # the remaining tests check that ** is interpreted as *
             # unless it is a whole path component
@@ -216,7 +216,7 @@ class TestGlobster(TestCase):
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'**bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar', 
+             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
@@ -257,7 +257,7 @@ class TestGlobster(TestCase):
     def test_leading_asterisk_dot(self):
         self.assertMatch([
             (u'*.x',
-             [u'foo/bar/baz.x', u'\u8336/Q.x', u'foo.y.x', u'.foo.x', 
+             [u'foo/bar/baz.x', u'\u8336/Q.x', u'foo.y.x', u'.foo.x',
               u'bar/.foo.x', u'.x',],
              [u'foo.x.y']),
             (u'foo/*.bar',
@@ -293,7 +293,7 @@ class TestGlobster(TestCase):
     def test_large_globset(self):
         """tests that the globster can handle a large set of patterns.
 
-        Large is defined as more than supported by python regex groups, 
+        Large is defined as more than supported by python regex groups,
         i.e. 99.
         This test assumes the globs are broken into regexs containing 99
         groups.

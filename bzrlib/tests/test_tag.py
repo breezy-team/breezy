@@ -37,7 +37,7 @@ class TestTagSerialization(TestCase):
 
     def test_tag_serialization(self):
         """Test the precise representation of tag dicts."""
-        # Don't change this after we commit to this format, as it checks 
+        # Don't change this after we commit to this format, as it checks
         # that the format is stable and compatible across releases.
         #
         # This release stores them in bencode as a dictionary from name to
@@ -117,7 +117,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
             master.tags.lookup_tag, 'foo')
-    
+
     def test_tag_copied_by_initial_checkout(self):
         # https://bugs.launchpad.net/bzr/+bug/93860
         master = self.make_branch('master')

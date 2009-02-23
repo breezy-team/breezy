@@ -70,7 +70,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
             # The locked test trees conversion could not preserve the missing
             # file status. This is normal (e.g. InterDirstateTree falls back
             # to InterTree if the basis is not a DirstateRevisionTree, and
-            # revision trees cannot have missing files. 
+            # revision trees cannot have missing files.
             raise tests.TestNotApplicable('cannot represent missing files')
 
     def make_to_branch_and_tree(self, relpath):

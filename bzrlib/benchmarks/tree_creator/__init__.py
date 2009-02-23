@@ -39,7 +39,7 @@ class TreeCreator(object):
                  hot_cache=True):
         """Instantiate a new creator object, supply the id of the tree
 
-        :param test: A TestCaseWithTransport object (most creators need 
+        :param test: A TestCaseWithTransport object (most creators need
             we need the build_tree functionality)
         """
 
@@ -62,7 +62,7 @@ class TreeCreator(object):
         if cache_dir is None:
             return False
         return os.path.exists(cache_dir)
-        
+
     def disable_cache(self):
         """Do not use the cache"""
         self._cache_root = None

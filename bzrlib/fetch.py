@@ -133,7 +133,7 @@ class RepoFetcher(object):
     def __fetch(self):
         """Primary worker function.
 
-        This initialises all the needed variables, and then fetches the 
+        This initialises all the needed variables, and then fetches the
         requested revisions, finally clearing the progress bar.
         """
         # Roughly this is what we're aiming for fetch to become:
@@ -446,7 +446,7 @@ class RepoFetcher(object):
 
 class Inter1and2Helper(object):
     """Helper for operations that convert data from model 1 and 2
-    
+
     This is for use by fetchers and converters.
     """
 

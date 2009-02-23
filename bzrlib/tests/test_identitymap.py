@@ -45,7 +45,7 @@ class TestIdentityMap(TestCase):
         map.add_weave("id", weave)
         self.assertRaises(errors.BzrError, map.add_weave, "id", weave)
         self.assertEqual(weave, map.find_weave("id"))
- 
+
     def test_remove_object(self):
         map = identitymap.IdentityMap()
         weave = "foo"
@@ -53,7 +53,7 @@ class TestIdentityMap(TestCase):
         map.remove_object(weave)
         map.add_weave("id", weave)
 
- 
+
 class TestNullIdentityMap(TestCase):
 
     def test_symbols(self):
@@ -74,7 +74,7 @@ class TestNullIdentityMap(TestCase):
         map.add_weave("id", weave)
         map.add_weave("id", weave)
         self.assertEqual(None, map.find_weave("id"))
-        
+
     def test_null_identity_map_has_no_remove(self):
         map = identitymap.NullIdentityMap()
         self.assertEqual(None, getattr(map, 'remove_object', None))

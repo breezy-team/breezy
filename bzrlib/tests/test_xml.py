@@ -17,8 +17,8 @@
 from cStringIO import StringIO
 
 from bzrlib import (
-    errors, 
-    inventory, 
+    errors,
+    inventory,
     xml7,
     xml8,
     xml_serializer,
@@ -80,31 +80,31 @@ _revision_v5_utc = """\
 """
 
 _committed_inv_v5 = """<inventory>
-<file file_id="bar-20050901064931-73b4b1138abc9cd2" 
-      name="bar" parent_id="TREE_ROOT" 
+<file file_id="bar-20050901064931-73b4b1138abc9cd2"
+      name="bar" parent_id="TREE_ROOT"
       revision="mbp@foo-123123"
       text_sha1="A" text_size="1"/>
 <directory name="subdir"
            file_id="foo-20050801201819-4139aa4a272f4250"
-           parent_id="TREE_ROOT" 
+           parent_id="TREE_ROOT"
            revision="mbp@foo-00"/>
-<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" 
-      name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
+<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134"
+      name="bar" parent_id="foo-20050801201819-4139aa4a272f4250"
       revision="mbp@foo-00"
       text_sha1="B" text_size="0"/>
 </inventory>
 """
 
 _basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92">
-<file file_id="bar-20050901064931-73b4b1138abc9cd2" 
-      name="bar" parent_id="TREE_ROOT" 
+<file file_id="bar-20050901064931-73b4b1138abc9cd2"
+      name="bar" parent_id="TREE_ROOT"
       revision="mbp@foo-123123"/>
 <directory name="subdir"
            file_id="foo-20050801201819-4139aa4a272f4250"
-           parent_id="TREE_ROOT" 
+           parent_id="TREE_ROOT"
            revision="mbp@foo-00"/>
-<file file_id="bar-20050824000535-6bc48cfad47ed134" 
-      name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
+<file file_id="bar-20050824000535-6bc48cfad47ed134"
+      name="bar" parent_id="foo-20050801201819-4139aa4a272f4250"
       revision="mbp@foo-00"/>
 </inventory>
 """
@@ -294,7 +294,7 @@ class TestSerializer(TestCase):
         self.assertEqualDiff(_expected_inv_v5, outp.getvalue())
         inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
-    
+
     def assertRoundTrips(self, xml_string):
         inp = StringIO(xml_string)
         inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
@@ -352,7 +352,7 @@ class TestSerializer(TestCase):
     def get_sample_inventory(self):
         inv = Inventory('tree-root-321', revision_id='rev_outer')
         inv.add(inventory.InventoryFile('file-id', 'file', 'tree-root-321'))
-        inv.add(inventory.InventoryDirectory('dir-id', 'dir', 
+        inv.add(inventory.InventoryDirectory('dir-id', 'dir',
                                              'tree-root-321'))
         inv.add(inventory.InventoryLink('link-id', 'link', 'tree-root-321'))
         inv['tree-root-321'].revision = 'rev_outer'
@@ -381,9 +381,9 @@ class TestSerializer(TestCase):
         """Can't accidentally open a file with wrong serializer"""
         s_v6 = bzrlib.xml6.serializer_v6
         s_v7 = xml7.serializer_v7
-        self.assertRaises(errors.UnexpectedInventoryFormat, 
+        self.assertRaises(errors.UnexpectedInventoryFormat,
                           s_v7.read_inventory_from_string, _expected_inv_v5)
-        self.assertRaises(errors.UnexpectedInventoryFormat, 
+        self.assertRaises(errors.UnexpectedInventoryFormat,
                           s_v6.read_inventory_from_string, _expected_inv_v7)
 
     def test_tree_reference(self):
@@ -405,10 +405,10 @@ class TestSerializer(TestCase):
         self.assertEqual('tree-root-321', inv2['nested-id'].parent_id)
         self.assertEqual('rev-outer', inv2['nested-id'].revision)
         self.assertEqual('rev-inner', inv2['nested-id'].reference_revision)
-        self.assertRaises(errors.UnsupportedInventoryKind, 
+        self.assertRaises(errors.UnsupportedInventoryKind,
                           s_v6.read_inventory_from_string,
                           txt.replace('format="7"', 'format="6"'))
-        self.assertRaises(errors.UnsupportedInventoryKind, 
+        self.assertRaises(errors.UnsupportedInventoryKind,
                           s_v5.read_inventory_from_string,
                           txt.replace('format="7"', 'format="5"'))
 

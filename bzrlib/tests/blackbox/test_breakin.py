@@ -49,7 +49,7 @@ class TestBreakin(tests.TestCase):
 
     def test_breakin(self):
         # Break in to a debugger while bzr is running
-        # we need to test against a command that will wait for 
+        # we need to test against a command that will wait for
         # a while -- bzr serve should do
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB=None))

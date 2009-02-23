@@ -18,7 +18,7 @@
 
 from cStringIO import StringIO
 import os
- 
+
 from bzrlib import (
     branch,
     builtins,
@@ -41,7 +41,7 @@ from bzrlib.transport.local import LocalURLServer
 class TestPush(TestCaseWithBranch):
 
     def test_push_convergence_simple(self):
-        # when revisions are pushed, the left-most accessible parents must 
+        # when revisions are pushed, the left-most accessible parents must
         # become the revision-history.
         mine = self.make_branch_and_tree('mine')
         mine.commit('1st post', rev_id='P1', allow_pointless=True)
@@ -165,7 +165,7 @@ class TestPush(TestCaseWithBranch):
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
-        
+
         This was <https://bugs.launchpad.net/bzr/+bug/234229>.
         """
         source = self.make_branch_and_tree('source')
@@ -233,7 +233,7 @@ class TestPushHook(TestCaseWithBranch):
 
     def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if result.local_branch:
@@ -267,7 +267,7 @@ class TestPushHook(TestCaseWithBranch):
     def test_post_push_bound_branch(self):
         # pushing to a bound branch should pass in the master branch to the
         # hook, allowing the correct number of emails to be sent, while still
-        # allowing hooks that want to modify the target to do so to both 
+        # allowing hooks that want to modify the target to do so to both
         # instances.
         target = self.make_branch('target')
         local = self.make_branch('local')

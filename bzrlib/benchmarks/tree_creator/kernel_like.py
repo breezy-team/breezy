@@ -69,8 +69,8 @@ class KernelLikeTreeCreator(TreeCreator):
         return tree
 
     def _create_tree(self, root, in_cache=False):
-        # a kernel tree has ~10000 and 500 directory, with most files around 
-        # 3-4 levels deep. 
+        # a kernel tree has ~10000 and 500 directory, with most files around
+        # 3-4 levels deep.
         # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
         # and 20 files each.
         files = []

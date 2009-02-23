@@ -21,7 +21,7 @@
 
 These test the conformance of all the interrepository variations to the
 expected API including generally applicable corner cases.
-Specific tests for individual formats are in the tests/test_repository.py file 
+Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/interrepository_implementations/*.py.
 """
 
@@ -50,7 +50,7 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
     """A tool to generate a suite testing multiple inter repository formats.
 
     This is done by copying the test once for each interrepo provider and injecting
-    the transport_server, transport_readonly_server, repository_format and 
+    the transport_server, transport_readonly_server, repository_format and
     repository_to_format classes into each copy.
     Each copy is also given a new id() to make it easy to identify.
     """
@@ -60,7 +60,7 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self.scenarios = self.formats_to_scenarios(formats)
-    
+
     def formats_to_scenarios(self, formats):
         """Transform the input formats to a list of scenarios.
 
@@ -81,13 +81,13 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
                  })
             result.append(scenario)
         return result
-    
+
     @staticmethod
     def default_test_list():
         """Generate the default list of interrepo permutations to test."""
         from bzrlib.repofmt import knitrepo, pack_repo, weaverepo
         result = []
-        # test the default InterRepository between format 6 and the current 
+        # test the default InterRepository between format 6 and the current
         # default format.
         # XXX: robertc 20060220 reinstate this when there are two supported
         # formats which do not have an optimal code path between them.
@@ -99,7 +99,7 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
             if format_to_test is not None:
                 result.append((optimiser_class,
                                format_to_test, format_to_test))
-        # if there are specific combinations we want to use, we can add them 
+        # if there are specific combinations we want to use, we can add them
         # here.
         result.append((InterModel1and2,
                        weaverepo.RepositoryFormat5(),

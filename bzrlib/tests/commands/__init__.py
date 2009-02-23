@@ -22,7 +22,7 @@ test the usage of the commands).
 """
 
 # FIXME: If the separation described above from the blackbox tests is not worth
-# it, all the tests defined below should be moved to blackbox instead. 
+# it, all the tests defined below should be moved to blackbox instead.
 
 def load_tests(basic_tests, module, loader):
     suite = loader.suiteClass()

@@ -92,7 +92,7 @@ def parse_range(textrange):
     range = int(range)
     return (pos, range)
 
- 
+
 def hunk_from_header(line):
     import re
     matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
@@ -268,7 +268,7 @@ class Patch:
         self.hunks = []
 
     def __str__(self):
-        ret = self.get_header() 
+        ret = self.get_header()
         ret += "".join([str(h) for h in self.hunks])
         return ret
 
@@ -300,10 +300,10 @@ class Patch:
                 return None
             newpos += shift
         return newpos
-            
+
     def iter_inserted(self):
         """Iteraties through inserted lines
-        
+
         :return: Pair of line number, line
         :rtype: iterator of (int, InsertLine)
         """

@@ -140,7 +140,7 @@ class TestDescribeChanges(TestCase):
         # perhaps a bit questionable but seems like the most reasonable thing...
         self.assertChangeDescription('unchanged', None, None)
 
-        # in this case it's both renamed and modified; show a rename and 
+        # in this case it's both renamed and modified; show a rename and
         # modification:
         new_a.name = 'newfilename'
         self.assertChangeDescription('modified and renamed', old_a, new_a)
@@ -169,7 +169,7 @@ class TestDescribeChanges(TestCase):
 
 
 class TestCHKInventory(TestCaseWithTransport):
-    
+
     def get_chk_bytes(self):
         # The easiest way to get a CHK store is a development5 repository and
         # then work with the chk_bytes attribute directly.

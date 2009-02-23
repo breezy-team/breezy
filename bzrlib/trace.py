@@ -216,7 +216,7 @@ def _get_bzr_log_filename():
 
 
 def _open_bzr_log():
-    """Open the .bzr.log trace file.  
+    """Open the .bzr.log trace file.
 
     If the log is more than a particular length, the old file is renamed to
     .bzr.log.old and a new file is started.  Otherwise, we append to the
@@ -281,7 +281,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
 
     :param to_file: A file-like object to which messages will be sent.
 
-    :returns: A memento that should be passed to _pop_log_file to restore the 
+    :returns: A memento that should be passed to _pop_log_file to restore the
     previously active logging.
     """
     global _trace_file
@@ -316,7 +316,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     """Undo changes to logging/tracing done by _push_log_file.
 
     This flushes, but does not close the trace file.
-    
+
     Takes the memento returned from _push_log_file."""
     global _trace_file
     _trace_file = old_trace_file
@@ -332,7 +332,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
 @symbol_versioning.deprecated_function(symbol_versioning.one_two)
 def enable_test_log(to_file):
     """Redirect logging to a temporary file for a test
-    
+
     :returns: an opaque reference that should be passed to disable_test_log
     after the test completes.
     """
@@ -347,8 +347,8 @@ def disable_test_log(memento):
 def log_exception_quietly():
     """Log the last exception to the trace file only.
 
-    Used for exceptions that occur internally and that may be 
-    interesting to developers but not to users.  For example, 
+    Used for exceptions that occur internally and that may be
+    interesting to developers but not to users.  For example,
     errors loading plugins.
     """
     mutter(traceback.format_exc())

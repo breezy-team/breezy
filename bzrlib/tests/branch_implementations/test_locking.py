@@ -32,9 +32,9 @@ class TestBranchLocking(TestCaseWithBranch):
 
     def get_instrumented_branch(self):
         """Get a Branch object which has been instrumented"""
-        # TODO: jam 20060630 It may be that not all formats have a 
+        # TODO: jam 20060630 It may be that not all formats have a
         # 'control_files' member. So we should fail gracefully if
-        # not there. But assuming it has them lets us test the exact 
+        # not there. But assuming it has them lets us test the exact
         # lock/unlock order.
         self.locks = []
         b = LockWrapper(self.locks, self.get_branch(), 'b')
@@ -54,7 +54,7 @@ class TestBranchLocking(TestCaseWithBranch):
         if self.combined_control:
             # instrument the repository control files too to ensure its worked
             # with correctly. When they are not shared, we trust the repository
-            # API and only instrument the repository itself. 
+            # API and only instrument the repository itself.
             b.repository.control_files = \
                 LockWrapper(self.locks, b.repository.control_files, 'rc')
         return b
@@ -146,7 +146,7 @@ class TestBranchLocking(TestCaseWithBranch):
                 self.assertFalse(b.is_locked())
             self.assertTrue(b.repository.is_locked())
 
-            # We unlock the branch control files, even if 
+            # We unlock the branch control files, even if
             # we fail to unlock the repository
             if self.combined_control:
                 self.assertEqual([('b', 'lw', True),
@@ -188,7 +188,7 @@ class TestBranchLocking(TestCaseWithBranch):
             else:
                 self.assertFalse(b.repository.is_locked())
 
-            # We unlock the repository even if 
+            # We unlock the repository even if
             # we fail to unlock the control files
             if self.combined_control:
                 self.assertEqual([('b', 'lw', True),
@@ -223,7 +223,7 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.repository.is_locked())
 
         self.assertEqual([('b', 'lr', True),
-                          ('r', 'lr', False), 
+                          ('r', 'lr', False),
                          ], self.locks)
 
     def test_06_lock_write_fail_repo(self):
@@ -236,7 +236,7 @@ class TestBranchLocking(TestCaseWithBranch):
         self.assertFalse(b.repository.is_locked())
 
         self.assertEqual([('b', 'lw', True),
-                          ('r', 'lw', False), 
+                          ('r', 'lw', False),
                          ], self.locks)
 
     def test_07_lock_read_fail_control(self):

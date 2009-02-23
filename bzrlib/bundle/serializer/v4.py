@@ -455,7 +455,7 @@ class RevisionInstaller(object):
 
     def install(self):
         """Perform the installation.
-        
+
         Must be called with the Repository locked.
         """
         self._repository.start_write_group()

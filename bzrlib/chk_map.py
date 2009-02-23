@@ -589,8 +589,10 @@ class LeafNode(Node):
         # Splitlines can split on '\r' so don't use it, split('\n') adds an
         # extra '' if the bytes ends in a final newline.
         lines = bytes.split('\n')
-        assert lines[-1] == ''
-        lines.pop(-1)
+        trailing = lines.pop()
+        if trailing != '':
+            raise AssertionError('We did not have a final newline for %s'
+                                 % (key,))
         items = {}
         if lines[0] != 'chkleaf:':
             raise ValueError("not a serialised leaf node: %r" % bytes)
@@ -600,9 +602,12 @@ class LeafNode(Node):
         prefix = lines[4]
         pos = 5
         while pos < len(lines):
-            elements = (prefix + lines[pos]).split('\x00')
+            line = prefix + lines[pos]
+            elements = line.split('\x00')
             pos += 1
-            assert len(elements) == width + 1
+            if len(elements) != width + 1:
+                raise AssertionError('Incorrect number of elements for: %s'
+                                     % (line,))
             num_value_lines = int(elements[-1])
             value_lines = lines[pos:pos+num_value_lines]
             pos += num_value_lines
@@ -623,7 +628,7 @@ class LeafNode(Node):
         result._compute_serialised_prefix()
         if len(bytes) != result._current_size():
             import pdb; pdb.set_trace()
-        assert len(bytes) == result._current_size()
+            raise AssertionError('_current_size computed incorrectly')
         return result
 
     def iteritems(self, store, key_filter=None):
@@ -751,7 +756,9 @@ class LeafNode(Node):
         lines.append("%d\n" % self._len)
         if self._common_serialised_prefix is None:
             lines.append('\n')
-            assert len(self._items) == 0
+            if len(self._items) != 0:
+                raise AssertionError('If _common_serialised_prefix is None'
+                    ' we should have no items')
         else:
             lines.append('%s\n' % (self._common_serialised_prefix,))
             prefix_len = len(self._common_serialised_prefix)
@@ -760,7 +767,10 @@ class LeafNode(Node):
             value_lines = osutils.chunks_to_lines([value + '\n'])
             serialized = "%s\x00%s\n" % (self._serialise_key(key),
                                          len(value_lines))
-            assert serialized.startswith(self._common_serialised_prefix)
+            if not serialized.startswith(self._common_serialised_prefix):
+                raise AssertionError('We thought the common prefix was %r'
+                    ' but entry %r does not have it in common'
+                    % (self._common_serialised_prefix, serialized))
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
@@ -768,7 +778,7 @@ class LeafNode(Node):
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
             import pdb; pdb.set_trace()
-        assert len(bytes) == self._current_size()
+            raise AssertionError('Invalid _current_size')
         _page_cache.add(self._key, bytes)
         return [self._key]
 

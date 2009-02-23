@@ -71,7 +71,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
-        # write a plugin that will record when its loaded in the 
+        # write a plugin that will record when its loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -119,7 +119,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
-        # write plugins that will record when they are loaded in the 
+        # write plugins that will record when they are loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -171,7 +171,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         self.failUnless(tempattribute in self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
-        # write a plugin that will record when its loaded in the 
+        # write a plugin that will record when its loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -195,7 +195,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
     def load_and_capture(self, name):
         """Load plugins from '.' capturing the output.
-        
+
         :param name: The name of the plugin.
         :return: A string with the log from the plugin loading call.
         """
@@ -221,7 +221,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
             return stream.getvalue()
         finally:
             stream.close()
-    
+
     def test_plugin_with_bad_api_version_reports(self):
         # This plugin asks for bzrlib api version 1.0.0, which is not supported
         # anymore.
@@ -258,7 +258,7 @@ class TestPlugins(TestCaseInTempDir):
         file('plugin.py', 'w').write(source + '\n')
         self.addCleanup(self.teardown_plugin)
         bzrlib.plugin.load_from_path(['.'])
-    
+
     def teardown_plugin(self):
         # remove the plugin 'plugin'
         if 'bzrlib.plugins.plugin' in sys.modules:
@@ -490,7 +490,7 @@ class TestPluginFromZip(TestCaseInTempDir):
 
 
 class TestSetPluginsPath(TestCase):
-    
+
     def test_set_plugins_path(self):
         """set_plugins_path should set the module __path__ correctly."""
         old_path = bzrlib.plugins.__path__

@@ -237,7 +237,7 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
                     'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
                     'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
                     'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
-                    't':['i', 's'], 'u':['s', 'j'], 
+                    't':['i', 's'], 'u':['s', 'j'],
                     }
 
 # Graph where different walkers will race to find the common and uncommon
@@ -711,7 +711,7 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def test_is_ancestor_boundary(self):
         """Ensure that we avoid searching the whole graph.
-        
+
         This requires searching through b as a common ancestor, so we
         can identify that e is common.
         """
@@ -737,7 +737,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         # 'a' is not in the ancestry of 'c', and 'g' is a ghost
         expected['g'] = None
         self.assertEqual(expected, dict(graph.iter_ancestry(['a', 'c'])))
-        expected.pop('a') 
+        expected.pop('a')
         self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
 
     def test_filter_candidate_lca(self):
@@ -845,7 +845,7 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def _run_heads_break_deeper(self, graph_dict, search):
         """Run heads on a graph-as-a-dict.
-        
+
         If the search asks for the parents of 'deeper' the test will fail.
         """
         class stub(object):

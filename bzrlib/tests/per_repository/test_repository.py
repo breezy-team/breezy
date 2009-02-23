@@ -55,7 +55,7 @@ class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
     def test_repository_format(self):
         # make sure the repository on tree.branch is of the desired format,
-        # because developers use this api to setup the tree, branch and 
+        # because developers use this api to setup the tree, branch and
         # repository for their tests: having it now give the right repository
         # type would invalidate the tests.
         tree = self.make_branch_and_tree('repo')
@@ -334,7 +334,7 @@ class TestRepository(TestCaseWithRepository):
         # Check that we have a repository object.
         made_repo.has_revision('foo')
         self.assertEqual(made_control, made_repo.bzrdir)
-        
+
     def test_create_repository_shared(self):
         # bzrdir can construct a shared repository.
         if not self.bzrdir_format.is_supported():
@@ -483,7 +483,7 @@ class TestRepository(TestCaseWithRepository):
             lambda match: match.group(0).encode('unicode_escape'),
             message)
         self.assertEqual(rev.message, escaped_message)
-        # insist the class is unicode no matter what came in for 
+        # insist the class is unicode no matter what came in for
         # consistency.
         self.assertIsInstance(rev.message, unicode)
 
@@ -561,7 +561,7 @@ class TestRepository(TestCaseWithRepository):
 
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
-        # create a repository to get a real format instance, not the 
+        # create a repository to get a real format instance, not the
         # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
@@ -869,7 +869,7 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('repo')
         sink = repo._get_sink()
         self.assertIsInstance(sink, repository.StreamSink)
-                
+
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns
         an object with a get_parent_map method.
@@ -1062,7 +1062,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         repository = self.bzrdir.open_repository()
         repository.lock_read()
         self.addCleanup(repository.unlock)
-        revisions = [repository.get_revision(r) for r in 
+        revisions = [repository.get_revision(r) for r in
                      ['rev1', 'rev2', 'rev3', 'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
         deltas2 = [repository.get_revision_delta(r.revision_id) for r in
@@ -1124,7 +1124,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
             repo.add_revision('ghost', rev)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
             raise TestNotApplicable("Cannot test with ghosts for this format.")
-         
+
         inv = Inventory(revision_id = 'the_ghost')
         inv.root.revision = 'the_ghost'
         sha1 = repo.add_inventory('the_ghost', inv, [])
@@ -1168,12 +1168,12 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
 #        TestCaseWithRepository
 class TestEscaping(TestCaseWithTransport):
     """Test that repositories can be stored correctly on VFAT transports.
-    
+
     Makes sure we have proper escaping of invalid characters, etc.
 
     It'd be better to test all operations on the FakeVFATTransportDecorator,
     but working trees go straight to the os not through the Transport layer.
-    Therefore we build some history first in the regular way and then 
+    Therefore we build some history first in the regular way and then
     check it's safe to access for vfat.
     """
 
@@ -1184,9 +1184,9 @@ class TestEscaping(TestCaseWithTransport):
         if isinstance(self.repository_format, RemoteRepositoryFormat):
             return
         FOO_ID = 'foo<:>ID'
-        REV_ID = 'revid-1' 
-        # this makes a default format repository always, which is wrong: 
-        # it should be a TestCaseWithRepository in order to get the 
+        REV_ID = 'revid-1'
+        # this makes a default format repository always, which is wrong:
+        # it should be a TestCaseWithRepository in order to get the
         # default format.
         wt = self.make_branch_and_tree('repo')
         self.build_tree(["repo/foo"], line_endings='binary')

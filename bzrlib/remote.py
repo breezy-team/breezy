@@ -55,13 +55,13 @@ class _RpcHelper(object):
             return self._client.call(method, *args)
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, **err_context)
-        
+
     def _call_expecting_body(self, method, *args, **err_context):
         try:
             return self._client.call_expecting_body(method, *args)
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, **err_context)
-        
+
     def _call_with_body_bytes_expecting_body(self, method, args, body_bytes,
                                              **err_context):
         try:
@@ -69,7 +69,7 @@ class _RpcHelper(object):
                 method, args, body_bytes)
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, **err_context)
-        
+
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
 class RemoteBzrDir(BzrDir, _RpcHelper):
@@ -184,7 +184,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
             return format.open(self, _found=True, location=reference_url)
-                
+
     def open_repository(self):
         path = self._path_for_remote_call(self._client)
         verb = 'BzrDir.find_repositoryV2'
@@ -272,7 +272,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     on a per instance basis, and are not set (and should not be) at
     the class level.
 
-    :ivar _custom_format: If set, a specific concrete repository format that 
+    :ivar _custom_format: If set, a specific concrete repository format that
         will be used when initializing a repository with this
         RemoteRepositoryFormat.
     :ivar _creating_repo: If set, the repository object that this
@@ -353,7 +353,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             remote_repo = RemoteRepository(a_bzrdir, format)
             format._creating_repo = remote_repo
             return remote_repo
-    
+
     def open(self, a_bzrdir):
         if not isinstance(a_bzrdir, RemoteBzrDir):
             raise AssertionError('%r is not a RemoteBzrDir' % (a_bzrdir,))
@@ -399,7 +399,7 @@ class RemoteRepository(_RpcHelper):
 
     def __init__(self, remote_bzrdir, format, real_repository=None, _client=None):
         """Create a RemoteRepository instance.
-        
+
         :param remote_bzrdir: The bzrdir hosting this repository.
         :param format: The RemoteFormat object to use.
         :param real_repository: If not None, a local implementation of the
@@ -444,7 +444,7 @@ class RemoteRepository(_RpcHelper):
 
     def abort_write_group(self, suppress_errors=False):
         """Complete a write group on the decorated repository.
-        
+
         Smart methods peform operations in a single step so this api
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
@@ -468,7 +468,7 @@ class RemoteRepository(_RpcHelper):
 
     def commit_write_group(self):
         """Complete a write group on the decorated repository.
-        
+
         Smart methods peform operations in a single step so this api
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
@@ -550,7 +550,7 @@ class RemoteRepository(_RpcHelper):
         for line in lines:
             d = tuple(line.split())
             revision_graph[d[0]] = d[1:]
-            
+
         return revision_graph
 
     def _get_sink(self):
@@ -741,7 +741,7 @@ class RemoteRepository(_RpcHelper):
 
     def start_write_group(self):
         """Start a write group on the decorated repository.
-        
+
         Smart methods peform operations in a single step so this api
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
@@ -796,7 +796,7 @@ class RemoteRepository(_RpcHelper):
 
     def _get_tarball(self, compression):
         """Return a TemporaryFile containing a repository tarball.
-        
+
         Returns None if the server does not support sending tarballs.
         """
         import tempfile
@@ -848,7 +848,7 @@ class RemoteRepository(_RpcHelper):
 
     def add_fallback_repository(self, repository):
         """Add a repository to use for looking up data not held locally.
-        
+
         :param repository: A repository.
         """
         # XXX: At the moment the RemoteRepository will allow fallbacks
@@ -923,7 +923,7 @@ class RemoteRepository(_RpcHelper):
     @needs_read_lock
     def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
         """Return the revision ids that other has that this does not.
-        
+
         These are returned in topological order.
 
         revision_id: only return revision ids included by revision_id.
@@ -964,7 +964,7 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository._get_versioned_file_checker(
             revisions, revision_versions_cache)
-        
+
     def iter_files_bytes(self, desired_files):
         """See Repository.iter_file_bytes.
         """
@@ -1133,11 +1133,11 @@ class RemoteRepository(_RpcHelper):
     def reconcile(self, other=None, thorough=False):
         self._ensure_real()
         return self._real_repository.reconcile(other=other, thorough=thorough)
-        
+
     def all_revision_ids(self):
         self._ensure_real()
         return self._real_repository.all_revision_ids()
-    
+
     @needs_read_lock
     def get_deltas_for_revisions(self, revisions):
         self._ensure_real()
@@ -1410,7 +1410,7 @@ class RemoteStreamSink(repository.StreamSink):
                 if collection is not None:
                     collection.reload_pack_names()
             return []
-            
+
     def _stream_to_byte_stream(self, stream, src_format):
         bytes = []
         pack_writer = pack.ContainerWriter(bytes.append)
@@ -1442,7 +1442,7 @@ class RemoteStreamSink(repository.StreamSink):
 
 class RemoteBranchLockableFiles(LockableFiles):
     """A 'LockableFiles' implementation that talks to a smart server.
-    
+
     This is not a public interface class.
     """
 
@@ -1468,7 +1468,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._matchingbzrdir.set_branch_format(self)
 
     def __eq__(self, other):
-        return (isinstance(other, RemoteBranchFormat) and 
+        return (isinstance(other, RemoteBranchFormat) and
             self.__dict__ == other.__dict__)
 
     def get_format_description(self):
@@ -1629,7 +1629,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         too, in fact doing so might harm performance.
         """
         super(RemoteBranch, self)._clear_cached_state()
-        
+
     @property
     def control_files(self):
         # Defer actually creating RemoteBranchLockableFiles until its needed,
@@ -1699,7 +1699,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         ok, branch_token, repo_token = response
         return branch_token, repo_token
-            
+
     def lock_write(self, token=None):
         if not self._lock_mode:
             # Lock the branch and repo in one remote call.
@@ -1875,7 +1875,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         # Used by tests, when checking normalisation of given vs stored paths.
         self._ensure_real()
         return self._real_branch._get_parent_location()
-        
+
     def set_parent(self, url):
         self._ensure_real()
         return self._real_branch.set_parent(url)
@@ -1887,7 +1887,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         else:
             self._ensure_real()
             return self._real_branch._set_parent_location(url)
-        
+
     def set_stacked_on_url(self, stacked_location):
         """Set the URL this branch is stacked against.
 
