@@ -934,7 +934,7 @@ def run_bzr_catch_errors(argv):
                 # but because pdb.post_mortem gives bad results for tracebacks
                 # from inside generators, we do it manually.
                 # (http://bugs.python.org/issue4150, fixed in Python 2.6)
-                
+
                 # Setup pdb on the traceback
                 p = pdb.Pdb()
                 p.reset()

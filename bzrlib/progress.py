@@ -158,7 +158,7 @@ def ProgressBar(to_file=None, **kwargs):
 
 class ProgressBarStack(object):
     """A stack of progress bars.
-    
+
     This class is deprecated: instead, ask the ui factory for a new progress
     task and finish it when it's done.
     """

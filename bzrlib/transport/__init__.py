@@ -1881,5 +1881,5 @@ register_lazy_transport('bzr+ssh://', 'bzrlib.transport.remote',
                         'RemoteSSHTransport')
 
 register_transport_proto('ssh:')
-register_lazy_transport('ssh:', 'bzrlib.transport.remote', 
+register_lazy_transport('ssh:', 'bzrlib.transport.remote',
                         'HintingSSHTransport')

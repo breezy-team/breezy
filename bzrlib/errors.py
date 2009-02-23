@@ -2970,7 +2970,7 @@ class MustHaveWorkingTree(BzrError):
 class NoSuchView(BzrError):
     """A view does not exist.
     """
- 
+
     _fmt = u"No such view: %(view_name)s."
 
     def __init__(self, view_name):
@@ -2980,7 +2980,7 @@ class NoSuchView(BzrError):
 class ViewsNotSupported(BzrError):
     """Views are not supported by a tree format.
     """
- 
+
     _fmt = ("Views are not supported by %(tree)s;"
             " use 'bzr upgrade' to change your tree to a later format.")
 
@@ -2999,7 +2999,7 @@ class FileOutsideView(BzrError):
 
 
 class UnresumableWriteGroup(BzrError):
-    
+
     _fmt = ("Repository %(repository)s cannot resume write group "
             "%(write_groups)r: %(reason)s")
 
@@ -3012,7 +3012,7 @@ class UnresumableWriteGroup(BzrError):
 
 
 class UnsuspendableWriteGroup(BzrError):
-    
+
     _fmt = ("Repository %(repository)s cannot suspend a write group.")
 
     internal_error = True

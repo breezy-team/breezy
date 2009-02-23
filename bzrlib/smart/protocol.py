@@ -655,7 +655,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
         self._last_verb = args[0]
-    
+
     def call_with_body_stream(self, args, stream):
         # Protocols v1 and v2 don't support body streams.  So it's safe to
         # assume that a v1/v2 server doesn't support whatever method we're

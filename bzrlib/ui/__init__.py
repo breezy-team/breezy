@@ -87,7 +87,7 @@ class UIFactory(object):
             warnings.warn("%r finished but nothing is active"
                 % (task,))
         elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the active task %r" 
+            warnings.warn("%r is not the active task %r"
                 % (task, self._task_stack[-1]))
         else:
             del self._task_stack[-1]
@@ -100,7 +100,7 @@ class UIFactory(object):
 
     def _progress_updated(self, task):
         """Called by the ProgressTask when it changes.
-        
+
         Should be specialized to draw the progress.
         """
         pass

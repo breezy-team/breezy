@@ -73,9 +73,9 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
 
     def do(self, path, network_name, shared):
         """Create a repository in the bzr dir at path.
-        
+
         This operates precisely like 'bzrdir.create_repository'.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions (and
         this method should only be called after establishing that a bzr dir

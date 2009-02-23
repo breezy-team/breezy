@@ -296,7 +296,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.commit('Create five empty files.')
         open('FILE_B', 'w').write('Modification to file FILE_B.')
         open('FILE_C', 'w').write('Modification to file FILE_C.')
-        unlink('FILE_E')  # FILE_E will be versioned but missing 
+        unlink('FILE_E')  # FILE_E will be versioned but missing
         open('FILE_Q', 'w').write('FILE_Q is added but not committed.')
         wt.add('FILE_Q')  # FILE_Q will be added but not committed
         open('UNVERSIONED_BUT_EXISTING', 'w')
@@ -347,7 +347,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-        
+
     def test_status_nonexistent_file_with_others(self):
         # bzr st [--short] NONEXISTENT ...others..
         wt = self._prepare_nonexistent()
@@ -380,7 +380,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-        
+
     def test_status_multiple_nonexistent_files(self):
         # bzr st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
         wt = self._prepare_nonexistent()
@@ -415,7 +415,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'ANOTHER_NONEXISTENT NONEXISTENT.*')
-        
+
     def test_status_nonexistent_file_with_unversioned(self):
         # bzr st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
         wt = self._prepare_nonexistent()

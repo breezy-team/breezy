@@ -1618,7 +1618,7 @@ class TestGraphIndexKnit(KnitTests):
             [(('tip', ), ' 100 78',
               ([('missing-parent', ), ('ghost', )], [('missing-parent', )]))])
         return graph_index
-    
+
     def make_g_index_no_external_refs(self):
         graph_index = self.make_g_index('no_external_refs', 2,
             [(('rev', ), ' 100 78',
@@ -1687,7 +1687,7 @@ class TestGraphIndexKnit(KnitTests):
         index.scan_unvalidated_index(graph_index_b)
         self.assertEqual(
             frozenset([]), index.get_missing_compression_parents())
-        
+
 
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using _KnitGraphIndex with no parents."""

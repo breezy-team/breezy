@@ -18,7 +18,7 @@
 
 These are proxy objects which act on remote objects by sending messages
 through a smart client.  The proxies are to be created when attempting to open
-the object given a transport that supports smartserver rpc operations. 
+the object given a transport that supports smartserver rpc operations.
 
 These tests correspond to tests.test_smart, which exercises the server side.
 """

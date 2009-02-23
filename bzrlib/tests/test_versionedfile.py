@@ -1751,7 +1751,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def assertStreamMetaEqual(self, records, expected, stream):
         """Assert that streams expected and stream have the same records.
-        
+
         :param records: A list to collect the seen records.
         :return: A generator of the records in stream.
         """
@@ -1770,7 +1770,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
         :param skipped_records: A list with one element to increment when a
             record is skipped.
-        :param full_texts: A dict from key->fulltext representation, for 
+        :param full_texts: A dict from key->fulltext representation, for
             checking chunked or fulltext stored records.
         :param stream: A record_stream.
         :return: An iterator over the bytes of each record.
@@ -2453,7 +2453,7 @@ class VirtualVersionedFilesTests(TestCase):
         self._lines["B"] = ["HEY"]
         self._lines["C"] = ["Alberta"]
         it = self.texts.iter_lines_added_or_present_in_keys([("A",), ("B",)])
-        self.assertEquals(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]), 
+        self.assertEquals(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]),
             sorted(list(it)))
 
 

@@ -584,7 +584,7 @@ class HintingSSHTransport(transport.Transport):
     """Simple transport that handles ssh:// and points out bzr+ssh://."""
 
     def __init__(self, url):
-        raise errors.UnsupportedProtocol(url, 
+        raise errors.UnsupportedProtocol(url,
             'bzr supports bzr+ssh to operate over ssh, use "bzr+%s".' % url)
 
 
