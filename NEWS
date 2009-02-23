@@ -43,6 +43,13 @@ IN DEVELOPMENT
     * The ``bzr shelve`` prompt now includes a '?' help option to explain the
       short options better. (Daniel Watkins, #327429)
 
+    * ``bzr lp-open`` now falls back to the push location if it cannot find a
+      public location. (Jonathan Lange, #332372)
+
+    * ``bzr lp-open`` will try to find the Launchpad URL for the location
+      passed on the command line. This makes ``bzr lp-open lp:foo`` work as
+      expected. (Jonathan Lange, #332705)
+
   BUG FIXES:
 
     * ``bzr unshelve`` gives a more palatable error if passed a non-integer
