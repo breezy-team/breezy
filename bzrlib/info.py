@@ -376,7 +376,8 @@ def show_component_info(control, repository, branch=None, working=None,
     elif branch is not None:
         _show_missing_revisions_branch(branch, outfile)
     if branch is not None:
-        stats = _show_branch_stats(branch, verbose==2, outfile)
+        show_committers = verbose >= 2
+        stats = _show_branch_stats(branch, show_committers, outfile)
     else:
         stats = repository.gather_stats()
     if branch is None and working is None:
