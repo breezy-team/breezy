@@ -21,7 +21,7 @@ The views are actually in the WorkingTree.views namespace, but these are
 """
 
 
-from bzrlib import errors
+from bzrlib import views, errors
 from bzrlib.tests import TestSkipped
 from bzrlib.workingtree import WorkingTree
 
@@ -140,6 +140,22 @@ class TestTreeViews(TestCaseWithWorkingTree):
         # or remove a view that never existed
         self.assertRaises(errors.NoSuchView,
             wt.views.delete_view, view_name + '2')
+
+    def test_check_path_in_view(self):
+        wt = self.make_branch_and_tree('wt')
+        view_current = 'view-name'
+        view_dict = {
+            view_current: ['dir-1'],
+            'other-name': ['dir-2']}
+        wt.views.set_view_info(view_current, view_dict)
+        self.assertEqual(views.check_path_in_view(wt, 'dir-1'), None)
+        self.assertEqual(views.check_path_in_view(wt, 'dir-1/sub'), None)
+        self.assertRaises(errors.FileOutsideView,
+                          views.check_path_in_view, wt, 'dir-2')
+        self.assertRaises(errors.FileOutsideView,
+                          views.check_path_in_view, wt, 'dir-2/sub')
+        self.assertRaises(errors.FileOutsideView,
+                          views.check_path_in_view, wt, 'other')
 
 
 class TestUnsupportedViews(TestCaseWithWorkingTree):
