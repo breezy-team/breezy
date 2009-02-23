@@ -372,8 +372,7 @@ class Weave(VersionedFile):
                     adapter_factory = adapter_registry.get(adapter_key)
                     adapter = adapter_factory(self)
                     adapters[adapter_key] = adapter
-                lines = split_lines(adapter.get_bytes(
-                    record, record.get_bytes_as(record.storage_kind)))
+                lines = split_lines(adapter.get_bytes(record))
                 try:
                     self.add_lines(record.key[0], parents, lines)
                 except RevisionAlreadyPresent:

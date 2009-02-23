@@ -47,6 +47,7 @@ import struct
 from bzrlib import versionedfile
 """)
 from bzrlib import (
+    errors,
     lru_cache,
     osutils,
     registry,
@@ -1303,11 +1304,10 @@ def _find_all_uninteresting(store, interesting_root_keys,
             # TODO: Handle 'absent'
             if pb is not None:
                 pb.tick()
-            if record.storage_kind in ('fulltext', 'chunked'):
+            try:
                 bytes = record.get_bytes_as('fulltext')
-            else:
-                bytes = adapter.get_bytes(record,
-                            record.get_bytes_as(record.storage_kind))
+            except errors.UnavailableRepresentation:
+                bytes = adapter.get_bytes(record)
             # We don't care about search_key_func for this code, because we
             # only care about external references.
             node = _deserialise(bytes, record.key, search_key_func=None)
@@ -1375,11 +1375,10 @@ def iter_interesting_nodes(store, interesting_root_keys,
             if pb is not None:
                 pb.update('find chk pages', counter)
             # TODO: Handle 'absent'?
-            if record.storage_kind in ('fulltext', 'chunked'):
+            try:
                 bytes = record.get_bytes_as('fulltext')
-            else:
-                bytes = adapter.get_bytes(record,
-                            record.get_bytes_as(record.storage_kind))
+            except errors.UnavailableRepresentation:
+                bytes = adapter.get_bytes(record)
             # We don't care about search_key_func for this code, because we
             # only care about external references.
             node = _deserialise(bytes, record.key, search_key_func=None)

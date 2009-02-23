@@ -22,6 +22,7 @@
 from copy import copy
 from cStringIO import StringIO
 import os
+import struct
 from zlib import adler32
 
 from bzrlib.lazy_import import lazy_import
@@ -31,6 +32,7 @@ import urllib
 from bzrlib import (
     errors,
     index,
+    knit,
     osutils,
     multiparent,
     tsort,
@@ -44,6 +46,7 @@ from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
+from bzrlib.util import bencode
 
 
 adapter_registry = Registry()
@@ -926,6 +929,18 @@ class VersionedFiles(object):
 
     has_key = index._has_key_from_parent_map
 
+    def get_missing_compression_parent_keys(self):
+        """Return an iterable of keys of missing compression parents.
+
+        Check this after calling insert_record_stream to find out if there are
+        any missing compression parents.  If there are, the records that
+        depend on them are not able to be inserted safely. The precise
+        behaviour depends on the concrete VersionedFiles class in use.
+
+        Classes that do not support this will raise NotImplementedError.
+        """
+        raise NotImplementedError(self.get_missing_compression_parent_keys)
+
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
@@ -1473,3 +1488,71 @@ class VirtualVersionedFiles(VersionedFiles):
                 pb.update("iterating texts", i, len(keys))
             for l in self._get_lines(key):
                 yield (l, key)
+
+
+def network_bytes_to_kind_and_offset(network_bytes):
+    """Strip of a record kind from the front of network_bytes.
+
+    :param network_bytes: The bytes of a record.
+    :return: A tuple (storage_kind, offset_of_remaining_bytes)
+    """
+    line_end = network_bytes.find('\n')
+    storage_kind = network_bytes[:line_end]
+    return storage_kind, line_end + 1
+
+
+class NetworkRecordStream(object):
+    """A record_stream which reconstitures a serialised stream."""
+
+    def __init__(self, bytes_iterator):
+        """Create a NetworkRecordStream.
+
+        :param bytes_iterator: An iterator of bytes. Each item in this
+            iterator should have been obtained from a record_streams'
+            record.get_bytes_as(record.storage_kind) call.
+        """
+        self._bytes_iterator = bytes_iterator
+        self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
+            'knit-delta-gz':knit.knit_network_to_record,
+            'knit-annotated-ft-gz':knit.knit_network_to_record,
+            'knit-annotated-delta-gz':knit.knit_network_to_record,
+            'knit-delta-closure':knit.knit_delta_closure_to_records,
+            'fulltext':fulltext_network_to_record,
+            }
+
+    def read(self):
+        """Read the stream.
+
+        :return: An iterator as per VersionedFiles.get_record_stream().
+        """
+        for bytes in self._bytes_iterator:
+            storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
+            for record in self._kind_factory[storage_kind](
+                storage_kind, bytes, line_end):
+                yield record
+
+
+def fulltext_network_to_record(kind, bytes, line_end):
+    """Convert a network fulltext record to record."""
+    meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
+    record_meta = record_bytes[line_end+4:line_end+4+meta_len]
+    key, parents = bencode.bdecode_as_tuple(record_meta)
+    if parents == 'nil':
+        parents = None
+    fulltext = record_bytes[line_end+4+meta_len:]
+    return FulltextContentFactory(key, parents, None, fulltext)
+
+
+def _length_prefix(bytes):
+    return struct.pack('!L', len(bytes))
+
+
+def record_to_fulltext_bytes(self, record):
+    if record.parents is None:
+        parents = 'nil'
+    else:
+        parents = record.parents
+    record_meta = bencode.bencode((record.key, parents))
+    record_content = record.get_bytes_as('fulltext')
+    return "fulltext\n%s%s%s" % (
+        _length_prefix(record_meta), record_meta, record_content)

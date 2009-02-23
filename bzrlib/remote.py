@@ -21,10 +21,12 @@ import bz2
 
 from bzrlib import (
     branch,
+    bzrdir,
     debug,
     errors,
     graph,
     lockdir,
+    pack,
     repository,
     revision,
     symbol_versioning,
@@ -41,6 +43,8 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
+from bzrlib.util import bencode
+from bzrlib.versionedfile import record_to_fulltext_bytes
 
 
 class _RpcHelper(object):
@@ -205,7 +209,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             format.supports_external_lookups = (response[4] == 'yes')
             # Used to support creating a real format instance when needed.
             format._creating_bzrdir = self
-            return RemoteRepository(self, format)
+            remote_repo = RemoteRepository(self, format)
+            format._creating_repo = remote_repo
+            return remote_repo
         else:
             raise errors.NoRepositoryPresent(self)
 
@@ -265,6 +271,13 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     the attributes rich_root_data and supports_tree_reference are set
     on a per instance basis, and are not set (and should not be) at
     the class level.
+
+    :ivar _custom_format: If set, a specific concrete repository format that 
+        will be used when initializing a repository with this
+        RemoteRepositoryFormat.
+    :ivar _creating_repo: If set, the repository object that this
+        RemoteRepositoryFormat was created for: it can be called into
+        to obtain data like the network name.
     """
 
     _matchingbzrdir = RemoteBzrDirFormat()
@@ -272,25 +285,74 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     def __init__(self):
         repository.RepositoryFormat.__init__(self)
         self._custom_format = None
+        self._network_name = None
+        self._creating_bzrdir = None
 
-    def initialize(self, a_bzrdir, shared=False):
+    def _vfs_initialize(self, a_bzrdir, shared):
+        """Helper for common code in initialize."""
         if self._custom_format:
-            # This returns a custom instance - e.g. a pack repo, not a remote
-            # repo.
-            return self._custom_format.initialize(a_bzrdir, shared=shared)
-        if not isinstance(a_bzrdir, RemoteBzrDir):
+            # Custom format requested
+            result = self._custom_format.initialize(a_bzrdir, shared=shared)
+        elif self._creating_bzrdir is not None:
+            # Use the format that the repository we were created to back
+            # has.
             prior_repo = self._creating_bzrdir.open_repository()
             prior_repo._ensure_real()
-            return prior_repo._real_repository._format.initialize(
+            result = prior_repo._real_repository._format.initialize(
                 a_bzrdir, shared=shared)
-        # delegate to a real object at this point (remoteBzrDir delegate to the
-        # repository format which would lead to infinite recursion).
-        a_bzrdir._ensure_real()
-        result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
+        else:
+            # assume that a_bzr is a RemoteBzrDir but the smart server didn't
+            # support remote initialization.
+            # We delegate to a real object at this point (as RemoteBzrDir
+            # delegate to the repository format which would lead to infinite
+            # recursion if we just called a_bzrdir.create_repository.
+            a_bzrdir._ensure_real()
+            result = a_bzrdir._real_bzrdir.create_repository(shared=shared)
         if not isinstance(result, RemoteRepository):
             return self.open(a_bzrdir)
         else:
             return result
+
+    def initialize(self, a_bzrdir, shared=False):
+        # Being asked to create on a non RemoteBzrDir:
+        if not isinstance(a_bzrdir, RemoteBzrDir):
+            return self._vfs_initialize(a_bzrdir, shared)
+        medium = a_bzrdir._client._medium
+        if medium._is_remote_before((1, 13)):
+            return self._vfs_initialize(a_bzrdir, shared)
+        # Creating on a remote bzr dir.
+        # 1) get the network name to use.
+        if self._custom_format:
+            network_name = self._custom_format.network_name()
+        else:
+            # Select the current bzrlib default and ask for that.
+            reference_bzrdir_format = bzrdir.format_registry.get('default')()
+            reference_format = reference_bzrdir_format.repository_format
+            network_name = reference_format.network_name()
+        # 2) try direct creation via RPC
+        path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
+        verb = 'BzrDir.create_repository'
+        if shared:
+            shared_str = 'True'
+        else:
+            shared_str = 'False'
+        try:
+            response = a_bzrdir._call(verb, path, network_name, shared_str)
+        except errors.UnknownSmartMethod:
+            # Fallback - use vfs methods
+            return self._vfs_initialize(a_bzrdir, shared)
+        else:
+            # Turn the response into a RemoteRepository object.
+            format = RemoteRepositoryFormat()
+            format.rich_root_data = (response[1] == 'yes')
+            format.supports_tree_reference = (response[2] == 'yes')
+            format.supports_external_lookups = (response[3] == 'yes')
+            format._network_name = response[4]
+            # Used to support creating a real format instance when needed.
+            format._creating_bzrdir = a_bzrdir
+            remote_repo = RemoteRepository(a_bzrdir, format)
+            format._creating_repo = remote_repo
+            return remote_repo
     
     def open(self, a_bzrdir):
         if not isinstance(a_bzrdir, RemoteBzrDir):
@@ -311,6 +373,21 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
+
+    def network_name(self):
+        if self._network_name:
+            return self._network_name
+        self._creating_repo._ensure_real()
+        return self._creating_repo._real_repository._format.network_name()
+
+    @property
+    def _serializer(self):
+        # We should only be getting asked for the serializer for
+        # RemoteRepositoryFormat objects when the RemoteRepositoryFormat object
+        # is a concrete instance for a RemoteRepository. In this case we know
+        # the creating_repo and can use it to supply the serializer.
+        self._creating_repo._ensure_real()
+        return self._creating_repo._real_repository._format._serializer
 
 
 class RemoteRepository(_RpcHelper):
@@ -400,6 +477,14 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.commit_write_group()
 
+    def resume_write_group(self, tokens):
+        self._ensure_real()
+        return self._real_repository.resume_write_group(tokens)
+
+    def suspend_write_group(self):
+        self._ensure_real()
+        return self._real_repository.suspend_write_group()
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
@@ -467,6 +552,10 @@ class RemoteRepository(_RpcHelper):
             revision_graph[d[0]] = d[1:]
             
         return revision_graph
+
+    def _get_sink(self):
+        """See Repository._get_sink()."""
+        return RemoteStreamSink(self)
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
@@ -1139,8 +1228,20 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.revisions
 
     def set_make_working_trees(self, new_value):
-        self._ensure_real()
-        self._real_repository.set_make_working_trees(new_value)
+        if new_value:
+            new_value_str = "True"
+        else:
+            new_value_str = "False"
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            response = self._call(
+                'Repository.set_make_working_trees', path, new_value_str)
+        except errors.UnknownSmartMethod:
+            self._ensure_real()
+            self._real_repository.set_make_working_trees(new_value)
+        else:
+            if response[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response)
 
     @property
     def signatures(self):
@@ -1251,6 +1352,92 @@ class RemoteRepository(_RpcHelper):
             self._real_repository._pack_collection.reload_pack_names()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+
+
+class RemoteStreamSink(repository.StreamSink):
+
+    def __init__(self, target_repo):
+        repository.StreamSink.__init__(self, target_repo)
+        self._resume_tokens = []
+
+    def _insert_real(self, stream, src_format):
+        self.target_repo._ensure_real()
+        sink = self.target_repo._real_repository._get_sink()
+        result = sink.insert_stream(stream, src_format)
+        if not result:
+            self.target_repo.autopack()
+        return result
+
+    def insert_stream(self, stream, src_format):
+        repo = self.target_repo
+        client = repo._client
+        medium = client._medium
+        if medium._is_remote_before((1, 13)):
+            # No possible way this can work.
+            return self._insert_real(stream, src_format)
+        path = repo.bzrdir._path_for_remote_call(client)
+        if not self._resume_tokens:
+            # XXX: Ugly but important for correctness, *will* be fixed during
+            # 1.13 cycle. Pushing a stream that is interrupted results in a
+            # fallback to the _real_repositories sink *with a partial stream*.
+            # Thats bad because we insert less data than bzr expected. To avoid
+            # this we do a trial push to make sure the verb is accessible, and
+            # do not fallback when actually pushing the stream. A cleanup patch
+            # is going to look at rewinding/restarting the stream/partial
+            # buffering etc.
+            byte_stream = self._stream_to_byte_stream([], src_format)
+            try:
+                resume_tokens = ''
+                response = client.call_with_body_stream(
+                    ('Repository.insert_stream', path, resume_tokens), byte_stream)
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before((1,13))
+                return self._insert_real(stream, src_format)
+        byte_stream = self._stream_to_byte_stream(stream, src_format)
+        resume_tokens = ' '.join(self._resume_tokens)
+        response = client.call_with_body_stream(
+            ('Repository.insert_stream', path, resume_tokens), byte_stream)
+        if response[0][0] not in ('ok', 'missing-basis'):
+            raise errors.UnexpectedSmartServerResponse(response)
+        if response[0][0] == 'missing-basis':
+            tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
+            self._resume_tokens = tokens
+            return missing_keys
+        else:
+            if self.target_repo._real_repository is not None:
+                collection = getattr(self.target_repo._real_repository,
+                    '_pack_collection', None)
+                if collection is not None:
+                    collection.reload_pack_names()
+            return []
+            
+    def _stream_to_byte_stream(self, stream, src_format):
+        bytes = []
+        pack_writer = pack.ContainerWriter(bytes.append)
+        pack_writer.begin()
+        pack_writer.add_bytes_record(src_format.network_name(), '')
+        adapters = {}
+        def get_adapter(adapter_key):
+            try:
+                return adapters[adapter_key]
+            except KeyError:
+                adapter_factory = adapter_registry.get(adapter_key)
+                adapter = adapter_factory(self)
+                adapters[adapter_key] = adapter
+                return adapter
+        for substream_type, substream in stream:
+            for record in substream:
+                if record.storage_kind in ('chunked', 'fulltext'):
+                    serialised = record_to_fulltext_bytes(record)
+                else:
+                    serialised = record.get_bytes_as(record.storage_kind)
+                pack_writer.add_bytes_record(serialised, [(substream_type,)])
+                for b in bytes:
+                    yield b
+                del bytes[:]
+        pack_writer.end()
+        for b in bytes:
+            yield b
 
 
 class RemoteBranchLockableFiles(LockableFiles):

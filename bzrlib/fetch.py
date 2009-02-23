@@ -36,10 +36,7 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import InstallFailed
 from bzrlib.progress import ProgressPhase
-from bzrlib.revision import is_null, NULL_REVISION
-from bzrlib.symbol_versioning import (deprecated_function,
-        deprecated_method,
-        )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
 import bzrlib.ui
@@ -102,6 +99,7 @@ class RepoFetcher(object):
                     '%r and %r' % (to_repository, from_repository))
         self.to_repository = to_repository
         self.from_repository = from_repository
+        self.sink = to_repository._get_sink()
         # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
         self.find_ghosts = find_ghosts
@@ -138,6 +136,12 @@ class RepoFetcher(object):
         This initialises all the needed variables, and then fetches the 
         requested revisions, finally clearing the progress bar.
         """
+        # Roughly this is what we're aiming for fetch to become:
+        #
+        # missing = self.sink.insert_stream(self.source.get_stream(search))
+        # if missing:
+        #     missing = self.sink.insert_stream(self.source.get_items(missing))
+        # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
         pp = ProgressPhase('Transferring', 4, self.pb)
@@ -146,11 +150,7 @@ class RepoFetcher(object):
             search = self._revids_to_fetch()
             if search is None:
                 return
-            if getattr(self, '_fetch_everything_for_search', None) is not None:
-                self._fetch_everything_for_search(search, pp)
-            else:
-                # backward compatibility
-                self._fetch_everything_for_revisions(search.get_keys, pp)
+            self._fetch_everything_for_search(search, pp)
         finally:
             self.pb.clear()
 
@@ -164,55 +164,103 @@ class RepoFetcher(object):
         # item_keys_introduced_by should have a richer API than it does at the
         # moment, so that it can feed the progress information back to this
         # function?
-        phase = 'file'
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            from_repo = self.from_repository
-            revs = search.get_keys()
-            revs = list(from_repo.get_graph().iter_topo_order(revs))
-            data_to_fetch = from_repo.item_keys_introduced_by(revs, pb)
-            text_keys = []
-            for knit_kind, file_id, revisions in data_to_fetch:
-                if knit_kind != phase:
-                    phase = knit_kind
-                    # Make a new progress bar for this phase
-                    pb.finished()
-                    pp.next_phase()
-                    pb = bzrlib.ui.ui_factory.nested_progress_bar()
-                if knit_kind == "file":
-                    # Accumulate file texts
-                    text_keys.extend([(file_id, revision) for revision in
-                        revisions])
-                elif knit_kind == "inventory":
-                    # When the inventory keys start being reported, all text
-                    # keys have already been issued - and we want the text keys
-                    # inserted before inventory keys: copy the texts.
-                    self._fetch_text_texts(text_keys, pb=pb)
-                    # Cause an error if a text occurs after we have done the
-                    # copy.
-                    text_keys = None
-                    # Before we process the inventory we generate the root
-                    # texts (if necessary) so that the inventories references
-                    # will be valid.
-                    self._generate_root_texts(revisions)
-                    # NB: This currently reopens the inventory weave in source;
-                    # using a single stream interface instead would avoid this.
-                    self._fetch_inventory_weave(revisions, pb)
-                elif knit_kind == "signatures":
-                    # Nothing to do here; this will be taken care of when
-                    # _fetch_revision_texts happens.
-                    pass
-                elif knit_kind == "revisions":
-                    self._fetch_revision_texts(revisions, pb)
-                    self.count_copied += len(revisions)
-                else:
-                    raise AssertionError("Unknown knit kind %r" % knit_kind)
-            if self.to_repository._fetch_reconcile:
-                self.to_repository.reconcile()
+            from_format = self.from_repository._format
+            stream = self.get_stream(search, pp)
+            missing_keys = self.sink.insert_stream(stream, from_format)
+            if missing_keys:
+                stream = self.get_stream_for_missing_keys(missing_keys)
+                missing_keys = self.sink.insert_stream(stream, from_format)
+            if missing_keys:
+                raise AssertionError(
+                    "second push failed to complete a fetch %r." % (
+                        missing_keys,))
+            self.sink.finished()
         finally:
-            if pb is not None:
-                pb.finished()
-        
+            if self.pb is not None:
+                self.pb.finished()
+
+    def get_stream(self, search, pp):
+        phase = 'file'
+        revs = search.get_keys()
+        graph = self.from_repository.get_graph()
+        revs = list(graph.iter_topo_order(revs))
+        data_to_fetch = self.from_repository.item_keys_introduced_by(
+            revs, self.pb)
+        text_keys = []
+        for knit_kind, file_id, revisions in data_to_fetch:
+            if knit_kind != phase:
+                phase = knit_kind
+                # Make a new progress bar for this phase
+                self.pb.finished()
+                pp.next_phase()
+                self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            if knit_kind == "file":
+                # Accumulate file texts
+                text_keys.extend([(file_id, revision) for revision in
+                    revisions])
+            elif knit_kind == "inventory":
+                # Now copy the file texts.
+                to_texts = self.to_repository.texts
+                from_texts = self.from_repository.texts
+                yield ('texts', from_texts.get_record_stream(
+                    text_keys, self.to_repository._fetch_order,
+                    not self.to_repository._fetch_uses_deltas))
+                # Cause an error if a text occurs after we have done the
+                # copy.
+                text_keys = None
+                # Before we process the inventory we generate the root
+                # texts (if necessary) so that the inventories references
+                # will be valid.
+                for _ in self._generate_root_texts(revs):
+                    yield _
+                # NB: This currently reopens the inventory weave in source;
+                # using a single stream interface instead would avoid this.
+                self.pb.update("fetch inventory", 0, 1)
+                # we fetch only the referenced inventories because we do not
+                # know for unselected inventories whether all their required
+                # texts are present in the other repository - it could be
+                # corrupt.
+                for info in self._get_inventory_stream(revs):
+                    yield info
+            elif knit_kind == "signatures":
+                # Nothing to do here; this will be taken care of when
+                # _fetch_revision_texts happens.
+                pass
+            elif knit_kind == "revisions":
+                for _ in self._fetch_revision_texts(revs, self.pb):
+                    yield _
+            else:
+                raise AssertionError("Unknown knit kind %r" % knit_kind)
+        self.count_copied += len(revs)
+
+    def get_stream_for_missing_keys(self, missing_keys):
+        # missing keys can only occur when we are byte copying and not
+        # translating (because translation means we don't send
+        # unreconstructable deltas ever).
+        keys = {}
+        keys['texts'] = set()
+        keys['revisions'] = set()
+        keys['inventories'] = set()
+        keys['signatures'] = set()
+        for key in missing_keys:
+            keys[key[0]].add(key[1:])
+        if len(keys['revisions']):
+            # If we allowed copying revisions at this point, we could end up
+            # copying a revision without copying its required texts: a
+            # violation of the requirements for repository integrity.
+            raise AssertionError(
+                'cannot copy revisions to fill in missing deltas %s' % (
+                    keys['revisions'],))
+        for substream_kind, keys in keys.iteritems():
+            vf = getattr(self.from_repository, substream_kind)
+            # Ask for full texts always so that we don't need more round trips
+            # after this stream.
+            stream = vf.get_record_stream(keys,
+                self.to_repository._fetch_order, True)
+            yield substream_kind, stream
+
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
@@ -233,75 +281,47 @@ class RepoFetcher(object):
         except errors.NoSuchRevision, e:
             raise InstallFailed([self._last_revision])
 
-    def _fetch_text_texts(self, text_keys, pb):
-        to_texts = self.to_repository.texts
-        from_texts = self.from_repository.texts
-        text_stream = from_texts.get_record_stream(text_keys,
-                            self.to_repository._fetch_order,
-                            not self.to_repository._fetch_uses_deltas)
-        adapter = _pb_stream_adapter(pb, 'fetch text', len(text_keys),
-                                     text_stream)
-        to_texts.insert_record_stream(adapter())
-
-    def _fetch_inventory_weave(self, revs, pb):
-        # we fetch only the referenced inventories because we do not
-        # know for unselected inventories whether all their required
-        # texts are present in the other repository - it could be
-        # corrupt.
+    def _get_inventory_stream(self, revision_ids):
         if (self.from_repository._format.supports_chks and
-            self.to_repository._format.supports_chks):
-            self._fetch_chk_inventories(revs, pb)
-        elif (self.from_repository._format.supports_chks or
-              self.to_repository._format.supports_chks):
-            # Hack to make not-chk->chk fetch: copy the inventories as
-            # inventories.
-            total = len(revs)
-            for idx, inv in enumerate(
-                self.from_repository.iter_inventories(revs)):
-                pb.update("Copying inventories", idx, total)
-                self.to_repository.add_inventory(inv.revision_id, inv, [])
+            self.to_repository._format.supports_chks
+            and (self.from_repository._format._serializer
+                 == self.to_repository._format._serializer)):
+            # Both sides support chks, and they use the same serializer, so it
+            # is safe to transmit the chk pages and inventory pages across
+            # as-is.
+            return self._get_chk_inventory_stream(revision_ids)
+        elif (not self.from_repository._format.supports_chks):
+            # Source repository doesn't support chks. So we can transmit the
+            # inventories 'as-is' and either they are just accepted on the
+            # target, or the Sink will properly convert it.
+            return self._get_simple_inventory_stream(revision_ids)
         else:
-            to_weave = self.to_repository.inventories
-            from_weave = self.from_repository.inventories
-            adapter = _pb_stream_adapter(pb, 'fetch inv', len(revs),
-                from_weave.get_record_stream([(rev_id,) for rev_id in revs],
-                            self.to_repository._fetch_order,
-                            not self.to_repository._fetch_uses_deltas))
-            to_weave.insert_record_stream(adapter())
+            # XXX: Hack to make not-chk->chk fetch: copy the inventories as
+            #      inventories. Note that this should probably be done somehow
+            #      as part of bzrlib.repository.StreamSink. Except JAM couldn't
+            #      figure out how a non-chk repository could possibly handle
+            #      deserializing an inventory stream from a chk repo, as it
+            #      doesn't have a way to understand individual pages.
+            return self._get_convertable_inventory_stream(revision_ids)
 
-    def _fetch_revision_texts(self, revs, pb):
-        # fetch signatures first and then the revision texts
-        # may need to be a InterRevisionStore call here.
-        to_sf = self.to_repository.signatures
-        from_sf = self.from_repository.signatures
-        # A missing signature is just skipped.
-        to_sf.insert_record_stream(filter_absent(from_sf.get_record_stream(
-            [(rev_id,) for rev_id in revs],
-            self.to_repository._fetch_order,
-            not self.to_repository._fetch_uses_deltas)))
-        self._fetch_just_revision_texts(revs)
+    def _get_simple_inventory_stream(self, revision_ids):
+        from_weave = self.from_repository.inventories
+        yield ('inventories', from_weave.get_record_stream(
+            [(rev_id,) for rev_id in revision_ids],
+            self.inventory_fetch_order(),
+            not self.delta_on_metadata()))
 
-    def _fetch_just_revision_texts(self, version_ids):
-        to_rf = self.to_repository.revisions
-        from_rf = self.from_repository.revisions
-        # If a revision has a delta, this is actually expanded inside the
-        # insert_record_stream code now, which is an alternate fix for
-        # bug #261339
-        to_rf.insert_record_stream(from_rf.get_record_stream(
-            [(rev_id,) for rev_id in version_ids],
-            self.to_repository._fetch_order,
-            not self.to_repository._fetch_uses_deltas))
-
-    def _fetch_chk_inventories(self, revs, pb):
+    def _get_chk_inventory_stream(self, revision_ids):
         """Fetch the inventory texts, along with the associated chk maps."""
         from bzrlib import inventory, chk_map
         # We want an inventory outside of the search set, so that we can filter
         # out uninteresting chk pages. For now we use
         # _find_revision_outside_set, but if we had a Search with cut_revs, we
         # could use that instead.
-        start_rev_id = self.from_repository._find_revision_outside_set(revs)
+        start_rev_id = self.from_repository._find_revision_outside_set(
+                            revision_ids)
         start_rev_key = (start_rev_id,)
-        inv_keys_to_fetch = [(rev_id,) for rev_id in revs]
+        inv_keys_to_fetch = [(rev_id,) for rev_id in revision_ids]
         if start_rev_id != NULL_REVISION:
             inv_keys_to_fetch.append((start_rev_id,))
         # Any repo that supports chk_bytes must also support out-of-order
@@ -317,7 +337,7 @@ class RepoFetcher(object):
         interesting_chk_roots = set()
         def filter_inv_stream(inv_stream):
             for idx, record in enumerate(inv_stream):
-                child_pb.update('fetch inv', idx, len(inv_keys_to_fetch))
+                ### child_pb.update('fetch inv', idx, len(inv_keys_to_fetch))
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(
                     self.from_repository.chk_bytes, bytes, record.key)
@@ -332,41 +352,78 @@ class RepoFetcher(object):
                     p_id_map = chk_inv.parent_id_basename_to_file_id
                     if p_id_map is not None:
                         interesting_chk_roots.add(p_id_map.key())
-        pb.update('fetch inventory', 0, 2)
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            self.to_repository.inventories.insert_record_stream(
-                filter_inv_stream(inv_stream))
-        finally:
-            child_pb.finished()
+        ### pb.update('fetch inventory', 0, 2)
+        yield ('inventories', filter_inv_stream(inv_stream))
         # Now that we have worked out all of the interesting root nodes, grab
         # all of the interesting pages and insert them
-        pb.update('fetch inventory', 1, 2)
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            interesting = chk_map.iter_interesting_nodes(
-                self.from_repository.chk_bytes, interesting_chk_roots,
-                uninteresting_chk_roots, pb=child_pb)
-            def to_stream_adapter():
-                """Adapt the iter_interesting_nodes result to a single stream.
+        ### pb.update('fetch inventory', 1, 2)
+        interesting = chk_map.iter_interesting_nodes(
+            self.from_repository.chk_bytes, interesting_chk_roots,
+            uninteresting_chk_roots)
+        def to_stream_adapter():
+            """Adapt the iter_interesting_nodes result to a single stream.
 
-                iter_interesting_nodes returns records as it processes them, which
-                can be in batches. But we only want a single stream to be inserted.
-                """
-                for record, items in interesting:
-                    for value in record.itervalues():
-                        yield value
-            # XXX: We could instead call get_record_stream(records.keys())
-            #      ATM, this will always insert the records as fulltexts, and
-            #      requires that you can hang on to records once you have gone
-            #      on to the next one. Further, it causes the target to
-            #      recompress the data. Testing shows it to be faster than
-            #      requesting the records again, though.
-            self.to_repository.chk_bytes.insert_record_stream(
-                to_stream_adapter())
-        finally:
-            child_pb.finished()
-        pb.update('fetch inventory', 2, 2)
+            iter_interesting_nodes returns records as it processes them, which
+            can be in batches. But we only want a single stream to be inserted.
+            """
+            for record, items in interesting:
+                for value in record.itervalues():
+                    yield value
+        # XXX: We could instead call get_record_stream(records.keys())
+        #      ATM, this will always insert the records as fulltexts, and
+        #      requires that you can hang on to records once you have gone
+        #      on to the next one. Further, it causes the target to
+        #      recompress the data. Testing shows it to be faster than
+        #      requesting the records again, though.
+        yield ('chk_bytes', to_stream_adapter())
+        ### pb.update('fetch inventory', 2, 2)
+
+    def _get_convertable_inventory_stream(self, revision_ids):
+        # XXX: One of source or target is using chks, and they don't have
+        #      compatible serializations. The StreamSink code expects to be
+        #      able to convert on the target, so we need to put
+        #      bytes-on-the-wire that can be converted
+        yield ('inventories', self._stream_invs_as_fulltexts(revision_ids))
+
+    def _stream_invs_as_fulltexts(self, revision_ids):
+        from_serializer = self.from_repository._format._serializer
+        revision_keys = [(rev_id,) for rev_id in revision_ids]
+        parent_map = self.from_repository.inventory.get_parent_map(revision_keys)
+        for inv in self.from_repository.iter_inventories(revision_ids):
+            # XXX: This is a bit hackish, but it works. Basically,
+            #      CHKSerializer 'accidentally' supports
+            #      read/write_inventory_to_string, even though that is never
+            #      the format that is stored on disk. It *does* give us a
+            #      single string representation for an inventory, so live with
+            #      it for now.
+            #      This would be far better if we had a 'serialized inventory
+            #      delta' form. Then we could use 'inventory._make_delta', and
+            #      transmit that. This would both be faster to generate, and
+            #      result in fewer bytes-on-the-wire.
+            as_bytes = from_serializer.write_inventory_to_string(inv)
+            key = (inv.revision_id,)
+            parent_keys = parent_map.get(key, ())
+            yield FulltextContentFactory(key, parent_keys, None, as_bytes)
+
+    def _fetch_revision_texts(self, revs, pb):
+        # fetch signatures first and then the revision texts
+        # may need to be a InterRevisionStore call here.
+        from_sf = self.from_repository.signatures
+        # A missing signature is just skipped.
+        keys = [(rev_id,) for rev_id in revs]
+        signatures = filter_absent(from_sf.get_record_stream(
+            keys,
+            self.to_repository._fetch_order,
+            not self.to_repository._fetch_uses_deltas))
+        # If a revision has a delta, this is actually expanded inside the
+        # insert_record_stream code now, which is an alternate fix for
+        # bug #261339
+        from_rf = self.from_repository.revisions
+        revisions = from_rf.get_record_stream(
+            keys,
+            self.to_repository._fetch_order,
+            not self.delta_on_metadata())
+        return [('signatures', signatures), ('revisions', revisions)]
 
     def _generate_root_texts(self, revs):
         """This will be called by __fetch between fetching weave texts and
@@ -375,7 +432,16 @@ class RepoFetcher(object):
         Subclasses should override this if they need to generate root texts
         after fetching weave texts.
         """
-        pass
+        return []
+
+    def inventory_fetch_order(self):
+        return self.to_repository._fetch_order
+
+    def delta_on_metadata(self):
+        src_serializer = self.from_repository._format._serializer
+        target_serializer = self.to_repository._format._serializer
+        return (self.to_repository._fetch_uses_deltas and
+            src_serializer == target_serializer)
 
 
 class Inter1and2Helper(object):
@@ -384,14 +450,12 @@ class Inter1and2Helper(object):
     This is for use by fetchers and converters.
     """
 
-    def __init__(self, source, target):
+    def __init__(self, source):
         """Constructor.
 
         :param source: The repository data comes from
-        :param target: The repository data goes to
         """
         self.source = source
-        self.target = target
 
     def iter_rev_trees(self, revs):
         """Iterate through RevisionTrees efficiently.
@@ -437,7 +501,6 @@ class Inter1and2Helper(object):
 
         :param revs: the revisions to include
         """
-        to_texts = self.target.texts
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
         rev_order = topo_sort(parent_map)
@@ -467,25 +530,7 @@ class Inter1and2Helper(object):
                     if parent != NULL_REVISION and
                         rev_id_to_root_id.get(parent, root_id) == root_id)
                 yield FulltextContentFactory(key, parent_keys, None, '')
-        to_texts.insert_record_stream(yield_roots())
-
-    def regenerate_inventory(self, revs):
-        """Generate a new inventory versionedfile in target, convertin data.
-        
-        The inventory is retrieved from the source, (deserializing it), and
-        stored in the target (reserializing it in a different format).
-        :param revs: The revisions to include
-        """
-        for tree in self.iter_rev_trees(revs):
-            parents = tree.get_parent_ids()
-            self.target.add_inventory(tree.get_revision_id(), tree.inventory,
-                                      parents)
-
-    def fetch_revisions(self, revision_ids):
-        # TODO: should this batch them up rather than requesting 10,000
-        #       revisions at once?
-        for revision in self.source.get_revisions(revision_ids):
-            self.target.add_revision(revision.revision_id, revision)
+        return [('texts', yield_roots())]
 
 
 class Model1toKnit2Fetcher(RepoFetcher):
@@ -493,49 +538,14 @@ class Model1toKnit2Fetcher(RepoFetcher):
     """
     def __init__(self, to_repository, from_repository, last_revision=None,
                  pb=None, find_ghosts=True):
-        self.helper = Inter1and2Helper(from_repository, to_repository)
+        self.helper = Inter1and2Helper(from_repository)
         RepoFetcher.__init__(self, to_repository, from_repository,
             last_revision, pb, find_ghosts)
 
     def _generate_root_texts(self, revs):
-        self.helper.generate_root_texts(revs)
+        return self.helper.generate_root_texts(revs)
 
-    def _fetch_inventory_weave(self, revs, pb):
-        self.helper.regenerate_inventory(revs)
+    def inventory_fetch_order(self):
+        return 'topological'
 
-    def _fetch_revision_texts(self, revs, pb):
-        """Fetch revision object texts"""
-        count = 0
-        total = len(revs)
-        for rev in revs:
-            pb.update('copying revisions', count, total)
-            try:
-                sig_text = self.from_repository.get_signature_text(rev)
-                self.to_repository.add_signature_text(rev, sig_text)
-            except errors.NoSuchRevision:
-                # not signed.
-                pass
-            self._copy_revision(rev)
-            count += 1
-
-    def _copy_revision(self, rev):
-        self.helper.fetch_revisions([rev])
-
-
-class Knit1to2Fetcher(RepoFetcher):
-    """Fetch from a Knit1 repository into a Knit2 repository"""
-
-    def __init__(self, to_repository, from_repository, last_revision=None,
-                 pb=None, find_ghosts=True):
-        self.helper = Inter1and2Helper(from_repository, to_repository)
-        RepoFetcher.__init__(self, to_repository, from_repository,
-            last_revision, pb, find_ghosts)
-
-    def _generate_root_texts(self, revs):
-        self.helper.generate_root_texts(revs)
-
-    def _fetch_inventory_weave(self, revs, pb):
-        self.helper.regenerate_inventory(revs)
-
-    def _fetch_just_revision_texts(self, version_ids):
-        self.helper.fetch_revisions(version_ids)
+Knit1to2Fetcher = Model1toKnit2Fetcher

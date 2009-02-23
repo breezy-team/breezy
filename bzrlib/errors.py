@@ -2965,3 +2965,57 @@ class MustHaveWorkingTree(BzrError):
 
     def __init__(self, format, url):
         BzrError.__init__(self, format=format, url=url)
+
+
+class NoSuchView(BzrError):
+    """A view does not exist.
+    """
+ 
+    _fmt = u"No such view: %(view_name)s."
+
+    def __init__(self, view_name):
+        self.view_name = view_name
+
+
+class ViewsNotSupported(BzrError):
+    """Views are not supported by a tree format.
+    """
+ 
+    _fmt = ("Views are not supported by %(tree)s;"
+            " use 'bzr upgrade' to change your tree to a later format.")
+
+    def __init__(self, tree):
+        self.tree = tree
+
+
+class FileOutsideView(BzrError):
+
+    _fmt = ('Specified file "%(file_name)s" is outside the current view: '
+            '%(view_str)s')
+
+    def __init__(self, file_name, view_files):
+        self.file_name = file_name
+        self.view_str = ", ".join(view_files)
+
+
+class UnresumableWriteGroup(BzrError):
+    
+    _fmt = ("Repository %(repository)s cannot resume write group "
+            "%(write_groups)r: %(reason)s")
+
+    internal_error = True
+
+    def __init__(self, repository, write_groups, reason):
+        self.repository = repository
+        self.write_groups = write_groups
+        self.reason = reason
+
+
+class UnsuspendableWriteGroup(BzrError):
+    
+    _fmt = ("Repository %(repository)s cannot suspend a write group.")
+
+    internal_error = True
+
+    def __init__(self, repository):
+        self.repository = repository

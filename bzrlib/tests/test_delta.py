@@ -41,16 +41,32 @@ class TestReportChanges(tests.TestCase):
                      versioned_change='unchanged', renamed=False,
                      modified='unchanged', exe_change=False,
                      kind=('file', 'file'), old_path=None,
-                     unversioned_filter=None):
+                     unversioned_filter=None, view_info=None):
+        if expected is None:
+            expected_lines = None
+        else:
+            expected_lines = [expected]
+        self.assertReportLines(expected_lines, file_id, path,
+                     versioned_change, renamed,
+                     modified, exe_change,
+                     kind, old_path,
+                     unversioned_filter, view_info)
+
+    def assertReportLines(self, expected_lines, file_id='fid', path='path',
+                     versioned_change='unchanged', renamed=False,
+                     modified='unchanged', exe_change=False,
+                     kind=('file', 'file'), old_path=None,
+                     unversioned_filter=None, view_info=None):
         result = []
         def result_line(format, *args):
             result.append(format % args)
         reporter = _mod_delta._ChangeReporter(result_line,
-            unversioned_filter=unversioned_filter)
+            unversioned_filter=unversioned_filter, view_info=view_info)
         reporter.report(file_id, (old_path, path), versioned_change, renamed,
             modified, exe_change, kind)
-        if expected is not None:
-            self.assertEqualDiff(expected, result[0])
+        if expected_lines is not None:
+            for i in range(len(expected_lines)):
+                self.assertEqualDiff(expected_lines[i], result[i])
         else:
             self.assertEqual([], result)
 
@@ -106,6 +122,19 @@ class TestReportChanges(tests.TestCase):
             old_path=None, versioned_change='unversioned',
             renamed=False, modified='created', exe_change=False,
             kind=(None, 'file'), unversioned_filter=lambda x:True)
+
+    def test_view_filtering(self):
+        # If a file in within the view, it should appear in the output
+        expected_lines = [
+            "Operating on whole tree but only reporting on 'my' view.",
+            " M  path"]
+        self.assertReportLines(expected_lines, modified='modified',
+            view_info=('my',['path']))
+        # If a file in outside the view, it should not appear in the output
+        expected_lines = [
+            "Operating on whole tree but only reporting on 'my' view."]
+        self.assertReportLines(expected_lines, modified='modified',
+            path="foo", view_info=('my',['path']))
 
     def assertChangesEqual(self,
                            file_id='fid',

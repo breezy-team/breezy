@@ -2757,7 +2757,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         if custom_format:
             # We will use the custom format to create repositories over the
             # wire; expose its details like rich_root_data for code to query
-            result._custom_format = custom_format
+            if isinstance(custom_format, remote.RemoteRepositoryFormat):
+                result._custom_format = custom_format._custom_format
+            else:
+                result._custom_format = custom_format
             result.rich_root_data = custom_format.rich_root_data
         return result
 
@@ -3091,6 +3094,9 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
 # appear in chronological order and format descriptions can build
 # on previous ones.
 format_registry = BzrDirFormatRegistry()
+# The pre-0.8 formats have their repository format network name registered in
+# repository.py. MetaDir formats have their repository format network name
+# inferred from their disk format string.
 format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
     ' support checkouts or shared repositories.',

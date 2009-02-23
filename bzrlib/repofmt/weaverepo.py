@@ -192,14 +192,11 @@ class AllInOneRepository(Repository):
 class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
-    @property
-    def _serializer(self):
-        return xml5.serializer_v5
-
     def __init__(self, _format, a_bzrdir, control_files):
         super(WeaveMetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
         self._fetch_order = 'topological'
         self._fetch_reconcile = True
+        self._serializer = _format._serializer
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -392,6 +389,9 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat5()
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __init__(self):
         super(RepositoryFormat5, self).__init__()
@@ -401,6 +401,10 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 5"
+    
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -408,9 +412,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, False, versionedfile.PrefixMapper(),
+            xml5.serializer_v5, False, versionedfile.PrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -436,6 +439,9 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat6()
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
@@ -446,15 +452,18 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 6"
 
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
+
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, False, versionedfile.HashPrefixMapper(),
+            xml5.serializer_v5, False, versionedfile.HashPrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -485,6 +494,10 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_ghosts = False
     supports_chks = False
 
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Repository format 7"
@@ -502,9 +515,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, True, versionedfile.HashPrefixMapper(),
+            xml5.serializer_v5, True, versionedfile.HashPrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):

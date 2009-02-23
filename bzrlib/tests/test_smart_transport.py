@@ -2766,7 +2766,8 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             yield 'aaa'
             yield 'bbb'
             raise Exception('Boom!')
-        requester.call_with_body_stream(('one arg',), stream_that_fails())
+        self.assertRaises(Exception, requester.call_with_body_stream,
+            ('one arg',), stream_that_fails())
         self.assertEquals(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x02de' # headers

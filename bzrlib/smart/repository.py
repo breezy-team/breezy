@@ -18,13 +18,17 @@
 
 import bz2
 import os
+import struct
 import sys
-import tempfile
 import tarfile
+import tempfile
+import threading
+import Queue
 
 from bzrlib import (
     errors,
     osutils,
+    pack,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -32,8 +36,10 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
-from bzrlib.repository import _strip_NULL_ghosts
+from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
+from bzrlib.util import bencode
+from bzrlib.versionedfile import NetworkRecordStream
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -336,6 +342,17 @@ class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok',))
 
 
+class SmartServerRepositorySetMakeWorkingTrees(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, str_bool_new_value):
+        if str_bool_new_value == 'True':
+            new_value = True
+        else:
+            new_value = False
+        repository.set_make_working_trees(new_value)
+        return SuccessfulSmartServerResponse(('ok',))
+
+
 class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
     """Get the raw repository files as a tarball.
 
@@ -392,3 +409,83 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.add(dirname, '.bzr') # recursive by default
         finally:
             tarball.close()
+
+
+class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, resume_tokens):
+        """StreamSink.insert_stream for a remote repository."""
+        repository.lock_write()
+        tokens = [token for token in resume_tokens.split(' ') if token]
+        if tokens:
+            repository.resume_write_group(tokens)
+        else:
+            repository.start_write_group()
+        self.repository = repository
+        self.stream_decoder = pack.ContainerPushParser()
+        self.src_format = None
+        self.queue = Queue.Queue()
+        self.insert_thread = None
+
+    def do_chunk(self, body_stream_chunk):
+        self.stream_decoder.accept_bytes(body_stream_chunk)
+        for record in self.stream_decoder.read_pending_records():
+            record_names, record_bytes = record
+            if self.src_format is None:
+                src_format_name = record_bytes
+                src_format = network_format_registry.get(src_format_name)
+                self.src_format = src_format
+                self.insert_thread = threading.Thread(target=self._inserter_thread)
+                self.insert_thread.start()
+            else:
+                record_name, = record_names
+                substream_type = record_name[0]
+                stream = NetworkRecordStream([record_bytes])
+                for record in stream.read():
+                    self.queue.put((substream_type, [record]))
+
+    def _inserter_thread(self):
+        self.repository._get_sink().insert_stream(self.blocking_read_stream(),
+                self.src_format)
+
+    def blocking_read_stream(self):
+        while True:
+            item = self.queue.get()
+            if item is StopIteration:
+                return
+            else:
+                yield item
+
+    def do_end(self):
+        self.queue.put(StopIteration)
+        if self.insert_thread is not None:
+            self.insert_thread.join()
+        try:
+            missing_keys = set()
+            for prefix, versioned_file in (
+                ('texts', self.repository.texts),
+                ('inventories', self.repository.inventories),
+                ('revisions', self.repository.revisions),
+                ('signatures', self.repository.signatures),
+                ):
+                missing_keys.update((prefix,) + key for key in
+                    versioned_file.get_missing_compression_parent_keys())
+        except NotImplementedError:
+            # cannot even attempt suspending.
+            pass
+        else:
+            if missing_keys:
+                # suspend the write group and tell the caller what we is
+                # missing. We know we can suspend or else we would not have
+                # entered this code path. (All repositories that can handle
+                # missing keys can handle suspending a write group).
+                write_group_tokens = self.repository.suspend_write_group()
+                # bzip needed? missing keys should typically be a small set.
+                # Should this be a streaming body response ?
+                missing_keys = sorted(missing_keys)
+                bytes = bencode.bencode((write_group_tokens, missing_keys))
+                return SuccessfulSmartServerResponse(('missing-basis', bytes))
+        # All finished.
+        self.repository.commit_write_group()
+        self.repository.unlock()
+        return SuccessfulSmartServerResponse(('ok', ))
