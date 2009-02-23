@@ -144,12 +144,16 @@ class cmd_launchpad_open(Command):
         import webbrowser
         if location is None:
             location = u'.'
-        branch = Branch.open(location)
-        branch_url = branch.get_public_branch()
-        if branch_url is None:
-            branch_url = branch.get_push_location()
+        try:
+            branch = Branch.open(location)
+        except NotBranchError:
+            branch_url = location
+        else:
+            branch_url = branch.get_public_branch()
             if branch_url is None:
-                raise NoPublicBranch(branch)
+                branch_url = branch.get_push_location()
+                if branch_url is None:
+                    raise NoPublicBranch(branch)
         service = LaunchpadService()
         web_url = service.get_web_url_from_branch_url(branch_url)
         note('Opening %s in web browser' % web_url)
