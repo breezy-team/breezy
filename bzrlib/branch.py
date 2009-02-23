@@ -778,7 +778,7 @@ class Branch(object):
     def get_parent(self):
         """Return the parent location of the branch.
 
-        This is the default location for push/pull/missing.  The usual
+        This is the default location for pull/missing.  The usual
         pattern is that the user can override it by specifying a
         location.
         """
