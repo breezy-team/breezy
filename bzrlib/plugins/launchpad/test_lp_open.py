@@ -34,7 +34,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
             ['bzr: ERROR: Not a branch: "%s/".' % abspath('.')],
             self.run_open('.', retcode=3))
 
-    def test_no_public_location(self):
+    def test_no_public_location_no_push_location(self):
         self.make_branch('not-public')
         self.assertEqual(
             ['bzr: ERROR: There is no public branch set for "%s/".'
@@ -49,7 +49,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
             ['bzr: ERROR: %s is not hosted on Launchpad.' % url],
             self.run_open('non-lp', retcode=3))
 
-    def test_launchpad_branch(self):
+    def test_launchpad_branch_with_public_location(self):
         branch = self.make_branch('lp')
         branch.set_public_branch(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
