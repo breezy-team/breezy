@@ -57,3 +57,14 @@ class TestLaunchpadOpen(TestCaseWithTransport):
             ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('lp'))
+
+    def test_launchpad_branch_with_no_public_but_with_push(self):
+        # lp-open falls back to the push location if it cannot find a public
+        # location.
+        branch = self.make_branch('lp')
+        branch.set_push_location(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+             'browser'],
+            self.run_open('lp'))

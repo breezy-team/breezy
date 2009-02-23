@@ -127,7 +127,6 @@ class cmd_register_branch(Command):
 register_command(cmd_register_branch)
 
 
-# XXX: Make notes to test this.
 class cmd_launchpad_open(Command):
     """Open a Launchpad branch page in your web browser."""
 
@@ -148,7 +147,9 @@ class cmd_launchpad_open(Command):
         branch = Branch.open(location)
         branch_url = branch.get_public_branch()
         if branch_url is None:
-            raise NoPublicBranch(branch)
+            branch_url = branch.get_push_location()
+            if branch_url is None:
+                raise NoPublicBranch(branch)
         service = LaunchpadService()
         web_url = service.get_web_url_from_branch_url(branch_url)
         note('Opening %s in web browser' % web_url)
