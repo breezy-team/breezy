@@ -45,6 +45,7 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -1258,6 +1259,16 @@ class BranchFormat(object):
         """
         return True
 
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        MetaDir branch formats use their disk format string to identify the
+        repository over the wire. All in one formats such as bzr < 0.8, and
+        foreign formats like svn/git and hg should use some marker which is
+        unique and immutable.
+        """
+        raise NotImplementedError(self.network_name)
+
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir
 
@@ -1268,7 +1279,10 @@ class BranchFormat(object):
 
     @classmethod
     def register_format(klass, format):
+        """Register a metadir format."""
         klass._formats[format.get_format_string()] = format
+        # Metadir formats have a network name of their format string.
+        network_format_registry.register(format.get_format_string(), format)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1441,6 +1455,10 @@ class BzrBranchFormat4(BranchFormat):
         super(BzrBranchFormat4, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
+
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir
 
@@ -1465,6 +1483,13 @@ class BranchFormatMetadir(BranchFormat):
     def _branch_class(self):
         """What class to instantiate on open calls."""
         raise NotImplementedError(self._branch_class)
+
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        Metadir branch formats use their format string.
+        """
+        return self.get_format_string()
 
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir.
@@ -1688,6 +1713,15 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
+network_format_registry = registry.FormatRegistry()
+"""Registry of formats indexed by their network name.
+
+The network name for a repository format is an identifier that can be used when
+referring to formats with smart server operations. See
+BranchFormat.network_name() for more detail.
+"""
+
+
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 __format5 = BzrBranchFormat5()
@@ -1699,7 +1733,10 @@ BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
-                   ]
+    ]
+network_format_registry.register(
+    _legacy_formats[0].network_name(), _legacy_formats[0])
+
 
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.

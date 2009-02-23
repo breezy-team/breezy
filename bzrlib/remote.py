@@ -1467,6 +1467,9 @@ class RemoteBranchFormat(branch.BranchFormat):
     def get_format_string(self):
         return 'Remote BZR Branch'
 
+    def network_name(self):
+        return self._network_name
+
     def open(self, a_bzrdir):
         return a_bzrdir.open_branch()
 
@@ -1539,6 +1542,14 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        if real_branch is not None:
+            self._format._network_name = \
+                self._real_branch._format.network_name()
+        else:
+            # XXX: Need to get this from BzrDir.open_branch's return value.
+            self._ensure_real()
+            self._format._network_name = \
+                self._real_branch._format.network_name()
         # The base class init is not called, so we duplicate this:
         hooks = branch.Branch.hooks['open']
         for hook in hooks:

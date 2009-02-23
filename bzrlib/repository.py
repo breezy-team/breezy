@@ -47,10 +47,10 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
-from bzrlib import registry
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
+from bzrlib import registry
 from bzrlib.symbol_versioning import (
         deprecated_method,
         one_one,
@@ -2207,32 +2207,7 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
             control_files)
 
 
-class RepositoryFormatRegistry(registry.Registry):
-    """Registry of RepositoryFormats."""
-
-    def __init__(self, other_registry=None):
-        registry.Registry.__init__(self)
-        self._other_registry = other_registry
-
-    def register_lazy(self, key, module_name, member_name,
-                      help=None, info=None,
-                      override_existing=False):
-        # Overridden to allow capturing registrations to two seperate
-        # registries in a single call.
-        registry.Registry.register_lazy(self, key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
-        if self._other_registry is not None:
-            self._other_registry.register_lazy(key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
-
-    def get(self, format_string):
-        r = registry.Registry.get(self, format_string)
-        if callable(r):
-            r = r()
-        return r
-    
-
-network_format_registry = RepositoryFormatRegistry()
+network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
 The network name for a repository format is an identifier that can be used when
@@ -2241,7 +2216,7 @@ RepositoryFormat.network_name() for more detail.
 """
 
 
-format_registry = RepositoryFormatRegistry(network_format_registry)
+format_registry = registry.FormatRegistry(network_format_registry)
 """Registry of formats, indexed by their BzrDirMetaFormat format string.
 
 This can contain either format instances themselves, or classes/factories that
