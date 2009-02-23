@@ -29,7 +29,9 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         return err.splitlines()
 
     def test_non_branch(self):
-        # Running lp-open on a non-branch prints a simple error.
+        # If given a branch with no public or push locations, lp-open will try
+        # to guess the Launchpad page for the given URL / path. If it cannot
+        # find one, it will raise an error.
         self.assertEqual(
             ['bzr: ERROR: . is not hosted on Launchpad.'],
             self.run_open('.', retcode=3))
