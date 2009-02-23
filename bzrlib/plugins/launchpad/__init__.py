@@ -24,7 +24,12 @@
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option, register_command
 from bzrlib.directory_service import directories
-from bzrlib.errors import BzrCommandError, NoPublicBranch, NotBranchError
+from bzrlib.errors import (
+    BzrCommandError,
+    InvalidURL,
+    NoPublicBranch,
+    NotBranchError,
+    )
 from bzrlib.help_topics import topic_registry
 
 
@@ -138,24 +143,37 @@ class cmd_launchpad_open(Command):
         ]
     takes_args = ['location?']
 
+    def _possible_locations(self, location):
+        """Yield possible external locations for the branch at 'location'."""
+        yield location
+        try:
+            branch = Branch.open(location)
+        except NotBranchError:
+            return
+        branch_url = branch.get_public_branch()
+        if branch_url is not None:
+            yield branch_url
+        branch_url = branch.get_push_location()
+        if branch_url is not None:
+            yield branch_url
+
+    def _get_web_url(self, service, location):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            NotLaunchpadBranch)
+        for branch_url in self._possible_locations(location):
+            try:
+                return service.get_web_url_from_branch_url(branch_url)
+            except (NotLaunchpadBranch, InvalidURL):
+                pass
+        raise NotLaunchpadBranch(branch_url)
+
     def run(self, location=None, dry_run=False):
         from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
         from bzrlib.trace import note
         import webbrowser
         if location is None:
             location = u'.'
-        try:
-            branch = Branch.open(location)
-        except NotBranchError:
-            branch_url = location
-        else:
-            branch_url = branch.get_public_branch()
-            if branch_url is None:
-                branch_url = branch.get_push_location()
-                if branch_url is None:
-                    raise NoPublicBranch(branch)
-        service = LaunchpadService()
-        web_url = service.get_web_url_from_branch_url(branch_url)
+        web_url = self._get_web_url(LaunchpadService(), location)
         note('Opening %s in web browser' % web_url)
         if not dry_run:
             webbrowser.open(web_url)

@@ -39,8 +39,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
     def test_no_public_location_no_push_location(self):
         self.make_branch('not-public')
         self.assertEqual(
-            ['bzr: ERROR: There is no public branch set for "%s/".'
-             % abspath('not-public')],
+            ['bzr: ERROR: not-public is not hosted on Launchpad.'],
             self.run_open('not-public', retcode=3))
 
     def test_non_launchpad_branch(self):
