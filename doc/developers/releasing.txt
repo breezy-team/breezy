@@ -74,6 +74,9 @@ Preparing the tree for release
      
       # API compatibility version: bzrlib is currently API compatible with 1.7.
       
+#. Tag the new release::
+
+     bzr tag bzr-1.12rc1 
 
 #. Submit those changes to PQM for merge into the appropriate release
    branch::
