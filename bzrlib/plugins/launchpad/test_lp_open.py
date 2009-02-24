@@ -16,8 +16,6 @@
 
 """Tests for the launchpad-open command."""
 
-from bzrlib.osutils import abspath
-
 from bzrlib.tests import TestCaseWithTransport
 
 
