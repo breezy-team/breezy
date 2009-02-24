@@ -3354,6 +3354,12 @@ class cmd_merge(Command):
         allow_pending = True
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
+
+        # die as quickly as possible if there are uncommitted changes
+        td = tree.changes_from(tree.basis_tree())
+        if len(td.modified):
+            raise errors.UncommittedChanges(tree)
+
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored, view_info=view_info)
