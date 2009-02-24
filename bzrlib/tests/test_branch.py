@@ -43,7 +43,7 @@ from bzrlib.branch import (
     PullResult,
     _run_with_write_locked_target,
     )
-from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
+from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1,
                            BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
@@ -64,7 +64,7 @@ class TestDefaultFormat(TestCase):
 
     def test_default_format_is_same_as_bzrdir_default(self):
         # XXX: it might be nice if there was only one place the default was
-        # set, but at the moment that's not true -- mbp 20070814 -- 
+        # set, but at the moment that's not true -- mbp 20070814 --
         # https://bugs.launchpad.net/bzr/+bug/132376
         self.assertEqual(BranchFormat.get_default_format(),
                 BzrDirFormat.get_default_format().get_branch_format())
@@ -134,7 +134,7 @@ class TestBranchFormat5(TestCaseWithTransport):
 class SampleBranchFormat(BranchFormat):
     """A sample format
 
-    this format is initializable, unsupported to aid in testing the 
+    this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
@@ -161,7 +161,7 @@ class TestBzrBranchFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        # this is not quite the same as 
+        # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
@@ -170,7 +170,7 @@ class TestBzrBranchFormat(TestCaseWithTransport):
             found_format = BranchFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(BzrBranchFormat5(), "bar")
-        
+
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(NotBranchError,
@@ -451,7 +451,7 @@ class _StubLockable(object):
 
     def lock_write(self):
         self.calls.append('lock_write')
-    
+
     def unlock(self):
         self.calls.append('unlock')
         if self.unlock_exc is not None:

@@ -158,7 +158,7 @@ def load_tests(standard_tests, module, loader):
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
     """Get a diamond graph to exercise deltas and merges.
-    
+
     :param trailing_eol: If True end the last line with \n.
     """
     parents = {
@@ -190,7 +190,7 @@ def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
 
     This creates a 5-node graph in files. If files supports 2-length keys two
     graphs are made to exercise the support for multiple ids.
-    
+
     :param trailing_eol: If True end the last line with \n.
     :param key_length: The length of keys in files. Currently supports length 1
         and 2 keys.
@@ -266,7 +266,7 @@ class VersionedFileTestMixIn(object):
             self.assertEquals(f.get_lines('r1'), ['b\n', 'c\n'])
             self.assertEqual(2, len(f))
             self.assertEqual(2, f.num_versions())
-    
+
             self.assertRaises(RevisionNotPresent,
                 f.add_lines, 'r2', ['foo'], [])
             self.assertRaises(RevisionAlreadyPresent,
@@ -311,7 +311,7 @@ class VersionedFileTestMixIn(object):
         verify_file(f)
 
     def test_add_unicode_content(self):
-        # unicode content is not permitted in versioned files. 
+        # unicode content is not permitted in versioned files.
         # versioned files version sequences of bytes only.
         vf = self.get_file()
         self.assertRaises(errors.BzrBadParameterUnicode,
@@ -340,7 +340,7 @@ class VersionedFileTestMixIn(object):
     def test_inline_newline_throws(self):
         # \r characters are not permitted in lines being added
         vf = self.get_file()
-        self.assertRaises(errors.BzrBadParameterContainsNewline, 
+        self.assertRaises(errors.BzrBadParameterContainsNewline,
             vf.add_lines, 'a', [], ['a\n\n'])
         self.assertRaises(
             (errors.BzrBadParameterContainsNewline, NotImplementedError),
@@ -545,7 +545,7 @@ class VersionedFileTestMixIn(object):
         f.add_lines('noeolbase', [], ['line'])
         # noeol preceeding its leftmost parent in the output:
         # this is done by making it a merge of two parents with no common
-        # anestry: noeolbase and noeol with the 
+        # anestry: noeolbase and noeol with the
         # later-inserted parent the leftmost.
         f.add_lines('eolbeforefirstparent', ['noeolbase', 'noeol'], ['line'])
         # two identical eol texts
@@ -632,7 +632,7 @@ class VersionedFileTestMixIn(object):
         self._transaction = 'after'
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
-        
+
     def test_copy_to(self):
         f = self.get_file()
         f.add_lines('0', [], ['a\n'])
@@ -711,7 +711,7 @@ class VersionedFileTestMixIn(object):
 
     def test_iter_lines_added_or_present_in_versions(self):
         # test that we get at least an equalset of the lines added by
-        # versions in the weave 
+        # versions in the weave
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
@@ -758,7 +758,7 @@ class VersionedFileTestMixIn(object):
         self.assertTrue(lines[('child\n', 'child')] > 0)
         self.assertTrue(lines[('otherchild\n', 'otherchild')] > 0)
         # we dont care if we got more than that.
-        
+
         # test all lines
         lines = iter_with_versions(None, [('Walking content.', 0, 5),
                                           ('Walking content.', 1, 5),
@@ -841,7 +841,7 @@ class VersionedFileTestMixIn(object):
                           'base',
                           [],
                           [])
-    
+
     def test_get_sha1s(self):
         # check the sha1 data is available
         vf = self.get_file()
@@ -857,7 +857,7 @@ class VersionedFileTestMixIn(object):
             'b': '3f786850e387550fdab836ed7e6dc881de23001b',
             },
             vf.get_sha1s(['a', 'c', 'b']))
-        
+
 
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
@@ -870,7 +870,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
             get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
-        
+
         # We are going to invasively corrupt the text
         # Make sure the internals of weave are the same
         self.assertEqual([('{', 0)
@@ -880,12 +880,12 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
                         , 'there\n'
                         , ('}', None)
                         ], w._weave)
-        
+
         self.assertEqual(['f572d396fae9206628714fb2ce00f72e94f2258f'
                         , '90f265c6e75f1c8f9ab76dcf85528352c5f215ef'
                         ], w._sha1s)
         w.check()
-        
+
         # Corrupted
         w._weave[4] = 'There\n'
         return w
@@ -895,7 +895,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         # Corrected
         w._weave[4] = 'there\n'
         self.assertEqual('hello\nthere\n', w.get_text('v2'))
-        
+
         #Invalid checksum, first digit changed
         w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
         return w
@@ -1010,7 +1010,7 @@ class MergeCasesMixin(object):
 
         def addcrlf(x):
             return x + '\n'
-        
+
         w = self.get_file()
         w.add_lines('text0', [], map(addcrlf, base))
         w.add_lines('text1', ['text0'], map(addcrlf, a))
@@ -1032,8 +1032,8 @@ class MergeCasesMixin(object):
 
         mp = map(addcrlf, mp)
         self.assertEqual(mt.readlines(), mp)
-        
-        
+
+
     def testOneInsert(self):
         self.doMerge([],
                      ['aa'],
@@ -1057,7 +1057,7 @@ class MergeCasesMixin(object):
                      ['aaa', 'xxx', 'yyy', 'bbb'],
                      ['aaa', 'xxx', 'bbb'], self.overlappedInsertExpected)
 
-        # really it ought to reduce this to 
+        # really it ought to reduce this to
         # ['aaa', 'xxx', 'yyy', 'bbb']
 
 
@@ -1065,14 +1065,14 @@ class MergeCasesMixin(object):
         self.doMerge(['aaa'],
                      ['xxx'],
                      ['yyy', 'zzz'],
-                     ['<<<<<<< ', 'xxx', '=======', 'yyy', 'zzz', 
+                     ['<<<<<<< ', 'xxx', '=======', 'yyy', 'zzz',
                       '>>>>>>> '])
 
     def testNonClashInsert1(self):
         self.doMerge(['aaa'],
                      ['xxx', 'aaa'],
                      ['yyy', 'zzz'],
-                     ['<<<<<<< ', 'xxx', 'aaa', '=======', 'yyy', 'zzz', 
+                     ['<<<<<<< ', 'xxx', 'aaa', '=======', 'yyy', 'zzz',
                       '>>>>>>> '])
 
     def testNonClashInsert2(self):
@@ -1092,7 +1092,7 @@ class MergeCasesMixin(object):
         #######################################
         # skippd, not working yet
         return
-        
+
         self.doMerge(['aaa', 'bbb', 'ccc'],
                      ['aaa', 'ddd', 'ccc'],
                      ['aaa', 'ccc'],
@@ -1141,7 +1141,7 @@ class MergeCasesMixin(object):
     def test_deletion_overlap(self):
         """Delete overlapping regions with no other conflict.
 
-        Arguably it'd be better to treat these as agreement, rather than 
+        Arguably it'd be better to treat these as agreement, rather than
         conflict, but for now conflict is safer.
         """
         base = """\
@@ -1163,11 +1163,11 @@ class MergeCasesMixin(object):
             """
         result = """\
             start context
-<<<<<<< 
+<<<<<<<\x20
             int a() {}
 =======
             int c() {}
->>>>>>> 
+>>>>>>>\x20
             end context
             """
         self._test_merge_from_strings(base, a, b, result)
@@ -1199,10 +1199,10 @@ class MergeCasesMixin(object):
 
     def test_sync_on_deletion(self):
         """Specific case of merge where we can synchronize incorrectly.
-        
+
         A previous version of the weave merge concluded that the two versions
         agreed on deleting line 2, and this could be a synchronization point.
-        Line 1 was then considered in isolation, and thought to be deleted on 
+        Line 1 was then considered in isolation, and thought to be deleted on
         both sides.
 
         It's better to consider the whole thing as a disagreement region.
@@ -1227,13 +1227,13 @@ class MergeCasesMixin(object):
             """
         result = """\
             start context
-<<<<<<< 
+<<<<<<<\x20
             base line 1
             a's replacement line 2
 =======
             b replaces
             both lines
->>>>>>> 
+>>>>>>>\x20
             end context
             """
         self._test_merge_from_strings(base, a, b, result)
@@ -1250,7 +1250,7 @@ class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
         write_weave(w, tmpf)
         self.log(tmpf.getvalue())
 
-    overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
+    overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======',
                                 'xxx', '>>>>>>> ', 'bbb']
 
 
@@ -1365,7 +1365,7 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
 
     def test_unannotated_to_fulltext(self):
         """Test adapting unannotated knits to full texts.
-        
+
         This is used for -> weaves, and for -> annotated knits.
         """
         # we need a full text, and a delta
@@ -1384,7 +1384,7 @@ class TestContentFactoryAdaption(TestCaseWithMemoryTransport):
 
     def test_unannotated_to_fulltext_no_eol(self):
         """Test adapting unannotated knits to full texts.
-        
+
         This is used for -> weaves, and for -> annotated knits.
         """
         # we need a full text, and a delta
@@ -1751,7 +1751,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def assertStreamMetaEqual(self, records, expected, stream):
         """Assert that streams expected and stream have the same records.
-        
+
         :param records: A list to collect the seen records.
         :return: A generator of the records in stream.
         """
@@ -1770,7 +1770,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
         :param skipped_records: A list with one element to increment when a
             record is skipped.
-        :param full_texts: A dict from key->fulltext representation, for 
+        :param full_texts: A dict from key->fulltext representation, for
             checking chunked or fulltext stored records.
         :param stream: A record_stream.
         :return: An iterator over the bytes of each record.
@@ -1991,7 +1991,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             keys[4]: '9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',
             },
             files.get_sha1s(keys))
-        
+
     def test_insert_record_stream_empty(self):
         """Inserting an empty record stream should work."""
         files = self.get_versionedfiles()
@@ -2265,7 +2265,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         self.assertTrue(
             lines[('otherchild\n', self.get_simple_key('otherchild'))] > 0)
         # we dont care if we got more than that.
-        
+
         # test all lines
         lines = iter_with_keys(files.keys(),
             [('Walking content.', 0, 5),
@@ -2312,7 +2312,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         files.add_lines(self.get_simple_key('noeolbase'), [], ['line'])
         # noeol preceeding its leftmost parent in the output:
         # this is done by making it a merge of two parents with no common
-        # anestry: noeolbase and noeol with the 
+        # anestry: noeolbase and noeol with the
         # later-inserted parent the leftmost.
         files.add_lines(self.get_simple_key('eolbeforefirstparent'),
             self.get_parents([self.get_simple_key('noeolbase'),
@@ -2404,15 +2404,15 @@ class VirtualVersionedFilesTests(TestCase):
         TestCase.setUp(self)
         self._lines = {}
         self._parent_map = {}
-        self.texts = VirtualVersionedFiles(self._get_parent_map, 
+        self.texts = VirtualVersionedFiles(self._get_parent_map,
                                            self._lines.get)
 
     def test_add_lines(self):
-        self.assertRaises(NotImplementedError, 
+        self.assertRaises(NotImplementedError,
                 self.texts.add_lines, "foo", [], [])
 
     def test_add_mpdiffs(self):
-        self.assertRaises(NotImplementedError, 
+        self.assertRaises(NotImplementedError,
                 self.texts.add_mpdiffs, [])
 
     def test_check(self):
@@ -2432,7 +2432,7 @@ class VirtualVersionedFilesTests(TestCase):
 
     def test_get_parent_map(self):
         self._parent_map = {"G": ("A", "B")}
-        self.assertEquals({("G",): (("A",),("B",))}, 
+        self.assertEquals({("G",): (("A",),("B",))},
                           self.texts.get_parent_map([("G",), ("L",)]))
 
     def test_get_record_stream(self):
@@ -2453,7 +2453,7 @@ class VirtualVersionedFilesTests(TestCase):
         self._lines["B"] = ["HEY"]
         self._lines["C"] = ["Alberta"]
         it = self.texts.iter_lines_added_or_present_in_keys([("A",), ("B",)])
-        self.assertEquals(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]), 
+        self.assertEquals(sorted([("FOO", "A"), ("BAR", "A"), ("HEY", "B")]),
             sorted(list(it)))
 
 

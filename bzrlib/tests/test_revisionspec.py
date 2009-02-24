@@ -276,7 +276,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         """Old revno:N:path tests"""
         wta = self.make_branch_and_tree('a')
         ba = wta.branch
-        
+
         wta.commit('Commit one', rev_id='a@r-0-1')
         wta.commit('Commit two', rev_id='a@r-0-2')
         wta.commit('Commit three', rev_id='a@r-0-3')
@@ -324,13 +324,13 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
 
 class TestRevisionSpec_revid(TestRevisionSpec):
-    
+
     def test_in_history(self):
         # We should be able to access revisions that are directly
         # in the history.
         self.assertInHistoryIs(1, 'r1', 'revid:r1')
         self.assertInHistoryIs(2, 'r2', 'revid:r2')
-        
+
     def test_missing(self):
         self.assertInvalid('revid:r3', invalid_as_revision_id=False)
 
@@ -437,7 +437,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
 
 
 class TestRevisionSpec_tag(TestRevisionSpec):
-    
+
     def make_branch_and_tree(self, relpath):
         # override format as the default one may not support tags
         return TestRevisionSpec.make_branch_and_tree(
@@ -509,7 +509,7 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
 
 class TestRevisionSpec_ancestor(TestRevisionSpec):
-    
+
     def test_non_exact_branch(self):
         # It seems better to require an exact path to the branch
         # Branch.open() rather than using Branch.open_containing()
@@ -545,7 +545,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         self.assertRaises(errors.NoCommits,
                           spec_in_history, 'ancestor:new_tree',
                                            self.tree.branch)
-                        
+
         self.assertRaises(errors.NoCommits,
                           spec_in_history, 'ancestor:tree',
                                            new_tree.branch)
@@ -566,7 +566,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
 
 
 class TestRevisionSpec_branch(TestRevisionSpec):
-    
+
     def test_non_exact_branch(self):
         # It seems better to require an exact path to the branch
         # Branch.open() rather than using Branch.open_containing()

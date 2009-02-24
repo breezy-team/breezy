@@ -157,7 +157,7 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
                               % fmt)
             # it's covered by TestTreeViews
         TestCaseWithWorkingTree.setUp(self)
- 
+
     def test_view_methods_raise(self):
         wt = self.make_branch_and_tree('wt')
         self.assertRaises(errors.ViewsNotSupported,

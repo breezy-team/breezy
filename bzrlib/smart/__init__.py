@@ -82,13 +82,13 @@ The protocol is described in doc/developers/network-protocol.txt.
 # a particular root directory.  LocalTransport doesn't do anything to stop you
 # ascending above the base directory, so we need to prevent paths
 # containing '..' in either the server or transport layers.  (Also need to
-# consider what happens if someone creates a symlink pointing outside the 
+# consider what happens if someone creates a symlink pointing outside the
 # directory tree...)
 #
 # TODO: Server should rebase absolute paths coming across the network to put
 # them under the virtual root, if one is in use.  LocalTransport currently
 # doesn't do that; if you give it an absolute path it just uses it.
-# 
+#
 # XXX: Arguments can't contain newlines or ascii; possibly we should e.g.
 # urlescape them instead.  Indeed possibly this should just literally be
 # http-over-ssh.

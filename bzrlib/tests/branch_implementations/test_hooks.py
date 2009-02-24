@@ -76,7 +76,7 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
 
     def capture_set_rh_hook(self, branch, rev_history):
         """Capture post set-rh hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the branch.
         """
         self.hook_calls.append(
@@ -200,7 +200,7 @@ class TestOpen(TestCaseWithMemoryTransport):
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for pre_change_branch_tip hook.
-    
+
     Most of these tests are very similar to the tests in
     TestPostChangeBranchTip.
     """
@@ -218,7 +218,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_hook_failure_prevents_change(self):
         """If a hook raises an exception, the change does not take effect.
-        
+
         Also, a HookFailed exception will be raised.
         """
         branch = self.make_branch_with_revision_ids(
@@ -234,7 +234,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsInstance(hook_failed_exc.exc_value, PearShapedError)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
     def test_empty_history(self):
         branch = self.make_branch('source')
         hook_calls = self.install_logging_hook('pre')
@@ -282,7 +282,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_explicit_reject_by_hook(self):
         """If a hook raises TipChangeRejected, the change does not take effect.
-        
+
         TipChangeRejected exceptions are propagated, not wrapped in HookFailed.
         """
         branch = self.make_branch_with_revision_ids(
@@ -295,7 +295,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
             TipChangeRejected, branch.set_last_revision_info, 0, NULL_REVISION)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
 
 class TestPostChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for post_change_branch_tip hook.
@@ -370,7 +370,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
     def setUp(self):
         ChangeBranchTipTestCase.setUp(self)
         self.installPreAndPostHooks()
-        
+
     def installPreAndPostHooks(self):
         self.pre_hook_calls = self.install_logging_hook('pre')
         self.post_hook_calls = self.install_logging_hook('post')

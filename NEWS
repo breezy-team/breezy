@@ -37,6 +37,11 @@ IN DEVELOPMENT
     * Bazaar will now point out ``bzr+ssh://`` to the user when they 
       use ssh://. (Jelmer Vernooij, #330535)
 
+    * ``bzr -v info`` now omits the number of committers branch statistic,
+      making it many times faster for large projects. To include that
+      statistic in the output, use ``bzr -vv info``.
+      (Ian Clatworthy)
+
     * ``bzr push`` to a ``bzr`` url (``bzr://``, ``bzr+ssh://`` etc) will
       stream if the server is version 1.13 or greater, reducing roundtrips
       significantly. (Andrew Bennetts, Robert Collins)
@@ -68,6 +73,12 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``bzr selftest`` now fails if the bazaar sources contain trailing
+      whitespace, non-unix style line endings and files not ending in a
+      newline. About 372 files and 3243 lines with trailing whitespace was
+      updated to comply with this. The code already complied with the other
+      criteria, but now it is enforced. (Marius Kruger)
+
   INTERNALS:
 
     * Branch and Repository creation on a bzr+ssh://server are now done
@@ -94,6 +105,10 @@ IN DEVELOPMENT
 
     * ``RemoteBranchFormat`` no longer claims to have a disk format string.
       (Robert Collins)
+
+    * ``Repository`` objects now have ``suspend_write_group`` and
+      ``resume_write_group`` methods.  These are currently only useful
+      with pack repositories. (Andrew Bennetts, Robert Collins)
 
     * ``RepositoryFormat`` objects now have a ``network_name`` for passing
       the format across RPC calls. (Robert Collins, Andrew Bennetts)

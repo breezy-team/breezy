@@ -502,7 +502,7 @@ class TestReannotate(tests.TestCase):
     def test_reannotate(self):
         self.annotateEqual(parent_1, [parent_1], new_1, 'blahblah')
         self.annotateEqual(expected_2_1, [parent_2], new_1, 'blahblah')
-        self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2, 
+        self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2,
                            'blahblah')
 
     def test_reannotate_no_parents(self):

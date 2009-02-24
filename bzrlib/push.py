@@ -152,7 +152,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             try:
                 tree_to = dir_to.open_workingtree()
             except errors.NotLocalUrl:
-                warning("This transport does not update the working " 
+                warning("This transport does not update the working "
                         "tree of: %s. See 'bzr help working-trees' for "
                         "more information." % br_to.base)
                 push_result = br_from.push(br_to, overwrite,

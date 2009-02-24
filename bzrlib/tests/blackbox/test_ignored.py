@@ -21,7 +21,7 @@ from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestIgnored(ExternalBase):
-        
+
     def test_ignored_added_file(self):
         """'bzr ignored' should not list versioned files."""
         # this test can go in favour of a more general ui test at some point

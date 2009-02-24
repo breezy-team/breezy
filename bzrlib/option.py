@@ -136,7 +136,7 @@ def get_merge_type(typestring):
 
 class Option(object):
     """Description of a command line option
-    
+
     :ivar _short_name: If this option has a single-letter name, this is it.
     Otherwise None.
     """
@@ -154,12 +154,12 @@ class Option(object):
         """Make a new command option.
 
         :param name: regular name of the command, used in the double-dash
-            form and also as the parameter to the command's run() 
+            form and also as the parameter to the command's run()
             method (unless param_name is specified).
 
         :param help: help message displayed in command help
 
-        :param type: function called to parse the option argument, or 
+        :param type: function called to parse the option argument, or
             None (default) if this option doesn't take an argument.
 
         :param argname: name of option argument, if any
@@ -241,7 +241,7 @@ class Option(object):
 
     def iter_switches(self):
         """Iterate through the list of switches provided by the option
-        
+
         :return: an iterator of (name, short_name, argname, help)
         """
         argname =  self.argname
@@ -349,7 +349,7 @@ class RegistryOption(Option):
         if self._registry is None:
             self._registry = self._lazy_registry.get_obj()
         return self._registry
-    
+
     @staticmethod
     def from_kwargs(name_, help=None, title=None, value_switches=False,
                     enum_switch=True, **kwargs):

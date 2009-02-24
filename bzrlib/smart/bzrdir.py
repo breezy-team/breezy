@@ -120,9 +120,9 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
 
     def do(self, path, network_name, shared):
         """Create a repository in the bzr dir at path.
-        
+
         This operates precisely like 'bzrdir.create_repository'.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions (and
         this method should only be called after establishing that a bzr dir
@@ -153,9 +153,9 @@ class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
 
     def _find(self, path):
         """try to find a repository from path upwards
-        
+
         This operates precisely like 'bzrdir.find_repository'.
-        
+
         :return: (relpath, rich_root, tree_ref, external_lookup) flags. All are
             strings, relpath is a / prefixed path, and the other three are
             either 'yes' or 'no'.
@@ -175,9 +175,9 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
     def do(self, path):
         """try to find a repository from path upwards
-        
+
         This operates precisely like 'bzrdir.find_repository'.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
 
@@ -198,9 +198,9 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 
     def do(self, path):
         """try to find a repository from path upwards
-        
+
         This operates precisely like 'bzrdir.find_repository'.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
 
@@ -235,7 +235,7 @@ class SmartServerRequestOpenBranch(SmartServerRequest):
 
     def do(self, path):
         """try to open a branch at path and return ok/nobranch.
-        
+
         If a bzrdir is not present, an exception is propogated
         rather than 'no branch' because these are different conditions.
         """

@@ -79,7 +79,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     # both sequences are empty.
     if not oldlines and not newlines:
         return
-    
+
     if allow_binary is False:
         textfile.check_text_lines(oldlines)
         textfile.check_text_lines(newlines)
@@ -200,14 +200,14 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             break
         else:
             diffcmd.append('-u')
-                  
+
         if diff_opts:
             diffcmd.extend(diff_opts)
 
         pipe = _spawn_external_diff(diffcmd, capture_errors=True)
         out,err = pipe.communicate()
         rc = pipe.returncode
-        
+
         # internal_diff() adds a trailing newline, add one here for consistency
         out += '\n'
         if rc == 2:
@@ -248,8 +248,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                 msg = 'signal %d' % (-rc)
             else:
                 msg = 'exit code %d' % rc
-                
-            raise errors.BzrError('external diff failed with %s; command: %r' 
+
+            raise errors.BzrError('external diff failed with %s; command: %r'
                                   % (rc, diffcmd))
 
 

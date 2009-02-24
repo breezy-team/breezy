@@ -42,7 +42,7 @@ def _get_editor():
     e = config.GlobalConfig().get_editor()
     if e is not None:
         yield e, config.config_filename()
-        
+
     for varname in 'VISUAL', 'EDITOR':
         if varname in os.environ:
             yield os.environ[varname], '$' + varname
@@ -144,7 +144,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
         if not msgfilename or not _run_editor(msgfilename):
             return None
-        
+
         started = False
         msg = []
         lastline, nlines = 0, 0
@@ -247,7 +247,7 @@ def make_commit_message_template(working_tree, specific_files):
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.status import show_tree_status
     status_tmp = StringIO()
-    show_tree_status(working_tree, specific_files=specific_files, 
+    show_tree_status(working_tree, specific_files=specific_files,
                      to_file=status_tmp, verbose=True)
     return status_tmp.getvalue()
 
@@ -283,7 +283,7 @@ class MessageEditorHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for message editor
     hooks.
 
-    e.g. ['commit_message_template'] is the list of items to be called to 
+    e.g. ['commit_message_template'] is the list of items to be called to
     generate a commit message template
     """
 
@@ -297,7 +297,7 @@ class MessageEditorHooks(Hooks):
         # Invoked to generate the commit message template shown in the editor
         # The api signature is:
         # (commit, message), and the function should return the new message
-        # There is currently no way to modify the order in which 
+        # There is currently no way to modify the order in which
         # template hooks are invoked
         self['commit_message_template'] = []
 

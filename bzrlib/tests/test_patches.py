@@ -21,16 +21,16 @@ import os.path
 from bzrlib.tests import TestCase
 
 from bzrlib.iterablefile import IterableFile
-from bzrlib.patches import (MalformedLine, 
-                            MalformedHunkHeader, 
-                            MalformedPatchHeader, 
-                            ContextLine, 
+from bzrlib.patches import (MalformedLine,
+                            MalformedHunkHeader,
+                            MalformedPatchHeader,
+                            ContextLine,
                             InsertLine,
-                            RemoveLine, 
-                            difference_index, 
+                            RemoveLine,
+                            difference_index,
                             get_patch_names,
-                            hunk_from_header, 
-                            iter_patched, 
+                            hunk_from_header,
+                            iter_patched,
                             iter_patched_from_hunks,
                             parse_line,
                             parse_patch,
@@ -40,7 +40,7 @@ from bzrlib.patches import (MalformedLine,
 class PatchesTester(TestCase):
 
     def datafile(self, filename):
-        data_path = os.path.join(os.path.dirname(__file__), 
+        data_path = os.path.join(os.path.dirname(__file__),
                                  "test_patches_data", filename)
         return file(data_path, "rb")
 
@@ -112,11 +112,11 @@ class PatchesTester(TestCase):
         self.lineThing(" hello\n", ContextLine)
         self.lineThing("+hello\n", InsertLine)
         self.lineThing("-hello\n", RemoveLine)
-    
+
     def testMalformedLine(self):
         """Parse invalid valid hunk lines"""
         self.makeMalformedLine("hello\n")
-    
+
     def compare_parsed(self, patchtext):
         lines = patchtext.splitlines(True)
         patch = parse_patch(lines.__iter__())

@@ -116,7 +116,7 @@ class TestReportChanges(tests.TestCase):
             old_path=None, versioned_change='unversioned',
             renamed=False, modified='created', exe_change=False,
             kind=(None, 'file'))
-        # but we can choose to filter these. Probably that should be done 
+        # but we can choose to filter these. Probably that should be done
         # close to the tree, but this is a reasonable starting point.
         self.assertReport(None, file_id=None, path='subdir/foo~',
             old_path=None, versioned_change='unversioned',
