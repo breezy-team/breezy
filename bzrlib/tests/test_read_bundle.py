@@ -72,8 +72,10 @@ class TestDeprecations(tests.TestCaseInTempDir):
     def create_test_bundle(self):
         out, wt = create_bundle_file(self)
         f = open('test_bundle', 'wb')
-        f.write(out.getvalue())
-        f.close()
+        try:
+            f.write(out.getvalue())
+        finally:
+            f.close()
         return wt
 
     def test_read_bundle_from_url_deprecated(self):
@@ -96,8 +98,10 @@ class TestReadBundleFromURL(TestTransportImplementation):
         out, wt = create_bundle_file(self)
         if self.get_transport().is_readonly():
             f = open('test_bundle', 'wb')
-            f.write(out.getvalue())
-            f.close()
+            try:
+                f.write(out.getvalue())
+            finally:
+                f.close()
         else:
             self.get_transport().put_file('test_bundle', out)
             self.log('Put to: %s', self.get_url('test_bundle'))

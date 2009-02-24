@@ -179,6 +179,8 @@ bzr 1.12rc1 "1234567890" 2009-02-10
       respectively, given they are not ready for release in 1.12.
       (Ian Clatworthy)
 
+    * ``read_bundle_from_url`` has been deprecated. (Vincent Ladeuil)
+
   NEW FEATURES:
 
     * Add support for filtering ``bzr missing`` on revisions.  Remote revisions
