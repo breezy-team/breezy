@@ -2702,7 +2702,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
-    
+
     @classmethod
     def probe_transport(klass, transport):
         """Return a RemoteBzrDirFormat object if it looks possible."""

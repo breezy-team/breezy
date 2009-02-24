@@ -256,5 +256,5 @@ class FormatRegistry(Registry):
         if callable(r):
             r = r()
         return r
-    
+
 
