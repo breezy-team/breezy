@@ -1297,7 +1297,7 @@ class BranchFormat(object):
         del klass._formats[format.get_format_string()]
 
     def __str__(self):
-        return self.get_format_string().rstrip()
+        return self.get_format_description().rstrip()
 
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""

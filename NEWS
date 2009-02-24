@@ -70,6 +70,13 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Branch and Repository creation on a bzr+ssh://server are now done
+      via RPC calls rather than VFS calls, reducing round trips for
+      pushing new branches substantially. (Robert Collins)
+
+    * ``BzrDirFormat.__str__`` now uses the human readable description
+      rather than the sometimes-absent disk label. (Robert Collins)
+
     * ``bzrlib.fetch`` is now composed of a sender and a sink component
       allowing for decoupling over a network connection. Fetching into
       a RemoteRepository uses this to stream the operation.
@@ -81,12 +88,12 @@ IN DEVELOPMENT
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
 
-    * Creating a repository on a bzr+ssh:// server will now make a single
-      call rather than many VFS calls. (Robert Collins)
-
     * New hook Commands['extend_command'] to allow plugins to access a
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
+
+    * ``RemoteBranchFormat`` no longer claims to have a disk format string.
+      (Robert Collins)
 
     * ``RepositoryFormat`` objects now have a ``network_name`` for passing
       the format across RPC calls. (Robert Collins, Andrew Bennetts)

@@ -1850,7 +1850,7 @@ class BzrDirFormat(object):
 
     def __str__(self):
         # Trim the newline
-        return self.get_format_string().rstrip()
+        return self.get_format_description().rstrip()
 
     def _supply_sub_formats_to(self, other_format):
         """Give other_format the same values for sub formats as this has.
@@ -2084,8 +2084,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
             # target doesn't support stacking.  So force a branch that *can*
             # support stacking.
             from bzrlib.branch import BzrBranchFormat7
-            self._branch_format = BzrBranchFormat7()
-            mutter("using %r for stacking" % (self._branch_format,))
+            branch_format = BzrBranchFormat7()
+            self.set_branch_format(branch_format)
+            mutter("using %r for stacking" % (branch_format,))
             from bzrlib.repofmt import pack_repo
             if self.repository_format.rich_root_data:
                 bzrdir_format_name = '1.6.1-rich-root'
@@ -2698,6 +2699,9 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
     def get_format_description(self):
         return 'bzr remote bzrdir'
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
     
     @classmethod
     def probe_transport(klass, transport):
@@ -2762,6 +2766,16 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             else:
                 result._custom_format = custom_format
             result.rich_root_data = custom_format.rich_root_data
+        return result
+
+    def get_branch_format(self):
+        result = BzrDirMetaFormat1.get_branch_format(self)
+        if not isinstance(result, remote.RemoteBranchFormat):
+            new_result = remote.RemoteBranchFormat()
+            new_result._custom_format = result
+            # cache the result
+            self.set_branch_format(new_result)
+            result = new_result
         return result
 
     repository_format = property(__return_repository_format,

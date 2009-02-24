@@ -459,6 +459,42 @@ class TestBzrDirOpenBranch(tests.TestCase):
             RemoteBzrDirFormat.probe_transport, OldServerTransport())
 
 
+class TestBzrDirCreateBranch(TestRemote):
+
+    def test_backwards_compat(self):
+        self.setup_smart_server_with_call_log()
+        repo = self.make_repository('.')
+        self.reset_smart_call_log()
+        self.disable_verb('BzrDir.create_branch')
+        branch = repo.bzrdir.create_branch()
+        create_branch_call_count = len([call for call in self.hpss_calls if
+            call[0].method == 'BzrDir.create_branch'])
+        self.assertEqual(1, create_branch_call_count)
+
+    def test_current_server(self):
+        transport = self.get_transport('.')
+        transport = transport.clone('quack')
+        self.make_repository('quack')
+        client = FakeClient(transport.base)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_format = reference_bzrdir_format.get_branch_format()
+        network_name = reference_format.network_name()
+        reference_repo_fmt = reference_bzrdir_format.repository_format
+        reference_repo_name = reference_repo_fmt.network_name()
+        client.add_expected_call(
+            'BzrDir.create_branch', ('quack/', network_name),
+            'success', ('ok', network_name, '', 'no', 'no', 'yes',
+            reference_repo_name))
+        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        branch = a_bzrdir.create_branch()
+        # We should have got a remote branch
+        self.assertIsInstance(branch, remote.RemoteBranch)
+        # its format should have the settings from the response
+        format = branch._format
+        self.assertEqual(network_name, format.network_name())
+
+
 class TestBzrDirCreateRepository(TestRemote):
 
     def test_backwards_compat(self):
@@ -831,7 +867,6 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         branch._ensure_real = lambda: None
         branch.lock_write()
-        self.addCleanup(branch.unlock)
         # The 'TipChangeRejected' error response triggered by calling
         # set_revision_history causes a TipChangeRejected exception.
         err = self.assertRaises(
