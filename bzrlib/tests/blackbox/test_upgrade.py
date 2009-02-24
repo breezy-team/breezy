@@ -68,8 +68,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # when up to date we should get a message to that effect
         (out, err) = self.run_bzr('upgrade current_format_branch', retcode=3)
         self.assertEqual("", out)
-        self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "
-                             "directory, format 1 is already at the most "
+        self.assertEqualDiff("bzr: ERROR: The branch format Meta "
+                             "directory format 1 is already at the most "
                              "recent format.\n", err)
 
     def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
@@ -81,8 +81,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
                          "upgraded separately.\n"
                          % get_transport(self.get_url('current_format_branch')).base,
                          out)
-        self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "
-                             "directory, format 1 is already at the most "
+        self.assertEqualDiff("bzr: ERROR: The branch format Meta "
+                             "directory format 1 is already at the most "
                              "recent format.\n", err)
 
     def test_upgrade_checkout(self):

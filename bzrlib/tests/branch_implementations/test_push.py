@@ -232,6 +232,11 @@ class TestPush(TestCaseWithBranch):
         # Make a local branch with four revisions.  Four revisions because:
         # one to push, one there for _walk_to_common_revisions to find, one we
         # don't want to access, one for luck :)
+        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+            # This test could in principle apply to BranchReferenceFormat, but
+            # make_branch_builder doesn't support it.
+            raise tests.TestSkipped(
+                "BranchBuilder can't make reference branches.")
         try:
             builder = self.make_branch_builder('local')
         except (errors.TransportNotPossible, errors.UninitializableFormat):
