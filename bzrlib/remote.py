@@ -850,9 +850,12 @@ class RemoteRepository(_RpcHelper):
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         self._fallback_repositories.append(repository)
-        # They are also seen by the fallback repository.  If it doesn't exist
-        # yet they'll be added then.  This implicitly copies them.
-        self._ensure_real()
+        if self._real_repository is not None:
+            self._real_repository.add_fallback_repository(repository)
+        else:
+            # They are also seen by the fallback repository.  If it doesn't
+            # exist yet they'll be added then.  This implicitly copies them.
+            self._ensure_real()
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1983,45 +1986,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
     def set_push_location(self, location):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
-
-    @needs_write_lock
-    def update_revisions(self, other, stop_revision=None, overwrite=False,
-                         graph=None):
-        """See Branch.update_revisions."""
-        other.lock_read()
-        try:
-            if stop_revision is None:
-                stop_revision = other.last_revision()
-                if revision.is_null(stop_revision):
-                    # if there are no commits, we're done.
-                    return
-            self.fetch(other, stop_revision)
-
-            if overwrite:
-                # Just unconditionally set the new revision.  We don't care if
-                # the branches have diverged.
-                self._set_last_revision(stop_revision)
-            else:
-                medium = self._client._medium
-                if not medium._is_remote_before((1, 6)):
-                    try:
-                        self._set_last_revision_descendant(stop_revision, other)
-                        return
-                    except errors.UnknownSmartMethod:
-                        medium._remember_remote_is_before((1, 6))
-                # Fallback for pre-1.6 servers: check for divergence
-                # client-side, then do _set_last_revision.
-                last_rev = revision.ensure_null(self.last_revision())
-                if graph is None:
-                    graph = self.repository.get_graph()
-                if self._check_if_descendant_or_diverged(
-                        stop_revision, last_rev, graph, other):
-                    # stop_revision is a descendant of last_rev, but we aren't
-                    # overwriting, so we're done.
-                    return
-                self._set_last_revision(stop_revision)
-        finally:
-            other.unlock()
 
 
 def _extract_tar(tar, to_dir):
