@@ -616,7 +616,7 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.append("MSWSOCK.dll")
+    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,
