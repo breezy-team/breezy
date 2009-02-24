@@ -1241,11 +1241,14 @@ class KnitVersionedFiles(VersionedFiles):
         #       from the same pack file together, and we want to extract all
         #       the texts for a given build-chain together. Ultimately it
         #       probably needs a better global view.
+        total_keys = len(keys)
         prefix_split_keys, prefix_order = self._split_by_prefix(keys)
         prefix_split_non_local_keys, _ = self._split_by_prefix(non_local_keys)
         cur_keys = []
         cur_non_local = set()
         cur_size = 0
+        result = []
+        sizes = []
         for prefix in prefix_order:
             keys = prefix_split_keys[prefix]
             non_local = prefix_split_non_local_keys.get(prefix, [])
@@ -1255,12 +1258,19 @@ class KnitVersionedFiles(VersionedFiles):
             cur_keys.extend(keys)
             cur_non_local.update(non_local)
             if cur_size > _STREAM_MIN_BUFFER_SIZE:
-                yield cur_keys, cur_non_local
+                result.append((cur_keys, cur_non_local))
+                sizes.append(cur_size)
                 cur_keys = []
                 cur_non_local = []
                 cur_size = 0
         if cur_keys:
-            yield cur_keys, cur_non_local
+            if cur_size == 0:
+                import pdb; pdb.set_trace()
+            result.append((cur_keys, cur_non_local))
+            sizes.append(cur_size)
+        print 'Collapsed %d keys into %d requests w/ %d file_ids w/ sizes: %s' % (
+            total_keys, len(result), len(prefix_split_keys), sizes)
+        return result
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """Get a stream of records for keys.
