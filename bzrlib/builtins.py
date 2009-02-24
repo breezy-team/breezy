@@ -2256,8 +2256,7 @@ class cmd_ls(Command):
     def run(self, revision=None, verbose=False,
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False, kind=None, show_ids=False, path=None,
-            apply_view=True):
+            null=False, kind=None, show_ids=False, path=None):
 
         if kind and kind not in ('file', 'directory', 'symlink'):
             raise errors.BzrCommandError('invalid kind specified')
@@ -2286,9 +2285,11 @@ class cmd_ls(Command):
         if revision is not None or tree is None:
             tree = _get_one_revision_tree('ls', revision, branch=branch)
 
-        if apply_view and tree.supports_views():
+        apply_view = False
+        if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
+                apply_view = True
                 view_str = views.view_display_str(view_files)
                 note("*** ignoring files outside view: %s" % view_str)
 
@@ -2303,7 +2304,7 @@ class cmd_ls(Command):
                         continue
                     if kind is not None and fkind != kind:
                         continue
-                    if apply_view and tree.supports_views():
+                    if apply_view:
                         try:
                             views.check_path_in_view(tree, fp)
                         except errors.FileOutsideView:
