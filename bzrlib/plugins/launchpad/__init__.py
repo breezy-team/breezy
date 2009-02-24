@@ -21,6 +21,8 @@
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
+import webbrowser
+
 from bzrlib.branch import Branch
 from bzrlib.commands import Command, Option, register_command
 from bzrlib.directory_service import directories
@@ -31,6 +33,11 @@ from bzrlib.errors import (
     NotBranchError,
     )
 from bzrlib.help_topics import topic_registry
+from bzrlib.plugins.launchpad.lp_registration import (
+    LaunchpadService,
+    NotLaunchpadBranch,
+    )
+from bzrlib.trace import note
 
 
 class cmd_register_branch(Command):
@@ -158,8 +165,6 @@ class cmd_launchpad_open(Command):
             yield branch_url
 
     def _get_web_url(self, service, location):
-        from bzrlib.plugins.launchpad.lp_registration import (
-            NotLaunchpadBranch)
         for branch_url in self._possible_locations(location):
             try:
                 return service.get_web_url_from_branch_url(branch_url)
@@ -168,9 +173,6 @@ class cmd_launchpad_open(Command):
         raise NotLaunchpadBranch(branch_url)
 
     def run(self, location=None, dry_run=False):
-        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
-        from bzrlib.trace import note
-        import webbrowser
         if location is None:
             location = u'.'
         web_url = self._get_web_url(LaunchpadService(), location)
