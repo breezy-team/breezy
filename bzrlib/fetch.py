@@ -386,9 +386,10 @@ class RepoFetcher(object):
         yield ('inventories', self._stream_invs_as_fulltexts(revision_ids))
 
     def _stream_invs_as_fulltexts(self, revision_ids):
-        from_serializer = self.from_repository._format._serializer
+        from_repo = self.from_repository
+        from_serializer = from_repo._format._serializer
         revision_keys = [(rev_id,) for rev_id in revision_ids]
-        parent_map = self.from_repository.inventory.get_parent_map(revision_keys)
+        parent_map = from_repo.inventories.get_parent_map(revision_keys)
         for inv in self.from_repository.iter_inventories(revision_ids):
             # XXX: This is a bit hackish, but it works. Basically,
             #      CHKSerializer 'accidentally' supports
