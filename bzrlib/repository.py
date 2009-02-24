@@ -3661,15 +3661,30 @@ class StreamSink(object):
     def __init__(self, target_repo):
         self.target_repo = target_repo
 
-    def insert_stream(self, stream, src_format):
+    def insert_stream(self, stream, src_format, resume_tokens):
         """Insert a stream's content into the target repository.
 
         :param src_format: a bzr repository format.
 
-        :return: an iterable of keys additional items required before the
-        insertion can be completed.
+        :return: a list of resume tokens and an  iterable of keys additional
+            items required before the insertion can be completed.
         """
-        result = []
+        self.target_repo.lock_write()
+        try:
+            if resume_tokens:
+                self.target_repo.resume_write_group(resume_tokens)
+            else:
+                self.target_repo.start_write_group()
+            try:
+                # locked_insert_stream performs a commit|suspend.
+                return self._locked_insert_stream(stream, src_format)
+            except:
+                self.target_repo.abort_write_group(suppress_errors=True)
+                raise
+        finally:
+            self.target_repo.unlock()
+
+    def _locked_insert_stream(self, stream, src_format):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         for substream_type, substream in stream:
@@ -3696,7 +3711,30 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
-        return result
+        try:
+            missing_keys = set()
+            for prefix, versioned_file in (
+                ('texts', self.target_repo.texts),
+                ('inventories', self.target_repo.inventories),
+                ('revisions', self.target_repo.revisions),
+                ('signatures', self.target_repo.signatures),
+                ):
+                missing_keys.update((prefix,) + key for key in
+                    versioned_file.get_missing_compression_parent_keys())
+        except NotImplementedError:
+            # cannot even attempt suspending, and missing would have failed
+            # during stream insertion.
+            missing_keys = set()
+        else:
+            if missing_keys:
+                # suspend the write group and tell the caller what we is
+                # missing. We know we can suspend or else we would not have
+                # entered this code path. (All repositories that can handle
+                # missing keys can handle suspending a write group).
+                write_group_tokens = self.target_repo.suspend_write_group()
+                return write_group_tokens, missing_keys
+        self.target_repo.commit_write_group()
+        return [], set()
 
     def _extract_and_insert_inventories(self, substream, serializer):
         """Generate a new inventory versionedfile in target, converting data.
