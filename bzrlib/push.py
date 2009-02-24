@@ -103,6 +103,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # all of the dependent branches, etc.
         dir_to = br_from.bzrdir.clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on)
+        # XXX: Fix this API to allow getting the branch back from the clone
+        # call. Or something. 20090224 RBC/spiv.
         br_to = dir_to.open_branch()
         # TODO: Some more useful message about what was copied
         try:
