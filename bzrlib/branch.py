@@ -973,7 +973,8 @@ class Branch(object):
         else:
             if parent:
                 destination.set_parent(parent)
-        self.tags.merge_to(destination.tags)
+        if self._push_should_merge_tags():
+            self.tags.merge_to(destination.tags)
 
     @needs_read_lock
     def check(self):
