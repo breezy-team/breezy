@@ -28,6 +28,7 @@ from bzrlib import (
     remote,
     repository,
     )
+from bzrlib.branch import BzrBranchFormat6
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.repofmt.weaverepo import (
@@ -54,7 +55,7 @@ class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
     def test_repository_format(self):
         # make sure the repository on tree.branch is of the desired format,
-        # because developers use this api to setup the tree, branch and 
+        # because developers use this api to setup the tree, branch and
         # repository for their tests: having it now give the right repository
         # type would invalidate the tests.
         tree = self.make_branch_and_tree('repo')
@@ -297,6 +298,26 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(self.repository_format,
             self.bzrdir_format.repository_format)
 
+    def test_format_network_name(self):
+        repo = self.make_repository('r')
+        format = repo._format
+        network_name = format.network_name()
+        self.assertIsInstance(network_name, str)
+        # We want to test that the network_name matches the actual format on
+        # disk.  For local repositories, that means that using network_name as
+        # a key in the registry gives back the same format.  For remote
+        # repositories, that means that the network_name of the
+        # RemoteRepositoryFormat we have locally matches the actual format
+        # present on the remote side.
+        if isinstance(format, remote.RemoteRepositoryFormat):
+            repo._ensure_real()
+            real_repo = repo._real_repository
+            self.assertEqual(real_repo._format.network_name(), network_name)
+        else:
+            registry = repository.network_format_registry
+            looked_up_format = registry.get(network_name)
+            self.assertEqual(format.__class__, looked_up_format.__class__)
+
     def test_create_repository(self):
         # bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():
@@ -310,7 +331,7 @@ class TestRepository(TestCaseWithRepository):
         # Check that we have a repository object.
         made_repo.has_revision('foo')
         self.assertEqual(made_control, made_repo.bzrdir)
-        
+
     def test_create_repository_shared(self):
         # bzrdir can construct a shared repository.
         if not self.bzrdir_format.is_supported():
@@ -336,7 +357,7 @@ class TestRepository(TestCaseWithRepository):
         wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual('revision-1', tree.inventory.root.revision) 
+        self.assertEqual('revision-1', tree.inventory.root.revision)
         expected = InventoryDirectory('fixed-root', '', None)
         expected.revision = 'revision-1'
         self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
@@ -447,7 +468,7 @@ class TestRepository(TestCaseWithRepository):
             lambda match: match.group(0).encode('unicode_escape'),
             message)
         self.assertEqual(rev.message, escaped_message)
-        # insist the class is unicode no matter what came in for 
+        # insist the class is unicode no matter what came in for
         # consistency.
         self.assertIsInstance(rev.message, unicode)
 
@@ -523,7 +544,7 @@ class TestRepository(TestCaseWithRepository):
 
     def test_format_attributes(self):
         """All repository formats should have some basic attributes."""
-        # create a repository to get a real format instance, not the 
+        # create a repository to get a real format instance, not the
         # template from the test suite parameterization.
         repo = self.make_repository('.')
         repo._format.rich_root_data
@@ -786,6 +807,44 @@ class TestRepository(TestCaseWithRepository):
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
+    def test_clone_unstackable_branch_preserves_stackable_repo_format(self):
+        """Cloning an unstackable branch format to a somewhere with a default
+        stack-on branch preserves the repository format.  (i.e. if the source
+        repository is stackable, the branch format is upgraded but the
+        repository format is preserved.)
+        """
+        try:
+            repo = self.make_repository('repo', shared=True)
+        except errors.IncompatibleFormat:
+            raise TestNotApplicable('Cannot make a shared repository')
+        # Make a source branch in 'repo' in an unstackable branch format
+        bzrdir_format = self.repository_format._matchingbzrdir
+        transport = self.get_transport('repo/branch')
+        transport.mkdir('.')
+        target_bzrdir = bzrdir_format.initialize_on_transport(transport)
+        branch = BzrBranchFormat6().initialize(target_bzrdir)
+        #branch = self.make_branch('repo/branch', format='pack-0.92')
+        self.make_branch('stack-on-me')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on-me')
+        target = branch.bzrdir.clone(self.get_url('target'))
+        # The target branch supports stacking if the source repository does.
+        self.assertEqual(repo._format.supports_external_lookups,
+                         target.open_branch()._format.supports_stacking())
+        if isinstance(repo, remote.RemoteRepository):
+            repo._ensure_real()
+            repo = repo._real_repository
+        target_repo = target.open_repository()
+        if isinstance(target_repo, remote.RemoteRepository):
+            target_repo._ensure_real()
+            target_repo = target_repo._real_repository
+        # The repository format is preserved.
+        self.assertEqual(repo._format, target_repo._format)
+
+    def test__get_sink(self):
+        repo = self.make_repository('repo')
+        sink = repo._get_sink()
+        self.assertIsInstance(sink, repository.StreamSink)
+
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns
         an object with a get_parent_map method.
@@ -978,7 +1037,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         repository = self.bzrdir.open_repository()
         repository.lock_read()
         self.addCleanup(repository.unlock)
-        revisions = [repository.get_revision(r) for r in 
+        revisions = [repository.get_revision(r) for r in
                      ['rev1', 'rev2', 'rev3', 'rev4']]
         deltas1 = list(repository.get_deltas_for_revisions(revisions))
         deltas2 = [repository.get_revision_delta(r.revision_id) for r in
@@ -1008,6 +1067,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         try:
             self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
                               None, None)
+            self.assertRaises(errors.ReservedId, repo.add_inventory_by_delta,
+                "foo", [], 'reserved:', None)
             self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
                               None)
         finally:
@@ -1038,7 +1099,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
             repo.add_revision('ghost', rev)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
             raise TestNotApplicable("Cannot test with ghosts for this format.")
-         
+
         inv = Inventory(revision_id = 'the_ghost')
         inv.root.revision = 'the_ghost'
         sha1 = repo.add_inventory('the_ghost', inv, [])
@@ -1082,12 +1143,12 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
 #        TestCaseWithRepository
 class TestEscaping(TestCaseWithTransport):
     """Test that repositories can be stored correctly on VFAT transports.
-    
+
     Makes sure we have proper escaping of invalid characters, etc.
 
     It'd be better to test all operations on the FakeVFATTransportDecorator,
     but working trees go straight to the os not through the Transport layer.
-    Therefore we build some history first in the regular way and then 
+    Therefore we build some history first in the regular way and then
     check it's safe to access for vfat.
     """
 
@@ -1098,9 +1159,9 @@ class TestEscaping(TestCaseWithTransport):
         if isinstance(self.repository_format, RemoteRepositoryFormat):
             return
         FOO_ID = 'foo<:>ID'
-        REV_ID = 'revid-1' 
-        # this makes a default format repository always, which is wrong: 
-        # it should be a TestCaseWithRepository in order to get the 
+        REV_ID = 'revid-1'
+        # this makes a default format repository always, which is wrong:
+        # it should be a TestCaseWithRepository in order to get the
         # default format.
         wt = self.make_branch_and_tree('repo')
         self.build_tree(["repo/foo"], line_endings='binary')

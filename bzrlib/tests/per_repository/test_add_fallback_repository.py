@@ -16,7 +16,11 @@
 
 """Tests for Repository.add_fallback_repository."""
 
-from bzrlib import errors
+from bzrlib import (
+    bzrdir,
+    errors,
+    remote,
+    )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
@@ -25,7 +29,14 @@ from bzrlib.tests.per_repository import TestCaseWithRepository
 class TestAddFallbackRepository(TestCaseWithRepository):
 
     def test_add_fallback_repository(self):
-        repo = self.make_repository('repo')
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            # RemoteRepository by default builds a default format real
+            # repository, but the default format is unstackble.  So explicitly
+            # make a stackable real repository and use that.
+            repo = self.make_repository('repo', format='1.9')
+            repo = bzrdir.BzrDir.open(self.get_url('repo')).open_repository()
+        else:
+            repo = self.make_repository('repo')
         tree = self.make_branch_and_tree('branch')
         if not repo._format.supports_external_lookups:
             self.assertRaises(errors.UnstackableRepositoryFormat,
@@ -45,3 +56,22 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         # ... or on the repository directly...
         self.assertEqual({revision_id: (NULL_REVISION,)},
             repo.get_parent_map([revision_id]))
+        # ... or on the repository's graph.
+        self.assertEqual({revision_id: (NULL_REVISION,)},
+            repo.get_graph().get_parent_map([revision_id]))
+        # ... or on the repository's graph, when there is an other repository.
+        other = self.make_repository('other')
+        other.lock_read()
+        self.addCleanup(other.unlock)
+        self.assertEqual({revision_id: (NULL_REVISION,)},
+            repo.get_graph(other).get_parent_map([revision_id]))
+
+    def test_add_fallback_sets_fetch_order(self):
+        repo = self.make_repository('repo')
+        tree = self.make_branch_and_tree('branch')
+        if not repo._format.supports_external_lookups:
+            self.assertRaises(errors.UnstackableRepositoryFormat,
+                repo.add_fallback_repository, tree.branch.repository)
+            raise TestNotApplicable
+        repo.add_fallback_repository(tree.branch.repository)
+        self.assertEqual('topological', repo._fetch_order)

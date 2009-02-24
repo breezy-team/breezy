@@ -131,7 +131,10 @@ log_error = _bzr_logger.error
 error =     _bzr_logger.error
 
 
+_last_mutter_flush_time = None
+
 def mutter(fmt, *args):
+    global _last_mutter_flush_time
     if _trace_file is None:
         return
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
@@ -152,11 +155,19 @@ def mutter(fmt, *args):
         out = fmt % tuple(real_args)
     else:
         out = fmt
-    timestamp = '%0.3f  ' % (time.time() - _bzr_log_start_time,)
+    now = time.time()
+    timestamp = '%0.3f  ' % (now - _bzr_log_start_time,)
     out = timestamp + out + '\n'
     _trace_file.write(out)
-    # no need to flush here, the trace file is now linebuffered when it's
-    # opened.
+    # We flush if we haven't flushed for a few seconds. We don't want to flush
+    # on every mutter, but when a command takes a while, it can be nice to see
+    # updates in the debug log.
+    if (_last_mutter_flush_time is None
+        or (now - _last_mutter_flush_time) > 2.0):
+        flush = getattr(_trace_file, 'flush', None)
+        if flush is not None:
+            flush()
+        _last_mutter_flush_time = now
 
 
 def mutter_callsite(stacklevel, fmt, *args):
@@ -205,7 +216,7 @@ def _get_bzr_log_filename():
 
 
 def _open_bzr_log():
-    """Open the .bzr.log trace file.  
+    """Open the .bzr.log trace file.
 
     If the log is more than a particular length, the old file is renamed to
     .bzr.log.old and a new file is started.  Otherwise, we append to the
@@ -270,7 +281,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
 
     :param to_file: A file-like object to which messages will be sent.
 
-    :returns: A memento that should be passed to _pop_log_file to restore the 
+    :returns: A memento that should be passed to _pop_log_file to restore the
     previously active logging.
     """
     global _trace_file
@@ -305,7 +316,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     """Undo changes to logging/tracing done by _push_log_file.
 
     This flushes, but does not close the trace file.
-    
+
     Takes the memento returned from _push_log_file."""
     global _trace_file
     _trace_file = old_trace_file
@@ -321,7 +332,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
 @symbol_versioning.deprecated_function(symbol_versioning.one_two)
 def enable_test_log(to_file):
     """Redirect logging to a temporary file for a test
-    
+
     :returns: an opaque reference that should be passed to disable_test_log
     after the test completes.
     """
@@ -336,8 +347,8 @@ def disable_test_log(memento):
 def log_exception_quietly():
     """Log the last exception to the trace file only.
 
-    Used for exceptions that occur internally and that may be 
-    interesting to developers but not to users.  For example, 
+    Used for exceptions that occur internally and that may be
+    interesting to developers but not to users.  For example,
     errors loading plugins.
     """
     mutter(traceback.format_exc())
@@ -396,10 +407,18 @@ def disable_default_logging():
     pass
 
 
-_short_fields = ('VmPeak', 'VmSize', 'VmRSS')
-
 def debug_memory(message='', short=True):
     """Write out a memory dump."""
+    if sys.platform == 'win32':
+        from bzrlib import win32utils
+        win32utils.debug_memory_win32api(message=message, short=short)
+    else:
+        _debug_memory_proc(message=message, short=short)
+
+
+_short_fields = ('VmPeak', 'VmSize', 'VmRSS')
+
+def _debug_memory_proc(message='', short=True):
     try:
         status_file = file('/proc/%s/status' % os.getpid(), 'rb')
     except IOError:

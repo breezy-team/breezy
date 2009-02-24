@@ -139,7 +139,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             builder.abort()
         finally:
             tree.unlock()
-    
+
     def test_commit_unchanged_root(self):
         tree = self.make_branch_and_tree(".")
         old_revision_id = tree.commit('')
@@ -147,7 +147,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         parent_tree = tree.basis_tree()
         parent_tree.lock_read()
         self.addCleanup(parent_tree.unlock)
-        builder = tree.branch.get_commit_builder([parent_tree.inventory])
+        builder = tree.branch.get_commit_builder([old_revision_id])
         try:
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
@@ -159,9 +159,9 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             # should be in the delta
             got_new_revision = ie.revision != old_revision_id
             if got_new_revision:
-                self.assertEqual(
-                    ('', '', ie.file_id, ie),
-                    delta)
+                self.assertEqual(('', '', ie.file_id, ie), delta)
+                # The delta should be tracked
+                self.assertEqual(delta, builder._basis_delta[-1])
             else:
                 self.assertEqual(None, delta)
             # Directories do not get hashed.
@@ -190,6 +190,115 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # precisely test that - a repository that wants to can add it on deserialisation,
         # but thats all the current contract guarantees anyway.
         self.assertEqual(rev_id, tree.branch.repository.get_inventory(rev_id).revision_id)
+
+    def test_get_basis_delta(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["foo"])
+        tree.add(["foo"], ["foo-id"])
+        old_revision_id = tree.commit("added foo")
+        tree.lock_write()
+        try:
+            self.build_tree(['bar'])
+            tree.add(['bar'], ['bar-id'])
+            basis = tree.branch.repository.revision_tree(old_revision_id)
+            basis.lock_read()
+            self.addCleanup(basis.unlock)
+            builder = tree.branch.get_commit_builder([old_revision_id])
+            total_delta = []
+            try:
+                parent_invs = [basis.inventory]
+                builder.will_record_deletes()
+                if builder.record_root_entry:
+                    ie = basis.inventory.root.copy()
+                    delta, _, _ = builder.record_entry_contents(ie, parent_invs,
+                        '', tree, tree.path_content_summary(''))
+                    if delta is not None:
+                        total_delta.append(delta)
+                delta = builder.record_delete("foo", "foo-id")
+                total_delta.append(delta)
+                new_bar = inventory.make_entry('file', 'bar',
+                    parent_id=tree.get_root_id(), file_id='bar-id')
+                delta, _, _ = builder.record_entry_contents(new_bar, parent_invs,
+                    'bar', tree, tree.path_content_summary('bar'))
+                total_delta.append(delta)
+                # All actions should have been recorded in the basis_delta
+                self.assertEqual(total_delta, builder.get_basis_delta())
+                builder.finish_inventory()
+                builder.commit('delete foo, add bar')
+            except:
+                tree.branch.repository.abort_write_group()
+                raise
+        finally:
+            tree.unlock()
+
+    def test_get_basis_delta_without_notification(self):
+        tree = self.make_branch_and_tree(".")
+        old_revision_id = tree.commit('')
+        tree.lock_write()
+        try:
+            parent_tree = tree.basis_tree()
+            parent_tree.lock_read()
+            self.addCleanup(parent_tree.unlock)
+            builder = tree.branch.get_commit_builder([old_revision_id])
+            # It is an error to expect builder.get_basis_delta() to be correct,
+            # if you have not also called will_record_deletes() to indicate you
+            # will be calling record_delete() when appropriate
+            self.assertRaises(AssertionError, builder.get_basis_delta)
+            tree.branch.repository.abort_write_group()
+        finally:
+            tree.unlock()
+
+    def test_record_delete(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["foo"])
+        tree.add(["foo"], ["foo-id"])
+        rev_id = tree.commit("added foo")
+        # Remove the inventory details for foo-id, because
+        # record_entry_contents ends up copying root verbatim.
+        tree.unversion(["foo-id"])
+        tree.lock_write()
+        try:
+            basis = tree.branch.repository.revision_tree(rev_id)
+            builder = tree.branch.get_commit_builder([rev_id])
+            try:
+                builder.will_record_deletes()
+                if builder.record_root_entry is True:
+                    parent_invs = [basis.inventory]
+                    del basis.inventory.root.children['foo']
+                    builder.record_entry_contents(basis.inventory.root,
+                        parent_invs, '', tree, tree.path_content_summary(''))
+                # the delta should be returned, and recorded in _basis_delta
+                delta = builder.record_delete("foo", "foo-id")
+                self.assertEqual(("foo", None, "foo-id", None), delta)
+                self.assertEqual(delta, builder._basis_delta[-1])
+                builder.finish_inventory()
+                rev_id2 = builder.commit('delete foo')
+            except:
+                tree.branch.repository.abort_write_group()
+                raise
+        finally:
+            tree.unlock()
+        rev_tree = builder.revision_tree()
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        self.assertFalse(rev_tree.path2id('foo'))
+
+    def test_record_delete_without_notification(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["foo"])
+        tree.add(["foo"], ["foo-id"])
+        rev_id = tree.commit("added foo")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([rev_id])
+            try:
+                self.record_root(builder, tree)
+                self.assertRaises(AssertionError,
+                    builder.record_delete, "foo", "foo-id")
+            finally:
+                tree.branch.repository.abort_write_group()
+        finally:
+            tree.unlock()
 
     def test_revision_tree(self):
         tree = self.make_branch_and_tree(".")
@@ -229,7 +338,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             tree.unlock()
 
     def test_last_modified_revision_after_commit_root_unchanged(self):
-        # commiting without changing the root does not change the 
+        # commiting without changing the root does not change the
         # last modified except on non-rich-root-repositories.
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('')
@@ -365,7 +474,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
     def mini_commit(self, tree, name, new_name, records_version=True,
         delta_against_basis=True, expect_fs_hash=False):
         """Perform a miniature commit looking for record entry results.
-        
+
         :param tree: The tree to commit.
         :param name: The path in the basis tree of the tree being committed.
         :param new_name: The path in the tree being committed.
@@ -424,6 +533,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             new_entry = builder.new_inventory[file_id]
             if delta_against_basis:
                 expected_delta = (name, new_name, file_id, new_entry)
+                # The delta should be recorded
+                self.assertEqual(expected_delta, builder._basis_delta[-1])
             else:
                 expected_delta = None
             self.assertEqual(expected_delta, delta)

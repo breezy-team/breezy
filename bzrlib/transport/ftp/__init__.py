@@ -195,7 +195,7 @@ class FtpTransport(ConnectedTransport):
 
         if unknown_exc:
             raise unknown_exc(path, extra=extra)
-        # TODO: jam 20060516 Consider re-raising the error wrapped in 
+        # TODO: jam 20060516 Consider re-raising the error wrapped in
         #       something like TransportError, but this loses the traceback
         #       Also, 'sftp' has a generic 'Failure' mode, which we use failure_exc
         #       to handle. Consider doing something like that here.
@@ -401,7 +401,7 @@ class FtpTransport(ConnectedTransport):
 
     def _try_append(self, relpath, text, mode=None, retries=0):
         """Try repeatedly to append the given text to the file at relpath.
-        
+
         This is a recursive function. On errors, it will be called until the
         number of retries is exceeded.
         """
@@ -476,7 +476,7 @@ class FtpTransport(ConnectedTransport):
             self._rename_and_overwrite(abs_from, abs_to, f)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abs_from,
-                extra='unable to rename to %r' % (rel_to,), 
+                extra='unable to rename to %r' % (rel_to,),
                 unknown_exc=errors.PathError)
 
     def _rename_and_overwrite(self, abs_from, abs_to, f):
@@ -599,7 +599,7 @@ def get_test_permutations():
         # side-effects (tearDown is never called).
         class UnavailableFTPServer(object):
 
-            def setUp(self):
+            def setUp(self, vfs_server=None):
                 pass
 
             def tearDown(self):

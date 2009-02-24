@@ -28,11 +28,11 @@ from bzrlib.benchmarks.tree_creator import TreeCreator
 
 class HeavilyMergedTreeCreator(TreeCreator):
     """Create a tree in which almost every commit is a merge.
-   
-    No file changes are included.  This produces two trees, 
+
+    No file changes are included.  This produces two trees,
     one of which is returned.  Except for the first commit, every
     commit in its revision-history is a merge of another commit in the other
-    tree.  
+    tree.
     Not hardlinking the working tree, because there are no working tree files.
     """
 

@@ -22,6 +22,7 @@ from bzrlib import (
     errors,
     inventory,
     revision as _mod_revision,
+    trace,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
@@ -166,6 +167,34 @@ class Serializer_v8(Serializer):
         if inv.root.revision is None:
             raise AssertionError()
 
+    def _check_cache_size(self, inv_size, entry_cache):
+        """Check that the entry_cache is large enough.
+
+        We want the cache to be ~2x the size of an inventory. The reason is
+        because we use a FIFO cache, and how Inventory records are likely to
+        change. In general, you have a small number of records which change
+        often, and a lot of records which do not change at all. So when the
+        cache gets full, you actually flush out a lot of the records you are
+        interested in, which means you need to recreate all of those records.
+        An LRU Cache would be better, but the overhead negates the cache
+        coherency benefit.
+
+        One way to look at it, only the size of the cache > len(inv) is your
+        'working' set. And in general, it shouldn't be a problem to hold 2
+        inventories in memory anyway.
+
+        :param inv_size: The number of entries in an inventory.
+        """
+        if entry_cache is None:
+            return
+        # 1.5 times might also be reasonable.
+        recommended_min_cache_size = inv_size * 1.5
+        if entry_cache.cache_size() < recommended_min_cache_size:
+            recommended_cache_size = inv_size * 2
+            trace.mutter('Resizing the inventory entry cache from %d to %d',
+                         entry_cache.cache_size(), recommended_cache_size)
+            entry_cache.resize(recommended_cache_size)
+
     def write_inventory_to_lines(self, inv):
         """Return a list of lines with the encoded inventory."""
         return self.write_inventory(inv, None)
@@ -182,7 +211,7 @@ class Serializer_v8(Serializer):
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.
-        
+
         :param inv: the inventory to write.
         :param f: the file to write. (May be None if the lines are the desired
             output).
@@ -337,7 +366,7 @@ class Serializer_v8(Serializer):
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
 
-    def _unpack_inventory(self, elt, revision_id=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None):
         """Construct from XML Element"""
         if elt.tag != 'inventory':
             raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
@@ -350,46 +379,100 @@ class Serializer_v8(Serializer):
             revision_id = cache_utf8.encode(revision_id)
         inv = inventory.Inventory(root_id=None, revision_id=revision_id)
         for e in elt:
-            ie = self._unpack_entry(e)
+            ie = self._unpack_entry(e, entry_cache=entry_cache)
             inv.add(ie)
+        self._check_cache_size(len(inv), entry_cache)
         return inv
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, entry_cache=None):
+        elt_get = elt.get
+        file_id = elt_get('file_id')
+        revision = elt_get('revision')
+        # Check and see if we have already unpacked this exact entry
+        # Some timings for "repo.revision_trees(last_100_revs)"
+        #               bzr     mysql
+        #   unmodified  4.1s    40.8s
+        #   using lru   3.5s
+        #   using fifo  2.83s   29.1s
+        #   lru._cache  2.8s
+        #   dict        2.75s   26.8s
+        #   inv.add     2.5s    26.0s
+        #   no_copy     2.00s   20.5s
+        #   no_c,dict   1.95s   18.0s
+        # Note that a cache of 10k nodes is more than sufficient to hold all of
+        # the inventory for the last 100 revs for bzr, but not for mysql (20k
+        # is enough for mysql, which saves the same 2s as using a dict)
+
+        # Breakdown of mysql using time.clock()
+        #   4.1s    2 calls to element.get for file_id, revision_id
+        #   4.5s    cache_hit lookup
+        #   7.1s    InventoryFile.copy()
+        #   2.4s    InventoryDirectory.copy()
+        #   0.4s    decoding unique entries
+        #   1.6s    decoding entries after FIFO fills up
+        #   0.8s    Adding nodes to FIFO (including flushes)
+        #   0.1s    cache miss lookups
+        # Using an LRU cache
+        #   4.1s    2 calls to element.get for file_id, revision_id
+        #   9.9s    cache_hit lookup
+        #   10.8s   InventoryEntry.copy()
+        #   0.3s    cache miss lookus
+        #   1.2s    decoding entries
+        #   1.0s    adding nodes to LRU
+        if entry_cache is not None and revision is not None:
+            key = (file_id, revision)
+            try:
+                # We copy it, because some operatations may mutate it
+                cached_ie = entry_cache[key]
+            except KeyError:
+                pass
+            else:
+                # Only copying directory entries drops us 2.85s => 2.35s
+                # if cached_ie.kind == 'directory':
+                #     return cached_ie.copy()
+                # return cached_ie
+                return cached_ie.copy()
+
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
 
         get_cached = _get_utf8_or_ascii
 
-        parent_id = elt.get('parent_id')
+        file_id = get_cached(file_id)
+        if revision is not None:
+            revision = get_cached(revision)
+        parent_id = elt_get('parent_id')
         if parent_id is not None:
             parent_id = get_cached(parent_id)
-        file_id = get_cached(elt.get('file_id'))
 
         if kind == 'directory':
             ie = inventory.InventoryDirectory(file_id,
-                                              elt.get('name'),
+                                              elt_get('name'),
                                               parent_id)
         elif kind == 'file':
             ie = inventory.InventoryFile(file_id,
-                                         elt.get('name'),
+                                         elt_get('name'),
                                          parent_id)
-            ie.text_sha1 = elt.get('text_sha1')
-            if elt.get('executable') == 'yes':
+            ie.text_sha1 = elt_get('text_sha1')
+            if elt_get('executable') == 'yes':
                 ie.executable = True
-            v = elt.get('text_size')
+            v = elt_get('text_size')
             ie.text_size = v and int(v)
         elif kind == 'symlink':
             ie = inventory.InventoryLink(file_id,
-                                         elt.get('name'),
+                                         elt_get('name'),
                                          parent_id)
-            ie.symlink_target = elt.get('symlink_target')
+            ie.symlink_target = elt_get('symlink_target')
         else:
             raise errors.UnsupportedInventoryKind(kind)
-        revision = elt.get('revision')
-        if revision is not None:
-            revision = get_cached(revision)
         ie.revision = revision
+        if revision is not None and entry_cache is not None:
+            # We cache a copy() because callers like to mutate objects, and
+            # that would cause the item in cache to mutate as well.
+            # This has a small effect on many-inventory performance, because
+            # the majority fraction is spent in cache hits, not misses.
+            entry_cache[key] = ie.copy()
 
         return ie
 

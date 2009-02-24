@@ -237,7 +237,7 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
                     'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
                     'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
                     'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
-                    't':['i', 's'], 'u':['s', 'j'], 
+                    't':['i', 's'], 'u':['s', 'j'],
                     }
 
 # Graph where different walkers will race to find the common and uncommon
@@ -698,9 +698,20 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_graph.is_ancestor('rev2a', 'rev2b')
         self.assertTrue('null:' not in instrumented_provider.calls)
 
+    def test_is_between(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(True, graph.is_between('null:', 'null:', 'null:'))
+        self.assertEqual(True, graph.is_between('rev1', 'null:', 'rev1'))
+        self.assertEqual(True, graph.is_between('rev1', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev4', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev3', 'rev1', 'rev4'))
+        self.assertEqual(False, graph.is_between('rev4', 'rev1', 'rev3'))
+        self.assertEqual(False, graph.is_between('rev1', 'rev2a', 'rev4'))
+        self.assertEqual(False, graph.is_between('null:', 'rev1', 'rev4'))
+
     def test_is_ancestor_boundary(self):
         """Ensure that we avoid searching the whole graph.
-        
+
         This requires searching through b as a common ancestor, so we
         can identify that e is common.
         """
@@ -726,7 +737,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         # 'a' is not in the ancestry of 'c', and 'g' is a ghost
         expected['g'] = None
         self.assertEqual(expected, dict(graph.iter_ancestry(['a', 'c'])))
-        expected.pop('a') 
+        expected.pop('a')
         self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
 
     def test_filter_candidate_lca(self):
@@ -834,7 +845,7 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def _run_heads_break_deeper(self, graph_dict, search):
         """Run heads on a graph-as-a-dict.
-        
+
         If the search asks for the parents of 'deeper' the test will fail.
         """
         class stub(object):
@@ -1411,6 +1422,70 @@ class TestCachingParentsProvider(tests.TestCase):
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
+
+
+class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
+    """Test the behaviour when parents are provided that were not requested."""
+
+    def setUp(self):
+        super(TestCachingParentsProviderExtras, self).setUp()
+        class ExtraParentsProvider(object):
+
+            def get_parent_map(self, keys):
+                return {'rev1': [], 'rev2': ['rev1',]}
+
+        self.inst_pp = InstrumentedParentsProvider(ExtraParentsProvider())
+        self.caching_pp = _mod_graph.CachingParentsProvider(
+            get_parent_map=self.inst_pp.get_parent_map)
+
+    def test_uncached(self):
+        self.caching_pp.disable_cache()
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertIs(None, self.caching_pp._cache)
+
+    def test_cache_initially_empty(self):
+        self.assertEqual({}, self.caching_pp._cache)
+
+    def test_cached(self):
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertEqual({'rev1': [], 'rev2': ['rev1']},
+                         self.caching_pp._cache)
+        self.assertEqual({'rev1': []},
+                          self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+
+    def test_disable_cache_clears_cache(self):
+        # Put something in the cache
+        self.caching_pp.get_parent_map(['rev1'])
+        self.assertEqual(2, len(self.caching_pp._cache))
+        self.caching_pp.disable_cache()
+        self.assertIs(None, self.caching_pp._cache)
+
+    def test_enable_cache_raises(self):
+        e = self.assertRaises(AssertionError, self.caching_pp.enable_cache)
+        self.assertEqual('Cache enabled when already enabled.', str(e))
+
+    def test_cache_misses(self):
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+    def test_no_cache_misses(self):
+        self.caching_pp.disable_cache()
+        self.caching_pp.enable_cache(cache_misses=False)
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3', 'rev3'], self.inst_pp.calls)
+
+    def test_cache_extras(self):
+        self.assertEqual({}, self.caching_pp.get_parent_map(['rev3']))
+        self.assertEqual({'rev2': ['rev1']},
+                         self.caching_pp.get_parent_map(['rev2']))
+        self.assertEqual(['rev3'], self.inst_pp.calls)
 
 
 class TestCollapseLinearRegions(tests.TestCase):

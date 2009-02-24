@@ -43,11 +43,12 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     def __init__(self, base, _from_transport=None):
         super(HttpTransport_urllib, self).__init__(
-            base, _from_transport=_from_transport)
+            base, 'urllib', _from_transport=_from_transport)
         if _from_transport is not None:
             self._opener = _from_transport._opener
         else:
-            self._opener = self._opener_class()
+            self._opener = self._opener_class(
+                report_activity=self._report_activity)
 
     def _perform(self, request):
         """Send the request to the server and handles common errors.
@@ -90,8 +91,7 @@ class HttpTransport_urllib(http.HttpTransportBase):
                 and code in (301, 302, 303, 307):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
-                                           is_permanent=(code == 301),
-                                           qual_proto=self._scheme)
+                                           is_permanent=(code == 301))
 
         if request.redirected_to is not None:
             trace.mutter('redirected from: %s to: %s' % (request.get_full_url(),
@@ -101,7 +101,6 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
     def _get(self, relpath, offsets, tail_amount=0):
         """See HttpTransport._get"""
-
         abspath = self._remote_path(relpath)
         headers = {}
         accepted_errors = [200, 404]
@@ -166,6 +165,11 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib.tests.http_server import HttpServer_urllib
-    return [(HttpTransport_urllib, HttpServer_urllib),
-            ]
+    from bzrlib import tests
+    from bzrlib.tests import http_server
+    permutations = [(HttpTransport_urllib, http_server.HttpServer_urllib),]
+    if tests.HTTPSServerFeature.available():
+        from bzrlib.tests import https_server
+        permutations.append((HttpTransport_urllib,
+                             https_server.HTTPSServer_urllib))
+    return permutations

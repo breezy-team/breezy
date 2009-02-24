@@ -1,6 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
-# Authors: Robert Collins <robert.collins@canonical.com>
-#          and others
+# Copyright (C) 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,7 +74,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
         # when upgrading a checkout, the branch location and a suggestion
-        # to upgrade it should be emitted even if the checkout is up to 
+        # to upgrade it should be emitted even if the checkout is up to
         # date
         (out, err) = self.run_bzr('upgrade current_format_checkout', retcode=3)
         self.assertEqual("This is a checkout. The branch (%s) needs to be "
@@ -92,7 +90,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         pass
 
     def test_upgrade_repository_scans_branches(self):
-        # we should get individual upgrade notes for each branch even the 
+        # we should get individual upgrade notes for each branch even the
         # anonymous branch
         pass
 
@@ -108,10 +106,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
-making backup of tree history
-%s.bzr has been backed up to %sbackup.bzr
-if conversion fails, you can move this directory back to .bzr
-if it succeeds, you can remove this directory if you wish
+making backup of %s.bzr
+  to %sbackup.bzr
 starting upgrade from format 5 to 6
 adding prefixes to weaves
 adding prefixes to revision-store
@@ -124,7 +120,7 @@ finished
             bzrdir.BzrDirMetaFormat1))
 
     def test_upgrade_explicit_knit(self):
-        # users can force an upgrade to knit format from a metadir weave 
+        # users can force an upgrade to knit format from a metadir weave
         # branch
         url = get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
@@ -132,10 +128,8 @@ finished
         (out, err) = self.run_bzr(
             ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
-making backup of tree history
-%s.bzr has been backed up to %sbackup.bzr
-if conversion fails, you can move this directory back to .bzr
-if it succeeds, you can remove this directory if you wish
+making backup of %s.bzr
+  to %sbackup.bzr
 starting repository conversion
 repository converted
 finished
@@ -171,10 +165,8 @@ class SFTPTests(TestCaseWithSFTPServer):
         url = t.base
         out, err = self.run_bzr(['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
-making backup of tree history
-%s.bzr has been backed up to %sbackup.bzr
-if conversion fails, you can move this directory back to .bzr
-if it succeeds, you can remove this directory if you wish
+making backup of %s.bzr
+  to %sbackup.bzr
 starting upgrade from format 6 to metadir
 starting repository conversion
 repository converted

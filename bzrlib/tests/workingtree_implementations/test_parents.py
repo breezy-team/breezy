@@ -266,13 +266,13 @@ class TestAddParent(TestParents):
         uncommit(tree.branch, tree=tree)
         tree.add_parent_tree_id(first_revision)
         self.assertConsistentParents([first_revision], tree)
-        
+
     def test_add_first_parent_id_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree_id, 'first-revision')
-        
+
     def test_add_first_parent_id_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
@@ -285,7 +285,7 @@ class TestAddParent(TestParents):
         tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
         tree.add_parent_tree_id('second')
         self.assertConsistentParents(['first-revision', 'second'], tree)
-        
+
     def test_add_second_parent_id(self):
         """Test adding the second parent id"""
         tree = self.make_branch_and_tree('.')
@@ -294,14 +294,14 @@ class TestAddParent(TestParents):
         second_revision = tree.commit('second post')
         tree.add_parent_tree_id(first_revision)
         self.assertConsistentParents([second_revision, first_revision], tree)
-        
+
     def test_add_second_parent_id_ghost(self):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
         tree.add_parent_tree_id('second')
         self.assertConsistentParents([first_revision, 'second'], tree)
-        
+
     def test_add_first_parent_tree(self):
         """Test adding the first parent id"""
         tree = self.make_branch_and_tree('.')
@@ -310,20 +310,20 @@ class TestAddParent(TestParents):
         tree.add_parent_tree((first_revision,
             tree.branch.repository.revision_tree(first_revision)))
         self.assertConsistentParents([first_revision], tree)
-        
+
     def test_add_first_parent_tree_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree, ('first-revision', None))
-        
+
     def test_add_first_parent_tree_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         tree.add_parent_tree(('first-revision', None),
             allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['first-revision'], tree)
-        
+
     def test_add_second_parent_tree(self):
         """Test adding the second parent id"""
         tree = self.make_branch_and_tree('.')
@@ -333,7 +333,7 @@ class TestAddParent(TestParents):
         tree.add_parent_tree((first_revision,
             tree.branch.repository.revision_tree(first_revision)))
         self.assertConsistentParents([second_revision, first_revision], tree)
-        
+
     def test_add_second_parent_tree_ghost(self):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
@@ -344,7 +344,7 @@ class TestAddParent(TestParents):
 
 class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     """Tests for the update_basis_by_delta call.
-    
+
     This is intuitively defined as 'apply an inventory delta to the basis and
     discard other parents', but for trees that have an inventory that is not
     managed as a tree-by-id, the implementation requires roughly duplicated

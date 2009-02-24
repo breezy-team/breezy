@@ -61,8 +61,8 @@
 # where the basis and destination are unchanged.
 
 # FIXME: Sometimes we will be given a parents list for a revision
-# that includes some redundant parents (i.e. already a parent of 
-# something in the list.)  We should eliminate them.  This can 
+# that includes some redundant parents (i.e. already a parent of
+# something in the list.)  We should eliminate them.  This can
 # be done fairly efficiently because the sequence numbers constrain
 # the possible relationships.
 
@@ -79,6 +79,8 @@ lazy_import(globals(), """
 from bzrlib import tsort
 """)
 from bzrlib import (
+    errors,
+    osutils,
     progress,
     )
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
@@ -88,7 +90,6 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         WeaveRevisionAlreadyPresent,
         WeaveRevisionNotPresent,
         )
-import bzrlib.errors as errors
 from bzrlib.osutils import dirname, sha, sha_strings, split_lines
 import bzrlib.patiencediff
 from bzrlib.revision import NULL_REVISION
@@ -122,13 +123,15 @@ class WeaveContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == 'fulltext':
             return self._weave.get_text(self.key[-1])
+        elif storage_kind == 'chunked':
+            return self._weave.get_lines(self.key[-1])
         else:
             raise UnavailableRepresentation(self.key, storage_kind, 'fulltext')
 
 
 class Weave(VersionedFile):
     """weave - versioned text file storage.
-    
+
     A Weave manages versions of line-based text files, keeping track
     of the originating version for each line.
 
@@ -180,7 +183,7 @@ class Weave(VersionedFile):
 
     * It doesn't seem very useful to have an active insertion
       inside an inactive insertion, but it might happen.
-      
+
     * Therefore, all instructions are always"considered"; that
       is passed onto and off the stack.  An outer inactive block
       doesn't disable an inner block.
@@ -256,7 +259,7 @@ class Weave(VersionedFile):
 
     def copy(self):
         """Return a deep copy of self.
-        
+
         The copy can be modified without affecting the original weave."""
         other = Weave()
         other._weave = self._weave[:]
@@ -272,8 +275,8 @@ class Weave(VersionedFile):
             return False
         return self._parents == other._parents \
                and self._weave == other._weave \
-               and self._sha1s == other._sha1s 
-    
+               and self._sha1s == other._sha1s
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -346,7 +349,7 @@ class Weave(VersionedFile):
     def insert_record_stream(self, stream):
         """Insert a record stream into this versioned file.
 
-        :param stream: A stream of records to insert. 
+        :param stream: A stream of records to insert.
         :return: None
         :seealso VersionedFile.get_record_stream:
         """
@@ -357,9 +360,10 @@ class Weave(VersionedFile):
                 raise RevisionNotPresent([record.key[0]], self)
             # adapt to non-tuple interface
             parents = [parent[0] for parent in record.parents]
-            if record.storage_kind == 'fulltext':
+            if (record.storage_kind == 'fulltext'
+                or record.storage_kind == 'chunked'):
                 self.add_lines(record.key[0], parents,
-                    split_lines(record.get_bytes_as('fulltext')))
+                    osutils.chunks_to_lines(record.get_bytes_as('chunked')))
             else:
                 adapter_key = record.storage_kind, 'fulltext'
                 try:
@@ -368,8 +372,7 @@ class Weave(VersionedFile):
                     adapter_factory = adapter_registry.get(adapter_key)
                     adapter = adapter_factory(self)
                     adapters[adapter_key] = adapter
-                lines = split_lines(adapter.get_bytes(
-                    record, record.get_bytes_as(record.storage_kind)))
+                lines = split_lines(adapter.get_bytes(record))
                 try:
                     self.add_lines(record.key[0], parents, lines)
                 except RevisionAlreadyPresent:
@@ -395,7 +398,7 @@ class Weave(VersionedFile):
 
     def _add(self, version_id, lines, parents, sha1=None, nostore_sha=None):
         """Add a single text on top of the weave.
-  
+
         Returns the index number of the newly added version.
 
         version_id
@@ -404,7 +407,7 @@ class Weave(VersionedFile):
 
         parents
             List or set of direct parent version numbers.
-            
+
         lines
             Sequence of lines to be added in the new version.
 
@@ -432,7 +435,7 @@ class Weave(VersionedFile):
         self._names.append(version_id)
         self._name_map[version_id] = new_version
 
-            
+
         if not parents:
             # special case; adding with no parents revision; can do
             # this more quickly by just appending unconditionally.
@@ -449,7 +452,7 @@ class Weave(VersionedFile):
             if sha1 == self._sha1s[pv]:
                 # special case: same as the single parent
                 return new_version
-            
+
 
         ancestors = self._inclusions(parents)
 
@@ -504,8 +507,8 @@ class Weave(VersionedFile):
                 # i2; we want to insert after this region to make sure
                 # we don't destroy ourselves
                 i = i2 + offset
-                self._weave[i:i] = ([('{', new_version)] 
-                                    + lines[j1:j2] 
+                self._weave[i:i] = ([('{', new_version)]
+                                    + lines[j1:j2]
                                     + [('}', None)])
                 offset += 2 + (j2 - j1)
         return new_version
@@ -538,7 +541,7 @@ class Weave(VersionedFile):
             if not isinstance(l, basestring):
                 raise ValueError("text line should be a string or unicode, not %s"
                                  % type(l))
-        
+
 
 
     def _check_versions(self, indexes):
@@ -552,7 +555,7 @@ class Weave(VersionedFile):
     def _compatible_parents(self, my_parents, other_parents):
         """During join check that other_parents are joinable with my_parents.
 
-        Joinable is defined as 'is a subset of' - supersets may require 
+        Joinable is defined as 'is a subset of' - supersets may require
         regeneration of diffs, but subsets do not.
         """
         return len(other_parents.difference(my_parents)) == 0
@@ -583,7 +586,7 @@ class Weave(VersionedFile):
 
     def _walk_internal(self, version_ids=None):
         """Helper method for weave actions."""
-        
+
         istack = []
         dset = set()
 
@@ -670,7 +673,7 @@ class Weave(VersionedFile):
         for i in versions:
             if not isinstance(i, int):
                 raise ValueError(i)
-            
+
         included = self._inclusions(versions)
 
         istack = []
@@ -685,7 +688,7 @@ class Weave(VersionedFile):
 
         WFE = WeaveFormatError
 
-        # wow. 
+        # wow.
         #  449       0   4474.6820   2356.5590   bzrlib.weave:556(_extract)
         #  +285282   0   1676.8040   1676.8040   +<isinstance>
         # 1.6 seconds in 'isinstance'.
@@ -697,20 +700,20 @@ class Weave(VersionedFile):
         # we're still spending ~1/4 of the method in isinstance though.
         # so lets hard code the acceptable string classes we expect:
         #  449       0   1202.9420    786.2930   bzrlib.weave:556(_extract)
-        # +71352     0    377.5560    377.5560   +<method 'append' of 'list' 
+        # +71352     0    377.5560    377.5560   +<method 'append' of 'list'
         #                                          objects>
         # yay, down to ~1/4 the initial extract time, and our inline time
         # has shrunk again, with isinstance no longer dominating.
         # tweaking the stack inclusion test to use a set gives:
         #  449       0   1122.8030    713.0080   bzrlib.weave:556(_extract)
-        # +71352     0    354.9980    354.9980   +<method 'append' of 'list' 
+        # +71352     0    354.9980    354.9980   +<method 'append' of 'list'
         #                                          objects>
         # - a 5% win, or possibly just noise. However with large istacks that
         # 'in' test could dominate, so I'm leaving this change in place -
         # when its fast enough to consider profiling big datasets we can review.
 
-              
-             
+
+
 
         for l in self._weave:
             if l.__class__ == tuple:
@@ -745,7 +748,7 @@ class Weave(VersionedFile):
 
     def _maybe_lookup(self, name_or_index):
         """Convert possible symbolic name to index, or pass through indexes.
-        
+
         NOT FOR PUBLIC USE.
         """
         if isinstance(name_or_index, (int, long)):
@@ -761,7 +764,7 @@ class Weave(VersionedFile):
         measured_sha1 = sha_strings(result)
         if measured_sha1 != expected_sha1:
             raise errors.WeaveInvalidChecksum(
-                    'file %s, revision %s, expected: %s, measured %s' 
+                    'file %s, revision %s, expected: %s, measured %s'
                     % (self._weave_name, version_id,
                        expected_sha1, measured_sha1))
         return result
@@ -809,7 +812,7 @@ class Weave(VersionedFile):
 
             if set(new_inc) != set(self.get_ancestry(name)):
                 raise AssertionError(
-                    'failed %s != %s' 
+                    'failed %s != %s'
                     % (set(new_inc), set(self.get_ancestry(name))))
             inclusions[name] = new_inc
 
@@ -853,7 +856,7 @@ class Weave(VersionedFile):
             parent_name = other._names[parent_idx]
             if parent_name not in self._name_map:
                 # should not be possible
-                raise WeaveError("missing parent {%s} of {%s} in %r" 
+                raise WeaveError("missing parent {%s} of {%s} in %r"
                                  % (parent_name, other._name_map[other_idx], self))
             new_parents.append(self._name_map[parent_name])
         return new_parents
@@ -866,9 +869,9 @@ class Weave(VersionedFile):
          * the same text
          * the same direct parents (by name, not index, and disregarding
            order)
-        
+
         If present & correct return True;
-        if not present in self return False; 
+        if not present in self return False;
         if inconsistent raise error."""
         this_idx = self._name_map.get(name, -1)
         if this_idx != -1:
@@ -907,10 +910,10 @@ class WeaveFile(Weave):
     """A WeaveFile represents a Weave on disk and writes on change."""
 
     WEAVE_SUFFIX = '.weave'
-    
+
     def __init__(self, name, transport, filemode=None, create=False, access_mode='w', get_scope=None):
         """Create a WeaveFile.
-        
+
         :param create: If not True, only open an existing knit.
         """
         super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope,
@@ -977,13 +980,13 @@ class WeaveFile(Weave):
 def _reweave(wa, wb, pb=None, msg=None):
     """Combine two weaves and return the result.
 
-    This works even if a revision R has different parents in 
+    This works even if a revision R has different parents in
     wa and wb.  In the resulting weave all the parents are given.
 
-    This is done by just building up a new weave, maintaining ordering 
+    This is done by just building up a new weave, maintaining ordering
     of the versions in the two inputs.  More efficient approaches
-    might be possible but it should only be necessary to do 
-    this operation rarely, when a new previously ghost version is 
+    might be possible but it should only be necessary to do
+    this operation rarely, when a new previously ghost version is
     inserted.
 
     :param pb: An optional progress bar, indicating how far done we are
@@ -1025,7 +1028,7 @@ def _reweave(wa, wb, pb=None, msg=None):
 
 def _reweave_parent_graphs(wa, wb):
     """Return combined parent ancestry for two weaves.
-    
+
     Returned as a list of (version_name, set(parent_names))"""
     combined = {}
     for weave in [wa, wb]:
@@ -1096,7 +1099,7 @@ usage:
         Display origin of each line.
     weave merge WEAVEFILE VERSION1 VERSION2 > OUT
         Auto-merge two versions and display conflicts.
-    weave diff WEAVEFILE VERSION1 VERSION2 
+    weave diff WEAVEFILE VERSION1 VERSION2
         Show differences between two versions.
 
 example:
@@ -1119,10 +1122,10 @@ example:
 
     % weave merge foo.weave 1 2 > foo.txt   (merge them)
     % vi foo.txt                            (resolve conflicts)
-    % weave add foo.weave merged 1 2 < foo.txt     (commit merged version)     
-    
+    % weave add foo.weave merged 1 2 < foo.txt     (commit merged version)
+
 """
-    
+
 
 
 def main(argv):
@@ -1151,7 +1154,7 @@ def main(argv):
 
     def readit():
         return read_weave(file(argv[2], 'rb'))
-    
+
     if cmd == 'help':
         usage()
     elif cmd == 'add':
@@ -1172,7 +1175,7 @@ def main(argv):
     elif cmd == 'get': # get one version
         w = readit()
         sys.stdout.writelines(w.get_iter(int(argv[3])))
-        
+
     elif cmd == 'diff':
         w = readit()
         fn = argv[2]
@@ -1183,7 +1186,7 @@ def main(argv):
                                 '%s version %d' % (fn, v1),
                                 '%s version %d' % (fn, v2))
         sys.stdout.writelines(diff_gen)
-            
+
     elif cmd == 'annotate':
         w = readit()
         # newline is added to all lines regardless; too hard to get
@@ -1196,13 +1199,13 @@ def main(argv):
             else:
                 print '%5d | %s' % (origin, text)
                 lasto = origin
-                
+
     elif cmd == 'toc':
         weave_toc(readit())
 
     elif cmd == 'stats':
         weave_stats(argv[2], ProgressBar())
-        
+
     elif cmd == 'check':
         w = readit()
         pb = ProgressBar()
@@ -1231,7 +1234,7 @@ def main(argv):
         sys.stdout.writelines(w.weave_merge(p))
     else:
         raise ValueError('unknown command %r' % cmd)
-    
+
 
 if __name__ == '__main__':
     import sys

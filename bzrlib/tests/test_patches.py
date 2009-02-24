@@ -21,16 +21,16 @@ import os.path
 from bzrlib.tests import TestCase
 
 from bzrlib.iterablefile import IterableFile
-from bzrlib.patches import (MalformedLine, 
-                            MalformedHunkHeader, 
-                            MalformedPatchHeader, 
-                            ContextLine, 
+from bzrlib.patches import (MalformedLine,
+                            MalformedHunkHeader,
+                            MalformedPatchHeader,
+                            ContextLine,
                             InsertLine,
-                            RemoveLine, 
-                            difference_index, 
+                            RemoveLine,
+                            difference_index,
                             get_patch_names,
-                            hunk_from_header, 
-                            iter_patched, 
+                            hunk_from_header,
+                            iter_patched,
                             iter_patched_from_hunks,
                             parse_line,
                             parse_patch,
@@ -41,7 +41,7 @@ from bzrlib.patches import (MalformedLine,
 class PatchesTester(TestCase):
 
     def datafile(self, filename):
-        data_path = os.path.join(os.path.dirname(__file__), 
+        data_path = os.path.join(os.path.dirname(__file__),
                                  "test_patches_data", filename)
         return file(data_path, "rb")
 
@@ -257,3 +257,8 @@ class PatchesTester(TestCase):
         for patch in patches:
             patch_files.append((patch.oldname, patch.newname))
         self.assertEqual(patch_files, filenames)
+
+    def testStatsValues(self):
+        """Test the added, removed and hunks values for stats_values."""
+        patch = parse_patch(self.datafile("diff"))
+        self.assertEqual((299, 407, 48), patch.stats_values())

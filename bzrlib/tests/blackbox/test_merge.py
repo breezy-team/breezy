@@ -108,7 +108,7 @@ class TestMerge(ExternalBase):
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
                     %(ancestor,b.revno()))
-        self.assertEquals(a.get_parent_ids(), 
+        self.assertEquals(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('goodbye', 'quux')
         a_tree.revert(backups=False)
@@ -246,7 +246,7 @@ class TestMerge(ExternalBase):
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
         out, err = self.run_bzr('merge')
-        
+
         base = urlutils.local_path_from_url(branch_a.base)
         self.assertStartsWith(err,
                           'Merging from remembered submit location %s\n' % (base,))
@@ -438,7 +438,7 @@ class TestMerge(ExternalBase):
 
     def assertDirectoryContent(self, directory, entries, message=''):
         """Assert whether entries (file or directories) exist in a directory.
-        
+
         It also checks that there are no extra entries.
         """
         ondisk = os.listdir(directory)

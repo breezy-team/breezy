@@ -535,7 +535,7 @@ Repository:
         # Create lightweight checkout
         transport.mkdir('tree')
         transport.mkdir('tree/lightcheckout')
-        tree2 = branch1.create_checkout('tree/lightcheckout', 
+        tree2 = branch1.create_checkout('tree/lightcheckout',
             lightweight=True)
         branch2 = tree2.branch
         self.assertCheckoutStatusOutput('-v tree/lightcheckout', tree2,
@@ -978,7 +978,7 @@ Repository:
        ),
        out)
         self.assertEqual('', err)
-    
+
     def test_info_shared_repository_with_tree_in_root(self):
         format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
@@ -1057,7 +1057,7 @@ Repository:
         allow us, the test writers, to document what *should* be present in
         the output. Removing this separation would remove the value of the
         tests.
-        
+
         :param path: the path to the light checkout.
         :param lco_tree: the tree object for the light checkout.
         :param shared_repo: A shared repository is in use, expect that in
@@ -1143,12 +1143,12 @@ Repository:
         else:
             branch_data = ("   checkout of branch: %s\n" %
                 lco_tree.branch.bzrdir.root_transport.base)
-        
+
         if verbose:
             verbose_info = '         0 committers\n'
         else:
             verbose_info = ''
-            
+
         self.assertEqualDiff(
 """%s (format: %s)
 Location:

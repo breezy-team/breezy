@@ -24,7 +24,6 @@ from bzrlib import (
     trace,
     tsort,
     )
-from bzrlib.deprecated_graph import (node_distances, select_farthest)
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -99,42 +98,73 @@ class _StackedParentsProvider(object):
 
 
 class CachingParentsProvider(object):
-    """A parents provider which will cache the revision => parents in a dict.
+    """A parents provider which will cache the revision => parents as a dict.
 
-    This is useful for providers that have an expensive lookup.
+    This is useful for providers which have an expensive look up.
+
+    Either a ParentsProvider or a get_parent_map-like callback may be
+    supplied.  If it provides extra un-asked-for parents, they will be cached,
+    but filtered out of get_parent_map.
+
+    The cache is enabled by default, but may be disabled and re-enabled.
     """
+    def __init__(self, parent_provider=None, get_parent_map=None):
+        """Constructor.
 
-    def __init__(self, parent_provider):
+        :param parent_provider: The ParentProvider to use.  It or
+            get_parent_map must be supplied.
+        :param get_parent_map: The get_parent_map callback to use.  It or
+            parent_provider must be supplied.
+        """
         self._real_provider = parent_provider
-        # Theoretically we could use an LRUCache here
+        if get_parent_map is None:
+            self._get_parent_map = self._real_provider.get_parent_map
+        else:
+            self._get_parent_map = get_parent_map
         self._cache = {}
+        self._cache_misses = True
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
-    def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
-        needed = set()
-        # If the _real_provider doesn't have a key, we cache a value of None,
-        # which we then later use to realize we cannot provide a value for that
-        # key.
-        parent_map = {}
-        cache = self._cache
-        for key in keys:
-            if key in cache:
-                value = cache[key]
-                if value is not None:
-                    parent_map[key] = value
-            else:
-                needed.add(key)
+    def enable_cache(self, cache_misses=True):
+        """Enable cache."""
+        if self._cache is not None:
+            raise AssertionError('Cache enabled when already enabled.')
+        self._cache = {}
+        self._cache_misses = cache_misses
 
-        if needed:
-            new_parents = self._real_provider.get_parent_map(needed)
-            cache.update(new_parents)
-            parent_map.update(new_parents)
-            needed.difference_update(new_parents)
-            cache.update(dict.fromkeys(needed, None))
-        return parent_map
+    def disable_cache(self):
+        """Disable and clear the cache."""
+        self._cache = None
+
+    def get_cached_map(self):
+        """Return any cached get_parent_map values."""
+        if self._cache is None:
+            return None
+        return dict((k, v) for k, v in self._cache.items()
+                    if v is not None)
+
+    def get_parent_map(self, keys):
+        """See _StackedParentsProvider.get_parent_map."""
+        # Hack to build up the caching logic.
+        ancestry = self._cache
+        if ancestry is None:
+            # Caching is disabled.
+            missing_revisions = set(keys)
+            ancestry = {}
+        else:
+            missing_revisions = set(key for key in keys if key not in ancestry)
+        if missing_revisions:
+            parent_map = self._get_parent_map(missing_revisions)
+            ancestry.update(parent_map)
+            if self._cache_misses:
+                # None is never a valid parents list, so it can be used to
+                # record misses.
+                ancestry.update(dict((k, None) for k in missing_revisions
+                                     if k not in parent_map))
+        present_keys = [k for k in keys if ancestry.get(k) is not None]
+        return dict((k, ancestry[k]) for k in present_keys)
 
 
 class Graph(object):
@@ -521,7 +551,7 @@ class Graph(object):
     def _refine_unique_nodes(self, unique_searcher, all_unique_searcher,
                              unique_tip_searchers, common_searcher):
         """Steps 5-8 of find_unique_ancestors.
-        
+
         This function returns when common_searcher has stopped searching for
         more nodes.
         """
@@ -890,6 +920,17 @@ class Graph(object):
         return set([candidate_descendant]) == self.heads(
             [candidate_ancestor, candidate_descendant])
 
+    def is_between(self, revid, lower_bound_revid, upper_bound_revid):
+        """Determine whether a revision is between two others.
+
+        returns true if and only if:
+        lower_bound_revid <= revid <= upper_bound_revid
+        """
+        return ((upper_bound_revid is None or
+                    self.is_ancestor(revid, upper_bound_revid)) and
+               (lower_bound_revid is None or
+                    self.is_ancestor(lower_bound_revid, revid)))
+
     def _search_for_extra_common(self, common, searchers):
         """Make sure that unique nodes are genuinely unique.
 
@@ -1168,7 +1209,7 @@ class _BreadthFirstSearcher(object):
 
     def get_result(self):
         """Get a SearchResult for the current state of this searcher.
-        
+
         :return: A SearchResult for this search so far. The SearchResult is
             static - the search can be advanced and the search result will not
             be invalidated or altered.
@@ -1178,7 +1219,7 @@ class _BreadthFirstSearcher(object):
             # exclude keys for them. However, while we could have a second
             # look-ahead result buffer and shuffle things around, this method
             # is typically only called once per search - when memoising the
-            # results of the search. 
+            # results of the search.
             found, ghosts, next, parents = self._do_query(self._next_query)
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?
@@ -1225,7 +1266,7 @@ class _BreadthFirstSearcher(object):
 
     def next_with_ghosts(self):
         """Return the next found ancestors, with ghosts split out.
-        
+
         Ancestors are returned in the order they are seen in a breadth-first
         traversal.  No ancestor will be returned more than once. Ancestors are
         returned only after asking for their parents, which allows us to detect
@@ -1290,7 +1331,7 @@ class _BreadthFirstSearcher(object):
 
     def find_seen_ancestors(self, revisions):
         """Find ancestors of these revisions that have already been seen.
-        
+
         This function generally makes the assumption that querying for the
         parents of a node that has already been queried is reasonably cheap.
         (eg, not a round trip to a remote host).
@@ -1352,7 +1393,7 @@ class _BreadthFirstSearcher(object):
                 self._current_ghosts.intersection(revisions))
             self._current_present.difference_update(stopped)
             self._current_ghosts.difference_update(stopped)
-            # stopping 'x' should stop returning parents of 'x', but 
+            # stopping 'x' should stop returning parents of 'x', but
             # not if 'y' always references those same parents
             stop_rev_references = {}
             for rev in stopped_present:
@@ -1425,7 +1466,7 @@ class SearchResult(object):
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
-        
+
         The recipe allows reconstruction of the same results at a later date
         without knowing all the found keys. The essential elements are a list
         of keys to start and and to stop at. In order to give reproducible

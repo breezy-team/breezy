@@ -4,7 +4,7 @@
 if [ -z "$UBUNTU_RELEASES" ]; then
     echo "Configure the distro platforms that you want to"
     echo "build with a line like:"
-    echo '  export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid"'
+    echo '  export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid jaunty"'
     exit 1
 fi
 

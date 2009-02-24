@@ -95,7 +95,7 @@ class TestDefaultFormat(TestCase):
 class SampleRepositoryFormat(repository.RepositoryFormat):
     """A sample format
 
-    this format is initializable, unsupported to aid in testing the 
+    this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
     """
 
@@ -122,7 +122,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a repository?
         # create a branch with a few known format objects.
-        # this is not quite the same as 
+        # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
@@ -131,7 +131,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(weaverepo.RepositoryFormat7(), "bar")
-        
+
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
@@ -284,7 +284,7 @@ class TestFormat7(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
-        # TODO: Should check there is a 'lock' toplevel directory, 
+        # TODO: Should check there is a 'lock' toplevel directory,
         # regardless of contents
         self.assertFalse(t.has('lock/held/info'))
         repo.lock_write()
@@ -343,7 +343,7 @@ class TestFormat7(TestCaseWithTransport):
 
 
 class TestFormatKnit1(TestCaseWithTransport):
-    
+
     def test_attribute__fetch_order(self):
         """Knits need topological data insertion."""
         repo = self.make_repository('.',
@@ -497,7 +497,7 @@ class InterDummy(repository.InterRepository):
     @staticmethod
     def is_compatible(repo_source, repo_target):
         """InterDummy is compatible with DummyRepository."""
-        return (isinstance(repo_source, DummyRepository) and 
+        return (isinstance(repo_source, DummyRepository) and
             isinstance(repo_target, DummyRepository))
 
 
@@ -516,7 +516,7 @@ class TestInterRepository(TestCaseWithTransport):
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):
         """Asserts that InterRepository.get(repo_a, repo_b) -> the default.
-        
+
         The effective default is now InterSameDataRepository because there is
         no actual sane default in the presence of incompatible data models.
         """
@@ -606,10 +606,10 @@ class TestRepositoryConverter(TestCaseWithTransport):
 
 
 class TestMisc(TestCase):
-    
+
     def test_unescape_xml(self):
         """We get some kind of error when malformed entities are passed"""
-        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;') 
+        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;')
 
 
 class TestRepositoryFormatKnit3(TestCaseWithTransport):
@@ -757,6 +757,24 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
         return repo._pack_collection
+
+    def make_packs_and_alt_repo(self, write_lock=False):
+        """Create a pack repo with 3 packs, and access it via a second repo."""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        rev1 = tree.commit('one')
+        rev2 = tree.commit('two')
+        rev3 = tree.commit('three')
+        r = repository.Repository.open('.')
+        if write_lock:
+            r.lock_write()
+        else:
+            r.lock_read()
+        self.addCleanup(r.unlock)
+        packs = r._pack_collection
+        packs.ensure_loaded()
+        return tree, r, packs, [rev1, rev2, rev3]
 
     def test__max_pack_count(self):
         """The maximum pack count is a function of the number of revisions."""
@@ -926,19 +944,10 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
 
     def test_reload_pack_names_new_entry(self):
-        tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        rev1 = tree.commit('one')
-        rev2 = tree.commit('two')
-        r = repository.Repository.open('.')
-        r.lock_read()
-        self.addCleanup(r.unlock)
-        packs = r._pack_collection
-        packs.ensure_loaded()
+        tree, r, packs, revs = self.make_packs_and_alt_repo()
         names = packs.names()
         # Add a new pack file into the repository
-        rev3 = tree.commit('three')
+        rev4 = tree.commit('four')
         new_names = tree.branch.repository._pack_collection.names()
         new_name = set(new_names).difference(names)
         self.assertEqual(1, len(new_name))
@@ -948,20 +957,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
         # And the repository can access the new revision
-        self.assertEqual({rev3:(rev2,)}, r.get_parent_map([rev3]))
+        self.assertEqual({rev4:(revs[-1],)}, r.get_parent_map([rev4]))
         self.assertFalse(packs.reload_pack_names())
 
     def test_reload_pack_names_added_and_removed(self):
-        tree = self.make_branch_and_tree('.')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        rev1 = tree.commit('one')
-        rev2 = tree.commit('two')
-        r = repository.Repository.open('.')
-        r.lock_read()
-        self.addCleanup(r.unlock)
-        packs = r._pack_collection
-        packs.ensure_loaded()
+        tree, r, packs, revs = self.make_packs_and_alt_repo()
         names = packs.names()
         # Now repack the whole thing
         tree.branch.repository.pack()
@@ -970,8 +970,25 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(names, packs.names())
         self.assertTrue(packs.reload_pack_names())
         self.assertEqual(new_names, packs.names())
-        self.assertEqual({rev2:(rev1,)}, r.get_parent_map([rev2]))
+        self.assertEqual({revs[-1]:(revs[-2],)}, r.get_parent_map([revs[-1]]))
         self.assertFalse(packs.reload_pack_names())
+
+    def test_autopack_reloads_and_stops(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        # After we have determined what needs to be autopacked, trigger a
+        # full-pack via the other repo which will cause us to re-evaluate and
+        # decide we don't need to do anything
+        orig_execute = packs._execute_pack_operations
+        def _munged_execute_pack_ops(*args, **kwargs):
+            tree.branch.repository.pack()
+            return orig_execute(*args, **kwargs)
+        packs._execute_pack_operations = _munged_execute_pack_ops
+        packs._max_pack_count = lambda x: 1
+        packs.pack_distribution = lambda x: [10]
+        self.assertFalse(packs.autopack())
+        self.assertEqual(1, len(packs.names()))
+        self.assertEqual(tree.branch.repository._pack_collection.names(),
+                         packs.names())
 
 
 class TestPack(TestCaseWithTransport):
