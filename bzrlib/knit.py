@@ -807,6 +807,36 @@ def cleanup_pack_knit(versioned_files):
     versioned_files.writer.end()
 
 
+def _get_total_build_size(keys, positions):
+    """Determine the total bytes to build these keys.
+
+    (helper function because _KnitGraphIndex and _KndxIndex work the same, but
+    don't inherit from a common base.)
+
+    :param keys: Keys that we want to build
+    :param positions: dict of {key, (info, index_memo, comp_parent)} (such
+        as returned by _get_components_positions)
+    :return: Number of bytes to build those keys
+    """
+    index_memos = set()
+    all_build_index_memos = {}
+    build_keys = keys
+    while build_keys:
+        next_keys = set()
+        for key in build_keys:
+            # This is mostly for the 'stacked' case
+            # Where we will be getting the data from a fallback
+            if key not in positions:
+                continue
+            _, index_memo, compression_parent = positions[key]
+            all_build_index_memos[key] = index_memo
+            if compression_parent not in all_build_index_memos:
+                next_keys.add(compression_parent)
+        build_keys = next_keys
+    return sum([index_memo[2] for index_memo
+                in all_build_index_memos.itervalues()])
+
+
 class KnitVersionedFiles(VersionedFiles):
     """Storage for many versioned files using knit compression.
 
@@ -1252,8 +1282,8 @@ class KnitVersionedFiles(VersionedFiles):
         for prefix in prefix_order:
             keys = prefix_split_keys[prefix]
             non_local = prefix_split_non_local_keys.get(prefix, [])
-            this_size = self._index._index_memos_to_size(
-                [positions[key][1] for key in keys if key in positions])
+
+            this_size = self._index._get_total_build_size(keys, positions)
             cur_size += this_size
             cur_keys.extend(keys)
             cur_non_local.update(non_local)
@@ -1261,15 +1291,14 @@ class KnitVersionedFiles(VersionedFiles):
                 result.append((cur_keys, cur_non_local))
                 sizes.append(cur_size)
                 cur_keys = []
-                cur_non_local = []
+                cur_non_local = set()
                 cur_size = 0
         if cur_keys:
-            if cur_size == 0:
-                import pdb; pdb.set_trace()
             result.append((cur_keys, cur_non_local))
             sizes.append(cur_size)
-        print 'Collapsed %d keys into %d requests w/ %d file_ids w/ sizes: %s' % (
-            total_keys, len(result), len(prefix_split_keys), sizes)
+        trace.mutter('Collapsed %d keys into %d requests w/ %d file_ids'
+                     ' w/ sizes: %s', total_keys, len(result),
+                     len(prefix_split_keys), sizes)
         return result
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
@@ -2630,13 +2659,15 @@ class _KndxIndex(object):
             return index_memo[0][:-1], index_memo[1]
         return keys.sort(key=get_sort_key)
 
-    def _index_memos_to_size(self, index_memos):
-        """Return the size of the raw records for a given index_memo.
+    def _get_total_build_size(self, keys, positions):
+        """Determine the total bytes to build these keys.
 
-        :param index_memos: A list of index memos that we want to handle.
+        :param keys: Keys that we want to build
+        :param positions: dict of {key, (info, index_memo, comp_parent)} (such
+            as returned by _get_components_positions)
+        :return: Number of bytes to build those keys
         """
-        # <index>, start, size
-        return sum([index_memo[2] for index_memo in index_memos])
+        return _get_total_build_size(keys, positions)
 
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
@@ -2959,13 +2990,15 @@ class _KnitGraphIndex(object):
             return positions[key][1]
         return keys.sort(key=get_index_memo)
 
-    def _index_memos_to_size(self, index_memos):
-        """Return the size of the raw records for a given index_memo.
+    def _get_total_build_size(self, keys, positions):
+        """Determine the total bytes to build these keys.
 
-        :param index_memos: A list of index memos that we want to handle.
+        :param keys: Keys that we want to build
+        :param positions: dict of {key, (info, index_memo, comp_parent)} (such
+            as returned by _get_components_positions)
+        :return: Number of bytes to build those keys
         """
-        # <index>, start, size
-        return sum([index_memo[2] for index_memo in index_memos])
+        return _get_total_build_size(keys, positions)
 
 
 class _KnitKeyAccess(object):
