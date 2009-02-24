@@ -1283,7 +1283,7 @@ class cmd_info(Command):
 
     This command will show all known locations and formats associated to the
     tree, branch or repository.
-    
+
     In verbose mode, statistical information is included with each report.
     To see extended statistic information, use a verbosity level of 2 or
     higher by specifying the verbose option multiple times, e.g. -vv.

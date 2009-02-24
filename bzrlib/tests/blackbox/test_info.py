@@ -1155,7 +1155,7 @@ Repository:
         else:
             branch_data = ("   checkout of branch: %s\n" %
                 lco_tree.branch.bzrdir.root_transport.base)
- 
+
         if verbose >= 2:
             verbose_info = '         0 committers\n'
         else:
