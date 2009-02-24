@@ -865,7 +865,7 @@ class RemoteRepository(_RpcHelper):
         #
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
-        # 
+        #
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
