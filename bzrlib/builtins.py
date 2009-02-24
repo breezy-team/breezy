@@ -2291,7 +2291,7 @@ class cmd_ls(Command):
             if view_files:
                 apply_view = True
                 view_str = views.view_display_str(view_files)
-                note("*** ignoring files outside view: %s" % view_str)
+                note("ignoring files outside view: %s" % view_str)
 
         tree.lock_read()
         try:

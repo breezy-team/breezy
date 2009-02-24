@@ -147,7 +147,7 @@ class TestViewFileOperations(TestCaseWithTransport):
         self.run_bzr('add')
         out, err = self.run_bzr('ls')
         out_lines = out.splitlines()
-        self.assertEquals('*** ignoring files outside view: a, b\n', err)
+        self.assertEquals('ignoring files outside view: a, b\n', err)
         self.assertEquals('a', out_lines[0])
         self.assertEquals('b', out_lines[1])
 
