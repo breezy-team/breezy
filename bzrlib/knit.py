@@ -1181,6 +1181,9 @@ class KnitVersionedFiles(VersionedFiles):
                 # n = next
                 records = [(key, i_m) for key, (r, i_m, n)
                                        in position_map.iteritems()]
+                # Sort by the index memo, so that we request records from the
+                # same pack file together, and in forward-sorted order
+                records.sort(key=operator.itemgetter(1))
                 raw_record_map = {}
                 for key, data in self._read_records_iter_unchecked(records):
                     (record_details, index_memo, next) = position_map[key]
