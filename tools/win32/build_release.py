@@ -5,7 +5,7 @@
 # values.
 VERSIONS = {
     'bzr': '1.12',
-    'qbzr': '0.9.7',
+    'qbzr': '0.9.8',
     'bzrtools': '1.12.0',
     'bzr-svn': '0.5.0',
     'subvertpy': '0.6.2',
