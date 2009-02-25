@@ -46,8 +46,8 @@ class InterBranchTestProviderAdapter(TestScenarioApplier):
     """A tool to generate a suite testing multiple inter branch formats.
 
     This is done by copying the test once for each interbranch provider and 
-    injecting the transport_server, transport_readonly_server, branch_format and
-    branch_to_format classes into each copy.
+    injecting the transport_server, transport_readonly_server, 
+    branch_format_from and branch_to_format classes into each copy.
     Each copy is also given a new id() to make it easy to identify.
     """
 
@@ -61,17 +61,17 @@ class InterBranchTestProviderAdapter(TestScenarioApplier):
         """Transform the input formats to a list of scenarios.
 
         :param formats: A list of tuples:
-            (interbranch_class, branch_format, branch_format_to).
+            (interbranch_class, branch_format_from, branch_format_to).
         """
         result = []
-        for interbranch_class, branch_format, branch_format_to in formats:
+        for interbranch_class, branch_format_from, branch_format_to in formats:
             id = '%s,%s,%s' % (interbranch_class.__name__,
-                                branch_format.__class__.__name__,
+                                branch_format_from.__class__.__name__,
                                 branch_format_to.__class__.__name__)
             scenario = (id,
                 {"transport_server":self._transport_server,
                  "transport_readonly_server":self._transport_readonly_server,
-                 "branch_format":branch_format,
+                 "branch_format_from":branch_format_from,
                  "interbranch_class":interbranch_class,
                  "branch_format_to":branch_format_to,
                  })
@@ -85,10 +85,11 @@ class InterBranchTestProviderAdapter(TestScenarioApplier):
         # test the default InterBranch between format 6 and the current
         # default format.
         for optimiser_class in InterBranch._optimisers:
-            format_to_test = optimiser_class._get_branch_format_to_test()
+            format_from_test, format_to_test = \
+                optimiser_class._get_branch_formats_to_test()
             if format_to_test is not None:
                 result.append((optimiser_class,
-                               format_to_test, format_to_test))
+                               format_from_test, format_to_test))
         # if there are specific combinations we want to use, we can add them
         # here.
         return result
@@ -115,7 +116,7 @@ class TestCaseWithInterBranch(TestCaseWithBzrDir):
                 except FileExists:
                     pass
             if format is None:
-                format = self.branch_format._matchingbzrdir
+                format = self.branch_format_from._matchingbzrdir
             return format.initialize(url)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)

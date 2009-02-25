@@ -2667,9 +2667,9 @@ class InterBranch(InterObject):
     """The available optimised InterBranch types."""
 
     @staticmethod
-    def _get_branch_format_to_test():
-        """Return the Branch format to use when testing this InterBranch."""
-        raise NotImplementedError(self._get_branch_format_to_test)
+    def _get_branch_formats_to_test():
+        """Return a tuple with the Branch formats to use when testing."""
+        raise NotImplementedError(self._get_branch_formats_to_test)
 
     def update_revisions(self, stop_revision=None, overwrite=False,
                          graph=None):
@@ -2690,8 +2690,8 @@ class GenericInterBranch(InterBranch):
     """
 
     @staticmethod
-    def _get_branch_format_to_test():
-        return BranchFormat._default_format
+    def _get_branch_formats_to_test():
+        return BranchFormat._default_format, BranchFormat._default_format
 
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None):
