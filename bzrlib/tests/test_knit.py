@@ -1889,11 +1889,60 @@ class TestNoParentsGraphIndexKnit(KnitTests):
 
 class TestKnitVersionedFiles(KnitTests):
 
+    def assertGroupKeysForIo(self, exp_groups, keys, non_local_keys,
+                             positions, _min_buffer_size=None):
+        kvf = self.make_test_knit()
+        if _min_buffer_size is None:
+            _min_buffer_size = knit._STREAM_MIN_BUFFER_SIZE
+        self.assertEqual(exp_groups, kvf._group_keys_for_io(keys,
+                                        non_local_keys, positions,
+                                        _min_buffer_size=_min_buffer_size))
+
     def assertSplitByPrefix(self, expected_map, expected_prefix_order,
                             keys):
         split, prefix_order = KnitVersionedFiles._split_by_prefix(keys)
         self.assertEqual(expected_map, split)
         self.assertEqual(expected_prefix_order, prefix_order)
+
+    def test__group_keys_for_io(self):
+        ft_detail = ('fulltext', False)
+        ld_detail = ('line-delta', False)
+        f_a = ('f', 'a')
+        f_b = ('f', 'b')
+        f_c = ('f', 'c')
+        g_a = ('g', 'a')
+        g_b = ('g', 'b')
+        g_c = ('g', 'c')
+        positions = {
+            f_a: (ft_detail, (f_a, 0, 100), None),
+            f_b: (ld_detail, (f_b, 100, 21), f_a),
+            f_c: (ld_detail, (f_c, 180, 15), f_b),
+            g_a: (ft_detail, (g_a, 121, 35), None),
+            g_b: (ld_detail, (g_b, 156, 12), g_a),
+            g_c: (ld_detail, (g_c, 195, 13), g_a),
+            }
+        self.assertGroupKeysForIo([([f_a], set())],
+                                  [f_a], [], positions)
+        self.assertGroupKeysForIo([([f_a], set([f_a]))],
+                                  [f_a], [f_a], positions)
+        self.assertGroupKeysForIo([([f_a, f_b], set([]))],
+                                  [f_a, f_b], [], positions)
+        self.assertGroupKeysForIo([([f_a, f_b], set([f_b]))],
+                                  [f_a, f_b], [f_b], positions)
+        self.assertGroupKeysForIo([([f_a, f_b, g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions)
+        self.assertGroupKeysForIo([([f_a, f_b, g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions,
+                                  _min_buffer_size=150)
+        self.assertGroupKeysForIo([([f_a, f_b], set()), ([g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions,
+                                  _min_buffer_size=100)
+        self.assertGroupKeysForIo([([f_c], set()), ([g_b], set())],
+                                  [f_c, g_b], [], positions,
+                                  _min_buffer_size=125)
+        self.assertGroupKeysForIo([([g_b, f_c], set())],
+                                  [g_b, f_c], [], positions,
+                                  _min_buffer_size=125)
 
     def test__split_by_prefix(self):
         self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],

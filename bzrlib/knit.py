@@ -1256,7 +1256,8 @@ class KnitVersionedFiles(VersionedFiles):
                 prefix_order.append(prefix)
         return split_by_prefix, prefix_order
 
-    def _group_keys_for_io(self, keys, non_local_keys, positions):
+    def _group_keys_for_io(self, keys, non_local_keys, positions,
+                           _min_buffer_size=_STREAM_MIN_BUFFER_SIZE):
         """For the given keys, group them into 'best-sized' requests.
 
         The idea is to avoid making 1 request per file, but to never try to
@@ -1264,8 +1265,8 @@ class KnitVersionedFiles(VersionedFiles):
         possible, we should try to group requests to the same pack file
         together.
 
-        :return: yield (keys, non_local) tuples that indicate what keys should
-            be fetched next.
+        :return: list of (keys, non_local) tuples that indicate what keys
+            should be fetched next.
         """
         # TODO: Ideally we would group on 2 factors. We want to extract texts
         #       from the same pack file together, and we want to extract all
@@ -1287,7 +1288,7 @@ class KnitVersionedFiles(VersionedFiles):
             cur_size += this_size
             cur_keys.extend(keys)
             cur_non_local.update(non_local)
-            if cur_size > _STREAM_MIN_BUFFER_SIZE:
+            if cur_size > _min_buffer_size:
                 result.append((cur_keys, cur_non_local))
                 sizes.append(cur_size)
                 cur_keys = []
