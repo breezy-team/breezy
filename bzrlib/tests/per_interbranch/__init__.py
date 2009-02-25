@@ -20,7 +20,7 @@
 
 These test the conformance of all the interbranch variations to the
 expected API including generally applicable corner cases.
-Specific tests for individual formats are in the tests for the formats 
+Specific tests for individual formats are in the tests for the formats
 itself rather than in tests/per_interbranch/*.py.
 """
 
@@ -44,8 +44,8 @@ from bzrlib.transport import get_transport
 class InterBranchTestProviderAdapter(TestScenarioApplier):
     """A tool to generate a suite testing multiple inter branch formats.
 
-    This is done by copying the test once for each interbranch provider and 
-    injecting the branch_format_from and branch_to_format classes into each 
+    This is done by copying the test once for each interbranch provider and
+    injecting the branch_format_from and branch_to_format classes into each
     copy.  Each copy is also given a new id() to make it easy to identify.
     """
 
