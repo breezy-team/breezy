@@ -1887,6 +1887,42 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         self.assertEqual([], self.caught_entries)
 
 
+class TestKnitVersionedFiles(KnitTests):
+
+    def assertSplitByPrefix(self, expected_map, expected_prefix_order,
+                            keys):
+        split, prefix_order = KnitVersionedFiles._split_by_prefix(keys)
+        self.assertEqual(expected_map, split)
+        self.assertEqual(expected_prefix_order, prefix_order)
+
+    def test__split_by_prefix(self):
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('g', 'b'),
+                                  ('g', 'a'), ('f', 'b')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('f', 'b'),
+                                  ('g', 'b'), ('g', 'a')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('f', 'b'),
+                                  ('g', 'b'), ('g', 'a')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                  '': [('a',), ('b',)]
+                                 }, ['f', 'g', ''],
+                                 [('f', 'a'), ('g', 'b'),
+                                  ('a',), ('b',),
+                                  ('g', 'a'), ('f', 'b')])
+
+
 class TestStacking(KnitTests):
 
     def get_basis_and_test_knit(self):

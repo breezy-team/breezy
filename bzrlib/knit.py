@@ -818,7 +818,6 @@ def _get_total_build_size(self, keys, positions):
         as returned by _get_components_positions)
     :return: Number of bytes to build those keys
     """
-    index_memos = set()
     all_build_index_memos = {}
     build_keys = keys
     while build_keys:
@@ -1223,7 +1222,8 @@ class KnitVersionedFiles(VersionedFiles):
             except errors.RetryWithNewPacks, e:
                 self._access.reload_or_raise(e)
 
-    def _split_by_prefix(self, keys):
+    @classmethod
+    def _split_by_prefix(cls, keys):
         """For the given keys, split them up based on their prefix.
 
         To keep memory pressure somewhat under control, split the
@@ -1232,9 +1232,9 @@ class KnitVersionedFiles(VersionedFiles):
         This should be revisited if _get_content_maps() can ever cross
         file-id boundaries.
 
-        Note that the keys are generally kept in the same order, so if you
-        present them in a sorted order, the sorting will generally be
-        preserved.
+        The keys for a given file_id are kept in the same relative order.
+        Ordering between file_ids is not, though prefix_order will return the
+        order that the key was first seen.
 
         :param keys: An iterable of key tuples
         :return: (split_map, prefix_order)
