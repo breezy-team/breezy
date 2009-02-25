@@ -995,6 +995,22 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # in such a cycle by default.
         self._retry_count = None
 
+    def _parse_auth_header(self, server_header):
+        """Parse the authentication header.
+
+        :param server_header: The value of the header sent by the server
+            describing the authenticaion request.
+
+        :return: A tuple (scheme, remainder) scheme being the first word in the
+            given header (lower cased), remainder may be None.
+        """
+        try:
+            scheme, remainder = server_header.split(None, 1)
+        except ValueError:
+            scheme = server_header
+            remainder = None
+        return (scheme.lower(), remainder)
+
     def update_auth(self, auth, key, value):
         """Update a value in auth marking the auth as modified if needed"""
         old_value = auth.get(key, None)
@@ -1162,7 +1178,7 @@ class NegotiateAuthHandler(AbstractAuthHandler):
     requires_username = False
 
     def auth_match(self, header, auth):
-        scheme = header.lower()
+        scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'negotiate':
             return False
         self.update_auth(auth, 'scheme', scheme)
@@ -1214,11 +1230,7 @@ class BasicAuthHandler(AbstractAuthHandler):
         return auth_header
 
     def auth_match(self, header, auth):
-        try:
-            scheme, raw_auth = header.split(None, 1)
-        except ValueError:
-            return False
-        scheme = scheme.lower()
+        scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'basic':
             return False
 
@@ -1277,11 +1289,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return auth.get('scheme', None) == 'digest'
 
     def auth_match(self, header, auth):
-        try:
-            scheme, raw_auth = header.split(None, 1)
-        except ValueError:
-            return False
-        scheme = scheme.lower()
+        scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'digest':
             return False
 
