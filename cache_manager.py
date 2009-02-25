@@ -22,7 +22,7 @@ from bzrlib import lru_cache
 
 class CacheManager(object):
 
-    def __init__(self, info, verbose=False, inventory_cache_size=10):
+    def __init__(self, info=None, verbose=False, inventory_cache_size=10):
         """Create a manager of caches.
 
         :param info: a ConfigObj holding the output from
@@ -113,11 +113,8 @@ class CacheManager(object):
     def track_heads_for_ref(self, cmd_ref, cmd_id, parents=None):
         if parents is not None:
             for parent in parents:
-                refs = self.heads.get(parent)
-                if refs:
-                    refs.discard(cmd_ref)
-                    if not refs:
-                        del self.heads[parent]
+                if parent in self.heads:
+                    del self.heads[parent]
         self.heads.setdefault(cmd_id, set()).add(cmd_ref)
         self.last_ids[cmd_ref] = cmd_id
         self.last_ref = cmd_ref

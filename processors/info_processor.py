@@ -22,6 +22,7 @@ from bzrlib.trace import (
     warning,
     )
 from bzrlib.plugins.fastimport import (
+    cache_manager,
     commands,
     helpers,
     processor,
@@ -64,11 +65,8 @@ class InfoProcessor(processor.ImportProcessor):
         self.blobs = {}
         for usage in ['new', 'used', 'multi', 'unknown', 'unmarked']:
             self.blobs[usage] = set()
-        # Head tracking: map of commit mark to ref
-        # (Head tracking future - delegate to the cache manager)
-        self.heads = {}
-        self.last_ids = {}
-        #self.cache_mgr = cache_manager.CacheManager(inventory_cache_size=0)
+        # Head tracking - delegate to the cache manager
+        self.cache_mgr = cache_manager.CacheManager(inventory_cache_size=0)
         # Stuff to cache: a map from mark to # of times that mark is merged
         self.merges = {}
         # Stuff to cache: these are maps from mark to sets
@@ -105,7 +103,7 @@ class InfoProcessor(processor.ImportProcessor):
             self._dump_stats_group("Parent counts", p_names, p_values, str)
             self._dump_stats_group("Commit analysis", flags.keys(),
                 flags.values(), _found)
-            heads = helpers.invert_dict(self.heads)
+            heads = helpers.invert_dictset(self.cache_mgr.heads)
             self._dump_stats_group("Head analysis", heads.keys(),
                 heads.values(), None, _iterable_as_config_list)
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
@@ -205,25 +203,7 @@ class InfoProcessor(processor.ImportProcessor):
                 self.copy_source_paths.setdefault(cmd.id, set()).add(fc.src_path)
 
         # Track the heads
-        # (future: parents = self.cache_mgr.track_heads(cmd))
-        if cmd.from_ is not None:
-            parents = [cmd.from_]
-        else:
-            last_id = self.last_ids.get(cmd.ref)
-            if last_id is not None:
-                parents = [last_id]
-            else:
-                parents = []
-        parents.extend(cmd.merges)
-        for parent in parents:
-            try:
-                del self.heads[parent]
-            except KeyError:
-                # it's ok if the parent isn't there - another
-                # commit may have already removed it
-                pass
-        self.heads[cmd.id] = cmd.ref
-        self.last_ids[cmd.ref] = cmd.id
+        parents = self.cache_mgr.track_heads(cmd)
 
         # Track the parent counts
         parent_count = len(parents)
@@ -250,9 +230,8 @@ class InfoProcessor(processor.ImportProcessor):
             self.lightweight_tags += 1
         else:
             self.named_branches.append(cmd.ref)
-            # future ...
-            #if cmd.from_ is not None:
-            #    self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
+            if cmd.from_ is not None:
+                self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
