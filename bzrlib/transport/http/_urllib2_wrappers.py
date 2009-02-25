@@ -987,6 +987,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     # classes:
     # - auth_required_header:  the header received from the server
     # - auth_header: the header sent in the request
+    # - requires_username: whether the auth mechanism requires a username
 
     def __init__(self):
         # We want to know when we enter into an try/fail cycle of
@@ -1034,7 +1035,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # We already tried that, give up
                 return None
 
-            if auth.get('user', None) is None:
+            if self.requires_username and auth.get('user', None) is None:
                 # Without a known user, we can't authenticate
                 return None
 
@@ -1158,6 +1159,8 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 
     handler_order = 480
 
+    requires_username = False
+
     def auth_match(self, header, auth):
         scheme = header.lower()
         if scheme != 'negotiate':
@@ -1203,13 +1206,18 @@ class BasicAuthHandler(AbstractAuthHandler):
 
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
+    requires_username = True
+
     def build_auth_header(self, auth, request):
         raw = '%s:%s' % (auth['user'], auth['password'])
         auth_header = 'Basic ' + raw.encode('base64').strip()
         return auth_header
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
+        try:
+            scheme, raw_auth = header.split(None, 1)
+        except ValueError:
+            return False
         scheme = scheme.lower()
         if scheme != 'basic':
             return False
@@ -1260,6 +1268,8 @@ class DigestAuthHandler(AbstractAuthHandler):
     # Before basic as digest is a bit more secure
     handler_order = 490
 
+    requires_username = True
+
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
         # authentication was successful, all information is
@@ -1267,7 +1277,10 @@ class DigestAuthHandler(AbstractAuthHandler):
         return auth.get('scheme', None) == 'digest'
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
+        try:
+            scheme, raw_auth = header.split(None, 1)
+        except ValueError:
+            return False
         scheme = scheme.lower()
         if scheme != 'digest':
             return False
