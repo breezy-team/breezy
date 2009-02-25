@@ -2798,6 +2798,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
                    'bzrlib.tests.inventory_implementations',
+                   'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_reference',
