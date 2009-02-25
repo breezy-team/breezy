@@ -27,13 +27,13 @@
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
 
-import os
-import re
-import sys
+from copy import deepcopy
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
+import os
+import re
 import tarfile
 
 import bzrlib
@@ -883,6 +883,15 @@ class CommonInventory(object):
                     file_id, self[file_id]))
         return delta
 
+    def _get_mutable_inventory(self):
+        """Returns a mutable copy of the object.
+
+        Some inventories are immutable, yet working trees, for example, needs
+        to mutate exisiting inventories instead of creating a new one.
+        """
+        raise NotImplementedError(self._get_mutable_inventory)
+
+
 
 class Inventory(CommonInventory):
     """Inventory of versioned files in a tree.
@@ -1035,6 +1044,10 @@ class Inventory(CommonInventory):
         for path, entry in entries:
             other.add(entry.copy())
         return other
+
+    def _get_mutable_inventory(self):
+        """See CommonInventory._get_mutable_inventory."""
+        return deepcopy(self)
 
     def __iter__(self):
         return iter(self._byid)
@@ -1439,6 +1452,16 @@ class CHKInventory(CommonInventory):
             result.parent_id = None
         self._entry_cache[result.file_id] = result
         return result
+
+    def _get_mutable_inventory(self):
+        """See CommonInventory._get_mutable_inventory."""
+        entries = self.iter_entries()
+        if self.root_id is not None:
+            entries.next()
+        inv = Inventory(self.root_id, self.revision_id)
+        for inv_entry in entries:
+            inv.add(inv_entry)
+        return inv
 
     def create_by_apply_delta(self, inventory_delta, new_revision_id):
         """Create a new CHKInventory by applying inventory_delta to this one.

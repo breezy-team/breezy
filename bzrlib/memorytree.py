@@ -218,7 +218,7 @@ class MemoryTree(mutabletree.MutableTree):
             self._parent_ids = []
         else:
             self._parent_ids = [self._branch_revision_id]
-        self._inventory = deepcopy(self._basis_tree._inventory)
+        self._inventory = self._basis_tree._inventory._get_mutable_inventory()
         self._file_transport = MemoryTransport()
         # TODO copy the revision trees content, or do it lazy, or something.
         inventory_entries = self._inventory.iter_entries()
