@@ -232,11 +232,14 @@ class BzrDir(object):
             result_branch = local_branch.clone(result, revision_id=revision_id)
             if repository_policy is not None:
                 repository_policy.configure_branch(result_branch)
-        if result_repo is None or result_repo.make_working_trees():
-            try:
+        try:
+            # Cheaper to check if the target is not local, than to try making
+            # the tree and fail.
+            result.root_transport.local_abspath('.')
+            if result_repo is None or result_repo.make_working_trees():
                 self.open_workingtree().clone(result)
-            except (errors.NoWorkingTree, errors.NotLocalUrl):
-                pass
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
         return result
 
     # TODO: This should be given a Transport, and should chdir up; otherwise
