@@ -93,9 +93,6 @@ IN DEVELOPMENT
       a RemoteRepository uses this to stream the operation.
       (Andrew Bennetts, Robert Collins)
 
-    * There is a RemoteSink object which handles pushing to smart servers.
-      (Andrew Bennetts, Robert Collins)
-
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
 
@@ -130,11 +127,18 @@ IN DEVELOPMENT
       delta references. The method is ``scan_unvalidated_index``.
       (Andrew Bennetts, Robert Collins)
 
+    * There is a RemoteSink object which handles pushing to smart servers.
+      (Andrew Bennetts, Robert Collins)
+
     * ``VersionedFiles`` record adapters have had their signature change
       from ``(record, record.get_bytes_as(record.storage_kind))`` to
       ``(record)`` reducing excess duplication and allowing adapters
       to access private data in record to obtain content more
       efficiently. (Robert Collins)
+
+    * We no longer probe to see if we should create a working tree during
+      clone if we cannot get a local_abspath for the new bzrdir.
+      (Robert Collins)
 
 
 bzr 1.12 "1234567890" 2009-02-13
