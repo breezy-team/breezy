@@ -1048,6 +1048,8 @@ class Branch(object):
             If None the tip is obtained from this branch.
         :param stacked_on: An optional URL to stack the clone on.
         """
+        # XXX: Fix the bzrdir API to allow getting the branch back from the
+        # clone call. Or something. 20090224 RBC/spiv.
         dir_to = self.bzrdir.clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on)
         return dir_to.open_branch()
