@@ -31,9 +31,12 @@ from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
 # sample filter stacks
-_swapcase = lambda chunks, context=None: [s.swapcase() for s in chunks]
-_addjunk = lambda chunks: ['junk\n'] + [s for s in chunks]
-_deljunk = lambda chunks, context: [s for s in chunks[1:]]
+def _swapcase(chunks, context=None):
+    return [s.swapcase() for s in chunks]
+def _addjunk(chunks):
+    return ['junk\n'] + [s for s in chunks]
+def _deljunk(chunks, context):
+    return [s for s in chunks[1:]]
 _stack_1 = [
     ContentFilter(_swapcase, _swapcase),
     ]

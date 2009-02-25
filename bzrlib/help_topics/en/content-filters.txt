@@ -15,8 +15,8 @@ when committed.
 
 To generalize, there are two content formats supported by Bazaar:
 
- * a canonical format - how files are stored internally
- * a convenience format - how files are created in a working tree.
+* a canonical format - how files are stored internally
+* a convenience format - how files are created in a working tree.
 
 
 Format conversion

@@ -2513,7 +2513,8 @@ class cmd_export(Command):
                help="Type of file to export to.",
                type=unicode),
         'revision',
-        Option('filters', help='Apply content filters.'),
+        Option('filters', help='Apply content filters to export the '
+                'convenient form.'),
         Option('root',
                type=str,
                help="Name of the root directory inside the exported file."),
@@ -2549,7 +2550,8 @@ class cmd_cat(Command):
     _see_also = ['ls']
     takes_options = [
         Option('name-from-revision', help='The path name in the old tree.'),
-        Option('filters', help='Apply content filters.'),
+        Option('filters', help='Apply content filters to display the '
+                'convenience form.'),
         'revision',
         ]
     takes_args = ['filename']
@@ -2600,7 +2602,8 @@ class cmd_cat(Command):
                 filtered_output_bytes,
                 )
             filters = rev_tree._content_filter_stack(relpath)
-            content = filtered_output_bytes([content], filters,
+            chunks = content.splitlines(True)
+            content = filtered_output_bytes(chunks, filters,
                 ContentFilterContext(relpath, rev_tree))
             self.outf.writelines(content)
         else:
