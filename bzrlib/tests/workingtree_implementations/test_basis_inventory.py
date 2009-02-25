@@ -47,7 +47,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
         basis_inv = t.basis_tree().inventory
         self.assertEquals('r1', basis_inv.revision_id)
-        
+
         store_inv = b.repository.get_inventory('r1')
         self.assertEquals(store_inv._byid, basis_inv._byid)
 

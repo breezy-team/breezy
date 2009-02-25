@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# TODO: Up-front, stat all files in order and remove those which are deleted or 
-# out-of-date.  Don't actually re-read them until they're needed.  That ought 
-# to bring all the inodes into core so that future stats to them are fast, and 
+# TODO: Up-front, stat all files in order and remove those which are deleted or
+# out-of-date.  Don't actually re-read them until they're needed.  That ought
+# to bring all the inodes into core so that future stats to them are fast, and
 # it preserves the nice property that any caller will always get up-to-date
 # data except in unavoidable cases.
 
@@ -73,7 +73,7 @@ class HashCache(object):
     hit_count
         number of times files have been retrieved from the cache, avoiding a
         re-read
-        
+
     miss_count
         number of misses (times files have been completely re-read)
     """
@@ -106,22 +106,22 @@ class HashCache(object):
 
     def scan(self):
         """Scan all files and remove entries where the cache entry is obsolete.
-        
+
         Obsolete entries are those where the file has been modified or deleted
-        since the entry was inserted.        
+        since the entry was inserted.
         """
         # FIXME optimisation opportunity, on linux [and check other oses]:
         # rather than iteritems order, stat in inode order.
         prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
         prep.sort()
-        
+
         for inum, path, cache_entry in prep:
             abspath = pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
-            
+
             cache_fp = cache_entry[1]
-    
+
             if (not fp) or (cache_fp != fp):
                 # not here or not a regular file anymore
                 self.removed_count += 1
@@ -137,14 +137,14 @@ class HashCache(object):
             abspath = pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = self._fingerprint(abspath, stat_value)
-        
+
         if not file_fp:
             # not a regular file or not existing
             if path in self._cache:
                 self.removed_count += 1
                 self.needs_write = True
                 del self._cache[path]
-            return None        
+            return None
 
         if path in self._cache:
             cache_sha1, cache_fp = self._cache[path]
@@ -156,7 +156,7 @@ class HashCache(object):
             ## mutter("now = %s", time.time())
             self.hit_count += 1
             return cache_sha1
-        
+
         self.miss_count += 1
 
         mode = file_fp[FP_MODE_COLUMN]
@@ -201,7 +201,7 @@ class HashCache(object):
     def _really_sha1_file(self, abspath):
         """Calculate the SHA1 of a file by reading the full text"""
         return sha_file(file(abspath, 'rb', buffering=65000))
-        
+
     def write(self):
         """Write contents of cache to file."""
         outf = AtomicFile(self.cache_file_name(), 'wb', new_mode=self._mode)
@@ -227,7 +227,7 @@ class HashCache(object):
 
         Overwrites existing cache.
 
-        If the cache file has the wrong version marker, this just clears 
+        If the cache file has the wrong version marker, this just clears
         the cache."""
         self._cache = {}
 
@@ -278,7 +278,7 @@ class HashCache(object):
         undetectably modified and so can't be cached.
         """
         return int(time.time()) - 3
-           
+
     def _fingerprint(self, abspath, stat_value=None):
         if stat_value is None:
             try:
@@ -291,5 +291,5 @@ class HashCache(object):
         # we discard any high precision because it's not reliable; perhaps we
         # could do better on some systems?
         return (stat_value.st_size, long(stat_value.st_mtime),
-                long(stat_value.st_ctime), stat_value.st_ino, 
+                long(stat_value.st_ctime), stat_value.st_ino,
                 stat_value.st_dev, stat_value.st_mode)

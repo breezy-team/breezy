@@ -488,7 +488,7 @@ class TestLongLogFormatter(TestCaseWithoutPropsHandler):
 
     def test_verbose_log(self):
         """Verbose log includes changed files
-        
+
         bug #4676
         """
         wt = self.make_branch_and_tree('.')
@@ -696,7 +696,7 @@ message:
                              sio.getvalue())
 
     def test_properties_in_log(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -735,8 +735,43 @@ message:
 ''',
                                  sio.getvalue())
 
+    def test_properties_in_short_log(self):
+        """Log includes the custom properties returned by the registered
+        handlers.
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test_properties_in_short_log'
+        wt.commit(message='add a',
+                  timestamp=1132711707,
+                  timezone=36000,
+                  committer='Lorem Ipsum <test@example.com>',
+                  author='John Doe <jdoe@example.com>')
+        sio = StringIO()
+        formatter = log.ShortLogFormatter(to_file=sio)
+        try:
+            def trivial_custom_prop_handler(revision):
+                return {'test_prop':'test_value'}
+
+            log.properties_handler_registry.register(
+                'trivial_custom_prop_handler',
+                trivial_custom_prop_handler)
+            log.show_log(b, formatter)
+        finally:
+            log.properties_handler_registry.remove(
+                'trivial_custom_prop_handler')
+            self.assertEqualDiff('''\
+    1 John Doe\t2005-11-23
+      test_prop: test_value
+      add a
+
+''',
+                                 sio.getvalue())
+
     def test_error_in_properties_handler(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -802,7 +837,7 @@ class TestLongLogFormatterWithoutMergeRevisions(TestCaseWithoutPropsHandler):
 
     def test_long_verbose_log(self):
         """Verbose log includes changed files
-        
+
         bug #4676
         """
         wt = self.make_branch_and_tree('.')
@@ -941,7 +976,7 @@ message:
                              sio.getvalue())
 
     def test_long_properties_in_log(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -985,7 +1020,7 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
 
     def test_line_log(self):
         """Line log should show revno
-        
+
         bug #5162
         """
         wt = self.make_branch_and_tree('.')
@@ -1065,7 +1100,7 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
 3: Jane Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
-2: Joe Foo 2005-11-22 {v0.2} rev-2
+2: Joe Foo 2005-11-22 [merge] {v0.2} rev-2
 1: Joe Foo 2005-11-22 rev-1
 """,
                              logfile.getvalue())
@@ -1074,7 +1109,7 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
 
     def test_line_merge_revs_log(self):
         """Line log should show revno
-        
+
         bug #5162
         """
         wt = self.make_branch_and_tree('.')
@@ -1142,7 +1177,7 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
         formatter = log.LineLogFormatter(to_file=logfile, levels=0)
         log.show_log(wt.branch, formatter)
         self.assertEqualDiff("""\
-2: Joe Foo 2005-11-22 rev-2
+2: Joe Foo 2005-11-22 [merge] rev-2
   1.1.1: Joe Foo 2005-11-22 rev-merged
 1: Joe Foo 2005-11-22 rev-1
 """,

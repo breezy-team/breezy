@@ -117,7 +117,7 @@ class TestSwitch(ExternalBase):
     def test_switch_finds_relative_bound_branch(self):
         """Using switch on a heavy checkout should find master sibling
 
-        The behaviour of lighweight and heavy checkouts should be 
+        The behaviour of lighweight and heavy checkouts should be
         consistentwhen using the convenient "switch to sibling" feature
         Both should switch to a sibling of the branch
         they are bound to, and not a sibling of themself"""

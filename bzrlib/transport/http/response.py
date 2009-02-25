@@ -67,18 +67,15 @@ class RangeFile(object):
     # maximum size of read requests -- used to avoid MemoryError issues in recv
     _max_read_size = 512 * 1024
 
-    def __init__(self, path, infile, report_activity=None):
+    def __init__(self, path, infile):
         """Constructor.
 
         :param path: File url, for error reports.
         :param infile: File-like socket set at body start.
-        :param report_activity: A Transport._report_activity function to call
-            as bytes are read.
         """
         self._path = path
         self._file = infile
         self._boundary = None
-        self._report_activity = report_activity
         # When using multi parts response, this will be set with the headers
         # associated with the range currently read.
         self._headers = None
@@ -94,7 +91,7 @@ class RangeFile(object):
 
     def set_boundary(self, boundary):
         """Define the boundary used in a multi parts message.
-        
+
         The file should be at the beginning of the body, the first range
         definition is read and taken into account.
         """
@@ -117,7 +114,7 @@ class RangeFile(object):
             # IIS 6 and 7 incorrectly wrap boundary strings in <>
             # together they make a beautiful bug, which we will be gracious
             # about here
-            if (self._unquote_boundary(boundary_line) != 
+            if (self._unquote_boundary(boundary_line) !=
                 '--' + self._boundary + '\r\n'):
                 raise errors.InvalidHttpResponse(
                     self._path,
@@ -231,8 +228,7 @@ class RangeFile(object):
             limited = self._start + self._size - self._pos
             if size >= 0:
                 limited = min(limited, size)
-        osutils.pumpfile(self._file, buffer, limited, self._max_read_size,
-            report_activity=self._report_activity, direction='read')
+        osutils.pumpfile(self._file, buffer, limited, self._max_read_size)
         data = buffer.getvalue()
 
         # Update _pos respecting the data effectively read
@@ -281,7 +277,7 @@ class RangeFile(object):
         return self._pos
 
 
-def handle_response(url, code, msg, data, report_activity=None):
+def handle_response(url, code, msg, data):
     """Interpret the code & headers and wrap the provided data in a RangeFile.
 
     This is a factory method which returns an appropriate RangeFile based on
@@ -292,10 +288,10 @@ def handle_response(url, code, msg, data, report_activity=None):
     :param msg: An HTTPMessage containing the headers for the response
     :param data: A file-like object that can be read() to get the
                  requested data
-    :return: A file-like object that can seek()+read() the 
+    :return: A file-like object that can seek()+read() the
              ranges indicated by the headers.
     """
-    rfile = RangeFile(url, data, report_activity=report_activity)
+    rfile = RangeFile(url, data)
     if code == 200:
         # A whole file
         size = msg.getheader('content-length', None)

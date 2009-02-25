@@ -137,7 +137,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             # common)
             self.send_response(301)
             self.send_header("Location", self.path + "/")
-            # Indicates that the body is empty for HTTP/1.1 clients 
+            # Indicates that the body is empty for HTTP/1.1 clients
             self.send_header('Content-Length', '0')
             self.end_headers()
             return None
@@ -320,7 +320,7 @@ class TestingHTTPServerMixin:
 
     def tearDown(self):
          """Called to clean-up the server.
- 
+
          Since the server may be (surely is, even) in a blocking listen, we
          shutdown its socket before closing it.
          """
@@ -503,7 +503,7 @@ class HttpServer(transport.Server):
 
     def setUp(self, backing_transport_server=None):
         """See bzrlib.transport.Server.setUp.
-        
+
         :param backing_transport_server: The transport that requests over this
             protocol should be forwarded to. Note that this is currently not
             supported for HTTP.

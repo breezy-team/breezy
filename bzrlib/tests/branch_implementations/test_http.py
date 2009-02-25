@@ -27,7 +27,7 @@ from bzrlib.transport.chroot import TestingChrootServer
 
 class InaccessibleParentTests(TestCaseWithBranch):
     """Tests with branches with "inaccessible" parents.
-    
+
     An "inaccessible" parent location is one that cannot be represented, e.g. if
     a child branch says its parent is at "../../my-parent", but that child is at
     "http://host/one" then that parent location is inaccessible.  These

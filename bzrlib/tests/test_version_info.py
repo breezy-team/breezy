@@ -139,9 +139,9 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.rename_one('b', 'd')
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
-        self.assertEqual(['', 'a', 'b', 'c', 'd'], 
+        self.assertEqual(['', 'a', 'b', 'c', 'd'],
                           file_rev_stanza.get_all('path'))
-        self.assertEqual(['r3', 'modified', 'renamed to d', 'new', 
+        self.assertEqual(['r3', 'modified', 'renamed to d', 'new',
                           'renamed from b'],
                          file_rev_stanza.get_all('revision'))
 
@@ -194,7 +194,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(['branch/c'])
         tvi = regen(check_for_clean=True, include_file_revisions=True)
         self.assertEqual(False, tvi.version_info['clean'])
-        self.assertEqual(['', 'a', 'b', 'c'], 
+        self.assertEqual(['', 'a', 'b', 'c'],
                          sorted(tvi.file_revisions.keys()))
         self.assertEqual('r3', tvi.file_revisions['a'])
         self.assertEqual('r2', tvi.file_revisions['b'])
@@ -212,7 +212,7 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.add('c')
         wt.rename_one('b', 'd')
         tvi = regen(check_for_clean=True, include_file_revisions=True)
-        self.assertEqual(['', 'a', 'b', 'c', 'd'], 
+        self.assertEqual(['', 'a', 'b', 'c', 'd'],
                           sorted(tvi.file_revisions.keys()))
         self.assertEqual('modified', tvi.file_revisions['a'])
         self.assertEqual('renamed to d', tvi.file_revisions['b'])
@@ -223,7 +223,7 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.remove(['c', 'd'])
         os.remove('branch/d')
         tvi = regen(check_for_clean=True, include_file_revisions=True)
-        self.assertEqual(['', 'a', 'c', 'd'], 
+        self.assertEqual(['', 'a', 'c', 'd'],
                           sorted(tvi.file_revisions.keys()))
         self.assertEqual('r4', tvi.file_revisions['a'])
         self.assertEqual('unversioned', tvi.file_revisions['c'])

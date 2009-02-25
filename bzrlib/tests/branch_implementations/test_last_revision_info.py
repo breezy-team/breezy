@@ -26,7 +26,7 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         # on an empty branch we want (0, NULL_REVISION)
         branch = self.make_branch('branch')
         self.assertEqual((0, NULL_REVISION), branch.last_revision_info())
-    
+
     def test_non_empty_branch(self):
         # after the second commit we want (2, 'second-revid')
         tree = self.make_branch_and_tree('branch')

@@ -34,7 +34,7 @@ class cmd_register_branch(Command):
     This command lists a bzr branch in the directory of branches on
     launchpad.net.  Registration allows the branch to be associated with
     bugs or specifications.
-    
+
     Before using this command you must register the product to which the
     branch belongs, and create an account for yourself on launchpad.net.
 
@@ -127,6 +127,37 @@ class cmd_register_branch(Command):
 register_command(cmd_register_branch)
 
 
+# XXX: Make notes to test this.
+class cmd_launchpad_open(Command):
+    """Open a Launchpad branch page in your web browser."""
+
+    aliases = ['lp-open']
+    takes_options = [
+        Option('dry-run',
+               'Do not actually open the browser. Just say the URL we would '
+               'use.'),
+        ]
+    takes_args = ['location?']
+
+    def run(self, location=None, dry_run=False):
+        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
+        from bzrlib.trace import note
+        import webbrowser
+        if location is None:
+            location = u'.'
+        branch = Branch.open(location)
+        branch_url = branch.get_public_branch()
+        if branch_url is None:
+            raise NoPublicBranch(branch)
+        service = LaunchpadService()
+        web_url = service.get_web_url_from_branch_url(branch_url)
+        note('Opening %s in web browser' % web_url)
+        if not dry_run:
+            webbrowser.open(web_url)
+
+register_command(cmd_launchpad_open)
+
+
 class cmd_launchpad_login(Command):
     """Show or set the Launchpad user ID.
 
@@ -182,8 +213,12 @@ def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
     from bzrlib.plugins.launchpad import (
-         test_account, test_lp_directory, test_lp_service, test_register,
-         )
+        test_account,
+        test_lp_directory,
+        test_lp_open,
+        test_lp_service,
+        test_register,
+        )
 
     loader = TestLoader()
     suite = TestSuite()
@@ -191,6 +226,7 @@ def test_suite():
         test_account,
         test_register,
         test_lp_directory,
+        test_lp_open,
         test_lp_service,
         ]:
         suite.addTests(loader.loadTestsFromModule(module))

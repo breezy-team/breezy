@@ -68,21 +68,21 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # when up to date we should get a message to that effect
         (out, err) = self.run_bzr('upgrade current_format_branch', retcode=3)
         self.assertEqual("", out)
-        self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "
-                             "directory, format 1 is already at the most "
+        self.assertEqualDiff("bzr: ERROR: The branch format Meta "
+                             "directory format 1 is already at the most "
                              "recent format.\n", err)
 
     def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
         # when upgrading a checkout, the branch location and a suggestion
-        # to upgrade it should be emitted even if the checkout is up to 
+        # to upgrade it should be emitted even if the checkout is up to
         # date
         (out, err) = self.run_bzr('upgrade current_format_checkout', retcode=3)
         self.assertEqual("This is a checkout. The branch (%s) needs to be "
                          "upgraded separately.\n"
                          % get_transport(self.get_url('current_format_branch')).base,
                          out)
-        self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "
-                             "directory, format 1 is already at the most "
+        self.assertEqualDiff("bzr: ERROR: The branch format Meta "
+                             "directory format 1 is already at the most "
                              "recent format.\n", err)
 
     def test_upgrade_checkout(self):
@@ -90,7 +90,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         pass
 
     def test_upgrade_repository_scans_branches(self):
-        # we should get individual upgrade notes for each branch even the 
+        # we should get individual upgrade notes for each branch even the
         # anonymous branch
         pass
 
@@ -120,7 +120,7 @@ finished
             bzrdir.BzrDirMetaFormat1))
 
     def test_upgrade_explicit_knit(self):
-        # users can force an upgrade to knit format from a metadir weave 
+        # users can force an upgrade to knit format from a metadir weave
         # branch
         url = get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
