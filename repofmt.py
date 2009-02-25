@@ -229,8 +229,72 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         self.repo.signatures._index._add_callback = self.signature_index.add_callback
         self.repo.texts._index._add_callback = self.text_index.add_callback
 
-    def _do_autopack(self):
-        return False
+    def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
+                                 reload_func=None):
+        """Execute a series of pack operations.
+
+        :param pack_operations: A list of [revision_count, packs_to_combine].
+        :param _packer_class: The class of packer to use (default: Packer).
+        :return: None.
+        """
+        for revision_count, packs in pack_operations:
+            # we may have no-ops from the setup logic
+            if len(packs) == 0:
+                continue
+            # Create a new temp VersionedFile instance based on these packs,
+            # and then just fetch everything into the target
+
+            # XXX: Find a way to 'set_optimize' on the newly created pack
+            #      indexes
+            #    def open_pack(self):
+            #       """Open a pack for the pack we are creating."""
+            #       new_pack = super(OptimisingPacker, self).open_pack()
+            #       # Turn on the optimization flags for all the index builders.
+            #       new_pack.revision_index.set_optimize(for_size=True)
+            #       new_pack.inventory_index.set_optimize(for_size=True)
+            #       new_pack.text_index.set_optimize(for_size=True)
+            #       new_pack.signature_index.set_optimize(for_size=True)
+            #       return new_pack
+            to_copy = [('revision_index', 'revisions'),
+                       ('inventory_index', 'inventories'),
+                       ('text_index', 'texts'),
+                       ('signature_index', 'signatures'),
+                      ]
+            if getattr(self, 'chk_index', None) is not None:
+                to_copy.insert(2, ('chk_index', 'chk_bytes'))
+
+            # Shouldn't we start_write_group around this?
+            if self._new_pack is not None:
+                raise errors.BzrError('call to %s.pack() while another pack is'
+                                      ' being written.'
+                                      % (self.__class__.__name__,))
+            # TODO: A better alternative is to probably use Packer.open_pack(), and
+            #       then create a GroupCompressVersionedFiles() around the
+            #       target pack to insert into.
+            self._start_write_group()
+            try:
+                for index_name, vf_name in to_copy:
+                    keys = set()
+                    new_index = getattr(self._new_pack, index_name)
+                    new_index.set_optimize(for_size=True)
+                    for pack in packs:
+                        source_index = getattr(pack, index_name)
+                        keys.update(e[1] for e in source_index.iter_all_entries())
+                    vf = getattr(self.repo, vf_name)
+                    stream = vf.get_record_stream(keys, 'gc-optimal', True)
+                    vf.insert_record_stream(stream)
+            except:
+                self._abort_write_group()
+            else:
+                self._commit_write_group()
+            for pack in packs:
+                self._remove_pack_from_memory(pack)
+        # record the newly available packs and stop advertising the old
+        # packs
+        self._save_pack_names(clear_obsolete_packs=True)
+        # Move the old packs out of the way now they are no longer referenced.
+        for revision_count, packs in pack_operations:
+            self._obsolete_packs(packs)
 
 
 
