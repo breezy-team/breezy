@@ -60,7 +60,6 @@ class InfoProcessor(processor.ImportProcessor):
         self.executables_found = False
         self.sha_blob_references = False
         self.lightweight_tags = 0
-        self.named_branches = []
         # Blob usage tracking
         self.blobs = {}
         for usage in ['new', 'used', 'multi', 'unknown', 'unmarked']:
@@ -126,7 +125,6 @@ class InfoProcessor(processor.ImportProcessor):
         if self.cmd_counts['reset']:
             reset_stats = {
                 'lightweight tags': self.lightweight_tags,
-                'other resets': self.named_branches,
                 }
             self._dump_stats_group("Reset analysis", reset_stats.keys(),
                 reset_stats.values())
@@ -229,7 +227,6 @@ class InfoProcessor(processor.ImportProcessor):
         if cmd.ref.startswith('refs/tags/'):
             self.lightweight_tags += 1
         else:
-            self.named_branches.append(cmd.ref)
             if cmd.from_ is not None:
                 self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
 
