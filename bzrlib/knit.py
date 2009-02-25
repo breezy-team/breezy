@@ -807,7 +807,7 @@ def cleanup_pack_knit(versioned_files):
     versioned_files.writer.end()
 
 
-def _get_total_build_size(keys, positions):
+def _get_total_build_size(self, keys, positions):
     """Determine the total bytes to build these keys.
 
     (helper function because _KnitGraphIndex and _KndxIndex work the same, but
@@ -2659,15 +2659,7 @@ class _KndxIndex(object):
             return index_memo[0][:-1], index_memo[1]
         return keys.sort(key=get_sort_key)
 
-    def _get_total_build_size(self, keys, positions):
-        """Determine the total bytes to build these keys.
-
-        :param keys: Keys that we want to build
-        :param positions: dict of {key, (info, index_memo, comp_parent)} (such
-            as returned by _get_components_positions)
-        :return: Number of bytes to build those keys
-        """
-        return _get_total_build_size(keys, positions)
+    _get_total_build_size = _get_total_build_size
 
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
@@ -2990,15 +2982,7 @@ class _KnitGraphIndex(object):
             return positions[key][1]
         return keys.sort(key=get_index_memo)
 
-    def _get_total_build_size(self, keys, positions):
-        """Determine the total bytes to build these keys.
-
-        :param keys: Keys that we want to build
-        :param positions: dict of {key, (info, index_memo, comp_parent)} (such
-            as returned by _get_components_positions)
-        :return: Number of bytes to build those keys
-        """
-        return _get_total_build_size(keys, positions)
+    _get_total_build_size = _get_total_build_size
 
 
 class _KnitKeyAccess(object):

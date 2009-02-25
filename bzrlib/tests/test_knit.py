@@ -1093,6 +1093,26 @@ class LowLevelKnitIndexTests(TestCase):
             call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
 
+    def assertTotalBuildSize(self, size, keys, positions):
+        self.assertEqual(size,
+                         knit._get_total_build_size(None, keys, positions))
+
+    def test__get_total_build_size(self):
+        positions = {
+            ('a',): (('fulltext', False), (('a',), 0, 100), None),
+            ('b',): (('line-delta', False), (('b',), 100, 21), ('a',)),
+            ('c',): (('line-delta', False), (('c',), 121, 35), ('b',)),
+            ('d',): (('line-delta', False), (('d',), 156, 12), ('b',)),
+            }
+        self.assertTotalBuildSize(100, [('a',)], positions)
+        self.assertTotalBuildSize(121, [('b',)], positions)
+        # c needs both a & b
+        self.assertTotalBuildSize(156, [('c',)], positions)
+        # we shouldn't count 'b' twice
+        self.assertTotalBuildSize(156, [('b',), ('c',)], positions)
+        self.assertTotalBuildSize(133, [('d',)], positions)
+        self.assertTotalBuildSize(168, [('c',), ('d',)], positions)
+
     def test_get_position(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
