@@ -16,9 +16,12 @@
 
 """An object that updates a bunch of branches based on data imported."""
 
+from operator import itemgetter
 
 from bzrlib import bzrdir, errors
 from bzrlib.trace import error, note
+
+import branch_mapper
 import helpers
 
 
@@ -37,6 +40,7 @@ class BranchUpdater(object):
         self.heads_by_ref = heads_by_ref
         self.last_ref = last_ref
         self.tags = tags
+        self.name_mapper = branch_mapper.BranchMapper()
 
     def update(self):
         """Update the Bazaar branches and tips matching the heads.
@@ -77,7 +81,7 @@ class BranchUpdater(object):
             ref_names.remove(trunk)
 
         # Convert the reference names into Bazaar speak
-        bzr_names = self._get_bzr_names_from_ref_names(ref_names)
+        git_to_bzr_map = self.name_mapper.git_to_bzr(ref_names)
 
         # Policy for locating branches
         def dir_under_current(name, ref_name):
@@ -93,8 +97,8 @@ class BranchUpdater(object):
 
         # Create/track missing branches
         shared_repo = self.repo.is_shared()
-        for name in sorted(bzr_names.keys()):
-            ref_name = bzr_names[name]
+        git_bzr_items = sorted(git_to_bzr_map.items(), key=itemgetter(1))
+        for ref_name, name in git_bzr_items:
             tip = self.heads_by_ref[ref_name][0]
             if shared_repo:
                 location = dir_policy(name, ref_name)
@@ -124,27 +128,6 @@ class BranchUpdater(object):
             return bzrdir.BzrDir.open(location).open_branch()
         except errors.NotBranchError, ex:
             return bzrdir.BzrDir.create_branch_convenience(location)
-
-    def _get_bzr_names_from_ref_names(self, ref_names):
-        """Generate Bazaar branch names from import ref names.
-        
-        :return: a dictionary with Bazaar names as keys and
-          the original reference names as values.
-        """
-        bazaar_names = {}
-        for ref_name in sorted(ref_names):
-            parts = ref_name.split('/')
-            if parts[0] == 'refs':
-                parts.pop(0)
-            full_name = "--".join(parts)
-            bazaar_name = parts[-1]
-            if bazaar_name in bazaar_names:
-                if parts[0] == 'remotes':
-                    bazaar_name += ".remote"
-                else:
-                    bazaar_name = full_name
-            bazaar_names[bazaar_name] = ref_name
-        return bazaar_names
 
     def _update_branch(self, br, last_mark):
         """Update a branch with last revision and tag information.
