@@ -27,6 +27,7 @@ def test_suite():
         'bzrlib.plugins.fastimport.tests.test_errors',
         'bzrlib.plugins.fastimport.tests.test_filter_processor',
         'bzrlib.plugins.fastimport.tests.test_generic_processor',
+        'bzrlib.plugins.fastimport.tests.test_head_tracking',
         'bzrlib.plugins.fastimport.tests.test_helpers',
         'bzrlib.plugins.fastimport.tests.test_parser',
         ]
