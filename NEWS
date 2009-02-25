@@ -17,6 +17,19 @@ IN DEVELOPMENT
       now always given lower mark numbers than the commits they
       are merged into. (Ian Clatworthy)
 
+    * The ``fast-import`` command now uses a different mapping of
+      git reference names to bzr branch names. In summary:
+      
+      * ``refs/heads/foo`` is mapped to ``foo``
+      * ``refs/remotes/origin/foo`` is mapped to ``foo.remote``
+      * ``refs/tags/foo`` is mapped to ``foo.tag``
+      * ``*/master`` is mapped to ``trunk``, ``trunk.remote``, etc.
+      * ``*/trunk`` is mapped to ``git-trunk``, ``git-trunk.remote``, etc.
+
+      This new mapping has been introduced so that more natural
+      branch names are used and to enable round-tripping back to git.
+      (Ian Clatworthy)
+
     * The old ``fast-import-filter`` command is now called
       ``fast-import-query``. ``fast-import-filter`` now
       really filters the input to produce a fast-import stream
