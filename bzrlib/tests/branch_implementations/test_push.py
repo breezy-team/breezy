@@ -267,7 +267,7 @@ class TestPush(TestCaseWithBranch):
         # remote graph any further.
         self.assertEqual(
             ['Repository.insert_stream', 'Repository.insert_stream', 'get',
-             'delete', 'Branch.set_last_revision_info', 'Branch.unlock'],
+             'Branch.set_last_revision_info', 'Branch.unlock'],
             calls_after_insert_stream)
 
     def disableOptimisticGetParentMap(self):

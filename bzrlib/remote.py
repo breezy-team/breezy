@@ -1372,25 +1372,24 @@ class RemoteStreamSink(repository.StreamSink):
 
     def __init__(self, target_repo):
         repository.StreamSink.__init__(self, target_repo)
-        self._resume_tokens = []
 
-    def _insert_real(self, stream, src_format):
+    def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
         sink = self.target_repo._real_repository._get_sink()
-        result = sink.insert_stream(stream, src_format)
+        result = sink.insert_stream(stream, src_format, resume_tokens)
         if not result:
             self.target_repo.autopack()
         return result
 
-    def insert_stream(self, stream, src_format):
+    def insert_stream(self, stream, src_format, resume_tokens):
         repo = self.target_repo
         client = repo._client
         medium = client._medium
         if medium._is_remote_before((1, 13)):
             # No possible way this can work.
-            return self._insert_real(stream, src_format)
+            return self._insert_real(stream, src_format, resume_tokens)
         path = repo.bzrdir._path_for_remote_call(client)
-        if not self._resume_tokens:
+        if not resume_tokens:
             # XXX: Ugly but important for correctness, *will* be fixed during
             # 1.13 cycle. Pushing a stream that is interrupted results in a
             # fallback to the _real_repositories sink *with a partial stream*.
@@ -1401,29 +1400,28 @@ class RemoteStreamSink(repository.StreamSink):
             # buffering etc.
             byte_stream = self._stream_to_byte_stream([], src_format)
             try:
-                resume_tokens = ''
                 response = client.call_with_body_stream(
-                    ('Repository.insert_stream', path, resume_tokens), byte_stream)
+                    ('Repository.insert_stream', path, ''), byte_stream)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1,13))
-                return self._insert_real(stream, src_format)
+                return self._insert_real(stream, src_format, resume_tokens)
         byte_stream = self._stream_to_byte_stream(stream, src_format)
-        resume_tokens = ' '.join(self._resume_tokens)
+        resume_tokens = ' '.join(resume_tokens)
         response = client.call_with_body_stream(
             ('Repository.insert_stream', path, resume_tokens), byte_stream)
         if response[0][0] not in ('ok', 'missing-basis'):
             raise errors.UnexpectedSmartServerResponse(response)
         if response[0][0] == 'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
-            self._resume_tokens = tokens
-            return missing_keys
+            resume_tokens = tokens
+            return resume_tokens, missing_keys
         else:
             if self.target_repo._real_repository is not None:
                 collection = getattr(self.target_repo._real_repository,
                     '_pack_collection', None)
                 if collection is not None:
                     collection.reload_pack_names()
-            return []
+            return [], set()
 
     def _stream_to_byte_stream(self, stream, src_format):
         bytes = []
