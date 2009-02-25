@@ -137,7 +137,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         self.build_tree(['dir/', 'dir/child', 'other/'])
         wt.add(['dir', 'dir/child', 'other'],
                ['dir-id', 'child-id', 'other-id'])
-        # this delta moves dir-id to dir2 and reparents 
+        # this delta moves dir-id to dir2 and reparents
         # child-id to a parent of other-id
         wt.apply_inventory_delta([('dir', 'dir2', 'dir-id',
             inventory.InventoryDirectory('dir-id', 'dir2', root_id)),

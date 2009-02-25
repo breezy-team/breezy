@@ -109,11 +109,11 @@ class SmartProtocolBase(object):
         for start, length in offsets:
             txt.append('%d,%d' % (start, length))
         return '\n'.join(txt)
-        
+
 
 class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
-    
+
     def __init__(self, backing_transport, write_func, root_client_path='/'):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
@@ -127,7 +127,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
     def accept_bytes(self, bytes):
         """Take bytes, and advance the internal state machine appropriately.
-        
+
         :param bytes: must be a byte string
         """
         if not isinstance(bytes, str):
@@ -169,7 +169,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
         if self._has_dispatched:
             if self._finished:
-                # nothing to do.XXX: this routine should be a single state 
+                # nothing to do.XXX: this routine should be a single state
                 # machine too.
                 self.unused_data += self.in_buffer
                 self.in_buffer = ''
@@ -211,7 +211,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
     def _write_protocol_version(self):
         """Write any prefixes this protocol requires.
-        
+
         Version one doesn't send protocol versions.
         """
 
@@ -234,7 +234,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
 class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
     r"""Version two of the server side of the smart protocol.
-   
+
     This prefixes responses with the value of RESPONSE_VERSION_TWO.
     """
 
@@ -250,7 +250,7 @@ class SmartServerRequestProtocolTwo(SmartServerRequestProtocolOne):
 
     def _write_protocol_version(self):
         r"""Write any prefixes this protocol requires.
-        
+
         Version two sends the value of RESPONSE_VERSION_TWO.
         """
         self._write_func(self.response_marker)
@@ -412,7 +412,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
         self.chunks = collections.deque()
         self.error = False
         self.error_in_progress = None
-    
+
     def next_read_size(self):
         # Note: the shortest possible chunk is 2 bytes: '0\n', and the
         # end-of-body marker is 4 bytes: 'END\n'.
@@ -506,7 +506,7 @@ class ChunkedBodyDecoder(_StatefulDecoder):
                 self.chunks.append(self.chunk_in_progress)
             self.chunk_in_progress = None
             self.state_accept = self._state_accept_expecting_length
-        
+
     def _state_accept_reading_unused(self):
         self.unused_data += self._get_in_buffer()
         self._in_buffer_list = []
@@ -514,14 +514,14 @@ class ChunkedBodyDecoder(_StatefulDecoder):
 
 class LengthPrefixedBodyDecoder(_StatefulDecoder):
     """Decodes the length-prefixed bulk data."""
-    
+
     def __init__(self):
         _StatefulDecoder.__init__(self)
         self.state_accept = self._state_accept_expecting_length
         self.state_read = self._state_read_no_data
         self._body = ''
         self._trailer_buffer = ''
-    
+
     def next_read_size(self):
         if self.bytes_left is not None:
             # Ideally we want to read all the remainder of the body and the
@@ -537,7 +537,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
         else:
             # Reading excess data.  Either way, 1 byte at a time is fine.
             return 1
-        
+
     def read_pending_data(self):
         """Return any pending data that has been decoded."""
         return self.state_read()
@@ -564,7 +564,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
                 self._body = self._body[:self.bytes_left]
             self.bytes_left = None
             self.state_accept = self._state_accept_reading_trailer
-        
+
     def _state_accept_reading_trailer(self):
         self._trailer_buffer += self._get_in_buffer()
         self._set_in_buffer(None)
@@ -574,7 +574,7 @@ class LengthPrefixedBodyDecoder(_StatefulDecoder):
             self.unused_data = self._trailer_buffer[len('done\n'):]
             self.state_accept = self._state_accept_reading_unused
             self.finished_reading = True
-    
+
     def _state_accept_reading_unused(self):
         self.unused_data += self._get_in_buffer()
         self._set_in_buffer(None)
@@ -655,7 +655,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             mutter('              %d bytes in readv request', len(readv_bytes))
         self._last_verb = args[0]
-    
+
     def call_with_body_stream(self, args, stream):
         # Protocols v1 and v2 don't support body streams.  So it's safe to
         # assume that a v1/v2 server doesn't support whatever method we're
@@ -729,7 +729,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
     def _response_is_unknown_method(self, result_tuple):
         """Raise UnexpectedSmartServerResponse if the response is an 'unknonwn
         method' response to the request.
-        
+
         :param response: The response from a smart client call_expecting_body
             call.
         :param verb: The verb used in that call.
@@ -742,11 +742,11 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             # The response will have no body, so we've finished reading.
             self._request.finished_reading()
             raise errors.UnknownSmartMethod(self._last_verb)
-        
+
     def read_body_bytes(self, count=-1):
         """Read bytes from the body, decoding into a byte stream.
-        
-        We read all bytes at once to ensure we've checked the trailer for 
+
+        We read all bytes at once to ensure we've checked the trailer for
         errors, and then feed the buffer back as read_body_bytes is called.
         """
         if self._body_buffer is not None:
@@ -790,14 +790,14 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
 
     def _write_protocol_version(self):
         """Write any prefixes this protocol requires.
-        
+
         Version one doesn't send protocol versions.
         """
 
 
 class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
     """Version two of the client side of the smart protocol.
-    
+
     This prefixes the request with the value of REQUEST_VERSION_TWO.
     """
 
@@ -831,7 +831,7 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
 
     def _write_protocol_version(self):
         """Write any prefixes this protocol requires.
-        
+
         Version two sends the value of REQUEST_VERSION_TWO.
         """
         self._request.accept_bytes(self.request_marker)
@@ -985,7 +985,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             self.message_handler.headers_received(decoded)
         except:
             raise errors.SmartMessageHandlerError(sys.exc_info())
-    
+
     def _state_accept_expecting_message_part(self):
         message_part_kind = self._extract_single_byte()
         if message_part_kind == 'o':
@@ -1077,7 +1077,7 @@ class _ProtocolThreeEncoder(object):
         for start, length in offsets:
             txt.append('%d,%d' % (start, length))
         return '\n'.join(txt)
-        
+
     def _write_protocol_version(self):
         self._write_func(MESSAGE_VERSION_THREE)
 
@@ -1162,7 +1162,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                 self._write_prefixed_body(chunk)
                 self.flush()
         self._write_end()
-        
+
 
 class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
 
@@ -1173,7 +1173,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
 
     def set_headers(self, headers):
         self._headers = headers.copy()
-        
+
     def call(self, *args):
         if 'hpss' in debug.debug_flags:
             mutter('hpss call:   %s', repr(args)[1:-1])
@@ -1247,11 +1247,15 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
                 self._write_prefixed_body(part)
                 self.flush()
         except Exception:
+            exc_info = sys.exc_info()
             # Iterating the stream failed.  Cleanly abort the request.
             self._write_error_status()
             # Currently the client unconditionally sends ('error',) as the
             # error args.
             self._write_structure(('error',))
+            self._write_end()
+            self._medium_request.finished_writing()
+            raise exc_info[0], exc_info[1], exc_info[2]
         self._write_end()
         self._medium_request.finished_writing()
 

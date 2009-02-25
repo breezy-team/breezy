@@ -23,7 +23,7 @@ __all__ = [
 
 def bisect_multi_bytes(content_lookup, size, keys):
     """Perform bisection lookups for keys using byte based addressing.
-    
+
     The keys are looked up via the content_lookup routine. The content_lookup
     routine gives bisect_multi_bytes information about where to keep looking up
     to find the data for the key, and bisect_multi_bytes feeds this back into

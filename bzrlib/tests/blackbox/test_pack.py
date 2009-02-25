@@ -21,7 +21,7 @@ from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestPack(ExternalBase):
-        
+
     def test_pack_silent(self):
         """pack command has no intrinsic output."""
         self.make_branch('.')

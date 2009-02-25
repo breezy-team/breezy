@@ -33,7 +33,7 @@ from bzrlib.tests import HardlinkFeature
 
 
 class TestCheckout(ExternalBase):
-    
+
     def setUp(self):
         super(TestCheckout, self).setUp()
         tree = bzrdir.BzrDir.create_standalone_workingtree('branch')

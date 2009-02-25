@@ -123,7 +123,7 @@ class TestIsAncestor(TestCaseWithTransport):
                        rev_id, branch.repository.get_ancestry(rev_id))
                 result = sorted(branch.repository.get_ancestry(rev_id))
                 self.assertEquals(result, [None] + sorted(anc))
-    
+
 
 class TestIntermediateRevisions(TestCaseWithTransport):
 

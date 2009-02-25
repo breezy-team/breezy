@@ -17,11 +17,40 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
+      options to change the default tree-creation policy of shared
+      repositories.  (Matthew Fuller, Marius Kruger, #145033)
+
+    * The ``-Dmemory`` flag now gives memory information on Windows.
+      (John Arbash Meinel)
+
+    * New command ``bzr launchpad-open`` opens a Launchpad web page for that
+      branch in your web browser, as long as the branch is on Launchpad at all.
+      (Jonathan Lange)
+
   IMPROVEMENTS:
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
+
+    * Bazaar will now point out ``bzr+ssh://`` to the user when they 
+      use ssh://. (Jelmer Vernooij, #330535)
+
+    * ``bzr -v info`` now omits the number of committers branch statistic,
+      making it many times faster for large projects. To include that
+      statistic in the output, use ``bzr -vv info``.
+      (Ian Clatworthy)
+
+    * ``bzr push`` to a ``bzr`` url (``bzr://``, ``bzr+ssh://`` etc) will
+      stream if the server is version 1.13 or greater, reducing roundtrips
+      significantly. (Andrew Bennetts, Robert Collins)
+
+    * Support for GSSAPI authentication when using HTTP or HTTPS. 
+      (Jelmer Vernooij)
+
+    * The ``bzr shelve`` prompt now includes a '?' help option to explain the
+      short options better. (Daniel Watkins, #327429)
 
   BUG FIXES:
 
@@ -35,6 +64,11 @@ IN DEVELOPMENT
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
 
+    * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
+      branches, and this was not noticed due to a bug in the test logic
+      for branches. This is now fixed and a test added to prevent it
+      reoccuring. (Robert Collins, Andrew Bennetts)
+
   DOCUMENTATION:
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
@@ -42,14 +76,72 @@ IN DEVELOPMENT
 
   API CHANGES:
 
+    * ``bzr selftest`` now fails if the bazaar sources contain trailing
+      whitespace, non-unix style line endings and files not ending in a
+      newline. About 372 files and 3243 lines with trailing whitespace was
+      updated to comply with this. The code already complied with the other
+      criteria, but now it is enforced. (Marius Kruger)
+
   INTERNALS:
+
+    * Branch and Repository creation on a bzr+ssh://server are now done
+      via RPC calls rather than VFS calls, reducing round trips for
+      pushing new branches substantially. (Robert Collins)
+
+    * ``BzrDirFormat.__str__`` now uses the human readable description
+      rather than the sometimes-absent disk label. (Robert Collins)
+
+    * ``bzrlib.fetch`` is now composed of a sender and a sink component
+      allowing for decoupling over a network connection. Fetching into
+      a RemoteRepository uses this to stream the operation.
+      (Andrew Bennetts, Robert Collins)
 
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
 
+    * New branch method ``create_clone_on_transport`` that returns a
+      branch object. (Robert Collins)
+
     * New hook Commands['extend_command'] to allow plugins to access a
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
+
+    * ``RemoteBranchFormat`` no longer claims to have a disk format string.
+      (Robert Collins)
+
+    * ``Repository`` objects now have ``suspend_write_group`` and
+      ``resume_write_group`` methods.  These are currently only useful
+      with pack repositories. (Andrew Bennetts, Robert Collins)
+
+    * ``RepositoryFormat`` objects now have a ``network_name`` for passing
+      the format across RPC calls. (Robert Collins, Andrew Bennetts)
+
+    * ``RepositoryFormat`` objects now all have a new attribute
+      ``_serializer`` used by fetch when reserialising is required.
+      (Robert Collins, Andrew Bennetts)
+
+    * Some methods have been pulled up from ``BzrBranch`` to ``Branch``
+      to aid branch types that are not bzr branch objects (like
+      RemoteBranch). (Robert Collins, Andrew Bennetts)
+
+    * The ``_index`` of ``KnitVersionedFiles`` now supports the ability
+      to scan an underlying index that is going to be incorporated into
+      the ``KnitVersionedFiles`` object, to determine if it has missing
+      delta references. The method is ``scan_unvalidated_index``.
+      (Andrew Bennetts, Robert Collins)
+
+    * There is a RemoteSink object which handles pushing to smart servers.
+      (Andrew Bennetts, Robert Collins)
+
+    * ``VersionedFiles`` record adapters have had their signature change
+      from ``(record, record.get_bytes_as(record.storage_kind))`` to
+      ``(record)`` reducing excess duplication and allowing adapters
+      to access private data in record to obtain content more
+      efficiently. (Robert Collins)
+
+    * We no longer probe to see if we should create a working tree during
+      clone if we cannot get a local_abspath for the new bzrdir.
+      (Robert Collins)
 
 
 bzr 1.12 "1234567890" 2009-02-13
@@ -96,6 +188,8 @@ bzr 1.12rc1 "1234567890" 2009-02-10
       have been renamed ``development-wt5`` and ``development-wt5-rich-root``
       respectively, given they are not ready for release in 1.12.
       (Ian Clatworthy)
+
+    * ``read_bundle_from_url`` has been deprecated. (Vincent Ladeuil)
 
   NEW FEATURES:
 
@@ -179,7 +273,7 @@ bzr 1.12rc1 "1234567890" 2009-02-10
       (Ian Clatworthy, #175520)
 
     * ``bzr status`` now reports nonexistent files and continues, then
-       errors (with code 3) at the end.  (Karl Fogel, #306394)
+      errors (with code 3) at the end.  (Karl Fogel, #306394)
 
     * Don't require the present compression base in knits to be the same
       when adding records in knits. (Jelmer Vernooij, #307394)

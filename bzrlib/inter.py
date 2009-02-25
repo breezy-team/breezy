@@ -22,15 +22,15 @@ class InterObject(object):
     """This class represents operations taking place between two objects.
 
     Its instances have methods like join or copy_content or fetch, and contain
-    references to the source and target objects these operations can be 
+    references to the source and target objects these operations can be
     carried out between.
 
     Often we will provide convenience methods on the objects which carry out
     operations with another of similar type - they will always forward to
-    a subclass of InterObject - i.e. 
+    a subclass of InterObject - i.e.
     InterVersionedFile.get(other).method_name(parameters).
 
-    If the source and target objects implement the locking protocol - 
+    If the source and target objects implement the locking protocol -
     lock_read, lock_write, unlock, then the InterObject's lock_read,
     lock_write and unlock methods may be used (optionally in conjunction with
     the needs_read_lock and needs_write_lock decorators.)
@@ -45,8 +45,8 @@ class InterObject(object):
 
     def __init__(self, source, target):
         """Construct a default InterObject instance. Please use 'get'.
-        
-        Only subclasses of InterObject should call 
+
+        Only subclasses of InterObject should call
         InterObject.__init__ - clients should call InterFOO.get where FOO
         is the base type of the objects they are interacting between. I.e.
         InterVersionedFile or InterRepository.

@@ -53,7 +53,7 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
 
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
-        made_control = self.make_bzrdir(relpath, 
+        made_control = self.make_bzrdir(relpath,
             format=self.workingtree_format_to._matchingbzrdir)
         made_control.create_repository()
         made_control.create_branch()
