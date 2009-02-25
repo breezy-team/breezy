@@ -20,7 +20,14 @@
 import md5
 import time
 
-from bzrlib import debug, errors, pack, repository
+from bzrlib import (
+    debug,
+    errors,
+    knit,
+    pack,
+    repository,
+    ui,
+    )
 from bzrlib.btree_index import (
     BTreeBuilder,
     BTreeGraphIndex,
@@ -229,8 +236,96 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         self.repo.signatures._index._add_callback = self.signature_index.add_callback
         self.repo.texts._index._add_callback = self.text_index.add_callback
 
-    def _do_autopack(self):
-        return False
+    def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
+                                 reload_func=None):
+        """Execute a series of pack operations.
+
+        :param pack_operations: A list of [revision_count, packs_to_combine].
+        :param _packer_class: The class of packer to use (default: Packer).
+        :return: None.
+        """
+        for revision_count, packs in pack_operations:
+            # we may have no-ops from the setup logic
+            if len(packs) == 0:
+                continue
+            # Create a new temp VersionedFile instance based on these packs,
+            # and then just fetch everything into the target
+
+            # XXX: Find a way to 'set_optimize' on the newly created pack
+            #      indexes
+            #    def open_pack(self):
+            #       """Open a pack for the pack we are creating."""
+            #       new_pack = super(OptimisingPacker, self).open_pack()
+            #       # Turn on the optimization flags for all the index builders.
+            #       new_pack.revision_index.set_optimize(for_size=True)
+            #       new_pack.inventory_index.set_optimize(for_size=True)
+            #       new_pack.text_index.set_optimize(for_size=True)
+            #       new_pack.signature_index.set_optimize(for_size=True)
+            #       return new_pack
+            to_copy = [('revision_index', 'revisions'),
+                       ('inventory_index', 'inventories'),
+                       ('text_index', 'texts'),
+                       ('signature_index', 'signatures'),
+                      ]
+            if getattr(self, 'chk_index', None) is not None:
+                to_copy.insert(2, ('chk_index', 'chk_bytes'))
+
+            # Shouldn't we start_write_group around this?
+            if self._new_pack is not None:
+                raise errors.BzrError('call to %s.pack() while another pack is'
+                                      ' being written.'
+                                      % (self.__class__.__name__,))
+            new_pack = self.pack_factory(self, 'autopack',
+                                         self.repo.bzrdir._get_file_mode())
+            new_pack.set_write_cache_size(1024*1024)
+            # TODO: A better alternative is to probably use Packer.open_pack(), and
+            #       then create a GroupCompressVersionedFiles() around the
+            #       target pack to insert into.
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                for idx, (index_name, vf_name) in enumerate(to_copy):
+                    pb.update('repacking %s' % (vf_name,), idx + 1, len(to_copy))
+                    keys = set()
+                    new_index = getattr(new_pack, index_name)
+                    new_index.set_optimize(for_size=True)
+                    for pack in packs:
+                        source_index = getattr(pack, index_name)
+                        keys.update(e[1] for e in source_index.iter_all_entries())
+                    source_vf = getattr(self.repo, vf_name)
+                    target_access = knit._DirectPackAccess({})
+                    target_access.set_writer(new_pack._writer, new_index,
+                                             new_pack.access_tuple())
+                    target_vf = GroupCompressVersionedFiles(
+                        _GCGraphIndex(new_index,
+                                      add_callback=new_index.add_nodes,
+                                      parents=source_vf._index._parents,
+                                      is_locked=self.repo.is_locked),
+                        access=target_access,
+                        delta=source_vf._delta)
+                    stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
+                    target_vf.insert_record_stream(stream)
+                new_pack._check_references() # shouldn't be needed
+            except:
+                pb.finished()
+                new_pack.abort()
+                raise
+            else:
+                pb.finished()
+                if not new_pack.data_inserted():
+                    raise AssertionError('We copied from pack files,'
+                                         ' but had no data copied')
+                    # we need to abort somehow, because we don't want to remove
+                    # the other packs
+                new_pack.finish()
+                self.allocate(new_pack)
+            for pack in packs:
+                self._remove_pack_from_memory(pack)
+        # record the newly available packs and stop advertising the old
+        # packs
+        self._save_pack_names(clear_obsolete_packs=True)
+        # Move the old packs out of the way now they are no longer referenced.
+        for revision_count, packs in pack_operations:
+            self._obsolete_packs(packs)
 
 
 
