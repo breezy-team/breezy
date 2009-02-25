@@ -61,6 +61,9 @@ IN DEVELOPMENT
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
 
+    * Export now handles files that are not present in the tree.
+      (James Westby, #174539)
+
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
       for branches. This is now fixed and a test added to prevent it
