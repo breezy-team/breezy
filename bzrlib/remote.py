@@ -96,6 +96,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
         self._real_bzrdir = None
+        # 1-shot cache for the call pattern 'create_branch; open_branch' - see
+        # create_branch for details.
+        self._next_open_branch_result = None
 
         if _client is None:
             medium = transport.get_smart_medium()
@@ -123,6 +126,12 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
     def _translate_error(self, err, **context):
         _translate_error(err, bzrdir=self, **context)
 
+    def break_lock(self):
+        # Prevent aliasing problems in the next_open_branch_result cache.
+        # See create_branch for rationale.
+        self._next_open_branch_result = None
+        return BzrDir.break_lock(self)
+
     def cloning_metadir(self, stacked=False):
         self._ensure_real()
         return self._real_bzrdir.cloning_metadir(stacked)
@@ -146,14 +155,23 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self)
         if not isinstance(real_branch, RemoteBranch):
-            return RemoteBranch(self, self.find_repository(), real_branch)
+            result = RemoteBranch(self, self.find_repository(), real_branch)
         else:
-            return real_branch
+            result = real_branch
+        # BzrDir.clone_on_transport() uses the result of create_branch but does
+        # not return it to its callers; we save approximately 8% of our round
+        # trips by handing the branch we created back to the first caller to
+        # open_branch rather than probing anew. Long term we need a API in
+        # bzrdir that doesn't discard result objects (like result_branch).
+        # RBC 20090225
+        self._next_open_branch_result = result
+        return result
 
     def destroy_branch(self):
         """See BzrDir.destroy_branch"""
         self._ensure_real()
         self._real_bzrdir.destroy_branch()
+        self._next_open_branch_result = None
 
     def create_workingtree(self, revision_id=None, from_branch=None):
         raise errors.NotLocalUrl(self.transport.base)
@@ -187,6 +205,11 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
     def open_branch(self, _unsupported=False):
         if _unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
+        if self._next_open_branch_result is not None:
+            # See create_branch for details.
+            result = self._next_open_branch_result
+            self._next_open_branch_result = None
+            return result
         reference_url = self.get_branch_reference()
         if reference_url is None:
             # branch at this location.
