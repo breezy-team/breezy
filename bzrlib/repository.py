@@ -47,10 +47,10 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
-from bzrlib import registry
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inter import InterObject
 from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
+from bzrlib import registry
 from bzrlib.symbol_versioning import (
         deprecated_method,
         one_one,
@@ -2267,32 +2267,7 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
             control_files)
 
 
-class RepositoryFormatRegistry(registry.Registry):
-    """Registry of RepositoryFormats."""
-
-    def __init__(self, other_registry=None):
-        registry.Registry.__init__(self)
-        self._other_registry = other_registry
-
-    def register_lazy(self, key, module_name, member_name,
-                      help=None, info=None,
-                      override_existing=False):
-        # Overridden to allow capturing registrations to two seperate
-        # registries in a single call.
-        registry.Registry.register_lazy(self, key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
-        if self._other_registry is not None:
-            self._other_registry.register_lazy(key, module_name, member_name,
-                help=help, info=info, override_existing=override_existing)
-
-    def get(self, format_string):
-        r = registry.Registry.get(self, format_string)
-        if callable(r):
-            r = r()
-        return r
-
-
-network_format_registry = RepositoryFormatRegistry()
+network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
 The network name for a repository format is an identifier that can be used when
@@ -2301,7 +2276,7 @@ RepositoryFormat.network_name() for more detail.
 """
 
 
-format_registry = RepositoryFormatRegistry(network_format_registry)
+format_registry = registry.FormatRegistry(network_format_registry)
 """Registry of formats, indexed by their BzrDirMetaFormat format string.
 
 This can contain either format instances themselves, or classes/factories that
@@ -3353,15 +3328,34 @@ class InterDifferingSerializer(InterKnitRepo):
             return False
         return True
 
-    def _fetch_batch(self, revision_ids, basis_id, basis_tree):
+    def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
+        """Get the best delta and base for this revision.
+
+        :return: (basis_id, delta)
+        """
+        possible_trees = [(parent_id, cache[parent_id])
+                          for parent_id in parent_ids
+                           if parent_id in cache]
+        if len(possible_trees) == 0:
+            # There either aren't any parents, or the parents aren't in the
+            # cache, so just use the last converted tree
+            possible_trees.append((basis_id, cache[basis_id]))
+        deltas = []
+        for basis_id, basis_tree in possible_trees:
+            delta = tree.inventory._make_delta(basis_tree.inventory)
+            deltas.append((len(delta), basis_id, delta))
+        deltas.sort()
+        return deltas[0][1:]
+
+    def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
 
         :param revision_ids: The revisions to copy
-        :param basis_id: The revision_id of basis_tree
-        :param basis_tree: A tree that is not in revision_ids which should
-            already exist in the target.
-        :return: (basis_id, basis_tree) A new basis to use now that these trees
-            have been copied.
+        :param basis_id: The revision_id of a tree that must be in cache, used
+            as a basis for delta when no other base is available
+        :param cache: A cache of RevisionTrees that we can use.
+        :return: The revision_id of the last converted tree. The RevisionTree
+            for it will be in cache
         """
         # Walk though all revisions; get inventory deltas, copy referenced
         # texts that delta references, insert the delta, revision and
@@ -3369,15 +3363,18 @@ class InterDifferingSerializer(InterKnitRepo):
         text_keys = set()
         pending_deltas = []
         pending_revisions = []
+        parent_map = self.source.get_parent_map(revision_ids)
         for tree in self.source.revision_trees(revision_ids):
             current_revision_id = tree.get_revision_id()
-            delta = tree.inventory._make_delta(basis_tree.inventory)
+            parent_ids = parent_map.get(current_revision_id, ())
+            basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
+                                                           basis_id, cache)
+            # Find text entries that need to be copied
             for old_path, new_path, file_id, entry in delta:
                 if new_path is not None:
                     if not (new_path or self.target.supports_rich_root()):
-                        # We leave the inventory delta in, because that
-                        # will have the deserialised inventory root
-                        # pointer.
+                        # We don't copy the text for the root node unless the
+                        # target supports_rich_root.
                         continue
                     # TODO: Do we need:
                     #       "if entry.revision == current_revision_id" ?
@@ -3387,8 +3384,8 @@ class InterDifferingSerializer(InterKnitRepo):
             pending_deltas.append((basis_id, delta,
                 current_revision_id, revision.parent_ids))
             pending_revisions.append(revision)
+            cache[current_revision_id] = tree
             basis_id = current_revision_id
-            basis_tree = tree
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
@@ -3408,7 +3405,7 @@ class InterDifferingSerializer(InterKnitRepo):
             except errors.NoSuchRevision:
                 pass
             self.target.add_revision(revision.revision_id, revision)
-        return basis_id, basis_tree
+        return basis_id
 
     def _fetch_all_revisions(self, revision_ids, pb):
         """Fetch everything for the list of revisions.
@@ -3420,14 +3417,16 @@ class InterDifferingSerializer(InterKnitRepo):
         """
         basis_id, basis_tree = self._get_basis(revision_ids[0])
         batch_size = 100
+        cache = lru_cache.LRUCache(100)
+        cache[basis_id] = basis_tree
+        del basis_tree # We don't want to hang on to it here
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
                 pb.update('Transferring revisions', offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
-                basis_id, basis_tree = self._fetch_batch(batch,
-                    basis_id, basis_tree)
+                basis_id = self._fetch_batch(batch, basis_id, cache)
             except:
                 self.target.abort_write_group()
                 raise
@@ -3789,15 +3788,30 @@ class StreamSink(object):
     def __init__(self, target_repo):
         self.target_repo = target_repo
 
-    def insert_stream(self, stream, src_format):
+    def insert_stream(self, stream, src_format, resume_tokens):
         """Insert a stream's content into the target repository.
 
         :param src_format: a bzr repository format.
 
-        :return: an iterable of keys additional items required before the
-        insertion can be completed.
+        :return: a list of resume tokens and an  iterable of keys additional
+            items required before the insertion can be completed.
         """
-        result = []
+        self.target_repo.lock_write()
+        try:
+            if resume_tokens:
+                self.target_repo.resume_write_group(resume_tokens)
+            else:
+                self.target_repo.start_write_group()
+            try:
+                # locked_insert_stream performs a commit|suspend.
+                return self._locked_insert_stream(stream, src_format)
+            except:
+                self.target_repo.abort_write_group(suppress_errors=True)
+                raise
+        finally:
+            self.target_repo.unlock()
+
+    def _locked_insert_stream(self, stream, src_format):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         for substream_type, substream in stream:
@@ -3828,7 +3842,30 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
-        return result
+        try:
+            missing_keys = set()
+            for prefix, versioned_file in (
+                ('texts', self.target_repo.texts),
+                ('inventories', self.target_repo.inventories),
+                ('revisions', self.target_repo.revisions),
+                ('signatures', self.target_repo.signatures),
+                ):
+                missing_keys.update((prefix,) + key for key in
+                    versioned_file.get_missing_compression_parent_keys())
+        except NotImplementedError:
+            # cannot even attempt suspending, and missing would have failed
+            # during stream insertion.
+            missing_keys = set()
+        else:
+            if missing_keys:
+                # suspend the write group and tell the caller what we is
+                # missing. We know we can suspend or else we would not have
+                # entered this code path. (All repositories that can handle
+                # missing keys can handle suspending a write group).
+                write_group_tokens = self.target_repo.suspend_write_group()
+                return write_group_tokens, missing_keys
+        self.target_repo.commit_write_group()
+        return [], set()
 
     def _extract_and_insert_inventories(self, substream, serializer):
         """Generate a new inventory versionedfile in target, converting data.

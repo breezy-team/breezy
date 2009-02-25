@@ -493,6 +493,28 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(br.revision_history(), [])
 
 
+class TestBranchFormat(TestCaseWithBranch):
+
+    def test_branch_format_network_name(self):
+        br = self.make_branch('.')
+        format = br._format
+        network_name = format.network_name()
+        self.assertIsInstance(network_name, str)
+        # We want to test that the network_name matches the actual format on
+        # disk. For local branches that means that using network_name as a key
+        # in the registry gives back the same format. For remote branches we
+        # check that the network_name of the RemoteBranchFormat we have locally
+        # matches the actual format present on disk.
+        if isinstance(format, remote.RemoteBranchFormat):
+            br._ensure_real()
+            real_branch = br._real_branch
+            self.assertEqual(real_branch._format.network_name(), network_name)
+        else:
+            registry = branch.network_format_registry
+            looked_up_format = registry.get(network_name)
+            self.assertEqual(format.__class__, looked_up_format.__class__)
+
+
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
 

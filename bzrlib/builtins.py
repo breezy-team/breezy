@@ -1282,10 +1282,29 @@ class cmd_info(Command):
     """Show information about a working tree, branch or repository.
 
     This command will show all known locations and formats associated to the
-    tree, branch or repository.  Statistical information is included with
-    each report.
+    tree, branch or repository.
+
+    In verbose mode, statistical information is included with each report.
+    To see extended statistic information, use a verbosity level of 2 or
+    higher by specifying the verbose option multiple times, e.g. -vv.
 
     Branches and working trees will also report any missing revisions.
+
+    :Examples:
+
+      Display information on the format and related locations:
+
+        bzr info
+
+      Display the above together with extended format information and
+      basic statistics (like the number of files in the working tree and
+      number of revisions in the branch and repository):
+
+        bzr -v info
+
+      Display the above together with number of committers to the branch:
+
+        bzr -vv info
     """
     _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
@@ -1295,7 +1314,7 @@ class cmd_info(Command):
     @display_command
     def run(self, location=None, verbose=False):
         if verbose:
-            noise_level = 2
+            noise_level = get_verbosity_level()
         else:
             noise_level = 0
         from bzrlib.info import show_bzrdir_info

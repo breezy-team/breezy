@@ -18,12 +18,12 @@
 
 import bz2
 import os
+import Queue
 import struct
 import sys
 import tarfile
 import tempfile
 import threading
-import Queue
 
 from bzrlib import (
     errors,
@@ -113,6 +113,8 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     """Bzr 1.2+ - get parent data for revisions during a graph search."""
 
+    no_extra_results = False
+
     def do_repository_request(self, repository, *revision_ids):
         """Get parent details for some revisions.
 
@@ -180,7 +182,8 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
-            if first_loop_done and size_so_far > 250000:
+            if self.no_extra_results or (
+                first_loop_done and size_so_far > 250000):
                 next_revs = set()
                 break
             # don't query things we've already queried
@@ -417,10 +420,7 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
         """StreamSink.insert_stream for a remote repository."""
         repository.lock_write()
         tokens = [token for token in resume_tokens.split(' ') if token]
-        if tokens:
-            repository.resume_write_group(tokens)
-        else:
-            repository.start_write_group()
+        self.tokens = tokens
         self.repository = repository
         self.stream_decoder = pack.ContainerPushParser()
         self.src_format = None
@@ -445,8 +445,13 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
                     self.queue.put((substream_type, [record]))
 
     def _inserter_thread(self):
-        self.repository._get_sink().insert_stream(self.blocking_read_stream(),
-                self.src_format)
+        try:
+            self.insert_result = self.repository._get_sink().insert_stream(
+                self.blocking_read_stream(), self.src_format, self.tokens)
+            self.insert_ok = True
+        except:
+            self.insert_exception = sys.exc_info()
+            self.insert_ok = False
 
     def blocking_read_stream(self):
         while True:
@@ -460,32 +465,17 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
         self.queue.put(StopIteration)
         if self.insert_thread is not None:
             self.insert_thread.join()
-        try:
-            missing_keys = set()
-            for prefix, versioned_file in (
-                ('texts', self.repository.texts),
-                ('inventories', self.repository.inventories),
-                ('revisions', self.repository.revisions),
-                ('signatures', self.repository.signatures),
-                ):
-                missing_keys.update((prefix,) + key for key in
-                    versioned_file.get_missing_compression_parent_keys())
-        except NotImplementedError:
-            # cannot even attempt suspending.
-            pass
+        if not self.insert_ok:
+            exc_info = self.insert_exception
+            raise exc_info[0], exc_info[1], exc_info[2]
+        write_group_tokens, missing_keys = self.insert_result
+        if write_group_tokens or missing_keys:
+            # bzip needed? missing keys should typically be a small set.
+            # Should this be a streaming body response ?
+            missing_keys = sorted(missing_keys)
+            bytes = bencode.bencode((write_group_tokens, missing_keys))
+            self.repository.unlock()
+            return SuccessfulSmartServerResponse(('missing-basis', bytes))
         else:
-            if missing_keys:
-                # suspend the write group and tell the caller what we is
-                # missing. We know we can suspend or else we would not have
-                # entered this code path. (All repositories that can handle
-                # missing keys can handle suspending a write group).
-                write_group_tokens = self.repository.suspend_write_group()
-                # bzip needed? missing keys should typically be a small set.
-                # Should this be a streaming body response ?
-                missing_keys = sorted(missing_keys)
-                bytes = bencode.bencode((write_group_tokens, missing_keys))
-                return SuccessfulSmartServerResponse(('missing-basis', bytes))
-        # All finished.
-        self.repository.commit_write_group()
-        self.repository.unlock()
-        return SuccessfulSmartServerResponse(('ok', ))
+            self.repository.unlock()
+            return SuccessfulSmartServerResponse(('ok', ))

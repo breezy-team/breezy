@@ -37,6 +37,11 @@ IN DEVELOPMENT
     * Bazaar will now point out ``bzr+ssh://`` to the user when they 
       use ssh://. (Jelmer Vernooij, #330535)
 
+    * ``bzr -v info`` now omits the number of committers branch statistic,
+      making it many times faster for large projects. To include that
+      statistic in the output, use ``bzr -vv info``.
+      (Ian Clatworthy)
+
     * ``bzr push`` to a ``bzr`` url (``bzr://``, ``bzr+ssh://`` etc) will
       stream if the server is version 1.13 or greater, reducing roundtrips
       significantly. (Andrew Bennetts, Robert Collins)
@@ -76,23 +81,34 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Branch and Repository creation on a bzr+ssh://server are now done
+      via RPC calls rather than VFS calls, reducing round trips for
+      pushing new branches substantially. (Robert Collins)
+
+    * ``BzrDirFormat.__str__`` now uses the human readable description
+      rather than the sometimes-absent disk label. (Robert Collins)
+
     * ``bzrlib.fetch`` is now composed of a sender and a sink component
       allowing for decoupling over a network connection. Fetching into
       a RemoteRepository uses this to stream the operation.
       (Andrew Bennetts, Robert Collins)
 
-    * There is a RemoteSink object which handles pushing to smart servers.
-      (Andrew Bennetts, Robert Collins)
-
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
 
-    * Creating a repository on a bzr+ssh:// server will now make a single
-      call rather than many VFS calls. (Robert Collins)
+    * New branch method ``create_clone_on_transport`` that returns a
+      branch object. (Robert Collins)
 
     * New hook Commands['extend_command'] to allow plugins to access a
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
+
+    * ``RemoteBranchFormat`` no longer claims to have a disk format string.
+      (Robert Collins)
+
+    * ``Repository`` objects now have ``suspend_write_group`` and
+      ``resume_write_group`` methods.  These are currently only useful
+      with pack repositories. (Andrew Bennetts, Robert Collins)
 
     * ``RepositoryFormat`` objects now have a ``network_name`` for passing
       the format across RPC calls. (Robert Collins, Andrew Bennetts)
@@ -111,11 +127,18 @@ IN DEVELOPMENT
       delta references. The method is ``scan_unvalidated_index``.
       (Andrew Bennetts, Robert Collins)
 
+    * There is a RemoteSink object which handles pushing to smart servers.
+      (Andrew Bennetts, Robert Collins)
+
     * ``VersionedFiles`` record adapters have had their signature change
       from ``(record, record.get_bytes_as(record.storage_kind))`` to
       ``(record)`` reducing excess duplication and allowing adapters
       to access private data in record to obtain content more
       efficiently. (Robert Collins)
+
+    * We no longer probe to see if we should create a working tree during
+      clone if we cannot get a local_abspath for the new bzrdir.
+      (Robert Collins)
 
 
 bzr 1.12 "1234567890" 2009-02-13
@@ -162,6 +185,8 @@ bzr 1.12rc1 "1234567890" 2009-02-10
       have been renamed ``development-wt5`` and ``development-wt5-rich-root``
       respectively, given they are not ready for release in 1.12.
       (Ian Clatworthy)
+
+    * ``read_bundle_from_url`` has been deprecated. (Vincent Ladeuil)
 
   NEW FEATURES:
 
