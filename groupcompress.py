@@ -554,6 +554,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # recipe, and we often want to end up with lines anyway.
         return plain, split_lines(plain[index_memo[3]:index_memo[4]])
 
+    def get_missing_compression_parent_keys(self):
+        """Return the keys of missing compression parents.
+
+        Missing compression parents occur when a record stream was missing
+        basis texts, or a index was scanned that had missing basis texts.
+        """
+        # GroupCompress cannot currently reference texts that are not in the
+        # group, so this is valid for now
+        return frozenset()
+
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """Get a stream of records for keys.
 
@@ -688,9 +698,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent([record.key], self)
-            elif record.storage_kind in ('chunked', 'fulltext'):
+            try:
                 lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
-            else:
+            except errors.UnavailableRepresentation:
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 bytes = adapter.get_bytes(record,
