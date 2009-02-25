@@ -123,6 +123,7 @@ from bzrlib.versionedfile import (
 
 DATA_SUFFIX = '.knit'
 INDEX_SUFFIX = '.kndx'
+_STREAM_MIN_BUFFER_SIZE = 5*1024*1024
 
 
 class KnitAdapter(object):
@@ -806,6 +807,35 @@ def cleanup_pack_knit(versioned_files):
     versioned_files.writer.end()
 
 
+def _get_total_build_size(self, keys, positions):
+    """Determine the total bytes to build these keys.
+
+    (helper function because _KnitGraphIndex and _KndxIndex work the same, but
+    don't inherit from a common base.)
+
+    :param keys: Keys that we want to build
+    :param positions: dict of {key, (info, index_memo, comp_parent)} (such
+        as returned by _get_components_positions)
+    :return: Number of bytes to build those keys
+    """
+    all_build_index_memos = {}
+    build_keys = keys
+    while build_keys:
+        next_keys = set()
+        for key in build_keys:
+            # This is mostly for the 'stacked' case
+            # Where we will be getting the data from a fallback
+            if key not in positions:
+                continue
+            _, index_memo, compression_parent = positions[key]
+            all_build_index_memos[key] = index_memo
+            if compression_parent not in all_build_index_memos:
+                next_keys.add(compression_parent)
+        build_keys = next_keys
+    return sum([index_memo[2] for index_memo
+                in all_build_index_memos.itervalues()])
+
+
 class KnitVersionedFiles(VersionedFiles):
     """Storage for many versioned files using knit compression.
 
@@ -1181,6 +1211,9 @@ class KnitVersionedFiles(VersionedFiles):
                 # n = next
                 records = [(key, i_m) for key, (r, i_m, n)
                                        in position_map.iteritems()]
+                # Sort by the index memo, so that we request records from the
+                # same pack file together, and in forward-sorted order
+                records.sort(key=operator.itemgetter(1))
                 raw_record_map = {}
                 for key, data in self._read_records_iter_unchecked(records):
                     (record_details, index_memo, next) = position_map[key]
@@ -1189,7 +1222,8 @@ class KnitVersionedFiles(VersionedFiles):
             except errors.RetryWithNewPacks, e:
                 self._access.reload_or_raise(e)
 
-    def _split_by_prefix(self, keys):
+    @classmethod
+    def _split_by_prefix(cls, keys):
         """For the given keys, split them up based on their prefix.
 
         To keep memory pressure somewhat under control, split the
@@ -1198,16 +1232,75 @@ class KnitVersionedFiles(VersionedFiles):
         This should be revisited if _get_content_maps() can ever cross
         file-id boundaries.
 
+        The keys for a given file_id are kept in the same relative order.
+        Ordering between file_ids is not, though prefix_order will return the
+        order that the key was first seen.
+
         :param keys: An iterable of key tuples
-        :return: A dict of {prefix: [key_list]}
+        :return: (split_map, prefix_order)
+            split_map       A dictionary mapping prefix => keys
+            prefix_order    The order that we saw the various prefixes
         """
         split_by_prefix = {}
+        prefix_order = []
         for key in keys:
             if len(key) == 1:
-                split_by_prefix.setdefault('', []).append(key)
+                prefix = ''
             else:
-                split_by_prefix.setdefault(key[0], []).append(key)
-        return split_by_prefix
+                prefix = key[0]
+
+            if prefix in split_by_prefix:
+                split_by_prefix[prefix].append(key)
+            else:
+                split_by_prefix[prefix] = [key]
+                prefix_order.append(prefix)
+        return split_by_prefix, prefix_order
+
+    def _group_keys_for_io(self, keys, non_local_keys, positions,
+                           _min_buffer_size=_STREAM_MIN_BUFFER_SIZE):
+        """For the given keys, group them into 'best-sized' requests.
+
+        The idea is to avoid making 1 request per file, but to never try to
+        unpack an entire 1.5GB source tree in a single pass. Also when
+        possible, we should try to group requests to the same pack file
+        together.
+
+        :return: list of (keys, non_local) tuples that indicate what keys
+            should be fetched next.
+        """
+        # TODO: Ideally we would group on 2 factors. We want to extract texts
+        #       from the same pack file together, and we want to extract all
+        #       the texts for a given build-chain together. Ultimately it
+        #       probably needs a better global view.
+        total_keys = len(keys)
+        prefix_split_keys, prefix_order = self._split_by_prefix(keys)
+        prefix_split_non_local_keys, _ = self._split_by_prefix(non_local_keys)
+        cur_keys = []
+        cur_non_local = set()
+        cur_size = 0
+        result = []
+        sizes = []
+        for prefix in prefix_order:
+            keys = prefix_split_keys[prefix]
+            non_local = prefix_split_non_local_keys.get(prefix, [])
+
+            this_size = self._index._get_total_build_size(keys, positions)
+            cur_size += this_size
+            cur_keys.extend(keys)
+            cur_non_local.update(non_local)
+            if cur_size > _min_buffer_size:
+                result.append((cur_keys, cur_non_local))
+                sizes.append(cur_size)
+                cur_keys = []
+                cur_non_local = set()
+                cur_size = 0
+        if cur_keys:
+            result.append((cur_keys, cur_non_local))
+            sizes.append(cur_size)
+        trace.mutter('Collapsed %d keys into %d requests w/ %d file_ids'
+                     ' w/ sizes: %s', total_keys, len(result),
+                     len(prefix_split_keys), sizes)
+        return result
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """Get a stream of records for keys.
@@ -1334,13 +1427,11 @@ class KnitVersionedFiles(VersionedFiles):
             # XXX: get_content_maps performs its own index queries; allow state
             # to be passed in.
             non_local_keys = needed_from_fallback - absent_keys
-            prefix_split_keys = self._split_by_prefix(present_keys)
-            prefix_split_non_local_keys = self._split_by_prefix(non_local_keys)
-            for prefix, keys in prefix_split_keys.iteritems():
-                non_local = prefix_split_non_local_keys.get(prefix, [])
-                non_local = set(non_local)
-                generator = _VFContentMapGenerator(self, keys, non_local,
-                    global_map)
+            for keys, non_local_keys in self._group_keys_for_io(present_keys,
+                                                                non_local_keys,
+                                                                positions):
+                generator = _VFContentMapGenerator(self, keys, non_local_keys,
+                                                   global_map)
                 for record in generator.get_record_stream():
                     yield record
         else:
@@ -2569,6 +2660,8 @@ class _KndxIndex(object):
             return index_memo[0][:-1], index_memo[1]
         return keys.sort(key=get_sort_key)
 
+    _get_total_build_size = _get_total_build_size
+
     def _split_key(self, key):
         """Split key into a prefix and suffix."""
         return key[:-1], key[-1]
@@ -2889,6 +2982,8 @@ class _KnitGraphIndex(object):
             # tuple.
             return positions[key][1]
         return keys.sort(key=get_index_memo)
+
+    _get_total_build_size = _get_total_build_size
 
 
 class _KnitKeyAccess(object):
