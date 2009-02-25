@@ -32,6 +32,9 @@ IN DEVELOPMENT
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
 
+    * Export now handles files that are not present in the tree.
+      (James Westby, #174539)
+
   DOCUMENTATION:
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
