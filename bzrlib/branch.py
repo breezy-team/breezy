@@ -2645,9 +2645,9 @@ class PushResult(_Result):
     def report(self, to_file):
         """Write a human-readable description of the result."""
         if self.old_revid == self.new_revid:
-            to_file.write('No new revisions to push.\n')
+            note('No new revisions to push.')
         else:
-            to_file.write('Pushed up to revision %d.\n' % self.new_revno)
+            note('Pushed up to revision %d.' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 

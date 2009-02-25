@@ -99,10 +99,10 @@ class TestPush(ExternalBase):
         path = branch_a.get_push_location()
         self.assertEquals(out,
                           'Using saved push location: %s\n'
-                          'Pushed up to revision 2.\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
-                         'All changes applied successfully.\n')
+                         'All changes applied successfully.\n'
+                         'Pushed up to revision 2.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
