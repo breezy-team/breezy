@@ -181,16 +181,7 @@ def internal_size_sha_file_byname(name, filters):
     try:
         if filters:
             f = filtered_input_file(f, filters)
-        size = 0
-        s = sha.new()
-        BUFSIZE = 128<<10
-        while True:
-            b = f.read(BUFSIZE)
-            if not b:
-                break
-            size += len(b)
-            s.update(b)
-        return size, s.hexdigest()
+        return osutils.size_sha_file(f)
     finally:
         f.close()
 
