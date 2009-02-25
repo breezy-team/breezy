@@ -23,6 +23,7 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
+    gpg,
     graph,
     osutils,
     remote,
@@ -424,7 +425,7 @@ class TestRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text('A')
@@ -591,7 +592,7 @@ class TestRepository(TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('rev_id', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
@@ -712,7 +713,7 @@ class TestRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()

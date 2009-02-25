@@ -3232,15 +3232,34 @@ class InterDifferingSerializer(InterKnitRepo):
             return False
         return True
 
-    def _fetch_batch(self, revision_ids, basis_id, basis_tree):
+    def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
+        """Get the best delta and base for this revision.
+
+        :return: (basis_id, delta)
+        """
+        possible_trees = [(parent_id, cache[parent_id])
+                          for parent_id in parent_ids
+                           if parent_id in cache]
+        if len(possible_trees) == 0:
+            # There either aren't any parents, or the parents aren't in the
+            # cache, so just use the last converted tree
+            possible_trees.append((basis_id, cache[basis_id]))
+        deltas = []
+        for basis_id, basis_tree in possible_trees:
+            delta = tree.inventory._make_delta(basis_tree.inventory)
+            deltas.append((len(delta), basis_id, delta))
+        deltas.sort()
+        return deltas[0][1:]
+
+    def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
 
         :param revision_ids: The revisions to copy
-        :param basis_id: The revision_id of basis_tree
-        :param basis_tree: A tree that is not in revision_ids which should
-            already exist in the target.
-        :return: (basis_id, basis_tree) A new basis to use now that these trees
-            have been copied.
+        :param basis_id: The revision_id of a tree that must be in cache, used
+            as a basis for delta when no other base is available
+        :param cache: A cache of RevisionTrees that we can use.
+        :return: The revision_id of the last converted tree. The RevisionTree
+            for it will be in cache
         """
         # Walk though all revisions; get inventory deltas, copy referenced
         # texts that delta references, insert the delta, revision and
@@ -3248,15 +3267,18 @@ class InterDifferingSerializer(InterKnitRepo):
         text_keys = set()
         pending_deltas = []
         pending_revisions = []
+        parent_map = self.source.get_parent_map(revision_ids)
         for tree in self.source.revision_trees(revision_ids):
             current_revision_id = tree.get_revision_id()
-            delta = tree.inventory._make_delta(basis_tree.inventory)
+            parent_ids = parent_map.get(current_revision_id, ())
+            basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
+                                                           basis_id, cache)
+            # Find text entries that need to be copied
             for old_path, new_path, file_id, entry in delta:
                 if new_path is not None:
                     if not (new_path or self.target.supports_rich_root()):
-                        # We leave the inventory delta in, because that
-                        # will have the deserialised inventory root
-                        # pointer.
+                        # We don't copy the text for the root node unless the
+                        # target supports_rich_root.
                         continue
                     # TODO: Do we need:
                     #       "if entry.revision == current_revision_id" ?
@@ -3266,8 +3288,8 @@ class InterDifferingSerializer(InterKnitRepo):
             pending_deltas.append((basis_id, delta,
                 current_revision_id, revision.parent_ids))
             pending_revisions.append(revision)
+            cache[current_revision_id] = tree
             basis_id = current_revision_id
-            basis_tree = tree
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
@@ -3287,7 +3309,7 @@ class InterDifferingSerializer(InterKnitRepo):
             except errors.NoSuchRevision:
                 pass
             self.target.add_revision(revision.revision_id, revision)
-        return basis_id, basis_tree
+        return basis_id
 
     def _fetch_all_revisions(self, revision_ids, pb):
         """Fetch everything for the list of revisions.
@@ -3299,14 +3321,16 @@ class InterDifferingSerializer(InterKnitRepo):
         """
         basis_id, basis_tree = self._get_basis(revision_ids[0])
         batch_size = 100
+        cache = lru_cache.LRUCache(100)
+        cache[basis_id] = basis_tree
+        del basis_tree # We don't want to hang on to it here
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
                 pb.update('Transferring revisions', offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
-                basis_id, basis_tree = self._fetch_batch(batch,
-                    basis_id, basis_tree)
+                basis_id = self._fetch_batch(batch, basis_id, cache)
             except:
                 self.target.abort_write_group()
                 raise

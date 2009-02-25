@@ -113,6 +113,8 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     """Bzr 1.2+ - get parent data for revisions during a graph search."""
 
+    no_extra_results = False
+
     def do_repository_request(self, repository, *revision_ids):
         """Get parent details for some revisions.
 
@@ -180,7 +182,8 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
-            if first_loop_done and size_so_far > 250000:
+            if self.no_extra_results or (
+                first_loop_done and size_so_far > 250000):
                 next_revs = set()
                 break
             # don't query things we've already queried
