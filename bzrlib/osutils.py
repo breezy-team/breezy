@@ -121,7 +121,7 @@ def quotefn(f):
     global _QUOTE_RE
     if _QUOTE_RE is None:
         _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/\\_~-])')
-        
+
     if _QUOTE_RE.search(f):
         return '"' + f + '"'
     else:
@@ -171,7 +171,7 @@ if lexists is None:
 
 def fancy_rename(old, new, rename_func, unlink_func):
     """A fancy rename, when you don't have atomic rename.
-    
+
     :param old: The old path, to rename from
     :param new: The new path, to rename to
     :param rename_func: The potentially non-atomic rename function
@@ -317,14 +317,14 @@ def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
     On win32, if new exists, it must be moved out of the way first,
-    and then deleted. 
+    and then deleted.
     """
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
-            # If we try to rename a non-existant file onto cwd, we get 
-            # EPERM or EACCES instead of ENOENT, this will raise ENOENT 
+            # If we try to rename a non-existant file onto cwd, we get
+            # EPERM or EACCES instead of ENOENT, this will raise ENOENT
             # if the old path doesn't exist, sometimes we get EACCES
             # On Linux, we seem to get EBUSY, on Mac we get EINVAL
             os.lstat(old)
@@ -470,19 +470,19 @@ def islink(f):
 
 def is_inside(dir, fname):
     """True if fname is inside dir.
-    
+
     The parameters should typically be passed to osutils.normpath first, so
     that . and .. and repeated slashes are eliminated, and the separators
     are canonical for the platform.
-    
-    The empty string as a dir name is taken as top-of-tree and matches 
+
+    The empty string as a dir name is taken as top-of-tree and matches
     everything.
     """
-    # XXX: Most callers of this can actually do something smarter by 
+    # XXX: Most callers of this can actually do something smarter by
     # looking at the inventory
     if dir == fname:
         return True
-    
+
     if dir == '':
         return True
 
@@ -508,7 +508,8 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
+             report_activity=None, direction='read'):
     """Copy contents of one file to another.
 
     The read_length can either be -1 to read to end-of-file (EOF) or
@@ -516,6 +517,10 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
 
     The buff_size represents the maximum size for each read operation
     performed on from_file.
+
+    :param report_activity: Call this as bytes are read, see
+        Transport._report_activity
+    :param direction: Will be passed to report_activity
 
     :return: The number of bytes copied.
     """
@@ -530,6 +535,8 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
 
             actual_bytes_read = len(block)
@@ -542,6 +549,8 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
             length += len(block)
     return length
@@ -639,7 +648,7 @@ def local_time_offset(t=None):
     return offset.days * 86400 + offset.seconds
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    
+
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
     """Return a formatted date string.
@@ -701,7 +710,7 @@ def _format_date(t, offset, timezone, date_fmt, show_offset):
 
 def compact_date(when):
     return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
-    
+
 
 def format_delta(delta):
     """Get a nice looking string for a time delta.
@@ -783,8 +792,8 @@ except (NotImplementedError, AttributeError):
 ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
 def rand_chars(num):
     """Return a random string of num alphanumeric characters
-    
-    The result only contains lowercase chars because it may be used on 
+
+    The result only contains lowercase chars because it may be used on
     case-insensitive filesystems.
     """
     s = ''
@@ -962,12 +971,70 @@ def relpath(base, path):
         return ''
 
 
+def _cicp_canonical_relpath(base, path):
+    """Return the canonical path relative to base.
+
+    Like relpath, but on case-insensitive-case-preserving file-systems, this
+    will return the relpath as stored on the file-system rather than in the
+    case specified in the input string, for all existing portions of the path.
+
+    This will cause O(N) behaviour if called for every path in a tree; if you
+    have a number of paths to convert, you should use canonical_relpaths().
+    """
+    # TODO: it should be possible to optimize this for Windows by using the
+    # win32 API FindFiles function to look for the specified name - but using
+    # os.listdir() still gives us the correct, platform agnostic semantics in
+    # the short term.
+
+    rel = relpath(base, path)
+    # '.' will have been turned into ''
+    if not rel:
+        return rel
+
+    abs_base = abspath(base)
+    current = abs_base
+    _listdir = os.listdir
+
+    # use an explicit iterator so we can easily consume the rest on early exit.
+    bit_iter = iter(rel.split('/'))
+    for bit in bit_iter:
+        lbit = bit.lower()
+        for look in _listdir(current):
+            if lbit == look.lower():
+                current = pathjoin(current, look)
+                break
+        else:
+            # got to the end, nothing matched, so we just return the
+            # non-existing bits as they were specified (the filename may be
+            # the target of a move, for example).
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
+    return current[len(abs_base)+1:]
+
+# XXX - TODO - we need better detection/integration of case-insensitive
+# file-systems; Linux often sees FAT32 devices, for example, so could
+# probably benefit from the same basic support there.  For now though, only
+# Windows gets that support, and it gets it for *all* file-systems!
+if sys.platform == "win32":
+    canonical_relpath = _cicp_canonical_relpath
+else:
+    canonical_relpath = relpath
+
+def canonical_relpaths(base, paths):
+    """Create an iterable to canonicalize a sequence of relative paths.
+
+    The intent is for this implementation to use a cache, vastly speeding
+    up multiple transformations in the same directory.
+    """
+    # but for now, we haven't optimized...
+    return [canonical_relpath(base, p) for p in paths]
+
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
     If it is unicode, it is returned.
     Otherwise it is decoded from utf-8. If a decoding error
-    occurs, it is wrapped as a If the decoding fails, the exception is wrapped 
+    occurs, it is wrapped as a If the decoding fails, the exception is wrapped
     as a BzrBadParameter exception.
     """
     if isinstance(unicode_or_utf8_string, unicode):
@@ -1061,10 +1128,10 @@ def _accessible_normalized_filename(path):
 
     On platforms where the system normalizes filenames (Mac OSX),
     you can access a file by any path which will normalize correctly.
-    On platforms where the system does not normalize filenames 
+    On platforms where the system does not normalize filenames
     (Windows, Linux), you have to access a file by its exact path.
 
-    Internally, bzr only supports NFC normalization, since that is 
+    Internally, bzr only supports NFC normalization, since that is
     the standard for XML documents.
 
     So return the normalized path, and a flag indicating if the file
@@ -1150,7 +1217,7 @@ _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
 
 
 def check_legal_path(path):
-    """Check whether the supplied path is legal.  
+    """Check whether the supplied path is legal.
     This is only required on Windows, so we don't test on other platforms
     right now.
     """
@@ -1190,17 +1257,17 @@ def _is_error_enotdir(e):
 
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
-    
+
     This yields all the data about the contents of a directory at a time.
     After each directory has been yielded, if the caller has mutated the list
     to exclude some directories, they are then not descended into.
-    
+
     The data yielded is of the form:
     ((directory-relpath, directory-path-from-top),
     [(relpath, basename, kind, lstat, path-from-top), ...]),
      - directory-relpath is the relative path of the directory being returned
        with respect to top. prefix is prepended to this.
-     - directory-path-from-root is the path including top for this directory. 
+     - directory-path-from-root is the path including top for this directory.
        It is suitable for use with os functions.
      - relpath is the relative path within the subtree being walked.
      - basename is the basename of the path
@@ -1208,16 +1275,16 @@ def walkdirs(top, prefix=""):
        present within the tree - but it may be recorded as versioned. See
        versioned_kind.
      - lstat is the stat data *if* the file was statted.
-     - planned, not implemented: 
+     - planned, not implemented:
        path_from_tree_root is the path from the root of the tree.
 
-    :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
+    :param prefix: Prefix the relpaths that are yielded with 'prefix'. This
         allows one to walk a subtree but get paths that are relative to a tree
         rooted higher up.
     :return: an iterator over the dirs.
     """
     #TODO there is a bit of a smell where the results of the directory-
-    # summary in this, and the path from the root, may not agree 
+    # summary in this, and the path from the root, may not agree
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
@@ -1393,7 +1460,7 @@ class UnicodeDirReader(DirReader):
 def copy_tree(from_path, to_path, handlers={}):
     """Copy all of the entries in from_path into to_path.
 
-    :param from_path: The base directory to copy. 
+    :param from_path: The base directory to copy.
     :param to_path: The target directory. If it does not exist, it will
         be created.
     :param handlers: A dictionary of functions, which takes a source and
@@ -1549,7 +1616,7 @@ def recv_all(socket, bytes):
     """
     b = ''
     while len(b) < bytes:
-        new = socket.recv(bytes - len(b))
+        new = until_no_eintr(socket.recv, bytes - len(b))
         if new == '':
             break # eof
         b += new
@@ -1564,7 +1631,7 @@ def send_all(socket, bytes):
     """
     chunk_size = 2**16
     for pos in xrange(0, len(bytes), chunk_size):
-        socket.sendall(bytes[pos:pos+chunk_size])
+        until_no_eintr(socket.sendall, bytes[pos:pos+chunk_size])
 
 
 def dereference_path(path):
@@ -1636,6 +1703,19 @@ def file_kind(f, _lstat=os.lstat):
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
+
+
+def until_no_eintr(f, *a, **kw):
+    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
+    while True:
+        try:
+            return f(*a, **kw)
+        except (IOError, OSError), e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
+
 
 if sys.platform == "win32":
     import msvcrt

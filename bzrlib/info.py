@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -261,7 +261,7 @@ def _show_working_stats(working, outfile):
 
     dir_cnt = 0
     for file_id in work_inv:
-        if (work_inv.get_file_kind(file_id) == 'directory' and 
+        if (work_inv.get_file_kind(file_id) == 'directory' and
             not work_inv.is_root(file_id)):
             dir_cnt += 1
     outfile.write('  %8d versioned %s\n' % (dir_cnt,
@@ -376,7 +376,8 @@ def show_component_info(control, repository, branch=None, working=None,
     elif branch is not None:
         _show_missing_revisions_branch(branch, outfile)
     if branch is not None:
-        stats = _show_branch_stats(branch, verbose==2, outfile)
+        show_committers = verbose >= 2
+        stats = _show_branch_stats(branch, show_committers, outfile)
     else:
         stats = repository.gather_stats()
     if branch is None and working is None:

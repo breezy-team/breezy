@@ -32,9 +32,9 @@ def show_status(state, kind, name, to_file=None):
 
     if len(state) != 1:
         raise ValueError(state)
-        
+
     if to_file is None:
         to_file = sys.stdout
 
     to_file.write(state + '       ' + name + kind_ch + '\n')
-    
+

@@ -30,8 +30,8 @@ class InfoBenchmark(Benchmark):
         self.time(self.run_bzr, 'info')
 
     def test_no_changes_known_kernel_like_tree(self):
-        """Info in a kernel sized tree with no ignored, unknowns, or added.""" 
+        """Info in a kernel sized tree with no ignored, unknowns, or added."""
         self.make_kernel_like_committed_tree()
         self.time(self.run_bzr, 'info')
 
-     
+

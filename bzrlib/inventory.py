@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# FIXME: This refactoring of the workingtree code doesn't seem to keep 
+# FIXME: This refactoring of the workingtree code doesn't seem to keep
 # the WorkingTree's copy of the inventory in sync with the branch.  The
 # branch modifies its working inventory when it does a commit to make
 # missing files permanently removed.
@@ -69,7 +69,7 @@ class InventoryEntry(object):
         file_id of the parent directory, or ROOT_ID
 
     revision
-        the revision_id in which this variation of this file was 
+        the revision_id in which this variation of this file was
         introduced.
 
     executable
@@ -78,10 +78,10 @@ class InventoryEntry(object):
 
     text_sha1
         sha-1 of the text of the file
-        
+
     text_size
         size in bytes of the text of the file
-        
+
     (reading a version 4 tree created a text_id field.)
 
     >>> i = Inventory()
@@ -94,7 +94,7 @@ class InventoryEntry(object):
     >>> shouldbe = {0: '', 1: 'src', 2: 'src/hello.c'}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
-    ... 
+    ...
     (True, InventoryDirectory('TREE_ROOT', u'', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
@@ -112,7 +112,7 @@ class InventoryEntry(object):
     InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None)
     >>> for path, entry in i.iter_entries():
     ...     print path
-    ... 
+    ...
     <BLANKLINE>
     src
     src/bye.c
@@ -125,18 +125,18 @@ class InventoryEntry(object):
 
     # Constants returned by describe_change()
     #
-    # TODO: These should probably move to some kind of FileChangeDescription 
-    # class; that's like what's inside a TreeDelta but we want to be able to 
+    # TODO: These should probably move to some kind of FileChangeDescription
+    # class; that's like what's inside a TreeDelta but we want to be able to
     # generate them just for one file at a time.
     RENAMED = 'renamed'
     MODIFIED_AND_RENAMED = 'modified and renamed'
-    
+
     __slots__ = []
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
-        
-        _read_tree_state must have been called on self and old_entry prior to 
+
+        _read_tree_state must have been called on self and old_entry prior to
         calling detect_changes.
         """
         return False, False
@@ -144,7 +144,7 @@ class InventoryEntry(object):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
-    
+
     def parent_candidates(self, previous_inventories):
         """Find possible per-file graph parents.
 
@@ -163,7 +163,7 @@ class InventoryEntry(object):
                 if ie.revision in candidates:
                     # same revision value in two different inventories:
                     # correct possible inconsistencies:
-                    #     * there was a bug in revision updates with 'x' bit 
+                    #     * there was a bug in revision updates with 'x' bit
                     #       support.
                     try:
                         if candidates[ie.revision].executable != ie.executable:
@@ -199,7 +199,7 @@ class InventoryEntry(object):
 
     def __init__(self, file_id, name, parent_id, text_id=None):
         """Create an InventoryEntry
-        
+
         The filename must be a single component, relative to the
         parent directory; it cannot be a whole path or relative name.
 
@@ -242,7 +242,7 @@ class InventoryEntry(object):
     @deprecated_method(deprecated_in((1, 6, 0)))
     def put_on_disk(self, dest, dp, tree):
         """Create a representation of self on disk in the prefix dest.
-        
+
         This is a template method - implement _put_on_disk in subclasses.
         """
         fullpath = osutils.pathjoin(dest, dp)
@@ -267,7 +267,7 @@ class InventoryEntry(object):
         This is a template method, override _check for kind specific
         tests.
 
-        :param checker: Check object providing context for the checks; 
+        :param checker: Check object providing context for the checks;
              can be used to find out what parts of the repository have already
              been checked.
         :param rev_id: Revision id from which this InventoryEntry was loaded.
@@ -283,7 +283,7 @@ class InventoryEntry(object):
 
     def _check(self, checker, rev_id, tree):
         """Check this inventory entry for kind specific errors."""
-        raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
+        raise BzrCheckError('unknown entry kind %r in revision {%s}' %
                             (self.kind, rev_id))
 
     def copy(self):
@@ -293,11 +293,11 @@ class InventoryEntry(object):
     @staticmethod
     def describe_change(old_entry, new_entry):
         """Describe the change between old_entry and this.
-        
+
         This smells of being an InterInventoryEntry situation, but as its
         the first one, we're making it a static method for now.
 
-        An entry with a different parent, or different name is considered 
+        An entry with a different parent, or different name is considered
         to be renamed. Reparenting is an internal detail.
         Note that renaming the parent does not trigger a rename for the
         child entry itself.
@@ -341,6 +341,9 @@ class InventoryEntry(object):
                    self.revision))
 
     def __eq__(self, other):
+        if other is self:
+            # For the case when objects are cached
+            return True
         if not isinstance(other, InventoryEntry):
             return NotImplemented
 
@@ -381,11 +384,11 @@ class InventoryEntry(object):
 
     def _read_tree_state(self, path, work_tree):
         """Populate fields in the inventory entry from the given tree.
-        
+
         Note that this should be modified to be a noop on virtual trees
         as all entries created there are prepopulated.
         """
-        # TODO: Rather than running this manually, we should check the 
+        # TODO: Rather than running this manually, we should check the
         # working sha1 and other expensive properties when they're
         # first requested, or preload them if they're already known
         pass            # nothing to do by default
@@ -417,7 +420,7 @@ class RootEntry(InventoryEntry):
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
             return NotImplemented
-        
+
         return (self.file_id == other.file_id) \
                and (self.children == other.children)
 
@@ -679,9 +682,9 @@ class InventoryLink(InventoryEntry):
 
 
 class TreeReference(InventoryEntry):
-    
+
     kind = 'tree-reference'
-    
+
     def __init__(self, file_id, name, parent_id, revision=None,
                  reference_revision=None):
         InventoryEntry.__init__(self, file_id, name, parent_id)
@@ -699,7 +702,7 @@ class TreeReference(InventoryEntry):
             self.file_id, path)
 
     def _forget_tree_state(self):
-        self.reference_revision = None 
+        self.reference_revision = None
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
@@ -733,7 +736,7 @@ class Inventory(object):
     'hello.c'
 
     May be treated as an iterator or set to look up file ids:
-    
+
     >>> bool(inv.path2id('hello.c'))
     True
     >>> '123-123' in inv
@@ -782,19 +785,19 @@ class Inventory(object):
 
             Each change is a tuple, of the form (old_path, new_path, file_id,
             new_entry).
-            
+
             When new_path is None, the change indicates the removal of an entry
             from the inventory and new_entry will be ignored (using None is
             appropriate). If new_path is not None, then new_entry must be an
             InventoryEntry instance, which will be incorporated into the
             inventory (and replace any existing entry with the same file id).
-            
+
             When old_path is None, the change indicates the addition of
             a new entry to the inventory.
-            
+
             When neither new_path nor old_path are None, the change is a
             modification to an entry, such as a rename, reparent, kind change
-            etc. 
+            etc.
 
             The children attribute of new_entry is ignored. This is because
             this method preserves children automatically across alterations to
@@ -873,7 +876,7 @@ class Inventory(object):
             yield '', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
-            
+
         # unrolling the recursive called changed the time from
         # 440ms/663ms (inline/total) to 116ms/116ms
         children = from_dir.children.items()
@@ -935,7 +938,7 @@ class Inventory(object):
                 file_id = list(specific_file_ids)[0]
                 if file_id in self:
                     yield self.id2path(file_id), self[file_id]
-                return 
+                return
             from_dir = self.root
             if (specific_file_ids is None or yield_parents or
                 self.root.file_id in specific_file_ids):
@@ -961,7 +964,7 @@ class Inventory(object):
                 add_ancestors(file_id)
         else:
             parents = None
-            
+
         stack = [(u'', from_dir)]
         while stack:
             cur_relpath, cur_dir = stack.pop()
@@ -971,7 +974,7 @@ class Inventory(object):
 
                 child_relpath = cur_relpath + child_name
 
-                if (specific_file_ids is None or 
+                if (specific_file_ids is None or
                     child_ie.file_id in specific_file_ids or
                     (yield_parents and child_ie.file_id in parents)):
                     yield child_relpath, child_ie
@@ -1009,7 +1012,7 @@ class Inventory(object):
         accum = []
         def descend(parent_ie, parent_path):
             accum.append((parent_path, parent_ie))
-            
+
             kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
             kids.sort()
 
@@ -1018,7 +1021,7 @@ class Inventory(object):
                 descend(child_ie, child_path)
         descend(self.root, u'')
         return accum
-        
+
     def __contains__(self, file_id):
         """True if this entry contains a file with given id.
 
@@ -1097,7 +1100,7 @@ class Inventory(object):
         The immediate parent must already be versioned.
 
         Returns the new entry object."""
-        
+
         parts = osutils.splitpath(relpath)
 
         if len(parts) == 0:
@@ -1183,7 +1186,7 @@ class Inventory(object):
 
     def id2path(self, file_id):
         """Return as a string the path to file_id.
-        
+
         >>> i = Inventory()
         >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
         >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
@@ -1192,9 +1195,9 @@ class Inventory(object):
         """
         # get all names, skipping root
         return '/'.join(reversed(
-            [parent.name for parent in 
+            [parent.name for parent in
              self._iter_file_id_parents(file_id)][:-1]))
-            
+
     def path2id(self, name):
         """Walk down through directories to return entry of last component.
 
@@ -1235,20 +1238,33 @@ class Inventory(object):
 
     def _make_delta(self, old):
         """Make an inventory delta from two inventories."""
-        old_ids = set(old)
-        new_ids = set(self)
+        old_getter = getattr(old, '_byid', old)
+        new_getter = self._byid
+        old_ids = set(old_getter)
+        new_ids = set(new_getter)
         adds = new_ids - old_ids
         deletes = old_ids - new_ids
-        common = old_ids.intersection(new_ids)
+        if not adds and not deletes:
+            common = new_ids
+        else:
+            common = old_ids.intersection(new_ids)
         delta = []
         for file_id in deletes:
             delta.append((old.id2path(file_id), None, file_id, None))
         for file_id in adds:
             delta.append((None, self.id2path(file_id), file_id, self[file_id]))
         for file_id in common:
-            if old[file_id] != self[file_id]:
+            new_ie = new_getter[file_id]
+            old_ie = old_getter[file_id]
+            # If xml_serializer returns the cached InventoryEntries (rather
+            # than always doing .copy()), inlining the 'is' check saves 2.7M
+            # calls to __eq__.  Under lsprof this saves 20s => 6s.
+            # It is a minor improvement without lsprof.
+            if old_ie is new_ie or old_ie == new_ie:
+                continue
+            else:
                 delta.append((old.id2path(file_id), self.id2path(file_id),
-                    file_id, self[file_id]))
+                              file_id, new_ie))
         return delta
 
     def remove_recursive_id(self, file_id):
@@ -1298,7 +1314,7 @@ class Inventory(object):
 
         del old_parent.children[file_ie.name]
         new_parent.children[new_name] = file_ie
-        
+
         file_ie.name = new_name
         file_ie.parent_id = new_parent_id
 
@@ -1359,5 +1375,5 @@ def is_valid_name(name):
     global _NAME_RE
     if _NAME_RE is None:
         _NAME_RE = re.compile(r'^[^/\\]+$')
-        
+
     return bool(_NAME_RE.match(name))

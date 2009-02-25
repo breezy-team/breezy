@@ -202,7 +202,7 @@ class TestDiff(DiffBase):
 
     def test_diff_branches(self):
         self.example_branches()
-        # should open branch1 and diff against branch2, 
+        # should open branch1 and diff against branch2,
         self.check_b2_vs_b1('diff -r branch:branch2 branch1')
         # Compare two working trees using various syntax forms
         self.check_b2_vs_b1('diff --old branch2 --new branch1')
@@ -371,7 +371,7 @@ class TestExternalDiff(DiffBase):
                 del os.environ['BZR_PROGRESS_BAR']
             else:
                 os.environ['BZR_PROGRESS_BAR'] = orig_progress
-            
+
         if 'Diff is not installed on this machine' in err:
             raise TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)

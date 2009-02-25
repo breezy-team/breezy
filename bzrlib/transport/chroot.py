@@ -33,7 +33,7 @@ from bzrlib.transport.memory import MemoryTransport
 
 class ChrootServer(Server):
     """User space 'chroot' facility.
-    
+
     The server's get_url returns the url for a chroot transport mapped to the
     backing transport. The url is of the form chroot-xxx:/// so parent
     directories of the backing transport are not visible. The chroot url will
@@ -107,7 +107,7 @@ class ChrootTransport(Transport):
         # state and thus the base cannot simply be handed out.
         # See the base class docstring for more details and
         # possible directions. For now we return the chrooted
-        # url. 
+        # url.
         return self.server.backing_transport.external_url()
 
     def get(self, relpath):

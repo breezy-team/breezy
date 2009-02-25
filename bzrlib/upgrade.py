@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,8 @@
 
 """bzr upgrade logic."""
 
-# change upgrade from .bzr to create a '.bzr-new', then do a bait and switch.
 
-
-from bzrlib.bzrdir import ConvertBzrDir4To5, ConvertBzrDir5To6, BzrDir, BzrDirFormat4, BzrDirFormat5, BzrDirFormat
+from bzrlib.bzrdir import BzrDir, BzrDirFormat
 import bzrlib.errors as errors
 from bzrlib.remote import RemoteBzrDir
 from bzrlib.transport import get_transport
@@ -29,6 +27,8 @@ import bzrlib.ui as ui
 class Convert(object):
 
     def __init__(self, url, format):
+        if format is None:
+            format = BzrDirFormat.get_default_format()
         self.format = format
         self.bzrdir = BzrDir.open_unsupported(url)
         if isinstance(self.bzrdir, RemoteBzrDir):
@@ -53,7 +53,7 @@ class Convert(object):
                              branch.bzrdir.root_transport.base)
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
-            # might not be a format we can open without upgrading; see e.g. 
+            # might not be a format we can open without upgrading; see e.g.
             # https://bugs.launchpad.net/bzr/+bug/253891
             pass
         if not self.bzrdir.needs_format_conversion(self.format):
@@ -61,24 +61,14 @@ class Convert(object):
         if not self.bzrdir.can_convert_format():
             raise errors.BzrError("cannot upgrade from bzrdir format %s" %
                            self.bzrdir._format)
-        if self.format is None:
-            target_format = BzrDirFormat.get_default_format()
-        else:
-            target_format = self.format
-        self.bzrdir.check_conversion_target(target_format)
+        self.bzrdir.check_conversion_target(self.format)
         self.pb.note('starting upgrade of %s', self.transport.base)
-        self._backup_control_dir()
+        self.bzrdir.backup_bzrdir()
         while self.bzrdir.needs_format_conversion(self.format):
             converter = self.bzrdir._format.get_converter(self.format)
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
         self.pb.note("finished")
 
-    def _backup_control_dir(self):
-        self.pb.note('making backup of tree history')
-        old_path, new_path = self.bzrdir.backup_bzrdir()
-        self.pb.note('%s has been backed up to %s', old_path, new_path)
-        self.pb.note('if conversion fails, you can move this directory back to .bzr')
-        self.pb.note('if it succeeds, you can remove this directory if you wish')
 
 def upgrade(url, format=None):
     """Upgrade to format, or the default bzrdir format if not supplied."""

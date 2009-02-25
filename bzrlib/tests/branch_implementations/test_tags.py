@@ -16,7 +16,7 @@
 
 """Tags stored within a branch
 
-The tags are actually in the Branch.tags namespace, but these are 
+The tags are actually in the Branch.tags namespace, but these are
 1:1 with Branch implementations so can be tested from here.
 """
 
@@ -38,7 +38,7 @@ from bzrlib.tests.branch_implementations.test_branch \
 class TestBranchTags(TestCaseWithBranch):
 
     def setUp(self):
-        # formats that don't support tags can skip the rest of these 
+        # formats that don't support tags can skip the rest of these
         # tests...
         fmt = self.branch_format
         f = getattr(fmt, 'supports_tags')
@@ -167,7 +167,7 @@ class TestUnsupportedTags(TestCaseWithBranch):
                               % fmt)
             # it's covered by TestBranchTags
         TestCaseWithBranch.setUp(self)
-    
+
     def test_tag_methods_raise(self):
         b = self.make_branch('b')
         self.assertRaises(errors.TagsNotSupported,

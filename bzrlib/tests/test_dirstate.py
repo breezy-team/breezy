@@ -640,7 +640,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
                 state2.unlock()
         finally:
             state.unlock()
-        
+
         # The file on disk should not be modified.
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
@@ -746,12 +746,12 @@ class TestDirStateManipulations(TestCaseWithDirState):
         # https://bugs.launchpad.net/bzr/+bug/146176
         # set_state_from_inventory should preserve the stat and hash value for
         # workingtree files that are not changed by the inventory.
-       
+
         tree = self.make_branch_and_tree('.')
         # depends on the default format using dirstate...
         tree.lock_write()
         try:
-            # make a dirstate with some valid hashcache data 
+            # make a dirstate with some valid hashcache data
             # file on disk, but that's not needed for this test
             foo_contents = 'contents of foo'
             self.build_tree_contents([('foo', foo_contents)])
@@ -777,7 +777,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 (('', 'foo', 'foo-id',),
                  [('f', foo_sha, foo_size, False, foo_packed)]),
                 tree._dirstate._get_entry(0, 'foo-id'))
-           
+
             # extract the inventory, and add something to it
             inv = tree._get_inventory()
             # should see the file we poked in...
@@ -1456,7 +1456,7 @@ class TestIterChildEntries(TestCaseWithDirState):
         There is one parent tree, which has the same shape with the following variations:
         b/g in the parent is gone.
         b/h in the parent has a different id
-        b/i is new in the parent 
+        b/i is new in the parent
         c is renamed to b/j in the parent
 
         :return: The dirstate, still write-locked.
@@ -2215,7 +2215,7 @@ class Test_InvEntryToDetails(TestCaseWithDirState):
 
     def test_unicode_symlink(self):
         # In general, the code base doesn't support a target that contains
-        # non-ascii characters. So we just assert tha 
+        # non-ascii characters. So we just assert tha
         inv_entry = inventory.InventoryLink('link-file-id', 'name',
                                             'link-parent-id')
         inv_entry.revision = 'link-revision-id'

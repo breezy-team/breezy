@@ -92,9 +92,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     def test_dirstate_stores_all_parent_inventories(self):
         tree = self.make_workingtree()
 
-        # We're going to build in tree a working tree 
-        # with three parent trees, with some files in common.  
-    
+        # We're going to build in tree a working tree
+        # with three parent trees, with some files in common.
+
         # We really don't want to do commit or merge in the new dirstate-based
         # tree, because that might not work yet.  So instead we build
         # revisions elsewhere and pull them across, doing by hand part of the
@@ -130,8 +130,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev2_revtree = repo.revision_tree(rev2)
         rev3_revtree = repo.revision_tree(rev3)
         # tree doesn't contain a text merge yet but we'll just
-        # set the parents as if a merge had taken place. 
-        # this should cause the tree data to be folded into the 
+        # set the parents as if a merge had taken place.
+        # this should cause the tree data to be folded into the
         # dirstate.
         tree.set_parent_trees([
             (rev1, rev1_revtree),
@@ -156,7 +156,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def test_dirstate_doesnt_read_parents_from_repo_when_setting(self):
         """Setting parent trees on a dirstate working tree takes
-        the trees it's given and doesn't need to read them from the 
+        the trees it's given and doesn't need to read them from the
         repository.
         """
         tree = self.make_workingtree()
@@ -170,7 +170,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.branch.pull(subtree.branch)
 
         # break the repository's legs to make sure it only uses the trees
-        # it's given; any calls to forbidden methods will raise an 
+        # it's given; any calls to forbidden methods will raise an
         # AssertionError
         repo = tree.branch.repository
         repo.get_revision = self.fail
@@ -180,7 +180,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.set_parent_trees([(rev1, rev1_tree)])
 
     def test_dirstate_doesnt_read_from_repo_when_returning_cache_tree(self):
-        """Getting parent trees from a dirstate tree does not read from the 
+        """Getting parent trees from a dirstate tree does not read from the
         repos inventory store. This is an important part of the dirstate
         performance optimisation work.
         """
@@ -206,11 +206,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.branch.pull(subtree.branch)
 
         # break the repository's legs to make sure it only uses the trees
-        # it's given; any calls to forbidden methods will raise an 
+        # it's given; any calls to forbidden methods will raise an
         # AssertionError
         repo = tree.branch.repository
-        # dont uncomment this: the revision object must be accessed to 
-        # answer 'get_parent_ids' for the revision tree- dirstate does not 
+        # dont uncomment this: the revision object must be accessed to
+        # answer 'get_parent_ids' for the revision tree- dirstate does not
         # cache the parents of a parent tree at this point.
         #repo.get_revision = self.fail
         repo.get_inventory = self.fail
@@ -221,13 +221,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         result_rev1_tree = tree.revision_tree(rev1)
         # read the second
         result_rev2_tree = tree.revision_tree(rev2)
-        # compare - there should be no differences between the handed and 
+        # compare - there should be no differences between the handed and
         # returned trees
         self.assertTreesEqual(rev1_tree, result_rev1_tree)
         self.assertTreesEqual(rev2_tree, result_rev2_tree)
 
     def test_dirstate_doesnt_cache_non_parent_trees(self):
-        """Getting parent trees from a dirstate tree does not read from the 
+        """Getting parent trees from a dirstate tree does not read from the
         repos inventory store. This is an important part of the dirstate
         performance optimisation work.
         """
@@ -282,8 +282,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         rev_id = tree.commit('first post')
         rev_id2 = tree.commit('second post')
         rev_tree = tree.branch.repository.revision_tree(rev_id)
-        # Exception is not a great thing to raise, but this test is 
-        # very short, and code is used to sanity check other tests, so 
+        # Exception is not a great thing to raise, but this test is
+        # very short, and code is used to sanity check other tests, so
         # a full error object is YAGNI.
         self.assertRaises(
             Exception, workingtree_4.InterDirStateTree, rev_tree, tree)
@@ -582,7 +582,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         tree.add(['foo'], ['foo-id'])
-        # a 4 second old timestamp is always hashable - sucks to delay 
+        # a 4 second old timestamp is always hashable - sucks to delay
         # the test suite, but not testing this is worse.
         time.sleep(4)
         return tree

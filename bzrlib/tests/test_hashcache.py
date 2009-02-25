@@ -158,7 +158,7 @@ class FakeHashCache(HashCache):
     def pretend_to_sleep(self, secs):
         self._clock += secs
 
-    
+
 class TestHashCacheFakeFilesystem(TestCaseInTempDir):
     """Tests the hashcache using a simulated OS.
     """
@@ -173,7 +173,7 @@ class TestHashCacheFakeFilesystem(TestCaseInTempDir):
         self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
         self.assertEquals(hc.miss_count, 1)
         self.assertEquals(hc.hit_count, 0)
-        # if we try again it's still too new; 
+        # if we try again it's still too new;
         self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
         self.assertEquals(hc.miss_count, 2)
         self.assertEquals(hc.hit_count, 0)

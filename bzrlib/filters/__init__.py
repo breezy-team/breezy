@@ -56,7 +56,7 @@ class ContentFilter(object):
 
     def __init__(self, reader, writer):
         """Create a filter that converts content while reading and writing.
- 
+
         :param reader: function for converting convenience to canonical content
         :param writer: function for converting canonical to convenience content
         """
@@ -140,7 +140,7 @@ class ContentFilterContext(object):
 
 def filtered_input_file(f, filters):
     """Get an input file that converts external to internal content.
-    
+
     :param f: the original input file
     :param filters: the stack of filters to apply
     :return: a file-like object
@@ -157,7 +157,7 @@ def filtered_input_file(f, filters):
 
 def filtered_output_bytes(chunks, filters, context=None):
     """Convert byte chunks from internal to external format.
-    
+
     :param chunks: an iterator containing the original content
     :param filters: the stack of filters to apply
     :param context: a ContentFilterContext object passed to
@@ -173,7 +173,7 @@ def filtered_output_bytes(chunks, filters, context=None):
 
 def internal_size_sha_file_byname(name, filters):
     """Get size and sha of internal content given external content.
-    
+
     :param name: path to file
     :param filters: the stack of filters to apply
     """
@@ -228,7 +228,7 @@ def _get_registered_names():
 
 def _get_filter_stack_for(preferences):
     """Get the filter stack given a sequence of preferences.
-    
+
     :param preferences: a sequence of (name,value) tuples where
       name is the preference name and
       value is the key into the filter stack map registered

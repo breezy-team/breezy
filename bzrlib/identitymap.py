@@ -26,7 +26,7 @@ from bzrlib import (
 
 class IdentityMap(object):
     """An in memory map from object id to instance.
-    
+
     An IdentityMap maps from keys to single instances of objects in memory.
     We have explicit calls on the map for the root of each inheritance tree
     that is store in the map. Look for find_CLASS and add_CLASS methods.
@@ -60,10 +60,10 @@ class IdentityMap(object):
         """Return the key for a weaves id."""
         return "weave-" + id
 
-        
+
 class NullIdentityMap(object):
     """A pretend in memory map from object id to instance.
-    
+
     A NullIdentityMap is an Identity map that does not store anything in it.
     """
 

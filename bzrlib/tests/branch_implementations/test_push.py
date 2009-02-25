@@ -16,14 +16,16 @@
 
 """Tests for branch.push behaviour."""
 
+from cStringIO import StringIO
 import os
- 
+
 from bzrlib import (
     branch,
     builtins,
     bzrdir,
     debug,
     errors,
+    push,
     tests,
     )
 from bzrlib.branch import Branch
@@ -39,7 +41,7 @@ from bzrlib.transport.local import LocalURLServer
 class TestPush(TestCaseWithBranch):
 
     def test_push_convergence_simple(self):
-        # when revisions are pushed, the left-most accessible parents must 
+        # when revisions are pushed, the left-most accessible parents must
         # become the revision-history.
         mine = self.make_branch_and_tree('mine')
         mine.commit('1st post', rev_id='P1', allow_pointless=True)
@@ -163,7 +165,7 @@ class TestPush(TestCaseWithBranch):
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
-        
+
         This was <https://bugs.launchpad.net/bzr/+bug/234229>.
         """
         source = self.make_branch_and_tree('source')
@@ -177,6 +179,51 @@ class TestPush(TestCaseWithBranch):
         source.branch.push(target, stop_revision='rev-2', overwrite=True)
         self.assertEqual('rev-2', target.last_revision())
 
+    def test_push_with_default_stacking_does_not_create_broken_branch(self):
+        """Pushing a new standalone branch works even when there's a default
+        stacking policy at the destination.
+
+        The new branch will preserve the repo format (even if it isn't the
+        default for the branch), and will be stacked when the repo format
+        allows (which means that the branch format isn't necessarly preserved).
+        """
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise tests.TestNotApplicable('Not a metadir format.')
+        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+            # This test could in principle apply to BranchReferenceFormat, but
+            # make_branch_builder doesn't support it.
+            raise tests.TestSkipped(
+                "BranchBuilder can't make reference branches.")
+        # Make a branch called "local" in a stackable repository
+        # The branch has 3 revisions:
+        #   - rev-1, adds a file
+        #   - rev-2, no changes
+        #   - rev-3, modifies the file.
+        repo = self.make_repository('repo', shared=True, format='1.6')
+        builder = self.make_branch_builder('repo/local')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('filename', 'f-id', 'file', 'content\n'))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.build_snapshot('rev-3', ['rev-2'],
+            [('modify', ('f-id', 'new-content\n'))])
+        builder.finish_series()
+        trunk = builder.get_branch()
+        # Sprout rev-1 to "trunk", so that we can stack on it.
+        trunk.bzrdir.sprout(self.get_url('trunk'), revision_id='rev-1')
+        # Set a default stacking policy so that new branches will automatically
+        # stack on trunk.
+        self.make_bzrdir('.').get_config().set_default_stack_on('trunk')
+        # Push rev-2 to a new branch "remote".  It will be stacked on "trunk".
+        output = StringIO()
+        push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
+        # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
+        # fulltext record for f-id @ rev-1, then this will fail.
+        remote_branch = Branch.open(self.get_url('remote'))
+        trunk.push(remote_branch)
+        remote_branch.check()
+
 
 class TestPushHook(TestCaseWithBranch):
 
@@ -186,7 +233,7 @@ class TestPushHook(TestCaseWithBranch):
 
     def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if result.local_branch:
@@ -220,7 +267,7 @@ class TestPushHook(TestCaseWithBranch):
     def test_post_push_bound_branch(self):
         # pushing to a bound branch should pass in the master branch to the
         # hook, allowing the correct number of emails to be sent, while still
-        # allowing hooks that want to modify the target to do so to both 
+        # allowing hooks that want to modify the target to do so to both
         # instances.
         target = self.make_branch('target')
         local = self.make_branch('local')

@@ -29,7 +29,7 @@ class FakeConfig(object):
 
     def gpg_signing_command(self):
         return "false"
-        
+
 
 class TestCommandLine(TestCase):
 
@@ -50,7 +50,7 @@ class TestCommandLine(TestCase):
         if sys.platform == 'win32':
             # Windows doesn't come with cat, and we don't require it
             # so lets try using python instead.
-            # But stupid windows and line-ending conversions. 
+            # But stupid windows and line-ending conversions.
             # It is too much work to make sys.stdout be in binary mode.
             # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
             my_gpg._command_line = lambda:[sys.executable, '-c',
@@ -69,7 +69,7 @@ class TestCommandLine(TestCase):
     def test_clears_progress(self):
         content = "some content\nwith newlines\n"
         old_clear_term = ui.ui_factory.clear_term
-        clear_term_called = [] 
+        clear_term_called = []
         def clear_term():
             old_clear_term()
             clear_term_called.append(True)
