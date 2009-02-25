@@ -2305,7 +2305,7 @@ class cmd_ls(Command):
             tree = _get_one_revision_tree('ls', revision, branch=branch)
 
         apply_view = False
-        if tree.supports_views():
+        if isinstance(tree, WorkingTree) and tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
                 apply_view = True
