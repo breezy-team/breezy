@@ -983,11 +983,13 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     _max_retry = 3
     """We don't want to retry authenticating endlessly"""
 
+    requires_username = True
+    """Whether the auth mechanism requires a username."""
+
     # The following attributes should be defined by daughter
     # classes:
     # - auth_required_header:  the header received from the server
     # - auth_header: the header sent in the request
-    # - requires_username: whether the auth mechanism requires a username
 
     def __init__(self):
         # We want to know when we enter into an try/fail cycle of
@@ -1222,8 +1224,6 @@ class BasicAuthHandler(AbstractAuthHandler):
 
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
-    requires_username = True
-
     def build_auth_header(self, auth, request):
         raw = '%s:%s' % (auth['user'], auth['password'])
         auth_header = 'Basic ' + raw.encode('base64').strip()
@@ -1277,10 +1277,8 @@ def get_new_cnonce(nonce, nonce_count):
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
 
-    # Before basic as digest is a bit more secure
+    # Before basic as digest is a bit more secure and should be preferred
     handler_order = 490
-
-    requires_username = True
 
     def auth_params_reusable(self, auth):
         # If the auth scheme is known, it means a previous
