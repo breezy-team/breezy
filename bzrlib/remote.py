@@ -1572,6 +1572,10 @@ class RemoteBranchFormat(branch.BranchFormat):
         remote_repo = RemoteRepository(repo_bzrdir, repo_format)
         remote_branch = RemoteBranch(a_bzrdir, remote_repo,
             format=format, setup_stacking=False)
+        # XXX: We know this is a new branch, so it must have revno 0, revid
+        # NULL_REVISION. Creating the branch locked would make this be unable
+        # to be wrong; here its simply very unlikely to be wrong. RBC 20090225
+        remote_branch._last_revision_info_cache = 0, NULL_REVISION
         return remote_branch
 
     def supports_tags(self):
