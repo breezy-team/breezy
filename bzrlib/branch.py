@@ -916,6 +916,9 @@ class Branch(object):
     def clone(self, to_bzrdir, revision_id=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
 
+        Most API users will want 'create_clone_on_transport', which creates a
+        new bzrdir and branch on the fly.
+
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
@@ -1035,6 +1038,21 @@ class Branch(object):
             format = self.repository.bzrdir.checkout_metadir()
             format.set_branch_format(self._format)
         return format
+
+    def create_clone_on_transport(self, to_transport, revision_id=None,
+        stacked_on=None):
+        """Create a clone of this branch and its bzrdir.
+
+        :param to_transport: The transport to clone onto.
+        :param revision_id: The revision id to use as tip in the new branch.
+            If None the tip is obtained from this branch.
+        :param stacked_on: An optional URL to stack the clone on.
+        """
+        # XXX: Fix the bzrdir API to allow getting the branch back from the
+        # clone call. Or something. 20090224 RBC/spiv.
+        dir_to = self.bzrdir.clone_on_transport(to_transport,
+            revision_id=revision_id, stacked_on=stacked_on)
+        return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
                         lightweight=False, accelerator_tree=None,
