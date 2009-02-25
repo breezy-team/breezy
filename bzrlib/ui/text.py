@@ -219,7 +219,7 @@ class TextProgressView(object):
         now = time.time()
         if self._transport_update_time is None:
             self._transport_update_time = now
-        elif now >= (self._transport_update_time + 0.2):
+        elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)
