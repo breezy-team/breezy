@@ -401,6 +401,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
+    'BzrDir.create_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestCreateBranch')
+request_handlers.register_lazy(
     'BzrDir.create_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestCreateRepository')
 request_handlers.register_lazy(
     'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV1')

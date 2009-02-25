@@ -231,3 +231,30 @@ class Registry(object):
     default_key = property(_get_default_key, _set_default_key,
                             doc="Current value of the default key."
                                 " Can be set to any existing key.")
+
+
+class FormatRegistry(Registry):
+    """Registry specialised for handling formats."""
+
+    def __init__(self, other_registry=None):
+        Registry.__init__(self)
+        self._other_registry = other_registry
+
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, info=None,
+                      override_existing=False):
+        # Overridden to allow capturing registrations to two seperate
+        # registries in a single call.
+        Registry.register_lazy(self, key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+        if self._other_registry is not None:
+            self._other_registry.register_lazy(key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+
+    def get(self, format_string):
+        r = Registry.get(self, format_string)
+        if callable(r):
+            r = r()
+        return r
+
+

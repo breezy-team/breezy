@@ -70,6 +70,9 @@ class TestSprout(TestCaseWithBranch):
             # did the right thing.
             target._ensure_real()
             target = target._real_branch
+        if isinstance(result_format, remote.RemoteBranchFormat):
+            # Unwrap a parameterised RemoteBranchFormat for comparison.
+            result_format = result_format._custom_format
         self.assertIs(result_format.__class__, target._format.__class__)
 
     def test_sprout_partial(self):

@@ -104,22 +104,11 @@ class RepoFetcher(object):
             self.nested_pb = None
         self.from_repository.lock_read()
         try:
-            self.to_repository.lock_write()
             try:
-                self.to_repository.start_write_group()
-                try:
-                    self.__fetch()
-                except:
-                    self.to_repository.abort_write_group(suppress_errors=True)
-                    raise
-                else:
-                    self.to_repository.commit_write_group()
+                self.__fetch()
             finally:
-                try:
-                    if self.nested_pb is not None:
-                        self.nested_pb.finished()
-                finally:
-                    self.to_repository.unlock()
+                if self.nested_pb is not None:
+                    self.nested_pb.finished()
         finally:
             self.from_repository.unlock()
 
@@ -161,14 +150,20 @@ class RepoFetcher(object):
         try:
             from_format = self.from_repository._format
             stream = self.get_stream(search, pp)
-            missing_keys = self.sink.insert_stream(stream, from_format)
+            resume_tokens, missing_keys = self.sink.insert_stream(
+                stream, from_format, [])
             if missing_keys:
                 stream = self.get_stream_for_missing_keys(missing_keys)
-                missing_keys = self.sink.insert_stream(stream, from_format)
+                resume_tokens, missing_keys = self.sink.insert_stream(
+                    stream, from_format, resume_tokens)
             if missing_keys:
                 raise AssertionError(
                     "second push failed to complete a fetch %r." % (
                         missing_keys,))
+            if resume_tokens:
+                raise AssertionError(
+                    "second push failed to commit the fetch %r." % (
+                        resume_tokens,))
             self.sink.finished()
         finally:
             if self.pb is not None:
@@ -195,7 +190,6 @@ class RepoFetcher(object):
                     revisions])
             elif knit_kind == "inventory":
                 # Now copy the file texts.
-                to_texts = self.to_repository.texts
                 from_texts = self.from_repository.texts
                 yield ('texts', from_texts.get_record_stream(
                     text_keys, self.to_repository._fetch_order,

@@ -46,6 +46,7 @@ from bzrlib.tag import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
 from bzrlib.inter import InterObject
+from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -147,6 +148,14 @@ class Branch(object):
         control, relpath = bzrdir.BzrDir.open_containing(url,
                                                          possible_transports)
         return control.open_branch(), relpath
+
+    def _push_should_merge_tags(self):
+        """Should _basic_push merge this branch's tags into the target?
+
+        The default implementation returns False if this branch has no tags,
+        and True the rest of the time.  Subclasses may override this.
+        """
+        return self.tags.supports_tags() and self.tags.get_tag_dict()
 
     def get_config(self):
         return BranchConfig(self)
@@ -872,6 +881,9 @@ class Branch(object):
     def clone(self, to_bzrdir, revision_id=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
 
+        Most API users will want 'create_clone_on_transport', which creates a
+        new bzrdir and branch on the fly.
+
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
@@ -937,7 +949,8 @@ class Branch(object):
         else:
             if parent:
                 destination.set_parent(parent)
-        self.tags.merge_to(destination.tags)
+        if self._push_should_merge_tags():
+            self.tags.merge_to(destination.tags)
 
     @needs_read_lock
     def check(self):
@@ -990,6 +1003,21 @@ class Branch(object):
             format = self.repository.bzrdir.checkout_metadir()
             format.set_branch_format(self._format)
         return format
+
+    def create_clone_on_transport(self, to_transport, revision_id=None,
+        stacked_on=None):
+        """Create a clone of this branch and its bzrdir.
+
+        :param to_transport: The transport to clone onto.
+        :param revision_id: The revision id to use as tip in the new branch.
+            If None the tip is obtained from this branch.
+        :param stacked_on: An optional URL to stack the clone on.
+        """
+        # XXX: Fix the bzrdir API to allow getting the branch back from the
+        # clone call. Or something. 20090224 RBC/spiv.
+        dir_to = self.bzrdir.clone_on_transport(to_transport,
+            revision_id=revision_id, stacked_on=stacked_on)
+        return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
                         lightweight=False, accelerator_tree=None,
@@ -1223,6 +1251,16 @@ class BranchFormat(object):
         """
         return True
 
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        MetaDir branch formats use their disk format string to identify the
+        repository over the wire. All in one formats such as bzr < 0.8, and
+        foreign formats like svn/git and hg should use some marker which is
+        unique and immutable.
+        """
+        raise NotImplementedError(self.network_name)
+
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir
 
@@ -1233,7 +1271,10 @@ class BranchFormat(object):
 
     @classmethod
     def register_format(klass, format):
+        """Register a metadir format."""
         klass._formats[format.get_format_string()] = format
+        # Metadir formats have a network name of their format string.
+        network_format_registry.register(format.get_format_string(), format)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1248,7 +1289,7 @@ class BranchFormat(object):
         del klass._formats[format.get_format_string()]
 
     def __str__(self):
-        return self.get_format_string().rstrip()
+        return self.get_format_description().rstrip()
 
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""
@@ -1406,6 +1447,10 @@ class BzrBranchFormat4(BranchFormat):
         super(BzrBranchFormat4, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
+
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir
 
@@ -1430,6 +1475,13 @@ class BranchFormatMetadir(BranchFormat):
     def _branch_class(self):
         """What class to instantiate on open calls."""
         raise NotImplementedError(self._branch_class)
+
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        Metadir branch formats use their format string.
+        """
+        return self.get_format_string()
 
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir.
@@ -1653,6 +1705,15 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
+network_format_registry = registry.FormatRegistry()
+"""Registry of formats indexed by their network name.
+
+The network name for a repository format is an identifier that can be used when
+referring to formats with smart server operations. See
+BranchFormat.network_name() for more detail.
+"""
+
+
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 __format5 = BzrBranchFormat5()
@@ -1664,7 +1725,10 @@ BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
-                   ]
+    ]
+network_format_registry.register(
+    _legacy_formats[0].network_name(), _legacy_formats[0])
+
 
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
@@ -1999,14 +2063,6 @@ class BzrBranch(Branch):
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
-
-    def _push_should_merge_tags(self):
-        """Should _basic_push merge this branch's tags into the target?
-
-        The default implementation returns False if this branch has no tags,
-        and True the rest of the time.  Subclasses may override this.
-        """
-        return self.tags.supports_tags() and self.tags.get_tag_dict()
 
     def get_parent(self):
         """See Branch.get_parent."""
