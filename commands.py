@@ -329,9 +329,10 @@ def format_who_when(fields):
     offset_hours = offset / 3600
     offset_minutes = offset / 60 - offset_hours * 60
     offset_str = "%s%02d%02d" % (offset_sign, offset_hours, offset_minutes)
-    name = fields[0].encode('utf8')
+    name = fields[0]
     if name == '':
         sep = ''
     else:
         sep = ' '
-    return "%s%s<%s> %d %s" % (name, sep, fields[1], fields[2], offset_str)
+    result = "%s%s<%s> %d %s" % (name, sep, fields[1], fields[2], offset_str)
+    return result.encode('utf8')
