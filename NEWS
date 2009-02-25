@@ -46,6 +46,11 @@ IN DEVELOPMENT
       stream if the server is version 1.13 or greater, reducing roundtrips
       significantly. (Andrew Bennetts, Robert Collins)
 
+    * Lightweight Checkouts and Stacked Branches should both be much
+      faster over remote connections. Building the working tree now
+      batches up requests into approx 5MB requests, rather than a separate
+      request for each file. (John Arbash Meinel)
+
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
 
