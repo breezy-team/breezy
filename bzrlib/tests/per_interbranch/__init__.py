@@ -35,7 +35,6 @@ from bzrlib.errors import (
     )
 from bzrlib.tests import (
                           adapt_modules,
-                          default_transport,
                           TestScenarioApplier,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -46,15 +45,12 @@ class InterBranchTestProviderAdapter(TestScenarioApplier):
     """A tool to generate a suite testing multiple inter branch formats.
 
     This is done by copying the test once for each interbranch provider and 
-    injecting the transport_server, transport_readonly_server, 
-    branch_format_from and branch_to_format classes into each copy.
-    Each copy is also given a new id() to make it easy to identify.
+    injecting the branch_format_from and branch_to_format classes into each 
+    copy.  Each copy is also given a new id() to make it easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, formats):
         TestScenarioApplier.__init__(self)
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
         self.scenarios = self.formats_to_scenarios(formats)
 
     def formats_to_scenarios(self, formats):
@@ -69,8 +65,7 @@ class InterBranchTestProviderAdapter(TestScenarioApplier):
                                 branch_format_from.__class__.__name__,
                                 branch_format_to.__class__.__name__)
             scenario = (id,
-                {"transport_server":self._transport_server,
-                 "transport_readonly_server":self._transport_readonly_server,
+                {
                  "branch_format_from":branch_format_from,
                  "interbranch_class":interbranch_class,
                  "branch_format_to":branch_format_to,
@@ -143,10 +138,6 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.per_interbranch.test_update_revisions',
         ]
     adapter = InterBranchTestProviderAdapter(
-        default_transport,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
         InterBranchTestProviderAdapter.default_test_list()
         )
     # add the tests for the sub modules
