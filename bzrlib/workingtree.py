@@ -1537,7 +1537,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None, possible_transports=None):
+             change_reporter=None, possible_transports=None, local=False):
         top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:

@@ -729,7 +729,8 @@ class Branch(object):
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None,
-             possible_transports=None, _override_hook_target=None):
+             possible_transports=None, _override_hook_target=None,
+             local=False):
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
@@ -1933,7 +1934,7 @@ class BzrBranch(Branch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              _hook_master=None, run_hooks=True, possible_transports=None,
-             _override_hook_target=None):
+             _override_hook_target=None, local=False):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to
@@ -1943,6 +1944,7 @@ class BzrBranch(Branch):
             so it should not run its hooks.
         :param _override_hook_target: Private parameter - set the branch to be
             supplied as the target_branch to pull hooks.
+        :param local: Only update the local branch, and not the bound branch.
         """
         result = PullResult()
         result.source_branch = source
@@ -2128,7 +2130,7 @@ class BzrBranch5(BzrBranch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              run_hooks=True, possible_transports=None,
-             _override_hook_target=None):
+             _override_hook_target=None, local=False):
         """Pull from source into self, updating my master if any.
 
         :param run_hooks: Private parameter - if false, this branch
