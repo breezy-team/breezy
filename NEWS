@@ -59,6 +59,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr shelve`` now properly handle patches with no terminating newline.
+      (Benoît PIERRE, #303569)
+
     * ``bzr unshelve`` gives a more palatable error if passed a non-integer
       shelf id. (Daniel Watkins)
 
