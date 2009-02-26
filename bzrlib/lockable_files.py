@@ -43,6 +43,19 @@ from bzrlib.symbol_versioning import (
 # somewhat redundant with what's done in LockDir; the main difference is that
 # LockableFiles permits reentrancy.
 
+class LockWarner(object):
+
+    def __init__(self, lock_count_holder, repr):
+        self.lock_count_holder = lock_count_holder
+        self.repr = repr
+
+    def __del__(self):
+        if self.lock_count_holder[0] >= 0:
+            # do not automatically unlock; there should have been a
+            # try/finally to unlock this.
+            warnings.warn("%r was gc'd while locked" % self.repr)
+        
+
 class LockableFiles(object):
     """Object representing a set of related files locked within the same scope.
 
@@ -88,7 +101,8 @@ class LockableFiles(object):
         self.lock_name = lock_name
         self._transaction = None
         self._lock_mode = None
-        self._lock_count = 0
+        self._lock_count_holder = [0]
+        self._lock_warner = LockWarner(self._lock_count_holder)
         self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
@@ -108,12 +122,6 @@ class LockableFiles(object):
                            self._transport)
     def __str__(self):
         return 'LockableFiles(%s, %s)' % (self.lock_name, self._transport.base)
-
-    def __del__(self):
-        if self.is_locked():
-            # do not automatically unlock; there should have been a
-            # try/finally to unlock this.
-            warnings.warn("%r was gc'd while locked" % self)
 
     def break_lock(self):
         """Break the lock of this lockable files group if it is held.
@@ -253,13 +261,13 @@ class LockableFiles(object):
             if self._lock_mode != 'w' or not self.get_transaction().writeable():
                 raise errors.ReadOnlyError(self)
             self._lock.validate_token(token)
-            self._lock_count += 1
+            self._lock_count_holder[0] += 1
             return self._token_from_lock
         else:
             token_from_lock = self._lock.lock_write(token=token)
             #traceback.print_stack()
             self._lock_mode = 'w'
-            self._lock_count = 1
+            self._lock_count_holder[0] = 1
             self._set_transaction(transactions.WriteTransaction())
             self._token_from_lock = token_from_lock
             return token_from_lock
@@ -268,12 +276,12 @@ class LockableFiles(object):
         if self._lock_mode:
             if self._lock_mode not in ('r', 'w'):
                 raise ValueError("invalid lock mode %r" % (self._lock_mode,))
-            self._lock_count += 1
+            self._lock_count_holder[0] += 1
         else:
             self._lock.lock_read()
             #traceback.print_stack()
             self._lock_mode = 'r'
-            self._lock_count = 1
+            self._lock_count_holder[0] = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
             # 5K may be excessive, but hey, its a knob.
             self.get_transaction().set_cache_size(5000)
@@ -281,19 +289,19 @@ class LockableFiles(object):
     def unlock(self):
         if not self._lock_mode:
             raise errors.LockNotHeld(self)
-        if self._lock_count > 1:
-            self._lock_count -= 1
+        if self._lock_count_holder[0] > 1:
+            self._lock_count_holder[0] -= 1
         else:
             #traceback.print_stack()
             self._finish_transaction()
             try:
                 self._lock.unlock()
             finally:
-                self._lock_mode = self._lock_count = None
+                self._lock_mode = self._lock_count_holder[0] = None
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
-        return self._lock_count >= 1
+        return self._lock_count_holder[0] >= 1
 
     def get_physical_lock_status(self):
         """Return physical lock status.
