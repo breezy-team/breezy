@@ -567,6 +567,17 @@ class TestCommit(ExternalBase):
         properties = last_rev.properties
         self.assertEqual('John Doe', properties['author'])
 
+    def test_multiple_authors(self):
+        """Multiple authors can be specyfied, and all are stored."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "--author='Jane Rey' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe\nJane Rey', properties['author'])
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree('.')

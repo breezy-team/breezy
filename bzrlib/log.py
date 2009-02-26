@@ -1174,7 +1174,7 @@ class LogFormatter(object):
         return address
 
     def short_author(self, rev):
-        name, address = config.parse_username(rev.get_apparent_author())
+        name, address = config.parse_username(rev.get_apparent_authors()[0])
         if name:
             return name
         return address
@@ -1218,7 +1218,7 @@ class LongLogFormatter(LogFormatter):
 
         author = revision.rev.properties.get('author', None)
         if author is not None:
-            to_file.write(indent + 'author: %s\n' % (author,))
+            to_file.write(indent + 'author: %s\n' % (" ".join(author.split("\n")),))
         to_file.write(indent + 'committer: %s\n' % (revision.rev.committer,))
 
         branch_nick = revision.rev.properties.get('branch-nick', None)

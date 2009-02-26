@@ -24,6 +24,9 @@ IN DEVELOPMENT
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
 
+    * Multiple authors for a commit can now be recorded by using the "--author"
+      option multiple times. (James Westby)
+
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
@@ -86,6 +89,13 @@ IN DEVELOPMENT
       newline. About 372 files and 3243 lines with trailing whitespace was
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
+
+    * MutableTree.commit now favours the "authors" argument, with the old
+      "author" argument being deprecated.
+
+    * Revision.get_apparent_author() is now deprecated, replaced by
+      Revision.get_apparent_authors(), which returns a list. The former
+      now returns the first item that would be returned from the second.
 
   INTERNALS:
 

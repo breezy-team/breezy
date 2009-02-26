@@ -231,7 +231,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = rev.get_apparent_author()
+            author = rev.get_apparent_authors()[0]
             try:
                 author = extract_email_address(author)
             except errors.NoEmailInUsername:
