@@ -2049,7 +2049,7 @@ class BzrBranch(Branch):
 
         Must be called with self read locked and target write locked.
         """
-        result = PushResult()
+        result = BranchPushResult()
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
@@ -2591,7 +2591,7 @@ class PullResult(_Result):
         self._show_tag_conficts(to_file)
 
 
-class PushResult(_Result):
+class BranchPushResult(_Result):
     """Result of a Branch.push operation.
 
     :ivar old_revno: Revision number before push.

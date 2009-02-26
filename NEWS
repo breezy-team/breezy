@@ -87,6 +87,9 @@ IN DEVELOPMENT
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
 
+    ``bzrlib.branch.PushResult`` was renamed to 
+    ``bzrlib.branch.BranchPushResult``. (Jelmer Vernooij)
+
   INTERNALS:
 
     * Branch and Repository creation on a bzr+ssh://server are now done
