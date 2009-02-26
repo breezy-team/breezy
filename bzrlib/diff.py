@@ -334,7 +334,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
     if consider_relpath and relpath != '':
         if working_tree is not None and apply_view:
-            _check_path_in_view(working_tree, relpath)
+            views.check_path_in_view(working_tree, relpath)
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
@@ -346,7 +346,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
         if consider_relpath and relpath != '':
             if working_tree is not None and apply_view:
-                _check_path_in_view(working_tree, relpath)
+                views.check_path_in_view(working_tree, relpath)
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
@@ -375,15 +375,6 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
     if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
     return old_tree, new_tree, specific_files, extra_trees
-
-
-def _check_path_in_view(tree, relpath):
-    """If a working tree has a view enabled, check the path is within it."""
-    if tree.supports_views():
-        view_files = tree.views.lookup_view()
-        if  view_files and not osutils.is_inside_any(view_files, relpath):
-            raise errors.FileOutsideView(relpath, view_files)
-
 
 def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
     if branch is None and tree is not None:

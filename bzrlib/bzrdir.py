@@ -229,9 +229,8 @@ class BzrDir(object):
         #   make sure its content is available in the target repository
         #   clone it.
         if local_branch is not None:
-            result_branch = local_branch.clone(result, revision_id=revision_id)
-            if repository_policy is not None:
-                repository_policy.configure_branch(result_branch)
+            result_branch = local_branch.clone(result, revision_id=revision_id,
+                repository_policy=repository_policy)
         try:
             # Cheaper to check if the target is not local, than to try making
             # the tree and fail.
