@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2009 Canonical Ltd
 
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          Jelmer Vernooij <jelmer@samba.org>
@@ -33,7 +33,7 @@ from bzrlib.transport import register_lazy_transport
 from bzrlib.commands import plugin_cmds
 from bzrlib.trace import warning
 
-MINIMUM_DULWICH_VERSION = (0, 1, 0)
+MINIMUM_DULWICH_VERSION = (0, 1, 1)
 COMPATIBLE_BZR_VERSIONS = [(1, 11, 0), (1, 12, 0)]
 
 if getattr(sys, "frozen", None):
