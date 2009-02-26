@@ -20,7 +20,14 @@
 import md5
 import time
 
-from bzrlib import debug, errors, pack, repository
+from bzrlib import (
+    debug,
+    errors,
+    knit,
+    pack,
+    repository,
+    ui,
+    )
 from bzrlib.btree_index import (
     BTreeBuilder,
     BTreeGraphIndex,
@@ -276,25 +283,49 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 raise errors.BzrError('call to %s.pack() while another pack is'
                                       ' being written.'
                                       % (self.__class__.__name__,))
+            new_pack = self.pack_factory(self, 'autopack',
+                                         self.repo.bzrdir._get_file_mode())
+            new_pack.set_write_cache_size(1024*1024)
             # TODO: A better alternative is to probably use Packer.open_pack(), and
             #       then create a GroupCompressVersionedFiles() around the
             #       target pack to insert into.
-            self._start_write_group()
+            pb = ui.ui_factory.nested_progress_bar()
             try:
-                for index_name, vf_name in to_copy:
+                for idx, (index_name, vf_name) in enumerate(to_copy):
+                    pb.update('repacking %s' % (vf_name,), idx + 1, len(to_copy))
                     keys = set()
-                    new_index = getattr(self._new_pack, index_name)
+                    new_index = getattr(new_pack, index_name)
                     new_index.set_optimize(for_size=True)
                     for pack in packs:
                         source_index = getattr(pack, index_name)
                         keys.update(e[1] for e in source_index.iter_all_entries())
-                    vf = getattr(self.repo, vf_name)
-                    stream = vf.get_record_stream(keys, 'gc-optimal', True)
-                    vf.insert_record_stream(stream)
+                    source_vf = getattr(self.repo, vf_name)
+                    target_access = knit._DirectPackAccess({})
+                    target_access.set_writer(new_pack._writer, new_index,
+                                             new_pack.access_tuple())
+                    target_vf = GroupCompressVersionedFiles(
+                        _GCGraphIndex(new_index,
+                                      add_callback=new_index.add_nodes,
+                                      parents=source_vf._index._parents,
+                                      is_locked=self.repo.is_locked),
+                        access=target_access,
+                        delta=source_vf._delta)
+                    stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
+                    target_vf.insert_record_stream(stream)
+                new_pack._check_references() # shouldn't be needed
             except:
-                self._abort_write_group()
+                pb.finished()
+                new_pack.abort()
+                raise
             else:
-                self._commit_write_group()
+                pb.finished()
+                if not new_pack.data_inserted():
+                    raise AssertionError('We copied from pack files,'
+                                         ' but had no data copied')
+                    # we need to abort somehow, because we don't want to remove
+                    # the other packs
+                new_pack.finish()
+                self.allocate(new_pack)
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
@@ -382,7 +413,7 @@ class GCPackRepository(KnitPackRepository):
         #       because the source can be smart about extracting multiple
         #       in-a-row (and sharing strings). Topological is better for
         #       remote, because we access less data.
-        self._fetch_order = 'topological'
+        self._fetch_order = 'unordered'
         self._fetch_gc_optimal = True
         self._fetch_uses_deltas = False
 
@@ -446,7 +477,7 @@ if chk_support:
             self._reconcile_does_inventory_gc = True
             self._reconcile_fixes_text_parents = True
             self._reconcile_backsup_inventory = False
-            self._fetch_order = 'topological'
+            self._fetch_order = 'unordered'
             self._fetch_gc_optimal = True
             self._fetch_uses_deltas = False
 
