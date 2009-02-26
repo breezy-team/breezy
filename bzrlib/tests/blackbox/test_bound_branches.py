@@ -228,6 +228,21 @@ class TestBoundBranches(TestCaseWithTransport):
 
         self.check_revno(2, '../base')
 
+    def test_pull_local_updates_local(self):
+        base_tree = self.create_branches()[0]
+        newchild_tree = base_tree.bzrdir.sprout('newchild').open_workingtree()
+        self.build_tree_contents([('newchild/b', 'newchild b contents\n')])
+        newchild_tree.commit(message='newchild')
+        self.check_revno(2, 'newchild')
+
+        os.chdir('child')
+        # The pull should succeed, and update
+        # the bound parent branch
+        self.run_bzr('pull ../newchild --local')
+        self.check_revno(2)
+
+        self.check_revno(1, '../base')
+
     def test_bind_diverged(self):
         base_tree, child_tree = self.create_branches()
         base_branch = base_tree.branch
