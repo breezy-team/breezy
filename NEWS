@@ -57,6 +57,8 @@ IN DEVELOPMENT
     * The ``bzr shelve`` prompt now includes a '?' help option to explain the
       short options better. (Daniel Watkins, #327429)
 
+    * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
+
   BUG FIXES:
 
     * ``bzr unshelve`` gives a more palatable error if passed a non-integer
