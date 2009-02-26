@@ -50,12 +50,11 @@ class LockWarner(object):
         self.repr = repr
 
     def __del__(self):
-        print self.lock_count_holder[0]
         if self.lock_count_holder[0] >= 1:
             # do not automatically unlock; there should have been a
             # try/finally to unlock this.
             warnings.warn("%r was gc'd while locked" % self.repr)
-        
+
 
 class LockableFiles(object):
     """Object representing a set of related files locked within the same scope.
@@ -299,6 +298,10 @@ class LockableFiles(object):
                 self._lock.unlock()
             finally:
                 self._lock_mode = self._lock_count_holder[0] = None
+
+    @property
+    def _lock_count(self):
+        return self._lock_count_holder[0]
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
