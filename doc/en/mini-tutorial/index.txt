@@ -70,7 +70,7 @@ Let's create a directory and some files to use with Bazaar::
 directories, then right-click in those directories and select 
 ``New file`` to create your files.
 
-Now get Bazaar to initalize itself in your project directory::
+Now get Bazaar to initialize itself in your project directory::
 
   $ bzr init
   
