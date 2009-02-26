@@ -113,14 +113,24 @@ class TestHelp(ExternalBase):
         self.assertTrue('rocks' not in commands)
 
     def test_help_concise(self):
-        dash_h  = self.run_bzr('commit -h')[0]
-        help_x  = self.run_bzr('help commit')[0]
-        self.assertEqualDiff(dash_h, help_x)
+        dash_h  = self.run_bzr('diff -h')[0]
+        self.assertContainsRe(dash_h, "Purpose:")
+        self.assertContainsRe(dash_h, "Usage:")
+        self.assertContainsRe(dash_h, "Options:")
+        self.assertNotContainsRe(dash_h, "Description:")
+        self.assertNotContainsRe(dash_h, "Examples:")
+        self.assertContainsRe(dash_h, "See also:")
+        self.assertContainsRe(dash_h, "Aliases:")
 
     def test_help_detail(self):
-        dash_h  = self.run_bzr('commit -h -v')[0]
-        help_x  = self.run_bzr('help -v commit')[0]
-        self.assertEqualDiff(dash_h, help_x)
+        help_x  = self.run_bzr('help diff')[0]
+        self.assertContainsRe(help_x, "Purpose:")
+        self.assertContainsRe(help_x, "Usage:")
+        self.assertContainsRe(help_x, "Options:")
+        self.assertContainsRe(help_x, "Description:")
+        self.assertContainsRe(help_x, "Examples:")
+        self.assertContainsRe(help_x, "See also:")
+        self.assertContainsRe(help_x, "Aliases:")
 
     def test_help_help(self):
         help = self.run_bzr('help help')[0]
