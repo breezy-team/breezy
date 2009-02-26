@@ -1517,6 +1517,7 @@ class KnitVersionedFiles(VersionedFiles):
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
+            buffered = False
             parents = record.parents
             if record.storage_kind in delta_types:
                 # TODO: eventually the record itself should track
@@ -1568,7 +1569,6 @@ class KnitVersionedFiles(VersionedFiles):
                 access_memo = self._access.add_raw_records(
                     [(record.key, len(bytes))], bytes)[0]
                 index_entry = (record.key, options, access_memo, parents)
-                buffered = False
                 if 'fulltext' not in options:
                     # Not a fulltext, so we need to make sure the compression
                     # parent will also be present.
@@ -1609,15 +1609,16 @@ class KnitVersionedFiles(VersionedFiles):
                 except errors.RevisionAlreadyPresent:
                     pass
             # Add any records whose basis parent is now available.
-            added_keys = [record.key]
-            while added_keys:
-                key = added_keys.pop(0)
-                if key in buffered_index_entries:
-                    index_entries = buffered_index_entries[key]
-                    self._index.add_records(index_entries)
-                    added_keys.extend(
-                        [index_entry[0] for index_entry in index_entries])
-                    del buffered_index_entries[key]
+            if not buffered:
+                added_keys = [record.key]
+                while added_keys:
+                    key = added_keys.pop(0)
+                    if key in buffered_index_entries:
+                        index_entries = buffered_index_entries[key]
+                        self._index.add_records(index_entries)
+                        added_keys.extend(
+                            [index_entry[0] for index_entry in index_entries])
+                        del buffered_index_entries[key]
         if buffered_index_entries:
             # There were index entries buffered at the end of the stream,
             # So these need to be added (if the index supports holding such
