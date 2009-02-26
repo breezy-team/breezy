@@ -25,7 +25,7 @@ IN DEVELOPMENT
       (John Arbash Meinel)
 
     * Multiple authors for a commit can now be recorded by using the "--author"
-      option multiple times. (James Westby)
+      option multiple times. (James Westby, #185772)
 
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
