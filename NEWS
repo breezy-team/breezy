@@ -69,6 +69,10 @@ IN DEVELOPMENT
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
 
+    * Fixed "sprout() got an unexpected keyword argument 'source_branch'"
+      error branching from old repositories.
+      (Martin Pool, #321695)
+
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
       for branches. This is now fixed and a test added to prevent it
