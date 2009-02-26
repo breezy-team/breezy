@@ -24,7 +24,6 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.tests import (
-    TestCase,
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
@@ -154,7 +153,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
             directory._resolve('lp:///apt', factory, _lp_login='username'))
 
     def test_no_rewrite_of_other_bzr_ssh(self):
-        # Test that we don't rewrite bzr+ssh URLs for other 
+        # Test that we don't rewrite bzr+ssh URLs for other
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[

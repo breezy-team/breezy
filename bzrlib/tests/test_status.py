@@ -114,7 +114,7 @@ class TestStatus(TestCaseWithTransport):
         show_pending_merges(tree, output, verbose=True)
         self.assertEqualDiff('pending merges:\n'
                              '  Joe Foo 2007-12-04 another non-ghost\n'
-                             '    Joe Foo 2007-12-04 commit with ghost\n'
+                             '    Joe Foo 2007-12-04 [merge] commit with ghost\n'
                              '    (ghost) a-ghost-revision\n'
                              '    Joe Foo 2007-12-04 a non-ghost\n',
                              output.getvalue())

@@ -67,15 +67,15 @@ def read_bundle(f):
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
             version = m.group('version')
-            raise errors.BundleNotSupported(version, 
+            raise errors.BundleNotSupported(version,
                 'old format bundles not supported')
 
     if version is None:
         raise errors.NotABundle('Did not find an opening header')
 
-    # Now we have a version, to figure out how to read the bundle 
+    # Now we have a version, to figure out how to read the bundle
     if version not in _serializers:
-        raise errors.BundleNotSupported(version, 
+        raise errors.BundleNotSupported(version,
             'version not listed in known versions')
 
     serializer = _serializers[version](version)

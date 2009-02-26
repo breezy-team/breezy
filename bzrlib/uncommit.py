@@ -44,7 +44,7 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None,
         if tree is not None:
             tree.lock_write()
             unlockable.append(tree)
-        
+
         branch.lock_write()
         unlockable.append(branch)
 

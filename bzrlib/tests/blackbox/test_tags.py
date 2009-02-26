@@ -32,7 +32,7 @@ class TestTagging(TestCaseWithTransport):
 
     # as of 0.14, the default format doesn't do tags so we need to use a
     # specific format
-    
+
     def make_branch_and_tree(self, relpath):
         format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         return TestCaseWithTransport.make_branch_and_tree(self, relpath,

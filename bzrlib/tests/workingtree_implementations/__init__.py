@@ -18,7 +18,7 @@
 """WorkingTree implementation tests for bzr.
 
 These test the conformance of all the workingtre variations to the expected API.
-Specific tests for individual formats are in the tests/test_workingtree file 
+Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/workingtree_implementations/*.py.
 """
 
@@ -125,6 +125,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_smart_add',
         'bzrlib.tests.workingtree_implementations.test_uncommit',
         'bzrlib.tests.workingtree_implementations.test_unversion',
+        'bzrlib.tests.workingtree_implementations.test_views',
         'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]

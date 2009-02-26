@@ -62,7 +62,7 @@ class Reconciler(object):
 
     def reconcile(self):
         """Perform reconciliation.
-        
+
         After reconciliation the following attributes document found issues:
         inconsistent_parents: The number of revisions in the repository whose
                               ancestry was being reported incorrectly.
@@ -159,7 +159,7 @@ class RepoReconciler(object):
     """Reconciler that reconciles a repository.
 
     The goal of repository reconciliation is to make any derived data
-    consistent with the core data committed by a user. This can involve 
+    consistent with the core data committed by a user. This can involve
     reindexing, or removing unreferenced data if that can interfere with
     queries in a given repository.
 
@@ -181,7 +181,7 @@ class RepoReconciler(object):
 
     def reconcile(self):
         """Perform reconciliation.
-        
+
         After reconciliation the following attributes document found issues:
         inconsistent_parents: The number of revisions in the repository whose
                               ancestry was being reported incorrectly.
@@ -204,8 +204,8 @@ class RepoReconciler(object):
 
     def _reweave_inventory(self):
         """Regenerate the inventory weave for the repository from scratch.
-        
-        This is a smart function: it will only do the reweave if doing it 
+
+        This is a smart function: it will only do the reweave if doing it
         will correct data issues. The self.thorough flag controls whether
         only data-loss causing issues (!self.thorough) or all issues
         (self.thorough) are treated as requiring the reweave.
@@ -229,9 +229,9 @@ class RepoReconciler(object):
             # put a revision into the graph.
             self._graph_revision(rev_id)
         self._check_garbage_inventories()
-        # if there are no inconsistent_parents and 
+        # if there are no inconsistent_parents and
         # (no garbage inventories or we are not doing a thorough check)
-        if (not self.inconsistent_parents and 
+        if (not self.inconsistent_parents and
             (not self.garbage_inventories or not self.thorough)):
             self.pb.note('Inventory ok.')
             return

@@ -33,7 +33,7 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestLegacyFormats(TestCaseWithTransport):
-    
+
     def setUp(self):
         super(TestLegacyFormats, self).setUp()
         self.build_tree(['master/', 'child/'])
@@ -41,7 +41,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         self.make_branch_and_tree('child',
                         format=bzrdir.format_registry.make_bzrdir('weave'))
         os.chdir('child')
-    
+
     def test_bind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('bind ../master', retcode=3)
@@ -51,7 +51,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('bzr: ERROR: To use this feature you must '
                          'upgrade your branch at %s/.\n' % cwd, err)
-    
+
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('unbind', retcode=3)
@@ -284,7 +284,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1)
 
     def test_bind_child_ahead(self):
-        # test binding when the master branches history is a prefix of the 
+        # test binding when the master branches history is a prefix of the
         # childs - it should bind ok but the revision histories should not
         # be altered
         child_tree = self.create_branches()[1]

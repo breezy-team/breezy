@@ -30,7 +30,7 @@ class TestFindMergeBase(ExternalBase):
         b_tree.commit(message='baz', allow_pointless=True)
         r = self.run_bzr('find-merge-base b a')[0]
         self.assertEqual(q, r)
-        
+
     def test_find_null_merge_base(self):
         tree = self.make_branch_and_tree('foo')
         tree.commit('message')

@@ -213,7 +213,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     """Retrieve a list of ignores from the ignore file in a tree.
 
     :param tree: Tree to retrieve the ignore list from.
-    :return: 
+    :return:
     """
     ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):

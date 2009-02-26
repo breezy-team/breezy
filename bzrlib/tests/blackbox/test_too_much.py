@@ -22,7 +22,7 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
@@ -101,7 +101,7 @@ class TestCommands(ExternalBase):
                              os.readlink('symlink'))
         else:
             self.log("skipping revert symlink tests")
-        
+
         file('hello', 'wt').write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
@@ -174,7 +174,7 @@ class TestCommands(ExternalBase):
         added_message = out.find('message:\n  foo')
         self.failIfEqual(added_message, -1)
         self.failUnless(added_loc < added_message)
-        
+
     def test_locations(self):
         """Using and remembering different locations"""
         os.mkdir('a')
@@ -202,7 +202,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('pull', retcode=3)
         self.run_bzr('pull ../a --remember')
         self.run_bzr('pull')
-        
+
     def test_unknown_command(self):
         """Handling of unknown command."""
         out, err = self.run_bzr('fluffy-badger', retcode=3)
@@ -315,7 +315,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('push --overwrite')
         # nothing missing
         self.run_bzr('missing ../output-branch')
-        
+
         # pushing to a new dir with no parent should fail
         self.run_bzr('push ../missing/new-branch', retcode=3)
         # unless we provide --create-prefix
@@ -326,10 +326,10 @@ class TestCommands(ExternalBase):
     def test_external_command(self):
         """Test that external commands can be run by setting the path
         """
-        # We don't at present run bzr in a subprocess for blackbox tests, and so 
+        # We don't at present run bzr in a subprocess for blackbox tests, and so
         # don't really capture stdout, only the internal python stream.
         # Therefore we don't use a subcommand that produces any output or does
-        # anything -- we just check that it can be run successfully.  
+        # anything -- we just check that it can be run successfully.
         cmd_name = 'test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
@@ -347,7 +347,7 @@ class TestCommands(ExternalBase):
             f.close()
             os.chmod(cmd_name, 0755)
 
-            # It should not find the command in the local 
+            # It should not find the command in the local
             # directory by default, since it is not in my path
             self.run_bzr(cmd_name, retcode=3)
 
@@ -433,7 +433,7 @@ class OldTests(ExternalBase):
         f.close()
 
         self.run_bzr("add hello.txt")
-        
+
         f = file('msg.tmp', 'wt')
         f.write('this is my new commit\nand it has multiple lines, for fun')
         f.close()
@@ -602,7 +602,7 @@ class RemoteTests(object):
         url = self.get_readonly_url('branch/file')
         output = self.run_bzr('log %s' % url)[0]
         self.assertEqual(8, len(output.split('\n')))
-        
+
     def test_check(self):
         self.build_tree(['branch/', 'branch/file'])
         self.run_bzr('init branch')[0]
@@ -610,7 +610,7 @@ class RemoteTests(object):
         self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/')
         self.run_bzr(['check', url])
-    
+
     def test_push(self):
         # create a source branch
         os.mkdir('my-branch')
@@ -623,15 +623,15 @@ class RemoteTests(object):
         # with an explicit target work
         self.run_bzr(['push', self.get_url('output-branch')])
 
-    
+
 class HTTPTests(TestCaseWithWebserver, RemoteTests):
     """Test various commands against a HTTP server."""
-    
-    
+
+
 class SFTPTestsAbsolute(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using abs paths."""
 
-    
+
 class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using abs paths."""
 
@@ -639,7 +639,7 @@ class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
         super(SFTPTestsAbsoluteSibling, self).setUp()
         self._override_home = '/dev/noone/runs/tests/here'
 
-    
+
 class SFTPTestsRelative(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using homedir rel paths."""
 

@@ -32,7 +32,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
 
     def make_repo_with_extra_ghost_index(self):
         """Make a corrupt repository.
-        
+
         It will contain one revision, 'revision-id'.  The knit index will claim
         that it has one parent, 'incorrect-parent', but the revision text will
         claim it has no parents.

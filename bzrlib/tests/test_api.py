@@ -16,7 +16,7 @@
 
 """Tests for library API infrastructure
 
-This is specifically for things controlling the interface, such as versioning.  
+This is specifically for things controlling the interface, such as versioning.
 Tests for particular parts of the library interface should be in specific
 relevant test modules.
 """

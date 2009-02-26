@@ -125,7 +125,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_no_content(self, empty_tree, converter=None):
         """Make a tree with no parents and no contents from empty_tree.
-        
+
         :param empty_tree: A working tree with no content and no parents to
             modify.
         """
@@ -147,7 +147,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_2(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents.
-        
+
         This variation changes the content of 'a' to foobar\n.
         """
         self._make_abc_tree(tree)
@@ -160,7 +160,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_3(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents.
-        
+
         This variation changes the executable flag of b/c to True.
         """
         self._make_abc_tree(tree)
@@ -172,7 +172,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_4(self, tree, converter=None):
         """return a test tree with d, b/, b/c contents.
-        
+
         This variation renames a to d.
         """
         self._make_abc_tree(tree)
@@ -181,7 +181,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_5(self, tree, converter=None):
         """return a test tree with d, b/, b/c contents.
-        
+
         This variation renames a to d and alters its content to 'bar\n'.
         """
         self._make_abc_tree(tree)
@@ -195,7 +195,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_6(self, tree, converter=None):
         """return a test tree with a, b/, e contents.
-        
+
         This variation renames b/c to e, and makes it executable.
         """
         self._make_abc_tree(tree)
@@ -235,7 +235,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         where each component has the type of its name -
         i.e. '1file..' is afile.
 
-        note that the order of the paths and fileids is deliberately 
+        note that the order of the paths and fileids is deliberately
         mismatched to ensure that the result order is path based.
         """
         tree = self.make_branch_and_tree('.')

@@ -26,7 +26,7 @@ See the plugin-api developer documentation for information about writing
 plugins.
 
 BZR_PLUGIN_PATH is also honoured for any plugins imported via
-'import bzrlib.plugins.PLUGINNAME', as long as set_plugins_path has been 
+'import bzrlib.plugins.PLUGINNAME', as long as set_plugins_path has been
 called.
 """
 
@@ -190,7 +190,7 @@ load_from_dirs = load_from_path
 
 def load_from_dir(d):
     """Load the plugins in directory d.
-    
+
     d must be in the plugins module path already.
     """
     # Get the list of valid python suffixes for __init__.py?
@@ -226,7 +226,7 @@ def load_from_dir(d):
         else:
             # trace.mutter('add plugin name %s', f)
             plugin_names.add(f)
-    
+
     for name in plugin_names:
         try:
             exec "import bzrlib.plugins.%s" % name in {}
@@ -287,11 +287,11 @@ def load_from_zip(zip_name):
                     if name.startswith(prefix)]
 
     trace.mutter('Names in archive: %r', namelist)
-    
+
     for name in namelist:
         if not name or name.endswith('/'):
             continue
-    
+
         # '/' is used to separate pathname components inside zip archives
         ix = name.rfind('/')
         if ix == -1:
@@ -301,11 +301,11 @@ def load_from_zip(zip_name):
         if '/' in head:
             # we don't need looking in subdirectories
             continue
-    
+
         base, suffix = osutils.splitext(tail)
         if suffix not in valid_suffixes:
             continue
-    
+
         if base == '__init__':
             # package
             plugin_name = head
@@ -314,13 +314,13 @@ def load_from_zip(zip_name):
             plugin_name = base
         else:
             continue
-    
+
         if not plugin_name:
             continue
         if getattr(_mod_plugins, plugin_name, None):
             trace.mutter('Plugin name %s already loaded', plugin_name)
             continue
-    
+
         try:
             exec "import bzrlib.plugins.%s" % plugin_name in {}
             trace.mutter('Load plugin %s from zip %r', plugin_name, zip_name)
@@ -337,7 +337,7 @@ def load_from_zip(zip_name):
 
 def plugins():
     """Return a dictionary of the plugins.
-    
+
     Each item in the dictionary is a PlugIn object.
     """
     result = {}
@@ -397,7 +397,7 @@ class ModuleHelpTopic(object):
             result = self.module.__doc__
         if result[-1] != '\n':
             result += '\n'
-        # there is code duplicated here and in bzrlib/help_topic.py's 
+        # there is code duplicated here and in bzrlib/help_topic.py's
         # matching Topic code. This should probably be factored in
         # to a helper function and a common base class.
         if additional_see_also is not None:

@@ -251,7 +251,7 @@ class IterableFile(object):
                 self._file_base.push_back(line)
                 return lines
 
-        
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()

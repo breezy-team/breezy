@@ -34,7 +34,7 @@ class TestCommit(TestCaseWithBranch):
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"], 
+        self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
 
@@ -47,7 +47,7 @@ class TestCommitHook(TestCaseWithBranch):
     def capture_post_commit_hook(self, local, master, old_revno,
         old_revid, new_revno, new_revid):
         """Capture post commit hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if local:
@@ -119,7 +119,7 @@ class TestCommitHook(TestCaseWithBranch):
             ],
             self.hook_calls)
         tree.unlock()
-    
+
     def test_pre_commit_passes(self):
         empty_delta = TreeDelta()
         root_delta = TreeDelta()
@@ -193,7 +193,7 @@ class TestCommitHook(TestCaseWithBranch):
             revid1 = tree.commit('first revision')
         finally:
             tree.unlock()
-        
+
         tree.lock_write()
         try:
             # making changes
@@ -207,7 +207,7 @@ class TestCommitHook(TestCaseWithBranch):
             revid2 = tree.commit('second revision')
         finally:
             tree.unlock()
-        
+
         expected_delta = TreeDelta()
         expected_delta.added = [('added_dir', 'added_dir_id', 'directory')]
         expected_delta.removed = [('to_be_unversioned',
