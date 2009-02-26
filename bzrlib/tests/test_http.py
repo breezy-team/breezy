@@ -216,6 +216,35 @@ class RecordingServer(object):
         self.port = None
 
 
+class TestAuthHeader(tests.TestCase):
+
+    def parse_header(self, header):
+        ah =  _urllib2_wrappers.AbstractAuthHandler()
+        return ah._parse_auth_header(header)
+
+    def test_empty_header(self):
+        scheme, remainder = self.parse_header('')
+        self.assertEquals('', scheme)
+        self.assertIs(None, remainder)
+
+    def test_negotiate_header(self):
+        scheme, remainder = self.parse_header('Negotiate')
+        self.assertEquals('negotiate', scheme)
+        self.assertIs(None, remainder)
+
+    def test_basic_header(self):
+        scheme, remainder = self.parse_header(
+            'Basic realm="Thou should not pass"')
+        self.assertEquals('basic', scheme)
+        self.assertEquals('realm="Thou should not pass"', remainder)
+
+    def test_digest_header(self):
+        scheme, remainder = self.parse_header(
+            'Digest realm="Thou should not pass"')
+        self.assertEquals('digest', scheme)
+        self.assertEquals('realm="Thou should not pass"', remainder)
+
+
 class TestHTTPServer(tests.TestCase):
     """Test the HTTP servers implementations."""
 
