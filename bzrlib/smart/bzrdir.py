@@ -156,9 +156,10 @@ class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
 
         This operates precisely like 'bzrdir.find_repository'.
 
-        :return: (relpath, rich_root, tree_ref, external_lookup) flags. All are
-            strings, relpath is a / prefixed path, and the other three are
-            either 'yes' or 'no'.
+        :return: (relpath, rich_root, tree_ref, external_lookup, network_name).
+            All are strings, relpath is a / prefixed path, the next three are
+            either 'yes' or 'no', and the last is a repository format network
+            name.
         :raises errors.NoRepositoryPresent: When there is no repository
             present.
         """
@@ -168,7 +169,8 @@ class SmartServerRequestFindRepository(SmartServerRequestBzrDir):
         path = self._repo_relpath(bzrdir.root_transport, repository)
         rich_root, tree_ref, external_lookup = self._format_to_capabilities(
             repository._format)
-        return path, rich_root, tree_ref, external_lookup
+        network_name = repository._format.network_name()
+        return path, rich_root, tree_ref, external_lookup, network_name
 
 
 class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
@@ -188,7 +190,7 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
         :return: norepository or ok, relpath.
         """
         try:
-            path, rich_root, tree_ref, external_lookup = self._find(path)
+            path, rich_root, tree_ref, external_lookup, name = self._find(path)
             return SuccessfulSmartServerResponse(('ok', path, rich_root, tree_ref))
         except errors.NoRepositoryPresent:
             return FailedSmartServerResponse(('norepository', ))
@@ -212,7 +214,7 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
             external_lookup.
         """
         try:
-            path, rich_root, tree_ref, external_lookup = self._find(path)
+            path, rich_root, tree_ref, external_lookup, name = self._find(path)
             return SuccessfulSmartServerResponse(
                 ('ok', path, rich_root, tree_ref, external_lookup))
         except errors.NoRepositoryPresent:
@@ -236,9 +238,9 @@ class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
             external_lookup, network_name.
         """
         try:
-            path, rich_root, tree_ref, external_lookup = self._find(path)
+            path, rich_root, tree_ref, external_lookup, name = self._find(path)
             return SuccessfulSmartServerResponse(
-                ('ok', path, rich_root, tree_ref, external_lookup))
+                ('ok', path, rich_root, tree_ref, external_lookup, name))
         except errors.NoRepositoryPresent:
             return FailedSmartServerResponse(('norepository', ))
 

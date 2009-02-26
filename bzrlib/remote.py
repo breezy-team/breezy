@@ -243,6 +243,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
 
     def _open_repo_v3(self, path):
         verb = 'BzrDir.find_repositoryV3'
+        medium = self._client._medium
+        if medium._is_remote_before((1, 13)):
+            raise errors.UnknownSmartMethod(verb)
         response = self._call(verb, path)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
@@ -780,8 +783,11 @@ class RemoteRepository(_RpcHelper):
         :param repository: The repository to fallback to for non-hpss
             implemented operations.
         """
-        if self._real_repository is not None:
-            raise AssertionError('_real_repository is already set')
+        # There was an assertion that this real repository was never replaced;
+        # However for down level serves we always open the real repository,
+        # which means that opening the branch ends up replacing it. Rather than
+        # write to real_branch.repository, we just allow the _real_repository
+        # object to be replaced.
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
