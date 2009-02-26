@@ -3356,8 +3356,12 @@ class cmd_merge(Command):
         tree = WorkingTree.open_containing(directory)[0]
 
         # die as quickly as possible if there are uncommitted changes
-        td = tree.changes_from(tree.basis_tree())
-        if len(td.modified):
+        try:
+            basis_tree = tree.revision_tree(tree.last_revision())
+        except errors.NoSuchRevision:
+            basis_tree = tree.basis_tree()
+        changes = tree.changes_from(basis_tree)
+        if changes.has_changed():
             raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
