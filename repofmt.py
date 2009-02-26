@@ -51,6 +51,10 @@ try:
     CHKInventoryRepository,
     RepositoryFormatPackDevelopment5,
     RepositoryFormatPackDevelopment5Hash16,
+##    RepositoryFormatPackDevelopment5Hash16b,
+##    RepositoryFormatPackDevelopment5Hash63,
+##    RepositoryFormatPackDevelopment5Hash127a,
+##    RepositoryFormatPackDevelopment5Hash127b,
     RepositoryFormatPackDevelopment5Hash255,
     )
     chk_support = True
@@ -260,6 +264,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                        ('text_index', 'texts'),
                        ('signature_index', 'signatures'),
                       ]
+            # TODO: This is a very non-optimal ordering for chk_bytes. The
+            #       issue is that pages that are similar are not transmitted
+            #       together. Perhaps get_record_stream('gc-optimal') should be
+            #       taught about how to group chk pages?
             if getattr(self, 'chk_index', None) is not None:
                 to_copy.insert(2, ('chk_index', 'chk_bytes'))
 
@@ -521,6 +529,66 @@ if chk_support:
             return ("Development repository format - hash16chk+groupcompress")
 
 
+##    class RepositoryFormatPackGCPlainCHK16b(RepositoryFormatPackDevelopment5Hash16b):
+##        """A hashed CHK+group compress pack repository."""
+##
+##        repository_class = GCCHKPackRepository
+##
+##        def get_format_string(self):
+##            """See RepositoryFormat.get_format_string()."""
+##            return ('Bazaar development format - hash16bchk+gc'
+##                    ' (needs bzr.dev from 1.13)\n')
+##
+##        def get_format_description(self):
+##            """See RepositoryFormat.get_format_description()."""
+##            return ("Development repository format - hash16bchk+groupcompress")
+##
+##
+##    class RepositoryFormatPackGCPlainCHK63(RepositoryFormatPackDevelopment5Hash63):
+##        """A hashed CHK+group compress pack repository."""
+##
+##        repository_class = GCCHKPackRepository
+##
+##        def get_format_string(self):
+##            """See RepositoryFormat.get_format_string()."""
+##            return ('Bazaar development format - hash63+gc'
+##                    ' (needs bzr.dev from 1.13)\n')
+##
+##        def get_format_description(self):
+##            """See RepositoryFormat.get_format_description()."""
+##            return ("Development repository format - hash63+groupcompress")
+##
+##
+##    class RepositoryFormatPackGCPlainCHK127a(RepositoryFormatPackDevelopment5Hash127a):
+##        """A hashed CHK+group compress pack repository."""
+##
+##        repository_class = GCCHKPackRepository
+##
+##        def get_format_string(self):
+##            """See RepositoryFormat.get_format_string()."""
+##            return ('Bazaar development format - hash127a+gc'
+##                    ' (needs bzr.dev from 1.13)\n')
+##
+##        def get_format_description(self):
+##            """See RepositoryFormat.get_format_description()."""
+##            return ("Development repository format - hash127a+groupcompress")
+##
+##
+##    class RepositoryFormatPackGCPlainCHK127b(RepositoryFormatPackDevelopment5Hash127b):
+##        """A hashed CHK+group compress pack repository."""
+##
+##        repository_class = GCCHKPackRepository
+##
+##        def get_format_string(self):
+##            """See RepositoryFormat.get_format_string()."""
+##            return ('Bazaar development format - hash127b+gc'
+##                    ' (needs bzr.dev from 1.13)\n')
+##
+##        def get_format_description(self):
+##            """See RepositoryFormat.get_format_description()."""
+##            return ("Development repository format - hash127b+groupcompress")
+
+
     class RepositoryFormatPackGCPlainCHK255(RepositoryFormatPackDevelopment5Hash255):
         """A hashed CHK+group compress pack repository."""
 
@@ -543,6 +611,10 @@ def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     if chk_support:
         formats = formats + (RepositoryFormatPackGCPlainCHK,
                              RepositoryFormatPackGCPlainCHK16,
+                             ## RepositoryFormatPackGCPlainCHK16b,
+                             ## RepositoryFormatPackGCPlainCHK63,
+                             ## RepositoryFormatPackGCPlainCHK127a,
+                             ## RepositoryFormatPackGCPlainCHK127b,
                              RepositoryFormatPackGCPlainCHK255)
     if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
