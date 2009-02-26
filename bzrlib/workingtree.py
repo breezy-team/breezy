@@ -1546,7 +1546,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
-                                     possible_transports=possible_transports)
+                                     possible_transports=possible_transports,
+                                     local=local)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 pp.next_phase()

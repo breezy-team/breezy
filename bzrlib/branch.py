@@ -1946,6 +1946,10 @@ class BzrBranch(Branch):
             supplied as the target_branch to pull hooks.
         :param local: Only update the local branch, and not the bound branch.
         """
+        # This type of branch can't be bound.
+        if local:
+            raise errors.LocalRequiresBoundBranch()
+        
         result = PullResult()
         result.source_branch = source
         if _override_hook_target is None:
@@ -2138,13 +2142,15 @@ class BzrBranch5(BzrBranch):
             so it should not run its hooks.
         """
         bound_location = self.get_bound_location()
+        if local and not bound_location:
+            raise errors.LocalRequiresBoundBranch()
         master_branch = None
         if bound_location and source.base != bound_location:
             # not pulling from master, so we need to update master.
             master_branch = self.get_master_branch(possible_transports)
             master_branch.lock_write()
         try:
-            if master_branch:
+            if master_branch and not local:
                 # pull from source into master.
                 master_branch.pull(source, overwrite, stop_revision,
                     run_hooks=False)

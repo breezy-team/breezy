@@ -874,6 +874,9 @@ class cmd_pull(Command):
         except errors.NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
+        
+        if local and not branch_to.get_bound_location():
+            raise errors.LocalRequiresBoundBranch()
 
         possible_transports = []
         if location is not None:
@@ -922,9 +925,11 @@ class cmd_pull(Command):
                     unversioned_filter=tree_to.is_ignored, view_info=view_info)
                 result = tree_to.pull(branch_from, overwrite, revision_id,
                                       change_reporter,
-                                      possible_transports=possible_transports)
+                                      possible_transports=possible_transports,
+                                      local=local)
             else:
-                result = branch_to.pull(branch_from, overwrite, revision_id)
+                result = branch_to.pull(branch_from, overwrite, revision_id,
+                                      local=local)
 
             result.report(self.outf)
             if verbose and result.old_revid != result.new_revid:
