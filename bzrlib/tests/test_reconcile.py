@@ -20,7 +20,7 @@
 from bzrlib import bzrdir, errors, tests
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 
@@ -46,7 +46,7 @@ class TestWorksWithSharedRepositories(TestCaseWithRepository):
 
 
 class TestReconciler(tests.TestCaseWithTransport):
-    
+
     def test_reconciler_with_no_branch(self):
         repo = self.make_repository('repo')
         reconciler = Reconciler(repo.bzrdir)

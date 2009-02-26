@@ -69,7 +69,7 @@ def _set_gpg_tty():
 
 class GPGStrategy(object):
     """GPG Signing and checking facilities."""
-        
+
     def _command_line(self):
         return [self._config.gpg_signing_command(), '--clearsign']
 

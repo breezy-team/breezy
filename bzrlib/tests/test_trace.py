@@ -120,7 +120,7 @@ class TestTrace(TestCase):
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')
         self.assertContainsRe(self._get_log(keep_log_file=True),
                               "the unicode character for benzene is")
-    
+
     def test_trace_argument_unicode(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
@@ -186,7 +186,7 @@ class TestTrace(TestCase):
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
 
-        This is primarily for use in the test framework. 
+        This is primarily for use in the test framework.
         """
         tmp1 = tempfile.NamedTemporaryFile()
         tmp2 = tempfile.NamedTemporaryFile()

@@ -237,7 +237,7 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
                     'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
                     'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
                     'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
-                    't':['i', 's'], 'u':['s', 'j'], 
+                    't':['i', 's'], 'u':['s', 'j'],
                     }
 
 # Graph where different walkers will race to find the common and uncommon
@@ -698,9 +698,20 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_graph.is_ancestor('rev2a', 'rev2b')
         self.assertTrue('null:' not in instrumented_provider.calls)
 
+    def test_is_between(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(True, graph.is_between('null:', 'null:', 'null:'))
+        self.assertEqual(True, graph.is_between('rev1', 'null:', 'rev1'))
+        self.assertEqual(True, graph.is_between('rev1', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev4', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev3', 'rev1', 'rev4'))
+        self.assertEqual(False, graph.is_between('rev4', 'rev1', 'rev3'))
+        self.assertEqual(False, graph.is_between('rev1', 'rev2a', 'rev4'))
+        self.assertEqual(False, graph.is_between('null:', 'rev1', 'rev4'))
+
     def test_is_ancestor_boundary(self):
         """Ensure that we avoid searching the whole graph.
-        
+
         This requires searching through b as a common ancestor, so we
         can identify that e is common.
         """
@@ -726,7 +737,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         # 'a' is not in the ancestry of 'c', and 'g' is a ghost
         expected['g'] = None
         self.assertEqual(expected, dict(graph.iter_ancestry(['a', 'c'])))
-        expected.pop('a') 
+        expected.pop('a')
         self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
 
     def test_filter_candidate_lca(self):
@@ -834,7 +845,7 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def _run_heads_break_deeper(self, graph_dict, search):
         """Run heads on a graph-as-a-dict.
-        
+
         If the search asks for the parents of 'deeper' the test will fail.
         """
         class stub(object):
@@ -1082,6 +1093,33 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         self.assertSeenAndResult(expected, search, search.next_with_ghosts)
 
+    def test_breadth_first_stop_searching_late(self):
+        # A client should be able to say 'stop node X' and have it excluded
+        # from the result even if X was seen in an older iteration of the
+        # search.
+        graph = self.make_graph({
+            'head':['middle'],
+            'middle':['child'],
+            'child':[NULL_REVISION],
+            NULL_REVISION:[],
+            })
+        search = graph._make_breadth_first_searcher(['head'])
+        expected = [
+            (set(['head']), (set(['head']), set(['middle']), 1),
+             ['head'], None, None),
+            (set(['head', 'middle']), (set(['head']), set(['child']), 2),
+             ['head', 'middle'], None, None),
+            # 'middle' came from the previous iteration, but we don't stop
+            # searching it until *after* advancing the searcher.
+            (set(['head', 'middle', 'child']),
+             (set(['head']), set(['middle', 'child']), 1),
+             ['head'], None, ['middle', 'child']),
+            ]
+        self.assertSeenAndResult(expected, search, search.next)
+        # using next_with_ghosts:
+        search = graph._make_breadth_first_searcher(['head'])
+        self.assertSeenAndResult(expected, search, search.next_with_ghosts)
+
     def test_breadth_first_get_result_ghosts_are_excluded(self):
         graph = self.make_graph({
             'head':['child', 'ghost'],
@@ -1312,6 +1350,36 @@ class TestGraphFindDistanceToNull(TestGraphBase):
         self.assertFindDistance(6, graph, 'g', [('i', 8)])
 
 
+class TestFindMergeOrder(TestGraphBase):
+
+    def assertMergeOrder(self, expected, graph, tip, base_revisions):
+        self.assertEqual(expected, graph.find_merge_order(tip, base_revisions))
+
+    def test_parents(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertMergeOrder(['rev3', 'rev2b'], graph, 'rev4',
+                                                        ['rev3', 'rev2b'])
+        self.assertMergeOrder(['rev3', 'rev2b'], graph, 'rev4',
+                                                        ['rev2b', 'rev3'])
+
+    def test_ancestors(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertMergeOrder(['rev1', 'rev2b'], graph, 'rev4',
+                                                        ['rev1', 'rev2b'])
+        self.assertMergeOrder(['rev1', 'rev2b'], graph, 'rev4',
+                                                        ['rev2b', 'rev1'])
+
+    def test_shortcut_one_ancestor(self):
+        # When we have enough info, we can stop searching
+        graph = self.make_breaking_graph(ancestry_1, ['rev3', 'rev2b', 'rev4'])
+        # Single ancestors shortcut right away
+        self.assertMergeOrder(['rev3'], graph, 'rev4', ['rev3'])
+
+    def test_shortcut_after_one_ancestor(self):
+        graph = self.make_breaking_graph(ancestry_1, ['rev2a', 'rev2b'])
+        self.assertMergeOrder(['rev3', 'rev1'], graph, 'rev4', ['rev1', 'rev3'])
+
+
 class TestCachingParentsProvider(tests.TestCase):
 
     def setUp(self):
@@ -1354,3 +1422,105 @@ class TestCachingParentsProvider(tests.TestCase):
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
+
+
+class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
+    """Test the behaviour when parents are provided that were not requested."""
+
+    def setUp(self):
+        super(TestCachingParentsProviderExtras, self).setUp()
+        class ExtraParentsProvider(object):
+
+            def get_parent_map(self, keys):
+                return {'rev1': [], 'rev2': ['rev1',]}
+
+        self.inst_pp = InstrumentedParentsProvider(ExtraParentsProvider())
+        self.caching_pp = _mod_graph.CachingParentsProvider(
+            get_parent_map=self.inst_pp.get_parent_map)
+
+    def test_uncached(self):
+        self.caching_pp.disable_cache()
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertIs(None, self.caching_pp._cache)
+
+    def test_cache_initially_empty(self):
+        self.assertEqual({}, self.caching_pp._cache)
+
+    def test_cached(self):
+        self.assertEqual({'rev1': []},
+                         self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+        self.assertEqual({'rev1': [], 'rev2': ['rev1']},
+                         self.caching_pp._cache)
+        self.assertEqual({'rev1': []},
+                          self.caching_pp.get_parent_map(['rev1']))
+        self.assertEqual(['rev1'], self.inst_pp.calls)
+
+    def test_disable_cache_clears_cache(self):
+        # Put something in the cache
+        self.caching_pp.get_parent_map(['rev1'])
+        self.assertEqual(2, len(self.caching_pp._cache))
+        self.caching_pp.disable_cache()
+        self.assertIs(None, self.caching_pp._cache)
+
+    def test_enable_cache_raises(self):
+        e = self.assertRaises(AssertionError, self.caching_pp.enable_cache)
+        self.assertEqual('Cache enabled when already enabled.', str(e))
+
+    def test_cache_misses(self):
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+    def test_no_cache_misses(self):
+        self.caching_pp.disable_cache()
+        self.caching_pp.enable_cache(cache_misses=False)
+        self.caching_pp.get_parent_map(['rev3'])
+        self.caching_pp.get_parent_map(['rev3'])
+        self.assertEqual(['rev3', 'rev3'], self.inst_pp.calls)
+
+    def test_cache_extras(self):
+        self.assertEqual({}, self.caching_pp.get_parent_map(['rev3']))
+        self.assertEqual({'rev2': ['rev1']},
+                         self.caching_pp.get_parent_map(['rev2']))
+        self.assertEqual(['rev3'], self.inst_pp.calls)
+
+
+class TestCollapseLinearRegions(tests.TestCase):
+
+    def assertCollapsed(self, collapsed, original):
+        self.assertEqual(collapsed,
+                         _mod_graph.collapse_linear_regions(original))
+
+    def test_collapse_nothing(self):
+        d = {1:[2, 3], 2:[], 3:[]}
+        self.assertCollapsed(d, d)
+        d = {1:[2], 2:[3, 4], 3:[5], 4:[5], 5:[]}
+        self.assertCollapsed(d, d)
+
+    def test_collapse_chain(self):
+        # Any time we have a linear chain, we should be able to collapse
+        d = {1:[2], 2:[3], 3:[4], 4:[5], 5:[]}
+        self.assertCollapsed({1:[5], 5:[]}, d)
+        d = {5:[4], 4:[3], 3:[2], 2:[1], 1:[]}
+        self.assertCollapsed({5:[1], 1:[]}, d)
+        d = {5:[3], 3:[4], 4:[1], 1:[2], 2:[]}
+        self.assertCollapsed({5:[2], 2:[]}, d)
+
+    def test_collapse_with_multiple_children(self):
+        #    7
+        #    |
+        #    6
+        #   / \
+        #  4   5
+        #  |   |
+        #  2   3
+        #   \ /
+        #    1
+        #
+        # 4 and 5 cannot be removed because 6 has 2 children
+        # 2 and 3 cannot be removed because 1 has 2 parents
+        d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
+        self.assertCollapsed(d, d)

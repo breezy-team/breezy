@@ -73,7 +73,7 @@ class ReSign(TestCaseInTempDir):
 
         self.run_bzr('re-sign B')
         self.assertEqualSignature(repo, 'B')
-            
+
     def test_resign_range(self):
         wt = self.setup_tree()
         repo = wt.branch.repository

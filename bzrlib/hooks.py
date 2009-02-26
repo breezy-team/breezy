@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ from bzrlib import (
 
 class Hooks(dict):
     """A dictionary mapping hook name to a list of callables.
-    
+
     e.g. ['FOO'] Is the list of items to be called when the
     FOO hook is triggered.
     """
@@ -41,7 +41,7 @@ class Hooks(dict):
 
         If no name has been registered, the string 'No hook name' is returned.
         We use a fixed string rather than repr or the callables module because
-        the code names are rarely meaningful for end users and this is not 
+        the code names are rarely meaningful for end users and this is not
         intended for debugging.
         """
         return self._callable_names.get(a_callable, "No hook name")
@@ -53,7 +53,7 @@ class Hooks(dict):
         :param hook_name: A hook name. See the __init__ method of BranchHooks
             for the complete list of hooks.
         :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__ 
+            The exact signature will depend on the hook - see the __init__
             method of BranchHooks for details on each hook.
         """
         self.install_named_hook(hook_name, a_callable, None)
@@ -64,7 +64,7 @@ class Hooks(dict):
         :param hook_name: A hook name. See the __init__ method of BranchHooks
             for the complete list of hooks.
         :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__ 
+            The exact signature will depend on the hook - see the __init__
             method of BranchHooks for details on each hook.
         :param name: A name to associate a_callable with, to show users what is
             running.

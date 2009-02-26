@@ -141,7 +141,7 @@ class TestRunBzr(ExternalBase):
         # test that the stdin keyword to run_bzr is passed through to
         # _run_bzr_core as-is. We do this by overriding
         # _run_bzr_core in this class, and then calling run_bzr,
-        # which is a convenience function for _run_bzr_core, so 
+        # which is a convenience function for _run_bzr_core, so
         # should invoke it.
         self.run_bzr('foo bar', stdin='gam')
         self.assertEqual('gam', self.stdin)
@@ -208,7 +208,7 @@ class TestRunBzrCaptured(ExternalBase):
         # test that the stdin keyword to _run_bzr_core is passed through to
         # apply_redirected as a StringIO. We do this by overriding
         # apply_redirected in this class, and then calling _run_bzr_core,
-        # which calls apply_redirected. 
+        # which calls apply_redirected.
         self.run_bzr(['foo', 'bar'], stdin='gam')
         self.assertEqual('gam', self.stdin.read())
         self.assertTrue(self.stdin is self.factory_stdin)
@@ -257,12 +257,12 @@ class TestRunBzrCaptured(ExternalBase):
 class TestRunBzrSubprocess(TestCaseWithTransport):
 
     def test_run_bzr_subprocess(self):
-        """The run_bzr_helper_external comand behaves nicely."""
+        """The run_bzr_helper_external command behaves nicely."""
         result = self.run_bzr_subprocess('--version')
         result = self.run_bzr_subprocess(['--version'])
         result = self.run_bzr_subprocess('--version', retcode=None)
         self.assertContainsRe(result[0], 'is free software')
-        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
+        self.assertRaises(AssertionError, self.run_bzr_subprocess,
                           '--versionn')
         result = self.run_bzr_subprocess('--versionn', retcode=3)
         result = self.run_bzr_subprocess('--versionn', retcode=None)
@@ -428,7 +428,7 @@ class TestBzrSubprocess(TestCaseWithTransport):
         process = self.start_bzr_subprocess(['--versionn'])
         self.assertRaises(self.failureException, self.finish_bzr_subprocess,
                           process)
-        
+
     def test_start_and_stop_bzr_subprocess_send_signal(self):
         """finish_bzr_subprocess raises self.failureException if the retcode is
         not the expected one.
@@ -572,9 +572,18 @@ class TestSelftestWithIdList(TestCaseInTempDir):
 
 class TestSelftestStartingWith(TestCase):
 
-    def test_starting_with(self):
+    def test_starting_with_single_argument(self):
         out, err = self.run_bzr(
             ['selftest', '--starting-with', self.id(), '--list'])
         self.assertContainsRe(out, "Listed 1 test in")
         self.assertContainsRe(out, self.id())
 
+    def test_starting_with_multiple_argument(self):
+        out, err = self.run_bzr(
+            ['selftest',
+             '--starting-with', self.id(),
+             '--starting-with', 'bzrlib.tests.test_sampler',
+             '--list'])
+        self.assertContainsRe(out, "Listed 2 tests in")
+        self.assertContainsRe(out, self.id())
+        self.assertContainsRe(out, 'bzrlib.tests.test_sampler')

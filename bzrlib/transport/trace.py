@@ -33,15 +33,11 @@ class TransportTraceDecorator(TransportDecorator):
     Not all operations are logged at this point, if you need an unlogged
     operation please add a test to the tests of this transport, for the logging
     of the operation you want logged.
-
-    Another future enhancement would be to log to bzrlib.trace.mutter when
-    trace+ is used from the command line (or perhaps as well/instead use
-    -Dtransport), to make tracing operations of the entire program easily.
     """
 
     def __init__(self, url, _decorated=None, _from_transport=None):
         """Set the 'base' path where files will be stored.
-        
+
         _decorated is a private parameter for cloning.
         """
         TransportDecorator.__init__(self, url, _decorated)
@@ -62,6 +58,7 @@ class TransportTraceDecorator(TransportDecorator):
 
     def delete(self, relpath):
         """See Transport.delete()."""
+        self._activity.append(('delete', relpath))
         return self._decorated.delete(relpath)
 
     def delete_tree(self, relpath):
@@ -75,7 +72,7 @@ class TransportTraceDecorator(TransportDecorator):
 
     def get(self, relpath):
         """See Transport.get()."""
-        self._activity.append(('get', relpath))
+        self._trace(('get', relpath))
         return self._decorated.get(relpath)
 
     def get_smart_client(self):
@@ -91,6 +88,7 @@ class TransportTraceDecorator(TransportDecorator):
 
     def mkdir(self, relpath, mode=None):
         """See Transport.mkdir()."""
+        self._trace(('mkdir', relpath, mode))
         return self._decorated.mkdir(relpath, mode)
 
     def open_write_stream(self, relpath, mode=None):
@@ -100,10 +98,10 @@ class TransportTraceDecorator(TransportDecorator):
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
         return self._decorated.put_file(relpath, f, mode)
-    
+
     def put_bytes(self, relpath, bytes, mode=None):
         """See Transport.put_bytes()."""
-        self._activity.append(('put_bytes', relpath, len(bytes), mode))
+        self._trace(('put_bytes', relpath, len(bytes), mode))
         return self._decorated.put_bytes(relpath, bytes, mode)
 
     def listable(self):
@@ -113,7 +111,7 @@ class TransportTraceDecorator(TransportDecorator):
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive()."""
         return self._decorated.iter_files_recursive()
-    
+
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
@@ -121,7 +119,7 @@ class TransportTraceDecorator(TransportDecorator):
     def readv(self, relpath, offsets, adjust_for_latency=False,
         upper_limit=None):
         """See Transport.readv."""
-        self._activity.append(('readv', relpath, offsets, adjust_for_latency,
+        self._trace(('readv', relpath, offsets, adjust_for_latency,
             upper_limit))
         return self._decorated.readv(relpath, offsets, adjust_for_latency,
             upper_limit)
@@ -131,8 +129,9 @@ class TransportTraceDecorator(TransportDecorator):
         return self._decorated.recommended_page_size()
 
     def rename(self, rel_from, rel_to):
+        self._activity.append(('rename', rel_from, rel_to))
         return self._decorated.rename(rel_from, rel_to)
-    
+
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)
@@ -148,6 +147,13 @@ class TransportTraceDecorator(TransportDecorator):
     def lock_write(self, relpath):
         """See Transport.lock_write."""
         return self._decorated.lock_write(relpath)
+
+    def _trace(self, operation_tuple):
+        """Record that a transport operation occured.
+
+        :param operation: Tuple of transport call name and arguments.
+        """
+        self._activity.append(operation_tuple)
 
 
 class TraceServer(DecoratorServer):

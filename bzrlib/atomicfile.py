@@ -53,12 +53,13 @@ class AtomicFile(object):
         self._fd = None
 
         if _hostname is None:
-            _hostname = socket.gethostname()
+            _hostname = osutils.get_host_name()
 
-        self.tmpfilename = '%s.%d.%s.tmp' % (filename, _pid, _hostname)
+        self.tmpfilename = '%s.%d.%s.%s.tmp' % (filename, _pid, _hostname,
+                                                osutils.rand_chars(10))
 
         self.realfilename = filename
-        
+
         flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
         if mode == 'wb':
             flags |= osutils.O_BINARY
@@ -69,7 +70,7 @@ class AtomicFile(object):
             local_mode = new_mode
         else:
             local_mode = 0666
-        
+
         # Use a low level fd operation to avoid chmodding later.
         # This may not succeed, but it should help most of the time
         self._fd = os.open(self.tmpfilename, flags, local_mode)

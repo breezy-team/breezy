@@ -47,7 +47,7 @@ def make_branches(self, format=None):
 
     the object graph is
     B:     A:
-    a..0   a..0 
+    a..0   a..0
     a..1   a..1
     a..2   a..2
     b..3   a..3 merges b..4
@@ -60,30 +60,30 @@ def make_branches(self, format=None):
     """
     tree1 = self.make_branch_and_tree("branch1", format=format)
     br1 = tree1.branch
-    
+
     tree1.commit("Commit one", rev_id="a@u-0-0")
     tree1.commit("Commit two", rev_id="a@u-0-1")
     tree1.commit("Commit three", rev_id="a@u-0-2")
 
-    tree2 = tree1.bzrdir.clone("branch2").open_workingtree()
+    tree2 = tree1.bzrdir.sprout("branch2").open_workingtree()
     br2 = tree2.branch
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
     self.assertEquals(revisions_2[-1], 'b@u-0-4')
-    
+
     tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
     self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
-    
+
     tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
     # DO NOT MERGE HERE - we WANT a GHOST.
     tree2.add_parent_tree_id(br1.revision_history()[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
-    
+
     return br1, br2
 
 
@@ -123,7 +123,7 @@ class TestIsAncestor(TestCaseWithTransport):
                        rev_id, branch.repository.get_ancestry(rev_id))
                 result = sorted(branch.repository.get_ancestry(rev_id))
                 self.assertEquals(result, [None] + sorted(anc))
-    
+
 
 class TestIntermediateRevisions(TestCaseWithTransport):
 
@@ -141,12 +141,6 @@ class TestIntermediateRevisions(TestCaseWithTransport):
 
         wt2.merge_from_branch(self.br1)
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
-
-        from bzrlib.revision import MultipleRevisionSources
-        self.sources = self.applyDeprecated(one_three,
-                        MultipleRevisionSources, self.br1.repository,
-                                                 self.br2.repository)
-
 
 
 class MockRevisionSource(object):

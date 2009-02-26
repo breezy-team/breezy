@@ -21,9 +21,9 @@ import os
 from bzrlib import (
     errors,
     osutils,
+    tests,
     )
 
-from bzrlib.workingtree_4 import WorkingTreeFormat4
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -310,6 +310,8 @@ class TestRenameOne(TestCaseWithWorkingTree):
                                ('a/b', 'b-id')], tree.basis_tree())
 
     def test_rename_to_denormalised_fails(self):
+        if osutils.normalizes_filenames():
+            raise tests.TestNotApplicable('OSX normalizes filenames')
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         tree.add(['a'])

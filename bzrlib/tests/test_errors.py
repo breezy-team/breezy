@@ -18,6 +18,7 @@
 
 """Tests for the formatting and construction of errors."""
 
+import sys
 from bzrlib import (
     bzrdir,
     errors,
@@ -30,11 +31,25 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_bad_filename_encoding(self):
+        error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
+        self.assertEqualDiff(
+            "Filename 'bad/filen\\xe5me' is not valid in your current"
+            " filesystem encoding UTF-8",
+            str(error))
+
     def test_corrupt_dirstate(self):
         error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
         self.assertEqualDiff(
             "Inconsistency in dirstate file path/to/dirstate.\n"
             "Error: the reason why",
+            str(error))
+
+    def test_dirstate_corrupt(self):
+        error = errors.DirstateCorrupt('.bzr/checkout/dirstate',
+                                       'trailing garbage: "x"')
+        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
+            " appears to be corrupt: trailing garbage: \"x\"",
             str(error))
 
     def test_disabled_method(self):
@@ -143,7 +158,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
             "The medium 'a medium' is not connected.", str(error))
- 
+
     def test_no_public_branch(self):
         b = self.make_branch('.')
         error = errors.NoPublicBranch(b)
@@ -156,7 +171,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
-        
+
     def test_no_smart_medium(self):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
@@ -241,8 +256,8 @@ class TestErrors(TestCaseWithTransport):
 
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
-        self.assertEqualDiff("The branch format Bazaar-NG branch, "
-                             "format 0.0.4 is already at the most "
+        self.assertEqualDiff("The branch format All-in-one "
+                             "format 4 is already at the most "
                              "recent format.",
                              str(error))
 
@@ -376,6 +391,15 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_target_not_branch(self):
+        """Test the formatting of TargetNotBranch."""
+        error = errors.TargetNotBranch('foo')
+        self.assertEqual(
+            "Your branch does not have all of the revisions required in "
+            "order to merge this merge directive and the target "
+            "location specified in the merge directive is not a branch: "
+            "foo.", str(error))
+
     def test_malformed_bug_identifier(self):
         """Test the formatting of MalformedBugIdentifier."""
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
@@ -437,7 +461,7 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
-        
+
     def test_check_error(self):
         # This has a member called 'message', which is problematic in
         # python2.5 because that is a slot on the base Exception class
@@ -499,9 +523,100 @@ class TestErrors(TestCaseWithTransport):
         err = errors.UnknownFormatError('bar', kind='foo')
         self.assertEquals("Unknown foo format: 'bar'", str(err))
 
+    def test_unknown_rules(self):
+        err = errors.UnknownRules(['foo', 'bar'])
+        self.assertEquals("Unknown rules detected: foo, bar.", str(err))
+
+    def test_hook_failed(self):
+        # Create an exc_info tuple by raising and catching an exception.
+        try:
+            1/0
+        except ZeroDivisionError:
+            exc_info = sys.exc_info()
+        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        self.assertStartsWith(
+            str(err), 'Hook \'hook name\' during hook stage failed:\n')
+        self.assertEndsWith(
+            str(err), 'integer division or modulo by zero')
+
+    def test_tip_change_rejected(self):
+        err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
+        self.assertEquals(
+            u'Tip change rejected: Unicode message\N{INTERROBANG}',
+            unicode(err))
+        self.assertEquals(
+            'Tip change rejected: Unicode message\xe2\x80\xbd',
+            str(err))
+
+    def test_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        err = errors.ErrorFromSmartServer(error_tuple)
+        self.assertEquals(
+            "Error received from smart server: ('error', 'tuple')", str(err))
+
+    def test_untranslateable_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        err = errors.UnknownErrorFromSmartServer(orig_err)
+        self.assertEquals(
+            "Server sent an unexpected error: ('error', 'tuple')", str(err))
+
+    def test_smart_message_handler_error(self):
+        # Make an exc_info tuple.
+        try:
+            raise Exception("example error")
+        except Exception:
+            exc_info = sys.exc_info()
+        err = errors.SmartMessageHandlerError(exc_info)
+        self.assertStartsWith(
+            str(err), "The message handler raised an exception:\n")
+        self.assertEndsWith(str(err), "Exception: example error\n")
+
+    def test_must_have_working_tree(self):
+        err = errors.MustHaveWorkingTree('foo', 'bar')
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
+                                   " working tree.")
+
+    def test_no_such_view(self):
+        err = errors.NoSuchView('foo')
+        self.assertEquals("No such view: foo.", str(err))
+
+    def test_views_not_supported(self):
+        err = errors.ViewsNotSupported('atree')
+        err_str = str(err)
+        self.assertStartsWith(err_str, "Views are not supported by ")
+        self.assertEndsWith(err_str, "; use 'bzr upgrade' to change your "
+            "tree to a later format.")
+
+    def test_file_outside_view(self):
+        err = errors.FileOutsideView('baz', ['foo', 'bar'])
+        self.assertEquals('Specified file "baz" is outside the current view: '
+            'foo, bar', str(err))
+
+    def test_invalid_shelf_id(self):
+        invalid_id = "foo"
+        err = errors.InvalidShelfId(invalid_id)
+        self.assertEqual('"foo" is not a valid shelf id, '
+            'try a number instead.', str(err))
+
+    def test_unresumable_write_group(self):
+        repo = "dummy repo"
+        wg_tokens = ['token']
+        reason = "a reason"
+        err = errors.UnresumableWriteGroup(repo, wg_tokens, reason)
+        self.assertEqual(
+            "Repository dummy repo cannot resume write group "
+            "['token']: a reason", str(err))
+
+    def test_unsuspendable_write_group(self):
+        repo = "dummy repo"
+        err = errors.UnsuspendableWriteGroup(repo)
+        self.assertEqual(
+            'Repository dummy repo cannot suspend a write group.', str(err))
+
 
 class PassThroughError(errors.BzrError):
-    
+
     _fmt = """Pass through %(foo)s and %(bar)s"""
 
     def __init__(self, foo, bar):
@@ -518,7 +633,7 @@ class ErrorWithNoFormat(errors.BzrError):
 
 
 class TestErrorFormatting(TestCase):
-    
+
     def test_always_str(self):
         e = PassThroughError(u'\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
@@ -535,7 +650,7 @@ class TestErrorFormatting(TestCase):
                 ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
                 lambda x: str(x), e)
         ## s = str(e)
-        self.assertEqual(s, 
+        self.assertEqual(s,
                 "This class has a docstring but no format string.")
 
     def test_mismatched_format_args(self):

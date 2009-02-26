@@ -21,13 +21,12 @@ import re
 import sys
 
 from bzrlib import osutils, urlutils, win32utils
-import bzrlib
-from bzrlib.errors import InvalidURL, InvalidURLJoin
+from bzrlib.errors import InvalidURL, InvalidURLJoin, InvalidRebaseURLs
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
 class TestUrlToPath(TestCase):
-    
+
     def test_basename(self):
         # bzrlib.urlutils.basename
         # Test bzrlib.urlutils.split()
@@ -82,9 +81,9 @@ class TestUrlToPath(TestCase):
 
         # Local paths are assumed to *not* be escaped at all
         try:
-            u'uni/\xb5'.encode(bzrlib.user_encoding)
+            u'uni/\xb5'.encode(osutils.get_user_encoding())
         except UnicodeError:
-            # locale cannot handle unicode 
+            # locale cannot handle unicode
             pass
         else:
             norm_file('uni/%C2%B5', u'uni/\xb5')
@@ -227,7 +226,7 @@ class TestUrlToPath(TestCase):
         test('file:///bar/foo', 'file:///bar/', 'foo')
         test('http://host/foo', 'http://host/', 'foo')
         test('http://host/', 'http://host', '')
-        
+
         # Invalid joinings
         # Cannot go above root
         # Implicitly at root:
@@ -265,7 +264,7 @@ class TestUrlToPath(TestCase):
 
         # Test joining to a path with a trailing slash
         test('foo/bar', 'foo/', 'bar')
-        
+
         # Invalid joinings
         # Cannot go above root
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '../baz')
@@ -317,6 +316,8 @@ class TestUrlToPath(TestCase):
         self.assertEqual('file:///C:/path/to/f%20oo',
             to_url('C:/path/to/f oo'))
 
+        self.assertEqual('file:///', to_url('/'))
+
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
@@ -348,6 +349,7 @@ class TestUrlToPath(TestCase):
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+        self.assertEqual('/', from_url('file:///'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
@@ -511,7 +513,7 @@ class TestUrlToPath(TestCase):
         def test(expected, base, other):
             result = urlutils.relative_url(base, other)
             self.assertEqual(expected, result)
-            
+
         test('a', 'http://host/', 'http://host/a')
         test('http://entirely/different', 'sftp://host/branch',
                     'http://entirely/different')
@@ -526,7 +528,7 @@ class TestUrlToPath(TestCase):
                     'sftp://host/home/jelmer/branch/2b')
         test('../../branch/feature/%2b', 'http://host/home/jelmer/bar/%2b',
                     'http://host/home/jelmer/branch/feature/%2b')
-        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/', 
+        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/',
                     'http://host/home/jelmer/branch/feature/2b')
         # relative_url should preserve a trailing slash
         test('../../branch/feature/2b/', 'http://host/home/jelmer/bar/2b/',
@@ -590,9 +592,9 @@ class TestCwdToURL(TestCaseInTempDir):
 
         os.chdir(u'dod\xe9')
 
-        # On Mac OSX this directory is actually: 
+        # On Mac OSX this directory is actually:
         #   u'/dode\u0301' => '/dode\xcc\x81
-        # but we should normalize it back to 
+        # but we should normalize it back to
         #   u'/dod\xe9' => '/dod\xc3\xa9'
         url = urlutils.local_path_to_url('.')
         self.assertEndsWith(url, '/dod%C3%A9')
@@ -614,3 +616,56 @@ class TestDeriveToLocation(TestCase):
         self.assertEqual("bar", derive("http://foo/bar"))
         self.assertEqual("bar", derive("bzr+ssh://foo/bar"))
         self.assertEqual("foo-bar", derive("lp:foo-bar"))
+
+
+class TestRebaseURL(TestCase):
+    """Test the behavior of rebase_url."""
+
+    def test_non_relative(self):
+        result = urlutils.rebase_url('file://foo', 'file://foo',
+                                     'file://foo/bar')
+        self.assertEqual('file://foo', result)
+        result = urlutils.rebase_url('/foo', 'file://foo',
+                                     'file://foo/bar')
+        self.assertEqual('/foo', result)
+
+    def test_different_ports(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar:80', 'http://bar:81')
+        self.assertEqual(str(e), "URLs differ by more than path:"
+                         " 'http://bar:80' and 'http://bar:81'")
+
+    def test_different_hosts(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar', 'http://baz')
+        self.assertEqual(str(e), "URLs differ by more than path: 'http://bar'"
+                         " and 'http://baz'")
+
+    def test_different_protocol(self):
+        e = self.assertRaises(InvalidRebaseURLs, urlutils.rebase_url,
+                              'foo', 'http://bar', 'ftp://bar')
+        self.assertEqual(str(e), "URLs differ by more than path: 'http://bar'"
+                         " and 'ftp://bar'")
+
+    def test_rebase_success(self):
+        self.assertEqual('../bar', urlutils.rebase_url('bar', 'http://baz/',
+                         'http://baz/qux'))
+        self.assertEqual('qux/bar', urlutils.rebase_url('bar',
+                         'http://baz/qux', 'http://baz/'))
+        self.assertEqual('.', urlutils.rebase_url('foo',
+                         'http://bar/', 'http://bar/foo/'))
+        self.assertEqual('qux/bar', urlutils.rebase_url('../bar',
+                         'http://baz/qux/foo', 'http://baz/'))
+
+    def test_determine_relative_path(self):
+        self.assertEqual('../../baz/bar',
+                         urlutils.determine_relative_path(
+                         '/qux/quxx', '/baz/bar'))
+        self.assertEqual('..',
+                         urlutils.determine_relative_path(
+                         '/bar/baz', '/bar'))
+        self.assertEqual('baz',
+                         urlutils.determine_relative_path(
+                         '/bar', '/bar/baz'))
+        self.assertEqual('.', urlutils.determine_relative_path(
+                         '/bar', '/bar'))

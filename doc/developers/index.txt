@@ -10,12 +10,17 @@ Overall developer documentation
 
 * `Developer Guide <../en/developer-guide/HACKING.html>`_
 
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
+* `Architectural Overview <overview.html>`_ |--| describes some of the
+  most important classes and concepts.
+
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_ 
   (external link)
   |--| automatically generated API reference information
 
 * `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
   (wiki) |--| a guide for writing Python programs that work with Bazaar.
+
+* `Testing <testing.html>`_ |--| Testing bzr.
 
 * `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
   |--| specific advice on writing Bazaar plugins.
@@ -23,8 +28,13 @@ Overall developer documentation
 Process
 =======
 
-* `Releasing Bazaar <releasing.html>`_ |--| How to make a release of Bazaar,
-  and how to coordinate the monthly development cycle.
+* `The Bazaar Development Cycle <cycle.html>`_ |--| The monthly
+  development cycle and how to run it.
+  
+* `Releasing Bazaar <releasing.html>`_ |--| 
+  Checklist to make a release of Bazaar.
+
+* `Managing the Bazaar PPA <ppa.html>`_ |--| Packaging Bazaar for Ubuntu.
 
 * `Giving back <http://bazaar-vcs.org/BzrGivingBack>`_ (wiki) |--| How to get
   your changes to Bazaar integrated into a release.
@@ -68,6 +78,10 @@ Specifications
 
 * `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
   any python application.
+
+* `Bazaar and case-insensitive file systems <case-insensitive-file-systems.html>`_
+  |--| How Bazaar operates on case-insensitive file systems such as commonly
+  found on Windows, USB sticks, etc.
 
 Data formats
 ============

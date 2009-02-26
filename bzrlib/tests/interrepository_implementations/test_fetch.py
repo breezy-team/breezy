@@ -36,6 +36,9 @@ from bzrlib.tests import (
 from bzrlib.tests.interrepository_implementations import (
     TestCaseWithInterRepository,
     )
+from bzrlib.tests.interrepository_implementations.test_interrepository import (
+    check_repo_format_for_funky_id_on_win32
+    )
 
 
 class TestInterRepository(TestCaseWithInterRepository):
@@ -66,7 +69,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                 if tree.inventory[file_id].kind == "file":
                     tree.get_file(file_id).read()
 
-        # makes a target version repo 
+        # makes a target version repo
         repo_b = self.make_to_repository('b')
         check_push_rev1(repo_b)
 
@@ -98,9 +101,12 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
-        except errors.RevisionNotPresent, e:
+        except (errors.BzrCheckError, errors.RevisionNotPresent), e:
             # If an exception is raised, the revision should not be in the
             # target.
+            #
+            # Can also just raise a generic check errors; stream insertion
+            # does this to include all the missing data
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
                               to_repo.revision_tree, 'rev-two')
         else:
@@ -134,7 +140,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source_tree = self.make_branch_and_tree('source')
         source = source_tree.branch.repository
         target = self.make_to_repository('target')
-    
+
         # start by adding a file so the data knit for the file exists in
         # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])
@@ -205,10 +211,10 @@ class TestFetchDependentData(TestCaseWithInterRepository):
         to_repo.fetch(from_tree.branch.repository, tree_rev)
         # to_repo should have a file_graph for from_tree.path2id('subtree') and
         # revid tree_rev.
+        file_id = from_tree.path2id('subtree')
         to_repo.lock_read()
         try:
-            file_vf = to_repo.weave_store.get_weave(
-                from_tree.path2id('subtree'), to_repo.get_transaction())
-            self.assertEqual([tree_rev], file_vf.get_ancestry([tree_rev]))
+            self.assertEqual({(file_id, tree_rev):()},
+                to_repo.texts.get_parent_map([(file_id, tree_rev)]))
         finally:
             to_repo.unlock()

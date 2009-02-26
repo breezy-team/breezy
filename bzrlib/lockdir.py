@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ particular name within the control directory.  We use this rather than OS
 internal locks (such as flock etc) because they can be seen across all
 transports, including http.
 
-Objects can be read if there is only physical read access; therefore 
+Objects can be read if there is only physical read access; therefore
 readers can never be required to create a lock, though they will
 check whether a writer is using the lock.  Writers can't detect
 whether anyone else is reading from the resource as they write.
@@ -56,7 +56,7 @@ rename-and-overwrite, making it hard to tell who won.)
 
 The desired characteristics are:
 
-* Locks are not reentrant.  (That is, a client that tries to take a 
+* Locks are not reentrant.  (That is, a client that tries to take a
   lock it already holds may deadlock or fail.)
 * Stale locks can be guessed at by a heuristic
 * Lost locks can be broken by any client
@@ -78,7 +78,7 @@ object per actual lock on disk.  This module does nothing to prevent aliasing
 and deadlocks will likely occur if the locks are aliased.
 
 In the future we may add a "freshen" method which can be called
-by a lock holder to check that their lock has not been broken, and to 
+by a lock holder to check that their lock has not been broken, and to
 update the timestamp within it.
 
 Example usage:
@@ -105,11 +105,11 @@ Example usage:
 
 import os
 import time
-from cStringIO import StringIO
 
 from bzrlib import (
     debug,
     errors,
+    lock,
     )
 import bzrlib.config
 from bzrlib.errors import (
@@ -124,14 +124,16 @@ from bzrlib.errors import (
         PathError,
         ResourceBusy,
         TransportError,
-        UnlockableTransport,
         )
+from bzrlib.hooks import Hooks
 from bzrlib.trace import mutter, note
-from bzrlib.transport import Transport
-from bzrlib.osutils import rand_chars, format_delta
-from bzrlib.rio import read_stanza, Stanza
+from bzrlib.osutils import format_delta, rand_chars, get_host_name
 import bzrlib.ui
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import rio
+""")
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -152,8 +154,9 @@ _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 1.0
 
 
-class LockDir(object):
-    """Write-lock guarding access to data."""
+class LockDir(lock.Lock):
+    """Write-lock guarding access to data.
+    """
 
     __INFO_NAME = '/info'
 
@@ -164,7 +167,7 @@ class LockDir(object):
 
         :param transport: Transport which will contain the lock
 
-        :param path: Path to the lock within the base directory of the 
+        :param path: Path to the lock within the base directory of the
             transport.
         """
         self.transport = transport
@@ -189,7 +192,7 @@ class LockDir(object):
     def create(self, mode=None):
         """Create the on-disk lock.
 
-        This is typically only called when the object/directory containing the 
+        This is typically only called when the object/directory containing the
         directory is first created.  The lock is not held when it's created.
         """
         self._trace("create lock directory")
@@ -201,7 +204,7 @@ class LockDir(object):
 
     def _attempt_lock(self):
         """Make the pending directory and attempt to rename into place.
-        
+
         If the rename succeeds, we read back the info file to check that we
         really got the lock.
 
@@ -252,7 +255,7 @@ class LockDir(object):
     def _remove_pending_dir(self, tmpname):
         """Remove the pending directory
 
-        This is called if we failed to rename into place, so that the pending 
+        This is called if we failed to rename into place, so that the pending
         dirs don't clutter up the lockdir.
         """
         self._trace("remove %s", tmpname)
@@ -296,6 +299,7 @@ class LockDir(object):
             self._locked_via_token = False
             self._lock_held = False
         else:
+            old_nonce = self.nonce
             # rename before deleting, because we can't atomically remove the
             # whole tree
             start_time = time.time()
@@ -321,6 +325,10 @@ class LockDir(object):
                 self.transport.delete_tree(tmpname)
             self._trace("... unlock succeeded after %dms",
                     (time.time() - start_time) * 1000)
+            result = lock.LockResult(self.transport.abspath(self.path),
+                old_nonce)
+            for hook in self.hooks['lock_released']:
+                hook(result)
 
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
@@ -335,7 +343,7 @@ class LockDir(object):
             lock_info = '\n'.join(self._format_lock_info(holder_info))
             if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
                 self.force_break(holder_info)
-        
+
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
 
@@ -349,7 +357,7 @@ class LockDir(object):
         LockBreakMismatch is raised.
 
         After the lock is broken it will not be held by any process.
-        It is possible that another process may sneak in and take the 
+        It is possible that another process may sneak in and take the
         lock before the breaking process acquires it.
         """
         if not isinstance(dead_holder_info, dict):
@@ -364,7 +372,7 @@ class LockDir(object):
         tmpname = '%s/broken.%s.tmp' % (self.path, rand_chars(20))
         self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
-        # there's a small race window between checking it and doing the 
+        # there's a small race window between checking it and doing the
         # rename.
         broken_info_path = tmpname + self.__INFO_NAME
         broken_info = self._read_info_file(broken_info_path)
@@ -385,7 +393,7 @@ class LockDir(object):
         or if the lock has been affected by a bug.
 
         If the lock is not thought to be held, raises LockNotHeld.  If
-        the lock is thought to be held but has been broken, raises 
+        the lock is thought to be held but has been broken, raises
         LockBroken.
         """
         if not self._lock_held:
@@ -397,7 +405,7 @@ class LockDir(object):
         if info.get('nonce') != self.nonce:
             # there is a lock, but not ours
             raise LockBroken(self)
-        
+
     def _read_info_file(self, path):
         """Read one given info file.
 
@@ -407,7 +415,7 @@ class LockDir(object):
 
     def peek(self):
         """Check if the lock is held by anyone.
-        
+
         If it is held, this returns the lock info structure as a rio Stanza,
         which contains some information about the current lock holder.
         Otherwise returns None.
@@ -422,14 +430,13 @@ class LockDir(object):
     def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
-        import socket
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
             user = config.user_email()
         except errors.NoEmailInUsername:
             user = config.username()
-        s = Stanza(hostname=socket.gethostname(),
+        s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
@@ -438,11 +445,11 @@ class LockDir(object):
         return s.to_string()
 
     def _parse_info(self, info_file):
-        return read_stanza(info_file.readlines()).as_dict()
+        return rio.read_stanza(info_file.readlines()).as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
-        
+
         If you wish to block until the lock can be obtained, call wait_lock()
         instead.
 
@@ -451,7 +458,12 @@ class LockDir(object):
         """
         if self._fake_read_lock:
             raise LockContention(self)
-        return self._attempt_lock()
+        result = self._attempt_lock()
+        hook_result = lock.LockResult(self.transport.abspath(self.path),
+                self.nonce)
+        for hook in self.hooks['lock_acquired']:
+            hook(hook_result)
+        return result
 
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.
@@ -464,7 +476,7 @@ class LockDir(object):
 
         :param timeout: Approximate maximum amount of time to wait for the
         lock, in seconds.
-         
+
         :param poll: Delay in seconds between retrying the lock.
 
         :param max_attempts: Maximum number of times to try to lock.
@@ -530,7 +542,7 @@ class LockDir(object):
             else:
                 self._trace("timeout after waiting %ss", timeout)
                 raise LockContention(self)
-    
+
     def leave_in_place(self):
         self._locked_via_token = True
 
@@ -539,7 +551,7 @@ class LockDir(object):
 
     def lock_write(self, token=None):
         """Wait for and acquire the lock.
-        
+
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
         :returns: a token if this instance supports tokens, otherwise None.
@@ -551,7 +563,7 @@ class LockDir(object):
         A token should be passed in if you know that you have locked the object
         some other way, and need to synchronise this object's state with that
         fact.
-         
+
         XXX: docstring duplicated from LockableFiles.lock_write.
         """
         if token is not None:
@@ -566,12 +578,12 @@ class LockDir(object):
     def lock_read(self):
         """Compatibility-mode shared lock.
 
-        LockDir doesn't support shared read-only locks, so this 
+        LockDir doesn't support shared read-only locks, so this
         just pretends that the lock is taken but really does nothing.
         """
-        # At the moment Branches are commonly locked for read, but 
+        # At the moment Branches are commonly locked for read, but
         # we can't rely on that remotely.  Once this is cleaned up,
-        # reenable this warning to prevent it coming back in 
+        # reenable this warning to prevent it coming back in
         # -- mbp 20060303
         ## warn("LockDir.lock_read falls back to write lock")
         if self._lock_held or self._fake_read_lock:

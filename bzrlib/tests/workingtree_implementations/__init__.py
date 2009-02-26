@@ -18,7 +18,7 @@
 """WorkingTree implementation tests for bzr.
 
 These test the conformance of all the workingtre variations to the expected API.
-Specific tests for individual formats are in the tests/test_workingtree file 
+Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/workingtree_implementations/*.py.
 """
 
@@ -52,16 +52,15 @@ class WorkingTreeTestProviderAdapter(TestScenarioApplier):
     def formats_to_scenarios(self, formats):
         """Transform the input formats to a list of scenarios.
 
-        :param formats: A list of (workingtree_format, bzrdir_format).
+        :param formats: A list [workingtree_format].
         """
 
         result = []
-        for workingtree_format, bzrdir_format in formats:
-            result.append(self.create_scenario(workingtree_format,
-                          bzrdir_format))
+        for workingtree_format in formats:
+            result.append(self.create_scenario(workingtree_format))
         return result
 
-    def create_scenario(self, workingtree_format, bzrdir_format):
+    def create_scenario(self, workingtree_format):
         """Create a scenario for the specified converter
 
         :param workingtree_format: The particular workingtree format to test.
@@ -72,7 +71,7 @@ class WorkingTreeTestProviderAdapter(TestScenarioApplier):
         scenario_options = {
             "transport_server": self._transport_server,
             "transport_readonly_server": self._transport_readonly_server,
-            "bzrdir_format": bzrdir_format,
+            "bzrdir_format": workingtree_format._matchingbzrdir,
             "workingtree_format": workingtree_format,
             }
         return workingtree_format.__class__.__name__, scenario_options
@@ -102,6 +101,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_commit',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',
+        'bzrlib.tests.workingtree_implementations.test_get_file_with_stat',
         'bzrlib.tests.workingtree_implementations.test_get_file_mtime',
         'bzrlib.tests.workingtree_implementations.test_get_parent_ids',
         'bzrlib.tests.workingtree_implementations.test_inv',
@@ -125,6 +125,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_smart_add',
         'bzrlib.tests.workingtree_implementations.test_uncommit',
         'bzrlib.tests.workingtree_implementations.test_unversion',
+        'bzrlib.tests.workingtree_implementations.test_views',
         'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
@@ -134,8 +135,7 @@ def load_tests(basic_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in
-         WorkingTreeFormat._formats.values() + _legacy_formats])
+        WorkingTreeFormat._formats.values() + _legacy_formats)
 
     # add the tests for the sub modules
     adapt_modules(test_workingtree_implementations, adapter, loader, result)

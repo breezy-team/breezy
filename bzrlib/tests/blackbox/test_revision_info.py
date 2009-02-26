@@ -22,10 +22,10 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestRevisionInfo(ExternalBase):
-    
+
     def check_error(self, output, *args):
         """Verify that the expected error matches what bzr says.
-        
+
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
@@ -79,3 +79,10 @@ class TestRevisionInfo(ExternalBase):
         self.check_output(values['1'], 'revision-info -r revid:a@r-0-1')
         self.check_output(values['1.1.1'],
                           'revision-info --revision revid:a@r-0-1.1.1')
+
+    def test_revision_info_explicit_branch_dir(self):
+        """Test that 'bzr revision-info' honors the '-d' option."""
+        wt = self.make_branch_and_tree('branch')
+
+        wt.commit('Commit one', rev_id='a@r-0-1')
+        self.check_output('   1 a@r-0-1\n', 'revision-info -d branch')

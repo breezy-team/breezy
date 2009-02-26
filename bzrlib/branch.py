@@ -15,8 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import sys
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from itertools import chain
 from bzrlib import (
         bzrdir,
         cache_utf8,
@@ -33,6 +36,7 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.config import BranchConfig
+from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -41,6 +45,8 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib.inter import InterObject
+from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -85,6 +91,16 @@ class Branch(object):
         self.tags = self._make_tags()
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._partial_revision_id_to_revno_cache = {}
+        self._last_revision_info_cache = None
+        self._merge_sorted_revisions_cache = None
+        self._open_hook()
+        hooks = Branch.hooks['open']
+        for hook in hooks:
+            hook(self)
+
+    def _open_hook(self):
+        """Called by init to allow simpler extension of the base class."""
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -120,12 +136,12 @@ class Branch(object):
     @staticmethod
     def open_containing(url, possible_transports=None):
         """Open an existing branch which contains url.
-        
+
         This probes for a branch at url, and searches upwards from there.
 
         Basically we keep looking up until we find the control directory or
         run into the root.  If there isn't one, raises NotBranchError.
-        If there is one and it is either an unrecognised format or an unsupported 
+        If there is one and it is either an unrecognised format or an unsupported
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
@@ -133,11 +149,32 @@ class Branch(object):
                                                          possible_transports)
         return control.open_branch(), relpath
 
+    def _push_should_merge_tags(self):
+        """Should _basic_push merge this branch's tags into the target?
+
+        The default implementation returns False if this branch has no tags,
+        and True the rest of the time.  Subclasses may override this.
+        """
+        return self.tags.supports_tags() and self.tags.get_tag_dict()
+
     def get_config(self):
         return BranchConfig(self)
 
-    def _get_nick(self):
-        return self.get_config().get_nickname()
+    def _get_nick(self, local=False, possible_transports=None):
+        config = self.get_config()
+        # explicit overrides master, but don't look for master if local is True
+        if not local and not config.has_explicit_nickname():
+            try:
+                master = self.get_master_branch(possible_transports)
+                if master is not None:
+                    # return the master branch value
+                    return master.nick
+            except errors.BzrError, e:
+                # Silently fall back to local implicit nick if the master is
+                # unavailable
+                mutter("Could not connect to bound branch, "
+                    "falling back to local nick.\n " + str(e))
+        return config.get_nickname()
 
     def _set_nick(self, nick):
         self.get_config().set_user_option('nickname', nick, warn_masked=True)
@@ -146,6 +183,33 @@ class Branch(object):
 
     def is_locked(self):
         raise NotImplementedError(self.is_locked)
+
+    def _lefthand_history(self, revision_id, last_rev=None,
+                          other_branch=None):
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(4, "_lefthand_history scales with history.")
+        # stop_revision must be a descendant of last_revision
+        graph = self.repository.get_graph()
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+        # make a new revision history from the graph
+        parents_map = graph.get_parent_map([revision_id])
+        if revision_id not in parents_map:
+            raise errors.NoSuchRevision(self, revision_id)
+        current_rev_id = revision_id
+        new_history = []
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
+        # Do not include ghosts or graph origin in revision_history
+        while (current_rev_id in parents_map and
+               len(parents_map[current_rev_id]) > 0):
+            check_not_reserved_id(current_rev_id)
+            new_history.append(current_rev_id)
+            current_rev_id = parents_map[current_rev_id][0]
+            parents_map = graph.get_parent_map([current_rev_id])
+        new_history.reverse()
+        return new_history
 
     def lock_write(self):
         raise NotImplementedError(self.lock_write)
@@ -162,6 +226,70 @@ class Branch(object):
 
     def get_physical_lock_status(self):
         raise NotImplementedError(self.get_physical_lock_status)
+
+    @needs_read_lock
+    def dotted_revno_to_revision_id(self, revno, _cache_reverse=False):
+        """Return the revision_id for a dotted revno.
+
+        :param revno: a tuple like (1,) or (1,1,2)
+        :param _cache_reverse: a private parameter enabling storage
+           of the reverse mapping in a top level cache. (This should
+           only be done in selective circumstances as we want to
+           avoid having the mapping cached multiple times.)
+        :return: the revision_id
+        :raises errors.NoSuchRevision: if the revno doesn't exist
+        """
+        rev_id = self._do_dotted_revno_to_revision_id(revno)
+        if _cache_reverse:
+            self._partial_revision_id_to_revno_cache[rev_id] = revno
+        return rev_id
+
+    def _do_dotted_revno_to_revision_id(self, revno):
+        """Worker function for dotted_revno_to_revision_id.
+
+        Subclasses should override this if they wish to
+        provide a more efficient implementation.
+        """
+        if len(revno) == 1:
+            return self.get_rev_id(revno[0])
+        revision_id_to_revno = self.get_revision_id_to_revno_map()
+        revision_ids = [revision_id for revision_id, this_revno
+                        in revision_id_to_revno.iteritems()
+                        if revno == this_revno]
+        if len(revision_ids) == 1:
+            return revision_ids[0]
+        else:
+            revno_str = '.'.join(map(str, revno))
+            raise errors.NoSuchRevision(self, revno_str)
+
+    @needs_read_lock
+    def revision_id_to_dotted_revno(self, revision_id):
+        """Given a revision id, return its dotted revno.
+
+        :return: a tuple like (1,) or (400,1,3).
+        """
+        return self._do_revision_id_to_dotted_revno(revision_id)
+
+    def _do_revision_id_to_dotted_revno(self, revision_id):
+        """Worker function for revision_id_to_revno."""
+        # Try the caches if they are loaded
+        result = self._partial_revision_id_to_revno_cache.get(revision_id)
+        if result is not None:
+            return result
+        if self._revision_id_to_revno_cache:
+            result = self._revision_id_to_revno_cache.get(revision_id)
+            if result is None:
+                raise errors.NoSuchRevision(self, revision_id)
+        # Try the mainline as it's optimised
+        try:
+            revno = self.revision_id_to_revno(revision_id)
+            return (revno,)
+        except errors.NoSuchRevision:
+            # We need to load and use the full revno map after all
+            result = self.get_revision_id_to_revno_map().get(revision_id)
+            if result is None:
+                raise errors.NoSuchRevision(self, revision_id)
+        return result
 
     @needs_read_lock
     def get_revision_id_to_revno_map(self):
@@ -193,23 +321,121 @@ class Branch(object):
 
         :return: A dictionary mapping revision_id => dotted revno.
         """
-        last_revision = self.last_revision()
-        revision_graph = repository._old_get_graph(self.repository,
-            last_revision)
-        merge_sorted_revisions = tsort.merge_sort(
-            revision_graph,
-            last_revision,
-            None,
-            generate_revno=True)
         revision_id_to_revno = dict((rev_id, revno)
-                                    for seq_num, rev_id, depth, revno, end_of_merge
-                                     in merge_sorted_revisions)
+            for rev_id, depth, revno, end_of_merge
+             in self.iter_merge_sorted_revisions())
         return revision_id_to_revno
+
+    @needs_read_lock
+    def iter_merge_sorted_revisions(self, start_revision_id=None,
+            stop_revision_id=None, stop_rule='exclude', direction='reverse'):
+        """Walk the revisions for a branch in merge sorted order.
+
+        Merge sorted order is the output from a merge-aware,
+        topological sort, i.e. all parents come before their
+        children going forward; the opposite for reverse.
+
+        :param start_revision_id: the revision_id to begin walking from.
+            If None, the branch tip is used.
+        :param stop_revision_id: the revision_id to terminate the walk
+            after. If None, the rest of history is included.
+        :param stop_rule: if stop_revision_id is not None, the precise rule
+            to use for termination:
+            * 'exclude' - leave the stop revision out of the result (default)
+            * 'include' - the stop revision is the last item in the result
+            * 'with-merges' - include the stop revision and all of its
+              merged revisions in the result
+        :param direction: either 'reverse' or 'forward':
+            * reverse means return the start_revision_id first, i.e.
+              start at the most recent revision and go backwards in history
+            * forward returns tuples in the opposite order to reverse.
+              Note in particular that forward does *not* do any intelligent
+              ordering w.r.t. depth as some clients of this API may like.
+              (If required, that ought to be done at higher layers.)
+
+        :return: an iterator over (revision_id, depth, revno, end_of_merge)
+            tuples where:
+
+            * revision_id: the unique id of the revision
+            * depth: How many levels of merging deep this node has been
+              found.
+            * revno_sequence: This field provides a sequence of
+              revision numbers for all revisions. The format is:
+              (REVNO, BRANCHNUM, BRANCHREVNO). BRANCHNUM is the number of the
+              branch that the revno is on. From left to right the REVNO numbers
+              are the sequence numbers within that branch of the revision.
+            * end_of_merge: When True the next node (earlier in history) is
+              part of a different merge.
+        """
+        # Note: depth and revno values are in the context of the branch so
+        # we need the full graph to get stable numbers, regardless of the
+        # start_revision_id.
+        if self._merge_sorted_revisions_cache is None:
+            last_revision = self.last_revision()
+            graph = self.repository.get_graph()
+            parent_map = dict(((key, value) for key, value in
+                     graph.iter_ancestry([last_revision]) if value is not None))
+            revision_graph = repository._strip_NULL_ghosts(parent_map)
+            revs = tsort.merge_sort(revision_graph, last_revision, None,
+                generate_revno=True)
+            # Drop the sequence # before caching
+            self._merge_sorted_revisions_cache = [r[1:] for r in revs]
+
+        filtered = self._filter_merge_sorted_revisions(
+            self._merge_sorted_revisions_cache, start_revision_id,
+            stop_revision_id, stop_rule)
+        if direction == 'reverse':
+            return filtered
+        if direction == 'forward':
+            return reversed(list(filtered))
+        else:
+            raise ValueError('invalid direction %r' % direction)
+
+    def _filter_merge_sorted_revisions(self, merge_sorted_revisions,
+        start_revision_id, stop_revision_id, stop_rule):
+        """Iterate over an inclusive range of sorted revisions."""
+        rev_iter = iter(merge_sorted_revisions)
+        if start_revision_id is not None:
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                if rev_id != start_revision_id:
+                    continue
+                else:
+                    # The decision to include the start or not
+                    # depends on the stop_rule if a stop is provided
+                    rev_iter = chain(
+                        iter([(rev_id, depth, revno, end_of_merge)]),
+                        rev_iter)
+                    break
+        if stop_revision_id is None:
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                yield rev_id, depth, revno, end_of_merge
+        elif stop_rule == 'exclude':
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                if rev_id == stop_revision_id:
+                    return
+                yield rev_id, depth, revno, end_of_merge
+        elif stop_rule == 'include':
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                yield rev_id, depth, revno, end_of_merge
+                if rev_id == stop_revision_id:
+                    return
+        elif stop_rule == 'with-merges':
+            stop_rev = self.repository.get_revision(stop_revision_id)
+            if stop_rev.parent_ids:
+                left_parent = stop_rev.parent_ids[0]
+            else:
+                left_parent = _mod_revision.NULL_REVISION
+            for rev_id, depth, revno, end_of_merge in rev_iter:
+                if rev_id == left_parent:
+                    return
+                yield rev_id, depth, revno, end_of_merge
+        else:
+            raise ValueError('invalid stop_rule %r' % stop_rule)
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
         object is unlocked.
-        
+
         If lock_write doesn't return a token, then this method is not supported.
         """
         self.control_files.leave_in_place()
@@ -221,15 +447,6 @@ class Branch(object):
         If lock_write doesn't return a token, then this method is not supported.
         """
         self.control_files.dont_leave_in_place()
-
-    @deprecated_method(deprecated_in((0, 16, 0)))
-    def abspath(self, name):
-        """Return absolute filename for something in the branch
-        
-        XXX: Robert Collins 20051017 what is this used for? why is it a branch
-        method and not a tree method.
-        """
-        raise NotImplementedError(self.abspath)
 
     def bind(self, other):
         """Bind the local branch the other branch.
@@ -280,17 +497,17 @@ class Branch(object):
         branch.
         """
         return None
-    
+
     def get_old_bound_location(self):
         """Return the URL of the branch we used to be bound to
         """
         raise errors.UpgradeRequired(self.base)
 
-    def get_commit_builder(self, parents, config=None, timestamp=None, 
-                           timezone=None, committer=None, revprops=None, 
+    def get_commit_builder(self, parents, config=None, timestamp=None,
+                           timezone=None, committer=None, revprops=None,
                            revision_id=None):
         """Obtain a CommitBuilder for this branch.
-        
+
         :param parents: Revision ids of the parents of the new revision.
         :param config: Optional configuration to use.
         :param timestamp: Optional timestamp recorded for commit.
@@ -302,13 +519,13 @@ class Branch(object):
 
         if config is None:
             config = self.get_config()
-        
+
         return self.repository.get_commit_builder(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
 
     def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.
-        
+
         :return: Either a Branch, or None
         """
         return None
@@ -324,12 +541,31 @@ class Branch(object):
             raise errors.InvalidRevisionNumber(revno)
         return self.repository.get_revision_delta(rh[revno-1])
 
+    def get_stacked_on_url(self):
+        """Get the URL this branch is stacked against.
+
+        :raises NotStacked: If the branch is not stacked.
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        """
+        raise NotImplementedError(self.get_stacked_on_url)
+
     def print_file(self, file, revision_id):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
+
+    def set_stacked_on_url(self, url):
+        """Set the URL this branch is stacked against.
+
+        :raises UnstackableBranchFormat: If the branch does not support
+            stacking.
+        :raises UnstackableRepositoryFormat: If the repository does not support
+            stacking.
+        """
+        raise NotImplementedError(self.set_stacked_on_url)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -361,17 +597,19 @@ class Branch(object):
         """
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
+        self._last_revision_info_cache = None
+        self._merge_sorted_revisions_cache = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
-        
+
         Unlike revision_history, this method always regenerates or rereads the
         revision history, i.e. it does not cache the result, so repeated calls
         may be expensive.
 
         Concrete subclasses should override this instead of revision_history so
         that subclasses do not need to deal with caching logic.
-        
+
         This API is semi-public; it only for use by subclasses, all other code
         should consider it to be private.
         """
@@ -380,7 +618,7 @@ class Branch(object):
     @needs_read_lock
     def revision_history(self):
         """Return sequence of revision ids on this branch.
-        
+
         This method will cache the revision history for as long as it is safe to
         do so.
         """
@@ -413,11 +651,17 @@ class Branch(object):
         """Return last revision id, or NULL_REVISION."""
         return self.last_revision_info()[1]
 
+    @needs_read_lock
     def last_revision_info(self):
         """Return information about the last revision.
 
-        :return: A tuple (revno, last_revision_id).
+        :return: A tuple (revno, revision_id).
         """
+        if self._last_revision_info_cache is None:
+            self._last_revision_info_cache = self._last_revision_info()
+        return self._last_revision_info_cache
+
+    def _last_revision_info(self):
         rh = self.revision_history()
         revno = len(rh)
         if revno:
@@ -428,7 +672,7 @@ class Branch(object):
     @deprecated_method(deprecated_in((1, 6, 0)))
     def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.
-        
+
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
         """
@@ -461,51 +705,8 @@ class Branch(object):
             information. This can be None.
         :return: None
         """
-        other.lock_read()
-        try:
-            other_revno, other_last_revision = other.last_revision_info()
-            stop_revno = None # unknown
-            if stop_revision is None:
-                stop_revision = other_last_revision
-                if _mod_revision.is_null(stop_revision):
-                    # if there are no commits, we're done.
-                    return
-                stop_revno = other_revno
-
-            # what's the current last revision, before we fetch [and change it
-            # possibly]
-            last_rev = _mod_revision.ensure_null(self.last_revision())
-            # we fetch here so that we don't process data twice in the common
-            # case of having something to pull, and so that the check for 
-            # already merged can operate on the just fetched graph, which will
-            # be cached in memory.
-            self.fetch(other, stop_revision)
-            # Check to see if one is an ancestor of the other
-            if not overwrite:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                heads = graph.heads([stop_revision, last_rev])
-                if heads == set([last_rev]):
-                    # The current revision is a decendent of the target,
-                    # nothing to do
-                    return
-                elif heads == set([stop_revision, last_rev]):
-                    # These branches have diverged
-                    raise errors.DivergedBranches(self, other)
-                elif heads != set([stop_revision]):
-                    raise AssertionError("invalid heads: %r" % heads)
-            if stop_revno is None:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                this_revno, this_last_revision = self.last_revision_info()
-                stop_revno = graph.find_distance_to_null(stop_revision,
-                                [(other_last_revision, other_revno),
-                                 (this_last_revision, this_revno)])
-            self.set_last_revision_info(stop_revno, stop_revision)
-        finally:
-            other.unlock()
-
-
+        return InterBranch.get(other, self).update_revisions(stop_revision,
+            overwrite, graph)
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
@@ -548,33 +749,10 @@ class Branch(object):
         """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
 
-    def rename_one(self, from_rel, to_rel):
-        """Rename one file.
-
-        This can change the directory or the filename or both.
-        """
-        raise NotImplementedError(self.rename_one)
-
-    def move(self, from_paths, to_name):
-        """Rename files.
-
-        to_name must exist as a versioned directory.
-
-        If to_name exists and is a directory, the files are moved into
-        it, keeping their old names.  If it is a directory, 
-
-        Note that to_name is only the last component of the new name;
-        this doesn't change the directory.
-
-        This returns a list of (from_path, to_path) pairs for each
-        entry that is moved.
-        """
-        raise NotImplementedError(self.move)
-
     def get_parent(self):
         """Return the parent location of the branch.
 
-        This is the default location for push/pull/missing.  The usual
+        This is the default location for pull/missing.  The usual
         pattern is that the user can override it by specifying a
         location.
         """
@@ -642,12 +820,42 @@ class Branch(object):
         """Set a new push location for this branch."""
         raise NotImplementedError(self.set_push_location)
 
+    def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
+        """Run the post_change_branch_tip hooks."""
+        hooks = Branch.hooks['post_change_branch_tip']
+        if not hooks:
+            return
+        new_revno, new_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
+            hook(params)
+
+    def _run_pre_change_branch_tip_hooks(self, new_revno, new_revid):
+        """Run the pre_change_branch_tip hooks."""
+        hooks = Branch.hooks['pre_change_branch_tip']
+        if not hooks:
+            return
+        old_revno, old_revid = self.last_revision_info()
+        params = ChangeBranchTipParams(
+            self, old_revno, new_revno, old_revid, new_revid)
+        for hook in hooks:
+            try:
+                hook(params)
+            except errors.TipChangeRejected:
+                raise
+            except Exception:
+                exc_info = sys.exc_info()
+                hook_name = Branch.hooks.get_hook_name(hook)
+                raise errors.HookFailed(
+                    'pre_change_branch_tip', hook_name, exc_info)
+
     def set_parent(self, url):
         raise NotImplementedError(self.set_parent)
 
     @needs_write_lock
     def update(self):
-        """Synchronise this branch with the master branch if any. 
+        """Synchronise this branch with the master branch if any.
 
         :return: None or the last_revision pivoted out during the update.
         """
@@ -660,7 +868,7 @@ class Branch(object):
         """
         if revno != 0:
             self.check_real_revno(revno)
-            
+
     def check_real_revno(self, revno):
         """\
         Check whether a revno corresponds to a real revision.
@@ -670,24 +878,31 @@ class Branch(object):
             raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None):
+    def clone(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
-        
+
+        Most API users will want 'create_clone_on_transport', which creates a
+        new bzrdir and branch on the fly.
+
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None):
         """Create a new line of development from the branch, into to_bzrdir.
-        
+
+        to_bzrdir controls the branch format.
+
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        result = self._format.initialize(to_bzrdir)
+        result = to_bzrdir.create_branch()
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -696,25 +911,30 @@ class Branch(object):
         """Synchronize last revision and revision history between branches.
 
         This version is most efficient when the destination is also a
-        BzrBranch5, but works for BzrBranch6 as long as the revision
-        history is the true lefthand parent history, and all of the revisions
-        are in the destination's repository.  If not, set_revision_history
-        will fail.
+        BzrBranch6, but works for BzrBranch5, as long as the destination's
+        repository contains all the lefthand ancestors of the intended
+        last_revision.  If not, set_last_revision_info will fail.
 
         :param destination: The branch to copy the history into
         :param revision_id: The revision-id to truncate history at.  May
           be None to copy complete history.
         """
-        if revision_id == _mod_revision.NULL_REVISION:
-            new_history = []
-        new_history = self.revision_history()
-        if revision_id is not None and new_history != []:
-            try:
-                new_history = new_history[:new_history.index(revision_id) + 1]
-            except ValueError:
-                rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
-        destination.set_revision_history(new_history)
+        source_revno, source_revision_id = self.last_revision_info()
+        if revision_id is None:
+            revno, revision_id = source_revno, source_revision_id
+        elif source_revision_id == revision_id:
+            # we know the revno without needing to walk all of history
+            revno = source_revno
+        else:
+            # To figure out the revno for a random revision, we need to build
+            # the revision history, and count its length.
+            # We don't care about the order, just how long it is.
+            # Alternatively, we could start at the current location, and count
+            # backwards. But there is no guarantee that we will find it since
+            # it may be a merged revision.
+            revno = len(list(self.repository.iter_reverse_revision_history(
+                                                                revision_id)))
+        destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
     def copy_content_into(self, destination, revision_id=None):
@@ -731,16 +951,17 @@ class Branch(object):
         else:
             if parent:
                 destination.set_parent(parent)
-        self.tags.merge_to(destination.tags)
+        if self._push_should_merge_tags():
+            self.tags.merge_to(destination.tags)
 
     @needs_read_lock
     def check(self):
         """Check consistency of the branch.
 
         In particular this checks that revisions given in the revision-history
-        do actually match up in the revision graph, and that they're all 
+        do actually match up in the revision graph, and that they're all
         present in the repository.
-        
+
         Callers will typically also want to check the repository.
 
         :return: A BranchCheckResult.
@@ -785,11 +1006,26 @@ class Branch(object):
             format.set_branch_format(self._format)
         return format
 
+    def create_clone_on_transport(self, to_transport, revision_id=None,
+        stacked_on=None):
+        """Create a clone of this branch and its bzrdir.
+
+        :param to_transport: The transport to clone onto.
+        :param revision_id: The revision id to use as tip in the new branch.
+            If None the tip is obtained from this branch.
+        :param stacked_on: An optional URL to stack the clone on.
+        """
+        # XXX: Fix the bzrdir API to allow getting the branch back from the
+        # clone call. Or something. 20090224 RBC/spiv.
+        dir_to = self.bzrdir.clone_on_transport(to_transport,
+            revision_id=revision_id, stacked_on=stacked_on)
+        return dir_to.open_branch()
+
     def create_checkout(self, to_location, revision_id=None,
                         lightweight=False, accelerator_tree=None,
                         hardlink=False):
         """Create a checkout of a branch.
-        
+
         :param to_location: The url to produce the checkout at
         :param revision_id: The revision to check out
         :param lightweight: If True, produce a lightweight checkout, otherwise,
@@ -814,7 +1050,7 @@ class Branch(object):
                 to_location, force_new_tree=False, format=format)
             checkout = checkout_branch.bzrdir
             checkout_branch.bind(self)
-            # pull up to the specified revision_id to set the initial 
+            # pull up to the specified revision_id to set the initial
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
             from_branch=None
@@ -854,6 +1090,41 @@ class Branch(object):
     def supports_tags(self):
         return self._format.supports_tags()
 
+    def _check_if_descendant_or_diverged(self, revision_a, revision_b, graph,
+                                         other_branch):
+        """Ensure that revision_b is a descendant of revision_a.
+
+        This is a helper function for update_revisions.
+
+        :raises: DivergedBranches if revision_b has diverged from revision_a.
+        :returns: True if revision_b is a descendant of revision_a.
+        """
+        relation = self._revision_relations(revision_a, revision_b, graph)
+        if relation == 'b_descends_from_a':
+            return True
+        elif relation == 'diverged':
+            raise errors.DivergedBranches(self, other_branch)
+        elif relation == 'a_descends_from_b':
+            return False
+        else:
+            raise AssertionError("invalid relation: %r" % (relation,))
+
+    def _revision_relations(self, revision_a, revision_b, graph):
+        """Determine the relationship between two revisions.
+
+        :returns: One of: 'a_descends_from_b', 'b_descends_from_a', 'diverged'
+        """
+        heads = graph.heads([revision_a, revision_b])
+        if heads == set([revision_b]):
+            return 'b_descends_from_a'
+        elif heads == set([revision_a, revision_b]):
+            # These branches have diverged
+            return 'diverged'
+        elif heads == set([revision_a]):
+            return 'a_descends_from_b'
+        else:
+            raise AssertionError("invalid heads: %r" % (heads,))
+
 
 class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
@@ -863,13 +1134,13 @@ class BranchFormat(object):
      * a format string,
      * an open routine.
 
-    Formats are placed in an dict by their format string for reference 
+    Formats are placed in an dict by their format string for reference
     during branch opening. Its not required that these be instances, they
-    can be classes themselves with class methods - it simply depends on 
+    can be classes themselves with class methods - it simply depends on
     whether state is needed for a given format or not.
 
     Once a format is deprecated, just deprecate the initialize and open
-    methods on the format class. Do not deprecate the object, as the 
+    methods on the format class. Do not deprecate the object, as the
     object will be created every time regardless.
     """
 
@@ -977,10 +1248,20 @@ class BranchFormat(object):
         """Is this format supported?
 
         Supported formats can be initialized and opened.
-        Unsupported formats may not support initialization or committing or 
+        Unsupported formats may not support initialization or committing or
         some other features depending on the reason for not being supported.
         """
         return True
+
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        MetaDir branch formats use their disk format string to identify the
+        repository over the wire. All in one formats such as bzr < 0.8, and
+        foreign formats like svn/git and hg should use some marker which is
+        unique and immutable.
+        """
+        raise NotImplementedError(self.network_name)
 
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir
@@ -992,18 +1273,25 @@ class BranchFormat(object):
 
     @classmethod
     def register_format(klass, format):
+        """Register a metadir format."""
         klass._formats[format.get_format_string()] = format
+        # Metadir formats have a network name of their format string.
+        network_format_registry.register(format.get_format_string(), format)
 
     @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
+
+    def supports_stacking(self):
+        """True if this format records a stacked-on branch."""
+        return False
 
     @classmethod
     def unregister_format(klass, format):
         del klass._formats[format.get_format_string()]
 
     def __str__(self):
-        return self.get_format_string().rstrip()
+        return self.get_format_description().rstrip()
 
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""
@@ -1012,7 +1300,7 @@ class BranchFormat(object):
 
 class BranchHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for branch hooks.
-    
+
     e.g. ['set_rh'] Is the list of items to be called when the
     set_revision_history function is invoked.
     """
@@ -1030,12 +1318,14 @@ class BranchHooks(Hooks):
         # (branch, revision_history), and the branch will
         # be write-locked.
         self['set_rh'] = []
+        # Invoked after a branch is opened. The api signature is (branch).
+        self['open'] = []
         # invoked after a push operation completes.
         # the api signature is
         # (push_result)
         # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local target branch or None, master is the target 
+        # where local is the local target branch or None, master is the target
         # master branch, and the rest should be self explanatory. The source
         # is read locked and the target branches write locked. Source will
         # be the local low-latency branch.
@@ -1045,7 +1335,7 @@ class BranchHooks(Hooks):
         # (pull_result)
         # containing the members
         # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local branch or None, master is the target 
+        # where local is the local branch or None, master is the target
         # master branch, and the rest should be self explanatory. The source
         # is read locked and the target branches write locked. The local
         # branch is the low-latency branch.
@@ -1061,7 +1351,7 @@ class BranchHooks(Hooks):
         # CommitBuilder.revision_tree() and hooks MUST NOT modify this tree
         self['pre_commit'] = []
         # invoked after a commit operation completes.
-        # the api signature is 
+        # the api signature is
         # (local, master, old_revno, old_revid, new_revno, new_revid)
         # old_revid is NULL_REVISION for the first commit to a branch.
         self['post_commit'] = []
@@ -1071,12 +1361,26 @@ class BranchHooks(Hooks):
         # local is the local branch or None, master is the target branch,
         # and an empty branch recieves new_revno of 0, new_revid of None.
         self['post_uncommit'] = []
+        # Introduced in 1.6
+        # Invoked before the tip of a branch changes.
+        # the api signature is
+        # (params) where params is a ChangeBranchTipParams with the members
+        # (branch, old_revno, new_revno, old_revid, new_revid)
+        self['pre_change_branch_tip'] = []
         # Introduced in 1.4
         # Invoked after the tip of a branch changes.
         # the api signature is
         # (params) where params is a ChangeBranchTipParams with the members
         # (branch, old_revno, new_revno, old_revid, new_revid)
         self['post_change_branch_tip'] = []
+        # Introduced in 1.9
+        # Invoked when a stacked branch activates its fallback locations and
+        # allows the transformation of the url of said location.
+        # the api signature is
+        # (branch, url) where branch is the branch having its fallback
+        # location activated and url is the url for the fallback location.
+        # The hook should return a url.
+        self['transform_fallback_location'] = []
 
 
 # install the default hooks into the Branch class.
@@ -1112,6 +1416,14 @@ class ChangeBranchTipParams(object):
         self.old_revid = old_revid
         self.new_revid = new_revid
 
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return "<%s of %s from (%s, %s) to (%s, %s)>" % (
+            self.__class__.__name__, self.branch,
+            self.old_revno, self.old_revid, self.new_revno, self.new_revid)
+
 
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
@@ -1137,6 +1449,10 @@ class BzrBranchFormat4(BranchFormat):
         super(BzrBranchFormat4, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
+
     def open(self, a_bzrdir, _found=False):
         """Return the branch object for a_bzrdir
 
@@ -1155,40 +1471,22 @@ class BzrBranchFormat4(BranchFormat):
         return "Bazaar-NG branch format 4"
 
 
-class BzrBranchFormat5(BranchFormat):
-    """Bzr branch format 5.
+class BranchFormatMetadir(BranchFormat):
+    """Common logic for meta-dir based branch formats."""
 
-    This format has:
-     - a revision-history file.
-     - a format string
-     - a lock dir guarding the branch itself
-     - all of this stored in a branch/ subdirectory
-     - works with shared repositories.
+    def _branch_class(self):
+        """What class to instantiate on open calls."""
+        raise NotImplementedError(self._branch_class)
 
-    This format is new in bzr 0.8.
-    """
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
 
-    def get_format_string(self):
-        """See BranchFormat.get_format_string()."""
-        return "Bazaar-NG branch format 5\n"
-
-    def get_format_description(self):
-        """See BranchFormat.get_format_description()."""
-        return "Branch format 5"
-        
-    def initialize(self, a_bzrdir):
-        """Create a branch of this format in a_bzrdir."""
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
-                      ]
-        return self._initialize_helper(a_bzrdir, utf8_files)
-
-    def __init__(self):
-        super(BzrBranchFormat5, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+        Metadir branch formats use their format string.
+        """
+        return self.get_format_string()
 
     def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
+        """Return the branch object for a_bzrdir.
 
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already be done.
@@ -1202,15 +1500,58 @@ class BzrBranchFormat5(BranchFormat):
             transport = a_bzrdir.get_branch_transport(None)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
-            return BzrBranch5(_format=self,
+            return self._branch_class()(_format=self,
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
                               _repository=a_bzrdir.find_repository())
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
+    def __init__(self):
+        super(BranchFormatMetadir, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+        self._matchingbzrdir.set_branch_format(self)
 
-class BzrBranchFormat6(BzrBranchFormat5):
+    def supports_tags(self):
+        return True
+
+
+class BzrBranchFormat5(BranchFormatMetadir):
+    """Bzr branch format 5.
+
+    This format has:
+     - a revision-history file.
+     - a format string
+     - a lock dir guarding the branch itself
+     - all of this stored in a branch/ subdirectory
+     - works with shared repositories.
+
+    This format is new in bzr 0.8.
+    """
+
+    def _branch_class(self):
+        return BzrBranch5
+
+    def get_format_string(self):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar-NG branch format 5\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 5"
+
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        utf8_files = [('revision-history', ''),
+                      ('branch-name', ''),
+                      ]
+        return self._initialize_helper(a_bzrdir, utf8_files)
+
+    def supports_tags(self):
+        return False
+
+
+class BzrBranchFormat6(BranchFormatMetadir):
     """Branch format with last-revision and tags.
 
     Unlike previous formats, this has no explicit revision history. Instead,
@@ -1220,6 +1561,9 @@ class BzrBranchFormat6(BzrBranchFormat5):
     This format was introduced in bzr 0.15
     and became the default in 0.91.
     """
+
+    def _branch_class(self):
+        return BzrBranch6
 
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
@@ -1237,26 +1581,41 @@ class BzrBranchFormat6(BzrBranchFormat5):
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
 
-    def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
 
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
-        if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
-            if format.__class__ != self.__class__:
-                raise AssertionError("wrong format %r found for %r" %
-                    (format, self))
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = lockable_files.LockableFiles(transport, 'lock',
-                                                     lockdir.LockDir)
-        return BzrBranch6(_format=self,
-                          _control_files=control_files,
-                          a_bzrdir=a_bzrdir,
-                          _repository=a_bzrdir.find_repository())
+class BzrBranchFormat7(BranchFormatMetadir):
+    """Branch format with last-revision, tags, and a stacked location pointer.
 
-    def supports_tags(self):
+    The stacked location pointer is passed down to the repository and requires
+    a repository format with supports_external_lookups = True.
+
+    This format was introduced in bzr 1.6.
+    """
+
+    def _branch_class(self):
+        return BzrBranch7
+
+    def get_format_string(self):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar Branch Format 7 (needs bzr 1.6)\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 7"
+
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        utf8_files = [('last-revision', '0 null:\n'),
+                      ('branch.conf', ''),
+                      ('tags', ''),
+                      ]
+        return self._initialize_helper(a_bzrdir, utf8_files)
+
+    def __init__(self):
+        super(BzrBranchFormat7, self).__init__()
+        self._matchingbzrdir.repository_format = \
+            RepositoryFormatKnitPack5RichRoot()
+
+    def supports_stacking(self):
         return True
 
 
@@ -1307,10 +1666,12 @@ class BranchReferenceFormat(BranchFormat):
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+        self._matchingbzrdir.set_branch_format(self)
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
-        def clone(to_bzrdir, revision_id=None):
+        def clone(to_bzrdir, revision_id=None,
+            repository_policy=None):
             """See Branch.clone()."""
             return format.initialize(to_bzrdir, a_branch)
             # cannot obey revision_id limits when cloning a reference ...
@@ -1347,16 +1708,30 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
+network_format_registry = registry.FormatRegistry()
+"""Registry of formats indexed by their network name.
+
+The network name for a repository format is an identifier that can be used when
+referring to formats with smart server operations. See
+BranchFormat.network_name() for more detail.
+"""
+
+
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
+__format7 = BzrBranchFormat7()
 BranchFormat.register_format(__format5)
 BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(__format6)
+BranchFormat.register_format(__format7)
 BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
-                   ]
+    ]
+network_format_registry.register(
+    _legacy_formats[0].network_name(), _legacy_formats[0])
+
 
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
@@ -1365,17 +1740,16 @@ class BzrBranch(Branch):
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
 
-    :ivar _transport: Transport for file operations on this branch's 
+    :ivar _transport: Transport for file operations on this branch's
         control files, typically pointing to the .bzr/branch directory.
     :ivar repository: Repository for this branch.
-    :ivar base: The url of the base directory for this branch; the one 
+    :ivar base: The url of the base directory for this branch; the one
         containing the .bzr directory.
     """
-    
+
     def __init__(self, _format=None,
                  _control_files=None, a_bzrdir=None, _repository=None):
         """Create new branch object at a particular location."""
-        Branch.__init__(self)
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
         else:
@@ -1390,6 +1764,7 @@ class BzrBranch(Branch):
         self.control_files = _control_files
         self._transport = _control_files._transport
         self.repository = _repository
+        Branch.__init__(self)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -1401,11 +1776,6 @@ class BzrBranch(Branch):
         return self._base
 
     base = property(_get_base, doc="The URL for the root of this branch.")
-
-    @deprecated_method(deprecated_in((0, 16, 0)))
-    def abspath(self, name):
-        """See Branch.abspath."""
-        return self._transport.abspath(name)
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -1436,7 +1806,7 @@ class BzrBranch(Branch):
         if not self.control_files.is_locked():
             # we just released the lock
             self._clear_cached_state()
-        
+
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
             return None
@@ -1465,23 +1835,55 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
+        for rev_id in rev_history:
+            check_not_reserved_id(rev_id)
+        if Branch.hooks['post_change_branch_tip']:
+            # Don't calculate the last_revision_info() if there are no hooks
+            # that will use it.
+            old_revno, old_revid = self.last_revision_info()
+        if len(rev_history) == 0:
+            revid = _mod_revision.NULL_REVISION
+        else:
+            revid = rev_history[-1]
+        self._run_pre_change_branch_tip_hooks(len(rev_history), revid)
         self._write_revision_history(rev_history)
         self._clear_cached_state()
         self._cache_revision_history(rev_history)
         for hook in Branch.hooks['set_rh']:
             hook(self, rev_history)
+        if Branch.hooks['post_change_branch_tip']:
+            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
-    def _run_post_change_branch_tip_hooks(self, old_revno, old_revid):
-        """Run the post_change_branch_tip hooks."""
-        hooks = Branch.hooks['post_change_branch_tip']
-        if not hooks:
+    def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+
+        This version is most efficient when the destination is also a
+        BzrBranch5, but works for BzrBranch6 as long as the revision
+        history is the true lefthand parent history, and all of the revisions
+        are in the destination's repository.  If not, set_revision_history
+        will fail.
+
+        :param destination: The branch to copy the history into
+        :param revision_id: The revision-id to truncate history at.  May
+          be None to copy complete history.
+        """
+        if not isinstance(destination._format, BzrBranchFormat5):
+            super(BzrBranch, self)._synchronize_history(
+                destination, revision_id)
             return
-        new_revno, new_revid = self.last_revision_info()
-        params = ChangeBranchTipParams(
-            self, old_revno, new_revno, old_revid, new_revid)
-        for hook in hooks:
-            hook(params)
- 
+        if revision_id == _mod_revision.NULL_REVISION:
+            new_history = []
+        else:
+            new_history = self.revision_history()
+        if revision_id is not None and new_history != []:
+            try:
+                new_history = new_history[:new_history.index(revision_id) + 1]
+            except ValueError:
+                rev = self.repository.get_revision(revision_id)
+                new_history = rev.get_history(self.repository)[1:]
+        destination.set_revision_history(new_history)
+
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
@@ -1490,12 +1892,11 @@ class BzrBranch(Branch):
         for this revision id.
 
         It may be possible to set the branch last revision to an id not
-        present in the repository.  However, branches can also be 
+        present in the repository.  However, branches can also be
         configured to check constraints on history, in which case this may not
         be permitted.
         """
         revision_id = _mod_revision.ensure_null(revision_id)
-        old_revno, old_revid = self.last_revision_info()
         # this old format stores the full history, but this api doesn't
         # provide it, so we must generate, and might as well check it's
         # correct
@@ -1503,7 +1904,6 @@ class BzrBranch(Branch):
         if len(history) != revno:
             raise AssertionError('%d != %d' % (len(history), revno))
         self.set_revision_history(history)
-        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     def _gen_revision_history(self):
         history = self._transport.get_bytes('revision-history').split('\n')
@@ -1511,31 +1911,6 @@ class BzrBranch(Branch):
             # There shouldn't be a trailing newline, but just in case.
             history.pop()
         return history
-
-    def _lefthand_history(self, revision_id, last_rev=None,
-                          other_branch=None):
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(4, "_lefthand_history scales with history.")
-        # stop_revision must be a descendant of last_revision
-        graph = self.repository.get_graph()
-        if last_rev is not None:
-            if not graph.is_ancestor(last_rev, revision_id):
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other_branch)
-        # make a new revision history from the graph
-        parents_map = graph.get_parent_map([revision_id])
-        if revision_id not in parents_map:
-            raise errors.NoSuchRevision(self, revision_id)
-        current_rev_id = revision_id
-        new_history = []
-        # Do not include ghosts or graph origin in revision_history
-        while (current_rev_id in parents_map and
-               len(parents_map[current_rev_id]) > 0):
-            new_history.append(current_rev_id)
-            current_rev_id = parents_map[current_rev_id][0]
-            parents_map = graph.get_parent_map([current_rev_id])
-        new_history.reverse()
-        return new_history
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
@@ -1561,7 +1936,7 @@ class BzrBranch(Branch):
              _override_hook_target=None):
         """See Branch.pull.
 
-        :param _hook_master: Private parameter - set the branch to 
+        :param _hook_master: Private parameter - set the branch to
             be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
@@ -1615,27 +1990,23 @@ class BzrBranch(Branch):
         This is the basic concrete implementation of push()
 
         :param _override_hook_source_branch: If specified, run
-        the hooks passing this Branch as the source, rather than self.  
+        the hooks passing this Branch as the source, rather than self.
         This is for use of RemoteBranch, where push is delegated to the
-        underlying vfs-based Branch. 
+        underlying vfs-based Branch.
         """
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
-        target.lock_write()
-        try:
-            result = self._push_with_bound_branches(target, overwrite,
-                    stop_revision,
-                    _override_hook_source_branch=_override_hook_source_branch)
-            return result
-        finally:
-            target.unlock()
+        return _run_with_write_locked_target(
+            target, self._push_with_bound_branches, target, overwrite,
+            stop_revision,
+            _override_hook_source_branch=_override_hook_source_branch)
 
     def _push_with_bound_branches(self, target, overwrite,
             stop_revision,
             _override_hook_source_branch=None):
         """Push from self into target, and into target's master if any.
-        
-        This is on the base BzrBranch class even though it doesn't support 
+
+        This is on the base BzrBranch class even though it doesn't support
         bound branches because the *target* might be bound.
         """
         def _run_hooks():
@@ -1685,13 +2056,14 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
-
-        # We assume that during 'push' this repository is closer than
-        # the target.
-        graph = self.repository.get_graph(target.repository)
-        target.update_revisions(self, stop_revision, overwrite=overwrite,
-                                graph=graph)
-        result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+        if result.old_revid != self.last_revision():
+            # We assume that during 'push' this repository is closer than
+            # the target.
+            graph = self.repository.get_graph(target.repository)
+            target.update_revisions(self, stop_revision, overwrite=overwrite,
+                                    graph=graph)
+        if self._push_should_merge_tags():
+            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
@@ -1708,6 +2080,9 @@ class BzrBranch(Branch):
             return urlutils.join(self.base[:-1], parent)
         except errors.InvalidURLJoin, e:
             raise errors.InaccessibleParent(parent, self.base)
+
+    def get_stacked_on_url(self):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
@@ -1740,6 +2115,9 @@ class BzrBranch(Branch):
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.bzrdir._get_file_mode())
 
+    def set_stacked_on_url(self, url):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
+
 
 class BzrBranch5(BzrBranch):
     """A format 5 branch. This supports new features over plain branches.
@@ -1747,22 +2125,12 @@ class BzrBranch5(BzrBranch):
     It has support for a master_branch which is the data for bound branches.
     """
 
-    def __init__(self,
-                 _format,
-                 _control_files,
-                 a_bzrdir,
-                 _repository):
-        super(BzrBranch5, self).__init__(_format=_format,
-                                         _control_files=_control_files,
-                                         a_bzrdir=a_bzrdir,
-                                         _repository=_repository)
-        
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              run_hooks=True, possible_transports=None,
              _override_hook_target=None):
         """Pull from source into self, updating my master if any.
-        
+
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
@@ -1795,7 +2163,7 @@ class BzrBranch5(BzrBranch):
     @needs_read_lock
     def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.
-        
+
         :return: Either a Branch, or None
 
         This could memoise the branch, but if thats done
@@ -1837,7 +2205,7 @@ class BzrBranch5(BzrBranch):
         check for divergence to raise an error when the branches are not
         either the same, or one a prefix of the other. That behaviour may not
         be useful, so that check may be removed in future.
-        
+
         :param other: The branch to bind to
         :type other: Branch
         """
@@ -1862,7 +2230,7 @@ class BzrBranch5(BzrBranch):
 
     @needs_write_lock
     def update(self, possible_transports=None):
-        """Synchronise this branch with the master branch if any. 
+        """Synchronise this branch with the master branch if any.
 
         :return: None or the last_revision that was pivoted out during the
                  update.
@@ -1878,27 +2246,51 @@ class BzrBranch5(BzrBranch):
         return None
 
 
-class BzrBranch6(BzrBranch5):
+class BzrBranch7(BzrBranch5):
+    """A branch with support for a fallback repository."""
+
+    def _get_fallback_repository(self, url):
+        """Get the repository we fallback to at url."""
+        url = urlutils.join(self.base, url)
+        a_bzrdir = bzrdir.BzrDir.open(url,
+                                      possible_transports=[self._transport])
+        return a_bzrdir.open_branch().repository
+
+    def _activate_fallback_location(self, url):
+        """Activate the branch/repository from url as a fallback repository."""
+        self.repository.add_fallback_repository(
+            self._get_fallback_repository(url))
+
+    def _open_hook(self):
+        try:
+            url = self.get_stacked_on_url()
+        except (errors.UnstackableRepositoryFormat, errors.NotStacked,
+            errors.UnstackableBranchFormat):
+            pass
+        else:
+            for hook in Branch.hooks['transform_fallback_location']:
+                url = hook(self, url)
+                if url is None:
+                    hook_name = Branch.hooks.get_hook_name(hook)
+                    raise AssertionError(
+                        "'transform_fallback_location' hook %s returned "
+                        "None, not a URL." % hook_name)
+            self._activate_fallback_location(url)
+
+    def _check_stackable_repo(self):
+        if not self.repository._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self.repository._format,
+                self.repository.base)
 
     def __init__(self, *args, **kwargs):
-        super(BzrBranch6, self).__init__(*args, **kwargs)
+        super(BzrBranch7, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
 
     def _clear_cached_state(self):
-        super(BzrBranch6, self)._clear_cached_state()
+        super(BzrBranch7, self)._clear_cached_state()
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
-
-    @needs_read_lock
-    def last_revision_info(self):
-        """Return information about the last revision.
-
-        :return: A tuple (revno, revision_id).
-        """
-        if self._last_revision_info_cache is None:
-            self._last_revision_info_cache = self._last_revision_info()
-        return self._last_revision_info_cache
 
     def _last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
@@ -1927,10 +2319,23 @@ class BzrBranch6(BzrBranch5):
         old_revno, old_revid = self.last_revision_info()
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
+        self._run_pre_change_branch_tip_hooks(revno, revision_id)
         self._write_last_revision_info(revno, revision_id)
         self._clear_cached_state()
         self._last_revision_info_cache = revno, revision_id
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+
+    def _synchronize_history(self, destination, revision_id):
+        """Synchronize last revision and revision history between branches.
+
+        :see: Branch._synchronize_history
+        """
+        # XXX: The base Branch has a fast implementation of this method based
+        # on set_last_revision_info, but BzrBranch/BzrBranch5 have a slower one
+        # that uses set_revision_history.  This class inherits from BzrBranch5,
+        # but wants the fast implementation, so it calls
+        # Branch._synchronize_history directly.
+        Branch._synchronize_history(self, destination, revision_id)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
@@ -2039,6 +2444,15 @@ class BzrBranch6(BzrBranch5):
         """See Branch.get_old_bound_location"""
         return self._get_bound_location(False)
 
+    def get_stacked_on_url(self):
+        # you can always ask for the URL; but you might not be able to use it
+        # if the repo can't support stacking.
+        ## self._check_stackable_repo()
+        stacked_url = self._get_config_location('stacked_on_location')
+        if stacked_url is None:
+            raise errors.NotStacked(self)
+        return stacked_url
+
     def set_append_revisions_only(self, enabled):
         if enabled:
             value = 'True'
@@ -2047,38 +2461,35 @@ class BzrBranch6(BzrBranch5):
         self.get_config().set_user_option('append_revisions_only', value,
             warn_masked=True)
 
+    def set_stacked_on_url(self, url):
+        self._check_stackable_repo()
+        if not url:
+            try:
+                old_url = self.get_stacked_on_url()
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+                return
+            url = ''
+            # repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.
+            self.repository = self.bzrdir.find_repository()
+            # for every revision reference the branch has, ensure it is pulled
+            # in.
+            source_repository = self._get_fallback_repository(old_url)
+            for revision_id in chain([self.last_revision()],
+                self.tags.get_reverse_tag_dict()):
+                self.repository.fetch(source_repository, revision_id,
+                    find_ghosts=True)
+        else:
+            self._activate_fallback_location(url)
+        # write this out after the repository is stacked to avoid setting a
+        # stacked config that doesn't work.
+        self._set_config_location('stacked_on_location', url)
+
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
         return value == 'True'
-
-    def _synchronize_history(self, destination, revision_id):
-        """Synchronize last revision and revision history between branches.
-
-        This version is most efficient when the destination is also a
-        BzrBranch6, but works for BzrBranch5, as long as the destination's
-        repository contains all the lefthand ancestors of the intended
-        last_revision.  If not, set_last_revision_info will fail.
-
-        :param destination: The branch to copy the history into
-        :param revision_id: The revision-id to truncate history at.  May
-          be None to copy complete history.
-        """
-        source_revno, source_revision_id = self.last_revision_info()
-        if revision_id is None:
-            revno, revision_id = source_revno, source_revision_id
-        elif source_revision_id == revision_id:
-            # we know the revno without needing to walk all of history
-            revno = source_revno
-        else:
-            # To figure out the revno for a random revision, we need to build
-            # the revision history, and count its length.
-            # We don't care about the order, just how long it is.
-            # Alternatively, we could start at the current location, and count
-            # backwards. But there is no guarantee that we will find it since
-            # it may be a merged revision.
-            revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                revision_id)))
-        destination.set_last_revision_info(revno, revision_id)
 
     def _make_tags(self):
         return BasicTags(self)
@@ -2125,6 +2536,20 @@ class BzrBranch6(BzrBranch5):
             if self._partial_revision_history_cache[index] != revision_id:
                 raise errors.NoSuchRevision(self, revision_id)
         return self.revno() - index
+
+
+class BzrBranch6(BzrBranch7):
+    """See BzrBranchFormat6 for the capabilities of this branch.
+
+    This subclass of BzrBranch7 disables the new features BzrBranch7 added,
+    i.e. stacking.
+    """
+
+    def get_stacked_on_url(self):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
+
+    def set_stacked_on_url(self, url):
+        raise errors.UnstackableBranchFormat(self._format, self.base)
 
 
 ######################################################################
@@ -2188,9 +2613,9 @@ class PushResult(_Result):
     def report(self, to_file):
         """Write a human-readable description of the result."""
         if self.old_revid == self.new_revid:
-            to_file.write('No new revisions to push.\n')
+            note('No new revisions to push.')
         else:
-            to_file.write('Pushed up to revision %d.\n' % self.new_revno)
+            note('Pushed up to revision %d.' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 
@@ -2205,7 +2630,7 @@ class BranchCheckResult(object):
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
-        
+
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
@@ -2243,3 +2668,137 @@ class Converter5to6(object):
         except errors.NoSuchFile:
             pass
         branch.set_bound_location(None)
+
+
+class Converter6to7(object):
+    """Perform an in-place upgrade of format 6 to format 7"""
+
+    def convert(self, branch):
+        format = BzrBranchFormat7()
+        branch._set_config_location('stacked_on_location', '')
+        # update target format
+        branch._transport.put_bytes('format', format.get_format_string())
+
+
+
+def _run_with_write_locked_target(target, callable, *args, **kwargs):
+    """Run ``callable(*args, **kwargs)``, write-locking target for the
+    duration.
+
+    _run_with_write_locked_target will attempt to release the lock it acquires.
+
+    If an exception is raised by callable, then that exception *will* be
+    propagated, even if the unlock attempt raises its own error.  Thus
+    _run_with_write_locked_target should be preferred to simply doing::
+
+        target.lock_write()
+        try:
+            return callable(*args, **kwargs)
+        finally:
+            target.unlock()
+
+    """
+    # This is very similar to bzrlib.decorators.needs_write_lock.  Perhaps they
+    # should share code?
+    target.lock_write()
+    try:
+        result = callable(*args, **kwargs)
+    except:
+        exc_info = sys.exc_info()
+        try:
+            target.unlock()
+        finally:
+            raise exc_info[0], exc_info[1], exc_info[2]
+    else:
+        target.unlock()
+        return result
+
+
+class InterBranch(InterObject):
+    """This class represents operations taking place between two branches.
+
+    Its instances have methods like pull() and push() and contain
+    references to the source and target repositories these operations
+    can be carried out on.
+    """
+
+    _optimisers = []
+    """The available optimised InterBranch types."""
+
+    @staticmethod
+    def _get_branch_formats_to_test():
+        """Return a tuple with the Branch formats to use when testing."""
+        raise NotImplementedError(self._get_branch_formats_to_test)
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+                         graph=None):
+        """Pull in new perfect-fit revisions.
+
+        :param stop_revision: Updated until the given revision
+        :param overwrite: Always set the branch pointer, rather than checking
+            to see if it is a proper descendant.
+        :param graph: A Graph object that can be used to query history
+            information. This can be None.
+        :return: None
+        """
+        raise NotImplementedError(self.update_revisions)
+
+
+class GenericInterBranch(InterBranch):
+    """InterBranch implementation that uses public Branch functions.
+    """
+
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return BranchFormat._default_format, BranchFormat._default_format
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+        graph=None):
+        """See InterBranch.update_revisions()."""
+        self.source.lock_read()
+        try:
+            other_revno, other_last_revision = self.source.last_revision_info()
+            stop_revno = None # unknown
+            if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+                stop_revno = other_revno
+
+            # what's the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = _mod_revision.ensure_null(self.target.last_revision())
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
+            self.target.fetch(self.source, stop_revision)
+            # Check to see if one is an ancestor of the other
+            if not overwrite:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                if self.target._check_if_descendant_or_diverged(
+                        stop_revision, last_rev, graph, self.source):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
+                    return
+            if stop_revno is None:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                this_revno, this_last_revision = \
+                        self.target.last_revision_info()
+                stop_revno = graph.find_distance_to_null(stop_revision,
+                                [(other_last_revision, other_revno),
+                                 (this_last_revision, this_revno)])
+            self.target.set_last_revision_info(stop_revno, stop_revision)
+        finally:
+            self.source.unlock()
+
+    @classmethod
+    def is_compatible(self, source, target):
+        # GenericBranch uses the public API, so always compatible
+        return True
+
+
+InterBranch.register_optimiser(GenericInterBranch)

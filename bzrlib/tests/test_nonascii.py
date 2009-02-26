@@ -131,7 +131,7 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual(expected, present)
 
     def test_access_normalized(self):
-        # We should always be able to access files created with 
+        # We should always be able to access files created with
         # normalized filenames
         # With FAT32 and certain encodings on win32
         # a_circle_c and a_dots_c actually map to the same file
@@ -160,7 +160,7 @@ class NormalizedFilename(TestCaseWithTransport):
                 actual = f.read()
             finally:
                 f.close()
-            self.assertEqual(shouldbe, actual, 
+            self.assertEqual(shouldbe, actual,
                              'contents of %r is incorrect: %r != %r'
                              % (path, shouldbe, actual))
 

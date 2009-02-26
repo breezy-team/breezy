@@ -44,6 +44,24 @@ class TestMerge(ExternalBase):
         tree.commit(message='setup')
         return tree
 
+    def create_conflicting_branches(self):
+        """Create two branches which have overlapping modifications.
+
+        :return: (tree, other_branch) Where merging other_branch causes a file
+            conflict.
+        """
+        builder = self.make_branch_builder('branch')
+        builder.build_snapshot('rev1', None,
+            [('add', ('', 'root-id', 'directory', None)),
+             ('add', ('fname', 'f-id', 'file', 'a\nb\nc\n'))])
+        builder.build_snapshot('rev2other', ['rev1'],
+            [('modify', ('f-id', 'a\nB\nD\n'))])
+        other = builder.get_branch().bzrdir.sprout('other').open_branch()
+        builder.build_snapshot('rev2this', ['rev1'],
+            [('modify', ('f-id', 'a\nB\nC\n'))])
+        tree = builder.get_branch().create_checkout('tree', lightweight=True)
+        return tree, other
+
     def test_merge_reprocess(self):
         d = BzrDir.create_standalone_workingtree('.')
         d.commit('h')
@@ -90,7 +108,7 @@ class TestMerge(ExternalBase):
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
                     %(ancestor,b.revno()))
-        self.assertEquals(a.get_parent_ids(), 
+        self.assertEquals(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('goodbye', 'quux')
         a_tree.revert(backups=False)
@@ -100,6 +118,61 @@ class TestMerge(ExternalBase):
         a_tip = a.commit('merged')
         self.run_bzr('merge ../b -r last:1')
         self.assertEqual([a_tip], a.get_parent_ids())
+
+    def test_merge_defaults_to_reprocess(self):
+        tree, other = self.create_conflicting_branches()
+        # The default merge algorithm should enable 'reprocess' because
+        # 'show-base' is not set
+        self.run_bzr('merge ../other', working_dir='tree',
+                     retcode=1)
+        self.assertEqualDiff('a\n'
+                             'B\n'
+                             '<<<<<<< TREE\n'
+                             'C\n'
+                             '=======\n'
+                             'D\n'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             tree.get_file_text('f-id'))
+
+    def test_merge_explicit_reprocess_show_base(self):
+        tree, other = self.create_conflicting_branches()
+        # Explicitly setting --reprocess, and --show-base is an error
+        self.run_bzr_error(['Cannot do conflict reduction and show base'],
+                           'merge ../other --reprocess --show-base',
+                           working_dir='tree')
+
+    def test_merge_override_reprocess(self):
+        tree, other = self.create_conflicting_branches()
+        # Explicitly disable reprocess
+        self.run_bzr('merge ../other --no-reprocess', working_dir='tree',
+                     retcode=1)
+        self.assertEqualDiff('a\n'
+                             '<<<<<<< TREE\n'
+                             'B\n'
+                             'C\n'
+                             '=======\n'
+                             'B\n'
+                             'D\n'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             tree.get_file_text('f-id'))
+
+    def test_merge_override_show_base(self):
+        tree, other = self.create_conflicting_branches()
+        # Setting '--show-base' will auto-disable '--reprocess'
+        self.run_bzr('merge ../other --show-base', working_dir='tree',
+                     retcode=1)
+        self.assertEqualDiff('a\n'
+                             '<<<<<<< TREE\n'
+                             'B\n'
+                             'C\n'
+                             '||||||| BASE-REVISION\n'
+                             'b\n'
+                             'c\n'
+                             '=======\n'
+                             'B\n'
+                             'D\n'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             tree.get_file_text('f-id'))
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -173,10 +246,10 @@ class TestMerge(ExternalBase):
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
         out, err = self.run_bzr('merge')
-        
+
         base = urlutils.local_path_from_url(branch_a.base)
         self.assertStartsWith(err,
-                          'Merging from remembered location %s\n' % (base,))
+                          'Merging from remembered submit location %s\n' % (base,))
         self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_submit_branch()),
                           abspath(parent))
@@ -365,7 +438,7 @@ class TestMerge(ExternalBase):
 
     def assertDirectoryContent(self, directory, entries, message=''):
         """Assert whether entries (file or directories) exist in a directory.
-        
+
         It also checks that there are no extra entries.
         """
         ondisk = os.listdir(directory)
@@ -418,10 +491,10 @@ class TestMerge(ExternalBase):
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         tree_c = tree_a.bzrdir.sprout('c').open_workingtree()
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(err, 'Merging from remembered location .*a\/')
+        self.assertContainsRe(err, 'Merging from remembered parent location .*a\/')
         tree_c.branch.set_submit_branch(tree_b.bzrdir.root_transport.base)
         out, err = self.run_bzr(['merge', '-d', 'c'])
-        self.assertContainsRe(err, 'Merging from remembered location .*b\/')
+        self.assertContainsRe(err, 'Merging from remembered submit location .*b\/')
 
     def test_remember_sets_submit(self):
         tree_a = self.make_branch_and_tree('a')

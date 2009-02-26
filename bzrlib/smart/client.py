@@ -17,7 +17,10 @@
 import bzrlib
 from bzrlib.smart import message, protocol
 from bzrlib.trace import warning
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    hooks,
+    )
 
 
 class _SmartClient(object):
@@ -34,7 +37,7 @@ class _SmartClient(object):
             self._headers = dict(headers)
 
     def _send_request(self, protocol_version, method, args, body=None,
-                      readv_body=None):
+                      readv_body=None, body_stream=None):
         encoder, response_handler = self._construct_protocol(
             protocol_version)
         encoder.set_headers(self._headers)
@@ -42,20 +45,35 @@ class _SmartClient(object):
             if readv_body is not None:
                 raise AssertionError(
                     "body and readv_body are mutually exclusive.")
+            if body_stream is not None:
+                raise AssertionError(
+                    "body and body_stream are mutually exclusive.")
             encoder.call_with_body_bytes((method, ) + args, body)
         elif readv_body is not None:
-            encoder.call_with_body_readv_array((method, ) + args,
-                    readv_body)
+            if body_stream is not None:
+                raise AssertionError(
+                    "readv_body and body_stream are mutually exclusive.")
+            encoder.call_with_body_readv_array((method, ) + args, readv_body)
+        elif body_stream is not None:
+            encoder.call_with_body_stream((method, ) + args, body_stream)
         else:
             encoder.call(method, *args)
         return response_handler
 
+    def _run_call_hooks(self, method, args, body, readv_body):
+        if not _SmartClient.hooks['call']:
+            return
+        params = CallHookParams(method, args, body, readv_body, self._medium)
+        for hook in _SmartClient.hooks['call']:
+            hook(params)
+
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
-            expect_response_body=True):
+            body_stream=None, expect_response_body=True):
+        self._run_call_hooks(method, args, body, readv_body)
         if self._medium._protocol_version is not None:
             response_handler = self._send_request(
                 self._medium._protocol_version, method, args, body=body,
-                readv_body=readv_body)
+                readv_body=readv_body, body_stream=body_stream)
             return (response_handler.read_response_tuple(
                         expect_body=expect_response_body),
                     response_handler)
@@ -66,7 +84,7 @@ class _SmartClient(object):
                     self._medium._remember_remote_is_before((1, 6))
                 response_handler = self._send_request(
                     protocol_version, method, args, body=body,
-                    readv_body=readv_body)
+                    readv_body=readv_body, body_stream=body_stream)
                 try:
                     response_tuple = response_handler.read_response_tuple(
                         expect_body=expect_response_body)
@@ -114,7 +132,7 @@ class _SmartClient(object):
 
     def call_expecting_body(self, method, *args):
         """Call a method and return the result and the protocol object.
-        
+
         The body can be read like so::
 
             result, smart_protocol = smart_client.call_expecting_body(...)
@@ -154,12 +172,50 @@ class _SmartClient(object):
                 args[0], args[1:], readv_body=body, expect_response_body=True)
         return (response, response_handler)
 
+    def call_with_body_stream(self, args, stream):
+        response, response_handler = self._call_and_read_response(
+                args[0], args[1:], body_stream=stream,
+                expect_response_body=False)
+        return (response, response_handler)
+
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.
-        
+
         Note that the resulting remote path doesn't encode the host name or
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
         """
         return self._medium.remote_path_from_transport(transport)
 
+
+class SmartClientHooks(hooks.Hooks):
+
+    def __init__(self):
+        hooks.Hooks.__init__(self)
+        self['call'] = []
+
+
+_SmartClient.hooks = SmartClientHooks()
+
+
+class CallHookParams(object):
+
+    def __init__(self, method, args, body, readv_body, medium):
+        self.method = method
+        self.args = args
+        self.body = body
+        self.readv_body = readv_body
+        self.medium = medium
+
+    def __repr__(self):
+        attrs = dict((k, v) for (k, v) in self.__dict__.iteritems()
+                     if v is not None)
+        return '<%s %r>' % (self.__class__.__name__, attrs)
+
+    def __eq__(self, other):
+        if type(other) is not type(self):
+            return NotImplemented
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self == other

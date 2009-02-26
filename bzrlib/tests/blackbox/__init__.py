@@ -18,7 +18,7 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
@@ -62,8 +62,11 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_debug',
                      'bzrlib.tests.blackbox.test_diff',
+                     'bzrlib.tests.blackbox.test_dump_btree',
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_filesystem_cicp',
+                     'bzrlib.tests.blackbox.test_filtered_view_ops',
                      'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_hooks',
@@ -102,6 +105,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_send',
                      'bzrlib.tests.blackbox.test_serve',
                      'bzrlib.tests.blackbox.test_shared_repository',
+                     'bzrlib.tests.blackbox.test_shelve',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_split',
                      'bzrlib.tests.blackbox.test_status',
@@ -116,6 +120,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_version',
                      'bzrlib.tests.blackbox.test_version_info',
                      'bzrlib.tests.blackbox.test_versioning',
+                     'bzrlib.tests.blackbox.test_view',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
     # add the tests for the sub modules

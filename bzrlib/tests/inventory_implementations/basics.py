@@ -40,7 +40,7 @@ from bzrlib.tests import (
 
 class TestInventoryBasics(TestCase):
     # Most of these were moved the rather old bzrlib.tests.test_inv module
-    
+
     def make_inventory(self, root_id):
         return self.inventory_class(root_id=root_id)
 
@@ -80,6 +80,14 @@ class TestInventoryBasics(TestCase):
         inv = self.make_inventory(root_id=None)
         inv2 = inv.copy()
         self.assertIs(None, inv2.root)
+
+    def test_copy_copies_root_revision(self):
+        """Make sure the revision of the root gets copied."""
+        inv = self.make_inventory(root_id='someroot')
+        inv.root.revision = 'therev'
+        inv2 = inv.copy()
+        self.assertEquals('someroot', inv2.root.file_id)
+        self.assertEquals('therev', inv2.root.revision)
 
     def test_is_root(self):
         """Ensure our root-checking code is accurate."""
