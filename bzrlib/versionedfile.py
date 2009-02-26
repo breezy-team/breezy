@@ -1535,19 +1535,19 @@ class NetworkRecordStream(object):
 def fulltext_network_to_record(kind, bytes, line_end):
     """Convert a network fulltext record to record."""
     meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
-    record_meta = record_bytes[line_end+4:line_end+4+meta_len]
+    record_meta = bytes[line_end+4:line_end+4+meta_len]
     key, parents = bencode.bdecode_as_tuple(record_meta)
     if parents == 'nil':
         parents = None
-    fulltext = record_bytes[line_end+4+meta_len:]
-    return FulltextContentFactory(key, parents, None, fulltext)
+    fulltext = bytes[line_end+4+meta_len:]
+    return [FulltextContentFactory(key, parents, None, fulltext)]
 
 
 def _length_prefix(bytes):
     return struct.pack('!L', len(bytes))
 
 
-def record_to_fulltext_bytes(self, record):
+def record_to_fulltext_bytes(record):
     if record.parents is None:
         parents = 'nil'
     else:
