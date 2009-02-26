@@ -57,12 +57,17 @@ class cmd_git_import(Command):
 
     """
 
-    takes_args = ["src_location", "dest_location"]
+    takes_args = ["src_location", "dest_location?"]
 
-    def run(self, src_location, dest_location):
+    def run(self, src_location, dest_location=None):
         from bzrlib.bzrdir import BzrDir, format_registry
         from bzrlib.errors import NoRepositoryPresent, NotBranchError
         from bzrlib.repository import Repository
+        import os
+
+        if dest_location is None:
+            dest_location = os.path.basename(src_location.rstrip("/\\"))
+
         source_repo = Repository.open(src_location)
         format = format_registry.make_bzrdir('rich-root-pack')
         try:
