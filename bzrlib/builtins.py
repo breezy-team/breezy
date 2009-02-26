@@ -3422,7 +3422,7 @@ class cmd_merge(Command):
                                        merger.other_rev_id)
                     result.report(self.outf)
                     return 0
-            merger.check_basis(not force)
+            merger.check_basis(force)
             if preview:
                 return self._do_preview(merger)
             else:
