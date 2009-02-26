@@ -878,7 +878,7 @@ class Branch(object):
             raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None):
+    def clone(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -888,6 +888,8 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 
@@ -1668,7 +1670,8 @@ class BranchReferenceFormat(BranchFormat):
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
-        def clone(to_bzrdir, revision_id=None):
+        def clone(to_bzrdir, revision_id=None,
+            repository_policy=None):
             """See Branch.clone()."""
             return format.initialize(to_bzrdir, a_branch)
             # cannot obey revision_id limits when cloning a reference ...

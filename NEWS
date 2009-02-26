@@ -93,6 +93,13 @@ IN DEVELOPMENT
       via RPC calls rather than VFS calls, reducing round trips for
       pushing new branches substantially. (Robert Collins)
 
+    * ``Branch.clone`` now takes the ``repository_policy`` formerly used
+      inside ``BzrDir.clone_on_transport``, allowing stacking to be
+      configured before the branch tags and revision tip are set. This
+      fixes a race condition cloning stacked branches that would cause
+      plugins to have hooks called on non-stacked instances.
+      (Robert Collins, #334187)
+
     * ``BzrDirFormat.__str__`` now uses the human readable description
       rather than the sometimes-absent disk label. (Robert Collins)
 

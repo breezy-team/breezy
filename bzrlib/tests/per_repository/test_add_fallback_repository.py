@@ -65,13 +65,3 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         self.addCleanup(other.unlock)
         self.assertEqual({revision_id: (NULL_REVISION,)},
             repo.get_graph(other).get_parent_map([revision_id]))
-
-    def test_add_fallback_sets_fetch_order(self):
-        repo = self.make_repository('repo')
-        tree = self.make_branch_and_tree('branch')
-        if not repo._format.supports_external_lookups:
-            self.assertRaises(errors.UnstackableRepositoryFormat,
-                repo.add_fallback_repository, tree.branch.repository)
-            raise TestNotApplicable
-        repo.add_fallback_repository(tree.branch.repository)
-        self.assertEqual('topological', repo._fetch_order)
