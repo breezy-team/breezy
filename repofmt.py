@@ -34,7 +34,7 @@ from bzrlib.btree_index import (
     )
 from bzrlib.index import GraphIndex, GraphIndexBuilder
 from bzrlib.repository import InterPackRepo
-from bzrlib.plugins.groupcompress.groupcompress import (
+from bzrlib.plugins.groupcompress_rabin.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
     )
@@ -329,7 +329,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
 
 
-class GCPackRepository(KnitPackRepository):
+class GCRPackRepository(KnitPackRepository):
     """GC customisation of KnitPackRepository."""
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
@@ -411,7 +411,7 @@ class GCPackRepository(KnitPackRepository):
 
 
 if chk_support:
-    class GCCHKPackRepository(CHKInventoryRepository):
+    class GCRCHKPackRepository(CHKInventoryRepository):
         """GC customisation of CHKInventoryRepository."""
 
         def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
@@ -474,15 +474,15 @@ if chk_support:
             self._fetch_uses_deltas = False
 
 
-class RepositoryFormatPackGCPlain(RepositoryFormatPackDevelopment2):
+class RepositoryFormatPackGCRabin(RepositoryFormatPackDevelopment2):
     """A B+Tree index using pack repository."""
 
-    repository_class = GCPackRepository
+    repository_class = GCRPackRepository
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format - btree+gc "
-            "(needs bzr.dev from 1.6)\n")
+        return ("Bazaar development format - btree+gcr "
+            "(needs bzr.dev from 1.13)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -490,61 +490,15 @@ class RepositoryFormatPackGCPlain(RepositoryFormatPackDevelopment2):
             ", interoperates with pack-0.92\n")
 
 
-class RepositoryFormatPackGCRichRoot(RepositoryFormatKnitPack4):
-    """A B+Tree index using pack repository."""
-
-    repository_class = GCPackRepository
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format - btree+gc-rich-root "
-            "(needs bzr.dev from 1.6)\n")
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format - btree+groupcompress "
-            ", interoperates with rich-root-pack\n")
-
-
-class RepositoryFormatPackGCSubtrees(RepositoryFormatPackDevelopment2Subtree):
-    """A B+Tree index using pack repository."""
-
-    repository_class = GCPackRepository
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format - btree+gc-subtrees "
-            "(needs bzr.dev from 1.6)\n")
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format - btree+groupcompress "
-            ", interoperates with pack-0.92-subtrees\n")
-
 if chk_support:
-    class RepositoryFormatPackGCPlainCHK(RepositoryFormatPackDevelopment5):
-        """A CHK+group compress pack repository."""
-
-        repository_class = GCCHKPackRepository
-
-        def get_format_string(self):
-            """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - chk+gc'
-                    ' (needs bzr.dev from 1.13)\n')
-
-        def get_format_description(self):
-            """See RepositoryFormat.get_format_description()."""
-            return ("Development repository format - chk+groupcompress")
-
-
-    class RepositoryFormatPackGCPlainCHK16(RepositoryFormatPackDevelopment5Hash16):
+    class RepositoryFormatPackGCRabinCHK16(RepositoryFormatPackDevelopment5Hash16):
         """A hashed CHK+group compress pack repository."""
 
-        repository_class = GCCHKPackRepository
+        repository_class = GCRCHKPackRepository
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - hash16chk+gc'
+            return ('Bazaar development format - hash16chk+gcr'
                     ' (needs bzr.dev from 1.13)\n')
 
         def get_format_description(self):
@@ -552,14 +506,14 @@ if chk_support:
             return ("Development repository format - hash16chk+groupcompress")
 
 
-    class RepositoryFormatPackGCPlainCHK255(RepositoryFormatPackDevelopment5Hash255):
+    class RepositoryFormatPackGCRabinCHK255(RepositoryFormatPackDevelopment5Hash255):
         """A hashed CHK+group compress pack repository."""
 
-        repository_class = GCCHKPackRepository
+        repository_class = GCRCHKPackRepository
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - hash255chk+gc'
+            return ('Bazaar development format - hash255chk+gcr'
                     ' (needs bzr.dev from 1.13)\n')
 
         def get_format_description(self):
@@ -569,12 +523,10 @@ if chk_support:
 
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     """Be incompatible with the regular fetch code."""
-    formats = (RepositoryFormatPackGCPlain, RepositoryFormatPackGCRichRoot,
-        RepositoryFormatPackGCSubtrees)
+    formats = (RepositoryFormatPackGCRabin,)
     if chk_support:
-        formats = formats + (RepositoryFormatPackGCPlainCHK,
-                             RepositoryFormatPackGCPlainCHK16,
-                             RepositoryFormatPackGCPlainCHK255)
+        formats = formats + (RepositoryFormatPackGCRabinCHK16,
+                             RepositoryFormatPackGCRabinCHK255)
     if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
     else:
