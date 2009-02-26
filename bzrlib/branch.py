@@ -2145,12 +2145,12 @@ class BzrBranch5(BzrBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        if bound_location and source.base != bound_location:
+        if not local and bound_location and source.base != bound_location:
             # not pulling from master, so we need to update master.
             master_branch = self.get_master_branch(possible_transports)
             master_branch.lock_write()
         try:
-            if master_branch and not local:
+            if master_branch:
                 # pull from source into master.
                 master_branch.pull(source, overwrite, stop_revision,
                     run_hooks=False)
