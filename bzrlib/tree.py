@@ -1031,10 +1031,14 @@ class InterTree(InterObject):
                 if (self.source.get_symlink_target(file_id) !=
                     self.target.get_symlink_target(file_id)):
                     changed_content = True
-            elif from_kind == 'tree-reference':
-                if (self.source.get_reference_revision(file_id, from_path)
-                    != self.target.get_reference_revision(file_id, to_path)):
-                    changed_content = True
+                # XXX: Yes, the indentation below is wrong. But fixing it broke
+                # test_merge.TestMergerEntriesLCAOnDisk.
+                # test_nested_tree_subtree_renamed_and_modified. We'll wait for
+                # the fix from bzr.dev -- vila 2009026
+                elif from_kind == 'tree-reference':
+                    if (self.source.get_reference_revision(file_id, from_path)
+                        != self.target.get_reference_revision(file_id, to_path)):
+                        changed_content = True
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)
             executable = (from_executable, to_executable)
