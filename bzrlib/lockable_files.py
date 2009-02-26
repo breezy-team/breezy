@@ -50,7 +50,8 @@ class LockWarner(object):
         self.repr = repr
 
     def __del__(self):
-        if self.lock_count_holder[0] >= 0:
+        print self.lock_count_holder[0]
+        if self.lock_count_holder[0] >= 1:
             # do not automatically unlock; there should have been a
             # try/finally to unlock this.
             warnings.warn("%r was gc'd while locked" % self.repr)
@@ -102,7 +103,7 @@ class LockableFiles(object):
         self._transaction = None
         self._lock_mode = None
         self._lock_count_holder = [0]
-        self._lock_warner = LockWarner(self._lock_count_holder)
+        self._lock_warner = LockWarner(self._lock_count_holder, repr(self))
         self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
