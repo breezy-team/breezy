@@ -532,22 +532,89 @@ class TestBzrDirCreateRepository(TestRemote):
         self.assertEqual(network_name, format.network_name())
 
 
-class TestBzrDirOpenRepository(tests.TestCase):
+class TestBzrDirOpenRepository(TestRemote):
 
-    def test_backwards_compat_1_2(self):
+    def get_repo_format(self):
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        return reference_bzrdir_format.repository_format
+
+    def test_backwards_compat_1_2_3(self):
+        # fallback all the way to the first version.
+        reference_format = self.get_repo_format()
+        network_name = reference_format.network_name()
+        client = FakeClient('bzr://example.com/')
+        client.add_unknown_method_response('BzrDir.find_repositoryV3')
+        client.add_unknown_method_response('BzrDir.find_repositoryV2')
+        client.add_success_response('ok', '', 'no', 'no')
+        # A real repository instance will be created to determine the network
+        # name.
+        client.add_success_response_with_body(
+            "Bazaar-NG meta directory, format 1\n", 'ok')
+        client.add_success_response_with_body(
+            reference_format.get_format_string(), 'ok')
+        # PackRepository wants to do a stat
+        client.add_success_response('stat', '0', '65535')
+        remote_transport = RemoteTransport('bzr://example.com/quack/', medium=False,
+            _client=client)
+        bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        repo = bzrdir.open_repository()
+        self.assertEqual(
+            [('call', 'BzrDir.find_repositoryV3', ('quack/',)),
+             ('call', 'BzrDir.find_repositoryV2', ('quack/',)),
+             ('call', 'BzrDir.find_repository', ('quack/',)),
+             ('call_expecting_body', 'get', ('/quack/.bzr/branch-format',)),
+             ('call_expecting_body', 'get', ('/quack/.bzr/repository/format',)),
+             ('call', 'stat', ('/quack/.bzr/repository',)),
+             ],
+            client._calls)
+        self.assertEqual(network_name, repo._format.network_name())
+
+    def test_backwards_compat_2(self):
+        # fallback to find_repositoryV2
+        reference_format = self.get_repo_format()
+        network_name = reference_format.network_name()
+        client = FakeClient('bzr://example.com/')
+        client.add_unknown_method_response('BzrDir.find_repositoryV3')
+        client.add_success_response('ok', '', 'no', 'no', 'no')
+        # A real repository instance will be created to determine the network
+        # name.
+        client.add_success_response_with_body(
+            "Bazaar-NG meta directory, format 1\n", 'ok')
+        client.add_success_response_with_body(
+            reference_format.get_format_string(), 'ok')
+        # PackRepository wants to do a stat
+        client.add_success_response('stat', '0', '65535')
+        remote_transport = RemoteTransport('bzr://example.com/quack/', medium=False,
+            _client=client)
+        bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        repo = bzrdir.open_repository()
+        self.assertEqual(
+            [('call', 'BzrDir.find_repositoryV3', ('quack/',)),
+             ('call', 'BzrDir.find_repositoryV2', ('quack/',)),
+             ('call_expecting_body', 'get', ('/quack/.bzr/branch-format',)),
+             ('call_expecting_body', 'get', ('/quack/.bzr/repository/format',)),
+             ('call', 'stat', ('/quack/.bzr/repository',)),
+             ],
+            client._calls)
+        self.assertEqual(network_name, repo._format.network_name())
+
+    def test_current_server(self):
+        reference_format = self.get_repo_format()
+        network_name = reference_format.network_name()
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
         client = FakeClient(transport.base)
-        client.add_unknown_method_response('BzrDir.find_repositoryV2')
-        client.add_success_response('ok', '', 'no', 'no')
+        client.add_success_response('ok', '', 'no', 'no', 'no', network_name)
         bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
         repo = bzrdir.open_repository()
         self.assertEqual(
-            [('call', 'BzrDir.find_repositoryV2', ('quack/',)),
-             ('call', 'BzrDir.find_repository', ('quack/',))],
+            [('call', 'BzrDir.find_repositoryV3', ('quack/',))],
             client._calls)
+        self.assertEqual(network_name, repo._format.network_name())
 
 
 class OldSmartClient(object):

@@ -111,6 +111,10 @@ IN DEVELOPMENT
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
 
+    * New version of the ``BzrDir.find_repository`` verb supporting
+      ``_network_name`` to support removing more _ensure_real calls.
+      (Robert Collins)
+
     * ``RemoteBranchFormat`` no longer claims to have a disk format string.
       (Robert Collins)
 

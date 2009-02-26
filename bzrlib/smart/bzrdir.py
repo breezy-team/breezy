@@ -208,7 +208,32 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
         returns information about the supports_external_lookups format
         attribute too.
 
-        :return: norepository or ok, relpath.
+        :return: norepository or ok, relpath, rich_root, tree_ref,
+            external_lookup.
+        """
+        try:
+            path, rich_root, tree_ref, external_lookup = self._find(path)
+            return SuccessfulSmartServerResponse(
+                ('ok', path, rich_root, tree_ref, external_lookup))
+        except errors.NoRepositoryPresent:
+            return FailedSmartServerResponse(('norepository', ))
+
+
+class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
+
+    def do(self, path):
+        """try to find a repository from path upwards
+
+        This operates precisely like 'bzrdir.find_repository'.
+
+        If a bzrdir is not present, an exception is propogated
+        rather than 'no branch' because these are different conditions.
+
+        This is the third edition of this method introduced in bzr 1.13, which
+        returns information about the network name of the repository format.
+
+        :return: norepository or ok, relpath, rich_root, tree_ref,
+            external_lookup, network_name.
         """
         try:
             path, rich_root, tree_ref, external_lookup = self._find(path)
