@@ -1115,6 +1115,7 @@ class TransportTests(TestTransportImplementation):
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
+        # 'a' is a file, list_dir should raise an error
         self.assertListRaises(PathError, t.list_dir, 'a')
 
     def test_list_dir_result_is_url_escaped(self):
@@ -1506,7 +1507,10 @@ class TransportTests(TestTransportImplementation):
         transport.put_bytes('foo', 'bar')
         transport3 = self.get_transport()
         self.check_transport_contents('bar', transport3, 'foo')
-        # its base should be usable.
+        # its base should be usable. XXX: This is true only if we don't use
+        # auhentication, otherwise 'base' doesn't mention the password and we
+        # can't access it anymore since the password is lost (it *could* be
+        # mentioned in the url given by the test server) --vila 090226
         transport4 = get_transport(transport.base)
         self.check_transport_contents('bar', transport4, 'foo')
 
