@@ -57,13 +57,13 @@ def parse(line_list):
     result = []
     lines = iter(line_list)
     next = lines.next
-    label_line = lines.next()
-    sha1_line = lines.next()
-    if (not label_line.startswith('label: ') or
-        not sha1_line.startswith('sha1: ')):
-        raise AssertionError("bad text record %r" % lines)
-    label = tuple(label_line[7:-1].split('\x00'))
-    sha1 = sha1_line[6:-1]
+    ## label_line = lines.next()
+    ## sha1_line = lines.next()
+    ## if (not label_line.startswith('label: ') or
+    ##     not sha1_line.startswith('sha1: ')):
+    ##     raise AssertionError("bad text record %r" % lines)
+    ## label = tuple(label_line[7:-1].split('\x00'))
+    ## sha1 = sha1_line[6:-1]
     for header in lines:
         op = header[0]
         numbers = header[2:]
@@ -73,7 +73,8 @@ def parse(line_list):
         else:
             contents = [next() for i in xrange(numbers[0])]
             result.append((op, None, numbers[0], contents))
-    return label, sha1, result
+    return result
+    ## return label, sha1, result
 
 
 def apply_delta(basis, delta):
@@ -221,9 +222,9 @@ class GroupCompressor(object):
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
         new_lines = []
-        new_lines.append('label: %s\n' % label)
-        new_lines.append('sha1: %s\n' % sha1)
-        index_lines = [False, False]
+        # new_lines.append('label: %s\n' % label)
+        # new_lines.append('sha1: %s\n' % sha1)
+        index_lines = []
         # setup good encoding for trailing \n support.
         if not lines or lines[-1].endswith('\n'):
             lines.append('\n')
@@ -274,9 +275,10 @@ class GroupCompressor(object):
         """
         delta_details = self.labels_deltas[key]
         delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
-        label, sha1, delta = parse(delta_lines)
-        if label != key:
-            raise AssertionError("wrong key: %r, wanted %r" % (label, key))
+        ## label, sha1, delta = parse(delta_lines)
+        delta = parse(delta_lines)
+        ## if label != key:
+        ##     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
         # Perhaps we want to keep the line offsets too in memory at least?
         lines = apply_delta(''.join(self.lines), delta)
         sha1 = sha_strings(lines)
@@ -618,12 +620,14 @@ class GroupCompressVersionedFiles(VersionedFiles):
             else:
                 index_memo, _, parents, (method, _) = locations[key]
                 plain, delta_lines = self._get_group_and_delta_lines(index_memo)
-                label, sha1, delta = parse(delta_lines)
-                if label != key:
-                    raise AssertionError("wrong key: %r, wanted %r" % (label, key))
+                delta = parse(delta_lines)
+                # label, sha1, delta = parse(delta_lines)
+                # if label != key:
+                #     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
                 lines = apply_delta(plain, delta)
-                if sha_strings(lines) != sha1:
-                    raise AssertionError('sha1 sum did not match')
+                sha1 = sha_strings(lines)
+                # if sha_strings(lines) != sha1:
+                #     raise AssertionError('sha1 sum did not match')
             yield ChunkedContentFactory(key, parents, sha1, lines)
 
     def get_sha1s(self, keys):
