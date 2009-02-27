@@ -110,17 +110,18 @@ def sort_gc_optimal(parent_map):
     """
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.
-    per_prefix_map = {'': []}
+    per_prefix_map = {}
     present_keys = []
     for item in parent_map.iteritems():
         key = item[0]
         if isinstance(key, str) or len(key) == 1:
-            per_prefix_map[''].append(item)
+            prefix = ''
         else:
-            try:
-                per_prefix_map[key[0]].append(item)
-            except KeyError:
-                per_prefix_map[key[0]] = [item]
+            prefix = key[0]
+        try:
+            per_prefix_map[prefix].append(item)
+        except KeyError:
+            per_prefix_map[prefix] = [item]
 
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
@@ -585,7 +586,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         keys = set(orig_keys)
         if not keys:
             return
-        if not self._index.has_graph and ordering == 'topological':
+        if (not self._index.has_graph
+            and ordering in ('topological', 'gc-optimal')):
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
         # Cheap: iterate
@@ -604,7 +606,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # Now group by source:
         elif ordering == 'gc-optimal':
             parent_map = dict((key, details[2]) for key, details in
-                locations.iteritems())
+                              locations.iteritems())
             for key in local_keys:
                 parent_map[key] = self._unadded_refs[key]
             # XXX: This only optimizes for the target ordering. We may need to

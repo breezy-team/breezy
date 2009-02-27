@@ -267,7 +267,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
         return _filter_inv_stream(stream), id_roots, p_id_roots
 
-    def _get_chk_stream(self, source_vf, keys, id_roots, p_id_roots):
+    def _get_chk_stream(self, source_vf, keys, id_roots, p_id_roots, pb=None):
         # We want to stream the keys from 'id_roots', and things they
         # reference, and then stream things from p_id_roots and things they
         # reference, and then any remaining keys that we didn't get to.
@@ -309,9 +309,18 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
                     cur_keys.extend(keys_by_search_prefix[prefix])
+        counter = 0
         for record in _get_referenced_stream(id_roots):
+            # We don't know how many total
+            counter += 1
+            if pb is not None:
+                pb.update('chk node', counter)
             yield record
         for record in _get_referenced_stream(p_id_roots):
+            # We don't know how many total
+            counter += 1
+            if pb is not None:
+                pb.update('chk node', counter)
             yield record
         if remaining_keys:
             trace.note('There were %d keys in the chk index, which'
@@ -320,6 +329,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             stream = source_vf.get_record_stream(remaining_keys, 'unordered',
                                                  True)
             for record in stream:
+                # We don't know how many total
+                counter += 1
+                if pb is not None:
+                    pb.update('chk node', counter)
                 yield record
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
@@ -395,16 +408,20 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                         access=target_access,
                         delta=source_vf._delta)
                     stream = None
-                    if has_chk:
-                        if vf_name == 'inventories':
-                            stream, id_roots, p_id_roots = self._get_filtered_inv_stream(
-                                source_vf, keys)
-                        elif vf_name == 'chk_bytes':
-                            stream = self._get_chk_stream(source_vf, keys,
-                                                          id_roots, p_id_roots)
-                    if stream is None:
-                        stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
-                    target_vf.insert_record_stream(stream)
+                    child_pb = ui.ui_factory.nested_progress_bar()
+                    try:
+                        if has_chk:
+                            if vf_name == 'inventories':
+                                stream, id_roots, p_id_roots = self._get_filtered_inv_stream(
+                                    source_vf, keys)
+                            elif vf_name == 'chk_bytes':
+                                stream = self._get_chk_stream(source_vf, keys,
+                                    id_roots, p_id_roots, pb=child_pb)
+                        if stream is None:
+                            stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
+                        target_vf.insert_record_stream(stream)
+                    finally:
+                        child_pb.finished()
                 new_pack._check_references() # shouldn't be needed
             except:
                 pb.finished()
