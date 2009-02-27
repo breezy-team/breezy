@@ -290,31 +290,35 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 next_keys = set()
                 stream = source_vf.get_record_stream(cur_keys, 'as-requested',
                                                      True)
-                for record in stream:
-                    bytes = record.get_bytes_as('fulltext')
-                    # We don't care about search_key_func for this code,
-                    # because we only care about external references.
-                    node = chk_map._deserialise(bytes, record.key,
-                                                search_key_func=None)
-                    common_base = node._search_prefix
-                    if isinstance(node, chk_map.InternalNode):
-                        for prefix, value in node._items.iteritems():
-                            assert isinstance(value, tuple)
-                            if value not in next_keys:
-                                keys_by_search_prefix.setdefault(prefix,
-                                    []).append(value)
-                                next_keys.add(value)
-                    counter[0] += 1
-                    if pb is not None:
-                        pb.update('chk node', counter[0])
-                    yield record
+                def next_stream():
+                    for record in stream:
+                        bytes = record.get_bytes_as('fulltext')
+                        # We don't care about search_key_func for this code,
+                        # because we only care about external references.
+                        node = chk_map._deserialise(bytes, record.key,
+                                                    search_key_func=None)
+                        common_base = node._search_prefix
+                        if isinstance(node, chk_map.InternalNode):
+                            for prefix, value in node._items.iteritems():
+                                assert isinstance(value, tuple)
+                                if value not in next_keys:
+                                    keys_by_search_prefix.setdefault(prefix,
+                                        []).append(value)
+                                    next_keys.add(value)
+                        counter[0] += 1
+                        if pb is not None:
+                            pb.update('chk node', counter[0])
+                        yield record
+                yield next_stream()
                 # Double check that we won't be emitting any keys twice
                 next_keys = next_keys.intersection(remaining_keys)
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
                     cur_keys.extend(keys_by_search_prefix[prefix])
-        yield _get_referenced_stream(id_roots)
-        yield _get_referenced_stream(p_id_roots)
+        for stream in _get_referenced_stream(id_roots):
+            yield stream
+        for stream in _get_referenced_stream(p_id_roots):
+            yield stream
         if remaining_keys:
             trace.note('There were %d keys in the chk index, which'
                        ' were not referenced from inventories',
