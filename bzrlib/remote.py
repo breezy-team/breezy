@@ -624,6 +624,10 @@ class RemoteRepository(_RpcHelper):
         """See Repository._get_sink()."""
         return RemoteStreamSink(self)
 
+    def _get_source(self, to_format):
+        """Return a source for streaming from this repository."""
+        return RemoteStreamSource(self, to_format)
+
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
         if revision_id == NULL_REVISION:
@@ -1405,9 +1409,6 @@ class RemoteRepository(_RpcHelper):
 
 class RemoteStreamSink(repository.StreamSink):
 
-    def __init__(self, target_repo):
-        repository.StreamSink.__init__(self, target_repo)
-
     def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
         sink = self.target_repo._real_repository._get_sink()
@@ -1489,6 +1490,10 @@ class RemoteStreamSink(repository.StreamSink):
         pack_writer.end()
         for b in bytes:
             yield b
+
+
+class RemoteStreamSource(repository.StreamSource):
+    """Stream data from a remote server."""
 
 
 class RemoteBranchLockableFiles(LockableFiles):
