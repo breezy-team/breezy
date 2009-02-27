@@ -21,7 +21,7 @@ import zlib
 
 from bzrlib import tests
 from bzrlib.osutils import sha_strings
-from bzrlib.plugins.groupcompress import errors, groupcompress
+from bzrlib.plugins.groupcompress_rabin import errors, groupcompress
 from bzrlib.tests import (
     TestCaseWithTransport,
     TestScenarioApplier,
@@ -35,7 +35,7 @@ def load_tests(standard_tests, module, loader):
     vf_interface_tests = loader.loadTestsFromTestCase(TestVersionedFiles)
     cleanup_pack_group = groupcompress.cleanup_pack_group
     make_pack_factory = groupcompress.make_pack_factory
-    group_scenario = ('groupcompress-nograph', {
+    group_scenario = ('groupcompressrabin-nograph', {
             'cleanup':cleanup_pack_group,
             'factory':make_pack_factory(False, False, 1),
             'graph': False,
@@ -84,6 +84,7 @@ class TestGroupCompressor(TestCaseWithTransport):
         self.assertEqual(sha_strings(['common long line\n', 'different\n']),
                          sha1_2)
         expected_lines.extend([
+            'delta\n'
             'label: newlabel\n',
             'sha1: %s\n' % sha1_2,
             # copy the line common

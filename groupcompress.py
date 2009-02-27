@@ -53,6 +53,17 @@ from bzrlib.versionedfile import (
     )
 
 
+def parse(bytes):
+    action, label_line, sha1_line, delta_bytes = bytes.split('\n', 3)
+    if (action not in ('fulltext', 'delta')
+        or not label_line.startswith('label: ')
+        or not sha1_line.startswith('sha1: ')):
+        raise AssertionError("bad text record %r" % (bytes,))
+    label = tuple(label_line[7:].split('\x00'))
+    sha1 = sha1_line[6:]
+    return action, label, sha1, delta_bytes
+
+
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into gc-optimal order.
 
@@ -102,7 +113,7 @@ class GroupCompressor(object):
 
         :paeam delta: If False, do not compress records.
         """
-        self._compressed = []
+        self.lines = []
         self.endpoint = 0
         self.input_bytes = 0
         self.labels_deltas = {}
@@ -127,14 +138,21 @@ class GroupCompressor(object):
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
-        ## new_lines = []
-        input_len = sum(map(len, chunks))
-        new_lines = ['label: %s\n' % label,
-                     'sha1: %s\n' % sha1,
-                     'len: %s\n' % input_len,
-                    ]
+        target_text = ''.join(chunks)
+        input_len = len(target_text)
+        new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
+        source_text = ''.join(self.lines)
+        delta = _groupcompress_c.make_delta(source_text, target_text)
+        if delta is None:
+            # We can't delta (perhaps source_text is empty)
+            # so mark this as an insert
+            new_chunks.insert(0, 'fulltext\n')
+            new_chunks.extend(chunks)
+        else:
+            new_chunks.insert(0, 'delta\n')
+            new_chunks.append(delta)
         delta_start = (self.endpoint, len(self.lines))
-        self.output_lines(new_lines, index_lines)
+        self.output_chunks(new_chunks)
         self.input_bytes += input_len
         delta_end = (self.endpoint, len(self.lines))
         self.labels_deltas[key] = (delta_start, delta_end)
@@ -147,73 +165,26 @@ class GroupCompressor(object):
         :return: An iterable over bytes and the sha1.
         """
         delta_details = self.labels_deltas[key]
-        delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
-        label, sha1, delta = parse(delta_lines)
-        ## delta = parse(delta_lines)
+        delta_chunks = self.lines[delta_details[0][1]:delta_details[1][1]]
+        action, label, sha1, delta = parse(''.join(delta_chunks))
         if label != key:
             raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-        # Perhaps we want to keep the line offsets too in memory at least?
-        chunks = apply_delta(''.join(self.lines), delta)
-        sha1 = sha_strings(chunks)
-        return chunks, sha1
+        if action == 'fulltext':
+            bytes = delta
+        else:
+            source = ''.join(self.lines[delta_details[0][0]])
+            bytes = _groupcompress_c.apply_delta(source, delta)
+        sha1 = sha_string(bytes)
+        return [bytes], sha1
 
-    def flush_multi(self, instructions, lines, new_lines, index_lines):
-        """Flush a bunch of different ranges out.
+    def output_chunks(self, new_chunks):
+        """Output some chunks.
 
-        This should only be called with data that are "pure" copies.
+        :param new_chunks: The chunks to output.
         """
-        flush_range = self.flush_range
-        if len(instructions) > 2:
-            # This is the number of lines to be copied
-            total_copy_range = sum(i[2] for i in instructions)
-            if len(instructions) > 0.5 * total_copy_range:
-                # We are copying N lines, but taking more than N/2
-                # copy instructions to do so. We will go ahead and expand this
-                # text so that other code is able to match against it
-                flush_range(instructions[0][0], None, total_copy_range,
-                            lines, new_lines, index_lines)
-                return
-        for ns, os, rl in instructions:
-            flush_range(ns, os, rl, lines, new_lines, index_lines)
-
-    def flush_range(self, range_start, copy_start, range_len, lines, new_lines, index_lines):
-        insert_instruction = "i,%d\n" % range_len
-        if copy_start is not None:
-            # range stops, flush and start a new copy range
-            stop_byte = self.line_offsets[copy_start + range_len - 1]
-            if copy_start == 0:
-                start_byte = 0
-            else:
-                start_byte = self.line_offsets[copy_start - 1]
-            bytes = stop_byte - start_byte
-            copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
-            if (bytes + len(insert_instruction) >
-                len(copy_control_instruction)):
-                new_lines.append(copy_control_instruction)
-                index_lines.append(False)
-                return
-        # not copying, or inserting is shorter than copying, so insert.
-        new_lines.append(insert_instruction)
-        new_lines.extend(lines[range_start:range_start+range_len])
-        index_lines.append(False)
-        index_lines.extend([copy_start is None]*range_len)
-
-    def output_lines(self, new_lines, index_lines):
-        """Output some lines.
-
-        :param new_lines: The lines to output.
-        :param index_lines: A boolean flag for each line - when True, index
-            that line.
-        """
-        # indexed_newlines = [idx for idx, val in enumerate(index_lines)
-        #                          if val and new_lines[idx] == '\n']
-        # if indexed_newlines:
-        #     import pdb; pdb.set_trace()
         endpoint = self.endpoint
-        self.line_locations.extend_lines(new_lines, index_lines)
-        for line in new_lines:
-            endpoint += len(line)
-            self.line_offsets.append(endpoint)
+        self.lines.extend(new_chunks)
+        endpoint += sum(map(len, new_chunks))
         self.endpoint = endpoint
 
     def ratio(self):
@@ -397,18 +368,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     result[key] = self._unadded_refs[key]
         return result
 
-    def _get_delta_lines(self, key):
-        """Helper function for manual debugging.
-
-        This is a convenience function that shouldn't be used in production
-        code.
-        """
-        build_details = self._index.get_build_details([key])[key]
-        index_memo = build_details[0]
-        group, delta_lines = self._get_group_and_delta_lines(index_memo)
-        return delta_lines
-
-    def _get_group_and_delta_lines(self, index_memo):
+    def _get_group_and_delta_bytes(self, index_memo):
         read_memo = index_memo[0:3]
         # get the group:
         try:
@@ -427,7 +387,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # parse - requires split_lines, better to have byte offsets
         # here (but not by much - we only split the region for the
         # recipe, and we often want to end up with lines anyway.
-        return plain, split_lines(plain[index_memo[3]:index_memo[4]])
+        return plain, plain[index_memo[3]:index_memo[4]]
 
     def get_missing_compression_parent_keys(self):
         """Return the keys of missing compression parents.
@@ -506,13 +466,17 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
-                plain, delta_lines = self._get_group_and_delta_lines(index_memo)
-                ## delta = parse(delta_lines)
-                label, sha1, delta = parse(delta_lines)
+                plain, delta_bytes = self._get_group_and_delta_bytes(index_memo)
+                action, label, sha1, delta = parse(delta_bytes)
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-                chunks = apply_delta(plain, delta)
-                ## sha1 = sha_strings(lines)
+                if action == 'fulltext':
+                    chunks = [delta]
+                else:
+                    # TODO: relax apply_delta so that it can allow source to be
+                    #       longer than expected
+                    chunks = [_groupcompress_c.apply_delta(
+                                plain[0:index_memo[3]], delta)]
                 if sha_strings(chunks) != sha1:
                     raise AssertionError('sha1 sum did not match')
             yield ChunkedContentFactory(key, parents, sha1, chunks)
@@ -889,9 +853,6 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
 
 
 try:
-    from bzrlib.plugins.groupcompress import _groupcompress_c
+    from bzrlib.plugins.groupcompress_rabin import _groupcompress_c
 except ImportError:
     pass
-else:
-    GroupCompressor._equivalence_table_class = _groupcompress_c.EquivalenceTable
-    _get_longest_match = _groupcompress_c._get_longest_match
