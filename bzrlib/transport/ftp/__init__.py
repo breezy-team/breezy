@@ -519,19 +519,21 @@ class FtpTransport(ConnectedTransport):
         mutter("FTP nlst: %s", basepath)
         f = self._get_FTP()
         try:
-            paths = f.nlst(basepath)
-        except ftplib.error_perm, e:
-            self._translate_perm_error(e, relpath, extra='error with list_dir')
-        except ftplib.error_temp, e:
-            # xs4all's ftp server raises a 450 temp error when listing an empty
-            # directory. Check for that and just return an empty list in that
-            # case. See bug #215522
-            if str(e).lower().startswith('450 no files found'):
-                mutter('FTP Server returned "%s" for nlst.'
-                       ' Assuming it means empty directory',
-                       str(e))
-                return []
-            raise
+            try:
+                paths = f.nlst(basepath)
+            except ftplib.error_perm, e:
+                self._translate_perm_error(e, relpath,
+                                           extra='error with list_dir')
+            except ftplib.error_temp, e:
+                # xs4all's ftp server raises a 450 temp error when listing an
+                # empty directory. Check for that and just return an empty list
+                # in that case. See bug #215522
+                if str(e).lower().startswith('450 no files found'):
+                    mutter('FTP Server returned "%s" for nlst.'
+                           ' Assuming it means empty directory',
+                           str(e))
+                    return []
+                raise
         finally:
             # Restore binary mode as nlst switch to ascii mode to retrieve file
             # list
