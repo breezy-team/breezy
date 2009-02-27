@@ -77,6 +77,11 @@ IN DEVELOPMENT
       for branches. This is now fixed and a test added to prevent it
       reoccuring. (Robert Collins, Andrew Bennetts)
 
+    * Under rare circumstances (aka nobody reported a bug about it), the ftp
+      transport could revert to ascii mode. It now stays in binary mode except
+      when needed.
+      (Vincent Ladeuil)
+
   DOCUMENTATION:
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
