@@ -172,7 +172,6 @@ class RepoFetcher(object):
     def get_stream(self, search, pp):
         phase = 'file'
         revs = search.get_keys()
-        revs = revs.difference([NULL_REVISION])
         graph = self.from_repository.get_graph()
         revs = list(graph.iter_topo_order(revs))
         data_to_fetch = self.from_repository.item_keys_introduced_by(

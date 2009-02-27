@@ -1415,7 +1415,8 @@ class _BreadthFirstSearcher(object):
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
         self._stopped_keys.update(stopped)
-        self._stopped_keys.update(revisions - set([revision.NULL_REVISION]))
+        #self._stopped_keys.update(revisions - set([revision.NULL_REVISION]))
+        self._stopped_keys.update(revisions)
         return stopped
 
     def start_searching(self, revisions):

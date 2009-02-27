@@ -16,6 +16,8 @@
 
 """Tests for branch.create_clone behaviour."""
 
+from bzrlib import errors
+from bzrlib import tests
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -54,3 +56,20 @@ class TestCreateClone(TestCaseWithBranch):
             stacked_on=trunk.base)
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
+
+    def test_push_of_nonlefthand_null_parent(self):
+        try:
+            builder = self.make_branch_builder('local')
+        except (errors.TransportNotPossible, errors.UninitializableFormat):
+            raise tests.TestNotApplicable('format not directly constructable')
+        builder.start_series()
+        builder.build_snapshot('rev1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev2', ['rev1'], [])
+        builder.build_snapshot('other', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev3', ['rev2', 'other'], [])
+        builder.finish_series()
+        local = builder.get_branch()
+        local.bzrdir.clone(self.get_url('remote'), revision_id='rev3')
+
