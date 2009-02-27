@@ -22,7 +22,7 @@ The CHKMap class implements a dict from tuple_of_strings->string by using a trie
 with internal nodes of 8-bit fan out; The key tuples are mapped to strings by
 joining them by \x00, and \x00 padding shorter keys out to the length of the
 longest key. Leaf nodes are packed as densely as possible, and internal nodes
-are all and additional 8-bits wide leading to a sparse upper tree.
+are all an additional 8-bits wide leading to a sparse upper tree.
 
 Updates to a CHKMap are done preferentially via the apply_delta method, to
 allow optimisation of the update operation; but individual map/unmap calls are
@@ -53,7 +53,7 @@ from bzrlib import (
     registry,
     )
 
-# approx 2MB
+# approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
 # out, it takes 3.1MB to cache the layer.
 _PAGE_CACHE_SIZE = 4*1024*1024
@@ -134,11 +134,9 @@ class CHKMap(object):
         """
         for old, new, value in delta:
             if old is not None and old != new:
-                # unmap
                 self.unmap(old)
         for old, new, value in delta:
             if new is not None:
-                # map
                 self.map(new, value)
         return self._save()
 
@@ -148,12 +146,13 @@ class CHKMap(object):
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
             # XXX: Shouldn't this be put into _deserialize?
+            # IGC: I'm pretty sure this next line is redundant and can go
             self._root_node._search_key_func = self._search_key_func
 
     def _get_node(self, node):
         """Get a node.
 
-        Node that this does not update the _items dict in objects containing a
+        Note that this does not update the _items dict in objects containing a
         reference to this node. As such it does not prevent subsequent IO being
         performed.
 
@@ -200,11 +199,13 @@ class CHKMap(object):
                                                    include_keys=include_keys))
         else:
             for key, value in sorted(node._items.iteritems()):
+                # IGC: Shouldn't prefix and indent be used below?
                 result.append('      %r %r' % (key, value))
         return result
 
     @classmethod
-    def from_dict(klass, store, initial_value, maximum_size=0, key_width=1):
+    def from_dict(klass, store, initial_value, maximum_size=0, key_width=1,
+        search_key_func=None):
         """Create a CHKMap in store with initial_value as the content.
 
         :param store: The store to record initial_value in, a VersionedFiles
@@ -215,16 +216,18 @@ class CHKMap(object):
             determines the size at which no new data is added to a single node.
         :param key_width: The number of elements in each key_tuple being stored
             in this map.
-        :return: The root chk of te resulting CHKMap.
+        :param search_key_func: A function mapping a key => bytes. These bytes
+            are then used by the internal nodes to split up leaf nodes into
+            multiple pages.
+        :return: The root chk of the resulting CHKMap.
         """
-        result = CHKMap(store, None)
+        result = CHKMap(store, None, search_key_func=search_key_func)
         result._root_node.set_maximum_size(maximum_size)
         result._root_node._key_width = key_width
         delta = []
         for key, value in initial_value.items():
             delta.append((None, key, value))
-        result.apply_delta(delta)
-        return result._save()
+        return result.apply_delta(delta)
 
     def iter_changes(self, basis):
         """Iterate over the changes between basis and self.
@@ -425,7 +428,7 @@ class CHKMap(object):
                 self._root_node.add_node(split, node)
 
     def _node_key(self, node):
-        """Get the key for a node whether its a tuple o r node."""
+        """Get the key for a node whether it's a tuple or node."""
         if type(node) == tuple:
             return node
         else:
@@ -465,7 +468,7 @@ class Node(object):
         # Current number of elements
         self._len = 0
         self._maximum_size = 0
-        self._key_width = 1
+        self._key_width = key_width
         # current size in bytes
         self._raw_size = 0
         # The pointers/values this node has - meaning defined by child classes.
@@ -627,7 +630,7 @@ class LeafNode(Node):
         result._compute_search_prefix()
         result._compute_serialised_prefix()
         if len(bytes) != result._current_size():
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             raise AssertionError('_current_size computed incorrectly')
         return result
 
@@ -777,7 +780,7 @@ class LeafNode(Node):
         self._key = ("sha1:" + sha1,)
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             raise AssertionError('Invalid _current_size')
         _page_cache.add(self._key, bytes)
         return [self._key]
@@ -821,6 +824,7 @@ class LeafNode(Node):
         serialised_keys = [self._serialise_key(key) for key in self._items]
         self._common_serialised_prefix = self.common_prefix_for_keys(
             serialised_keys)
+        return self._common_serialised_prefix
 
     def unmap(self, store, key):
         """Unmap key from the node."""
@@ -854,14 +858,6 @@ class InternalNode(Node):
             self._search_key_func = _search_key_plain
         else:
             self._search_key_func = search_key_func
-
-    def __repr__(self):
-        items_str = sorted(self._items)
-        if len(items_str) > 20:
-            items_str = items_str[16] + '...]'
-        return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
-            self.__class__.__name__, self._key, self._len, self._raw_size,
-            self._maximum_size, self._search_prefix, items_str)
 
     def add_node(self, prefix, node):
         """Add a child node with prefix prefix, and node node.
