@@ -11,8 +11,8 @@
  * published by the Free Software Foundation.
  */
 
-#include "git-compat-util.h"
 #include "delta.h"
+#include <assert.h>
 
 /* maximum hash entry list for the same hash bucket */
 #define HASH_LIMIT 64
@@ -127,7 +127,7 @@ struct delta_index {
 	const void *src_buf;
 	unsigned long src_size;
 	unsigned int hash_mask;
-	struct index_entry *hash[FLEX_ARRAY];
+	struct index_entry *hash[];
 };
 
 struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)

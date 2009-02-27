@@ -9,7 +9,6 @@
  * published by the Free Software Foundation.
  */
 
-#include "git-compat-util.h"
 #include "delta.h"
 
 void *patch_delta(const void *src_buf, unsigned long src_size,
@@ -33,7 +32,11 @@ void *patch_delta(const void *src_buf, unsigned long src_size,
 
 	/* now the result size */
 	size = get_delta_hdr_size(&data, top);
-	dst_buf = xmalloc(size + 1);
+	dst_buf = malloc(size + 1);
+    if (dst_buf == NULL) {
+        /* XXX: Out of memory */
+        return NULL;
+    }
 	dst_buf[size] = 0;
 
 	out = dst_buf;
@@ -69,14 +72,14 @@ void *patch_delta(const void *src_buf, unsigned long src_size,
 			 * extensions. In the mean time we must fail when
 			 * encountering them (might be data corruption).
 			 */
-			error("unexpected delta opcode 0");
+			/* XXX: error("unexpected delta opcode 0"); */
 			goto bad;
 		}
 	}
 
 	/* sanity check */
 	if (data != top || size != 0) {
-		error("delta replay has gone wild");
+		/* XXX: error("delta replay has gone wild"); */
 		bad:
 		free(dst_buf);
 		return NULL;
