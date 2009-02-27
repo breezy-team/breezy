@@ -34,7 +34,7 @@ from bzrlib.commands import plugin_cmds
 from bzrlib.trace import warning
 
 MINIMUM_DULWICH_VERSION = (0, 1, 1)
-COMPATIBLE_BZR_VERSIONS = [(1, 11, 0), (1, 12, 0)]
+COMPATIBLE_BZR_VERSIONS = [(1, 13, 0)]
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only

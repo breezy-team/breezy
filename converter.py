@@ -76,6 +76,11 @@ class GitObjectConverter(object):
         self._idmap.add_entry(commit_obj.sha().hexdigest(), "commit", (revid, tree_sha))
 
     def _get_blob(self, fileid, revision):
+        """Return a Git Blob object from a fileid and revision stored in bzr.
+        
+        :param fileid: File id of the text
+        :param revision: Revision of the text
+        """
         text = self.repository.texts.get_record_stream([(fileid, revision)], "unordered", True).next().get_bytes_as("fulltext")
         blob = Blob()
         blob._text = text
