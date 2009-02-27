@@ -53,53 +53,6 @@ from bzrlib.versionedfile import (
     )
 
 
-def parse(line_list):
-    result = []
-    lines = iter(line_list)
-    next = lines.next
-    label_line = lines.next()
-    sha1_line = lines.next()
-    if (not label_line.startswith('label: ') or
-        not sha1_line.startswith('sha1: ')):
-        raise AssertionError("bad text record %r" % lines)
-    label = tuple(label_line[7:-1].split('\x00'))
-    sha1 = sha1_line[6:-1]
-    for header in lines:
-        op = header[0]
-        numbers = header[2:]
-        numbers = [int(n) for n in header[2:].split(',')]
-        if op == 'c':
-            result.append((op, numbers[0], numbers[1], None))
-        else:
-            contents = [next() for i in xrange(numbers[0])]
-            result.append((op, None, numbers[0], contents))
-    ## return result
-    return label, sha1, result
-
-
-def apply_delta(basis, delta):
-    """Apply delta to this object to become new_version_id."""
-    lines = []
-    last_offset = 0
-    # eq ranges occur where gaps occur
-    # start, end refer to offsets in basis
-    for op, start, count, delta_lines in delta:
-        if op == 'c':
-            lines.append(basis[start:start+count])
-        else:
-            lines.extend(delta_lines)
-    trim_encoding_newline(lines)
-    return lines
-
-
-def trim_encoding_newline(lines):
-    if lines[-1] == '\n':
-        del lines[-1]
-    else:
-        lines[-1] = lines[-1][:-1]
-
-
-
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into gc-optimal order.
 
@@ -130,7 +83,7 @@ def sort_gc_optimal(parent_map):
 
 class GroupCompressor(object):
     """Produce a serialised group of compressed texts.
-    
+
     It contains code very similar to SequenceMatcher because of having a similar
     task. However some key differences apply:
      - there is no junk, we want a minimal edit not a human readable diff.
@@ -144,72 +97,24 @@ class GroupCompressor(object):
        left side.
     """
 
-    _equivalence_table_class = equivalence_table.EquivalenceTable
-
     def __init__(self, delta=True):
         """Create a GroupCompressor.
 
         :paeam delta: If False, do not compress records.
         """
-        self._delta = delta
-        self.line_offsets = []
+        self._compressed = []
         self.endpoint = 0
         self.input_bytes = 0
-        self.line_locations = self._equivalence_table_class([])
-        self.lines = self.line_locations.lines
         self.labels_deltas = {}
-        self._present_prefixes = set()
 
-    def get_matching_blocks(self, lines, soft=False):
-        """Return an the ranges in lines which match self.lines.
-
-        :param lines: lines to compress
-        :return: A list of (old_start, new_start, length) tuples which reflect
-            a region in self.lines that is present in lines.  The last element
-            of the list is always (old_len, new_len, 0) to provide a end point
-            for generating instructions from the matching blocks list.
-        """
-        result = []
-        pos = 0
-        line_locations = self.line_locations
-        line_locations.set_right_lines(lines)
-        # We either copy a range (while there are reusable lines) or we 
-        # insert new lines. To find reusable lines we traverse 
-        locations = None
-        max_pos = len(lines)
-        result_append = result.append
-        min_match_bytes = 10
-        if soft:
-            min_match_bytes = 200
-        while pos < max_pos:
-            block, pos, locations = _get_longest_match(line_locations, pos,
-                                                       max_pos, locations)
-            if block is not None:
-                # Check to see if we are matching fewer than 5 characters,
-                # which is turned into a simple 'insert', rather than a copy
-                # If we have more than 5 lines, we definitely have more than 5
-                # chars
-                if block[-1] < min_match_bytes:
-                    # This block may be a 'short' block, check
-                    old_start, new_start, range_len = block
-                    matched_bytes = sum(map(len,
-                        lines[new_start:new_start + range_len]))
-                    if matched_bytes < min_match_bytes:
-                        block = None
-            if block is not None:
-                result_append(block)
-        result_append((len(self.lines), len(lines), 0))
-        return result
-
-    def compress(self, key, lines, expected_sha, soft=False):
+    def compress(self, key, chunks, expected_sha, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
             for identification of the text during decompression. If the last
             element is 'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
-        :param lines: The lines to be compressed. Must be split
-            on \n, with the \n preserved.'
+        :param chunks: The chunks to be compressed
         :param expected_sha: If non-None, the sha the lines are blieved to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
@@ -218,61 +123,26 @@ class GroupCompressor(object):
         :return: The sha1 of lines, and the number of bytes accumulated in
             the group output so far.
         """
-        sha1 = sha_strings(lines)
+        sha1 = sha_strings(chunks)
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
         ## new_lines = []
+        input_len = sum(map(len, chunks))
         new_lines = ['label: %s\n' % label,
                      'sha1: %s\n' % sha1,
+                     'len: %s\n' % input_len,
                     ]
-        ## index_lines = []
-        index_lines = [False, False]
-        # setup good encoding for trailing \n support.
-        if not lines or lines[-1].endswith('\n'):
-            lines.append('\n')
-        else:
-            lines[-1] = lines[-1] + '\n'
-        pos = 0
-        range_len = 0
-        range_start = 0
-        flush_range = self.flush_range
-        copy_ends = None
-        blocks = self.get_matching_blocks(lines, soft=soft)
-        current_pos = 0
-        copies_without_insertion = []
-        # We either copy a range (while there are reusable lines) or we
-        # insert new lines. To find reusable lines we traverse
-        for old_start, new_start, range_len in blocks:
-            if new_start != current_pos:
-                # if copies_without_insertion:
-                #     self.flush_multi(copies_without_insertion,
-                #                      lines, new_lines, index_lines)
-                #     copies_without_insertion = []
-                # non-matching region
-                flush_range(current_pos, None, new_start - current_pos,
-                    lines, new_lines, index_lines)
-            current_pos = new_start + range_len
-            if not range_len:
-                continue
-            # copies_without_insertion.append((new_start, old_start, range_len))
-            flush_range(new_start, old_start, range_len,
-                        lines, new_lines, index_lines)
-        # if copies_without_insertion:
-        #     self.flush_multi(copies_without_insertion,
-        #                      lines, new_lines, index_lines)
-        #     copies_without_insertion = []
         delta_start = (self.endpoint, len(self.lines))
         self.output_lines(new_lines, index_lines)
-        trim_encoding_newline(lines)
-        self.input_bytes += sum(map(len, lines))
+        self.input_bytes += input_len
         delta_end = (self.endpoint, len(self.lines))
         self.labels_deltas[key] = (delta_start, delta_end)
         return sha1, self.endpoint
 
     def extract(self, key):
         """Extract a key previously added to the compressor.
-        
+
         :param key: The key to extract.
         :return: An iterable over bytes and the sha1.
         """

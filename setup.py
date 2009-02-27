@@ -48,7 +48,7 @@ class build_ext_if_possible(build_ext):
 unavailable_files = []
 
 
-def add_pyrex_extension(module_name, **kwargs):
+def add_pyrex_extension(module_name, extra_source=[]):
     """Add a pyrex module to build.
 
     This will use Pyrex to auto-generate the .c file if it is available.
@@ -67,14 +67,17 @@ def add_pyrex_extension(module_name, **kwargs):
     # Manually honour package_dir :(
     module_name = 'bzrlib.plugins.groupcompress.' + module_name
     if have_pyrex:
-        ext_modules.append(Extension(module_name, [pyrex_name]))
+        source = [pyrex_name]
+    elif not os.path.isfile(c_name):
+        unavailable_files.append(c_name)
+        return
     else:
-        if not os.path.isfile(c_name):
-            unavailable_files.append(c_name)
-        else:
-            ext_modules.append(Extension(module_name, [c_name]))
+        source = [c_name]
+    source.extend(extra_source)
+    ext_modules.append(Extension(module_name, source))
 
-add_pyrex_extension('_groupcompress_c')
+add_pyrex_extension('_groupcompress_c',
+                    extra_source=['diff-delta.c', 'patch-delta.c'])
 
 
 if __name__ == '__main__':
