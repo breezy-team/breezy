@@ -145,9 +145,6 @@ class CHKMap(object):
         if type(self._root_node) == tuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
-            # XXX: Shouldn't this be put into _deserialize?
-            # IGC: I'm pretty sure this next line is redundant and can go
-            self._root_node._search_key_func = self._search_key_func
 
     def _get_node(self, node):
         """Get a node.
@@ -199,7 +196,8 @@ class CHKMap(object):
                                                    include_keys=include_keys))
         else:
             for key, value in sorted(node._items.iteritems()):
-                # IGC: Shouldn't prefix and indent be used below?
+                # Don't use prefix nor indent here to line up when used in
+                # tests in conjunction with assertEqualDiff
                 result.append('      %r %r' % (key, value))
         return result
 
@@ -630,7 +628,6 @@ class LeafNode(Node):
         result._compute_search_prefix()
         result._compute_serialised_prefix()
         if len(bytes) != result._current_size():
-            #import pdb; pdb.set_trace()
             raise AssertionError('_current_size computed incorrectly')
         return result
 
@@ -780,7 +777,6 @@ class LeafNode(Node):
         self._key = ("sha1:" + sha1,)
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
-            #import pdb; pdb.set_trace()
             raise AssertionError('Invalid _current_size')
         _page_cache.add(self._key, bytes)
         return [self._key]
