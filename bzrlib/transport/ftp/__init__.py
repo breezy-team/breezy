@@ -63,14 +63,15 @@ class FtpPathError(errors.PathError):
 
 
 class FtpStatResult(object):
-    def __init__(self, f, relpath):
+
+    def __init__(self, f, abspath):
         try:
-            self.st_size = f.size(relpath)
+            self.st_size = f.size(abspath)
             self.st_mode = stat.S_IFREG
         except ftplib.error_perm:
             pwd = f.pwd()
             try:
-                f.cwd(relpath)
+                f.cwd(abspath)
                 self.st_mode = stat.S_IFDIR
             finally:
                 f.cwd(pwd)
@@ -145,6 +146,8 @@ class FtpTransport(ConnectedTransport):
                                              port=self._port)
             connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
+            # binary mode is the default
+            connection.voidcmd('TYPE I')
         except socket.error, e:
             raise errors.SocketConnectionError(self._host, self._port,
                                                msg='Unable to connect to',
@@ -409,7 +412,6 @@ class FtpTransport(ConnectedTransport):
             abspath = self._remote_path(relpath)
             mutter("FTP appe (try %d) to %s", retries, abspath)
             ftp = self._get_FTP()
-            ftp.voidcmd("TYPE I")
             cmd = "APPE %s" % abspath
             conn = ftp.transfercmd(cmd)
             conn.sendall(text)
@@ -530,6 +532,11 @@ class FtpTransport(ConnectedTransport):
                        str(e))
                 return []
             raise
+        finally:
+            # Restore binary mode as nlst switch to ascii mode to retrieve file
+            # list
+            f.voidcmd('TYPE I')
+
         # If FTP.nlst returns paths prefixed by relpath, strip 'em
         if paths and paths[0].startswith(basepath):
             entries = [path[len(basepath)+1:] for path in paths]
