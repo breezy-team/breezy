@@ -579,10 +579,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
             valid until the iterator is advanced.
         """
         # keys might be a generator
-        keys = set(keys)
+        orig_keys = list(keys)
+        keys = set(orig_keys)
         if not keys:
             return
-        if not self._index.has_graph:
+        if not self._index.has_graph and ordering == 'topological':
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
         # Cheap: iterate
@@ -608,6 +609,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
             #      balance that with the time it takes to extract ordering, by
             #      somehow grouping based on locations[key][0:3]
             present_keys = sort_gc_optimal(parent_map)
+        elif ordering == 'as-requested':
+            present_keys = [key for key in orig_keys if key in locations]
         else:
             # We want to yield the keys in a semi-optimal (read-wise) ordering.
             # Otherwise we thrash the _group_cache and destroy performance

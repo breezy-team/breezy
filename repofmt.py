@@ -244,17 +244,25 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
     def _get_filtered_inv_stream(self, source_vf, keys):
         """Filter the texts of inventories, to find the chk pages."""
-        id_roots = set()
-        p_id_roots = set()
+        id_roots = []
+        p_id_roots = []
+        id_roots_set = set()
+        p_id_roots_set = set()
         def _filter_inv_stream(stream):
             for idx, record in enumerate(stream):
                 ### child_pb.update('fetch inv', idx, len(inv_keys_to_fetch))
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(None, bytes, record.key)
-                id_roots.add(chk_inv.id_to_entry.key())
+                key = chk_inv.id_to_entry.key()
+                if key not in id_roots_set:
+                    id_roots.append(key)
+                    id_roots_set.add(key)
                 p_id_map = chk_inv.parent_id_basename_to_file_id
                 if p_id_map is not None:
-                    p_id_roots.add(p_id_map.key())
+                    key = p_id_map.key()
+                    if key not in p_id_roots_set:
+                        p_id_roots_set.add(key)
+                        p_id_roots.append(key)
                 yield record
         stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
         return _filter_inv_stream(stream), id_roots, p_id_roots
@@ -264,6 +272,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # reference, and then stream things from p_id_roots and things they
         # reference, and then any remaining keys that we didn't get to.
 
+        # We also group referenced texts together, so if one root references a
+        # text with prefix 'a', and another root references a node with prefix
+        # 'a', we want to yield those nodes before we yield the nodes for 'b'
+        # This keeps 'similar' nodes together
+
         # Note: We probably actually want multiple streams here, to help the
         #       client understand that the different levels won't compress well
         #       against eachother
@@ -271,9 +284,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         def _get_referenced_stream(root_keys):
             cur_keys = root_keys
             while cur_keys:
+                keys_by_search_prefix = {}
                 remaining_keys.difference_update(cur_keys)
                 next_keys = set()
-                stream = source_vf.get_record_stream(cur_keys, 'unordered',
+                stream = source_vf.get_record_stream(cur_keys, 'as-requested',
                                                      True)
                 for record in stream:
                     bytes = record.get_bytes_as('fulltext')
@@ -281,9 +295,20 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                     # because we only care about external references.
                     node = chk_map._deserialise(bytes, record.key,
                                                 search_key_func=None)
-                    next_keys.update(node.refs())
+                    common_base = node._search_prefix
+                    if isinstance(node, chk_map.InternalNode):
+                        for prefix, value in node._items.iteritems():
+                            assert isinstance(value, tuple)
+                            if value not in next_keys:
+                                keys_by_search_prefix.setdefault(prefix,
+                                    []).append(value)
+                                next_keys.add(value)
                     yield record
-                cur_keys = next_keys.intersection(remaining_keys)
+                # Double check that we won't be emitting any keys twice
+                next_keys = next_keys.intersection(remaining_keys)
+                cur_keys = []
+                for prefix in sorted(keys_by_search_prefix):
+                    cur_keys.extend(keys_by_search_prefix[prefix])
         for record in _get_referenced_stream(id_roots):
             yield record
         for record in _get_referenced_stream(p_id_roots):
