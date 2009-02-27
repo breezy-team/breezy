@@ -59,12 +59,16 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
-      shelf id. (Daniel Watkins)
-
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
+
+    * ``bzr push`` to a smart server no longer causes "Revision
+      {set([('null:',)])} not present ..." errors when the branch has
+      multiple root revisions. (Andrew Bennetts, #317654)
+
+    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
+      shelf id. (Daniel Watkins)
 
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
