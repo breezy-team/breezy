@@ -418,7 +418,12 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                                 stream = self._get_chk_stream(source_vf, keys,
                                     id_roots, p_id_roots, pb=child_pb)
                         if stream is None:
-                            stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
+                            def pb_stream():
+                                substream = source_vf.get_record_stream(keys, 'gc-optimal', True)
+                                for idx, record in enumerate(substream):
+                                    child_pb.update(vf_name, idx, len(keys))
+                                    yield record
+                            stream = pb_stream()
                         target_vf.insert_record_stream(stream)
                     finally:
                         child_pb.finished()
