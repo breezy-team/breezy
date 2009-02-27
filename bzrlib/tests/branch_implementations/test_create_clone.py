@@ -57,7 +57,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
 
-    def test_push_of_nonlefthand_null_parent(self):
+    def test_create_clone_of_multiple_roots(self):
         try:
             builder = self.make_branch_builder('local')
         except (errors.TransportNotPossible, errors.UninitializableFormat):
