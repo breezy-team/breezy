@@ -219,32 +219,63 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             format = BranchReferenceFormat()
             return format.open(self, _found=True, location=reference_url)
 
-    def open_repository(self):
-        path = self._path_for_remote_call(self._client)
-        verb = 'BzrDir.find_repositoryV2'
-        try:
-            response = self._call(verb, path)
-        except errors.UnknownSmartMethod:
-            verb = 'BzrDir.find_repository'
-            response = self._call(verb, path)
+    def _open_repo_v1(self, path):
+        verb = 'BzrDir.find_repository'
+        response = self._call(verb, path)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
-        if verb == 'BzrDir.find_repository':
-            # servers that don't support the V2 method don't support external
-            # references either.
-            response = response + ('no', )
-        if not (len(response) == 5):
+        # servers that only support the v1 method don't support external
+        # references either.
+        self._ensure_real()
+        repo = self._real_bzrdir.open_repository()
+        response = response + ('no', repo._format.network_name())
+        return response, repo
+
+    def _open_repo_v2(self, path):
+        verb = 'BzrDir.find_repositoryV2'
+        response = self._call(verb, path)
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        self._ensure_real()
+        repo = self._real_bzrdir.open_repository()
+        response = response + (repo._format.network_name(),)
+        return response, repo
+
+    def _open_repo_v3(self, path):
+        verb = 'BzrDir.find_repositoryV3'
+        medium = self._client._medium
+        if medium._is_remote_before((1, 13)):
+            raise errors.UnknownSmartMethod(verb)
+        response = self._call(verb, path)
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        return response, None
+
+    def open_repository(self):
+        path = self._path_for_remote_call(self._client)
+        response = None
+        for probe in [self._open_repo_v3, self._open_repo_v2,
+            self._open_repo_v1]:
+            try:
+                response, real_repo = probe(path)
+                break
+            except errors.UnknownSmartMethod:
+                pass
+        if response is None:
+            raise errors.UnknownSmartMethod('BzrDir.find_repository{3,2,}')
+        if response[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        if len(response) != 6:
             raise SmartProtocolError('incorrect response length %s' % (response,))
         if response[1] == '':
-            format = RemoteRepositoryFormat()
-            format.rich_root_data = (response[2] == 'yes')
-            format.supports_tree_reference = (response[3] == 'yes')
-            # No wire format to check this yet.
-            format.supports_external_lookups = (response[4] == 'yes')
+            # repo is at this dir.
+            format = response_tuple_to_repo_format(response[2:])
             # Used to support creating a real format instance when needed.
             format._creating_bzrdir = self
             remote_repo = RemoteRepository(self, format)
             format._creating_repo = remote_repo
+            if real_repo is not None:
+                remote_repo._set_real_repository(real_repo)
             return remote_repo
         else:
             raise errors.NoRepositoryPresent(self)
@@ -389,6 +420,26 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             raise AssertionError('%r is not a RemoteBzrDir' % (a_bzrdir,))
         return a_bzrdir.open_repository()
 
+    def _ensure_real(self):
+        if self._custom_format is None:
+            self._custom_format = repository.network_format_registry.get(
+                self._network_name)
+
+    @property
+    def _fetch_order(self):
+        self._ensure_real()
+        return self._custom_format._fetch_order
+
+    @property
+    def _fetch_uses_deltas(self):
+        self._ensure_real()
+        return self._custom_format._fetch_uses_deltas
+
+    @property
+    def _fetch_reconcile(self):
+        self._ensure_real()
+        return self._custom_format._fetch_reconcile
+
     def get_format_description(self):
         return 'bzr remote repository'
 
@@ -412,19 +463,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     @property
     def _serializer(self):
-        if self._custom_format is not None:
-            return self._custom_format._serializer
-        elif self._network_name is not None:
-            self._custom_format = repository.network_format_registry.get(
-                self._network_name)
-            return self._custom_format._serializer
-        else:
-            # We should only be getting asked for the serializer for
-            # RemoteRepositoryFormat objects when the RemoteRepositoryFormat object
-            # is a concrete instance for a RemoteRepository. In this case we know
-            # the creating_repo and can use it to supply the serializer.
-            self._creating_repo._ensure_real()
-            return self._creating_repo._real_repository._format._serializer
+        self._ensure_real()
+        return self._custom_format._serializer
 
 
 class RemoteRepository(_RpcHelper):
@@ -763,7 +803,11 @@ class RemoteRepository(_RpcHelper):
             implemented operations.
         """
         if self._real_repository is not None:
-            raise AssertionError('_real_repository is already set')
+            # Replacing an already set real repository.
+            # We cannot do this [currently] if the repository is locked -
+            # synchronised state might be lost.
+            if self.is_locked():
+                raise AssertionError('_real_repository is already set')
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
@@ -1017,36 +1061,6 @@ class RemoteRepository(_RpcHelper):
         """
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
-
-    @property
-    def _fetch_order(self):
-        """Decorate the real repository for now.
-
-        In the long term getting this back from the remote repository as part
-        of open would be more efficient.
-        """
-        self._ensure_real()
-        return self._real_repository._fetch_order
-
-    @property
-    def _fetch_uses_deltas(self):
-        """Decorate the real repository for now.
-
-        In the long term getting this back from the remote repository as part
-        of open would be more efficient.
-        """
-        self._ensure_real()
-        return self._real_repository._fetch_uses_deltas
-
-    @property
-    def _fetch_reconcile(self):
-        """Decorate the real repository for now.
-
-        In the long term getting this back from the remote repository as part
-        of open would be more efficient.
-        """
-        self._ensure_real()
-        return self._real_repository._fetch_reconcile
 
     def get_parent_map(self, revision_ids):
         """See bzrlib.Graph.get_parent_map()."""
@@ -1321,8 +1335,7 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.get_revisions(revision_ids)
 
     def supports_rich_root(self):
-        self._ensure_real()
-        return self._real_repository.supports_rich_root()
+        return self._format.rich_root_data
 
     def iter_reverse_revision_history(self, revision_id):
         self._ensure_real()
@@ -1330,8 +1343,7 @@ class RemoteRepository(_RpcHelper):
 
     @property
     def _serializer(self):
-        self._ensure_real()
-        return self._real_repository._serializer
+        return self._format._serializer
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         self._ensure_real()
@@ -1476,7 +1488,11 @@ class RemoteStreamSink(repository.StreamSink):
                     serialised = record_to_fulltext_bytes(record)
                 else:
                     serialised = record.get_bytes_as(record.storage_kind)
-                pack_writer.add_bytes_record(serialised, [(substream_type,)])
+                if serialised:
+                    # Some streams embed the whole stream into the wire
+                    # representation of the first record, which means that
+                    # later records have no wire representation: we skip them.
+                    pack_writer.add_bytes_record(serialised, [(substream_type,)])
                 for b in bytes:
                     yield b
                 del bytes[:]

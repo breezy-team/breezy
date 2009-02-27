@@ -21,6 +21,11 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * Filtered views provide a mask over the tree so that users can focus
+      on a subset of a tree when doing their work. See ``Filtered views``
+      in chapter 7 of the User Guide and ``bzr help view`` for details.
+      (Ian Clatworthy)
+
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
 
@@ -59,15 +64,26 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
-      shelf id. (Daniel Watkins)
-
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
 
+    * ``bzr push`` to a smart server no longer causes "Revision
+      {set([('null:',)])} not present ..." errors when the branch has
+      multiple root revisions. (Andrew Bennetts, #317654)
+
+    * ``bzr shelve`` now properly handle patches with no terminating newline.
+      (Benoît PIERRE, #303569)
+
+    * ``bzr unshelve`` gives a more palatable error if passed a non-integer
+      shelf id. (Daniel Watkins)
+
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
+
+    * Fixed "sprout() got an unexpected keyword argument 'source_branch'"
+      error branching from old repositories.
+      (Martin Pool, #321695)
 
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
@@ -86,6 +102,11 @@ IN DEVELOPMENT
       newline. About 372 files and 3243 lines with trailing whitespace was
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
+
+    * The ``_fetch_*`` attributes on ``Repository`` are now on
+      ``RepositoryFormat``, more accurately reflecting their intent (they
+      describe a disk format capability, not state of a particular
+      repository of that format). (Robert Collins)
 
   INTERNALS:
 
@@ -117,6 +138,10 @@ IN DEVELOPMENT
     * New hook Commands['extend_command'] to allow plugins to access a
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
+
+    * New version of the ``BzrDir.find_repository`` verb supporting
+      ``_network_name`` to support removing more _ensure_real calls.
+      (Robert Collins)
 
     * ``RemoteBranchFormat`` no longer claims to have a disk format string.
       (Robert Collins)

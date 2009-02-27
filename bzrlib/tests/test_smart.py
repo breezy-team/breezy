@@ -65,6 +65,8 @@ def load_tests(standard_tests, module, loader):
             "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV1}),
         ("find_repositoryV2", {
             "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV2}),
+        ("find_repositoryV3", {
+            "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV3}),
         ]
     to_adapt, result = split_suite_by_re(standard_tests,
         "TestSmartServerRequestFindRepository")
@@ -214,7 +216,12 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
             subtrees = 'yes'
         else:
             subtrees = 'no'
-        if (smart.bzrdir.SmartServerRequestFindRepositoryV2 ==
+        if (smart.bzrdir.SmartServerRequestFindRepositoryV3 ==
+            self._request_class):
+            return SuccessfulSmartServerResponse(
+                ('ok', '', rich_root, subtrees, 'no',
+                 repo._format.network_name()))
+        elif (smart.bzrdir.SmartServerRequestFindRepositoryV2 ==
             self._request_class):
             # All tests so far are on formats, and for non-external
             # repositories.

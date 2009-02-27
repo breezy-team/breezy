@@ -1080,7 +1080,8 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         expected = [
             # NULL_REVISION and ghost1 have not been returned
-            (set(['head']), (set(['head']), set(['child', 'ghost1']), 1),
+            (set(['head']),
+             (set(['head']), set(['child', NULL_REVISION, 'ghost1']), 1),
              ['head'], None, [NULL_REVISION, 'ghost1']),
             # ghost1 has been returned, NULL_REVISION is to be returned in the
             # next iteration.

@@ -1341,8 +1341,15 @@ class BzrDirPreSplitOut(BzrDir):
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
-               hardlink=False, stacked=False, create_tree_if_local=True):
+               hardlink=False, stacked=False, create_tree_if_local=True,
+               source_branch=None):
         """See BzrDir.sprout()."""
+        if source_branch is not None:
+            my_branch = self.open_branch()
+            if source_branch.base != my_branch.base:
+                raise AssertionError(
+                    "source branch %r is not within %r with branch %r" %
+                    (source_branch, self, my_branch))
         if stacked:
             raise errors.UnstackableBranchFormat(
                 self._format, self.root_transport.base)

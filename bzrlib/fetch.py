@@ -199,8 +199,8 @@ class RepoFetcher(object):
                 # Now copy the file texts.
                 from_texts = self.from_repository.texts
                 yield ('texts', from_texts.get_record_stream(
-                    text_keys, self.to_repository._fetch_order,
-                    not self.to_repository._fetch_uses_deltas))
+                    text_keys, self.to_repository._format._fetch_order,
+                    not self.to_repository._format._fetch_uses_deltas))
                 # Cause an error if a text occurs after we have done the
                 # copy.
                 text_keys = None
@@ -252,7 +252,7 @@ class RepoFetcher(object):
             # Ask for full texts always so that we don't need more round trips
             # after this stream.
             stream = vf.get_record_stream(keys,
-                self.to_repository._fetch_order, True)
+                self.to_repository._format._fetch_order, True)
             yield substream_kind, stream
 
     def _revids_to_fetch(self):
@@ -408,15 +408,15 @@ class RepoFetcher(object):
         keys = [(rev_id,) for rev_id in revs]
         signatures = filter_absent(from_sf.get_record_stream(
             keys,
-            self.to_repository._fetch_order,
-            not self.to_repository._fetch_uses_deltas))
+            self.to_repository._format._fetch_order,
+            not self.to_repository._format._fetch_uses_deltas))
         # If a revision has a delta, this is actually expanded inside the
         # insert_record_stream code now, which is an alternate fix for
         # bug #261339
         from_rf = self.from_repository.revisions
         revisions = from_rf.get_record_stream(
             keys,
-            self.to_repository._fetch_order,
+            self.to_repository._format._fetch_order,
             not self.delta_on_metadata())
         return [('signatures', signatures), ('revisions', revisions)]
 
@@ -430,12 +430,12 @@ class RepoFetcher(object):
         return []
 
     def inventory_fetch_order(self):
-        return self.to_repository._fetch_order
+        return self.to_repository._format._fetch_order
 
     def delta_on_metadata(self):
         src_serializer = self.from_repository._format._serializer
         target_serializer = self.to_repository._format._serializer
-        return (self.to_repository._fetch_uses_deltas and
+        return (self.to_repository._format._fetch_uses_deltas and
             src_serializer == target_serializer)
 
 

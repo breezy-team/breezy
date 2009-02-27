@@ -871,18 +871,6 @@ class Repository(object):
         self._write_group = None
         # Additional places to query for data.
         self._fallback_repositories = []
-        # What order should fetch operations request streams in?
-        # The default is unordered as that is the cheapest for an origin to
-        # provide.
-        self._fetch_order = 'unordered'
-        # Does this repository use deltas that can be fetched as-deltas ?
-        # (E.g. knits, where the knit deltas can be transplanted intact.
-        # We default to False, which will ensure that enough data to get
-        # a full text out of any fetch stream will be grabbed.
-        self._fetch_uses_deltas = False
-        # Should fetch trigger a reconcile after the fetch? Only needed for
-        # some repository formats that can suffer internal inconsistencies.
-        self._fetch_reconcile = False
         # An InventoryEntry cache, used during deserialization
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
 
@@ -2330,6 +2318,18 @@ class RepositoryFormat(object):
     supports_chks = None
     # Should commit add an inventory, or an inventory delta to the repository.
     _commit_inv_deltas = True
+    # What order should fetch operations request streams in?
+    # The default is unordered as that is the cheapest for an origin to
+    # provide.
+    _fetch_order = 'unordered'
+    # Does this repository format use deltas that can be fetched as-deltas ?
+    # (E.g. knits, where the knit deltas can be transplanted intact.
+    # We default to False, which will ensure that enough data to get
+    # a full text out of any fetch stream will be grabbed.
+    _fetch_uses_deltas = False
+    # Should fetch trigger a reconcile after the fetch? Only needed for
+    # some repository formats that can suffer internal inconsistencies.
+    _fetch_reconcile = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -3390,8 +3390,8 @@ class InterDifferingSerializer(InterKnitRepo):
         from_texts = self.source.texts
         to_texts = self.target.texts
         to_texts.insert_record_stream(from_texts.get_record_stream(
-            text_keys, self.target._fetch_order,
-            not self.target._fetch_uses_deltas))
+            text_keys, self.target._format._fetch_order,
+            not self.target._format._fetch_uses_deltas))
         # insert deltas
         for delta in pending_deltas:
             self.target.add_inventory_by_delta(*delta)
@@ -3577,14 +3577,11 @@ class InterPackToRemotePack(InterPackRepo):
     @staticmethod
     def is_compatible(source, target):
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
-        prereqs = lambda fmt: (
-            # FIXME-bbc: commenting out the not fmt.supports_chks below to make
-            # the test suite pass -- vila 090226
-            isinstance(fmt, RepositoryFormatPack))# and not fmt.supports_chks)
-        if prereqs(source._format):
+        if isinstance(source._format, RepositoryFormatPack):
             if isinstance(target, remote.RemoteRepository):
-                target._ensure_real()
-                if prereqs(target._real_repository._format):
+                target._format._ensure_real()
+                if isinstance(target._format._custom_format,
+                              RepositoryFormatPack):
                     if InterRepository._same_model(source, target):
                         return True
         return False
@@ -3892,6 +3889,6 @@ class StreamSink(object):
             self.target_repo.add_revision(revision_id, rev)
 
     def finished(self):
-        if self.target_repo._fetch_reconcile:
+        if self.target_repo._format._fetch_reconcile:
             self.target_repo.reconcile()
 
