@@ -2660,8 +2660,11 @@ class InterBranch(InterObject):
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None):
-        """See Branch.pull.
+        """Mirror source into target branch.
 
+        The target branch is considered to be 'local', having low latency.
+
+        :returns: PullResult instance
         """
         raise NotImplementedError(self.pull)
 
@@ -2751,8 +2754,8 @@ class GenericInterBranch(InterBranch):
             result.target_branch = _override_hook_target
         self.source.lock_read()
         try:
-            # We assume that during 'pull' the local repository is closer than
-            # the remote one.
+            # We assume that during 'pull' the target repository is closer than
+            # the source one.
             graph = self.target.repository.get_graph(self.source.repository)
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
