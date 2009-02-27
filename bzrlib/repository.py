@@ -3432,13 +3432,7 @@ class InterRemoteToOther(InterRepository):
     def is_compatible(source, target):
         if not isinstance(source, remote.RemoteRepository):
             return False
-        # Is source's model compatible with target's model?
-        source._ensure_real()
-        real_source = source._real_repository
-        if isinstance(real_source, remote.RemoteRepository):
-            raise NotImplementedError(
-                "We don't support remote repos backed by remote repos yet.")
-        return InterRepository._same_model(real_source, target)
+        return InterRepository._same_model(source, target)
 
     def _ensure_real_inter(self):
         if self._real_inter is None:
@@ -3446,10 +3440,15 @@ class InterRemoteToOther(InterRepository):
             real_source = self.source._real_repository
             self._real_inter = InterRepository.get(real_source, self.target)
 
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
-        self._ensure_real_inter()
-        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts)
+        """See InterRepository.fetch()."""
+        # Always fetch using the generic streaming fetch code, to allow
+        # streaming fetching from remote servers.
+        from bzrlib.fetch import RepoFetcher
+        fetcher = RepoFetcher(self.target, self.source, revision_id,
+                              pb, find_ghosts)
+        return fetcher.count_copied, fetcher.failed_revisions
 
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()
