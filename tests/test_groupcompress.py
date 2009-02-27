@@ -40,6 +40,7 @@ def load_tests(standard_tests, module, loader):
             'factory':make_pack_factory(False, False, 1),
             'graph': False,
             'key_length':1,
+            'support_partial_insertion':False,
             }
         )
     applier = TestScenarioApplier()

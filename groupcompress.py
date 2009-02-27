@@ -73,6 +73,7 @@ def parse(line_list):
         else:
             contents = [next() for i in xrange(numbers[0])]
             result.append((op, None, numbers[0], contents))
+    ## return result
     return label, sha1, result
 
 
@@ -220,9 +221,11 @@ class GroupCompressor(object):
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
-        new_lines = []
-        new_lines.append('label: %s\n' % label)
-        new_lines.append('sha1: %s\n' % sha1)
+        ## new_lines = []
+        new_lines = ['label: %s\n' % label,
+                     'sha1: %s\n' % sha1,
+                    ]
+        ## index_lines = []
         index_lines = [False, False]
         # setup good encoding for trailing \n support.
         if not lines or lines[-1].endswith('\n'):
@@ -275,6 +278,7 @@ class GroupCompressor(object):
         delta_details = self.labels_deltas[key]
         delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
         label, sha1, delta = parse(delta_lines)
+        ## delta = parse(delta_lines)
         if label != key:
             raise AssertionError("wrong key: %r, wanted %r" % (label, key))
         # Perhaps we want to keep the line offsets too in memory at least?
@@ -474,7 +478,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             chunks = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parent_lines = [parent_cache[parent] for parent in parent_map[key]]
             parent_cache[key] = list(
-                reannotate(parent_lines, fulltext, key, None, head_cache))
+                reannotate(parent_lines, chunks, key, None, head_cache))
         return parent_cache[key]
 
     def check(self, progress_bar=None):
@@ -577,10 +581,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
             valid until the iterator is advanced.
         """
         # keys might be a generator
-        keys = set(keys)
+        orig_keys = list(keys)
+        keys = set(orig_keys)
         if not keys:
             return
-        if not self._index.has_graph:
+        if not self._index.has_graph and ordering == 'topological':
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
         # Cheap: iterate
@@ -606,6 +611,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
             #      balance that with the time it takes to extract ordering, by
             #      somehow grouping based on locations[key][0:3]
             present_keys = sort_gc_optimal(parent_map)
+        elif ordering == 'as-requested':
+            present_keys = [key for key in orig_keys if key in locations]
         else:
             # We want to yield the keys in a semi-optimal (read-wise) ordering.
             # Otherwise we thrash the _group_cache and destroy performance
@@ -628,10 +635,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
             else:
                 index_memo, _, parents, (method, _) = locations[key]
                 plain, delta_lines = self._get_group_and_delta_lines(index_memo)
+                ## delta = parse(delta_lines)
                 label, sha1, delta = parse(delta_lines)
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
                 lines = apply_delta(plain, delta)
+                ## sha1 = sha_strings(lines)
                 if sha_strings(lines) != sha1:
                     raise AssertionError('sha1 sum did not match')
             yield ChunkedContentFactory(key, parents, sha1, lines)
@@ -703,8 +712,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             except errors.UnavailableRepresentation:
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
-                bytes = adapter.get_bytes(record,
-                    record.get_bytes_as(record.storage_kind))
+                bytes = adapter.get_bytes(record)
                 lines = osutils.split_lines(bytes)
             soft = False
             if len(record.key) > 1:
