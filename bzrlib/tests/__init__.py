@@ -3307,27 +3307,6 @@ def probe_bad_non_ascii(encoding):
     return None
 
 
-class _FTPServerFeature(Feature):
-    """Some tests want an FTP Server, check if one is available.
-
-    Right now, the only way this is available is if 'medusa' is installed.
-    http://www.amk.ca/python/code/medusa.html
-    """
-
-    def _probe(self):
-        try:
-            import bzrlib.tests.ftp_server
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'FTPServer'
-
-
-FTPServerFeature = _FTPServerFeature()
-
-
 class _HTTPSServerFeature(Feature):
     """Some tests want an https Server, check if one is available.
 
