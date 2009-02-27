@@ -280,6 +280,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # Note: We probably actually want multiple streams here, to help the
         #       client understand that the different levels won't compress well
         #       against eachother
+        #       Test the difference between using one Group per level, and
+        #       using 1 Group per prefix. (so '' (root) would get a group, then
+        #       all the references to search-key 'a' would get a group, etc.)
         remaining_keys = set(keys)
         counter = [0]
         def _get_referenced_stream(root_keys):
