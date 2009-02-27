@@ -8,6 +8,7 @@ VERSIONS = {
     'qbzr': '0.9.8',
     'bzrtools': '1.12.0',
     'bzr-svn': '0.5.2',
+    'bzr-rebase': '0.4.3',
     'subvertpy': '0.6.4',
 }
 
@@ -124,7 +125,7 @@ def update_plugin_trunk(plugin_name):
 
 
 def _plugin_tag_name(plugin_name):
-    if plugin_name in ('bzr-svn', 'subvertpy'):
+    if plugin_name in ('bzr-svn', 'bzr-rebase', 'subvertpy'):
         return '%s-%s' % (plugin_name, VERSIONS[plugin_name])
     # bzrtools and qbzr use 'release-X.Y.Z'
     return 'release-' + VERSIONS[plugin_name]
@@ -133,7 +134,7 @@ def _plugin_tag_name(plugin_name):
 def update_plugin(plugin_name):
     release_dir = get_plugin_release_dir(plugin_name)
     if not os.path.isdir(plugin_name):
-        if plugin_name == 'bzr-svn':
+        if plugin_name in ('bzr-svn', 'bzr-rebase'):
             # bzr-svn uses a different repo format
             call_or_fail([bzr(), 'init-repo', '--rich-root-pack', plugin_name])
         else:
@@ -194,6 +195,7 @@ def main(args):
     install_plugin('bzrtools')
     install_plugin('qbzr')
     install_plugin('bzr-svn')
+    install_plugin('bzr-rebase')
 
     build_installer()
 
