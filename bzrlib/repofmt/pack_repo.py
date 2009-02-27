@@ -2049,7 +2049,6 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
-        self._fetch_order = 'unordered'
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated, but one sub-format is
@@ -2250,6 +2249,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # What index classes to use
     index_builder_class = None
     index_class = None
+    _fetch_uses_deltas = True
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.

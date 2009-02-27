@@ -95,6 +95,11 @@ IN DEVELOPMENT
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
 
+    * The ``_fetch_*`` attributes on ``Repository`` are now on
+      ``RepositoryFormat``, more accurately reflecting their intent (they
+      describe a disk format capability, not state of a particular
+      repository of that format). (Robert Collins)
+
   INTERNALS:
 
     * Branch and Repository creation on a bzr+ssh://server are now done
@@ -125,6 +130,10 @@ IN DEVELOPMENT
     * New hook Commands['extend_command'] to allow plugins to access a
       command object before the command is run (or help generated from
       it), without overriding the command. (Robert Collins)
+
+    * New version of the ``BzrDir.find_repository`` verb supporting
+      ``_network_name`` to support removing more _ensure_real calls.
+      (Robert Collins)
 
     * ``RemoteBranchFormat`` no longer claims to have a disk format string.
       (Robert Collins)
