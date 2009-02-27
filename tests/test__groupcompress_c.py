@@ -36,18 +36,28 @@ class _CompiledGroupCompress(tests.Feature):
 
 CompiledGroupCompress = _CompiledGroupCompress()
 
-_source_text1 = """\
+_text1 = """\
 This is a bit
 of source text
 which is meant to be matched
 against other text
 """
 
-_source_text2 = """\
+_text2 = """\
 This is a bit
 of source text
 which is meant to differ from
 against other text
+"""
+
+_text3 = """\
+This is a bit
+of source text
+which is meant to be matched
+against other text
+except it also
+has a lot more data
+at the end of the file
 """
 
 
@@ -74,32 +84,39 @@ class Test_GroupCompress(tests.TestCase):
             self.make_delta, u'not a string', 'a string')
 
     def test_make_noop_delta(self):
-        ident_delta = self.make_delta(_source_text1, _source_text1)
+        ident_delta = self.make_delta(_text1, _text1)
         self.assertEqual('MM\x90M', ident_delta)
-        ident_delta = self.make_delta(_source_text2, _source_text2)
+        ident_delta = self.make_delta(_text2, _text2)
         self.assertEqual('NN\x90N', ident_delta)
+        ident_delta = self.make_delta(_text3, _text3)
+        self.assertEqual('\x87\x01\x87\x01\x90\x87', ident_delta)
 
     def test_make_delta(self):
-        delta = self.make_delta(_source_text1, _source_text2)
+        delta = self.make_delta(_text1, _text2)
         self.assertEqual('MN\x90/\x1fdiffer from\nagainst other text\n', delta)
-        delta = self.make_delta(_source_text2, _source_text1)
+        delta = self.make_delta(_text2, _text1)
         self.assertEqual('NM\x90/\x1ebe matched\nagainst other text\n', delta)
+        delta = self.make_delta(_text3, _text1)
+        self.assertEqual('\x87\x01M\x90M', delta)
+        delta = self.make_delta(_text3, _text2)
+        self.assertEqual('\x87\x01N\x90/\x1fdiffer from\nagainst other text\n',
+                         delta)
 
     def test_apply_delta_is_typesafe(self):
-        self.apply_delta(_source_text1, 'MM\x90M')
+        self.apply_delta(_text1, 'MM\x90M')
         self.assertRaises(TypeError,
             self.apply_delta, object(), 'MM\x90M')
         self.assertRaises(TypeError,
-            self.apply_delta, unicode(_source_text1), 'MM\x90M')
+            self.apply_delta, unicode(_text1), 'MM\x90M')
         self.assertRaises(TypeError,
-            self.apply_delta, _source_text1, u'MM\x90M')
+            self.apply_delta, _text1, u'MM\x90M')
         self.assertRaises(TypeError,
-            self.apply_delta, _source_text1, object())
+            self.apply_delta, _text1, object())
 
     def test_apply_delta(self):
-        target = self.apply_delta(_source_text1,
+        target = self.apply_delta(_text1,
                     'MN\x90/\x1fdiffer from\nagainst other text\n')
-        self.assertEqual(_source_text2, target)
-        target = self.apply_delta(_source_text2,
+        self.assertEqual(_text2, target)
+        target = self.apply_delta(_text2,
                     'NM\x90/\x1ebe matched\nagainst other text\n')
-        self.assertEqual(_source_text1, target)
+        self.assertEqual(_text1, target)
