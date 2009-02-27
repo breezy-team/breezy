@@ -792,11 +792,12 @@ class RemoteRepository(_RpcHelper):
         :param repository: The repository to fallback to for non-hpss
             implemented operations.
         """
-        # There was an assertion that this real repository was never replaced;
-        # However for down level serves we always open the real repository,
-        # which means that opening the branch ends up replacing it. Rather than
-        # write to real_branch.repository, we just allow the _real_repository
-        # object to be replaced.
+        if self._real_repository is not None:
+            # Replacing an already set real repository.
+            # We cannot do this [currently] if the repository is locked -
+            # synchronised state might be lost.
+            if self.is_locked():
+                raise AssertionError('_real_repository is already set')
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
