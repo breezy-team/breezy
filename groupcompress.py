@@ -282,9 +282,9 @@ class GroupCompressor(object):
         if label != key:
             raise AssertionError("wrong key: %r, wanted %r" % (label, key))
         # Perhaps we want to keep the line offsets too in memory at least?
-        lines = apply_delta(''.join(self.lines), delta)
-        sha1 = sha_strings(lines)
-        return lines, sha1
+        chunks = apply_delta(''.join(self.lines), delta)
+        sha1 = sha_strings(chunks)
+        return chunks, sha1
 
     def flush_multi(self, instructions, lines, new_lines, index_lines):
         """Flush a bunch of different ranges out.
@@ -639,11 +639,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 label, sha1, delta = parse(delta_lines)
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-                lines = apply_delta(plain, delta)
+                chunks = apply_delta(plain, delta)
                 ## sha1 = sha_strings(lines)
-                if sha_strings(lines) != sha1:
+                if sha_strings(chunks) != sha1:
                     raise AssertionError('sha1 sum did not match')
-            yield ChunkedContentFactory(key, parents, sha1, lines)
+            yield ChunkedContentFactory(key, parents, sha1, chunks)
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
