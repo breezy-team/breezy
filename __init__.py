@@ -56,7 +56,7 @@ try:
     RepositoryFormatPackDevelopment5Hash255,
     )
     format_registry.register_metadir('gcr-chk16',
-        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCRabinCHK16',
+        'bzrlib.plugins.groupcompress_rabin.repofmt.RepositoryFormatPackGCRabinCHK16',
         help='pack-1.9 with 16-way hashed CHK inv and group compress. '
             'Please read '
             'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
@@ -68,11 +68,11 @@ try:
         )
     repo_registry.register_lazy(
         'Bazaar development format - hash16chk+gcr (needs bzr.dev from 1.13)\n',
-        'bzrlib.plugins.groupcompress.repofmt',
+        'bzrlib.plugins.groupcompress_rabin.repofmt',
         'RepositoryFormatPackGCRabinCHK16',
         )
     format_registry.register_metadir('gcr-chk255',
-        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCRabinCHK255',
+        'bzrlib.plugins.groupcompress_rabin.repofmt.RepositoryFormatPackGCRabinCHK255',
         help='pack-1.9 with 255-way hashed CHK inv and group compress. '
             'Please read '
             'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
@@ -84,7 +84,7 @@ try:
         )
     repo_registry.register_lazy(
         'Bazaar development format - hash255chk+gcr (needs bzr.dev from 1.13)\n',
-        'bzrlib.plugins.groupcompress.repofmt',
+        'bzrlib.plugins.groupcompress_rabin.repofmt',
         'RepositoryFormatPackGCRabinCHK255',
         )
 except ImportError:
@@ -92,7 +92,7 @@ except ImportError:
 
 repo_registry.register_lazy(
     'Bazaar development format - btree+gcr (needs bzr.dev from 1.13)\n',
-    'bzrlib.plugins.groupcompress.repofmt',
+    'bzrlib.plugins.groupcompress_rabin.repofmt',
     'RepositoryFormatPackGCRabin',
     )
 
