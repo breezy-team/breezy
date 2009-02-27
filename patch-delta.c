@@ -27,8 +27,11 @@ void *patch_delta(const void *src_buf, unsigned long src_size,
 
 	/* make sure the orig file size matches what we expect */
 	size = get_delta_hdr_size(&data, top);
-	if (size != src_size)
+	/* MOD: We allow a bigger source, assuming we only compressed
+	   against the first bytes. */
+	if (size > src_size)
 		return NULL;
+	src_size = size;
 
 	/* now the result size */
 	size = get_delta_hdr_size(&data, top);

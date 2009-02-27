@@ -475,8 +475,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 else:
                     # TODO: relax apply_delta so that it can allow source to be
                     #       longer than expected
-                    chunks = [_groupcompress_c.apply_delta(
-                                plain[0:index_memo[3]], delta)]
+                    bytes = _groupcompress_c.apply_delta(plain, delta)
+                    if bytes is None:
+                        import pdb; pdb.set_trace()
+                    chunks = [bytes]
+                    del bytes
                 if sha_strings(chunks) != sha1:
                     raise AssertionError('sha1 sum did not match')
             yield ChunkedContentFactory(key, parents, sha1, chunks)

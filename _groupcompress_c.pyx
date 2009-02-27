@@ -144,9 +144,10 @@ def apply_delta(source_bytes, delta_bytes):
     # make sure the orig file size matches what we expect
     # XXX: gcc warns because data isn't defined as 'const'
     size = get_delta_hdr_size(&data, top)
-    if (size != source_size):
+    if (size > source_size):
         # XXX: mismatched source size
         return None
+    source_size = size
 
     # now the result size
     size = get_delta_hdr_size(&data, top)
