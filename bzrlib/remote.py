@@ -420,6 +420,26 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             raise AssertionError('%r is not a RemoteBzrDir' % (a_bzrdir,))
         return a_bzrdir.open_repository()
 
+    def _ensure_real(self):
+        if self._custom_format is None:
+            self._custom_format = repository.network_format_registry.get(
+                self._network_name)
+
+    @property
+    def _fetch_order(self):
+        self._ensure_real()
+        return self._custom_format._fetch_order
+
+    @property
+    def _fetch_uses_deltas(self):
+        self._ensure_real()
+        return self._custom_format._fetch_uses_deltas
+
+    @property
+    def _fetch_reconcile(self):
+        self._ensure_real()
+        return self._custom_format._fetch_reconcile
+
     def get_format_description(self):
         return 'bzr remote repository'
 
@@ -443,19 +463,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     @property
     def _serializer(self):
-        if self._custom_format is not None:
-            return self._custom_format._serializer
-        elif self._network_name is not None:
-            self._custom_format = repository.network_format_registry.get(
-                self._network_name)
-            return self._custom_format._serializer
-        else:
-            # We should only be getting asked for the serializer for
-            # RemoteRepositoryFormat objects when the RemoteRepositoryFormat object
-            # is a concrete instance for a RemoteRepository. In this case we know
-            # the creating_repo and can use it to supply the serializer.
-            self._creating_repo._ensure_real()
-            return self._creating_repo._real_repository._format._serializer
+        self._ensure_real()
+        return self._custom_format._serializer
 
 
 class RemoteRepository(_RpcHelper):
@@ -1042,36 +1051,6 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.iter_files_bytes(desired_files)
 
-    @property
-    def _fetch_order(self):
-        """Decorate the real repository for now.
-
-        In the long term getting this back from the remote repository as part
-        of open would be more efficient.
-        """
-        self._ensure_real()
-        return self._real_repository._fetch_order
-
-    @property
-    def _fetch_uses_deltas(self):
-        """Decorate the real repository for now.
-
-        In the long term getting this back from the remote repository as part
-        of open would be more efficient.
-        """
-        self._ensure_real()
-        return self._real_repository._fetch_uses_deltas
-
-    @property
-    def _fetch_reconcile(self):
-        """Decorate the real repository for now.
-
-        In the long term getting this back from the remote repository as part
-        of open would be more efficient.
-        """
-        self._ensure_real()
-        return self._real_repository._fetch_reconcile
-
     def get_parent_map(self, revision_ids):
         """See bzrlib.Graph.get_parent_map()."""
         return self._make_parents_provider().get_parent_map(revision_ids)
@@ -1345,8 +1324,7 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.get_revisions(revision_ids)
 
     def supports_rich_root(self):
-        self._ensure_real()
-        return self._real_repository.supports_rich_root()
+        return self._format.rich_root_data
 
     def iter_reverse_revision_history(self, revision_id):
         self._ensure_real()
@@ -1354,8 +1332,7 @@ class RemoteRepository(_RpcHelper):
 
     @property
     def _serializer(self):
-        self._ensure_real()
-        return self._real_repository._serializer
+        return self._format._serializer
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         self._ensure_real()
@@ -1500,7 +1477,11 @@ class RemoteStreamSink(repository.StreamSink):
                     serialised = record_to_fulltext_bytes(record)
                 else:
                     serialised = record.get_bytes_as(record.storage_kind)
-                pack_writer.add_bytes_record(serialised, [(substream_type,)])
+                if serialised:
+                    # Some streams embed the whole stream into the wire
+                    # representation of the first record, which means that
+                    # later records have no wire representation: we skip them.
+                    pack_writer.add_bytes_record(serialised, [(substream_type,)])
                 for b in bytes:
                     yield b
                 del bytes[:]
