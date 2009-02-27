@@ -743,6 +743,20 @@ class Branch(object):
         finally:
             other.unlock()
 
+    def import_last_revision_info(self, source_repo, revno, revid):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to 
+        the master branch first before updating the tip of the local branch.
+
+        :param source_repo: Source repository to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        """
+        if not self.repository.has_same_location(source_repo):
+            self.repository.fetch(source_repo, revision_id=revid)
+        self.set_last_revision_info(revno, revid)
+
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
