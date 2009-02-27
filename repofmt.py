@@ -281,6 +281,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         #       client understand that the different levels won't compress well
         #       against eachother
         remaining_keys = set(keys)
+        counter = [0]
         def _get_referenced_stream(root_keys):
             cur_keys = root_keys
             while cur_keys:
@@ -303,37 +304,24 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                                 keys_by_search_prefix.setdefault(prefix,
                                     []).append(value)
                                 next_keys.add(value)
+                    counter[0] += 1
+                    if pb is not None:
+                        pb.update('chk node', counter[0])
                     yield record
                 # Double check that we won't be emitting any keys twice
                 next_keys = next_keys.intersection(remaining_keys)
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
                     cur_keys.extend(keys_by_search_prefix[prefix])
-        counter = 0
-        for record in _get_referenced_stream(id_roots):
-            # We don't know how many total
-            counter += 1
-            if pb is not None:
-                pb.update('chk node', counter)
-            yield record
-        for record in _get_referenced_stream(p_id_roots):
-            # We don't know how many total
-            counter += 1
-            if pb is not None:
-                pb.update('chk node', counter)
-            yield record
+        yield _get_referenced_stream(id_roots)
+        yield _get_referenced_stream(p_id_roots)
         if remaining_keys:
             trace.note('There were %d keys in the chk index, which'
                        ' were not referenced from inventories',
                        len(remaining_keys))
             stream = source_vf.get_record_stream(remaining_keys, 'unordered',
                                                  True)
-            for record in stream:
-                # We don't know how many total
-                counter += 1
-                if pb is not None:
-                    pb.update('chk node', counter)
-                yield record
+            yield stream
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
                                  reload_func=None):
@@ -415,8 +403,12 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                                 stream, id_roots, p_id_roots = self._get_filtered_inv_stream(
                                     source_vf, keys)
                             elif vf_name == 'chk_bytes':
-                                stream = self._get_chk_stream(source_vf, keys,
-                                    id_roots, p_id_roots, pb=child_pb)
+                                for stream in self._get_chk_stream(source_vf, keys,
+                                                    id_roots, p_id_roots,
+                                                    pb=child_pb):
+                                    target_vf.insert_record_stream(stream)
+                                # No more to copy
+                                stream = []
                         if stream is None:
                             def pb_stream():
                                 substream = source_vf.get_record_stream(keys, 'gc-optimal', True)
