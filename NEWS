@@ -21,6 +21,11 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * Filtered views provide a mask over the tree so that users can focus
+      on a subset of a tree when doing their work. See ``Filtered views``
+      in chapter 7 of the User Guide and ``bzr help view`` for details.
+      (Ian Clatworthy)
+
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
 
