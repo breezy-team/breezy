@@ -131,11 +131,14 @@ class Revision(object):
 
         The return value will be a list containing at least one element.
         """
-        author = self.properties.get('author', None)
-        if author is None:
-            return [self.committer]
+        authors = self.properties.get('authors', None)
+        if authors is None:
+            author = self.properties.get('author', None)
+            if author is None:
+                return [self.committer]
+            return [author]
         else:
-            return author.split("\n")
+            return authors.split("\n")
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):

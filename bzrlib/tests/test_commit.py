@@ -747,6 +747,7 @@ class TestCommit(TestCaseWithTransport):
         rev_id = tree.commit('commit 1')
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertFalse('author' in rev.properties)
+        self.assertFalse('authors' in rev.properties)
 
     def test_commit_author(self):
         """Passing a non-empty author kwarg to MutableTree.commit should add
@@ -758,7 +759,8 @@ class TestCommit(TestCaseWithTransport):
                 tree.commit, 'commit 1', author='John Doe <jdoe@example.com>')
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>',
-                         rev.properties['author'])
+                         rev.properties['authors'])
+        self.assertFalse('author' in rev.properties)
 
     def test_commit_empty_authors_list(self):
         """Passing an empty list to authors shouldn't add the property."""
@@ -766,6 +768,7 @@ class TestCommit(TestCaseWithTransport):
         rev_id = tree.commit('commit 1', authors=[])
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertFalse('author' in rev.properties)
+        self.assertFalse('authors' in rev.properties)
 
     def test_multiple_authors(self):
         tree = self.make_branch_and_tree('foo')
@@ -774,7 +777,8 @@ class TestCommit(TestCaseWithTransport):
                          'Jane Rey <jrey@example.com>'])
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>\n'
-                'Jane Rey <jrey@example.com>', rev.properties['author'])
+                'Jane Rey <jrey@example.com>', rev.properties['authors'])
+        self.assertFalse('author' in rev.properties)
 
     def test_author_and_authors_incompatible(self):
         tree = self.make_branch_and_tree('foo')

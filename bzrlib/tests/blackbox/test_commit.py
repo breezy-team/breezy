@@ -554,7 +554,7 @@ class TestCommit(ExternalBase):
                      "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['author'])
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['authors'])
 
     def test_author_no_email(self):
         """Author's name without an email address is allowed, too."""
@@ -565,7 +565,7 @@ class TestCommit(ExternalBase):
                                 "tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe', properties['author'])
+        self.assertEqual('John Doe', properties['authors'])
 
     def test_multiple_authors(self):
         """Multiple authors can be specyfied, and all are stored."""
@@ -576,7 +576,7 @@ class TestCommit(ExternalBase):
                                 "--author='Jane Rey' tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe\nJane Rey', properties['author'])
+        self.assertEqual('John Doe\nJane Rey', properties['authors'])
 
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419

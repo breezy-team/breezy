@@ -217,11 +217,11 @@ class TestRevisionMethods(TestCase):
                 symbol_versioning.deprecated_in((1, 13, 0)),
                 r.get_apparent_author)
         self.assertEqual('B', author)
-        r.properties['author'] = 'B\nC'
+        r.properties['authors'] = 'C\nD'
         author = self.applyDeprecated(
                 symbol_versioning.deprecated_in((1, 13, 0)),
                 r.get_apparent_author)
-        self.assertEqual('B', author)
+        self.assertEqual('C', author)
 
     def test_get_apparent_authors(self):
         r = revision.Revision('1')
@@ -229,5 +229,5 @@ class TestRevisionMethods(TestCase):
         self.assertEqual(['A'], r.get_apparent_authors())
         r.properties['author'] = 'B'
         self.assertEqual(['B'], r.get_apparent_authors())
-        r.properties['author'] = 'B\nC'
-        self.assertEqual(['B', 'C'], r.get_apparent_authors())
+        r.properties['authors'] = 'C\nD'
+        self.assertEqual(['C', 'D'], r.get_apparent_authors())

@@ -198,7 +198,7 @@ class MutableTree(tree.Tree):
             if author is not None:
                 raise AssertionError('Specifying both author and authors '
                         'is not allowed. Specify just authors instead')
-            if 'author' in revprops:
+            if 'author' in revprops or 'authors' in revprops:
                 # XXX: maybe we should just accept one of them?
                 raise AssertionError('author property given twice')
             if authors:
@@ -206,18 +206,18 @@ class MutableTree(tree.Tree):
                     if '\n' in individual:
                         raise AssertionError('\\n is not a valid character '
                                 'in an author identity')
-                revprops['author'] = '\n'.join(authors)
+                revprops['authors'] = '\n'.join(authors)
         if author is not None:
             symbol_versioning.warn('The parameter author was deprecated'
                    ' in version 1.13. Use authors instead',
                    DeprecationWarning)
-            if 'author' in revprops:
+            if 'author' in revprops or 'authors' in revprops:
                 # XXX: maybe we should just accept one of them?
                 raise AssertionError('author property given twice')
             if '\n' in author:
                 raise AssertionError('\\n is not a valid character '
                         'in an author identity')
-            revprops['author'] = author
+            revprops['authors'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
         for hook in MutableTree.hooks['start_commit']:

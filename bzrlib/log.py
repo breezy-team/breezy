@@ -1216,10 +1216,11 @@ class LongLogFormatter(LogFormatter):
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
         self.show_properties(revision.rev, indent)
 
-        author = revision.rev.properties.get('author', None)
-        if author is not None:
-            to_file.write(indent + 'author: %s\n' % (" ".join(author.split("\n")),))
-        to_file.write(indent + 'committer: %s\n' % (revision.rev.committer,))
+        committer = revision.rev.committer
+        authors = revision.rev.get_apparent_authors()
+        if authors != [committer]:
+            to_file.write(indent + 'author: %s\n' % (", ".join(authors),))
+        to_file.write(indent + 'committer: %s\n' % (committer,))
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
