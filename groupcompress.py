@@ -142,8 +142,15 @@ class GroupCompressor(object):
         input_len = len(target_text)
         new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
         source_text = ''.join(self.lines)
+        # XXX: We have a few possibilities here. We could consider a few
+        #      different 'previous' windows, such as only the initial text, we
+        #      could do something with the 'just inserted' text
+        #      we could try a delta against whatever the last delta we
+        #      computed, (the idea being we just computed the delta_index, so
+        #      we re-use it here, and see if that is good enough, etc)
         delta = _groupcompress_c.make_delta(source_text, target_text)
-        if delta is None:
+        if (delta is None
+            or len(delta) > len(target_text) / 2):
             # We can't delta (perhaps source_text is empty)
             # so mark this as an insert
             new_chunks.insert(0, 'fulltext\n')
@@ -558,7 +565,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 prefix = record.key[0]
                 if (last_prefix is not None and prefix != last_prefix):
                     soft = True
-                    if basis_end > 1024 * 1024 * 4:
+                    if basis_end > 1024 * 1024 * 2:
                         flush()
                         self._compressor = GroupCompressor(self._delta)
                         self._unadded_refs = {}
@@ -577,7 +584,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             keys_to_add.append((key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
-            if basis_end > 1024 * 1024 * 8:
+            if basis_end > 1024 * 1024 * 4:
                 flush()
                 self._compressor = GroupCompressor(self._delta)
                 self._unadded_refs = {}
