@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -256,6 +256,23 @@ class TestBranchStacked(ExternalBase):
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
+
+class TestSmartServerBranching(ExternalBase):
+
+    def test_branch_from_trivial_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        self.run_bzr(['branch', self.get_url('from'), 'local-target'])
+        rpc_count = len(self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertEqual(68, rpc_count)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
