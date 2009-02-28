@@ -52,14 +52,20 @@ from bzrlib.versionedfile import (
     VersionedFiles,
     )
 
+_NO_LABELS = True
 
 def parse(bytes):
+    if _NO_LABELS:
+        action_byte = bytes[0]
+        action = {'f':'fulltext', 'd':'delta'}[action_byte]
+        return action, None, None, bytes[1:]
     (action, label_line, sha1_line, len_line,
-     delta_bytes) = bytes.split('\n', 4)
+     delta_bytes) = bytes.split('\n', 3)
     if (action not in ('fulltext', 'delta')
         or not label_line.startswith('label: ')
         or not sha1_line.startswith('sha1: ')
-        or not len_line.startswith('len: ')):
+        or not len_line.startswith('len: ')
+        ):
         raise AssertionError("bad text record %r" % (bytes,))
     label = tuple(label_line[7:].split('\x00'))
     sha1 = sha1_line[6:]
@@ -118,6 +124,9 @@ class GroupCompressor(object):
 
         :paeam delta: If False, do not compress records.
         """
+        # Consider seeding the lines with some sort of GC Start flag, or
+        # putting it as part of the output stream, rather than in the
+        # compressed bytes.
         self.lines = []
         self.endpoint = 0
         self.input_bytes = 0
@@ -150,7 +159,13 @@ class GroupCompressor(object):
         # bytes are valid from sha1, and we know where to find the end of this
         # record because of 'len'. (the delta record itself will store the
         # total length for the expanded record)
-        new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
+        # 'len: %d\n' costs approximately 1% increase in total data
+        # Having the labels at all costs us 9-10% increase, 38% increase for
+        # inventory pages, and 5.8% increase for text pages
+        if _NO_LABELS:
+            new_chunks = []
+        else:
+            new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
         source_text = ''.join(self.lines)
         # XXX: We have a few possibilities here. We could consider a few
         #      different 'previous' windows, such as only the initial text, we
@@ -163,13 +178,20 @@ class GroupCompressor(object):
             or len(delta) > len(target_text) / 2):
             # We can't delta (perhaps source_text is empty)
             # so mark this as an insert
-            new_chunks.insert(0, 'fulltext\n')
-            new_chunks.append('len: %s\n' % (input_len,))
-            new_chunks.extend(chunks)
+            if _NO_LABELS:
+                new_chunks = ['f']
+                new_chunks.extend(chunks)
+            else:
+                new_chunks.insert(0, 'fulltext\n')
+                new_chunks.append('len: %s\n' % (input_len,))
+                new_chunks.extend(chunks)
         else:
-            new_chunks.insert(0, 'delta\n')
-            new_chunks.append('len: %s\n' % (len(delta),))
-            new_chunks.append(delta)
+            if _NO_LABELS:
+                new_chunks = ['d', delta]
+            else:
+                new_chunks.insert(0, 'delta\n')
+                new_chunks.append('len: %s\n' % (len(delta),))
+                new_chunks.append(delta)
         delta_start = (self.endpoint, len(self.lines))
         self.output_chunks(new_chunks)
         self.input_bytes += input_len
@@ -186,14 +208,17 @@ class GroupCompressor(object):
         delta_details = self.labels_deltas[key]
         delta_chunks = self.lines[delta_details[0][1]:delta_details[1][1]]
         action, label, sha1, delta = parse(''.join(delta_chunks))
-        if label != key:
+        if not _NO_LABELS and label != key:
             raise AssertionError("wrong key: %r, wanted %r" % (label, key))
         if action == 'fulltext':
             bytes = delta
         else:
             source = ''.join(self.lines[delta_details[0][0]])
             bytes = _groupcompress_c.apply_delta(source, delta)
-        sha1 = sha_string(bytes)
+        if _NO_LABELS:
+            sha1 = sha_string(bytes)
+        else:
+            assert sha1 == sha_string(bytes)
         return [bytes], sha1
 
     def output_chunks(self, new_chunks):
@@ -487,7 +512,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 index_memo, _, parents, (method, _) = locations[key]
                 plain, delta_bytes = self._get_group_and_delta_bytes(index_memo)
                 action, label, sha1, delta = parse(delta_bytes)
-                if label != key:
+                if not _NO_LABELS and label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
                 if action == 'fulltext':
                     chunks = [delta]
@@ -499,8 +524,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         import pdb; pdb.set_trace()
                     chunks = [bytes]
                     del bytes
-                if sha_strings(chunks) != sha1:
-                    raise AssertionError('sha1 sum did not match')
+                if _NO_LABELS:
+                    sha1 = sha_strings(chunks)
+                else:
+                    if sha_strings(chunks) != sha1:
+                        raise AssertionError('sha1 sum did not match')
             yield ChunkedContentFactory(key, parents, sha1, chunks)
 
     def get_sha1s(self, keys):
