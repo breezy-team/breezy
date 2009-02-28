@@ -139,16 +139,14 @@ class LocalGitRepository(GitRepository):
         """See Repository.get_ancestry().
         """
         if revision_id is None:
-            return self._all_revision_ids()
+            return [None, revision.NULL_REVISION] + self._all_revision_ids()
         assert isinstance(revision_id, str)
         ancestry = []
         graph = self.get_graph()
         for rev, parents in graph.iter_ancestry([revision_id]):
-            if rev == revision.NULL_REVISION:
-                rev = None
             ancestry.append(rev)
         ancestry.reverse()
-        return ancestry
+        return [None] + ancestry
 
     def import_revision_gist(self, source, revid, parent_lookup):
         """Impor the gist of another revision into this Git repository.
