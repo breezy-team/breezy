@@ -75,6 +75,10 @@ cdef extern from "Python.h":
 #         free(val[0])
 #         val[0] = NULL
 
+def make_delta_index(source):
+    return DeltaIndex(source)
+
+
 cdef class DeltaIndex:
 
     cdef object _source
@@ -89,7 +93,6 @@ cdef class DeltaIndex:
     def __init__(self, source):
         self._source = None
         self._index = NULL
-
         self._create_delta_index(source)
 
     def _create_delta_index(self, source):

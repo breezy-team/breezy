@@ -173,7 +173,7 @@ class GroupCompressor(object):
         #      we could try a delta against whatever the last delta we
         #      computed, (the idea being we just computed the delta_index, so
         #      we re-use it here, and see if that is good enough, etc)
-        delta_index = _groupcompress_c.DeltaIndex(source_text)
+        delta_index = _groupcompress_c.make_delta_index(source_text)
         delta = delta_index.make_delta(target_text)
         if (delta is None
             or len(delta) > len(target_text) / 2):
