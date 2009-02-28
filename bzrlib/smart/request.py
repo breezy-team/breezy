@@ -409,6 +409,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV2')
 request_handlers.register_lazy(
+    'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV3')
+request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir', 'SmartServerRequestInitializeBzrDir')
 request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBranch')
