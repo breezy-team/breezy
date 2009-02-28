@@ -176,6 +176,8 @@ class UploadUtilsMixin(object):
         # against servers that can't. Note that some bzrlib transports define
         # _can_roundtrip_unix_modebits in a incomplete way, this property
         # should depend on both the client and the server, not the client only.
+        # But the client will know or can find if the server support chmod so
+        # that's the client that will report it anyway.
         full_path = osutils.pathjoin(base, path)
         st = os.stat(full_path)
         mode = st.st_mode & 0777

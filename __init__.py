@@ -323,13 +323,10 @@ class BzrUploader(object):
         finally:
             self.tree.unlock()
 
+
 class CannotUploadToWorkingTreeError(errors.BzrCommandError):
 
     _fmt = 'Cannot upload to a bzr managed working tree: %(url)s".'
-
-    def __init__(self, url):
-        super(CannotUploadToWorkingTreeError, self).__init__(self)
-        self.url = url
 
 
 class cmd_upload(commands.Command):
@@ -402,7 +399,7 @@ class cmd_upload(commands.Command):
             has_wt = True
 
         if has_wt:
-            raise CannotUploadToWorkingTreeError(location)
+            raise CannotUploadToWorkingTreeError(url=location)
 
         if revision is None:
             rev_id = branch.last_revision()
