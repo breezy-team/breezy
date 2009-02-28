@@ -24,13 +24,14 @@ from bzrlib import (
     ui,
     )
 
+from bzrlib.tests import ftp_server
+
 
 class TestCaseWithFTPServer(tests.TestCaseWithTransport):
 
-    _test_needs_features = [tests.FTPServerFeature]
+    _test_needs_features = [ftp_server.FTPServerFeature]
 
     def setUp(self):
-        from bzrlib.tests import ftp_server
         self.transport_server = ftp_server.FTPServer
         super(TestCaseWithFTPServer, self).setUp()
 
