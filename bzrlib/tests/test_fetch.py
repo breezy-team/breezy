@@ -367,16 +367,16 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         source.inventories = versionedfile.RecordingVersionedFilesDecorator(
                         source.inventories)
         # precondition
-        self.assertTrue(target._fetch_uses_deltas)
+        self.assertTrue(target._format._fetch_uses_deltas)
         target.fetch(source, revision_id='rev-one')
         self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
-                          target._fetch_order, False),
+                          target._format._fetch_order, False),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, False),
+                          target._format._fetch_order, False),
                          self.find_get_record_stream(source.inventories.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, False),
+                          target._format._fetch_order, False),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
         # standard item_keys_introduced_by actually does a lookup for every
@@ -387,7 +387,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # we care about.
         signature_calls = source.signatures.calls[-1:]
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, False),
+                          target._format._fetch_order, False),
                          self.find_get_record_stream(signature_calls))
 
     def test_fetch_no_deltas_with_delta_closure(self):
@@ -406,16 +406,21 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                         source.revisions)
         source.inventories = versionedfile.RecordingVersionedFilesDecorator(
                         source.inventories)
-        target._fetch_uses_deltas = False
+        # XXX: This won't work in general, but for the dirstate format it does.
+        old_fetch_uses_deltas_setting = target._format._fetch_uses_deltas
+        def restore():
+            target._format._fetch_uses_deltas = old_fetch_uses_deltas_setting
+        self.addCleanup(restore)
+        target._format._fetch_uses_deltas = False
         target.fetch(source, revision_id='rev-one')
         self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
-                          target._fetch_order, True),
+                          target._format._fetch_order, True),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, True),
+                          target._format._fetch_order, True),
                          self.find_get_record_stream(source.inventories.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, True),
+                          target._format._fetch_order, True),
                          self.find_get_record_stream(source.revisions.calls))
         # XXX: Signatures is special, and slightly broken. The
         # standard item_keys_introduced_by actually does a lookup for every
@@ -426,7 +431,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         # we care about.
         signature_calls = source.signatures.calls[-1:]
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._fetch_order, True),
+                          target._format._fetch_order, True),
                          self.find_get_record_stream(signature_calls))
 
     def test_fetch_revisions_with_deltas_into_pack(self):
