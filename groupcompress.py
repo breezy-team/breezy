@@ -166,6 +166,7 @@ class GroupCompressor(object):
             new_chunks = []
         else:
             new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
+        # PROF: 5s to this constant extra joining
         source_text = ''.join(self.lines)
         # XXX: We have a few possibilities here. We could consider a few
         #      different 'previous' windows, such as only the initial text, we
@@ -173,7 +174,9 @@ class GroupCompressor(object):
         #      we could try a delta against whatever the last delta we
         #      computed, (the idea being we just computed the delta_index, so
         #      we re-use it here, and see if that is good enough, etc)
+        # PROF: 15s to building the delta index
         delta_index = _groupcompress_c.make_delta_index(source_text)
+        # PROF: only 0.67s to actually create a delta
         delta = delta_index.make_delta(target_text)
         if (delta is None
             or len(delta) > len(target_text) / 2):
