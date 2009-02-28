@@ -60,7 +60,7 @@ def parse(bytes):
         action = {'f':'fulltext', 'd':'delta'}[action_byte]
         return action, None, None, bytes[1:]
     (action, label_line, sha1_line, len_line,
-     delta_bytes) = bytes.split('\n', 3)
+     delta_bytes) = bytes.split('\n', 4)
     if (action not in ('fulltext', 'delta')
         or not label_line.startswith('label: ')
         or not sha1_line.startswith('sha1: ')
