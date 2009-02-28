@@ -127,7 +127,8 @@ cdef class DeltaIndex:
         cdef void * delta
         cdef unsigned long delta_size
 
-        assert self._index != NULL
+        if self._index == NULL:
+            return None
 
         if not PyString_CheckExact(target_bytes):
             raise TypeError('target is not a str')
