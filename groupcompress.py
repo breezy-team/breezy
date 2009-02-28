@@ -53,6 +53,7 @@ from bzrlib.versionedfile import (
     )
 
 _NO_LABELS = False
+_FAST = False
 
 def parse(bytes):
     if _NO_LABELS:
@@ -131,6 +132,7 @@ class GroupCompressor(object):
         self.endpoint = 0
         self.input_bytes = 0
         self.labels_deltas = {}
+        self._last_delta_index = None
 
     def compress(self, key, chunks, expected_sha, soft=False):
         """Compress lines with label key.
@@ -167,17 +169,26 @@ class GroupCompressor(object):
         else:
             new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
         # PROF: 5s to this constant extra joining
-        source_text = ''.join(self.lines)
-        # XXX: We have a few possibilities here. We could consider a few
-        #      different 'previous' windows, such as only the initial text, we
-        #      could do something with the 'just inserted' text
-        #      we could try a delta against whatever the last delta we
-        #      computed, (the idea being we just computed the delta_index, so
-        #      we re-use it here, and see if that is good enough, etc)
-        # PROF: 15s to building the delta index
-        delta_index = _groupcompress_c.make_delta_index(source_text)
+        if self._last_delta_index is not None:
+            delta_index = self._last_delta_index
+        else:
+            source_text = ''.join(self.lines)
+            # XXX: We have a few possibilities here. We could consider a few
+            #      different 'previous' windows, such as only the initial text,
+            #      we could do something with the 'just inserted' text we could
+            #      try a delta against whatever the last delta we computed,
+            #      (the idea being we just computed the delta_index, so we
+            #      re-use it here, and see if that is good enough, etc)
+            # PROF: 15s to building the delta index
+            delta_index = _groupcompress_c.make_delta_index(source_text)
         # PROF: only 0.67s to actually create a delta
         delta = delta_index.make_delta(target_text)
+        # if delta is None and delta_index is self._last_delta_index:
+        #     # So this didn't compress very well, shall we try again with a
+        #     # better delta_index?
+        #     source_text = ''.join(self.lines)
+        #     delta_index = _groupcompress_c.make_delta_index(source_text)
+        #     delta = delta_index.make_delta(target_text)
         if (delta is None
             or len(delta) > len(target_text) / 2):
             # We can't delta (perhaps source_text is empty)
@@ -189,6 +200,7 @@ class GroupCompressor(object):
                 new_chunks.insert(0, 'fulltext\n')
                 new_chunks.append('len: %s\n' % (input_len,))
                 new_chunks.extend(chunks)
+            self._last_delta_index = None
         else:
             if _NO_LABELS:
                 new_chunks = ['d', delta]
@@ -196,6 +208,8 @@ class GroupCompressor(object):
                 new_chunks.insert(0, 'delta\n')
                 new_chunks.append('len: %s\n' % (len(delta),))
                 new_chunks.append(delta)
+            if _FAST:
+                self._last_delta_index = delta_index
         delta_start = (self.endpoint, len(self.lines))
         self.output_chunks(new_chunks)
         self.input_bytes += input_len
