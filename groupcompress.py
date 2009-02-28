@@ -54,13 +54,18 @@ from bzrlib.versionedfile import (
 
 
 def parse(bytes):
-    action, label_line, sha1_line, delta_bytes = bytes.split('\n', 3)
+    (action, label_line, sha1_line, len_line,
+     delta_bytes) = bytes.split('\n', 4)
     if (action not in ('fulltext', 'delta')
         or not label_line.startswith('label: ')
-        or not sha1_line.startswith('sha1: ')):
+        or not sha1_line.startswith('sha1: ')
+        or not len_line.startswith('len: ')):
         raise AssertionError("bad text record %r" % (bytes,))
     label = tuple(label_line[7:].split('\x00'))
     sha1 = sha1_line[6:]
+    length = int(len_line[5:])
+    if not len(delta_bytes) == length:
+        raise AssertionError("bad length record %r" % (bytes,))
     return action, label, sha1, delta_bytes
 
 
@@ -140,6 +145,11 @@ class GroupCompressor(object):
         label = '\x00'.join(key)
         target_text = ''.join(chunks)
         input_len = len(target_text)
+        # By having action/label/sha1/len, we can parse the group if the index
+        # was ever destroyed, we have the key in 'label', we know the final
+        # bytes are valid from sha1, and we know where to find the end of this
+        # record because of 'len'. (the delta record itself will store the
+        # total length for the expanded record)
         new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
         source_text = ''.join(self.lines)
         # XXX: We have a few possibilities here. We could consider a few
@@ -154,9 +164,11 @@ class GroupCompressor(object):
             # We can't delta (perhaps source_text is empty)
             # so mark this as an insert
             new_chunks.insert(0, 'fulltext\n')
+            new_chunks.append('len: %s\n' % (input_len,))
             new_chunks.extend(chunks)
         else:
             new_chunks.insert(0, 'delta\n')
+            new_chunks.append('len: %s\n' % (len(delta),))
             new_chunks.append(delta)
         delta_start = (self.endpoint, len(self.lines))
         self.output_chunks(new_chunks)
