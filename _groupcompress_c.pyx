@@ -75,6 +75,77 @@ cdef extern from "Python.h":
 #         free(val[0])
 #         val[0] = NULL
 
+cdef class DeltaIndex:
+
+    cdef object _source
+    cdef delta_index *_index
+
+    def __repr__(self):
+        if self._index == NULL:
+            return '%s(NULL)' % (self.__class__.__name__,)
+        return '%s(%d)' % (self.__class__.__name__,
+            len(self._source))
+
+    def __init__(self, source):
+        self._source = None
+        self._index = NULL
+
+        self._create_delta_index(source)
+
+    def _create_delta_index(self, source):
+        cdef char *c_source
+        cdef Py_ssize_t c_source_size
+
+        if not PyString_CheckExact(source):
+            raise TypeError('source is not a str')
+
+        self._source = source
+        c_source = PyString_AS_STRING(source)
+        c_source_size = PyString_GET_SIZE(source)
+
+        # TODO: Are usage is ultimately going to be different than the one that
+        #       was originally designed. Specifically, we are going to want to
+        #       be able to update the index by hashing future data. It should
+        #       fit just fine into the structure. But for now, we just wrap
+        #       create_delta_index (For example, we could always reserve enough
+        #       space to hash a 4MB string, etc.)
+        self._index = create_delta_index(c_source, c_source_size)
+        # TODO: Handle if _index == NULL
+
+    cdef _ensure_no_index(self):
+        if self._index != NULL:
+            free_delta_index(self._index)
+            self._index = NULL
+
+    def __dealloc__(self):
+        self._ensure_no_index()
+
+    def make_delta(self, target_bytes, max_delta_size=0):
+        """Create a delta from the current source to the target bytes."""
+        cdef char *target
+        cdef Py_ssize_t target_size
+        cdef void * delta
+        cdef unsigned long delta_size
+
+        assert self._index != NULL
+
+        if not PyString_CheckExact(target_bytes):
+            raise TypeError('target is not a str')
+
+        target = PyString_AS_STRING(target_bytes)
+        target_size = PyString_GET_SIZE(target_bytes)
+
+        # TODO: inline some of create_delta so we at least don't have to double
+        #       malloc, and can instead use PyString_FromStringAndSize, to
+        #       allocate the bytes into the final string
+        delta = create_delta(self._index, target, target_size,
+                             &delta_size, max_delta_size)
+        result = None
+        if delta:
+            result = PyString_FromStringAndSize(<char *>delta, delta_size)
+            free(delta)
+        return result
+
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source_bytes => target_bytes."""

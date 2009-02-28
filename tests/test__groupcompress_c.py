@@ -69,8 +69,14 @@ class Test_GroupCompress(tests.TestCase):
         self.requireFeature(CompiledGroupCompress)
         from bzrlib.plugins.groupcompress_rabin import _groupcompress_c
         self._gc_module = _groupcompress_c
-        self.make_delta = _groupcompress_c.make_delta
-        self.apply_delta = _groupcompress_c.apply_delta
+
+
+class TestMakeAndApplyDelta(Test_GroupCompress):
+
+    def setUp(self):
+        super(TestMakeAndApplyDelta, self).setUp()
+        self.make_delta = self._gc_module.make_delta
+        self.apply_delta = self._gc_module.apply_delta
 
     def test_make_delta_is_typesafe(self):
         self.make_delta('a string', 'another string')
@@ -120,3 +126,15 @@ class Test_GroupCompress(tests.TestCase):
         target = self.apply_delta(_text2,
                     'NM\x90/\x1ebe matched\nagainst other text\n')
         self.assertEqual(_text1, target)
+
+
+class TestDeltaIndex(Test_GroupCompress):
+
+    def test_repr(self):
+        di = self._gc_module.DeltaIndex('test text\n')
+        self.assertEqual('DeltaIndex(10)', repr(di))
+
+    def test_make_delta(self):
+        di = self._gc_module.DeltaIndex(_text1)
+        delta = di.make_delta(_text2)
+        self.assertEqual('MN\x90/\x1fdiffer from\nagainst other text\n', delta)
