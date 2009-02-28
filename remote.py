@@ -56,6 +56,9 @@ class GitSmartTransport(Transport):
         (self._host, self._port) = urllib.splitnport(hostport, git.protocol.TCP_GIT_PORT)
         self._client = _client
 
+    def has(self, relpath):
+        return False
+
     def _get_client(self):
         if self._client is not None:
             ret = self._client
