@@ -54,6 +54,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
         self.index = Index(os.path.join(self.repository._git.controldir(), 
             "index"))
+        self.views = self._make_views()
 
     def unlock(self):
         # non-implementation specific cleanup
