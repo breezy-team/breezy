@@ -17,12 +17,15 @@
 Facilities to use ftp test servers.
 """
 
+import sys
+
 from bzrlib import tests
 
 
 try:
     from bzrlib.tests.ftp_server import medusa_based
-    medusa_available = True
+    # medusa is bogus under python2.6
+    medusa_available = sys.version_info <= (2, 5)
 except ImportError:
     medusa_available = False
 
