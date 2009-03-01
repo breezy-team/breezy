@@ -1330,8 +1330,6 @@ class TestCase(unittest.TestCase):
                         else:
                             reason = e.args[0]
                         self._do_skip(result, reason)
-                    except self.failureException:
-                        result.addFailure(self, self._exc_info())
                     except KeyboardInterrupt:
                         raise
                     except:
