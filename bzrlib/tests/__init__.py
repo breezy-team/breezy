@@ -300,7 +300,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         except KeyboardInterrupt:
             raise
         except:
-            self.addError(test, test._exc_info())
+            self.addError(test, test.exc_info())
         else:
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
@@ -775,6 +775,13 @@ class TestCase(unittest.TestCase):
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
+
+    def exc_info(self):
+        absent_attr = object()
+        exc_info = getattr(self, '_exc_info', absent_attr)
+        if exc_info is absent_attr:
+            exc_info = getattr(self, '_TestCase__exc_info')
+        return exc_info()
 
     def _check_leaked_threads(self):
         active = threading.activeCount()
@@ -1286,7 +1293,7 @@ class TestCase(unittest.TestCase):
     def _do_skip(self, result, reason):
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
-            result.addError(self, self._exc_info())
+            result.addError(self, self.exc_info())
         else:
             addSkip(self, reason)
 
@@ -1304,7 +1311,13 @@ class TestCase(unittest.TestCase):
         try:
             try:
                 result.startTest(self)
-                testMethod = getattr(self, self._testMethodName)
+                absent_attr = object()
+                # Python 2.5
+                method_name = getattr(self, '_testMethodName', absent_attr)
+                if method_name is absent_attr:
+                    # Python 2.4
+                    method_name = getattr(self, '_TestCase__testMethodName')
+                testMethod = getattr(self, method_name)
                 try:
                     try:
                         self.setUp()
@@ -1315,7 +1328,7 @@ class TestCase(unittest.TestCase):
                         self.tearDown()
                         return
                     except:
-                        result.addError(self, self._exc_info())
+                        result.addError(self, self.exc_info())
                         return
 
                     ok = False
@@ -1323,7 +1336,7 @@ class TestCase(unittest.TestCase):
                         testMethod()
                         ok = True
                     except self.failureException:
-                        result.addFailure(self, self._exc_info())
+                        result.addFailure(self, self.exc_info())
                     except TestSkipped, e:
                         if not e.args:
                             reason = "No reason given."
@@ -1333,14 +1346,14 @@ class TestCase(unittest.TestCase):
                     except KeyboardInterrupt:
                         raise
                     except:
-                        result.addError(self, self._exc_info())
+                        result.addError(self, self.exc_info())
 
                     try:
                         self.tearDown()
                     except KeyboardInterrupt:
                         raise
                     except:
-                        result.addError(self, self._exc_info())
+                        result.addError(self, self.exc_info())
                         ok = False
                     if ok: result.addSuccess(self)
                 finally:
