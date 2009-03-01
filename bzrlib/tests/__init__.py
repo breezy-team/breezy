@@ -216,8 +216,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         fails with an unexpected error.
         """
         self._testConcluded(test)
-        if isinstance(err[1], TestSkipped):
-            return self._addSkipped(test, err)
+        if isinstance(err[1], TestNotApplicable):
+            return self._addNotApplicable(test, err)
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
@@ -286,13 +286,15 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported[str(feature)] += 1
         self.report_unsupported(test, feature)
 
-    def _addSkipped(self, test, skip_excinfo):
+    def addSkip(self, test, reason):
+        """A test has not run for 'reason'."""
+        self.skip_count += 1
+        self.report_skip(test, reason)
+
+    def _addNotApplicable(self, test, skip_excinfo):
         if isinstance(skip_excinfo[1], TestNotApplicable):
             self.not_applicable_count += 1
             self.report_not_applicable(test, skip_excinfo)
-        else:
-            self.skip_count += 1
-            self.report_skip(test, skip_excinfo)
         try:
             test.tearDown()
         except KeyboardInterrupt:
@@ -416,7 +418,7 @@ class TextTestResult(ExtendedTestResult):
         self.pb.note('XFAIL: %s\n%s\n',
             self._test_description(test), err[1])
 
-    def report_skip(self, test, skip_excinfo):
+    def report_skip(self, test, reason):
         pass
 
     def report_not_applicable(self, test, skip_excinfo):
@@ -485,10 +487,9 @@ class VerboseTestResult(ExtendedTestResult):
         # used to show the output in PQM.
         self.stream.flush()
 
-    def report_skip(self, test, skip_excinfo):
+    def report_skip(self, test, reason):
         self.stream.writeln(' SKIP %s\n%s'
-                % (self._testTimeString(test),
-                   self._error_summary(skip_excinfo)))
+                % (self._testTimeString(test), reason))
 
     def report_not_applicable(self, test, skip_excinfo):
         self.stream.writeln('  N/A %s\n%s'
@@ -1282,6 +1283,13 @@ class TestCase(unittest.TestCase):
         """This test has failed for some known reason."""
         raise KnownFailure(reason)
 
+    def _do_skip(self, result, reason):
+        addSkip = getattr(result, 'addSkip', None)
+        if not callable(addSkip):
+            result.addError(self, self._exc_info())
+        else:
+            addSkip(self, reason)
+
     def run(self, result=None):
         if result is None: result = self.defaultTestResult()
         for feature in getattr(self, '_test_needs_features', []):
@@ -1294,7 +1302,57 @@ class TestCase(unittest.TestCase):
                 result.stopTest(self)
                 return
         try:
-            return unittest.TestCase.run(self, result)
+            try:
+                result.startTest(self)
+                testMethod = getattr(self, self._testMethodName)
+                try:
+                    try:
+                        self.setUp()
+                    except KeyboardInterrupt:
+                        raise
+                    except TestSkipped, e:
+                        self._do_skip(result, e.args[0])
+                        self.tearDown()
+                        return
+                    except:
+                        result.addError(self, self._exc_info())
+                        return
+
+                    ok = False
+                    try:
+                        testMethod()
+                        ok = True
+                    except self.failureException:
+                        result.addFailure(self, self._exc_info())
+                    except TestSkipped, e:
+                        if not e.args:
+                            reason = "No reason given."
+                        else:
+                            reason = e.args[0]
+                        self._do_skip(result, reason)
+                    except self.failureException:
+                        result.addFailure(self, self._exc_info())
+                    except KeyboardInterrupt:
+                        raise
+                    except:
+                        result.addError(self, self._exc_info())
+
+                    try:
+                        self.tearDown()
+                    except KeyboardInterrupt:
+                        raise
+                    except:
+                        result.addError(self, self._exc_info())
+                        ok = False
+                    if ok: result.addSuccess(self)
+                finally:
+                    result.stopTest(self)
+                return
+            except TestNotApplicable:
+                # Not moved from the result [yet].
+                raise
+            except KeyboardInterrupt:
+                raise
         finally:
             saved_attrs = {}
             absent_attr = object()
@@ -1306,6 +1364,7 @@ class TestCase(unittest.TestCase):
 
     def tearDown(self):
         self._runCleanups()
+        self._log_contents = ''
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):

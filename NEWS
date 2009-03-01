@@ -166,6 +166,13 @@ IN DEVELOPMENT
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)
 
+    * ``TestSkipped`` is now detected by TestCase and passed to the
+      ``TestResult`` by calling ``addSkip``. For older TestResult objects,
+      where ``addSkip`` is not available, ``addError`` is still called.
+      This permits test filtering in subunit to strip out skipped tests
+      resulting in a faster fix-shrink-list-run cycle. This is compatible
+      with the testtools protocol for skips. (Robert Collins)
+
     * The ``_index`` of ``KnitVersionedFiles`` now supports the ability
       to scan an underlying index that is going to be incorporated into
       the ``KnitVersionedFiles`` object, to determine if it has missing
