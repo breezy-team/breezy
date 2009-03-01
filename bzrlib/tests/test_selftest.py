@@ -1108,11 +1108,11 @@ class TestRunner(TestCase):
         # run a test that is skipped, and check the suite as a whole still
         # succeeds.
         # skipping_test must be hidden in here so it's not run as a real test
-        def skipping_test():
-            raise TestSkipped('test intentionally skipped')
-
+        class SkippingTest(TestCase):
+            def skipping_test(self):
+                raise TestSkipped('test intentionally skipped')
         runner = TextTestRunner(stream=self._log_file)
-        test = unittest.FunctionTestCase(skipping_test)
+        test = SkippingTest("skipping_test")
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
 
