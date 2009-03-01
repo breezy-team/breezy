@@ -262,7 +262,7 @@ class BzrFastExporter(object):
                     'revision %s' % (tag, revid))
             else:
                 git_ref = 'refs/tags/%s' % tag
-                self.print_cmd(commands.ResetCommand(git_ref, ":" + mark))
+                self.print_cmd(commands.ResetCommand(git_ref, ":" + str(mark)))
 
     def _next_tmp_branch_name(self):
         """Return a unique branch name. The name will start with "tmp"."""
