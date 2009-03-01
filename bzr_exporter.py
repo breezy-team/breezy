@@ -54,7 +54,8 @@ class BzrFastExporter(object):
         if self.import_marks_file:
             marks_info = marks_file.import_marks(self.import_marks_file)
             if marks_info is not None:
-                self.revid_to_mark = helpers.invert_dict(marks_info[0])
+                self.revid_to_mark = dict((r, m) for m, r in
+                    marks_info[0].items())
                 self.branch_names = marks_info[1]
         
     def run(self):
@@ -85,7 +86,7 @@ class BzrFastExporter(object):
 
     def _save_marks(self):
         if self.export_marks_file:
-            revision_ids = helpers.invert_dict(self.revid_to_mark)
+            revision_ids = dict((m, r) for r, m in self.revid_to_mark.items())
             marks_file.export_marks(self.export_marks_file, revision_ids,
                 self.branch_names)
  
