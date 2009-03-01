@@ -3,3 +3,8 @@
 # 
 #
 
+- explicit test to forbid empty password for ftp ?
+- handle unicode or utf-8 encoded paths
+- try using _map to fix failing tests
+- call _ftp_server.close_all in the server thread and/or switch
+   to an implementation that doesn't use serve_forever

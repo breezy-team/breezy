@@ -167,12 +167,17 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has('a'))
         self.assertEqual(False, t.has('c'))
         self.assertEqual(True, t.has(urlutils.escape('%')))
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
-                [True, True, False, False, True, False, True, False])
+        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd',
+                                           'e', 'f', 'g', 'h'])),
+                         [True, True, False, False,
+                          True, False, True, False])
         self.assertEqual(True, t.has_any(['a', 'b', 'c']))
-        self.assertEqual(False, t.has_any(['c', 'd', 'f', urlutils.escape('%%')]))
-        self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
-                [True, True, False, False, True, False, True, False])
+        self.assertEqual(False, t.has_any(['c', 'd', 'f',
+                                           urlutils.escape('%%')]))
+        self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd',
+                                                'e', 'f', 'g', 'h']))),
+                         [True, True, False, False,
+                          True, False, True, False])
         self.assertEqual(False, t.has_any(['c', 'c', 'c']))
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
@@ -1507,16 +1512,10 @@ class TransportTests(TestTransportImplementation):
         transport.put_bytes('foo', 'bar')
         transport3 = self.get_transport()
         self.check_transport_contents('bar', transport3, 'foo')
-        # its base should be usable. XXX: This is true only if we don't use
-        # auhentication, otherwise 'base' doesn't mention the password and we
-        # can't access it anymore since the password is lost (it *could* be
-        # mentioned in the url given by the test server) --vila 090226
-        transport4 = get_transport(transport.base)
-        self.check_transport_contents('bar', transport4, 'foo')
 
         # now opening at a relative url should give use a sane result:
         transport.mkdir('newdir')
-        transport5 = get_transport(transport.base + "newdir")
+        transport5 = get_transport("newdir")
         transport6 = transport5.clone('..')
         self.check_transport_contents('bar', transport6, 'foo')
 

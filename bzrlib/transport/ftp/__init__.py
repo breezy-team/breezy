@@ -439,7 +439,7 @@ class FtpTransport(ConnectedTransport):
         if mode:
             try:
                 mutter("FTP site chmod: setting permissions to %s on %s",
-                    str(mode), self._remote_path(relpath))
+                       oct(mode), self._remote_path(relpath))
                 ftp = self._get_FTP()
                 cmd = "SITE CHMOD %s %s" % (oct(mode),
                                             self._remote_path(relpath))
@@ -447,7 +447,7 @@ class FtpTransport(ConnectedTransport):
             except ftplib.error_perm, e:
                 # Command probably not available on this server
                 warning("FTP Could not set permissions to %s on %s. %s",
-                        str(mode), self._remote_path(relpath), str(e))
+                        oct(mode), self._remote_path(relpath), str(e))
 
     # TODO: jam 20060516 I believe ftp allows you to tell an ftp server
     #       to copy something to another machine. And you may be able

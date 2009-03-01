@@ -30,6 +30,13 @@ except ImportError:
     medusa_available = False
 
 
+try:
+    from bzrlib.tests.ftp_server import pyftpdlib_based
+    pyftpdlib_available = True
+except ImportError:
+    pyftpdlib_available = False
+
+
 class _FTPServerFeature(tests.Feature):
     """Some tests want an FTP Server, check if one is available.
 
@@ -38,7 +45,7 @@ class _FTPServerFeature(tests.Feature):
     """
 
     def _probe(self):
-        return medusa_available
+        return medusa_available or pyftpdlib_available
 
     def feature_name(self):
         return 'FTPServer'
@@ -50,7 +57,6 @@ FTPServerFeature = _FTPServerFeature()
 class UnavailableFTPServer(object):
     """Dummy ftp test server.
 
-    
     This allows the test suite report the number of tests needing that
     feature. We raise UnavailableFeature from methods before the test server is
     being used. Doing so in the setUp method has bad side-effects (tearDown is
@@ -72,5 +78,7 @@ class UnavailableFTPServer(object):
 
 if medusa_available:
     FTPServer = medusa_based.FTPServer
+elif pyftpdlib_available:
+    FTPServer = pyftpdlib_based.FTPServer
 else:
     FTPServer = UnavailableFTPServer
