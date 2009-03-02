@@ -2086,6 +2086,8 @@ class DistributionBranch(object):
 
     def reconstruct_pristine_tar(self, revid, package, version,
             dest_filename):
+        if not os.path.exists("/usr/bin/pristine-tar"):
+            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tree = self.branch.repository.revision_tree(revid)
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
@@ -2105,6 +2107,8 @@ class DistributionBranch(object):
             shutil.rmtree(tmpdir)
 
     def make_pristine_tar_delta(self, tree, tarball_path):
+        if not os.path.exists("/usr/bin/pristine-tar"):
+            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")

@@ -11,6 +11,8 @@ bzr-builddeb (2.1~0ubuntu2) UNRELEASED; urgency=low
     (LP: #331994)
   * Allow specifying the merge type in merge-upstream (LP: #310694)
   * Make merge mode work with Python 2.6 (LP: #336686)
+  * Give a more informative message if pristine-tar isn't installed.
+    (LP: #336442)
 
  -- James Westby <james.westby@ubuntu.com>  Thu, 19 Feb 2009 09:26:34 +0000
 
