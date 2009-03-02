@@ -16,7 +16,8 @@ struct delta_index;
  * using free_delta_index().
  */
 extern struct delta_index *
-create_delta_index(const void *buf, unsigned long bufsize);
+create_delta_index(const void *buf, unsigned long bufsize,
+                   unsigned long agg_src_offset);
 
 /*
  * free_delta_index: free the index created by create_delta_index()
@@ -43,7 +44,8 @@ extern unsigned long sizeof_delta_index(struct delta_index *index);
  * must be freed by the caller.
  */
 extern void *
-create_delta(const struct delta_index *index,
+create_delta(struct delta_index **indexes,
+         unsigned int num_indexes,
 	     const void *buf, unsigned long bufsize,
 	     unsigned long *delta_size, unsigned long max_delta_size);
 
@@ -60,9 +62,9 @@ diff_delta(const void *src_buf, unsigned long src_bufsize,
 	   const void *trg_buf, unsigned long trg_bufsize,
 	   unsigned long *delta_size, unsigned long max_delta_size)
 {
-	struct delta_index *index = create_delta_index(src_buf, src_bufsize);
+	struct delta_index *index = create_delta_index(src_buf, src_bufsize, 0);
 	if (index) {
-		void *delta = create_delta(index, trg_buf, trg_bufsize,
+		void *delta = create_delta(&index, 1, trg_buf, trg_bufsize,
 					   delta_size, max_delta_size);
 		free_delta_index(index);
 		return delta;

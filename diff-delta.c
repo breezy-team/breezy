@@ -123,14 +123,18 @@ struct unpacked_index_entry {
 };
 
 struct delta_index {
-	unsigned long memsize;
-	const void *src_buf;
-	unsigned long src_size;
-	unsigned int hash_mask;
+	unsigned long memsize; /* Total bytes pointed to by this index */
+	const void *src_buf; /* Pointer to the beginning of source data */
+	unsigned long src_size; /* Total length of source data */
+	unsigned long agg_src_offset; /* Start of source data as part of the
+									 aggregate source */
+	unsigned int hash_mask; /* val & hash_mask gives the hash index for a given
+							   entry */
 	struct index_entry *hash[];
 };
 
-struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)
+struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
+										unsigned long agg_src_offset)
 {
 	unsigned int i, hsize, hmask, entries, prev_val, *hash_count;
 	const unsigned char *data, *buffer = buf;
@@ -174,8 +178,8 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)
 	/* then populate the index */
 	prev_val = ~0;
 	for (data = buffer + entries * RABIN_WINDOW - RABIN_WINDOW;
-	     data >= buffer;
-	     data -= RABIN_WINDOW) {
+		 data >= buffer;
+		 data -= RABIN_WINDOW) {
 		unsigned int val = 0;
 		for (i = 1; i <= RABIN_WINDOW; i++)
 			val = ((val << 8) | data[i]) ^ T[val >> RABIN_SHIFT];
@@ -196,7 +200,7 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)
 
 	/*
 	 * Determine a limit on the number of entries in the same hash
-	 * bucket.  This guards us against pathological data sets causing
+	 * bucket.	This guards us against pathological data sets causing
 	 * really bad hash distribution with most entries in the same hash
 	 * bucket that would bring us to O(m*n) computing costs (m and n
 	 * corresponding to reference and target buffer sizes).
@@ -221,7 +225,7 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)
 		/*
 		 * Assume that this loop is gone through exactly
 		 * HASH_LIMIT times and is entered and left with
-		 * acc==0.  So the first statement in the loop
+		 * acc==0.	So the first statement in the loop
 		 * contributes (hash_count[i]-HASH_LIMIT)*HASH_LIMIT
 		 * to the accumulator, and the inner loop consequently
 		 * is run (hash_count[i]-HASH_LIMIT) times, removing
@@ -262,6 +266,7 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize)
 	index->memsize = memsize;
 	index->src_buf = buf;
 	index->src_size = bufsize;
+	index->agg_src_offset = agg_src_offset;
 	index->hash_mask = hmask;
 
 	mem = index->hash;
@@ -308,11 +313,13 @@ unsigned long sizeof_delta_index(struct delta_index *index)
 #define MAX_OP_SIZE	(5 + 5 + 1 + RABIN_WINDOW + 7)
 
 void *
-create_delta(const struct delta_index *index,
-	     const void *trg_buf, unsigned long trg_size,
-	     unsigned long *delta_size, unsigned long max_size)
+create_delta(struct delta_index **indexes,
+			 unsigned int num_indexes,
+			 const void *trg_buf, unsigned long trg_size,
+			 unsigned long *delta_size, unsigned long max_size)
 {
-	unsigned int i, outpos, outsize, moff, msize, val;
+	unsigned int i, j, outpos, outsize, moff, msize, val;
+	const struct delta_index *index, *mindex;
 	int inscnt;
 	const unsigned char *ref_data, *ref_top, *data, *top;
 	unsigned char *out;
@@ -329,7 +336,11 @@ create_delta(const struct delta_index *index,
 		return NULL;
 
 	/* store reference buffer size */
-	i = index->src_size;
+	i = 0;
+	for (j = 0; j < num_indexes; ++j) {
+		index = indexes[j];
+		i += index->src_size;
+	}
 	while (i >= 0x80) {
 		out[outpos++] = i | 0x80;
 		i >>= 7;
@@ -344,55 +355,85 @@ create_delta(const struct delta_index *index,
 	}
 	out[outpos++] = i;
 
-	ref_data = index->src_buf;
-	ref_top = ref_data + index->src_size;
 	data = trg_buf;
 	top = (const unsigned char *) trg_buf + trg_size;
 
-	outpos++;
+	/* Start the matching by filling out with a simple 'insert' instruction, of
+	 * the first RABIN_WINDOW bytes of the input.
+	 */
+	outpos++; /* leave a byte for the insert command */
 	val = 0;
 	for (i = 0; i < RABIN_WINDOW && data < top; i++, data++) {
 		out[outpos++] = *data;
 		val = ((val << 8) | *data) ^ T[val >> RABIN_SHIFT];
 	}
+	/* we are now setup with an insert of 'i' bytes and val contains the RABIN
+	 * hash for those bytes, and data points to the RABIN_WINDOW+1 byte of
+	 * input.
+	 */
 	inscnt = i;
 
 	moff = 0;
 	msize = 0;
+	mindex = NULL;
 	while (data < top) {
 		if (msize < 4096) {
+			/* we don't have a 'worthy enough' match yet, so let's look for
+			 * one.
+			 */
 			struct index_entry *entry;
+			/* Shift the window by one byte. */
 			val ^= U[data[-RABIN_WINDOW]];
 			val = ((val << 8) | *data) ^ T[val >> RABIN_SHIFT];
-			i = val & index->hash_mask;
-			for (entry = index->hash[i]; entry < index->hash[i+1]; entry++) {
-				const unsigned char *ref = entry->ptr;
-				const unsigned char *src = data;
-				unsigned int ref_size = ref_top - ref;
-				if (entry->val != val)
-					continue;
-				if (ref_size > top - src)
-					ref_size = top - src;
-				if (ref_size <= msize)
-					break;
-				while (ref_size-- && *src++ == *ref)
-					ref++;
-				if (msize < ref - entry->ptr) {
-					/* this is our best match so far */
-					msize = ref - entry->ptr;
-					moff = entry->ptr - ref_data;
-					if (msize >= 4096) /* good enough */
+			for (j = 0; j < num_indexes; ++j) {
+				index = indexes[j];
+				i = val & index->hash_mask;
+				ref_top = index->src_buf + index->src_size;
+				ref_data = index->src_buf;
+				for (entry = index->hash[i]; entry < index->hash[i+1];
+					 entry++) {
+					const unsigned char *ref = entry->ptr;
+					const unsigned char *src = data;
+					unsigned int ref_size = ref_top - ref;
+					if (entry->val != val)
+						continue;
+					/* ref_size is the longest possible match that we could make
+					 * here. If ref_size <= msize, then we know that we cannot
+					 * match more bytes with this location that we have already
+					 * matched.
+					 */
+					if (ref_size > top - src)
+						ref_size = top - src;
+					if (ref_size <= msize)
 						break;
+					/* See how many bytes actually match at this location. */
+					while (ref_size-- && *src++ == *ref)
+						ref++;
+					if (msize < ref - entry->ptr) {
+						/* this is our best match so far */
+						msize = ref - entry->ptr;
+						moff = entry->ptr - ref_data;
+						mindex = index;
+						if (msize >= 4096) /* good enough */
+							break;
+					}
 				}
 			}
 		}
 
 		if (msize < 4) {
+			/* The best match right now is less than 4 bytes long. So just add
+			 * the current byte to the insert instruction. Increment the insert
+			 * counter, and copy the byte of data into the output buffer.
+			 */
 			if (!inscnt)
 				outpos++;
 			out[outpos++] = *data++;
 			inscnt++;
 			if (inscnt == 0x7f) {
+				/* We have a max length insert instruction, finalize it in the
+				 * output.
+				 */
 				out[outpos - inscnt - 1] = inscnt;
 				inscnt = 0;
 			}
@@ -402,6 +443,7 @@ create_delta(const struct delta_index *index,
 			unsigned char *op;
 
 			if (inscnt) {
+				ref_data = mindex->src_buf;
 				while (moff && ref_data[moff-1] == data[-1]) {
 					/* we can match one byte back */
 					msize++;
@@ -425,6 +467,10 @@ create_delta(const struct delta_index *index,
 			op = out + outpos++;
 			i = 0x80;
 
+			/* so far, moff has been the offset in a single source, however,
+			 * now we encode it as the offset in the aggregate source
+			 */
+			moff = moff + mindex->agg_src_offset;
 			if (moff & 0x000000ff)
 				out[outpos++] = moff >> 0,  i |= 0x01;
 			if (moff & 0x0000ff00)
@@ -450,7 +496,7 @@ create_delta(const struct delta_index *index,
 				val = 0;
 				for (j = -RABIN_WINDOW; j < 0; j++)
 					val = ((val << 8) | data[j])
-					      ^ T[val >> RABIN_SHIFT];
+						  ^ T[val >> RABIN_SHIFT];
 			}
 		}
 
@@ -480,3 +526,5 @@ create_delta(const struct delta_index *index,
 	*delta_size = outpos;
 	return out;
 }
+
+/* vim: noet ts=4 sw=4 sts=4 */

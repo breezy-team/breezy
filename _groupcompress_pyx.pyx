@@ -24,18 +24,17 @@ cdef extern from *:
     void memcpy(void *, void *, size_t)
 
 cdef extern from "delta.h":
-    void * diff_delta(void *src_buf, unsigned long src_bufsize,
-           void *trg_buf, unsigned long trg_bufsize,
-           unsigned long *delta_size, unsigned long max_delta_size)
     struct delta_index:
         unsigned long memsize
         void *src_buf
         unsigned long src_size
         unsigned int hash_mask
         # struct index_entry *hash[]
-    delta_index * create_delta_index(void *buf, unsigned long bufsize)
+    delta_index * create_delta_index(void *buf, unsigned long bufsize, unsigned
+                                     long agg_src_offset)
     void free_delta_index(delta_index *index)
-    void * create_delta(delta_index *index,
+    void *create_delta(delta_index **indexes,
+             unsigned int num_indexes,
              void *buf, unsigned long bufsize,
              unsigned long *delta_size, unsigned long max_delta_size)
     unsigned long get_delta_hdr_size(unsigned char **datap,
@@ -112,7 +111,7 @@ cdef class DeltaIndex:
         #       fit just fine into the structure. But for now, we just wrap
         #       create_delta_index (For example, we could always reserve enough
         #       space to hash a 4MB string, etc.)
-        self._index = create_delta_index(c_source, c_source_size)
+        self._index = create_delta_index(c_source, c_source_size, 0)
         # TODO: Handle if _index == NULL
 
     cdef _ensure_no_index(self):
@@ -142,7 +141,7 @@ cdef class DeltaIndex:
         # TODO: inline some of create_delta so we at least don't have to double
         #       malloc, and can instead use PyString_FromStringAndSize, to
         #       allocate the bytes into the final string
-        delta = create_delta(self._index, target, target_size,
+        delta = create_delta(&self._index, 1, target, target_size,
                              &delta_size, max_delta_size)
         result = None
         if delta:
@@ -175,9 +174,9 @@ def make_delta(source_bytes, target_bytes):
     target_size = PyString_GET_SIZE(target_bytes)
 
     result = None
-    index = create_delta_index(source, source_size)
+    index = create_delta_index(source, source_size, 0)
     if index != NULL:
-        delta = create_delta(index, target, target_size,
+        delta = create_delta(&index, 1, target, target_size,
                              &delta_size, max_delta_size)
         free_delta_index(index);
         if delta:
