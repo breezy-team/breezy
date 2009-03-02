@@ -166,7 +166,6 @@ class RepoFetcher(object):
                     "second push failed to commit the fetch %r." % (
                         resume_tokens,))
             self.sink.finished()
-            self.count_copied = source.count_copied
         finally:
             if self.pb is not None:
                 self.pb.finished()
