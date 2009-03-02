@@ -10,6 +10,8 @@ bzr-builddeb (2.1~0ubuntu2) UNRELEASED; urgency=low
     that UNRELEASED entries are edited rather than a new stanza added.
     (LP: #331994)
   * Allow specifying the merge type in merge-upstream (LP: #310694)
+  * Record extra authors in import-dsc based on what is in the changelog
+    entry (LP: #335071)
 
  -- James Westby <james.westby@ubuntu.com>  Thu, 19 Feb 2009 09:26:34 +0000
 

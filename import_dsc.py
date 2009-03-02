@@ -32,6 +32,7 @@ from base64 import (
 import gzip
 import md5
 import os
+import re
 import select
 import shutil
 import stat
@@ -1599,25 +1600,52 @@ class DistributionBranch(object):
         text of the changes in that section, it also returns the 
         uploader of that change.
 
-        :return: a tuple (message, author), both Strings. If the
-            information is not available then either can be None.
+        :return: a tuple (message, authors, thanks). message is the commit
+            message that should be used. authors is a list of strings,
+            with those that contributed to the change, thanks is a list
+            of string, with those who were thanked in the changelog entry.
+            If the information is not available then any can be None.
         """
         changelog_path = os.path.join(self.tree.basedir, 'debian',
             'changelog')
-        author = None
+        extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*", re.UNICODE)
+        thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
+                "((?:\s+(?:(?:[A-Z]\.)|(?:[A-Z]\w+(?:-[A-Z]\w+)*)))+"
+                "(?:\s+<[^@>]+@[^@>]+>)?)",
+                re.UNICODE)
+        authors = None
         message = None
+        thanks = None
         if os.path.exists(changelog_path):
           changelog_contents = open(changelog_path).read()
           changelog = Changelog(file=changelog_contents, max_blocks=1)
           if changelog._blocks:
-            author = changelog._blocks[0].author
+            authors = [changelog._blocks[0].author]
             changes = strip_changelog_message(changelog._blocks[0].changes())
+            for change in changes:
+              # Parse out any extra authors.
+              match = extra_author_re.match(change.decode("utf-8"))
+              if match is not None:
+                new_author = match.group(1).strip()
+                already_included = False
+                for author in authors:
+                  if author.startswith(new_author):
+                    already_included = True
+                    break
+                if not already_included:
+                  authors.append(new_author.encode("utf-8"))
+            for match in thanks_re.finditer(" ".join(changes).decode("utf-8")):
+                if thanks is None:
+                    thanks = []
+                thanks_str = match.group(1).strip()
+                thanks_str = re.sub(r"\s+", " ", thanks_str)
+                thanks.append(thanks_str.encode("utf-8"))
             message = ''
             sep = ''
             for change in reversed(changes):
               message = change + sep + message
               sep = "\n"
-        return (message, author)
+        return (message, authors, thanks)
 
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.repository.revision_tree(
@@ -1714,15 +1742,19 @@ class DistributionBranch(object):
                      (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|
                       stat.S_IROTH|stat.S_IXOTH))
         self.tree.set_parent_ids(parents)
-        (message, author) = self._get_commit_message_from_changelog()
+        message, authors, thanks = self._get_commit_message_from_changelog()
         if message is None:
             message = 'Import packaging changes for version %s' % \
                         (str(version),)
         revprops={"deb-md5":md5}
         if native:
             revprops['deb-native'] = "True"
+        if authors is not None:
+            revprops['authors'] = "\n".join(authors)
+        if thanks is not None:
+            revprops['deb-thanks'] = "\n".join(thanks)
         self._mark_native_config(native)
-        self.tree.commit(message, author=author, revprops=revprops)
+        self.tree.commit(message, revprops=revprops)
         self.tag_version(version)
 
     def _get_dsc_part(self, dsc, end):

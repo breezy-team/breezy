@@ -2079,7 +2079,10 @@ class DistributionBranchTests(TestCaseWithTransport):
         builder.add_default_control()
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        builder.new_version(version2)
+        change_text = ("  [ Other Maint ]\n"
+                "  * Foo, thanks Bar \n"
+                "  * Bar, thanks Foo <foo@foo.org>\n\n")
+        builder.new_version(version2, change_text=change_text)
         builder.add_upstream_file("README", "bar")
         builder.add_upstream_file("COPYING", "Please do\n")
         builder.add_upstream_file("src.c")
@@ -2119,6 +2122,12 @@ class DistributionBranchTests(TestCaseWithTransport):
                 removed=["NEWS", "debian/", "debian/changelog",
                 "debian/control"],
                 modified=["README", "COPYING"])
+        revid = self.tree1.last_revision()
+        imported_rev = self.tree1.branch.repository.get_revision(revid)
+        props = imported_rev.properties
+        self.assertEqual(props["authors"], "Maint <maint@maint.org>\n"
+                "Other Maint")
+        self.assertEqual(props["deb-thanks"], "Bar\nFoo <foo@foo.org>")
 
     def test_import_two_roots(self):
         version1 = Version("0.1-0ubuntu1")
@@ -2591,12 +2600,15 @@ class SourcePackageBuilder(object):
         text = """Source: %s\n""" % self.name
         self.add_debian_file("debian/control", text)
 
-    def new_version(self, version):
+    def new_version(self, version, change_text=None):
         self._cl.new_block(package=self.name, version=version,
                 distributions="unstable", urgency="low",
                 author="Maint <maint@maint.org>",
                 date="Wed, 19 Mar 2008 21:27:37 +0000")
-        self._cl.add_change("  * foo")
+        if change_text is None:
+            self._cl.add_change("  * foo")
+        else:
+            self._cl.add_change(change_text)
 
     def dsc_name(self):
         return "%s_%s.dsc" % (self.name, str(self._cl.version))
