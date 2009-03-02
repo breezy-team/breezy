@@ -53,6 +53,7 @@ from bzrlib import (bzrdir,
 from bzrlib.config import ConfigObj
 from bzrlib.errors import (FileExists,
         BzrError,
+        BzrCommandError,
         UncommittedChanges,
         NotBranchError,
         AlreadyBranchError,
@@ -1083,7 +1084,7 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         return self._has_version(self.upstream_branch, tag_name, md5=md5)
 
-    def _has_upstream_version_in_packaging_branch(self, version, md5=None):
+    def has_upstream_version_in_packaging_branch(self, version, md5=None):
         tag_name = self.upstream_tag_name(version)
         return self._has_version(self.branch, tag_name, md5=md5)
 
@@ -2057,12 +2058,17 @@ class DistributionBranch(object):
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
+                if not self.has_upstream_version_in_packaging_branch(version):
+                    raise BzrCommandError("Unable to find the tag for the "
+                            "previous upstream version, %s, in the branch: "
+                            "%s" % (previous_version,
+                                self.upstream_tag_name(previous_version)))
                 upstream_tip = self._revid_of_upstream_version_from_branch(
                         previous_version)
                 self._extract_upstream_tree(upstream_tip, tempdir)
             else:
                 self._create_empty_upstream_tree(tempdir)
-            if self._has_upstream_version_in_packaging_branch(version):
+            if self.has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
             try:
                 if upstream_branch is not None:
