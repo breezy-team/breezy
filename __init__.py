@@ -198,8 +198,14 @@ class cmd_fast_import(Command):
         checkpoint=10000, count=-1, inv_cache=10,
         experimental=False, import_marks=None, export_marks=None):
         from bzrlib import bzrdir
+        from bzrlib.errors import BzrCommandError, NotBranchError
         from bzrlib.plugins.fastimport.processors import generic_processor
-        control, relpath = bzrdir.BzrDir.open_containing('.')
+        try:
+            control, relpath = bzrdir.BzrDir.open_containing('.')
+        except NotBranchError:
+            raise BzrCommandError("current directory has no .bzr"
+                " directory - use bzr init-repo or bzr init to initialize"
+                " before using bzr fast-import")
         params = {
             'info': info,
             'trees': trees,
