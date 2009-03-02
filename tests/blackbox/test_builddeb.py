@@ -20,10 +20,6 @@
 
 import os
 
-from debian_bundle.changelog import (Changelog,
-                                     Version,
-                                     )
-
 from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 

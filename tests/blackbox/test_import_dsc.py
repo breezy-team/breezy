@@ -23,9 +23,6 @@ import shutil
 import subprocess
 import tarfile
 
-from bzrlib.bzrdir import BzrDir
-from bzrlib.workingtree import WorkingTree
-
 from bzrlib.plugins.builddeb.tests import BuilddebTestCase
 
 

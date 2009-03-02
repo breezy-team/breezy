@@ -90,6 +90,29 @@ on the type of package you are building. If none of these are set then
 .. _native mode: native.html
 .. _split mode: split.html
 
+Interaction with an upstream branch
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When the upstream source is in ``bazaar`` it is possible to have the
+``.orig.tar.gz`` created by exporting the upstream branch. To do this set
+the ``export-upstream`` option. This only works only for merge mode. For
+normal mode use the ``merge-upstream`` command.
+
+  * ``export-upstream = path``
+
+    This option takes a path (remote or local) to a bzr branch that contains
+    the upstream code. If this is set then the plugin will export the code
+    from that branch to create the ``.orig.tar.gz`` if needed. This option
+    only has effect if ``merge`` is set.
+
+  * ``export-upstream-revision = revision``
+
+    This sets the revision that the upstream code will be branched at. It takes
+    the same revision spec as the normal --revision parameter. Use it to
+    associate an upstream version number with a particular revision of the
+    upstream code. This has no effect if ``export-upstream`` is not set.
+
+
 Builders
 ^^^^^^^^
 

@@ -19,6 +19,7 @@
 #
 
 import shutil
+import subprocess
 import tarfile
 import zipfile
 
@@ -35,54 +36,57 @@ from bzrlib.plugins.builddeb.tests import blackbox
 
 
 def make_new_upstream_dir(dir):
-  def _make_upstream_dir():
-    os.rename('package-0.2', dir)
-  return _make_upstream_dir
+    def _make_upstream_dir():
+        os.rename('package-0.2', dir)
+    return _make_upstream_dir
+
 
 def make_new_upstream_tarball(tarball):
-  def _make_upstream_tarball():
-    tar = tarfile.open(tarball, 'w:gz')
-    try:
-      tar.add('package-0.2')
-    finally:
-      tar.close()
-    shutil.rmtree('package-0.2')
-  return _make_upstream_tarball
+    def _make_upstream_tarball():
+        tar = tarfile.open(tarball, 'w:gz')
+        try:
+            tar.add('package-0.2')
+        finally:
+            tar.close()
+        shutil.rmtree('package-0.2')
+    return _make_upstream_tarball
+
 
 def make_new_upstream_tarball_bz2(tarball):
-  def _make_upstream_tarball():
-    tar = tarfile.open(tarball, 'w:bz2')
-    try:
-      tar.add('package-0.2')
-    finally:
-      tar.close()
-    shutil.rmtree('package-0.2')
-  return _make_upstream_tarball
+    def _make_upstream_tarball():
+        tar = tarfile.open(tarball, 'w:bz2')
+        try:
+            tar.add('package-0.2')
+        finally:
+            tar.close()
+        shutil.rmtree('package-0.2')
+    return _make_upstream_tarball
+
 
 def make_new_upstream_tarball_zip(tarball):
-  def _make_upstream_tarball():
-    zip = zipfile.ZipFile(tarball, 'w')
-    try:
-      zip.writestr('package-0.2/', '')
-      for (dirpath, dirnames, names) in os.walk('package-0.2'):
-        for dir in dirnames:
-          zip.writestr(os.path.join(dirpath, dir, ''), '')
-        for name in names:
-          zip.write(os.path.join(dirpath, name))
-    finally:
-      zip.close()
-    shutil.rmtree('package-0.2')
-  return _make_upstream_tarball
+    def _make_upstream_tarball():
+        zip = zipfile.ZipFile(tarball, 'w')
+        try:
+            zip.writestr('package-0.2/', '')
+            for (dirpath, dirnames, names) in os.walk('package-0.2'):
+                for dir in dirnames:
+                    zip.writestr(os.path.join(dirpath, dir, ''), '')
+                for name in names:
+                    zip.write(os.path.join(dirpath, name))
+        finally:
+            zip.close()
+        shutil.rmtree('package-0.2')
+    return _make_upstream_tarball
 
 def make_new_upstream_tarball_bare(tarball):
-  def _make_upstream_tarball():
-    tar = tarfile.open(tarball, 'w')
-    try:
-      tar.add('package-0.2')
-    finally:
-      tar.close()
-    shutil.rmtree('package-0.2')
-  return _make_upstream_tarball
+    def _make_upstream_tarball():
+        tar = tarfile.open(tarball, 'w')
+        try:
+            tar.add('package-0.2')
+        finally:
+            tar.close()
+        shutil.rmtree('package-0.2')
+    return _make_upstream_tarball
 
 tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
                      ('.tar.gz', make_new_upstream_tarball,
@@ -98,19 +102,19 @@ tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
 
 class RepackTarballAdaptor(object):
 
-  def adapt(self, test):
-    result = TestSuite()
-    for (name, function, source) in tarball_functions:
-      new_test = deepcopy(test)
-      source = os.path.basename(source)
-      new_test.build_tarball = function(source)
-      new_test.old_tarball = source
-      def make_new_id():
-        new_id = '%s(%s)' % (test.id(), name)
-        return lambda: new_id
-      new_test.id = make_new_id()
-      result.addTest(new_test)
-    return result
+    def adapt(self, test):
+        result = TestSuite()
+        for (name, function, source) in tarball_functions:
+            new_test = deepcopy(test)
+            source = os.path.basename(source)
+            new_test.build_tarball = function(source)
+            new_test.old_tarball = source
+            def make_new_id():
+                new_id = '%s(%s)' % (test.id(), name)
+                return lambda: new_id
+            new_test.id = make_new_id()
+            result.addTest(new_test)
+        return result
 
 
 def test_suite():
@@ -135,7 +139,7 @@ def test_suite():
              'config'
              ]
     for mod in doctest_mod_names:
-      suite.addTest(doctest.DocTestSuite("bzrlib.plugins.builddeb." + mod))
+        suite.addTest(doctest.DocTestSuite("bzrlib.plugins.builddeb." + mod))
 
     adapt_modules(['%s.test_repack_tarball' % __name__],
                   RepackTarballAdaptor(), loader, suite)
@@ -145,74 +149,159 @@ def test_suite():
              ]
 
     for package in packages_to_test:
-      suite.addTest(package.test_suite())
+        suite.addTest(package.test_suite())
 
     return suite
 
 class BuilddebTestCase(TestCaseWithTransport):
 
-  package_name = 'test'
-  package_version = Version('0.1-1')
-  upstream_version = property(lambda self: \
-                              self.package_version.upstream_version)
+    package_name = 'test'
+    package_version = Version('0.1-1')
+    upstream_version = property(lambda self: \
+                                self.package_version.upstream_version)
 
-  def make_changelog(self, version=None):
-    if version is None:
-      version = self.package_version
-    c = Changelog()
-    c.new_block()
-    c.version = Version(version)
-    c.package = self.package_name
-    c.distributions = 'unstable'
-    c.urgency = 'low'
-    c.author = 'James Westby <jw+debian@jameswestby.net>'
-    c.date = 'Thu,  3 Aug 2006 19:16:22 +0100'
-    c.add_change('')
-    c.add_change('  *  test build')
-    c.add_change('')
-    return c
+    def make_changelog(self, version=None):
+        if version is None:
+            version = self.package_version
+        c = Changelog()
+        c.new_block()
+        c.version = Version(version)
+        c.package = self.package_name
+        c.distributions = 'unstable'
+        c.urgency = 'low'
+        c.author = 'James Westby <jw+debian@jameswestby.net>'
+        c.date = 'Thu,  3 Aug 2006 19:16:22 +0100'
+        c.add_change('')
+        c.add_change('  *  test build')
+        c.add_change('')
+        return c
 
-  def write_changelog(self, changelog, filename):
-    f = open(filename, 'w')
-    changelog.write_to_open_file(f)
-    f.close()
+    def write_changelog(self, changelog, filename):
+        f = open(filename, 'w')
+        changelog.write_to_open_file(f)
+        f.close()
 
-  def check_tarball_contents(self, tarball, expected, basedir=None,
+    def check_tarball_contents(self, tarball, expected, basedir=None,
                              skip_basedir=False, mode=None):
-    """Test that the tarball has certain contents.
+        """Test that the tarball has certain contents.
 
-    Test that the tarball has exactly expected contents. The basedir
-    is checked for and prepended if it is not None. The mode is the mode
-    used in tarfile.open defaults to r:gz. If skip_basedir is True and
-    basedir is not None then the basedir wont be tested for itself.
-    """
-    if basedir is None:
-      real_expected = expected[:]
-    else:
-      if skip_basedir:
-        real_expected = []
-      else:
-        real_expected = [basedir]
-      for item in expected:
-        real_expected.append(os.path.join(basedir, item).rstrip("/"))
-    extras = []
-    tar = tarfile.open(tarball, 'r:gz')
-    try:
-      for tarinfo in tar:
-        if tarinfo.name in real_expected:
-          index = real_expected.index(tarinfo.name)
-          del real_expected[index:index+1]
+        Test that the tarball has exactly expected contents. The basedir
+        is checked for and prepended if it is not None. The mode is the mode
+        used in tarfile.open defaults to r:gz. If skip_basedir is True and
+        basedir is not None then the basedir wont be tested for itself.
+        """
+        if basedir is None:
+            real_expected = expected[:]
         else:
-            extras.append(tarinfo.name)
+            if skip_basedir:
+                real_expected = []
+            else:
+                real_expected = [basedir]
+        for item in expected:
+            real_expected.append(os.path.join(basedir, item).rstrip("/"))
+        extras = []
+        tar = tarfile.open(tarball, 'r:gz')
+        try:
+            for tarinfo in tar:
+                if tarinfo.name in real_expected:
+                    index = real_expected.index(tarinfo.name)
+                    del real_expected[index:index+1]
+                else:
+                    extras.append(tarinfo.name)
 
-      if len(real_expected) > 0:
-        self.fail("Files not found in %s: %s" % (tarball,
-                                                 ", ".join(real_expected)))
-      if len(extras) > 0:
-        self.fail("Files not expected to be found in %s: %s" % (tarball,
-                                                 ", ".join(extras)))
-    finally:
-      tar.close()
+            if len(real_expected) > 0:
+                self.fail("Files not found in %s: %s"
+                        % (tarball, ", ".join(real_expected)))
+            if len(extras) > 0:
+                self.fail("Files not expected to be found in %s: %s"
+                        % (tarball, ", ".join(extras)))
+        finally:
+            tar.close()
 
-# vim: ts=2 sts=2 sw=2
 
+class SourcePackageBuilder(object):
+
+    def __init__(self, name, version, native=False):
+        self.upstream_files = {}
+        self.debian_files = {}
+        self.name = name
+        self.native = native
+        self._cl = Changelog()
+        self.new_version(version)
+
+    def add_upstream_file(self, name, content=None):
+        self.add_upstream_files([(name, content)])
+
+    def add_upstream_files(self, files):
+        for new_file in files:
+            self.upstream_files[new_file[0]] = new_file[1]
+
+    def remove_upstream_file(self, filename):
+        del self.upstream_files[filename]
+
+    def add_debian_file(self, name, content=None):
+        self.add_debian_files([(name, content)])
+
+    def add_debian_files(self, files):
+        for new_file in files:
+            self.debian_files[new_file[0]] = new_file[1]
+
+    def remove_debian_file(self, filename):
+        del self.debian_files[filename]
+
+    def add_default_control(self):
+        text = """Source: %s\n""" % self.name
+        self.add_debian_file("debian/control", text)
+
+    def new_version(self, version):
+        self._cl.new_block(package=self.name, version=version,
+                distributions="unstable", urgency="low",
+                author="Maint <maint@maint.org>",
+                date="Wed, 19 Mar 2008 21:27:37 +0000")
+        self._cl.add_change("  * foo")
+
+    def dsc_name(self):
+        return "%s_%s.dsc" % (self.name, str(self._cl.version))
+
+    def _make_files(self, files_list, basedir):
+        for (path, content) in files_list.items():
+            dirname = os.path.dirname(path)
+            if dirname is not None and dirname != "":
+                if not os.path.exists(os.path.join(basedir, dirname)):
+                    os.makedirs(os.path.join(basedir, dirname))
+            f = open(os.path.join(basedir, path), 'wb')
+            try:
+                if content is None:
+                    content = ''
+                f.write(content)
+            finally:
+                f.close()
+
+    def basedir(self):
+        return self.name + "-" + str(self._cl.version.upstream_version)
+
+    def _make_base(self):
+        basedir = self.basedir()
+        os.mkdir(basedir)
+        self._make_files(self.upstream_files, basedir)
+        return basedir
+
+    def build(self):
+        basedir = self._make_base()
+        if not self.native:
+            orig_basedir = basedir + ".orig"
+            shutil.copytree(basedir, orig_basedir)
+            cmd = "dpkg-source -sa -b %s" % (basedir)
+            if os.path.exists("%s_%s.orig.tar.gz"
+                    % (self.name, self._cl.version.upstream_version)):
+                cmd = "dpkg-source -ss -b %s" % (basedir)
+        else:
+            cmd = "dpkg-source -sn -b %s" % (basedir)
+        self._make_files(self.debian_files, basedir)
+        self._make_files({"debian/changelog": str(self._cl)}, basedir)
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+        ret = proc.wait()
+        assert ret == 0, "dpkg-source failed, output:\n%s\n%s" % \
+                (proc.stdout.read(), proc.stderr.read())
+        shutil.rmtree(basedir)

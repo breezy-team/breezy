@@ -18,12 +18,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from debian_bundle.changelog import Version
-
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.builddeb.config import DebBuildConfig, SvnBuildPackageMappedConfig
+from bzrlib.plugins.builddeb.config import DebBuildConfig
 
 
 class DebBuildConfigTests(TestCaseWithTransport):
@@ -59,10 +57,8 @@ class DebBuildConfigTests(TestCaseWithTransport):
     finally:
       f.close()
     self.tree.add(['default.conf', 'user.conf'])
-    version = Version('0.1-1')
     self.config = DebBuildConfig([('user.conf', True),
-                                  ('default.conf', False)], branch=self.branch,
-                                 version=version)
+                                  ('default.conf', False)], branch=self.branch)
 
   def test_secure_not_from_untrusted(self):
     self.assertEqual(self.config.builder, 'valid builder')

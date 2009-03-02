@@ -18,14 +18,19 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import md5
 import shutil
+import tempfile
 import os
 import re
 
-from bzrlib.trace import info, mutter
+from bzrlib.trace import mutter
 
+from debian_bundle import deb822
 from debian_bundle.changelog import Changelog, ChangelogParseError
 
+from bzrlib import urlutils
+from bzrlib.transport import get_transport
 from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
                 AddChangelogError,
@@ -204,3 +209,75 @@ def lookup_distribution(distribution_or_suite):
     if distribution_or_suite.lower() in ("debian", "ubuntu"):
         return distribution_or_suite.lower()
     return suite_to_distribution(distribution_or_suite)
+
+
+def move_file_if_different(source, target, md5sum):
+    if os.path.exists(target):
+        if os.path.samefile(source, target):
+            return
+        t_md5sum = md5.new()
+        target_f = open(target)
+        try:
+            for line in target_f:
+                t_md5sum.update(line)
+        finally:
+            target_f.close()
+        if t_md5sum.hexdigest() == md5sum:
+            return
+    shutil.move(source, target)
+
+
+def write_if_different(contents, target):
+    md5sum = md5.new()
+    md5sum.update(contents)
+    fd, temp_path = tempfile.mkstemp("builddeb-rename-")
+    try:
+        try:
+            fd.write(contents)
+        finally:
+            fd.close()
+        move_file_if_different(temp_path, target, md5sum.hexdigest())
+    finally:
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
+def _download_part(name, base_transport, target_dir, md5sum):
+    part_base_dir, part_path = urlutils.split(name)
+    f_t = base_transport
+    if part_base_dir != '':
+        f_t = base_transport.clone(part_base_dir)
+    f_f = f_t.get(part_path)
+    try:
+        target_path = os.path.join(target_dir, part_path)
+        fd, temp_path = tempfile.mkstemp(prefix="builldeb-")
+        try:
+            try:
+                shutil.copyfileobj(f_f, fd)
+            finally:
+                fd.close()
+            move_file_if_different(temp_path, target_path, md5sum)
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+    finally:
+        f_f.close()
+
+
+def _dget(cls, dsc_location, target_dir):
+    base_dir, path = urlutils.split(dsc_location)
+    dsc_t = get_transport(base_dir)
+    dsc_contents = dsc_t.get_bytes(path)
+    dsc = cls(dsc_contents)
+    for file_details in dsc['files']:
+        name = file_details['name']
+        _download_part(name, dsc_t, target_dir, file_details['md5sum'])
+    write_if_different(dsc_contents, os.path.join(target_dir, path))
+
+
+def dget(dsc_location, target_dir):
+    return _dget(deb822.Dsc, dsc_location, target_dir)
+
+
+def dget_changes(changes_location, target_dir):
+    return _dget(deb822.Changes, changes_location, target_dir)

@@ -18,7 +18,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.config import ConfigObj, IniBasedConfig, TreeConfig
+from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter, warning
 from bzrlib.plugins.builddeb.util import get_snapshot_revision
 
@@ -52,7 +52,7 @@ class DebBuildConfig(object):
 
   section = 'BUILDDEB'
 
-  def __init__(self, files, branch=None, tree=None, version=None):
+  def __init__(self, files, branch=None, tree=None):
     """ 
     Creates a config to read from config files in a hierarchy.
 
@@ -88,7 +88,6 @@ class DebBuildConfig(object):
     userbuild
     """
     self._config_files = []
-    self.version = version
     for input in files:
       config = ConfigObj(input[0])
       if len(input) > 2:
@@ -122,10 +121,6 @@ class DebBuildConfig(object):
       except KeyError:
         pass
     return None
-
-  def set_version(self, version):
-    """Set the version used for substitution."""
-    self.version = version
 
   def _get_opt(self, config, key, section=None):
     """Returns the value for key from config, of None if it is not defined in 
@@ -260,6 +255,25 @@ class DebBuildConfig(object):
 
   upstream_branch = _opt_property('upstream-branch',
           "The upstream branch to merge from")
+
+  export_upstream = _opt_property('export-upstream',
+                         "Get the upstream source from another branch")
+
+  def _get_export_upstream_revision(self):
+    rev = None
+    if self.version is not None:
+      rev = get_snapshot_revision(str(self.version.upstream_version))
+    if rev is None:
+      rev = self._get_best_opt('export-upstream-revision')
+      if rev is not None and self.version is not None:
+        rev = rev.replace('$UPSTREAM_VERSION',
+                          str(self.version.upstream_version))
+    return rev
+
+  export_upstream_revision = property(_get_export_upstream_revision, None,
+                         None,
+                         "The revision of the upstream branch to export.")
+
 
 def _test():
   import doctest

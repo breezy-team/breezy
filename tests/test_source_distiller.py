@@ -17,17 +17,24 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+from debian_bundle.changelog import Version
 
 from bzrlib.errors import (
         FileExists,
-        ObjectNotLocked,
-        NoSuchFile,
         )
 from bzrlib.tests import TestCaseWithTransport
 
+from bzrlib.plugins.builddeb.errors import MissingUpstreamTarball
 from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
+        MergeModeDistiller,
         NativeSourceDistiller,
+        )
+from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
+from bzrlib.plugins.builddeb.upstream import (
+        _MissingUpstreamProvider,
+        _SimpleUpstreamProvider,
+        _TouchUpstreamProvider,
         )
 
 
@@ -37,7 +44,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        sd = NativeSourceDistiller(wt)
+        sd = NativeSourceDistiller(wt, None)
         self.build_tree(['target/'])
         self.assertRaises(FileExists, sd.distill, 'target')
 
@@ -49,7 +56,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         wt.add(['a'])
         revid = wt.commit("one")
         rev_tree = wt.basis_tree()
-        sd = NativeSourceDistiller(rev_tree)
+        sd = NativeSourceDistiller(rev_tree, None)
         sd.distill('target')
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
@@ -64,7 +71,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
                 '.bzr-builddeb/default.conf'])
         revid = wt.commit("one")
         rev_tree = wt.basis_tree()
-        sd = NativeSourceDistiller(rev_tree)
+        sd = NativeSourceDistiller(rev_tree, None)
         sd.distill('target')
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
@@ -77,7 +84,7 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        sd = FullSourceDistiller(wt, "tarball")
+        sd = FullSourceDistiller(wt, None)
         self.build_tree(['target/'])
         self.assertRaises(FileExists, sd.distill, 'target')
 
@@ -85,16 +92,14 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.build_tree(['source/'])
-        sd = FullSourceDistiller(wt, "source/tarball")
-        self.assertRaises(NoSuchFile, sd.distill, 'target')
+        sd = FullSourceDistiller(wt, _MissingUpstreamProvider())
+        self.assertRaises(MissingUpstreamTarball, sd.distill, 'target')
 
     def test_distill_tarball_exists(self):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        self.build_tree(['tarball'])
-        sd = FullSourceDistiller(wt, "tarball")
+        sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'))
         sd.distill('target')
         self.failUnlessExists('tarball')
 
@@ -102,11 +107,120 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_write()
         self.addCleanup(wt.unlock)
-        self.build_tree(['source/', 'source/tarball', 'a', '.bzr-builddeb'])
+        self.build_tree(['a', '.bzr-builddeb'])
         wt.add(['a', '.bzr-builddeb'])
-        sd = FullSourceDistiller(wt, "source/tarball")
+        sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'))
         sd.distill('target')
         self.failUnlessExists('tarball')
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
         self.failIfExists('target/.bzr-builddeb')
+
+class MergeModeDistillerTests(TestCaseWithTransport):
+
+    def make_tarball(self, name, version):
+        builder = SourcePackageBuilder(name, version)
+        builder.add_upstream_file("a")
+        builder.add_default_control()
+        builder.build()
+
+    def test_distill_target_exists(self):
+        wt = self.make_branch_and_tree(".")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        sd = MergeModeDistiller(wt, None)
+        self.build_tree(['target/'])
+        self.assertRaises(FileExists, sd.distill, 'target')
+
+    def test_distill_no_tarball(self):
+        wt = self.make_branch_and_tree(".")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider("package",
+                    "0.1-1", "tarballs"))
+        self.assertRaises(MissingUpstreamTarball, sd.distill, 'target')
+
+    def test_distill_tarball_exists(self):
+        wt = self.make_branch_and_tree(".")
+        wt.lock_read()
+        self.addCleanup(wt.unlock)
+        name = "package"
+        version = Version("0.1-1")
+        self.make_tarball(name, version)
+        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
+                    version.upstream_version, "."))
+        sd.distill('target/foo')
+        self.failUnlessExists('target/%s_%s.orig.tar.gz'
+                % (name, version.upstream_version))
+        self.failUnlessExists('target/foo/a')
+
+    def test_distill_exports_branch(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['debian/', 'debian/a', '.bzr-builddeb'])
+        wt.add(['debian/', 'debian/a', '.bzr-builddeb'])
+        name = "package"
+        version = Version("0.1-1")
+        self.make_tarball(name, version)
+        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
+                    version.upstream_version, "."))
+        sd.distill('target/')
+        self.failUnlessExists('target/debian/a')
+        self.failIfExists('target/.bzr-builddeb')
+
+    def test_distill_removes_debian(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['debian/', 'debian/a', '.bzr-builddeb'])
+        wt.add(['debian/', 'debian/a', '.bzr-builddeb'])
+        name = "package"
+        version = Version("0.1-1")
+        builder = SourcePackageBuilder(name, version)
+        builder.add_upstream_file("a")
+        builder.add_upstream_file("debian/foo")
+        builder.add_default_control()
+        builder.build()
+        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
+                    version.upstream_version, "."))
+        sd.distill('target/')
+        self.failUnlessExists('target/a')
+        self.failIfExists('target/debian/foo')
+
+    def test_distill_larstiq(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['b', '.bzr-builddeb'])
+        wt.add(['b', '.bzr-builddeb'])
+        name = "package"
+        version = Version("0.1-1")
+        self.make_tarball(name, version)
+        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
+                    version.upstream_version, "."), larstiq=True)
+        sd.distill('target/')
+        self.failUnlessExists('target/a')
+        self.failUnlessExists('target/debian/b')
+        self.failIfExists('target/debian/.bzr-builddeb')
+        self.failIfExists('target/.bzr-builddeb')
+        self.failIfExists('target/b')
+
+    def test_distill_use_existing(self):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['debian/', 'debian/a', '.bzr-builddeb'])
+        wt.add(['debian/', 'debian/a', '.bzr-builddeb'])
+        name = "package"
+        version = Version("0.1-1")
+        self.make_tarball(name, version)
+        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
+                    version.upstream_version, "."), use_existing=True)
+        self.build_tree(['target/', 'target/b', 'target/debian/',
+                'target/debian/b'])
+        sd.distill('target/')
+        self.failUnlessExists('target/b')
+        self.failUnlessExists('target/debian/a')
+        self.failIfExists('target/a')
+        self.failIfExists('target/debian/b')
