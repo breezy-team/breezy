@@ -183,22 +183,29 @@ class FTPServer(transport.Server):
         self._port = self._ftp_server.socket.getsockname()[1]
         # Don't let it loop forever, or handle an infinite number of requests.
         # In this case it will run for 1000s, or 10000 requests
-        self._async_thread = threading.Thread(
+        self._ftpd_starting = threading.Lock()
+        self._ftpd_starting.acquire() # So it can be released by the server
+        self._ftpd_thread = threading.Thread(
                 target=self._run_server,)
-        self._async_thread.start()
+        self._ftpd_thread.start()
+        # Wait for the server thread to start (i.e release the lock)
+        self._ftpd_starting.acquire()
+        self._ftpd_starting.release()
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        # Tell the server to stop
-        self._ftpd_running = False
-        # But also close the server socket for tests that start the server but
-        # never initiate a connection.
+        # Tell the server to stop, but also close the server socket for tests
+        # that start the server but never initiate a connection. Closing the
+        # socket should be done first though, to avoid further connections.
         self._ftp_server.close()
-        self._async_thread.join()
+        self._ftpd_running = False
+        self._ftpd_thread.join()
 
     def _run_server(self):
         """Run the server until tearDown is called, shut it down properly then.
         """
         self._ftpd_running = True
-        self._ftp_server.serve_forever(timeout=0.1, count=10000,
-                                       until=lambda : not self._ftpd_running)
+        self._ftpd_starting.release()
+        while self._ftpd_running:
+            self._ftp_server.serve_forever(timeout=0.1, count=1)
+        self._ftp_server.close_all(ignore_all=True)

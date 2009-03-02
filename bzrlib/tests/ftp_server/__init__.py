@@ -25,7 +25,7 @@ from bzrlib import tests
 try:
     from bzrlib.tests.ftp_server import medusa_based
     # medusa is bogus under python2.6
-    medusa_available = sys.version_info <= (2, 5)
+    medusa_available = sys.version_info < (2, 6)
 except ImportError:
     medusa_available = False
 
