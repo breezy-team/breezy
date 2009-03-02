@@ -27,6 +27,7 @@ from bzrlib import (
     diff,
     errors,
     graph as _mod_graph,
+    osutils,
     pack,
     patiencediff,
     )
@@ -46,6 +47,7 @@ from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
     AbsentContentFactory,
+    ChunkedContentFactory,
     FulltextContentFactory,
     VersionedFiles,
     )
@@ -55,8 +57,8 @@ def parse(line_list):
     result = []
     lines = iter(line_list)
     next = lines.next
-    label_line = lines.next()
-    sha1_line = lines.next()
+    label_line = next()
+    sha1_line = next()
     if (not label_line.startswith('label: ') or
         not sha1_line.startswith('sha1: ')):
         raise AssertionError("bad text record %r" % lines)
@@ -71,7 +73,9 @@ def parse(line_list):
         else:
             contents = [next() for i in xrange(numbers[0])]
             result.append((op, None, numbers[0], contents))
+    ## return result
     return label, sha1, result
+
 
 def apply_delta(basis, delta):
     """Apply delta to this object to become new_version_id."""
@@ -95,6 +99,35 @@ def trim_encoding_newline(lines):
         lines[-1] = lines[-1][:-1]
 
 
+
+def sort_gc_optimal(parent_map):
+    """Sort and group the keys in parent_map into gc-optimal order.
+
+    gc-optimal is defined (currently) as reverse-topological order, grouped by
+    the key prefix.
+
+    :return: A sorted-list of keys
+    """
+    # gc-optimal ordering is approximately reverse topological,
+    # properly grouped by file-id.
+    per_prefix_map = {}
+    for item in parent_map.iteritems():
+        key = item[0]
+        if isinstance(key, str) or len(key) == 1:
+            prefix = ''
+        else:
+            prefix = key[0]
+        try:
+            per_prefix_map[prefix].append(item)
+        except KeyError:
+            per_prefix_map[prefix] = [item]
+
+    present_keys = []
+    for prefix in sorted(per_prefix_map):
+        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
+    return present_keys
+
+
 class GroupCompressor(object):
     """Produce a serialised group of compressed texts.
     
@@ -116,7 +149,7 @@ class GroupCompressor(object):
     def __init__(self, delta=True):
         """Create a GroupCompressor.
 
-        :paeam delta: If False, do not compress records.
+        :param delta: If False, do not compress records.
         """
         self._delta = delta
         self.line_offsets = []
@@ -125,9 +158,10 @@ class GroupCompressor(object):
         self.line_locations = self._equivalence_table_class([])
         self.lines = self.line_locations.lines
         self.labels_deltas = {}
+        self._present_prefixes = set()
 
-    def get_matching_blocks(self, lines):
-        """Return an the ranges in lines which match self.lines.
+    def get_matching_blocks(self, lines, soft=False):
+        """Return the ranges in lines which match self.lines.
 
         :param lines: lines to compress
         :return: A list of (old_start, new_start, length) tuples which reflect
@@ -143,18 +177,31 @@ class GroupCompressor(object):
         # insert new lines. To find reusable lines we traverse 
         locations = None
         max_pos = len(lines)
-        max_time = 0.0
-        max_info = None
         result_append = result.append
+        min_match_bytes = 10
+        if soft:
+            min_match_bytes = 200
         while pos < max_pos:
             block, pos, locations = _get_longest_match(line_locations, pos,
                                                        max_pos, locations)
+            if block is not None:
+                # Check to see if we are matching fewer than 5 characters,
+                # which is turned into a simple 'insert', rather than a copy
+                # If we have more than 5 lines, we definitely have more than 5
+                # chars
+                if block[-1] < min_match_bytes:
+                    # This block may be a 'short' block, check
+                    old_start, new_start, range_len = block
+                    matched_bytes = sum(map(len,
+                        lines[new_start:new_start + range_len]))
+                    if matched_bytes < min_match_bytes:
+                        block = None
             if block is not None:
                 result_append(block)
         result_append((len(self.lines), len(lines), 0))
         return result
 
-    def compress(self, key, lines, expected_sha):
+    def compress(self, key, lines, expected_sha, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
@@ -163,9 +210,11 @@ class GroupCompressor(object):
             e.g. sha1:xxxxxxx.
         :param lines: The lines to be compressed. Must be split
             on \n, with the \n preserved.'
-        :param expected_sha: If non-None, the sha the lines are blieved to
+        :param expected_sha: If non-None, the sha the lines are believed to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
+        :param soft: Do a 'soft' compression. This means that we require larger
+            ranges to match to be considered for a copy command.
         :return: The sha1 of lines, and the number of bytes accumulated in
             the group output so far.
         """
@@ -173,34 +222,46 @@ class GroupCompressor(object):
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
+        ## new_lines = []
+        new_lines = ['label: %s\n' % label,
+                     'sha1: %s\n' % sha1,
+                    ]
+        ## index_lines = []
+        index_lines = [False, False]
         # setup good encoding for trailing \n support.
         if not lines or lines[-1].endswith('\n'):
             lines.append('\n')
         else:
             lines[-1] = lines[-1] + '\n'
-        new_lines = []
-        new_lines.append('label: %s\n' % label)
-        new_lines.append('sha1: %s\n' % sha1)
-        index_lines = [False, False]
         pos = 0
         range_len = 0
         range_start = 0
         flush_range = self.flush_range
         copy_ends = None
-        blocks = self.get_matching_blocks(lines)
+        blocks = self.get_matching_blocks(lines, soft=soft)
         current_pos = 0
-        # We either copy a range (while there are reusable lines) or we 
-        # insert new lines. To find reusable lines we traverse 
+        #copies_without_insertion = []
+        # We either copy a range (while there are reusable lines) or we
+        # insert new lines. To find reusable lines we traverse
         for old_start, new_start, range_len in blocks:
             if new_start != current_pos:
+                # if copies_without_insertion:
+                #     self.flush_multi(copies_without_insertion,
+                #                      lines, new_lines, index_lines)
+                #     copies_without_insertion = []
                 # non-matching region
                 flush_range(current_pos, None, new_start - current_pos,
                     lines, new_lines, index_lines)
             current_pos = new_start + range_len
             if not range_len:
                 continue
-            flush_range(new_start, old_start, range_len, lines,
-                new_lines, index_lines)
+            # copies_without_insertion.append((new_start, old_start, range_len))
+            flush_range(new_start, old_start, range_len,
+                        lines, new_lines, index_lines)
+        # if copies_without_insertion:
+        #     self.flush_multi(copies_without_insertion,
+        #                      lines, new_lines, index_lines)
+        #     copies_without_insertion = []
         delta_start = (self.endpoint, len(self.lines))
         self.output_lines(new_lines, index_lines)
         trim_encoding_newline(lines)
@@ -218,12 +279,32 @@ class GroupCompressor(object):
         delta_details = self.labels_deltas[key]
         delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
         label, sha1, delta = parse(delta_lines)
+        ## delta = parse(delta_lines)
         if label != key:
             raise AssertionError("wrong key: %r, wanted %r" % (label, key))
         # Perhaps we want to keep the line offsets too in memory at least?
-        lines = apply_delta(''.join(self.lines), delta)
-        sha1 = sha_strings(lines)
-        return lines, sha1
+        chunks = apply_delta(''.join(self.lines), delta)
+        sha1 = sha_strings(chunks)
+        return chunks, sha1
+
+    def flush_multi(self, instructions, lines, new_lines, index_lines):
+        """Flush a bunch of different ranges out.
+
+        This should only be called with data that are "pure" copies.
+        """
+        flush_range = self.flush_range
+        if len(instructions) > 2:
+            # This is the number of lines to be copied
+            total_copy_range = sum(i[2] for i in instructions)
+            if len(instructions) > 0.5 * total_copy_range:
+                # We are copying N lines, but taking more than N/2
+                # copy instructions to do so. We will go ahead and expand this
+                # text so that other code is able to match against it
+                flush_range(instructions[0][0], None, total_copy_range,
+                            lines, new_lines, index_lines)
+                return
+        for ns, os, rl in instructions:
+            flush_range(ns, os, rl, lines, new_lines, index_lines)
 
     def flush_range(self, range_start, copy_start, range_len, lines, new_lines, index_lines):
         insert_instruction = "i,%d\n" % range_len
@@ -284,7 +365,7 @@ def make_pack_factory(graph, delta, keylength):
         parents = graph or delta
         ref_length = 0
         if graph:
-            ref_length += 1
+            ref_length = 1
         graph_index = BTreeBuilder(reference_lists=ref_length,
             key_elements=keylength)
         stream = transport.open_write_stream('newpack')
@@ -366,10 +447,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # an empty tuple instead.
             parents = ()
         # double handling for now. Make it work until then.
-        bytes = ''.join(lines)
-        record = FulltextContentFactory(key, parents, None, bytes)
+        length = sum(map(len, lines))
+        record = ChunkedContentFactory(key, parents, None, lines)
         sha1 = list(self._insert_record_stream([record], random_id=random_id))[0]
-        return sha1, len(bytes), None
+        return sha1, length, None
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
@@ -395,10 +476,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
         reannotate = annotate.reannotate
         for record in self.get_record_stream(keys, 'topological', True):
             key = record.key
-            fulltext = split_lines(record.get_bytes_as('fulltext'))
+            chunks = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parent_lines = [parent_cache[parent] for parent in parent_map[key]]
             parent_cache[key] = list(
-                reannotate(parent_lines, fulltext, key, None, head_cache))
+                reannotate(parent_lines, chunks, key, None, head_cache))
         return parent_cache[key]
 
     def check(self, progress_bar=None):
@@ -446,6 +527,48 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     result[key] = self._unadded_refs[key]
         return result
 
+    def _get_delta_lines(self, key):
+        """Helper function for manual debugging.
+
+        This is a convenience function that shouldn't be used in production
+        code.
+        """
+        build_details = self._index.get_build_details([key])[key]
+        index_memo = build_details[0]
+        group, delta_lines = self._get_group_and_delta_lines(index_memo)
+        return delta_lines
+
+    def _get_group_and_delta_lines(self, index_memo):
+        read_memo = index_memo[0:3]
+        # get the group:
+        try:
+            plain = self._group_cache[read_memo]
+        except KeyError:
+            # read the group
+            zdata = self._access.get_raw_records([read_memo]).next()
+            # decompress - whole thing - this is not a bug, as it
+            # permits caching. We might want to store the partially
+            # decompresed group and decompress object, so that recent
+            # texts are not penalised by big groups.
+            plain = zlib.decompress(zdata) #, index_memo[4])
+            self._group_cache[read_memo] = plain
+        # cheapo debugging:
+        # print len(zdata), len(plain)
+        # parse - requires split_lines, better to have byte offsets
+        # here (but not by much - we only split the region for the
+        # recipe, and we often want to end up with lines anyway.
+        return plain, split_lines(plain[index_memo[3]:index_memo[4]])
+
+    def get_missing_compression_parent_keys(self):
+        """Return the keys of missing compression parents.
+
+        Missing compression parents occur when a record stream was missing
+        basis texts, or a index was scanned that had missing basis texts.
+        """
+        # GroupCompress cannot currently reference texts that are not in the
+        # group, so this is valid for now
+        return frozenset()
+
     def get_record_stream(self, keys, ordering, include_delta_closure):
         """Get a stream of records for keys.
 
@@ -459,68 +582,69 @@ class GroupCompressVersionedFiles(VersionedFiles):
             valid until the iterator is advanced.
         """
         # keys might be a generator
-        keys = set(keys)
+        orig_keys = list(keys)
+        keys = set(orig_keys)
         if not keys:
             return
-        if not self._index.has_graph:
+        if (not self._index.has_graph
+            and ordering in ('topological', 'gc-optimal')):
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
         # Cheap: iterate
         locations = self._index.get_build_details(keys)
+        local_keys = frozenset(keys).intersection(set(self._unadded_refs))
         if ordering == 'topological':
             # would be better to not globally sort initially but instead
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
                 locations.iteritems())
-            local = frozenset(keys).intersection(set(self._unadded_refs))
-            for key in local:
+            for key in local_keys:
                 parent_map[key] = self._unadded_refs[key]
-                locations[key] = None
             present_keys = topo_sort(parent_map)
             # Now group by source:
+        elif ordering == 'gc-optimal':
+            parent_map = dict((key, details[2]) for key, details in
+                              locations.iteritems())
+            for key in local_keys:
+                parent_map[key] = self._unadded_refs[key]
+            # XXX: This only optimizes for the target ordering. We may need to
+            #      balance that with the time it takes to extract ordering, by
+            #      somehow grouping based on locations[key][0:3]
+            present_keys = sort_gc_optimal(parent_map)
+        elif ordering == 'as-requested':
+            present_keys = [key for key in orig_keys if key in locations
+                            or key in local_keys]
         else:
-            present_keys = locations.keys()
-            local = frozenset(keys).intersection(set(self._unadded_refs))
-            for key in local:
-                present_keys.append(key)
-                locations[key] = None
+            # We want to yield the keys in a semi-optimal (read-wise) ordering.
+            # Otherwise we thrash the _group_cache and destroy performance
+            def get_group(key):
+                # This is the group the bytes are stored in, followed by the
+                # location in the group
+                return locations[key][0]
+            present_keys = sorted(locations.iterkeys(), key=get_group)
+            # We don't have an ordering for keys in the in-memory object, but
+            # lets process the in-memory ones first.
+            present_keys = list(local_keys) + present_keys
+        locations.update((key, None) for key in local_keys)
         absent_keys = keys.difference(set(locations))
         for key in absent_keys:
             yield AbsentContentFactory(key)
         for key in present_keys:
             if key in self._unadded_refs:
-                lines, sha1 = self._compressor.extract(key)
+                chunks, sha1 = self._compressor.extract(key)
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
-                read_memo = index_memo[0:3]
-                # get the group:
-                try:
-                    plain = self._group_cache[read_memo]
-                except KeyError:
-                    # read the group
-                    zdata = self._access.get_raw_records([read_memo]).next()
-                    # decompress - whole thing - this is not a bug, as it
-                    # permits caching. We might want to store the partially
-                    # decompresed group and decompress object, so that recent
-                    # texts are not penalised by big groups.
-                    decomp = zlib.decompressobj()
-                    plain = decomp.decompress(zdata) #, index_memo[4])
-                    self._group_cache[read_memo] = plain
-                # cheapo debugging:
-                # print len(zdata), len(plain)
-                # parse - requires split_lines, better to have byte offsets
-                # here (but not by much - we only split the region for the
-                # recipe, and we often want to end up with lines anyway.
-                delta_lines = split_lines(plain[index_memo[3]:index_memo[4]])
+                plain, delta_lines = self._get_group_and_delta_lines(index_memo)
                 label, sha1, delta = parse(delta_lines)
                 if label != key:
                     raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-                lines = apply_delta(plain, delta)
-            bytes = ''.join(lines)
-            yield FulltextContentFactory(key, parents, sha1, bytes)
-            
+                chunks = apply_delta(plain, delta)
+                if sha_strings(chunks) != sha1:
+                    raise AssertionError('sha1 sum did not match')
+            yield ChunkedContentFactory(key, parents, sha1, chunks)
+
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
         result = {}
@@ -554,6 +678,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         :seealso insert_record_stream:
         :seealso add_lines:
         """
+        adapters = {}
         def get_adapter(adapter_key):
             try:
                 return adapters[adapter_key]
@@ -562,7 +687,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 adapter = adapter_factory(self)
                 adapters[adapter_key] = adapter
                 return adapter
-        adapters = {}
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
         self._compressor = GroupCompressor(self._delta)
@@ -578,18 +702,36 @@ class GroupCompressVersionedFiles(VersionedFiles):
             for key, reads, refs in keys_to_add:
                 nodes.append((key, "%d %d %s" % (start, length, reads), refs))
             self._index.add_records(nodes, random_id=random_id)
+        last_prefix = None
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
-                raise errors.RevisionNotPresent([record.key], self)
-            elif record.storage_kind == 'fulltext':
-                bytes = record.get_bytes_as('fulltext')
-            else:
-                adapter_key = record.storage_kind, 'fulltext'
-                adapter = get_adapter(adapter_key)
-                bytes = adapter.get_bytes(record)
+                raise errors.RevisionNotPresent(record.key, self)
+            try:
+                lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+            except errors.UnavailableRepresentation:
+                try:
+                    bytes = record.get_bytes_as('fulltext')
+                except errors.UnavailableRepresentation:
+                    adapter_key = record.storage_kind, 'fulltext'
+                    adapter = get_adapter(adapter_key)
+                    bytes = adapter.get_bytes(record)
+                lines = osutils.split_lines(bytes)
+            soft = False
+            if len(record.key) > 1:
+                prefix = record.key[0]
+                if (last_prefix is not None and prefix != last_prefix):
+                    soft = True
+                    if basis_end > 1024 * 1024 * 4:
+                        flush()
+                        self._compressor = GroupCompressor(self._delta)
+                        self._unadded_refs = {}
+                        keys_to_add = []
+                        basis_end = 0
+                        groups += 1
+                last_prefix = prefix
             found_sha1, end_point = self._compressor.compress(record.key,
-                split_lines(bytes), record.sha1)
+                lines, record.sha1, soft=soft)
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
             else:
@@ -599,7 +741,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             keys_to_add.append((key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
-            if basis_end > 1024 * 1024 * 20:
+            if basis_end > 1024 * 1024 * 8:
                 flush()
                 self._compressor = GroupCompressor(self._delta)
                 self._unadded_refs = {}
@@ -643,9 +785,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
             'unordered', True)):
             # XXX: todo - optimise to use less than full texts.
             key = record.key
-            pb.update('Walking content.', key_idx, total)
+            pb.update('Walking content.', key_idx + 1, total)
             if record.storage_kind == 'absent':
-                raise errors.RevisionNotPresent(record.key, self)
+                raise errors.RevisionNotPresent(key, self)
             lines = split_lines(record.get_bytes_as('fulltext'))
             for line in lines:
                 yield line, key
@@ -670,15 +812,13 @@ class _GCGraphIndex(object):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
-        :param is_locked: A callback to check whether the object should answer
-            queries.
+        :param is_locked: A callback, returns True if the index is locked and
+            thus usable.
         :param parents: If True, record knits parents, if not do not record 
             parents.
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
             [(node, value, node_refs), ...]
-        :param is_locked: A callback, returns True if the index is locked and
-            thus usable.
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
@@ -738,18 +878,21 @@ class _GCGraphIndex(object):
         self._add_callback(records)
         
     def _check_read(self):
-        """raise if reads are not permitted."""
+        """Raise an exception if reads are not permitted."""
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
 
     def _check_write_ok(self):
-        """Assert if writes are not permitted."""
+        """Raise an exception if writes are not permitted."""
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
 
     def _get_entries(self, keys, check_present=False):
         """Get the entries for keys.
-        
+
+        Note: Callers are responsible for checking that the index is locked
+        before calling this method.
+
         :param keys: An iterable of index key tuples.
         """
         keys = set(keys)
@@ -807,14 +950,13 @@ class _GCGraphIndex(object):
         """
         self._check_read()
         result = {}
-        entries = self._get_entries(keys, False)
+        entries = self._get_entries(keys)
         for entry in entries:
             key = entry[1]
             if not self._parents:
                 parents = None
             else:
                 parents = entry[3][0]
-            value = entry[2]
             method = 'group'
             result[key] = (self._node_to_position(entry),
                                   None, parents, (method, None))
