@@ -371,11 +371,12 @@ class DebMergeBuild(DebBuild):
       subprocess.call(['tar','-C',tempdir,'-xf',tarball])
       files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
+      shutil.rmtree(source_dir)
       if len(files) == 1:
-        shutil.move(files[0], source_dir)
+        os.rename(files[0], source_dir)
         shutil.rmtree(tempdir)
       else:
-        shutil.move(tempdir, source_dir)
+        os.rename(tempdir, source_dir)
       if not upstream:
         shutil.copy(tarball, build_dir)
     else:
