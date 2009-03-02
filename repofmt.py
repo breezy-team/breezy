@@ -360,7 +360,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 raise errors.BzrError('call to %s.pack() while another pack is'
                                       ' being written.'
                                       % (self.__class__.__name__,))
-            new_pack = self.pack_factory(self, 'autopack',
+            new_pack = self.pack_factory(self, '.autopack',
                 file_mode=self.repo.bzrdir._get_file_mode())
             new_pack.set_write_cache_size(1024*1024)
             # TODO: A better alternative is to probably use Packer.open_pack(), and
