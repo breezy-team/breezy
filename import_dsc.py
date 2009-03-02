@@ -1617,34 +1617,36 @@ class DistributionBranch(object):
         message = None
         thanks = None
         if os.path.exists(changelog_path):
-          changelog_contents = open(changelog_path).read()
-          changelog = Changelog(file=changelog_contents, max_blocks=1)
-          if changelog._blocks:
-            authors = [changelog._blocks[0].author]
-            changes = strip_changelog_message(changelog._blocks[0].changes())
-            for change in changes:
-              # Parse out any extra authors.
-              match = extra_author_re.match(change.decode("utf-8"))
-              if match is not None:
-                new_author = match.group(1).strip()
-                already_included = False
-                for author in authors:
-                  if author.startswith(new_author):
-                    already_included = True
-                    break
-                if not already_included:
-                  authors.append(new_author.encode("utf-8"))
-            for match in thanks_re.finditer(" ".join(changes).decode("utf-8")):
-                if thanks is None:
-                    thanks = []
-                thanks_str = match.group(1).strip()
-                thanks_str = re.sub(r"\s+", " ", thanks_str)
-                thanks.append(thanks_str.encode("utf-8"))
-            message = ''
-            sep = ''
-            for change in reversed(changes):
-              message = change + sep + message
-              sep = "\n"
+            changelog_contents = open(changelog_path).read()
+            changelog = Changelog(file=changelog_contents, max_blocks=1)
+            if changelog._blocks:
+                authors = [changelog._blocks[0].author]
+                changes = strip_changelog_message(
+                        changelog._blocks[0].changes())
+                for change in changes:
+                    # Parse out any extra authors.
+                    match = extra_author_re.match(change.decode("utf-8"))
+                    if match is not None:
+                        new_author = match.group(1).strip()
+                        already_included = False
+                        for author in authors:
+                            if author.startswith(new_author):
+                                already_included = True
+                                break
+                        if not already_included:
+                            authors.append(new_author.encode("utf-8"))
+                changes_str = " ".join(changes).decode("utf-8")
+                for match in thanks_re.finditer(changes_str):
+                    if thanks is None:
+                        thanks = []
+                    thanks_str = match.group(1).strip()
+                    thanks_str = re.sub(r"\s+", " ", thanks_str)
+                    thanks.append(thanks_str.encode("utf-8"))
+                message = ''
+                sep = ''
+                for change in reversed(changes):
+                    message = change + sep + message
+                    sep = "\n"
         return (message, authors, thanks)
 
     def _mark_native_config(self, native):
