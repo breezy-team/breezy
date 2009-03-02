@@ -439,6 +439,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 class GCPackRepository(KnitPackRepository):
     """GC customisation of KnitPackRepository."""
 
+    # Note: I think the CHK support can be dropped from this class as it's
+    # implemented via the GCCHKPackRepository class defined next. IGC 20090301
+
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
