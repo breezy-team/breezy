@@ -178,6 +178,10 @@ class GroupCompressor(object):
                 new_chunks.insert(0, 'fulltext\n')
                 new_chunks.append('len:%s\n' % (input_len,))
             unadded_bytes = sum(map(len, new_chunks))
+            deltas_unadded = (self.endpoint - self._delta_index._source_offset)
+            if deltas_unadded != 0:
+                import pdb; pdb.set_trace()
+            unadded_bytes += deltas_unadded
             self._delta_index.add_source(target_text, unadded_bytes)
             new_chunks.append(target_text)
         else:
@@ -186,9 +190,10 @@ class GroupCompressor(object):
             else:
                 new_chunks.insert(0, 'delta\n')
                 new_chunks.append('len:%s\n' % (len(delta),))
-            unadded_bytes = sum(map(len, new_chunks))
-            self._delta_index.add_source(delta, unadded_bytes)
+            # self._delta_index.add_source(delta, unadded_bytes)
             new_chunks.append(delta)
+            unadded_bytes = sum(map(len, new_chunks))
+            self._delta_index._source_offset += unadded_bytes
         delta_start = (self.endpoint, len(self.lines))
         self.output_chunks(new_chunks)
         self.input_bytes += input_len

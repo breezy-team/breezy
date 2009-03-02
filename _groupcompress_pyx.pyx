@@ -85,7 +85,7 @@ cdef class DeltaIndex:
     cdef delta_index **_indexes
     cdef readonly unsigned int _num_indexes
     cdef readonly unsigned int _max_num_indexes
-    cdef readonly unsigned long _source_offset
+    cdef public unsigned long _source_offset
 
     def __repr__(self):
         return '%s(%d, %d, %d)' % (self.__class__.__name__,

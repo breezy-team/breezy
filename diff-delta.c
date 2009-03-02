@@ -133,6 +133,113 @@ struct delta_index {
 	struct index_entry *hash[];
 };
 
+static unsigned int
+limit_hash_buckets(struct unpacked_index_entry **hash,
+				   unsigned int *hash_count, unsigned int hsize,
+				   unsigned int entries)
+{
+	struct unpacked_index_entry *entry;
+	unsigned int i;
+	/*
+	 * Determine a limit on the number of entries in the same hash
+	 * bucket.	This guards us against pathological data sets causing
+	 * really bad hash distribution with most entries in the same hash
+	 * bucket that would bring us to O(m*n) computing costs (m and n
+	 * corresponding to reference and target buffer sizes).
+	 *
+	 * Make sure none of the hash buckets has more entries than
+	 * we're willing to test.  Otherwise we cull the entry list
+	 * uniformly to still preserve a good repartition across
+	 * the reference buffer.
+	 */
+	for (i = 0; i < hsize; i++) {
+		int acc;
+
+		if (hash_count[i] <= HASH_LIMIT)
+			continue;
+
+		/* We leave exactly HASH_LIMIT entries in the bucket */
+		entries -= hash_count[i] - HASH_LIMIT;
+
+		entry = hash[i];
+		acc = 0;
+
+		/*
+		 * Assume that this loop is gone through exactly
+		 * HASH_LIMIT times and is entered and left with
+		 * acc==0.	So the first statement in the loop
+		 * contributes (hash_count[i]-HASH_LIMIT)*HASH_LIMIT
+		 * to the accumulator, and the inner loop consequently
+		 * is run (hash_count[i]-HASH_LIMIT) times, removing
+		 * one element from the list each time.  Since acc
+		 * balances out to 0 at the final run, the inner loop
+		 * body can't be left with entry==NULL.  So we indeed
+		 * encounter entry==NULL in the outer loop only.
+		 */
+		do {
+			acc += hash_count[i] - HASH_LIMIT;
+			if (acc > 0) {
+				struct unpacked_index_entry *keep = entry;
+				do {
+					entry = entry->next;
+					acc -= HASH_LIMIT;
+				} while (acc > 0);
+				keep->next = entry->next;
+			}
+			entry = entry->next;
+		} while (entry);
+	}
+	return entries;
+}
+
+static struct delta_index *
+pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
+				 unsigned int entries)
+{
+	unsigned int i, memsize;
+	struct unpacked_index_entry *entry;
+	struct delta_index *index;
+	struct index_entry *packed_entry, **packed_hash;
+	void *mem;
+	/*
+	 * Now create the packed index in array form
+	 * rather than linked lists.
+	 */
+	memsize = sizeof(*index)
+		+ sizeof(*packed_hash) * (hsize+1)
+		+ sizeof(*packed_entry) * entries;
+	mem = malloc(memsize);
+	if (!mem) {
+		return NULL;
+	}
+
+	index = mem;
+	index->memsize = memsize;
+	index->hash_mask = hsize - 1;
+
+	mem = index->hash;
+	packed_hash = mem;
+	mem = packed_hash + (hsize+1);
+	packed_entry = mem;
+
+	for (i = 0; i < hsize; i++) {
+		/*
+		 * Coalesce all entries belonging to one linked list
+		 * into consecutive array entries.
+		 */
+		packed_hash[i] = packed_entry;
+		for (entry = hash[i]; entry; entry = entry->next)
+			*packed_entry++ = entry->entry;
+	}
+
+	/* Sentinel value to indicate the length of the last hash bucket */
+	packed_hash[hsize] = packed_entry;
+
+	assert(packed_entry - (struct index_entry *)mem == entries);
+	return index;
+}
+
+
 struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
 										unsigned long agg_src_offset)
 {
@@ -140,7 +247,6 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
 	const unsigned char *data, *buffer = buf;
 	struct delta_index *index;
 	struct unpacked_index_entry *entry, **hash;
-	struct index_entry *packed_entry, **packed_hash;
 	void *mem;
 	unsigned long memsize;
 
@@ -198,98 +304,16 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
 		}
 	}
 
-	/*
-	 * Determine a limit on the number of entries in the same hash
-	 * bucket.	This guards us against pathological data sets causing
-	 * really bad hash distribution with most entries in the same hash
-	 * bucket that would bring us to O(m*n) computing costs (m and n
-	 * corresponding to reference and target buffer sizes).
-	 *
-	 * Make sure none of the hash buckets has more entries than
-	 * we're willing to test.  Otherwise we cull the entry list
-	 * uniformly to still preserve a good repartition across
-	 * the reference buffer.
-	 */
-	for (i = 0; i < hsize; i++) {
-		int acc;
-
-		if (hash_count[i] <= HASH_LIMIT)
-			continue;
-
-		/* We leave exactly HASH_LIMIT entries in the bucket */
-		entries -= hash_count[i] - HASH_LIMIT;
-
-		entry = hash[i];
-		acc = 0;
-
-		/*
-		 * Assume that this loop is gone through exactly
-		 * HASH_LIMIT times and is entered and left with
-		 * acc==0.	So the first statement in the loop
-		 * contributes (hash_count[i]-HASH_LIMIT)*HASH_LIMIT
-		 * to the accumulator, and the inner loop consequently
-		 * is run (hash_count[i]-HASH_LIMIT) times, removing
-		 * one element from the list each time.  Since acc
-		 * balances out to 0 at the final run, the inner loop
-		 * body can't be left with entry==NULL.  So we indeed
-		 * encounter entry==NULL in the outer loop only.
-		 */
-		do {
-			acc += hash_count[i] - HASH_LIMIT;
-			if (acc > 0) {
-				struct unpacked_index_entry *keep = entry;
-				do {
-					entry = entry->next;
-					acc -= HASH_LIMIT;
-				} while (acc > 0);
-				keep->next = entry->next;
-			}
-			entry = entry->next;
-		} while (entry);
-	}
+	entries = limit_hash_buckets(hash, hash_count, hsize, entries);
 	free(hash_count);
-
-	/*
-	 * Now create the packed index in array form
-	 * rather than linked lists.
-	 */
-	memsize = sizeof(*index)
-		+ sizeof(*packed_hash) * (hsize+1)
-		+ sizeof(*packed_entry) * entries;
-	mem = malloc(memsize);
-	if (!mem) {
+	index = pack_delta_index(hash, hsize, entries);
+	if (!index) {
 		free(hash);
 		return NULL;
 	}
-
-	index = mem;
-	index->memsize = memsize;
 	index->src_buf = buf;
 	index->src_size = bufsize;
 	index->agg_src_offset = agg_src_offset;
-	index->hash_mask = hmask;
-
-	mem = index->hash;
-	packed_hash = mem;
-	mem = packed_hash + (hsize+1);
-	packed_entry = mem;
-
-	for (i = 0; i < hsize; i++) {
-		/*
-		 * Coalesce all entries belonging to one linked list
-		 * into consecutive array entries.
-		 */
-		packed_hash[i] = packed_entry;
-		for (entry = hash[i]; entry; entry = entry->next)
-			*packed_entry++ = entry->entry;
-	}
-
-	/* Sentinel value to indicate the length of the last hash bucket */
-	packed_hash[hsize] = packed_entry;
-
-	assert(packed_entry - (struct index_entry *)mem == entries);
-	free(hash);
-
 	return index;
 }
 
@@ -326,6 +350,8 @@ create_delta(struct delta_index **indexes,
 
 	if (!trg_buf || !trg_size)
 		return NULL;
+	if (num_indexes == 0)
+		return NULL;
 
 	outpos = 0;
 	outsize = 8192;
@@ -337,6 +363,7 @@ create_delta(struct delta_index **indexes,
 
 	/* store reference buffer size */
 	i = 0;
+	index = indexes[0];
 	for (j = 0; j < num_indexes; ++j) {
 		index = indexes[j];
 		i += index->src_size;
