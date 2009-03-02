@@ -593,7 +593,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # Cheap: iterate
         locations = self._index.get_build_details(keys)
         local_keys = frozenset(keys).intersection(set(self._unadded_refs))
-        locations.update((key, None) for key in local_keys)
         if ordering == 'topological':
             # would be better to not globally sort initially but instead
             # start with one key, recurse to its oldest parent, then grab
@@ -614,7 +613,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
             #      somehow grouping based on locations[key][0:3]
             present_keys = sort_gc_optimal(parent_map)
         elif ordering == 'as-requested':
-            present_keys = [key for key in orig_keys if key in locations]
+            present_keys = [key for key in orig_keys if key in locations
+                            or key in local_keys]
         else:
             # We want to yield the keys in a semi-optimal (read-wise) ordering.
             # Otherwise we thrash the _group_cache and destroy performance
@@ -626,6 +626,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # We don't have an ordering for keys in the in-memory object, but
             # lets process the in-memory ones first.
             present_keys = list(local_keys) + present_keys
+        locations.update((key, None) for key in local_keys)
         absent_keys = keys.difference(set(locations))
         for key in absent_keys:
             yield AbsentContentFactory(key)
