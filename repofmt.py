@@ -391,6 +391,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                     for pack in packs:
                         source_index = getattr(pack, index_name)
                         keys.update(e[1] for e in source_index.iter_all_entries())
+                    trace.mutter('repacking %s with %d keys',
+                                 vf_name, len(keys))
                     source_vf = getattr(self.repo, vf_name)
                     target_access = knit._DirectPackAccess({})
                     target_access.set_writer(new_pack._writer, new_index,
