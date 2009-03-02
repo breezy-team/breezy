@@ -27,6 +27,7 @@ from bzrlib import (
     inventory,
     pack,
     repository,
+    trace,
     ui,
     )
 from bzrlib.btree_index import (
