@@ -25,14 +25,14 @@ class _CompiledGroupCompress(tests.Feature):
 
     def _probe(self):
         try:
-            import bzrlib.plugins.groupcompress_rabin._groupcompress_c
+            import bzrlib.plugins.groupcompress_rabin._groupcompress_pyx
         except ImportError:
             return False
         else:
             return True
 
     def feature_name(self):
-        return 'bzrlib.plugins.groupcompress_rabin._groupcompress_c'
+        return 'bzrlib.plugins.groupcompress_rabin._groupcompress_pyx'
 
 CompiledGroupCompress = _CompiledGroupCompress()
 
@@ -67,8 +67,8 @@ class Test_GroupCompress(tests.TestCase):
     def setUp(self):
         super(Test_GroupCompress, self).setUp()
         self.requireFeature(CompiledGroupCompress)
-        from bzrlib.plugins.groupcompress_rabin import _groupcompress_c
-        self._gc_module = _groupcompress_c
+        from bzrlib.plugins.groupcompress_rabin import _groupcompress_pyx
+        self._gc_module = _groupcompress_pyx
 
 
 class TestMakeAndApplyDelta(Test_GroupCompress):

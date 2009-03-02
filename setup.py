@@ -77,7 +77,7 @@ def add_pyrex_extension(module_name, extra_source=[]):
     ext_modules.append(Extension(module_name, source,
         extra_compile_args = ['-O3']))
 
-add_pyrex_extension('_groupcompress_c',
+add_pyrex_extension('_groupcompress_pyx',
                     extra_source=['diff-delta.c', 'patch-delta.c'])
 
 

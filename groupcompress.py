@@ -180,15 +180,9 @@ class GroupCompressor(object):
             #      (the idea being we just computed the delta_index, so we
             #      re-use it here, and see if that is good enough, etc)
             # PROF: 15s to building the delta index
-            delta_index = _groupcompress_c.make_delta_index(source_text)
+            delta_index = _groupcompress_pyx.make_delta_index(source_text)
         # PROF: only 0.67s to actually create a delta
         delta = delta_index.make_delta(target_text)
-        # if delta is None and delta_index is self._last_delta_index:
-        #     # So this didn't compress very well, shall we try again with a
-        #     # better delta_index?
-        #     source_text = ''.join(self.lines)
-        #     delta_index = _groupcompress_c.make_delta_index(source_text)
-        #     delta = delta_index.make_delta(target_text)
         if (delta is None
             or len(delta) > len(target_text) / 2):
             # We can't delta (perhaps source_text is empty)
@@ -232,7 +226,7 @@ class GroupCompressor(object):
             bytes = delta
         else:
             source = ''.join(self.lines[delta_details[0][0]])
-            bytes = _groupcompress_c.apply_delta(source, delta)
+            bytes = _groupcompress_pyx.apply_delta(source, delta)
         if _NO_LABELS:
             sha1 = sha_string(bytes)
         else:
@@ -537,7 +531,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 else:
                     # TODO: relax apply_delta so that it can allow source to be
                     #       longer than expected
-                    bytes = _groupcompress_c.apply_delta(plain, delta)
+                    bytes = _groupcompress_pyx.apply_delta(plain, delta)
                     if bytes is None:
                         import pdb; pdb.set_trace()
                     chunks = [bytes]
@@ -921,6 +915,6 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
 
 
 try:
-    from bzrlib.plugins.groupcompress_rabin import _groupcompress_c
+    from bzrlib.plugins.groupcompress_rabin import _groupcompress_pyx
 except ImportError:
     pass

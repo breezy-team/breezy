@@ -24,7 +24,7 @@ def load_tests(standard_tests, module, loader):
         'errors',
         'equivalence_table',
         'groupcompress',
-        '_groupcompress_c',
+        '_groupcompress_pyx',
         ]
     standard_tests.addTests(loader.loadTestsFromModuleNames(
         ['bzrlib.plugins.groupcompress_rabin.tests.test_' + name for 
