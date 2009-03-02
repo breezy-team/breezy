@@ -62,14 +62,14 @@ def parse(bytes):
     (action, label_line, sha1_line, len_line,
      delta_bytes) = bytes.split('\n', 4)
     if (action not in ('fulltext', 'delta')
-        or not label_line.startswith('label: ')
-        or not sha1_line.startswith('sha1: ')
-        or not len_line.startswith('len: ')
+        or not label_line.startswith('label:')
+        or not sha1_line.startswith('sha1:')
+        or not len_line.startswith('len:')
         ):
         raise AssertionError("bad text record %r" % (bytes,))
-    label = tuple(label_line[7:].split('\x00'))
-    sha1 = sha1_line[6:]
-    length = int(len_line[5:])
+    label = tuple(label_line[6:].split('\x00'))
+    sha1 = sha1_line[5:]
+    length = int(len_line[4:])
     if not len(delta_bytes) == length:
         raise AssertionError("bad length record %r" % (bytes,))
     return action, label, sha1, delta_bytes
@@ -166,7 +166,7 @@ class GroupCompressor(object):
         if _NO_LABELS:
             new_chunks = []
         else:
-            new_chunks = ['label: %s\nsha1: %s\n' % (label, sha1)]
+            new_chunks = ['label:%s\nsha1:%s\n' % (label, sha1)]
         delta = self._delta_index.make_delta(target_text)
         if (delta is None
             or len(delta) > len(target_text) / 2):
@@ -176,7 +176,7 @@ class GroupCompressor(object):
                 new_chunks = ['f']
             else:
                 new_chunks.insert(0, 'fulltext\n')
-                new_chunks.append('len: %s\n' % (input_len,))
+                new_chunks.append('len:%s\n' % (input_len,))
             unadded_bytes = sum(map(len, new_chunks))
             self._delta_index.add_source(target_text, unadded_bytes)
             new_chunks.append(target_text)
@@ -185,7 +185,7 @@ class GroupCompressor(object):
                 new_chunks = ['d']
             else:
                 new_chunks.insert(0, 'delta\n')
-                new_chunks.append('len: %s\n' % (len(delta),))
+                new_chunks.append('len:%s\n' % (len(delta),))
             unadded_bytes = sum(map(len, new_chunks))
             new_chunks.append(delta)
         delta_start = (self.endpoint, len(self.lines))

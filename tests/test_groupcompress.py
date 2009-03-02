@@ -63,13 +63,10 @@ class TestGroupCompressor(TestCaseWithTransport):
             ['strange\n', 'common\n'], None)
         self.assertEqual(sha_strings(['strange\n', 'common\n']), sha1)
         expected_lines = [
-            'label: label\n',
-            'sha1: %s\n' % sha1,
-            'i,3\n',
-            'strange\n',
-            'common\n',
-            '\n', # the last \n in a text is removed, which allows safe
-            # serialisation of lines without trailing \n.
+            'fulltext\n',
+            'label:label\nsha1:%s\n' % sha1,
+            'len:15\n',
+            'strange\ncommon\n',
             ]
         self.assertEqual(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -77,22 +74,22 @@ class TestGroupCompressor(TestCaseWithTransport):
     def test_two_nosha_delta(self):
         compressor = groupcompress.GroupCompressor(True)
         sha1_1, _ = compressor.compress(('label',),
-            ['strange\n', 'common long line\n'], None)
+            ['strange\n', 'common very very very long line\n'], None)
         expected_lines = list(compressor.lines)
         sha1_2, end_point = compressor.compress(('newlabel',),
-            ['common long line\n', 'different\n'], None)
-        self.assertEqual(sha_strings(['common long line\n', 'different\n']),
-                         sha1_2)
+            ['common very very very long line\n', 'different\n'], None)
+        self.assertEqual(sha_strings(['common very very very long line\n',
+                                      'different\n']), sha1_2)
         expected_lines.extend([
             'delta\n'
-            'label: newlabel\n',
-            'sha1: %s\n' % sha1_2,
+            'label:newlabel\n',
+            'sha1:%s\n' % sha1_2,
+            'len:16\n',
             # copy the line common
             'c,72,17\n',
             # add the line different, and the trailing newline
             'i,2\n',
             'different\n',
-            '\n'
             ])
         self.assertEqualDiff(''.join(expected_lines), ''.join(compressor.lines))
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -114,8 +111,10 @@ class TestGroupCompressor(TestCaseWithTransport):
                          'moredifferent\n']),
             sha1_3)
         expected_lines.extend([
-            'label: label3\n',
-            'sha1: %s\n' % sha1_3,
+            'delta\n',
+            'label:label3\n',
+            'sha1:%s\n' % sha1_3,
+            'len:11\n',
             # insert new
             'i,1\n',
             'new\n',
@@ -147,8 +146,8 @@ class TestGroupCompressor(TestCaseWithTransport):
         sha_2, _ = compressor.compress(('newlabel',),
             ['common\n', 'different\n', 'moredifferent\n'], None)
         # get the first out
-        self.assertEqual((['strange\n', 'common\n'], sha_1),
+        self.assertEqual((['strange\ncommon\n'], sha_1),
             compressor.extract(('label',)))
         # and the second
-        self.assertEqual((['common\n', 'different\n', 'moredifferent\n'],
+        self.assertEqual((['common\ndifferent\nmoredifferent\n'],
             sha_2), compressor.extract(('newlabel',)))
