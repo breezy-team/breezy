@@ -258,7 +258,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
       None:       If 'ssh' exists on the machine, then it will be spawned as a
                   child process.
     """
-    
+
     def setUp(self):
         super(SSHVendorConnection, self).setUp()
         from bzrlib.transport.sftp import SFTPFullAbsoluteServer
@@ -368,7 +368,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
     """Test that the testing SFTPServer's latency knob works."""
 
     def test_latency_knob_slows_transport(self):
-        # change the latency knob to 500ms. We take about 40ms for a 
+        # change the latency knob to 500ms. We take about 40ms for a
         # loopback connection ordinarily.
         start_time = time.time()
         self.get_server().add_latency = 0.5
@@ -474,12 +474,17 @@ class ReadvFile(object):
             yield self._data[start:start+length]
 
 
+def _null_report_activity(*a, **k):
+    pass
+
+
 class Test_SFTPReadvHelper(tests.TestCase):
 
     def checkGetRequests(self, expected_requests, offsets):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
+            _null_report_activity)
         self.assertEqual(expected_requests, helper._get_requests())
 
     def test__get_requests(self):
@@ -499,7 +504,8 @@ class Test_SFTPReadvHelper(tests.TestCase):
     def checkRequestAndYield(self, expected, data, offsets):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
+            _null_report_activity)
         data_f = ReadvFile(data)
         result = list(helper.request_and_yield_offsets(data_f))
         self.assertEqual(expected, result)

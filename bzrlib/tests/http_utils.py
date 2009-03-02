@@ -50,7 +50,7 @@ class HTTPServerWithSmarts(http_server.HttpServer):
 
 class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
     """Extend TestingHTTPRequestHandler to support smart client POSTs.
-    
+
     XXX: This duplicates a fair bit of the logic in bzrlib.transport.http.wsgi.
     """
 

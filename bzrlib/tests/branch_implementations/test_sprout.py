@@ -18,6 +18,7 @@
 
 import os
 from bzrlib import (
+    branch as _mod_branch,
     remote,
     revision as _mod_revision,
     tests,
@@ -37,17 +38,42 @@ class TestSprout(TestCaseWithBranch):
         target = source.bzrdir.sprout(self.get_url('target')).open_branch()
         self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
 
-    def test_sprout_preserves_kind(self):
-        branch1 = self.make_branch('branch1')
-        target_repo = self.make_repository('branch2')
-        target_repo.fetch(branch1.repository)
-        branch2 = branch1.sprout(target_repo.bzrdir)
-        if isinstance(branch1, remote.RemoteBranch):
-            branch1._ensure_real()
-            target_class = branch1._real_branch.__class__
-        else:
-            target_class = branch1.__class__
-        self.assertIsInstance(branch2, target_class)
+    def test_sprout_uses_bzrdir_branch_format(self):
+        # branch.sprout(bzrdir) is defined as using the branch format selected
+        # by bzrdir; format preservation is achieved by parameterising the
+        # bzrdir during bzrdir.sprout, which is where stacking compatibility
+        # checks are done. So this test tests that each implementation of
+        # Branch.sprout delegates appropriately to the bzrdir which the
+        # branch is being created in, rather than testing that the result is
+        # in the format that we are testing (which is what would happen if
+        # the branch did not delegate appropriately).
+        if isinstance(self.branch_format, _mod_branch.BranchReferenceFormat):
+            raise tests.TestNotApplicable('cannot sprout to a reference')
+        # Start with a format that is unlikely to be the target format
+        # We call the super class to allow overriding the format of creation)
+        source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
+                                                         format='metaweave')
+        target_bzrdir = self.make_bzrdir('target')
+        target_bzrdir.create_repository()
+        result_format = self.branch_format
+        if isinstance(target_bzrdir, remote.RemoteBzrDir):
+            # for a remote bzrdir, we need to parameterise it with a branch
+            # format, as, after creation, the newly opened remote objects
+            # do not have one unless a branch was created at the time.
+            # We use branch format 6 because its not the default, and its not
+            # metaweave either.
+            target_bzrdir._format.set_branch_format(_mod_branch.BzrBranchFormat6())
+            result_format = target_bzrdir._format.get_branch_format()
+        target = source.sprout(target_bzrdir)
+        if isinstance(target, remote.RemoteBranch):
+            # we have to look at the real branch to see whether RemoteBranch
+            # did the right thing.
+            target._ensure_real()
+            target = target._real_branch
+        if isinstance(result_format, remote.RemoteBranchFormat):
+            # Unwrap a parameterised RemoteBranchFormat for comparison.
+            result_format = result_format._custom_format
+        self.assertIs(result_format.__class__, target._format.__class__)
 
     def test_sprout_partial(self):
         # test sprouting with a prefix of the revision-history.

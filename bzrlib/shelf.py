@@ -233,6 +233,23 @@ class Unshelver(object):
         self.transform = transform
         self.message = message
 
+    @staticmethod
+    def iter_records(shelf_file):
+        parser = pack.ContainerPushParser()
+        parser.accept_bytes(shelf_file.read())
+        return iter(parser.read_pending_records())
+
+    @staticmethod
+    def parse_metadata(records):
+        names, metadata_bytes = records.next()
+        if names[0] != ('metadata',):
+            raise errors.ShelfCorrupt
+        metadata = bencode.bdecode(metadata_bytes)
+        message = metadata.get('message')
+        if message is not None:
+            metadata['message'] = message.decode('utf-8')
+        return metadata
+
     @classmethod
     def from_tree_and_shelf(klass, tree, shelf_file):
         """Create an Unshelver from a tree and a shelf file.
@@ -241,24 +258,16 @@ class Unshelver(object):
         :param shelf_file: A file-like object containing shelved changes.
         :return: The Unshelver.
         """
-        parser = pack.ContainerPushParser()
-        parser.accept_bytes(shelf_file.read())
-        records = iter(parser.read_pending_records())
-        names, metadata_bytes = records.next()
-        if names[0] != ('metadata',):
-            raise errors.ShelfCorrupt
-        metadata = bencode.bdecode(metadata_bytes)
+        records = klass.iter_records(shelf_file)
+        metadata = klass.parse_metadata(records)
         base_revision_id = metadata['revision_id']
-        message = metadata.get('message')
-        if message is not None:
-            message = message.decode('utf-8')
         try:
             base_tree = tree.revision_tree(base_revision_id)
         except errors.NoSuchRevisionInTree:
             base_tree = tree.branch.repository.revision_tree(base_revision_id)
         tt = transform.TransformPreview(base_tree)
         tt.deserialize(records)
-        return klass(tree, base_tree, tt, message)
+        return klass(tree, base_tree, tt, metadata.get('message'))
 
     def make_merger(self):
         """Return a merger that can unshelve the changes."""
@@ -342,6 +351,15 @@ class ShelfManager(object):
             return Unshelver.from_tree_and_shelf(self.tree, shelf_file)
         finally:
             shelf_file.close()
+
+    def get_metadata(self, shelf_id):
+        """Return the metadata associated with a given shelf_id."""
+        shelf_file = self.read_shelf(shelf_id)
+        try:
+            records = Unshelver.iter_records(shelf_file)
+        finally:
+            shelf_file.close()
+        return Unshelver.parse_metadata(records)
 
     def delete_shelf(self, shelf_id):
         """Delete the shelved changes for a given id.

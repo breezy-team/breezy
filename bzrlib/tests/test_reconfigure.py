@@ -377,3 +377,43 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_unsynced_branch_to_lightweight_checkout_forced(self):
         reconfiguration = self.make_unsynced_branch_reconfiguration()
         reconfiguration.apply(force=True)
+
+    def make_repository_with_without_trees(self, with_trees):
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(with_trees)
+        return repo
+
+    def test_make_with_trees(self):
+        repo = self.make_repository_with_without_trees(False)
+        reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+            repo.bzrdir, True)
+        reconfiguration.apply()
+        self.assertIs(True, repo.make_working_trees())
+
+    def test_make_without_trees(self):
+        repo = self.make_repository_with_without_trees(True)
+        reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+            repo.bzrdir, False)
+        reconfiguration.apply()
+        self.assertIs(False, repo.make_working_trees())
+
+    def test_make_with_trees_already_with_trees(self):
+        repo = self.make_repository_with_without_trees(True)
+        e = self.assertRaises(errors.AlreadyWithTrees,
+           reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, True)
+        self.assertContainsRe(str(e),
+            r"Shared repository '.*' already creates working trees.")
+
+    def test_make_without_trees_already_no_trees(self):
+        repo = self.make_repository_with_without_trees(False)
+        e = self.assertRaises(errors.AlreadyWithNoTrees,
+            reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, False)
+        self.assertContainsRe(str(e),
+            r"Shared repository '.*' already doesn't create working trees.")
+
+    def test_repository_tree_reconfiguration_not_supported(self):
+        tree = self.make_branch_and_tree('tree')
+        e = self.assertRaises(errors.ReconfigurationNotSupported,
+            reconfigure.Reconfigure.set_repository_trees, tree.bzrdir, None)
+        self.assertContainsRe(str(e),
+            r"Requested reconfiguration of '.*' is not supported.")

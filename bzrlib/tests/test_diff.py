@@ -184,7 +184,7 @@ class TestDiff(TestCase):
                               StringIO(), diff_opts=['-u'])
         finally:
             os.environ['PATH'] = orig_path
-        
+
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
         output = StringIO()
@@ -355,7 +355,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
 +file2 contents at rev 3
 
 ''')
-        
+
     def test_diff_add_files(self):
         tree1 = self.b.repository.revision_tree(_mod_revision.NULL_REVISION)
         tree2 = self.b.repository.revision_tree('rev-1')
@@ -397,7 +397,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
         self.wt.rename_one('file1', 'file1b')
         old_tree = self.b.repository.revision_tree('rev-1')
         new_tree = self.b.repository.revision_tree('rev-4')
-        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'], 
+        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
 
@@ -409,10 +409,10 @@ class TestDiffDates(TestShowDiffTreesHelper):
         self.wt.rename_one('file1', 'dir1/file1')
         old_tree = self.b.repository.revision_tree('rev-1')
         new_tree = self.b.repository.revision_tree('rev-4')
-        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'], 
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
-        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'], 
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'],
                             working_tree=self.wt)
         self.assertNotContainsRe(out, 'file1\t')
 
@@ -787,7 +787,7 @@ class TestPatienceDiffLib(TestCase):
         self.assertEquals(unique_lcs('ab', 'ab'), [(0,0), (1,1)])
         self.assertEquals(unique_lcs('abcde', 'cdeab'), [(2,0), (3,1), (4,2)])
         self.assertEquals(unique_lcs('cdeab', 'abcde'), [(0,2), (1,3), (2,4)])
-        self.assertEquals(unique_lcs('abXde', 'abYde'), [(0,0), (1,1), 
+        self.assertEquals(unique_lcs('abXde', 'abYde'), [(0,0), (1,1),
                                                          (3,3), (4,4)])
         self.assertEquals(unique_lcs('acbac', 'abc'), [(2,1)])
 
@@ -808,7 +808,7 @@ class TestPatienceDiffLib(TestCase):
         test_one('abcdbce', 'afbcgdbce', [(0,0), (1, 2), (2, 3), (3, 5),
                                           (4, 6), (5, 7), (6, 8)])
 
-        # recurse_matches doesn't match non-unique 
+        # recurse_matches doesn't match non-unique
         # lines surrounded by bogus text.
         # The update has been done in patiencediff.SequenceMatcher instead
 
@@ -951,24 +951,24 @@ class TestPatienceDiffLib(TestCase):
                  ('delete', 1,2, 1,1),
                  ('equal',  2,3, 1,2),
                 ])
-        chk_ops('aBccDe', 'abccde', 
+        chk_ops('aBccDe', 'abccde',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,5, 1,5),
                  ('equal',   5,6, 5,6),
                 ])
-        chk_ops('aBcDec', 'abcdec', 
+        chk_ops('aBcDec', 'abcdec',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
                  ('equal',   2,3, 2,3),
                  ('replace', 3,4, 3,4),
                  ('equal',   4,6, 4,6),
                 ])
-        chk_ops('aBcdEcdFg', 'abcdecdfg', 
+        chk_ops('aBcdEcdFg', 'abcdecdfg',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,8, 1,8),
                  ('equal',   8,9, 8,9)
                 ])
-        chk_ops('aBcdEeXcdFg', 'abcdecdfg', 
+        chk_ops('aBcdEeXcdFg', 'abcdecdfg',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
                  ('equal',   2,4, 2,4),
@@ -1034,7 +1034,7 @@ class TestPatienceDiffLib(TestCase):
     """
     gnxrf_netf = ['svyr*']
     gnxrf_bcgvbaf = ['ab-erphefr']
-  
+
     qrs eha(frys, svyr_yvfg, ab_erphefr=Snyfr):
         sebz omeyvo.nqq vzcbeg fzneg_nqq, nqq_ercbegre_cevag, nqq_ercbegre_ahyy
         vs vf_dhvrg():
@@ -1048,7 +1048,7 @@ pynff pzq_zxqve(Pbzznaq):
 '''.splitlines(True), '''\
     trg nqqrq jura lbh nqq n svyr va gur qverpgbel.
 
-    --qel-eha jvyy fubj juvpu svyrf jbhyq or nqqrq, ohg abg npghnyyl 
+    --qel-eha jvyy fubj juvpu svyrf jbhyq or nqqrq, ohg abg npghnyyl
     nqq gurz.
     """
     gnxrf_netf = ['svyr*']
@@ -1083,8 +1083,8 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         unified_diff = bzrlib.patiencediff.unified_diff
         psm = self._PatienceSequenceMatcher
-        self.assertEquals([ '---  \n',
-                           '+++  \n',
+        self.assertEquals(['--- \n',
+                           '+++ \n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
                            '-world\n',
@@ -1095,8 +1095,8 @@ pynff pzq_zxqve(Pbzznaq):
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals(['---  \n',
-                           '+++  \n',
+        self.assertEquals(['--- \n',
+                           '+++ \n',
                            '@@ -1,6 +1,11 @@\n',
                            ' a\n',
                            ' b\n',
@@ -1111,8 +1111,8 @@ pynff pzq_zxqve(Pbzznaq):
                            ' f\n']
                           , list(unified_diff(txt_a, txt_b)))
         # And the patience diff
-        self.assertEquals(['---  \n',
-                           '+++  \n',
+        self.assertEquals(['--- \n',
+                           '+++ \n',
                            '@@ -4,6 +4,11 @@\n',
                            ' d\n',
                            ' e\n',
@@ -1127,6 +1127,27 @@ pynff pzq_zxqve(Pbzznaq):
                            ' i\n',
                           ]
                           , list(unified_diff(txt_a, txt_b,
+                                 sequencematcher=psm)))
+
+    def test_patience_unified_diff_with_dates(self):
+        txt_a = ['hello there\n',
+                 'world\n',
+                 'how are you today?\n']
+        txt_b = ['hello there\n',
+                 'how are you today?\n']
+        unified_diff = bzrlib.patiencediff.unified_diff
+        psm = self._PatienceSequenceMatcher
+        self.assertEquals(['--- a\t2008-08-08\n',
+                           '+++ b\t2008-09-09\n',
+                           '@@ -1,3 +1,2 @@\n',
+                           ' hello there\n',
+                           '-world\n',
+                           ' how are you today?\n'
+                          ]
+                          , list(unified_diff(txt_a, txt_b,
+                                 fromfile='a', tofile='b',
+                                 fromfiledate='2008-08-08',
+                                 tofiledate='2008-09-09',
                                  sequencematcher=psm)))
 
 
@@ -1174,8 +1195,8 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
         unified_diff_files = bzrlib.patiencediff.unified_diff_files
         psm = self._PatienceSequenceMatcher
-        self.assertEquals(['--- a1 \n',
-                           '+++ b1 \n',
+        self.assertEquals(['--- a1\n',
+                           '+++ b1\n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
                            '-world\n',
@@ -1190,8 +1211,8 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
         open('b2', 'wb').writelines(txt_b)
 
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals(['--- a2 \n',
-                           '+++ b2 \n',
+        self.assertEquals(['--- a2\n',
+                           '+++ b2\n',
                            '@@ -1,6 +1,11 @@\n',
                            ' a\n',
                            ' b\n',
@@ -1207,8 +1228,8 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
                           , list(unified_diff_files('a2', 'b2')))
 
         # And the patience diff
-        self.assertEquals(['--- a2 \n',
-                           '+++ b2 \n',
+        self.assertEquals(['--- a2\n',
+                           '+++ b2\n',
                            '@@ -4,6 +4,11 @@\n',
                            ' d\n',
                            ' e\n',

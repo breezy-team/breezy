@@ -34,7 +34,7 @@ _whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
 
 def _check_name(name):
     """Do some basic checking of 'name'.
-    
+
     At the moment, this just checks that there are no whitespace characters in a
     name.
 
@@ -47,7 +47,7 @@ def _check_name(name):
 
 def _check_name_encoding(name):
     """Check that 'name' is valid UTF-8.
-    
+
     This is separate from _check_name because UTF-8 decoding is relatively
     expensive, and we usually want to avoid it.
 
@@ -61,7 +61,7 @@ def _check_name_encoding(name):
 
 class ContainerSerialiser(object):
     """A helper class for serialising containers.
-    
+
     It simply returns bytes from method calls to 'begin', 'end' and
     'bytes_record'.  You may find ContainerWriter to be a more convenient
     interface.
@@ -138,7 +138,7 @@ class ContainerWriter(object):
 
     def add_bytes_record(self, bytes, names):
         """Add a Bytes record with the given names.
-        
+
         :param bytes: The bytes to insert.
         :param names: The names to give the inserted bytes. Each name is
             a tuple of bytestrings. The bytestrings may not contain
@@ -241,7 +241,7 @@ class ContainerReader(BaseReader):
             names1, callable1 = record_iter.next()
             names2, callable2 = record_iter.next()
             bytes1 = callable1(None)
-        
+
         As it will give incorrect results and invalidate the state of the
         ContainerReader.
 
@@ -252,7 +252,7 @@ class ContainerReader(BaseReader):
         """
         self._read_format()
         return self._iter_records()
-    
+
     def iter_record_objects(self):
         """Iterate over the container, yielding each record as it is read.
 
@@ -267,7 +267,7 @@ class ContainerReader(BaseReader):
         """
         self._read_format()
         return self._iter_record_objects()
-    
+
     def _iter_records(self):
         for record in self._iter_record_objects():
             yield record.read()
@@ -342,7 +342,7 @@ class BytesRecordReader(BaseReader):
         except ValueError:
             raise errors.InvalidRecordError(
                 "%r is not a valid length." % (length_line,))
-        
+
         # Read the list of names.
         names = []
         while True:
@@ -415,7 +415,7 @@ class ContainerPushParser(object):
         records = self._parsed_records
         self._parsed_records = []
         return records
-    
+
     def _consume_line(self):
         """Take a line out of the buffer, and return the line.
 
@@ -468,7 +468,7 @@ class ContainerPushParser(object):
             for name_part in name_parts:
                 _check_name(name_part)
             self._current_record_names.append(name_parts)
-            
+
     def _state_expecting_body(self):
         if len(self._buffer) >= self._current_record_length:
             body_bytes = self._buffer[:self._current_record_length]

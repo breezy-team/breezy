@@ -869,6 +869,37 @@ class TestBTreeIndex(BTreeTestCase):
             (index, ('name', 'fin2'), 'beta', ((), ))]),
             set(index.iter_entries_prefix([('name', None)])))
 
+    # XXX: external_references tests are duplicated in test_index.  We
+    # probably should have per_graph_index tests...
+    def test_external_references_no_refs(self):
+        index = self.make_index(ref_lists=0, nodes=[])
+        self.assertRaises(ValueError, index.external_references, 0)
+
+    def test_external_references_no_results(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([],))])
+        self.assertEqual(set(), index.external_references(0))
+
+    def test_external_references_missing_ref(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([missing_key],))])
+        self.assertEqual(set([missing_key]), index.external_references(0))
+
+    def test_external_references_multiple_ref_lists(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=2, nodes=[
+            (('key',), 'value', ([], [missing_key]))])
+        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set([missing_key]), index.external_references(1))
+
+    def test_external_references_two_records(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key-1',), 'value', ([('key-2',)],)),
+            (('key-2',), 'value', ([],)),
+            ])
+        self.assertEqual(set([]), index.external_references(0))
+
 
 class TestBTreeNodes(BTreeTestCase):
 
