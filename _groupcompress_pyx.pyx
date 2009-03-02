@@ -242,22 +242,22 @@ def apply_delta(source_bytes, delta_bytes):
                 cp_off = data[0]
                 data = data + 1
             if (cmd & 0x02):
-                cp_off |= (data[0] << 8)
+                cp_off = cp_off | (data[0] << 8)
                 data = data + 1
             if (cmd & 0x04):
-                cp_off |= (data[0] << 16)
+                cp_off = cp_off | (data[0] << 16)
                 data = data + 1
             if (cmd & 0x08):
-                cp_off |= (data[0] << 24)
-                data[0] += 1
+                cp_off = cp_off | (data[0] << 24)
+                data = data + 1
             if (cmd & 0x10):
                 cp_size = data[0]
                 data = data + 1
             if (cmd & 0x20):
-                cp_size |= (data[0] << 8)
+                cp_size = cp_size | (data[0] << 8)
                 data = data + 1
             if (cmd & 0x40):
-                cp_size |= (data[0] << 16)
+                cp_size = cp_size | (data[0] << 16)
                 data = data + 1
             if (cp_size == 0):
                 cp_size = 0x10000
@@ -267,14 +267,14 @@ def apply_delta(source_bytes, delta_bytes):
                 break
             memcpy(out, source + cp_off, cp_size)
             out = out + cp_size
-            size -= cp_size
+            size = size - cp_size
         elif (cmd):
             if (cmd > size):
                 break
             memcpy(out, data, cmd)
             out = out + cmd
             data = data + cmd
-            size -= cmd
+            size = size - cmd
         else:
             # /*
             #  * cmd == 0 is reserved for future encoding
