@@ -40,11 +40,10 @@ from bzrlib.errors import (
     SmartProtocolError,
     )
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.smart import client, vfs
+from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
 from bzrlib.util import bencode
-from bzrlib.versionedfile import record_to_fulltext_bytes
 
 
 class _RpcHelper(object):
@@ -623,6 +622,10 @@ class RemoteRepository(_RpcHelper):
     def _get_sink(self):
         """See Repository._get_sink()."""
         return RemoteStreamSink(self)
+
+    def _get_source(self, to_format):
+        """Return a source for streaming from this repository."""
+        return RemoteStreamSource(self, to_format)
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
@@ -1405,9 +1408,6 @@ class RemoteRepository(_RpcHelper):
 
 class RemoteStreamSink(repository.StreamSink):
 
-    def __init__(self, target_repo):
-        repository.StreamSink.__init__(self, target_repo)
-
     def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
         sink = self.target_repo._real_repository._get_sink()
@@ -1433,14 +1433,15 @@ class RemoteStreamSink(repository.StreamSink):
             # do not fallback when actually pushing the stream. A cleanup patch
             # is going to look at rewinding/restarting the stream/partial
             # buffering etc.
-            byte_stream = self._stream_to_byte_stream([], src_format)
+            byte_stream = smart_repo._stream_to_byte_stream([], src_format)
             try:
                 response = client.call_with_body_stream(
                     ('Repository.insert_stream', path, ''), byte_stream)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before((1,13))
                 return self._insert_real(stream, src_format, resume_tokens)
-        byte_stream = self._stream_to_byte_stream(stream, src_format)
+        byte_stream = smart_repo._stream_to_byte_stream(
+            stream, src_format)
         resume_tokens = ' '.join(resume_tokens)
         response = client.call_with_body_stream(
             ('Repository.insert_stream', path, resume_tokens), byte_stream)
@@ -1458,37 +1459,44 @@ class RemoteStreamSink(repository.StreamSink):
                     collection.reload_pack_names()
             return [], set()
 
-    def _stream_to_byte_stream(self, stream, src_format):
-        bytes = []
-        pack_writer = pack.ContainerWriter(bytes.append)
-        pack_writer.begin()
-        pack_writer.add_bytes_record(src_format.network_name(), '')
-        adapters = {}
-        def get_adapter(adapter_key):
-            try:
-                return adapters[adapter_key]
-            except KeyError:
-                adapter_factory = adapter_registry.get(adapter_key)
-                adapter = adapter_factory(self)
-                adapters[adapter_key] = adapter
-                return adapter
-        for substream_type, substream in stream:
-            for record in substream:
-                if record.storage_kind in ('chunked', 'fulltext'):
-                    serialised = record_to_fulltext_bytes(record)
-                else:
-                    serialised = record.get_bytes_as(record.storage_kind)
-                if serialised:
-                    # Some streams embed the whole stream into the wire
-                    # representation of the first record, which means that
-                    # later records have no wire representation: we skip them.
-                    pack_writer.add_bytes_record(serialised, [(substream_type,)])
-                for b in bytes:
-                    yield b
-                del bytes[:]
-        pack_writer.end()
-        for b in bytes:
-            yield b
+
+class RemoteStreamSource(repository.StreamSource):
+    """Stream data from a remote server."""
+
+    def get_stream(self, search):
+        # streaming with fallback repositories is not well defined yet: The
+        # remote repository cannot see the fallback repositories, and thus
+        # cannot satisfy the entire search in the general case. Likewise the
+        # fallback repositories cannot reify the search to determine what they
+        # should send. It likely needs a return value in the stream listing the
+        # edge of the search to resume from in fallback repositories.
+        if self.from_repository._fallback_repositories:
+            return repository.StreamSource.get_stream(self, search)
+        repo = self.from_repository
+        client = repo._client
+        medium = client._medium
+        if medium._is_remote_before((1, 13)):
+            # No possible way this can work.
+            return repository.StreamSource.get_stream(self, search)
+        path = repo.bzrdir._path_for_remote_call(client)
+        try:
+            recipe = repo._serialise_search_recipe(search._recipe)
+            response = repo._call_with_body_bytes_expecting_body(
+                'Repository.StreamSource.get_stream',
+                (path, self.to_format.network_name()), recipe)
+            response_tuple, response_handler = response
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1,13))
+            return repository.StreamSource.get_stream(self, search)
+        if response_tuple[0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response_tuple)
+        byte_stream = response_handler.read_streamed_body()
+        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream)
+        if src_format.network_name() != repo._format.network_name():
+            raise AssertionError(
+                "Mismatched RemoteRepository and stream src %r, %r" % (
+                src_format.network_name(), repo._format.network_name()))
+        return stream
 
 
 class RemoteBranchLockableFiles(LockableFiles):

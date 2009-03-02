@@ -472,6 +472,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
 request_handlers.register_lazy(
+    'Repository.StreamSource.get_stream', 'bzrlib.smart.repository',
+    'SmartServerRepositoryStreamSourceGetStream')
+request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')
 request_handlers.register_lazy(

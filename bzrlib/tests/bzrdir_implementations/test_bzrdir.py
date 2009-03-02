@@ -553,7 +553,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # Ensure no format data is cached
         a_dir = bzrlib.branch.Branch.open_from_transport(
             self.get_transport('source')).bzrdir
-        target_transport = a_dir.root_transport.clone('..').clone('target')
+        target_transport = self.get_transport('target')
         target_bzrdir = a_dir.clone_on_transport(target_transport)
         target_repo = target_bzrdir.open_repository()
         source_branch = bzrlib.branch.Branch.open(
@@ -655,7 +655,7 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_clone_respects_stacked(self):
         branch = self.make_branch('parent')
-        child_transport = branch.bzrdir.root_transport.clone('../child')
+        child_transport = self.get_transport('child')
         child = branch.bzrdir.clone_on_transport(child_transport,
                                                  stacked_on=branch.base)
         self.assertEqual(child.open_branch().get_stacked_on_url(), branch.base)
