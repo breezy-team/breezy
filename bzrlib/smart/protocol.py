@@ -1158,12 +1158,10 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         if response.body is not None:
             self._write_prefixed_body(response.body)
         elif response.body_stream is not None:
-            for stream_error, chunk in _trap_errors(response.body_stream):
+            for stream_error, chunk in _iter_with_errors(response.body_stream):
                 if stream_error is not None:
                     self._write_error_status()
-                    # XXX: Currently the server unconditionally sends
-                    # ('error', str(exception)) as the error args.
-                    error_struct = ('error', str(stream_error[1]))
+                    error_struct = request._translate_error(stream_error[1])
                     self._write_structure(error_struct)
                     break
                 else:
@@ -1172,12 +1170,37 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self._write_end()
 
 
-def _trap_errors(iterable):
+def _iter_with_errors(iterable):
+    """Handle errors from iterable.next().
+
+    Use like::
+
+        for exc_info, value in _iter_with_errors(iterable):
+            ...
+
+    This is a safer alternative to::
+
+        try:
+            for value in iterable:
+               ...
+        except:
+            ...
+
+    Because the latter will catch errors from the for-loop body, not just
+    iterable.next()
+
+    If an error occurs, exc_info will be a exc_info tuple, and the generator
+    will terminate.  Otherwise exc_info will be None, and value will be the
+    value from iterable.next().  Note that KeyboardInterrupt and SystemExit
+    will not be itercepted.
+    """
     iterator = iter(iterable)
     while True:
         try:
             yield None, iterator.next()
-        except:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception:
             yield sys.exc_info(), None
             return
 

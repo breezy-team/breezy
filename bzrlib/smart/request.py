@@ -33,6 +33,7 @@ from bzrlib import (
     errors,
     registry,
     revision,
+    trace,
     urlutils,
     )
 from bzrlib.lazy_import import lazy_import
@@ -277,48 +278,11 @@ class SmartServerRequestHandler(object):
         # be in SmartServerVFSRequestHandler somewhere.
         try:
             return callable(*args, **kwargs)
-        except errors.NoSuchFile, e:
-            return FailedSmartServerResponse(('NoSuchFile', e.path))
-        except errors.FileExists, e:
-            return FailedSmartServerResponse(('FileExists', e.path))
-        except errors.DirectoryNotEmpty, e:
-            return FailedSmartServerResponse(('DirectoryNotEmpty', e.path))
-        except errors.ShortReadvError, e:
-            return FailedSmartServerResponse(('ShortReadvError',
-                e.path, str(e.offset), str(e.length), str(e.actual)))
-        except errors.UnstackableRepositoryFormat, e:
-            return FailedSmartServerResponse(('UnstackableRepositoryFormat',
-                str(e.format), e.url))
-        except errors.UnstackableBranchFormat, e:
-            return FailedSmartServerResponse(('UnstackableBranchFormat',
-                str(e.format), e.url))
-        except errors.NotStacked, e:
-            return FailedSmartServerResponse(('NotStacked',))
-        except UnicodeError, e:
-            # If it is a DecodeError, than most likely we are starting
-            # with a plain string
-            str_or_unicode = e.object
-            if isinstance(str_or_unicode, unicode):
-                # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
-                # byte) in it, so this encoding could cause broken responses.
-                # Newer clients use protocol v3, so will be fine.
-                val = 'u:' + str_or_unicode.encode('utf-8')
-            else:
-                val = 's:' + str_or_unicode.encode('base64')
-            # This handles UnicodeEncodeError or UnicodeDecodeError
-            return FailedSmartServerResponse((e.__class__.__name__,
-                    e.encoding, val, str(e.start), str(e.end), e.reason))
-        except errors.TransportNotPossible, e:
-            if e.msg == "readonly transport":
-                return FailedSmartServerResponse(('ReadOnlyError', ))
-            else:
-                raise
-        except errors.ReadError, e:
-            # cannot read the file
-            return FailedSmartServerResponse(('ReadError', e.path))
-        except errors.PermissionDenied, e:
-            return FailedSmartServerResponse(
-                ('PermissionDenied', e.path, e.extra))
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception, err:
+            err_struct = _translate_error(err)
+            return FailedSmartServerResponse(err_struct)
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
@@ -340,6 +304,49 @@ class SmartServerRequestHandler(object):
     def post_body_error_received(self, error_args):
         # Just a no-op at the moment.
         pass
+
+
+def _translate_error(err):
+    if isinstance(err, errors.NoSuchFile):
+        return ('NoSuchFile', err.path)
+    elif isinstance(err, errors.FileExists):
+        return ('FileExists', err.path)
+    elif isinstance(err, errors.DirectoryNotEmpty):
+        return ('DirectoryNotEmpty', err.path)
+    elif isinstance(err, errors.ShortReadvError):
+        return ('ShortReadvError', err.path, str(err.offset), str(err.length),
+                str(err.actual))
+    elif isinstance(err, errors.UnstackableRepositoryFormat):
+        return (('UnstackableRepositoryFormat', str(err.format), err.url))
+    elif isinstance(err, errors.UnstackableBranchFormat):
+        return ('UnstackableBranchFormat', str(err.format), err.url)
+    elif isinstance(err, errors.NotStacked):
+        return ('NotStacked',)
+    elif isinstance(err, UnicodeError):
+        # If it is a DecodeError, than most likely we are starting
+        # with a plain string
+        str_or_unicode = err.object
+        if isinstance(str_or_unicode, unicode):
+            # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
+            # byte) in it, so this encoding could cause broken responses.
+            # Newer clients use protocol v3, so will be fine.
+            val = 'u:' + str_or_unicode.encode('utf-8')
+        else:
+            val = 's:' + str_or_unicode.encode('base64')
+        # This handles UnicodeEncodeError or UnicodeDecodeError
+        return (err.__class__.__name__, err.encoding, val, str(err.start),
+                str(err.end), err.reason)
+    elif isinstance(err, errors.TransportNotPossible):
+        if err.msg == "readonly transport":
+            return ('ReadOnlyError', )
+    elif isinstance(err, errors.ReadError):
+        # cannot read the file
+        return ('ReadError', err.path)
+    elif isinstance(err, errors.PermissionDenied):
+        return ('PermissionDenied', err.path, err.extra)
+    # Unserialisable error.  Log it, and return a generic error
+    trace.log_exception_quietly()
+    return ('error', str(err))
 
 
 class HelloRequest(SmartServerRequest):
