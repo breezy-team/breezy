@@ -187,12 +187,17 @@ class GroupCompressor(object):
                 new_chunks.insert(0, 'delta\n')
                 new_chunks.append('len:%s\n' % (len(delta),))
             unadded_bytes = sum(map(len, new_chunks))
+            self._delta_index.add_source(delta, unadded_bytes)
             new_chunks.append(delta)
         delta_start = (self.endpoint, len(self.lines))
         self.output_chunks(new_chunks)
         self.input_bytes += input_len
         delta_end = (self.endpoint, len(self.lines))
         self.labels_deltas[key] = (delta_start, delta_end)
+        if not self._delta_index._source_offset == self.endpoint:
+            raise AssertionError('the delta index is out of sync'
+                'with the output lines %s != %s'
+                % (self._delta_index._source_offset, self.endpoint))
         return sha1, self.endpoint
 
     def extract(self, key):
