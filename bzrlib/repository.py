@@ -2588,8 +2588,7 @@ class InterRepository(InterObject):
                             content is copied.
         :param pb: optional progress bar to use for progress reports. If not
                    provided a default one will be created.
-
-        :returns: (copied_revision_count, failures).
+        :return: None.
         """
         from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
@@ -2599,7 +2598,6 @@ class InterRepository(InterObject):
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     def _walk_to_common_revisions(self, revision_ids):
         """Walk out from revision_ids in source to revisions target has.
@@ -2823,7 +2821,6 @@ class InterWeaveRepo(InterSameDataRepository):
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2904,7 +2901,6 @@ class InterKnitRepo(InterSameDataRepository):
                             from_repository=self.source,
                             last_revision=revision_id,
                             pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2976,7 +2972,6 @@ class InterPackRepo(InterSameDataRepository):
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
-            return fetcher.count_copied, fetcher.failed_revisions
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         if revision_id is None:
@@ -3312,7 +3307,6 @@ class InterRemoteToOther(InterRepository):
         from bzrlib.fetch import RepoFetcher
         fetcher = RepoFetcher(self.target, self.source, revision_id,
                               pb, find_ghosts)
-        return fetcher.count_copied, fetcher.failed_revisions
 
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()
@@ -3357,7 +3351,6 @@ class InterPackToRemotePack(InterPackRepo):
         from bzrlib.fetch import RepoFetcher
         fetcher = RepoFetcher(self.target, self.source, revision_id,
                               pb, find_ghosts)
-        return fetcher.count_copied, fetcher.failed_revisions
 
     def _get_target_pack_collection(self):
         return self.target._real_repository._pack_collection
@@ -3648,16 +3641,12 @@ class StreamSink(object):
 
 
 class StreamSource(object):
-    """A source of a stream for fetching between repositories.
-
-    :ivar count_copied: number of revisions streamed.
-    """
+    """A source of a stream for fetching between repositories."""
 
     def __init__(self, from_repository, to_format):
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
-        self.count_copied = 0
 
     def delta_on_metadata(self):
         """Return True if delta's are permitted on metadata streams.
@@ -3752,7 +3741,6 @@ class StreamSource(object):
                     yield record
             else:
                 raise AssertionError("Unknown knit kind %r" % knit_kind)
-        self.count_copied += len(revs)
 
     def get_stream_for_missing_keys(self, missing_keys):
         # missing keys can only occur when we are byte copying and not

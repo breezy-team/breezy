@@ -66,8 +66,6 @@ class RepoFetcher(object):
     last_revision
         if set, try to limit to the data this revision references.
 
-    after running:
-
     This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
@@ -81,9 +79,6 @@ class RepoFetcher(object):
             exists to facilitate a hack done in InterPackRepo.fetch.  We would
             like to remove this parameter.
         """
-        # result variables.
-        self.count_copied = 0
-        self.failed_revisions = []
         if to_repository.has_same_location(from_repository):
             # repository.fetch should be taking care of this case.
             raise errors.BzrError('RepoFetcher run '
@@ -171,7 +166,6 @@ class RepoFetcher(object):
                     "second push failed to commit the fetch %r." % (
                         resume_tokens,))
             self.sink.finished()
-            self.count_copied = source.count_copied
         finally:
             if self.pb is not None:
                 self.pb.finished()
