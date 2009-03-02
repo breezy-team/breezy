@@ -132,9 +132,39 @@ class TestDeltaIndex(Test_GroupCompress):
 
     def test_repr(self):
         di = self._gc_module.DeltaIndex('test text\n')
-        self.assertEqual('DeltaIndex(10)', repr(di))
+        self.assertEqual('DeltaIndex(1, 10, 1)', repr(di))
 
     def test_make_delta(self):
         di = self._gc_module.DeltaIndex(_text1)
         delta = di.make_delta(_text2)
         self.assertEqual('MN\x90/\x1fdiffer from\nagainst other text\n', delta)
+
+    def test_delta_against_multiple_sources(self):
+        di = self._gc_module.DeltaIndex()
+        first_text = ('a bit of text, that\n'
+                      'does not have much in\n'
+                      'common with the next text\n'
+                     )
+        di.add_source(first_text)
+        self.assertEqual(1, di._num_indexes)
+        self.assertEqual(1024, di._max_num_indexes)
+        self.assertEqual(len(first_text), di._source_offset)
+        second_text = ('some more bits of text\n'
+                       'which does have a little bit in\n'
+                       'common with the previous text\n'
+                      )
+        di.add_source(second_text)
+        self.assertEqual(2, di._num_indexes)
+        self.assertEqual(1024, di._max_num_indexes)
+        self.assertEqual(len(first_text) + len(second_text), di._source_offset)
+        third_text = ('a bit of text, that\n'
+                      'has some in common with the previous text\n'
+                      'and not much in\n'
+                      'common with the next text\n'
+                     )
+        delta = di.make_delta(third_text)
+        result = self._gc_module.apply_delta(first_text + second_text, delta)
+        self.assertEqualDiff(third_text, result)
+        self.assertEqual('\x99\x01h\x90\x14\x0chas some in '
+                         '\x91{\x1e\x07and not\x91!#', delta)
+

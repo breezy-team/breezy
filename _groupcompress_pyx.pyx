@@ -51,28 +51,28 @@ cdef extern from "Python.h":
     object PyString_FromStringAndSize(char *, Py_ssize_t)
 
 
-# cdef void *safe_malloc(size_t count) except NULL:
-#     cdef void *result
-#     result = malloc(count)
-#     if result == NULL:
-#         raise MemoryError('Failed to allocate %d bytes of memory' % (count,))
-#     return result
-# 
-# 
-# cdef void *safe_realloc(void * old, size_t count) except NULL:
-#     cdef void *result
-#     result = realloc(old, count)
-#     if result == NULL:
-#         raise MemoryError('Failed to reallocate to %d bytes of memory'
-#                           % (count,))
-#     return result
-# 
-# 
-# cdef int safe_free(void **val) except -1:
-#     assert val != NULL
-#     if val[0] != NULL:
-#         free(val[0])
-#         val[0] = NULL
+cdef void *safe_malloc(size_t count) except NULL:
+    cdef void *result
+    result = malloc(count)
+    if result == NULL:
+        raise MemoryError('Failed to allocate %d bytes of memory' % (count,))
+    return result
+
+
+cdef void *safe_realloc(void * old, size_t count) except NULL:
+    cdef void *result
+    result = realloc(old, count)
+    if result == NULL:
+        raise MemoryError('Failed to reallocate to %d bytes of memory'
+                          % (count,))
+    return result
+
+
+cdef int safe_free(void **val) except -1:
+    assert val != NULL
+    if val[0] != NULL:
+        free(val[0])
+        val[0] = NULL
 
 def make_delta_index(source):
     return DeltaIndex(source)
@@ -80,28 +80,42 @@ def make_delta_index(source):
 
 cdef class DeltaIndex:
 
-    cdef object _source
-    cdef delta_index *_index
+    #cdef list _sources
+    cdef readonly object _sources
+    cdef delta_index **_indexes
+    cdef readonly unsigned int _num_indexes
+    cdef readonly unsigned int _max_num_indexes
+    cdef readonly unsigned long _source_offset
 
     def __repr__(self):
-        if self._index == NULL:
-            return '%s(NULL)' % (self.__class__.__name__,)
-        return '%s(%d)' % (self.__class__.__name__,
-            len(self._source))
+        return '%s(%d, %d, %d)' % (self.__class__.__name__,
+            len(self._sources), self._source_offset,
+            self._num_indexes)
 
-    def __init__(self, source):
-        self._source = None
-        self._index = NULL
-        self._create_delta_index(source)
+    def __init__(self, source=None):
+        self._sources = []
+        self._max_num_indexes = 1024
+        self._indexes = <delta_index**>safe_malloc(sizeof(delta_index*)
+                                                   * self._max_num_indexes)
+        self._num_indexes = 0
+        self._source_offset = 0
 
-    def _create_delta_index(self, source):
+        if source is not None:
+            self.add_source(source)
+
+    def __dealloc__(self):
+        self._ensure_no_indexes()
+
+    def add_source(self, source):
         cdef char *c_source
         cdef Py_ssize_t c_source_size
+        cdef delta_index *index
+        cdef unsigned int num_indexes
 
         if not PyString_CheckExact(source):
             raise TypeError('source is not a str')
 
-        self._source = source
+        self._sources.append(source)
         c_source = PyString_AS_STRING(source)
         c_source_size = PyString_GET_SIZE(source)
 
@@ -111,16 +125,32 @@ cdef class DeltaIndex:
         #       fit just fine into the structure. But for now, we just wrap
         #       create_delta_index (For example, we could always reserve enough
         #       space to hash a 4MB string, etc.)
-        self._index = create_delta_index(c_source, c_source_size, 0)
-        # TODO: Handle if _index == NULL
+        index = create_delta_index(c_source, c_source_size, self._source_offset)
+        self._source_offset += c_source_size
+        if index != NULL:
+            num_indexes = self._num_indexes + 1
+            if num_indexes >= self._max_num_indexes:
+                self._expand_indexes()
+            self._indexes[self._num_indexes] = index
+            self._num_indexes = num_indexes
 
-    cdef _ensure_no_index(self):
-        if self._index != NULL:
-            free_delta_index(self._index)
-            self._index = NULL
+    cdef _expand_indexes(self):
+        self._max_num_indexes = self._max_num_indexes * 2
+        self._indexes = <delta_index **>safe_realloc(self._indexes,
+                                                sizeof(delta_index *)
+                                                * self._max_num_indexes)
 
-    def __dealloc__(self):
-        self._ensure_no_index()
+    cdef _ensure_no_indexes(self):
+        cdef int i
+
+        if self._indexes != NULL:
+            for i from 0 <= i < self._num_indexes:
+                free_delta_index(self._indexes[i])
+                self._indexes[i] = NULL
+            free(self._indexes)
+            self._indexes = NULL
+            self._max_num_indexes = 0
+            self._num_indexes = 0
 
     def make_delta(self, target_bytes, max_delta_size=0):
         """Create a delta from the current source to the target bytes."""
@@ -129,7 +159,7 @@ cdef class DeltaIndex:
         cdef void * delta
         cdef unsigned long delta_size
 
-        if self._index == NULL:
+        if self._num_indexes == 0:
             return None
 
         if not PyString_CheckExact(target_bytes):
@@ -141,7 +171,8 @@ cdef class DeltaIndex:
         # TODO: inline some of create_delta so we at least don't have to double
         #       malloc, and can instead use PyString_FromStringAndSize, to
         #       allocate the bytes into the final string
-        delta = create_delta(&self._index, 1, target, target_size,
+        delta = create_delta(self._indexes, self._num_indexes,
+                             target, target_size,
                              &delta_size, max_delta_size)
         result = None
         if delta:
