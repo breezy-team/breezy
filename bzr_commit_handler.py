@@ -285,6 +285,9 @@ class InventoryCommitHandler(GenericCommitHandler):
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
             self.inventory = self.basis_inventory
+        elif hasattr(self.basis_inventory, "_get_mutable_inventory"):
+            # TODO: Make this a public API on inventory
+            self.inventory = self.basis_inventory._get_mutable_inventory()
         else:
             # TODO: Shallow copy - deep inventory copying is expensive
             self.inventory = self.basis_inventory.copy()
