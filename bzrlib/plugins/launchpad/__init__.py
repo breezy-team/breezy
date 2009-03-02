@@ -21,9 +21,16 @@
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import webbrowser
 
-from bzrlib.branch import Branch
+from bzrlib import (
+    branch as _mod_branch,
+    trace,
+    )
+""")
+
 from bzrlib.commands import Command, Option, register_command
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
@@ -37,7 +44,6 @@ from bzrlib.plugins.launchpad.lp_registration import (
     LaunchpadService,
     NotLaunchpadBranch,
     )
-from bzrlib.trace import note
 
 
 class cmd_register_branch(Command):
@@ -103,7 +109,7 @@ class cmd_register_branch(Command):
             DryRunLaunchpadService)
         if public_url is None:
             try:
-                b = Branch.open_containing('.')[0]
+                b = _mod_branch.Branch.open_containing('.')[0]
             except NotBranchError:
                 raise BzrCommandError('register-branch requires a public '
                     'branch url - see bzr help register-branch.')
@@ -154,7 +160,7 @@ class cmd_launchpad_open(Command):
         """Yield possible external locations for the branch at 'location'."""
         yield location
         try:
-            branch = Branch.open(location)
+            branch = _mod_branch.Branch.open(location)
         except NotBranchError:
             return
         branch_url = branch.get_public_branch()
@@ -176,7 +182,7 @@ class cmd_launchpad_open(Command):
         if location is None:
             location = u'.'
         web_url = self._get_web_url(LaunchpadService(), location)
-        note('Opening %s in web browser' % web_url)
+        trace.note('Opening %s in web browser' % web_url)
         if not dry_run:
             webbrowser.open(web_url)
 
