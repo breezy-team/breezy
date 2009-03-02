@@ -137,8 +137,9 @@ IN DEVELOPMENT
       rather than the sometimes-absent disk label. (Robert Collins)
 
     * ``bzrlib.fetch`` is now composed of a sender and a sink component
-      allowing for decoupling over a network connection. Fetching into
-      a RemoteRepository uses this to stream the operation.
+      allowing for decoupling over a network connection. Fetching from
+      or into a RemoteRepository with a 1.13 server will use this to
+      stream the operation.
       (Andrew Bennetts, Robert Collins)
 
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
