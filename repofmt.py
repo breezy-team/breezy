@@ -69,7 +69,7 @@ try:
     chk_support = True
 except ImportError:
     chk_support = False
-from bzrlib import ui
+from bzrlib.trace import mutter, note
 
 
 def open_pack(self):
@@ -86,13 +86,8 @@ class GCPack(NewPack):
     def __init__(self, pack_collection, upload_suffix='', file_mode=None):
         """Create a NewPack instance.
 
-        :param upload_transport: A writable transport for the pack to be
-            incrementally uploaded to.
-        :param index_transport: A writable transport for the pack's indices to
-            be written to when the pack is finished.
-        :param pack_transport: A writable transport for the pack to be renamed
-            to when the upload is complete. This *must* be the same as
-            upload_transport.clone('../packs').
+        :param pack_collection: A PackCollection into which this is being
+            inserted.
         :param upload_suffix: An optional suffix to be given to any temporary
             files created during the pack creation. e.g '.autopack'
         :param file_mode: An optional file mode to create the new files with.
@@ -275,11 +270,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # We also group referenced texts together, so if one root references a
         # text with prefix 'a', and another root references a node with prefix
         # 'a', we want to yield those nodes before we yield the nodes for 'b'
-        # This keeps 'similar' nodes together
+        # This keeps 'similar' nodes together.
 
         # Note: We probably actually want multiple streams here, to help the
         #       client understand that the different levels won't compress well
-        #       against eachother
+        #       against each other.
         #       Test the difference between using one Group per level, and
         #       using 1 Group per prefix. (so '' (root) would get a group, then
         #       all the references to search-key 'a' would get a group, etc.)
@@ -303,7 +298,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                         common_base = node._search_prefix
                         if isinstance(node, chk_map.InternalNode):
                             for prefix, value in node._items.iteritems():
-                                assert isinstance(value, tuple)
+                                if not isinstance(value, tuple):
+                                    raise AssertionError("value is %s when"
+                                        " tuple expected" % (value.__class__))
                                 if value not in next_keys:
                                     keys_by_search_prefix.setdefault(prefix,
                                         []).append(value)
@@ -323,9 +320,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         for stream in _get_referenced_stream(p_id_roots):
             yield stream
         if remaining_keys:
-            trace.note('There were %d keys in the chk index, which'
-                       ' were not referenced from inventories',
-                       len(remaining_keys))
+            note('There were %d keys in the chk index, which were not'
+                ' referenced from inventories', len(remaining_keys))
             stream = source_vf.get_record_stream(remaining_keys, 'unordered',
                                                  True)
             yield stream
@@ -345,17 +341,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             # Create a new temp VersionedFile instance based on these packs,
             # and then just fetch everything into the target
 
-            # XXX: Find a way to 'set_optimize' on the newly created pack
-            #      indexes
-            #    def open_pack(self):
-            #       """Open a pack for the pack we are creating."""
-            #       new_pack = super(OptimisingPacker, self).open_pack()
-            #       # Turn on the optimization flags for all the index builders.
-            #       new_pack.revision_index.set_optimize(for_size=True)
-            #       new_pack.inventory_index.set_optimize(for_size=True)
-            #       new_pack.text_index.set_optimize(for_size=True)
-            #       new_pack.signature_index.set_optimize(for_size=True)
-            #       return new_pack
             to_copy = [('revision_index', 'revisions'),
                        ('inventory_index', 'inventories'),
                        ('text_index', 'texts'),
@@ -376,7 +361,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                                       ' being written.'
                                       % (self.__class__.__name__,))
             new_pack = self.pack_factory(self, 'autopack',
-                                         self.repo.bzrdir._get_file_mode())
+                file_mode=self.repo.bzrdir._get_file_mode())
             new_pack.set_write_cache_size(1024*1024)
             # TODO: A better alternative is to probably use Packer.open_pack(), and
             #       then create a GroupCompressVersionedFiles() around the
@@ -420,7 +405,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                             def pb_stream():
                                 substream = source_vf.get_record_stream(keys, 'gc-optimal', True)
                                 for idx, record in enumerate(substream):
-                                    child_pb.update(vf_name, idx, len(keys))
+                                    child_pb.update(vf_name, idx + 1, len(keys))
                                     yield record
                             stream = pb_stream()
                         target_vf.insert_record_stream(stream)
@@ -522,7 +507,7 @@ class GCPackRepository(KnitPackRepository):
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
         # Note: We cannot unpack a delta that references a text we haven't seen yet.
-        #       there are 2 options, work in fulltexts, or require topological
+        #       There are 2 options, work in fulltexts, or require topological
         #       sorting. Using fulltexts is more optimal for local operations,
         #       because the source can be smart about extracting multiple
         #       in-a-row (and sharing strings). Topological is better for
@@ -591,6 +576,12 @@ if chk_support:
             self._reconcile_does_inventory_gc = True
             self._reconcile_fixes_text_parents = True
             self._reconcile_backsup_inventory = False
+            # Note: We cannot unpack a delta that references a text we haven't
+            # seen yet. There are 2 options, work in fulltexts, or require
+            # topological sorting. Using fulltexts is more optimal for local
+            # operations, because the source can be smart about extracting
+            # multiple in-a-row (and sharing strings). Topological is better
+            # for remote, because we access less data.
             self._fetch_order = 'unordered'
             self._fetch_gc_optimal = True
             self._fetch_uses_deltas = False
