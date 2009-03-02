@@ -249,7 +249,8 @@ def apply_delta(source_bytes, delta_bytes):
     # handling, and to avoid double allocating memory
     if (delta_size < DELTA_SIZE_MIN):
         # XXX: Invalid delta block
-        return None
+        raise RuntimeError('delta_size %d smaller than min delta size %d'
+                           % (delta_size, DELTA_SIZE_MIN))
 
     data = <unsigned char *>delta
     top = data + delta_size
@@ -259,7 +260,8 @@ def apply_delta(source_bytes, delta_bytes):
     size = get_delta_hdr_size(&data, top)
     if (size > source_size):
         # XXX: mismatched source size
-        return None
+        raise RuntimeError('source size %d < expected source size %d'
+                           % (source_size, size))
     source_size = size
 
     # now the result size
@@ -302,13 +304,17 @@ def apply_delta(source_bytes, delta_bytes):
             if (cp_off + cp_size < cp_size or
                 cp_off + cp_size > source_size or
                 cp_size > size):
-                break
+                raise RuntimeError('Something wrong with:'
+                    ' cp_off = %s, cp_size = %s'
+                    ' source_size = %s, size = %s'
+                    % (cp_off, cp_size, source_size, size))
             memcpy(out, source + cp_off, cp_size)
             out = out + cp_size
             size = size - cp_size
         elif (cmd):
             if (cmd > size):
-                break
+                raise RuntimeError('Insert instruction longer than remaining'
+                    ' bytes: %d > %d' % (cmd, size))
             memcpy(out, data, cmd)
             out = out + cmd
             data = data + cmd
@@ -320,11 +326,14 @@ def apply_delta(source_bytes, delta_bytes):
             #  * encountering them (might be data corruption).
             #  */
             ## /* XXX: error("unexpected delta opcode 0"); */
-            return None
+            raise RuntimeError('Got delta opcode: 0, not supported')
 
     # /* sanity check */
     if (data != top or size != 0):
         ## /* XXX: error("delta replay has gone wild"); */
+        raise RuntimeError('Did not extract the number of bytes we expected'
+            ' we were left with %d bytes in "size", and top - data = %d'
+            % (size, <int>(top - data)))
         return None
 
     # *dst_size = out - dst_buf;

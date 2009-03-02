@@ -167,6 +167,10 @@ class GroupCompressor(object):
             new_chunks = []
         else:
             new_chunks = ['label:%s\nsha1:%s\n' % (label, sha1)]
+        if self._delta_index._source_offset != self.endpoint:
+            raise AssertionError('_source_offset != endpoint'
+                ' somehow the DeltaIndex got out of sync with'
+                ' the output lines')
         delta = self._delta_index.make_delta(target_text)
         if (delta is None
             or len(delta) > len(target_text) / 2):
@@ -178,10 +182,6 @@ class GroupCompressor(object):
                 new_chunks.insert(0, 'fulltext\n')
                 new_chunks.append('len:%s\n' % (input_len,))
             unadded_bytes = sum(map(len, new_chunks))
-            deltas_unadded = (self.endpoint - self._delta_index._source_offset)
-            if deltas_unadded != 0:
-                import pdb; pdb.set_trace()
-            unadded_bytes += deltas_unadded
             self._delta_index.add_source(target_text, unadded_bytes)
             new_chunks.append(target_text)
         else:
@@ -190,6 +190,7 @@ class GroupCompressor(object):
             else:
                 new_chunks.insert(0, 'delta\n')
                 new_chunks.append('len:%s\n' % (len(delta),))
+            # unadded_bytes = sum(map(len, new_chunks))
             # self._delta_index.add_source(delta, unadded_bytes)
             new_chunks.append(delta)
             unadded_bytes = sum(map(len, new_chunks))

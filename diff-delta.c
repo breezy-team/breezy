@@ -446,8 +446,8 @@ create_delta(struct delta_index **indexes,
 					if (msize < ref - entry->ptr) {
 						/* this is our best match so far */
 						msize = ref - entry->ptr;
-						moff = entry->ptr - ref_data;
 						mindex = index;
+						moff = entry->ptr - ref_data + mindex->agg_src_offset;
 						if (msize >= 4096) /* good enough */
 							break;
 					}
@@ -477,10 +477,17 @@ create_delta(struct delta_index **indexes,
 			unsigned char *op;
 
 			if (inscnt) {
+				unsigned int local_moff;
+
+				/* moff is the offset in the global structure, we only want the
+				 * offset in the local source.
+				 */
+				local_moff = moff - mindex->agg_src_offset;
 				ref_data = mindex->src_buf;
-				while (moff && ref_data[moff-1] == data[-1]) {
+				while (local_moff && ref_data[local_moff-1] == data[-1]) {
 					/* we can match one byte back */
 					msize++;
+					local_moff--;
 					moff--;
 					data--;
 					outpos--;
@@ -501,10 +508,6 @@ create_delta(struct delta_index **indexes,
 			op = out + outpos++;
 			i = 0x80;
 
-			/* so far, moff has been the offset in a single source, however,
-			 * now we encode it as the offset in the aggregate source
-			 */
-			moff = moff + mindex->agg_src_offset;
 			if (moff & 0x000000ff)
 				out[outpos++] = moff >> 0,  i |= 0x01;
 			if (moff & 0x0000ff00)
