@@ -20,6 +20,7 @@
 import os
 import shutil
 import subprocess
+import tarfile
 import tempfile
 
 from debian_bundle.changelog import Version
@@ -39,7 +40,8 @@ class UpstreamProvider(object):
     """
 
     def __init__(self, tree, branch, package, version, store_dir,
-            larstiq=False, upstream_branch=None, upstream_revision=None):
+            larstiq=False, upstream_branch=None, upstream_revision=None,
+            allow_split=False):
         """Create an UpstreamProvider.
 
         :param tree: The tree that is being built from.
@@ -52,6 +54,8 @@ class UpstreamProvider(object):
             if needed.
         :param upstream_revision: The revision to use of the upstream branch
             if it is used.
+        :param allows_split: Whether the provider can provide the tarball
+            by exporting the branch and removing the "debian" dir.
         """
         self.tree = tree
         self.branch = branch
@@ -61,6 +65,7 @@ class UpstreamProvider(object):
         self.larstiq = larstiq
         self.upstream_branch = upstream_branch
         self.upstream_revision = upstream_revision
+        self.allows_split = allows_split
 
     def provide(self, target_dir):
         """Provide the upstream tarball any way possible.
@@ -99,6 +104,8 @@ class UpstreamProvider(object):
             elif self.provide_with_get_orig_source(self.store_dir):
                 pass
             elif self.provide_from_upstream_branch(self.store_dir):
+                pass
+            elif self.provide_from_self_by_split(self.store_dir):
                 pass
         if self.provide_from_store_dir(target_dir):
             return os.path.join(target_dir, self._tarball_name())
@@ -229,12 +236,30 @@ class UpstreamProvider(object):
         try:
             rev_tree = self.upstream_branch.repository.revision_tree(
                     self.upstream_revision)
-            dest = os.path.join(target_dir, self._tarball_name)
+            dest = os.path.join(target_dir, self._tarball_name())
             tarball_base = "%s-%s" % (self.package, self.version)
             export(rev_tree, dest, 'tgz', tarball_base)
             return True
         finally:
             self.upstream_branch.unlock()
+
+    def provide_from_self_by_split(self, target_dir):
+        if not self.allow_split:
+            return False
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
+        try:
+            export_dir = os.path.join(tmpdir,
+                    "%s-%s" % (self.package, self.version))
+            export(self.tree, export_dir, format="dir")
+            shutil.rmtree(os.path.join(export_dir, "debian"))
+            target_file = os.path.join(target_dir, self._tarball_name())
+            tar = tarfile.open(target_file, "w:gz")
+            try:
+                tar.add(export_dir, "%s-%s" % (self.package, self.version))
+            finally:
+                tar.close()
+        finally:
+            shutil.rmtree(tmpdir)
 
 
 class _MissingUpstreamProvider(UpstreamProvider):

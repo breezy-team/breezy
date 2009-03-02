@@ -89,6 +89,8 @@ builder_opt = Option('builder',
     help="Command to build the package", type=str)
 merge_opt = Option('merge',
     help='Merge the debian part of the source in to the upstream tarball')
+split_opt = Option('split',
+    help="Automatically create an .orig.tar.gz from a full source branch")
 build_dir_opt = Option('build-dir',
     help="The dir to use for building", type=str)
 orig_dir_opt = Option('orig-dir',
@@ -192,7 +194,7 @@ class cmd_builddeb(Command):
     aliases = ['bd']
     takes_options = [working_tree_opt, export_only_opt,
         dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
-        build_dir_opt, orig_dir_opt,
+        build_dir_opt, orig_dir_opt, split_opt,
         export_upstream_opt, export_upstream_revision_opt,
         quick_opt, reuse_opt, native_opt,
         source_opt, 'revision',
@@ -229,18 +231,25 @@ class cmd_builddeb(Command):
             working_tree = False
         return tree, working_tree
 
-    def _build_type(self, config, merge, native):
+    def _build_type(self, config, merge, native, split):
         if not merge:
             merge = config.merge
-
         if merge:
             info("Running in merge mode")
+            native = False
+            split = False
         else:
             if not native:
                 native = config.native
             if native:
                 info("Running in native mode")
-        return merge, native
+                split = False
+            else:
+                if not split:
+                    split = config.split
+                if split:
+                    info("Running in split mode")
+        return merge, native, split
 
     def _get_build_command(self, config, builder, quick, build_options):
         if builder is None:
@@ -328,7 +337,7 @@ class cmd_builddeb(Command):
             export_only=False, dont_purge=False, use_existing=False,
             result_dir=None, builder=None, merge=False, build_dir=None,
             export_upstream=None, export_upstream_revision=None,
-            orig_dir=None,
+            orig_dir=None, split=None,
             quick=False, reuse=False, native=False,
             source=False, revision=None, no_user_config=False, result=None):
         branch, build_options, source = self._branch_and_build_options(
@@ -342,7 +351,7 @@ class cmd_builddeb(Command):
                 info("Reusing existing build dir")
                 dont_purge = True
                 use_existing = True
-            merge, native = self._build_type(config, merge, native)
+            merge, native, split = self._build_type(config, merge, native, split)
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
             (changelog, larstiq) = find_changelog(tree, merge)
@@ -355,8 +364,8 @@ class cmd_builddeb(Command):
 
             upstream_provider = UpstreamProvider(tree, branch,
                     changelog.package, changelog.version.upstream_version,
-                    orig_dir, larstiq=larstiq, upstream_branch,
-                    upstream_revision)
+                    orig_dir, larstiq=larstiq, upstream_branch=upstream_branch,
+                    upstream_revision=upstream_revision, allow_split=split)
 
             if merge:
                 distiller_cls = MergeModeDistiller
