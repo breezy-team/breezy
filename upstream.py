@@ -39,7 +39,7 @@ class UpstreamProvider(object):
     """
 
     def __init__(self, tree, branch, package, version, store_dir,
-            larstiq=False):
+            larstiq=False, upstream_branch=None, upstream_revision=None):
         """Create an UpstreamProvider.
 
         :param tree: The tree that is being built from.
@@ -48,6 +48,10 @@ class UpstreamProvider(object):
         :param version: the Version of the package that is being built.
         :param store_dir: A directory to cache the tarballs.
         :param larstiq: Whether the tree versions the root of ./debian.
+        :param upstream_branch: An upstream branch that can be exported
+            if needed.
+        :param upstream_revision: The revision to use of the upstream branch
+            if it is used.
         """
         self.tree = tree
         self.branch = branch
@@ -55,6 +59,8 @@ class UpstreamProvider(object):
         self.version = version
         self.store_dir = store_dir
         self.larstiq = larstiq
+        self.upstream_branch = upstream_branch
+        self.upstream_revision = upstream_revision
 
     def provide(self, target_dir):
         """Provide the upstream tarball any way possible.
@@ -91,6 +97,8 @@ class UpstreamProvider(object):
             elif self.provide_with_uscan(self.store_dir):
                 pass
             elif self.provide_with_get_orig_source(self.store_dir):
+                pass
+            elif self.provide_from_upstream_branch(self.store_dir):
                 pass
         if self.provide_from_store_dir(target_dir):
             return os.path.join(target_dir, self._tarball_name())
@@ -212,6 +220,21 @@ class UpstreamProvider(object):
 
     def _tarball_name(self):
         return "%s_%s.orig.tar.gz" % (self.package, self.version)
+
+    def provide_from_upstream_branch(self, target_dir):
+        if self.upstream_branch is None:
+            return False
+        assert self.upstream_revision is not None
+        self.upstream_branch.lock_read()
+        try:
+            rev_tree = self.upstream_branch.repository.revision_tree(
+                    self.upstream_revision)
+            dest = os.path.join(target_dir, self._tarball_name)
+            tarball_base = "%s-%s" % (self.package, self.version)
+            export(rev_tree, dest, 'tgz', tarball_base)
+            return True
+        finally:
+            self.upstream_branch.unlock()
 
 
 class _MissingUpstreamProvider(UpstreamProvider):

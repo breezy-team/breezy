@@ -42,6 +42,7 @@ from bzrlib.errors import (BzrCommandError,
                            )
 from bzrlib.export import export
 from bzrlib.option import Option
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import info, warning
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
@@ -192,6 +193,7 @@ class cmd_builddeb(Command):
     takes_options = [working_tree_opt, export_only_opt,
         dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
         build_dir_opt, orig_dir_opt,
+        export_upstream_opt, export_upstream_revision_opt,
         quick_opt, reuse_opt, native_opt,
         source_opt, 'revision',
         no_user_conf_opt, result_compat_opt]
@@ -295,10 +297,37 @@ class cmd_builddeb(Command):
             source = True
         return branch, build_options, source
 
+    def _get_upstream_branch(self, merge, export_upstream,
+            export_upstream_revision):
+        upstream_branch = None
+        upstream_revision = None
+        if merge:
+            if export_upstream is None:
+                export_upstream = config.export_upstream
+            if export_upstream:
+                upstream_branch = Branch.open(export_upstream)
+                upstream_branch.lock_read()
+                try:
+                    if export_upstream_revision is None:
+                        export_upstream_revision = \
+                                    config.export_upstream_revision
+                    if export_upstream_revision is None:
+                        upstream_revision = \
+                                upstream_branch.last_revision()
+                    else:
+                        upstream_revspec = RevisionSpec.from_string(
+                                export_upstream_revision)
+                        upstream_revision = \
+                            upstream_revspec.as_revision_id(upstream_branch)
+                finally:
+                    upstream_branch.unlock()
+        return (upstream_branch, upstream_revision)
+
     def run(self, branch_or_build_options_list=None, verbose=False,
             working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
             result_dir=None, builder=None, merge=False, build_dir=None,
+            export_upstream=None, export_upstream_revision=None,
             orig_dir=None,
             quick=False, reuse=False, native=False,
             source=False, revision=None, no_user_config=False, result=None):
@@ -320,9 +349,14 @@ class cmd_builddeb(Command):
             result_dir, build_dir, orig_dir = self._get_dirs(config, is_local,
                     result_dir, result, build_dir, orig_dir)
 
+            upstream_branch, upstream_revision = \
+                    self._get_upstream_branch(merge, export_upstream,
+                            export_upstream_revision)
+
             upstream_provider = UpstreamProvider(tree, branch,
                     changelog.package, changelog.version.upstream_version,
-                    orig_dir, larstiq=larstiq)
+                    orig_dir, larstiq=larstiq, upstream_branch,
+                    upstream_revision)
 
             if merge:
                 distiller_cls = MergeModeDistiller

@@ -237,6 +237,25 @@ class DebBuildConfig(object):
   upstream_branch = _opt_property('upstream-branch',
           "The upstream branch to merge from")
 
+  export_upstream = _opt_property('export-upstream',
+                         "Get the upstream source from another branch")
+
+  def _get_export_upstream_revision(self):
+    rev = None
+    if self.version is not None:
+      rev = get_snapshot_revision(str(self.version.upstream_version))
+    if rev is None:
+      rev = self._get_best_opt('export-upstream-revision')
+      if rev is not None and self.version is not None:
+        rev = rev.replace('$UPSTREAM_VERSION',
+                          str(self.version.upstream_version))
+    return rev
+
+  export_upstream_revision = property(_get_export_upstream_revision, None,
+                         None,
+                         "The revision of the upstream branch to export.")
+
+
 def _test():
   import doctest
   doctest.testmod()
