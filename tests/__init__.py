@@ -194,7 +194,7 @@ class BuilddebTestCase(TestCaseWithTransport):
       else:
         real_expected = [basedir]
       for item in expected:
-        real_expected.append(os.path.join(basedir, item))
+        real_expected.append(os.path.join(basedir, item).rstrip("/"))
     extras = []
     tar = tarfile.open(tarball, 'r:gz')
     try:
