@@ -642,6 +642,9 @@ class cmd_import_dsc(Command):
                                       "source package to install, or use the "
                                       "--file option.")
             config = debuild_config(tree, tree, False)
+            if config.merge:
+                raise BzrCommandError("import-dsc in merge mode is not "
+                        "yet supported.")
             orig_dir = config.orig_dir or default_orig_dir
             orig_target = os.path.join(tree.basedir, default_orig_dir)
             db = DistributionBranch(tree.branch, None, tree=tree)
