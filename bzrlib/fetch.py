@@ -66,9 +66,6 @@ class RepoFetcher(object):
     last_revision
         if set, try to limit to the data this revision references.
 
-    after running:
-    count_copied -- number of revisions copied
-
     This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
@@ -82,9 +79,6 @@ class RepoFetcher(object):
             exists to facilitate a hack done in InterPackRepo.fetch.  We would
             like to remove this parameter.
         """
-        # result variables.
-        self.failed_revisions = []
-        self.count_copied = 0
         if to_repository.has_same_location(from_repository):
             # repository.fetch should be taking care of this case.
             raise errors.BzrError('RepoFetcher run '
@@ -223,7 +217,6 @@ class RepoFetcher(object):
                     yield _
             else:
                 raise AssertionError("Unknown knit kind %r" % knit_kind)
-        self.count_copied += len(revs)
 
     def get_stream_for_missing_keys(self, missing_keys):
         # missing keys can only occur when we are byte copying and not

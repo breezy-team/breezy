@@ -2571,8 +2571,7 @@ class InterRepository(InterObject):
                             content is copied.
         :param pb: optional progress bar to use for progress reports. If not
                    provided a default one will be created.
-
-        :returns: (copied_revision_count, failures).
+        :return: None.
         """
         # Normally we should find a specific InterRepository subclass to do
         # the fetch; if nothing else then at least InterSameDataRepository.
@@ -2761,7 +2760,6 @@ class InterSameDataRepository(InterRepository):
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
 
 class InterWeaveRepo(InterSameDataRepository):
@@ -2841,7 +2839,6 @@ class InterWeaveRepo(InterSameDataRepository):
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2922,7 +2919,6 @@ class InterKnitRepo(InterSameDataRepository):
                             from_repository=self.source,
                             last_revision=revision_id,
                             pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2994,7 +2990,6 @@ class InterPackRepo(InterSameDataRepository):
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
-            return fetcher.count_copied, fetcher.failed_revisions
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         self.count_copied = 0
@@ -3117,7 +3112,6 @@ class InterModel1and2(InterRepository):
                                  from_repository=self.source,
                                  last_revision=revision_id,
                                  pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     @needs_write_lock
     def copy_content(self, revision_id=None):
@@ -3210,7 +3204,6 @@ class InterKnit1and2(InterKnitRepo):
                             from_repository=self.source,
                             last_revision=revision_id,
                             pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
 
 class InterDifferingSerializer(InterKnitRepo):
@@ -3494,7 +3487,6 @@ class InterPackToRemotePack(InterPackRepo):
         from bzrlib.fetch import RepoFetcher
         fetcher = RepoFetcher(self.target, self.source, revision_id,
                               pb, find_ghosts)
-        return fetcher.count_copied, fetcher.failed_revisions
 
     def _get_target_pack_collection(self):
         return self.target._real_repository._pack_collection

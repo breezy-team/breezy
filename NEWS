@@ -108,6 +108,13 @@ IN DEVELOPMENT
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
 
+    * ``Branch.fetch`` and ``Repository.fetch`` now return None rather
+      than a count of copied revisions and failed revisions. A while back
+      we stopped ever reporting failed revisions because we started
+      erroring instead, and the copied revisions count is not used in the
+      UI at all - indeed it only reflects the repository status not
+      changes to the branch itself. (Robert Collins)
+
     * The ``_fetch_*`` attributes on ``Repository`` are now on
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular

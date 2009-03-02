@@ -464,9 +464,7 @@ class Branch(object):
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
         :param pb: An optional progress bar to use.
-
-        Returns the copied revision count and the failed revisions in a tuple:
-        (copied, failures).
+        :return: None
         """
         if self.base == from_branch.base:
             return (0, [])
