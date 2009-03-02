@@ -54,6 +54,15 @@ class BzrConformingFS(ftpserver.AbstractedFS):
         # paths is better handled. -- vila 20090228
         return [str(s) for s in os.listdir(path)]
 
+    def fs2ftp(self, fspath):
+        p = ftpserver.AbstractedFS.fs2ftp(self, fspath)
+        # We should never send unicode strings, they are not handled properly
+        # by the stack (asynchat.async_chat.initiate_send using a buffer()
+        # starting with python2.6 may be the real culprit, but converting to
+        # str() here fixes the problem.  that may need to be revisited once
+        # unicode or at least utf-8 encoded paths is better handled. -- vila
+        # 20090228
+        return str(p)
 
 class BZRConformingFTPHandler(ftpserver.FTPHandler):
 
@@ -122,6 +131,8 @@ class ftp_server(ftpserver.FTPServer):
     def __init__(self, address, handler, authorizer):
         ftpserver.FTPServer.__init__(self, address, handler)
         self.authorizer = authorizer
+        # Worth backporting updstream ?
+        self.addr = self.socket.getsockname()
 
 
 class FTPServer(transport.Server):
@@ -134,6 +145,7 @@ class FTPServer(transport.Server):
         self._async_thread = None
         # ftp server logs
         self.logs = []
+        self._ftpd_running = False
 
     def get_url(self):
         """Calculate an ftp url to this server."""
@@ -172,31 +184,21 @@ class FTPServer(transport.Server):
         # Don't let it loop forever, or handle an infinite number of requests.
         # In this case it will run for 1000s, or 10000 requests
         self._async_thread = threading.Thread(
-                target=self._asyncore_loop_ignore_EBADF,
-                kwargs={'timeout':0.1,
-                        'count':100000,
-                        })
-        self._async_thread.setDaemon(True)
+                target=self._run_server,)
         self._async_thread.start()
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        self._ftp_server.close_all()
+        # Tell the server to stop
+        self._ftpd_running = False
+        # But also close the server socket for tests that start the server but
+        # never initiate a connection.
+        self._ftp_server.close()
         self._async_thread.join()
 
-    def _asyncore_loop_ignore_EBADF(self, *args, **kwargs):
-        """Ignore EBADF during server shutdown.
-
-        We close the socket to get the server to shutdown, but this causes
-        select.select() to raise EBADF.
+    def _run_server(self):
+        """Run the server until tearDown is called, shut it down properly then.
         """
-        try:
-            self._ftp_server.serve_forever(*args, **kwargs)
-            # FIXME: If we reach that point, we should raise an exception
-            # explaining that the 'count' parameter in setUp is too low or
-            # testers may wonder why their test just sits there waiting for a
-            # server that is already dead. Note that if the tester waits too
-            # long under pdb the server will also die.
-        except select.error, e:
-            if e.args[0] != errno.EBADF:
-                raise
+        self._ftpd_running = True
+        self._ftp_server.serve_forever(timeout=0.1, count=10000,
+                                       until=lambda : not self._ftpd_running)
