@@ -2078,7 +2078,10 @@ class DistributionBranchTests(TestCaseWithTransport):
         builder.add_default_control()
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        builder.new_version(version2)
+        change_text = ("  [ Other Maint ]\n"
+                "  * Foo, thanks Bar \n"
+                "  * Bar, thanks Foo <foo@foo.org>\n\n")
+        builder.new_version(version2, change_text=change_text)
         builder.add_upstream_file("README", "bar")
         builder.add_upstream_file("COPYING", "Please do\n")
         builder.add_upstream_file("src.c")
@@ -2118,6 +2121,12 @@ class DistributionBranchTests(TestCaseWithTransport):
                 removed=["NEWS", "debian/", "debian/changelog",
                 "debian/control"],
                 modified=["README", "COPYING"])
+        revid = self.tree1.last_revision()
+        imported_rev = self.tree1.branch.repository.get_revision(revid)
+        props = imported_rev.properties
+        self.assertEqual(props["authors"], "Maint <maint@maint.org>\n"
+                "Other Maint")
+        self.assertEqual(props["deb-thanks"], "Bar\nFoo <foo@foo.org>")
 
     def test_import_two_roots(self):
         version1 = Version("0.1-0ubuntu1")
