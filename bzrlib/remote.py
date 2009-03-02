@@ -1482,7 +1482,7 @@ class RemoteStreamSource(repository.StreamSource):
         try:
             recipe = repo._serialise_search_recipe(search._recipe)
             response = repo._call_with_body_bytes_expecting_body(
-                'Repository.StreamSource.get_stream',
+                'Repository.get_stream',
                 (path, self.to_format.network_name()), recipe)
             response_tuple, response_handler = response
         except errors.UnknownSmartMethod:
