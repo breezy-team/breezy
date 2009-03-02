@@ -40,7 +40,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
 import bzrlib.ui
-from bzrlib.versionedfile import filter_absent, FulltextContentFactory
+from bzrlib.versionedfile import FulltextContentFactory
 
 # TODO: Avoid repeatedly opening weaves so many times.
 

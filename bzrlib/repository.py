@@ -3675,7 +3675,7 @@ class StreamSource(object):
         from_sf = self.from_repository.signatures
         # A missing signature is just skipped.
         keys = [(rev_id,) for rev_id in revs]
-        signatures = filter_absent(from_sf.get_record_stream(
+        signatures = versionedfile.filter_absent(from_sf.get_record_stream(
             keys,
             self.to_format._fetch_order,
             not self.to_format._fetch_uses_deltas))
