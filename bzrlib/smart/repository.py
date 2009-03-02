@@ -333,7 +333,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok', token))
 
 
-class SmartServerRepositoryStreamSourceGetStream(SmartServerRepositoryRequest):
+class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, to_network_name):
         """Get a stream for inserting into a to_format repository.
@@ -400,7 +400,7 @@ def _stream_to_byte_stream(stream, src_format):
 
 
 def _byte_stream_to_stream(byte_stream):
-    """Convert a byte stream into a format and a StreamSource stream.
+    """Convert a byte stream into a format and a stream.
 
     :param byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
     :return: (RepositoryFormat, stream_generator)

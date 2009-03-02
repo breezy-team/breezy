@@ -1201,8 +1201,8 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Repository.lock_write'),
             smart.repository.SmartServerRepositoryLockWrite)
         self.assertEqual(
-            smart.request.request_handlers.get('Repository.StreamSource.get_stream'),
-            smart.repository.SmartServerRepositoryStreamSourceGetStream)
+            smart.request.request_handlers.get('Repository.get_stream'),
+            smart.repository.SmartServerRepositoryGetStream)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
             smart.repository.SmartServerRepositoryTarball)
