@@ -1158,10 +1158,10 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         if response.body is not None:
             self._write_prefixed_body(response.body)
         elif response.body_stream is not None:
-            for stream_error, chunk in _iter_with_errors(response.body_stream):
-                if stream_error is not None:
+            for exc_info, chunk in _iter_with_errors(response.body_stream):
+                if exc_info is not None:
                     self._write_error_status()
-                    error_struct = request._translate_error(stream_error[1])
+                    error_struct = request._translate_error(exc_info[1])
                     self._write_structure(error_struct)
                     break
                 else:
@@ -1198,6 +1198,8 @@ def _iter_with_errors(iterable):
     while True:
         try:
             yield None, iterator.next()
+        except StopIteration:
+            return
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
@@ -1283,20 +1285,19 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         #       have finished sending the stream.  We would notice at the end
         #       anyway, but if the medium can deliver it early then it's good
         #       to short-circuit the whole request...
-        try:
-            for part in stream:
+        for exc_info, part in _iter_with_errors(stream):
+            if exc_info is not None:
+                # Iterating the stream failed.  Cleanly abort the request.
+                self._write_error_status()
+                # Currently the client unconditionally sends ('error',) as the
+                # error args.
+                self._write_structure(('error',))
+                self._write_end()
+                self._medium_request.finished_writing()
+                raise exc_info[0], exc_info[1], exc_info[2]
+            else:
                 self._write_prefixed_body(part)
                 self.flush()
-        except Exception:
-            exc_info = sys.exc_info()
-            # Iterating the stream failed.  Cleanly abort the request.
-            self._write_error_status()
-            # Currently the client unconditionally sends ('error',) as the
-            # error args.
-            self._write_structure(('error',))
-            self._write_end()
-            self._medium_request.finished_writing()
-            raise exc_info[0], exc_info[1], exc_info[2]
         self._write_end()
         self._medium_request.finished_writing()
 
