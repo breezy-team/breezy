@@ -122,6 +122,7 @@ def test_suite():
     suite = TestSuite()
     testmod_names = [
             'test_builder',
+            'test_commit_message',
             'test_config',
             'test_hooks',
             'test_import_dsc',
