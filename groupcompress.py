@@ -86,7 +86,6 @@ def sort_gc_optimal(parent_map):
     # gc-optimal ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    present_keys = []
     for item in parent_map.iteritems():
         key = item[0]
         if isinstance(key, str) or len(key) == 1:
@@ -98,6 +97,7 @@ def sort_gc_optimal(parent_map):
         except KeyError:
             per_prefix_map[prefix] = [item]
 
+    present_keys = []
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
     return present_keys
@@ -122,7 +122,7 @@ class GroupCompressor(object):
     def __init__(self, delta=True):
         """Create a GroupCompressor.
 
-        :paeam delta: If False, do not compress records.
+        :param delta: If False, do not compress records.
         """
         # Consider seeding the lines with some sort of GC Start flag, or
         # putting it as part of the output stream, rather than in the
@@ -141,7 +141,7 @@ class GroupCompressor(object):
             element is 'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
         :param chunks: The chunks to be compressed
-        :param expected_sha: If non-None, the sha the lines are blieved to
+        :param expected_sha: If non-None, the sha the lines are believed to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
         :param soft: Do a 'soft' compression. This means that we require larger
@@ -251,7 +251,7 @@ def make_pack_factory(graph, delta, keylength):
         parents = graph or delta
         ref_length = 0
         if graph:
-            ref_length += 1
+            ref_length = 1
         graph_index = BTreeBuilder(reference_lists=ref_length,
             key_elements=keylength)
         stream = transport.open_write_stream('newpack')
@@ -468,7 +468,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # Cheap: iterate
         locations = self._index.get_build_details(keys)
         local_keys = frozenset(keys).intersection(set(self._unadded_refs))
-        locations.update((key, None) for key in local_keys)
         if ordering == 'topological':
             # would be better to not globally sort initially but instead
             # start with one key, recurse to its oldest parent, then grab
@@ -489,7 +488,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
             #      somehow grouping based on locations[key][0:3]
             present_keys = sort_gc_optimal(parent_map)
         elif ordering == 'as-requested':
-            present_keys = [key for key in orig_keys if key in locations]
+            present_keys = [key for key in orig_keys if key in locations
+                            or key in local_keys]
         else:
             # We want to yield the keys in a semi-optimal (read-wise) ordering.
             # Otherwise we thrash the _group_cache and destroy performance
@@ -500,14 +500,14 @@ class GroupCompressVersionedFiles(VersionedFiles):
             present_keys = sorted(locations.iterkeys(), key=get_group)
             # We don't have an ordering for keys in the in-memory object, but
             # lets process the in-memory ones first.
-            local = list(local_keys)
             present_keys = list(local_keys) + present_keys
+        locations.update((key, None) for key in local_keys)
         absent_keys = keys.difference(set(locations))
         for key in absent_keys:
             yield AbsentContentFactory(key)
         for key in present_keys:
             if key in self._unadded_refs:
-                lines, sha1 = self._compressor.extract(key)
+                chunks, sha1 = self._compressor.extract(key)
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
@@ -565,6 +565,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         :seealso insert_record_stream:
         :seealso add_lines:
         """
+        adapters = {}
         def get_adapter(adapter_key):
             try:
                 return adapters[adapter_key]
@@ -573,7 +574,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 adapter = adapter_factory(self)
                 adapters[adapter_key] = adapter
                 return adapter
-        adapters = {}
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
         self._compressor = GroupCompressor(self._delta)
@@ -593,7 +593,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
-                raise errors.RevisionNotPresent([record.key], self)
+                raise errors.RevisionNotPresent(record.key, self)
             try:
                 lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             except errors.UnavailableRepresentation:
@@ -669,9 +669,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
             'unordered', True)):
             # XXX: todo - optimise to use less than full texts.
             key = record.key
-            pb.update('Walking content.', key_idx, total)
+            pb.update('Walking content.', key_idx + 1, total)
             if record.storage_kind == 'absent':
-                raise errors.RevisionNotPresent(record.key, self)
+                raise errors.RevisionNotPresent(key, self)
             lines = split_lines(record.get_bytes_as('fulltext'))
             for line in lines:
                 yield line, key
@@ -696,15 +696,13 @@ class _GCGraphIndex(object):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
-        :param is_locked: A callback to check whether the object should answer
-            queries.
+        :param is_locked: A callback, returns True if the index is locked and
+            thus usable.
         :param parents: If True, record knits parents, if not do not record 
             parents.
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
             [(node, value, node_refs), ...]
-        :param is_locked: A callback, returns True if the index is locked and
-            thus usable.
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
@@ -764,18 +762,21 @@ class _GCGraphIndex(object):
         self._add_callback(records)
         
     def _check_read(self):
-        """raise if reads are not permitted."""
+        """Raise an exception if reads are not permitted."""
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
 
     def _check_write_ok(self):
-        """Assert if writes are not permitted."""
+        """Raise an exception if writes are not permitted."""
         if not self._is_locked():
             raise errors.ObjectNotLocked(self)
 
     def _get_entries(self, keys, check_present=False):
         """Get the entries for keys.
-        
+
+        Note: Callers are responsible for checking that the index is locked
+        before calling this method.
+
         :param keys: An iterable of index key tuples.
         """
         keys = set(keys)
@@ -833,14 +834,13 @@ class _GCGraphIndex(object):
         """
         self._check_read()
         result = {}
-        entries = self._get_entries(keys, False)
+        entries = self._get_entries(keys)
         for entry in entries:
             key = entry[1]
             if not self._parents:
                 parents = None
             else:
                 parents = entry[3][0]
-            value = entry[2]
             method = 'group'
             result[key] = (self._node_to_position(entry),
                                   None, parents, (method, None))
