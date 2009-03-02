@@ -373,10 +373,10 @@ class DebMergeBuild(DebBuild):
       os.makedirs(source_dir)
       shutil.rmtree(source_dir)
       if len(files) == 1:
-        os.rename(files[0], source_dir)
+        shutil.move(files[0], source_dir)
         shutil.rmtree(tempdir)
       else:
-        os.rename(tempdir, source_dir)
+        shutil.move(tempdir, source_dir)
       if not upstream:
         shutil.copy(tarball, build_dir)
     else:
