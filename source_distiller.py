@@ -119,6 +119,7 @@ class MergeModeDistiller(SourceDistiller):
                 files = glob.glob(tempdir+'/*')
                 # If everything is in a single dir then move everything up one
                 # level.
+                shutil.rmtree(target)
                 if len(files) == 1:
                     shutil.move(files[0], target)
                 else:
