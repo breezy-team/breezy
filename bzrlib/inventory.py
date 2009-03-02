@@ -891,6 +891,43 @@ class CommonInventory(object):
         """
         raise NotImplementedError(self._get_mutable_inventory)
 
+    def make_entry(self, kind, name, parent_id, file_id=None):
+        """Simple thunk to bzrlib.inventory.make_entry."""
+        return make_entry(kind, name, parent_id, file_id)
+
+    def entries(self):
+        """Return list of (path, ie) for all entries except the root.
+
+        This may be faster than iter_entries.
+        """
+        accum = []
+        def descend(dir_ie, dir_path):
+            kids = dir_ie.children.items()
+            kids.sort()
+            for name, ie in kids:
+                child_path = osutils.pathjoin(dir_path, name)
+                accum.append((child_path, ie))
+                if ie.kind == 'directory':
+                    descend(ie, child_path)
+
+        descend(self.root, u'')
+        return accum
+
+    def directories(self):
+        """Return (path, entry) pairs for all directories, including the root.
+        """
+        accum = []
+        def descend(parent_ie, parent_path):
+            accum.append((parent_path, parent_ie))
+
+            kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
+            kids.sort()
+
+            for name, child_ie in kids:
+                child_path = osutils.pathjoin(parent_path, name)
+                descend(child_ie, child_path)
+        descend(self.root, u'')
+        return accum
 
 
 class Inventory(CommonInventory):
@@ -1055,44 +1092,6 @@ class Inventory(CommonInventory):
     def __len__(self):
         """Returns number of entries."""
         return len(self._byid)
-
-    def make_entry(self, kind, name, parent_id, file_id=None):
-        """Simple thunk to bzrlib.inventory.make_entry."""
-        return make_entry(kind, name, parent_id, file_id)
-
-    def entries(self):
-        """Return list of (path, ie) for all entries except the root.
-
-        This may be faster than iter_entries.
-        """
-        accum = []
-        def descend(dir_ie, dir_path):
-            kids = dir_ie.children.items()
-            kids.sort()
-            for name, ie in kids:
-                child_path = osutils.pathjoin(dir_path, name)
-                accum.append((child_path, ie))
-                if ie.kind == 'directory':
-                    descend(ie, child_path)
-
-        descend(self.root, u'')
-        return accum
-
-    def directories(self):
-        """Return (path, entry) pairs for all directories, including the root.
-        """
-        accum = []
-        def descend(parent_ie, parent_path):
-            accum.append((parent_path, parent_ie))
-
-            kids = [(ie.name, ie) for ie in parent_ie.children.itervalues() if ie.kind == 'directory']
-            kids.sort()
-
-            for name, child_ie in kids:
-                child_path = osutils.pathjoin(parent_path, name)
-                descend(child_ie, child_path)
-        descend(self.root, u'')
-        return accum
 
     def __getitem__(self, file_id):
         """Return the entry for given file_id.
