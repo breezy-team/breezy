@@ -341,6 +341,8 @@ create_delta(struct delta_index **indexes,
 		index = indexes[j];
 		i += index->src_size;
 	}
+	assert(i <= index->src_size + index->agg_src_offset);
+	i = index->src_size + index->agg_src_offset;
 	while (i >= 0x80) {
 		out[outpos++] = i | 0x80;
 		i >>= 7;

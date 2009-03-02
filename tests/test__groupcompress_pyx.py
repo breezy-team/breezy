@@ -60,6 +60,26 @@ has a lot more data
 at the end of the file
 """
 
+_first_text = """\
+a bit of text, that
+does not have much in
+common with the next text
+"""
+
+_second_text = """\
+some more bits of text
+which does have a little bit in
+common with the previous text
+"""
+
+
+_third_text = """\
+a bit of text, that
+has some in common with the previous text
+and not much in
+common with the next text
+"""
+
 
 class Test_GroupCompress(tests.TestCase):
     """Direct tests for the compiled extension."""
@@ -141,30 +161,36 @@ class TestDeltaIndex(Test_GroupCompress):
 
     def test_delta_against_multiple_sources(self):
         di = self._gc_module.DeltaIndex()
-        first_text = ('a bit of text, that\n'
-                      'does not have much in\n'
-                      'common with the next text\n'
-                     )
-        di.add_source(first_text)
+        di.add_source(_first_text, 0)
         self.assertEqual(1, di._num_indexes)
         self.assertEqual(1024, di._max_num_indexes)
-        self.assertEqual(len(first_text), di._source_offset)
-        second_text = ('some more bits of text\n'
-                       'which does have a little bit in\n'
-                       'common with the previous text\n'
-                      )
-        di.add_source(second_text)
+        self.assertEqual(len(_first_text), di._source_offset)
+        di.add_source(_second_text, 0)
         self.assertEqual(2, di._num_indexes)
         self.assertEqual(1024, di._max_num_indexes)
-        self.assertEqual(len(first_text) + len(second_text), di._source_offset)
-        third_text = ('a bit of text, that\n'
-                      'has some in common with the previous text\n'
-                      'and not much in\n'
-                      'common with the next text\n'
-                     )
-        delta = di.make_delta(third_text)
-        result = self._gc_module.apply_delta(first_text + second_text, delta)
-        self.assertEqualDiff(third_text, result)
+        self.assertEqual(len(_first_text) + len(_second_text), di._source_offset)
+        delta = di.make_delta(_third_text)
+        result = self._gc_module.apply_delta(_first_text + _second_text, delta)
+        self.assertEqualDiff(_third_text, result)
         self.assertEqual('\x99\x01h\x90\x14\x0chas some in '
                          '\x91{\x1e\x07and not\x91!#', delta)
 
+    def test_delta_with_offsets(self):
+        di = self._gc_module.DeltaIndex()
+        di.add_source(_first_text, 5)
+        self.assertEqual(1, di._num_indexes)
+        self.assertEqual(1024, di._max_num_indexes)
+        self.assertEqual(len(_first_text) + 5, di._source_offset)
+        di.add_source(_second_text, 10)
+        self.assertEqual(2, di._num_indexes)
+        self.assertEqual(1024, di._max_num_indexes)
+        self.assertEqual(len(_first_text) + len(_second_text) + 15,
+                         di._source_offset)
+        delta = di.make_delta(_third_text)
+        self.assertIsNot(None, delta)
+        result = self._gc_module.apply_delta(
+            '12345' + _first_text + '1234567890' + _second_text, delta)
+        self.assertIsNot(None, result)
+        self.assertEqualDiff(_third_text, result)
+        self.assertEqual('\xa8\x01h\x91\x05\x14\x0chas some in '
+                         '\x91\x8a\x1e\x07and not\x91&#', delta)

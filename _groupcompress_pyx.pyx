@@ -101,16 +101,23 @@ cdef class DeltaIndex:
         self._source_offset = 0
 
         if source is not None:
-            self.add_source(source)
+            self.add_source(source, 0)
 
     def __dealloc__(self):
         self._ensure_no_indexes()
 
-    def add_source(self, source):
+    def add_source(self, source, unadded_bytes):
+        """Add a new bit of source text to the delta indexes.
+
+        :param source: The text in question, this must be a byte string
+        :param unadded_bytes: Assume there are this many bytes that didn't get
+            added between this source and the end of the previous source.
+        """
         cdef char *c_source
         cdef Py_ssize_t c_source_size
         cdef delta_index *index
         cdef unsigned int num_indexes
+        cdef unsigned long agg_src_offset
 
         if not PyString_CheckExact(source):
             raise TypeError('source is not a str')
@@ -125,8 +132,9 @@ cdef class DeltaIndex:
         #       fit just fine into the structure. But for now, we just wrap
         #       create_delta_index (For example, we could always reserve enough
         #       space to hash a 4MB string, etc.)
-        index = create_delta_index(c_source, c_source_size, self._source_offset)
-        self._source_offset += c_source_size
+        agg_src_offset = self._source_offset + unadded_bytes
+        index = create_delta_index(c_source, c_source_size, agg_src_offset)
+        self._source_offset = agg_src_offset + c_source_size
         if index != NULL:
             num_indexes = self._num_indexes + 1
             if num_indexes >= self._max_num_indexes:
