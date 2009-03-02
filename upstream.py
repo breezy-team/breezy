@@ -90,7 +90,10 @@ class UpstreamProvider(object):
         :param target_dir: The directory to place the tarball in.
         :return: The path to the tarball.
         """
+        info("Looking for a way to retrieve the upstream tarball")
         if self.already_exists_in_target(target_dir):
+            info("Upstream tarball already exists in build directory, "
+                    "using that")
             return os.path.join(target_dir, self._tarball_name())
         if not self.already_exists_in_store():
             if not os.path.exists(self.store_dir):
@@ -107,6 +110,9 @@ class UpstreamProvider(object):
                 pass
             elif self.provide_from_self_by_split(self.store_dir):
                 pass
+        else:
+             info("Using the upstream tarball that is present in "
+                     "%s" % self.store_dir)
         if self.provide_from_store_dir(target_dir):
             return os.path.join(target_dir, self._tarball_name())
         raise MissingUpstreamTarball(self._tarball_name())
@@ -232,6 +238,7 @@ class UpstreamProvider(object):
         if self.upstream_branch is None:
             return False
         assert self.upstream_revision is not None
+        info("Exporting the upstream branch to create the tarball")
         self.upstream_branch.lock_read()
         try:
             rev_tree = self.upstream_branch.repository.revision_tree(
@@ -246,6 +253,8 @@ class UpstreamProvider(object):
     def provide_from_self_by_split(self, target_dir):
         if not self.allow_split:
             return False
+        info("Using the current branch without the 'debian' directory "
+                "to create the tarball")
         tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
         try:
             export_dir = os.path.join(tmpdir,
