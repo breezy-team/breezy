@@ -2817,6 +2817,28 @@ class TestResponseEncodingProtocolThree(tests.TestCase):
             # end of message
             'e')
 
+    def test_send_broken_body_stream(self):
+        encoder, out_stream = self.make_response_encoder()
+        encoder._headers = {}
+        def stream_that_fails():
+            yield 'aaa'
+            yield 'bbb'
+            raise Exception('Boom!')
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('args',), body_stream=stream_that_fails())
+        encoder.send_response(response)
+        self.assertEqual(
+            'bzr message 3 (bzr 1.6)\n'  # protocol marker
+            '\x00\x00\x00\x02de' # headers dict (empty)
+            'oS' # status flag (success)
+            's\x00\x00\x00\x08l4:argse' # args struct ('args,')
+            'b\x00\x00\x00\x03aaa' # body part ('aaa')
+            'b\x00\x00\x00\x03bbb' # body part ('bbb')
+            'oE' # status flag (error)
+            's\x00\x00\x00\x10l5:error5:Boom!e' # err struct ('error', 'Boom!')
+            'e' # EOM
+            , out_stream.getvalue())
+
 
 class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
     """Tests for buffering of responses.

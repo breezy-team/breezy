@@ -1158,10 +1158,28 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         if response.body is not None:
             self._write_prefixed_body(response.body)
         elif response.body_stream is not None:
-            for chunk in response.body_stream:
-                self._write_prefixed_body(chunk)
-                self.flush()
+            for stream_error, chunk in _trap_errors(response.body_stream):
+                if stream_error is not None:
+                    self._write_error_status()
+                    # XXX: Currently the server unconditionally sends
+                    # ('error', str(exception)) as the error args.
+                    error_struct = ('error', str(stream_error[1]))
+                    self._write_structure(error_struct)
+                    break
+                else:
+                    self._write_prefixed_body(chunk)
+                    self.flush()
         self._write_end()
+
+
+def _trap_errors(iterable):
+    iterator = iter(iterable)
+    while True:
+        try:
+            yield None, iterator.next()
+        except:
+            yield sys.exc_info(), None
+            return
 
 
 class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
