@@ -392,6 +392,11 @@ create_delta(struct delta_index **indexes,
 				i = val & index->hash_mask;
 				ref_top = index->src_buf + index->src_size;
 				ref_data = index->src_buf;
+				/* TODO: When using multiple indexes like this, the hash tables
+				 *		 mapping val => index_entry become less efficient.
+				 *		 You end up getting a lot more collisions in the hash,
+				 *		 which doesn't actually lead to a entry->val match.
+				 */
 				for (entry = index->hash[i]; entry < index->hash[i+1];
 					 entry++) {
 					const unsigned char *ref = entry->ptr;
