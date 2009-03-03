@@ -1,4 +1,4 @@
-bzr-builddeb (2.1~0ubuntu2) UNRELEASED; urgency=low
+bzr-builddeb (2.1) experimental; urgency=low
 
   * Merge the tags from the upstream branch when doing merge-upstream with
     a branch.
@@ -8,7 +8,7 @@ bzr-builddeb (2.1~0ubuntu2) UNRELEASED; urgency=low
   * Warn when the user uses the deprecated --result option. (LP: #268675)
   * Add "--release-heuristic changelog" to dch call after merge-upstream so
     that UNRELEASED entries are edited rather than a new stanza added.
-    (LP: #331994)
+    (Closes: #515921, LP: #331994)
   * Allow specifying the merge type in merge-upstream (LP: #310694)
   * Make merge mode work with Python 2.6 (LP: #336686)
   * Give a more informative message if pristine-tar isn't installed.
@@ -17,7 +17,9 @@ bzr-builddeb (2.1~0ubuntu2) UNRELEASED; urgency=low
     entry (LP: #335071)
   * Provide a commit message template based on additions to debian/changelog,
     similar to debcommit. Bump version of bzr required to 1.10, which is the
-    release that introduced the hook. (LP: #331993)
+    release that introduced the hook. (Closes: #497415, LP: #331993)
+  * Give a better error if the pristine upstream branch can't be located.
+    (Closes: #517869)
 
  -- James Westby <james.westby@ubuntu.com>  Thu, 19 Feb 2009 09:26:34 +0000
 
