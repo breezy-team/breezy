@@ -96,7 +96,7 @@ cdef class DeltaIndex:
     def __init__(self, source=None):
         self._sources = []
         self._index = NULL
-        self._max_num_sources = 4096
+        self._max_num_sources = 65000
         self._source_infos = <source_info *>safe_malloc(sizeof(source_info)
                                                         * self._max_num_sources)
         self._source_offset = 0

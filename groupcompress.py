@@ -68,8 +68,8 @@ def parse(bytes):
         or not len_line.startswith('len:')
         ):
         raise AssertionError("bad text record %r" % (bytes,))
-    label = tuple(label_line[6:].lstrip(' ').split('\x00'))
-    sha1 = sha1_line[5:].lstrip(' ')
+    label = tuple(label_line[6:].split('\x00'))
+    sha1 = sha1_line[5:]
     length = int(len_line[4:])
     if not len(delta_bytes) == length:
         raise AssertionError("bad length record %r" % (bytes,))
