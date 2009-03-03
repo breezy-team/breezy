@@ -121,10 +121,8 @@ class TestLogFormats(TestCaseInTempDir):
         repo_url = self.make_trivial_history()
 
         out, err = self.run_bzr(
-            ['log', self.get_url('repo/a'), '--log-format=changelog'])
+            ['log', self.get_url('repo/a'), '--log-format=changelog', '--timezone=utc'])
         self.assertEquals(err, '')
-        # FIXME: This test will only work today; branchbuilder needs to have a
-        # way to pass the commit date/time through to commit.  -- mbp 20090303
         self.assertEqualDiff(out,
 """2009-03-03  Joe Foo  <joe@foo.com>
 
@@ -138,7 +136,8 @@ class TestLogFormats(TestCaseInTempDir):
         bb = self.make_branch_builder('repo/a')
         bb.start_series()
         bb.build_snapshot('rev-1', None,
-            [('add', ('', 'root-id', 'directory', ''))])
+            [('add', ('', 'root-id', 'directory', ''))],
+            timestamp=1236045060)
         bb.finish_series()
         return self.get_url('repo/a')
 
