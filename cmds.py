@@ -309,7 +309,7 @@ class cmd_builddeb(Command):
         return branch, build_options, source
 
     def _get_upstream_branch(self, merge, export_upstream,
-            export_upstream_revision):
+            export_upstream_revision, config):
         upstream_branch = None
         upstream_revision = None
         if merge:
@@ -364,7 +364,7 @@ class cmd_builddeb(Command):
 
             upstream_branch, upstream_revision = \
                     self._get_upstream_branch(merge, export_upstream,
-                            export_upstream_revision)
+                            export_upstream_revision, config)
 
             upstream_provider = UpstreamProvider(tree, branch,
                     changelog.package, changelog.version.upstream_version,
