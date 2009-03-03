@@ -307,8 +307,8 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
 	entries = limit_hash_buckets(hash, hash_count, hsize, entries);
 	free(hash_count);
 	index = pack_delta_index(hash, hsize, entries);
+	free(hash);
 	if (!index) {
-		free(hash);
 		return NULL;
 	}
 	index->src_buf = buf;
@@ -564,4 +564,5 @@ create_delta(struct delta_index **indexes,
 	return out;
 }
 
-/* vim: noet ts=4 sw=4 sts=4 */
+/* vim: noet ts=4 sw=4 sts=4
+ */
