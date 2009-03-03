@@ -466,7 +466,7 @@ struct delta_index * create_delta_index_from_delta(
 						hash[i] = entry;
 					} else {
 						struct unpacked_index_entry *this;
-						for (this = entry;
+						for (this = hash[i];
 							this->next != NULL;
 							this = this->next) { /* No action */ }
 						this->next = entry;
