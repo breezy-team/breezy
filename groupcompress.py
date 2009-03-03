@@ -53,6 +53,7 @@ from bzrlib.versionedfile import (
     )
 
 _NO_LABELS = False
+_FAST = False
 
 def parse(bytes):
     if _NO_LABELS:
@@ -190,11 +191,14 @@ class GroupCompressor(object):
             else:
                 new_chunks.insert(0, 'delta\n')
                 new_chunks.append('len:%s\n' % (len(delta),))
-            # unadded_bytes = sum(map(len, new_chunks))
-            # self._delta_index.add_source(delta, unadded_bytes)
-            new_chunks.append(delta)
-            unadded_bytes = sum(map(len, new_chunks))
-            self._delta_index._source_offset += unadded_bytes
+            if _FAST:
+                new_chunks.append(delta)
+                unadded_bytes = sum(map(len, new_chunks))
+                self._delta_index._source_offset += unadded_bytes
+            else:
+                unadded_bytes = sum(map(len, new_chunks))
+                self._delta_index.add_source(delta, unadded_bytes)
+                new_chunks.append(delta)
         delta_start = (self.endpoint, len(self.lines))
         self.output_chunks(new_chunks)
         self.input_bytes += input_len

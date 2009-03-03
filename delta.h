@@ -23,7 +23,8 @@ struct source_info {
  * using free_delta_index().
  */
 extern struct delta_index *
-create_delta_index(const struct source_info *src);
+create_delta_index(const struct source_info *src,
+				   const struct delta_index *old);
 
 /*
  * free_delta_index: free the index created by create_delta_index()

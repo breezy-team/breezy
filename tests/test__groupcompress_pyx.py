@@ -152,7 +152,7 @@ class TestDeltaIndex(Test_GroupCompress):
 
     def test_repr(self):
         di = self._gc_module.DeltaIndex('test text\n')
-        self.assertEqual('DeltaIndex(1, 10, 1)', repr(di))
+        self.assertEqual('DeltaIndex(1, 10)', repr(di))
 
     def test_make_delta(self):
         di = self._gc_module.DeltaIndex(_text1)
@@ -162,12 +162,8 @@ class TestDeltaIndex(Test_GroupCompress):
     def test_delta_against_multiple_sources(self):
         di = self._gc_module.DeltaIndex()
         di.add_source(_first_text, 0)
-        self.assertEqual(1, di._num_indexes)
-        self.assertEqual(1024, di._max_num_indexes)
         self.assertEqual(len(_first_text), di._source_offset)
         di.add_source(_second_text, 0)
-        self.assertEqual(2, di._num_indexes)
-        self.assertEqual(1024, di._max_num_indexes)
         self.assertEqual(len(_first_text) + len(_second_text), di._source_offset)
         delta = di.make_delta(_third_text)
         result = self._gc_module.apply_delta(_first_text + _second_text, delta)
@@ -178,12 +174,8 @@ class TestDeltaIndex(Test_GroupCompress):
     def test_delta_with_offsets(self):
         di = self._gc_module.DeltaIndex()
         di.add_source(_first_text, 5)
-        self.assertEqual(1, di._num_indexes)
-        self.assertEqual(1024, di._max_num_indexes)
         self.assertEqual(len(_first_text) + 5, di._source_offset)
         di.add_source(_second_text, 10)
-        self.assertEqual(2, di._num_indexes)
-        self.assertEqual(1024, di._max_num_indexes)
         self.assertEqual(len(_first_text) + len(_second_text) + 15,
                          di._source_offset)
         delta = di.make_delta(_third_text)

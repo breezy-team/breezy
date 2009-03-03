@@ -129,6 +129,7 @@ struct delta_index {
 	unsigned int hash_mask; /* val & hash_mask gives the hash index for a given
 							   entry */
 	unsigned int num_entries; /* The total number of entries in this index */
+	struct index_entry *last_entry; /* Pointer to the last valid entry */
 	struct index_entry *hash[];
 };
 
@@ -193,7 +194,7 @@ limit_hash_buckets(struct unpacked_index_entry **hash,
 
 static struct delta_index *
 pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
-				 unsigned int entries)
+				 unsigned int num_entries)
 {
 	unsigned int i, memsize;
 	struct unpacked_index_entry *entry;
@@ -206,7 +207,7 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 	 */
 	memsize = sizeof(*index)
 		+ sizeof(*packed_hash) * (hsize+1)
-		+ sizeof(*packed_entry) * entries;
+		+ sizeof(*packed_entry) * num_entries;
 	mem = malloc(memsize);
 	if (!mem) {
 		return NULL;
@@ -215,7 +216,7 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 	index = mem;
 	index->memsize = memsize;
 	index->hash_mask = hsize - 1;
-	index->num_entries = entries;
+	index->num_entries = num_entries;
 
 	mem = index->hash;
 	packed_hash = mem;
@@ -235,14 +236,41 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 	/* Sentinel value to indicate the length of the last hash bucket */
 	packed_hash[hsize] = packed_entry;
 
-	assert(packed_entry - (struct index_entry *)mem == entries);
+	assert(packed_entry - (struct index_entry *)mem == num_entries);
+	index->last_entry = (packed_entry - 1);
 	return index;
 }
 
-
-struct delta_index * create_delta_index(const struct source_info *src)
+void include_entries_from_index(struct unpacked_index_entry **hash,
+								unsigned int *hash_count,
+								unsigned int hsize,
+								struct unpacked_index_entry *entry,
+								const struct delta_index *old)
 {
-	unsigned int i, hsize, hmask, entries, prev_val, *hash_count;
+	unsigned int i, hmask, masked_val;
+	struct index_entry *old_entry;
+
+	hmask = hsize - 1;
+	/* Iterate backwards through the existing entries
+	 * This is so that matches early in the file end up being the first pointer
+	 * in the linked list.
+	 */
+	for (old_entry = old->last_entry, i = 0; i < old->num_entries;
+		 i++, old_entry--) {
+		masked_val = old_entry->val & hmask;
+		entry->entry = *old_entry;
+		entry->next = hash[masked_val];
+		hash[masked_val] = entry++;
+		hash_count[masked_val]++;
+	}
+}
+
+
+struct delta_index * create_delta_index(const struct source_info *src,
+										const struct delta_index *old)
+{
+	unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
+	unsigned int total_num_entries;
 	const unsigned char *data, *buffer;
 	struct delta_index *index;
 	struct unpacked_index_entry *entry, **hash;
@@ -256,15 +284,19 @@ struct delta_index * create_delta_index(const struct source_info *src)
 	/* Determine index hash size.  Note that indexing skips the
 	   first byte to allow for optimizing the Rabin's polynomial
 	   initialization in create_delta(). */
-	entries = (src->size - 1)  / RABIN_WINDOW;
-	hsize = entries / 4;
+	num_entries = (src->size - 1)  / RABIN_WINDOW;
+	if (old != NULL)
+		total_num_entries = num_entries + old->num_entries;
+	else
+		total_num_entries = num_entries;
+	hsize = total_num_entries / 4;
 	for (i = 4; (1u << i) < hsize && i < 31; i++);
 	hsize = 1 << i;
 	hmask = hsize - 1;
 
 	/* allocate lookup index */
 	memsize = sizeof(*hash) * hsize +
-		  sizeof(*entry) * entries;
+		  sizeof(*entry) * total_num_entries;
 	mem = malloc(memsize);
 	if (!mem)
 		return NULL;
@@ -274,16 +306,16 @@ struct delta_index * create_delta_index(const struct source_info *src)
 
 	memset(hash, 0, hsize * sizeof(*hash));
 
-	/* allocate an array to count hash entries */
+	/* allocate an array to count hash num_entries */
 	hash_count = calloc(hsize, sizeof(*hash_count));
 	if (!hash_count) {
 		free(hash);
 		return NULL;
 	}
 
-	/* then populate the index */
+	/* then populate the index for the new data */
 	prev_val = ~0;
-	for (data = buffer + entries * RABIN_WINDOW - RABIN_WINDOW;
+	for (data = buffer + num_entries * RABIN_WINDOW - RABIN_WINDOW;
 		 data >= buffer;
 		 data -= RABIN_WINDOW) {
 		unsigned int val = 0;
@@ -292,7 +324,8 @@ struct delta_index * create_delta_index(const struct source_info *src)
 		if (val == prev_val) {
 			/* keep the lowest of consecutive identical blocks */
 			entry[-1].entry.ptr = data + RABIN_WINDOW;
-			--entries;
+			--num_entries;
+			--total_num_entries;
 		} else {
 			prev_val = val;
 			i = val & hmask;
@@ -304,10 +337,17 @@ struct delta_index * create_delta_index(const struct source_info *src)
 			hash_count[i]++;
 		}
 	}
+	/* If we have an existing delta_index, we want to bring its info into the
+	 * new structure. We assume that the existing structure's objects all occur
+	 * before the new source, so they get first precedence in the index.
+	 */
+	if (old != NULL)
+		include_entries_from_index(hash, hash_count, hsize, entry, old);
 
-	entries = limit_hash_buckets(hash, hash_count, hsize, entries);
+	total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
+										   total_num_entries);
 	free(hash_count);
-	index = pack_delta_index(hash, hsize, entries);
+	index = pack_delta_index(hash, hsize, total_num_entries);
 	index->src = src;
 	free(hash);
 	if (!index) {
@@ -347,6 +387,7 @@ create_delta(struct delta_index **indexes,
 	int inscnt;
 	const unsigned char *ref_data, *ref_top, *data, *top;
 	unsigned char *out;
+	unsigned long source_size;
 
 	if (!trg_buf || !trg_size)
 		return NULL;
@@ -370,6 +411,7 @@ create_delta(struct delta_index **indexes,
 	}
 	assert(i <= index->src->size + index->src->agg_offset);
 	i = index->src->size + index->src->agg_offset;
+	source_size = i;
 	while (i >= 0x80) {
 		out[outpos++] = i | 0x80;
 		i >>= 7;
@@ -507,7 +549,9 @@ create_delta(struct delta_index **indexes,
 			/* moff is the offset in the local structure, for encoding, we need
 			 * to push it into the global offset
 			 */
+			assert(moff < msource->size);
 			moff += msource->agg_offset;
+			assert(moff + msize <= source_size);
 			if (moff & 0x000000ff)
 				out[outpos++] = moff >> 0,  i |= 0x01;
 			if (moff & 0x0000ff00)
