@@ -2058,7 +2058,8 @@ class DistributionBranch(object):
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
-                if not self.has_upstream_version_in_packaging_branch(version):
+                if not self.has_upstream_version_in_packaging_branch(
+                        previous_version):
                     raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: "
                             "%s" % (previous_version,
