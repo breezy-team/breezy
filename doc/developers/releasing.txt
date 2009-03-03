@@ -193,6 +193,10 @@ were merged into the right sections.  If it's not already done, advance
 the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
 back into pqm for bzr.dev.
 
+You should also merge (not pull) the release branch into
+``lp:~bzr/bzr/current``, so that branch contains the current released code
+at any time.
+
 
 See also
 --------
