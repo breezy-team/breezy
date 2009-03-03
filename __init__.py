@@ -82,10 +82,26 @@ try:
         hidden=False,
         experimental=True,
         )
+    format_registry.register_metadir('gcr-chk255-rich-root',
+        'bzrlib.plugins.groupcompress_rabin.repofmt.RepositoryFormatPackGCRabinRichRootCHK255',
+        help='pack-1.9 with 255-way hashed CHK inv, group compress, and rich roots. '
+            'Please read '
+            'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+            'before use.',
+        branch_format='bzrlib.branch.BzrBranchFormat7',
+        tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+        hidden=False,
+        experimental=True,
+        )
     repo_registry.register_lazy(
         'Bazaar development format - hash255chk+gcr (needs bzr.dev from 1.13)\n',
         'bzrlib.plugins.groupcompress_rabin.repofmt',
         'RepositoryFormatPackGCRabinCHK255',
+        )
+    repo_registry.register_lazy(
+        'Bazaar development format - hash255chk+gcr rich-root (needs bzr.dev from 1.13)\n',
+        'bzrlib.plugins.groupcompress_rabin.repofmt',
+        'RepositoryFormatPackGCRabinRichRootCHK255',
         )
 except ImportError:
     pass

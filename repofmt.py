@@ -639,6 +639,22 @@ if chk_support:
             return ("Development repository format - hash255chk+groupcompress")
 
 
+    class RepositoryFormatPackGCRabinRichRootCHK255(RepositoryFormatPackGCRabinCHK255):
+        """A hashed CHK+group compress pack repository."""
+
+        rich_root_data = True
+        repository_class = GCRCHKPackRepository
+
+        def get_format_string(self):
+            """See RepositoryFormat.get_format_string()."""
+            return ('Bazaar development format - hash255chk+gcr rich-root'
+                    ' (needs bzr.dev from 1.13)\n')
+
+        def get_format_description(self):
+            """See RepositoryFormat.get_format_description()."""
+            return ("Development repository format - hash255chk+groupcompress+rr")
+
+
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     """Be incompatible with the regular fetch code."""
     formats = (RepositoryFormatPackGCRabin,)
