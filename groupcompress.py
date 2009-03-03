@@ -150,12 +150,14 @@ class GroupCompressor(object):
         :return: The sha1 of lines, and the number of bytes accumulated in
             the group output so far.
         """
-        target_text = ''.join(chunks)
-        sha1 = sha_string(target_text)
+        # TODO: Change this to a bytes interface, since the output is now a
+        #       bytes interface anyway.
+        bytes = ''.join(chunks)
+        sha1 = sha_string(bytes)
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
-        input_len = len(target_text)
+        input_len = len(bytes)
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
         # bytes are valid from sha1, and we know where to find the end of this
@@ -172,9 +174,9 @@ class GroupCompressor(object):
             raise AssertionError('_source_offset != endpoint'
                 ' somehow the DeltaIndex got out of sync with'
                 ' the output lines')
-        delta = self._delta_index.make_delta(target_text)
-        if (delta is None
-            or len(delta) > len(target_text) / 2):
+        max_delta_size = len(bytes) / 2
+        delta = self._delta_index.make_delta(bytes, max_delta_size)
+        if (delta is None):
             # We can't delta (perhaps source_text is empty)
             # so mark this as an insert
             if _NO_LABELS:
@@ -183,8 +185,8 @@ class GroupCompressor(object):
                 new_chunks.insert(0, 'fulltext\n')
                 new_chunks.append('len:%s\n' % (input_len,))
             unadded_bytes = sum(map(len, new_chunks))
-            self._delta_index.add_source(target_text, unadded_bytes)
-            new_chunks.append(target_text)
+            self._delta_index.add_source(bytes, unadded_bytes)
+            new_chunks.append(bytes)
         else:
             if _NO_LABELS:
                 new_chunks = ['d']
@@ -605,12 +607,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
             try:
-                lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+                bytes = record.get_bytes_as('fulltext')
             except errors.UnavailableRepresentation:
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 bytes = adapter.get_bytes(record)
-                lines = osutils.split_lines(bytes)
             soft = False
             if len(record.key) > 1:
                 prefix = record.key[0]
@@ -625,7 +626,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         groups += 1
                 last_prefix = prefix
             found_sha1, end_point = self._compressor.compress(record.key,
-                lines, record.sha1, soft=soft)
+                [bytes], record.sha1, soft=soft)
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
             else:
