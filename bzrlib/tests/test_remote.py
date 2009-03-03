@@ -359,7 +359,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.disable_verb(verb)
         format = a_dir.cloning_metadir()
         call_count = len([call for call in self.hpss_calls if
-            call[0].method == verb])
+            call.call.method == verb])
         self.assertEqual(1, call_count)
 
     def test_current_server(self):
@@ -516,7 +516,7 @@ class TestBzrDirCreateBranch(TestRemote):
         self.disable_verb('BzrDir.create_branch')
         branch = repo.bzrdir.create_branch()
         create_branch_call_count = len([call for call in self.hpss_calls if
-            call[0].method == 'BzrDir.create_branch'])
+            call.call.method == 'BzrDir.create_branch'])
         self.assertEqual(1, create_branch_call_count)
 
     def test_current_server(self):
@@ -552,7 +552,7 @@ class TestBzrDirCreateRepository(TestRemote):
         self.disable_verb('BzrDir.create_repository')
         repo = bzrdir.create_repository()
         create_repo_call_count = len([call for call in self.hpss_calls if
-            call[0].method == 'BzrDir.create_repository'])
+            call.call.method == 'BzrDir.create_repository'])
         self.assertEqual(1, create_repo_call_count)
 
     def test_current_server(self):
@@ -1632,7 +1632,7 @@ class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
         self.disable_verb(verb)
         repo.set_make_working_trees(True)
         call_count = len([call for call in self.hpss_calls if
-            call[0].method == verb])
+            call.call.method == verb])
         self.assertEqual(1, call_count)
 
     def test_current(self):
