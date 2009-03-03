@@ -53,7 +53,7 @@ from bzrlib.versionedfile import (
     )
 
 _NO_LABELS = False
-_FAST = False
+_FAST = True
 
 def parse(bytes):
     if _NO_LABELS:
@@ -153,7 +153,10 @@ class GroupCompressor(object):
         # TODO: Change this to a bytes interface, since the output is now a
         #       bytes interface anyway.
         bytes = ''.join(chunks)
-        sha1 = sha_string(bytes)
+        if not _FAST or expected_sha is None:
+            sha1 = sha_string(bytes)
+        else:
+            sha1 = expected_sha
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
@@ -540,7 +543,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if _NO_LABELS:
                     sha1 = sha_strings(chunks)
                 else:
-                    if sha_strings(chunks) != sha1:
+                    if not _FAST and sha_strings(chunks) != sha1:
                         raise AssertionError('sha1 sum did not match')
             yield ChunkedContentFactory(key, parents, sha1, chunks)
 
