@@ -6,6 +6,13 @@
 /* opaque object for delta index */
 struct delta_index;
 
+struct source_info {
+	const void *buf; /* Pointer to the beginning of source data */
+	unsigned long size; /* Total length of source data */
+	unsigned long agg_offset; /* Start of source data as part of the
+								 aggregate source */
+};
+
 /*
  * create_delta_index: compute index data from given buffer
  *
@@ -16,8 +23,7 @@ struct delta_index;
  * using free_delta_index().
  */
 extern struct delta_index *
-create_delta_index(const void *buf, unsigned long bufsize,
-                   unsigned long agg_src_offset);
+create_delta_index(const struct source_info *src);
 
 /*
  * free_delta_index: free the index created by create_delta_index()
@@ -45,53 +51,19 @@ extern unsigned long sizeof_delta_index(struct delta_index *index);
  */
 extern void *
 create_delta(struct delta_index **indexes,
-         unsigned int num_indexes,
-	     const void *buf, unsigned long bufsize,
-	     unsigned long *delta_size, unsigned long max_delta_size);
-
-/*
- * diff_delta: create a delta from source buffer to target buffer
- *
- * If max_delta_size is non-zero and the resulting delta is to be larger
- * than max_delta_size then NULL is returned.  On success, a non-NULL
- * pointer to the buffer with the delta data is returned and *delta_size is
- * updated with its size.  The returned buffer must be freed by the caller.
- */
-static inline void *
-diff_delta(const void *src_buf, unsigned long src_bufsize,
-	   const void *trg_buf, unsigned long trg_bufsize,
-	   unsigned long *delta_size, unsigned long max_delta_size)
-{
-	struct delta_index *index = create_delta_index(src_buf, src_bufsize, 0);
-	if (index) {
-		void *delta = create_delta(&index, 1, trg_buf, trg_bufsize,
-					   delta_size, max_delta_size);
-		free_delta_index(index);
-		return delta;
-	}
-	return NULL;
-}
-
-/*
- * patch_delta: recreate target buffer given source buffer and delta data
- *
- * On success, a non-NULL pointer to the target buffer is returned and
- * *trg_bufsize is updated with its size.  On failure a NULL pointer is
- * returned.  The returned buffer must be freed by the caller.
- */
-extern void *patch_delta(const void *src_buf, unsigned long src_size,
-			 const void *delta_buf, unsigned long delta_size,
-			 unsigned long *dst_size);
+		 unsigned int num_indexes,
+		 const void *buf, unsigned long bufsize,
+		 unsigned long *delta_size, unsigned long max_delta_size);
 
 /* the smallest possible delta size is 4 bytes */
-#define DELTA_SIZE_MIN	4
+#define DELTA_SIZE_MIN  4
 
 /*
  * This must be called twice on the delta data buffer, first to get the
  * expected source buffer size, and again to get the target buffer size.
  */
 static inline unsigned long get_delta_hdr_size(const unsigned char **datap,
-					       const unsigned char *top)
+						   const unsigned char *top)
 {
 	const unsigned char *data = *datap;
 	unsigned char cmd;

@@ -24,14 +24,17 @@ cdef extern from *:
     void memcpy(void *, void *, size_t)
 
 cdef extern from "delta.h":
+    struct source_info:
+        void *buf
+        unsigned long size
+        unsigned long agg_offset
     struct delta_index:
         unsigned long memsize
         void *src_buf
         unsigned long src_size
         unsigned int hash_mask
         # struct index_entry *hash[]
-    delta_index * create_delta_index(void *buf, unsigned long bufsize, unsigned
-                                     long agg_src_offset)
+    delta_index * create_delta_index(source_info *src)
     void free_delta_index(delta_index *index)
     void *create_delta(delta_index **indexes,
              unsigned int num_indexes,
@@ -84,9 +87,11 @@ cdef class DeltaIndex:
     # isn't performance critical
     # cdef readonly list _sources
     cdef readonly object _sources
+    cdef source_info *_source_infos
     cdef delta_index **_indexes
     cdef readonly unsigned int _num_indexes
     cdef readonly unsigned int _max_num_indexes
+    cdef readonly unsigned int _max_num_sources
     cdef public unsigned long _source_offset
 
     def __repr__(self):
@@ -99,6 +104,9 @@ cdef class DeltaIndex:
         self._max_num_indexes = 1024
         self._indexes = <delta_index**>safe_malloc(sizeof(delta_index*)
                                                    * self._max_num_indexes)
+        self._max_num_sources = 1024
+        self._source_infos = <source_info *>safe_malloc(sizeof(source_info)
+                                                        * self._max_num_sources)
         self._num_indexes = 0
         self._source_offset = 0
 
@@ -107,6 +115,7 @@ cdef class DeltaIndex:
 
     def __dealloc__(self):
         self._ensure_no_indexes()
+        safe_free(<void **>&self._source_infos)
 
     def add_source(self, source, unadded_bytes):
         """Add a new bit of source text to the delta indexes.
@@ -118,15 +127,22 @@ cdef class DeltaIndex:
         cdef char *c_source
         cdef Py_ssize_t c_source_size
         cdef delta_index *index
+        cdef unsigned int source_location
+        cdef source_info *src
         cdef unsigned int num_indexes
-        cdef unsigned long agg_src_offset
 
         if not PyString_CheckExact(source):
             raise TypeError('source is not a str')
 
+        source_location = len(self._sources)
+        if source_location >= self._max_num_sources:
+            self._expand_sources()
         self._sources.append(source)
         c_source = PyString_AS_STRING(source)
         c_source_size = PyString_GET_SIZE(source)
+        src = self._source_infos + source_location
+        src.buf = c_source
+        src.size = c_source_size
 
         # TODO: Are usage is ultimately going to be different than the one that
         #       was originally designed. Specifically, we are going to want to
@@ -134,9 +150,9 @@ cdef class DeltaIndex:
         #       fit just fine into the structure. But for now, we just wrap
         #       create_delta_index (For example, we could always reserve enough
         #       space to hash a 4MB string, etc.)
-        agg_src_offset = self._source_offset + unadded_bytes
-        index = create_delta_index(c_source, c_source_size, agg_src_offset)
-        self._source_offset = agg_src_offset + c_source_size
+        src.agg_offset = self._source_offset + unadded_bytes
+        index = create_delta_index(src)
+        self._source_offset = src.agg_offset + src.size
         if index != NULL:
             num_indexes = self._num_indexes + 1
             if num_indexes >= self._max_num_indexes:
@@ -149,6 +165,12 @@ cdef class DeltaIndex:
         self._indexes = <delta_index **>safe_realloc(self._indexes,
                                                 sizeof(delta_index *)
                                                 * self._max_num_indexes)
+
+    cdef _expand_sources(self):
+        self._max_num_sources = self._max_num_sources * 2
+        self._source_infos = <source_info *>safe_realloc(self._source_infos,
+                                                sizeof(source_info)
+                                                * self._max_num_sources)
 
     cdef _ensure_no_indexes(self):
         cdef int i
@@ -192,38 +214,9 @@ cdef class DeltaIndex:
 
 
 def make_delta(source_bytes, target_bytes):
-    """Create a delta from source_bytes => target_bytes."""
-    cdef char *source
-    cdef Py_ssize_t source_size
-    cdef char *target
-    cdef Py_ssize_t target_size
-    cdef delta_index *index
-    cdef void * delta
-    cdef unsigned long delta_size
-    cdef unsigned long max_delta_size
-
-    max_delta_size = 0 # Unlimited
-
-    if not PyString_CheckExact(source_bytes):
-        raise TypeError('source is not a str')
-    if not PyString_CheckExact(target_bytes):
-        raise TypeError('target is not a str')
-
-    source = PyString_AS_STRING(source_bytes)
-    source_size = PyString_GET_SIZE(source_bytes)
-    target = PyString_AS_STRING(target_bytes)
-    target_size = PyString_GET_SIZE(target_bytes)
-
-    result = None
-    index = create_delta_index(source, source_size, 0)
-    if index != NULL:
-        delta = create_delta(&index, 1, target, target_size,
-                             &delta_size, max_delta_size)
-        free_delta_index(index);
-        if delta:
-            result = PyString_FromStringAndSize(<char *>delta, delta_size)
-            free(delta)
-    return result
+    """Create a delta, this is a wrapper around DeltaIndex.make_delta."""
+    di = DeltaIndex(source_bytes)
+    return di.make_delta(target_bytes)
 
 
 def apply_delta(source_bytes, delta_bytes):
@@ -340,33 +333,4 @@ def apply_delta(source_bytes, delta_bytes):
 
     # *dst_size = out - dst_buf;
     assert (out - dst_buf) == PyString_GET_SIZE(result)
-    return result
-
-
-def apply_delta2(source_bytes, delta_bytes):
-    """Apply a delta generated by make_delta to source_bytes."""
-    # This defers to the patch-delta code rather than implementing it here
-    # If this is faster, we can bring the memory allocation and error handling
-    # into apply_delta(), and leave the primary loop in a separate C func.
-    cdef char *source, *delta, *target
-    cdef Py_ssize_t source_size, delta_size
-    cdef unsigned long target_size
-
-    if not PyString_CheckExact(source_bytes):
-        raise TypeError('source is not a str')
-    if not PyString_CheckExact(delta_bytes):
-        raise TypeError('delta is not a str')
-
-    source = PyString_AS_STRING(source_bytes)
-    source_size = PyString_GET_SIZE(source_bytes)
-    delta = PyString_AS_STRING(delta_bytes)
-    delta_size = PyString_GET_SIZE(delta_bytes)
-
-    target = <char *>patch_delta(source, source_size,
-                                 delta, delta_size,
-                                 &target_size)
-    if target == NULL:
-        return None
-    result = PyString_FromStringAndSize(target, target_size)
-    free(target)
     return result

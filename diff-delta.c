@@ -112,13 +112,6 @@ static const unsigned int U[256] = {
 	0x133eb0ac, 0x6d8b90a1, 0x450d4467, 0x3bb8646a
 };
 
-struct source_info {
-	const void *src_buf; /* Pointer to the beginning of source data */
-	unsigned long src_size; /* Total length of source data */
-	unsigned long agg_src_offset; /* Start of source data as part of the
-									 aggregate source */
-};
-
 struct index_entry {
 	const unsigned char *ptr;
 	const struct source_info *src;
@@ -132,7 +125,7 @@ struct unpacked_index_entry {
 
 struct delta_index {
 	unsigned long memsize; /* Total bytes pointed to by this index */
-	struct source_info src; /* Information about the referenced source */
+	struct source_info *src; /* Information about the referenced source */
 	unsigned int hash_mask; /* val & hash_mask gives the hash index for a given
 							   entry */
 	unsigned int num_entries; /* The total number of entries in this index */
@@ -235,10 +228,8 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 		 * into consecutive array entries.
 		 */
 		packed_hash[i] = packed_entry;
-		for (entry = hash[i]; entry; entry = entry->next, ++packed_entry) {
-			*packed_entry = entry->entry;
-			packed_entry->src = &index->src;
-		}
+		for (entry = hash[i]; entry; entry = entry->next)
+			*packed_entry++ = entry->entry;
 	}
 
 	/* Sentinel value to indicate the length of the last hash bucket */
@@ -249,23 +240,23 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 }
 
 
-struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
-										unsigned long agg_src_offset)
+struct delta_index * create_delta_index(const struct source_info *src)
 {
 	unsigned int i, hsize, hmask, entries, prev_val, *hash_count;
-	const unsigned char *data, *buffer = buf;
+	const unsigned char *data, *buffer;
 	struct delta_index *index;
 	struct unpacked_index_entry *entry, **hash;
 	void *mem;
 	unsigned long memsize;
 
-	if (!buf || !bufsize)
+	if (!src->buf || !src->size)
 		return NULL;
+	buffer = src->buf;
 
 	/* Determine index hash size.  Note that indexing skips the
 	   first byte to allow for optimizing the Rabin's polynomial
 	   initialization in create_delta(). */
-	entries = (bufsize - 1)  / RABIN_WINDOW;
+	entries = (src->size - 1)  / RABIN_WINDOW;
 	hsize = entries / 4;
 	for (i = 4; (1u << i) < hsize && i < 31; i++);
 	hsize = 1 << i;
@@ -307,6 +298,7 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
 			i = val & hmask;
 			entry->entry.ptr = data + RABIN_WINDOW;
 			entry->entry.val = val;
+			entry->entry.src = src;
 			entry->next = hash[i];
 			hash[i] = entry++;
 			hash_count[i]++;
@@ -316,13 +308,11 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
 	entries = limit_hash_buckets(hash, hash_count, hsize, entries);
 	free(hash_count);
 	index = pack_delta_index(hash, hsize, entries);
+	index->src = src;
 	free(hash);
 	if (!index) {
 		return NULL;
 	}
-	index->src.src_buf = buf;
-	index->src.src_size = bufsize;
-	index->src.agg_src_offset = agg_src_offset;
 	return index;
 }
 
@@ -376,10 +366,10 @@ create_delta(struct delta_index **indexes,
 	index = indexes[0];
 	for (j = 0; j < num_indexes; ++j) {
 		index = indexes[j];
-		i += index->src.src_size;
+		i += index->src->size;
 	}
-	assert(i <= index->src.src_size + index->src.agg_src_offset);
-	i = index->src.src_size + index->src.agg_src_offset;
+	assert(i <= index->src->size + index->src->agg_offset);
+	i = index->src->size + index->src->agg_offset;
 	while (i >= 0x80) {
 		out[outpos++] = i | 0x80;
 		i >>= 7;
@@ -441,8 +431,8 @@ create_delta(struct delta_index **indexes,
 						continue;
 					ref = entry->ptr;
 					src = data;
-					ref_data = entry->src->src_buf;
-					ref_top = ref_data + entry->src->src_size;
+					ref_data = entry->src->buf;
+					ref_top = ref_data + entry->src->size;
 					ref_size = ref_top - ref;
 					/* ref_size is the longest possible match that we could make
 					 * here. If ref_size <= msize, then we know that we cannot
@@ -490,7 +480,7 @@ create_delta(struct delta_index **indexes,
 			unsigned char *op;
 
 			if (inscnt) {
-				ref_data = msource->src_buf;
+				ref_data = msource->buf;
 				while (moff && ref_data[moff-1] == data[-1]) {
 					/* we can match one byte back */
 					msize++;
@@ -517,7 +507,7 @@ create_delta(struct delta_index **indexes,
 			/* moff is the offset in the local structure, for encoding, we need
 			 * to push it into the global offset
 			 */
-			moff += msource->agg_src_offset;
+			moff += msource->agg_offset;
 			if (moff & 0x000000ff)
 				out[outpos++] = moff >> 0,  i |= 0x01;
 			if (moff & 0x0000ff00)
@@ -529,7 +519,7 @@ create_delta(struct delta_index **indexes,
 			/* Put it back into local coordinates, in case we have multiple
 			 * copies in a row.
 			 */
-			moff -= msource->agg_src_offset;
+			moff -= msource->agg_offset;
 
 			if (msize & 0x00ff)
 				out[outpos++] = msize >> 0, i |= 0x10;
