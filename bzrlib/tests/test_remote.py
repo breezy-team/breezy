@@ -379,10 +379,8 @@ class TestBzrDirCloningMetaDir(TestRemote):
         # repository formats.
         # This pokes a little, just to be sure.
         self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
-        self.assertEqual(reference_bzrdir_format.repository_format,
-            result._repository_format)
-        self.assertEqual(reference_bzrdir_format.get_branch_format(),
-            result._branch_format)
+        self.assertEqual(None, result._repository_format)
+        self.assertEqual(None, result._branch_format)
         client.finished_test()
 
 
