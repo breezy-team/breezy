@@ -67,16 +67,18 @@ common with the next text
 """
 
 _second_text = """\
-some more bits of text
-which does have a little bit in
+some more bit of text, that
+does not have much in
 common with the previous text
+and has some extra text
 """
 
 
 _third_text = """\
 a bit of text, that
 has some in common with the previous text
-and not much in
+and has some extra text
+and not have much in
 common with the next text
 """
 
@@ -168,8 +170,8 @@ class TestDeltaIndex(Test_GroupCompress):
         delta = di.make_delta(_third_text)
         result = self._gc_module.apply_delta(_first_text + _second_text, delta)
         self.assertEqualDiff(_third_text, result)
-        self.assertEqual('\x99\x01h\x90\x14\x0chas some in '
-                         '\x91{\x1e\x07and not\x91!#', delta)
+        self.assertEqual('\xac\x01\x85\x01\x90\x14\x0chas some in '
+                         '\x91v6\x03and\x91d"\x91:\n', delta)
 
     def test_delta_with_offsets(self):
         di = self._gc_module.DeltaIndex()
@@ -184,5 +186,25 @@ class TestDeltaIndex(Test_GroupCompress):
             '12345' + _first_text + '1234567890' + _second_text, delta)
         self.assertIsNot(None, result)
         self.assertEqualDiff(_third_text, result)
-        self.assertEqual('\xa8\x01h\x91\x05\x14\x0chas some in '
-                         '\x91\x8a\x1e\x07and not\x91&#', delta)
+        self.assertEqual('\xbb\x01\x85\x01\x91\x05\x14\x0chas some in '
+                         '\x91\x856\x03and\x91s"\x91?\n', delta)
+
+    def test_delta_with_delta_bytes(self):
+        di = self._gc_module.DeltaIndex()
+        di.add_source(_first_text, 0)
+        self.assertEqual(len(_first_text), di._source_offset)
+        delta = di.make_delta(_second_text)
+        self.assertEqual('Dh\tsome more\x91\x019'
+                         '&previous text\nand has some extra text\n', delta)
+        di.add_delta_source(delta, 0)
+        self.assertEqual(len(_first_text) + len(delta), di._source_offset)
+        third_delta = di.make_delta(_third_text)
+        result = self._gc_module.apply_delta(_first_text + delta, third_delta)
+        self.assertEqualDiff(_third_text, result)
+        # We should be able to match against the 'previous text\nand has some...'
+        # that was part of the delta bytes
+        # Note that we don't match the 'common with the', because it isn't long
+        # enough to match in the original text, and those bytes are not present
+        # in the delta for the second text.
+        self.assertEqual('z\x85\x01\x90\x14\x1chas some in common with the '
+                         '\x91T&\x03and\x91\x18,', third_delta)

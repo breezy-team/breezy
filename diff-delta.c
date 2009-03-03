@@ -254,6 +254,11 @@ void include_entries_from_index(struct unpacked_index_entry **hash,
 	/* Iterate backwards through the existing entries
 	 * This is so that matches early in the file end up being the first pointer
 	 * in the linked list.
+	 * TODO: We know that all old entries are going to occur before the new
+	 *		 entries, and that we are going to follow this with a limit and
+	 *		 then pack step. There is probably a way we could optimize this
+	 *		 step, so that we wouldn't have to copy everything into a new
+	 *		 buffer, and then copy everything again into yet another buffer.
 	 */
 	for (old_entry = old->last_entry, i = 0; i < old->num_entries;
 		 i++, old_entry--) {
@@ -343,6 +348,158 @@ struct delta_index * create_delta_index(const struct source_info *src,
 	 */
 	if (old != NULL)
 		include_entries_from_index(hash, hash_count, hsize, entry, old);
+
+	total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
+										   total_num_entries);
+	free(hash_count);
+	index = pack_delta_index(hash, hsize, total_num_entries);
+	index->last_src = src;
+	free(hash);
+	if (!index) {
+		return NULL;
+	}
+	return index;
+}
+
+struct delta_index * create_delta_index_from_delta(
+										const struct source_info *src,
+										const struct delta_index *old)
+{
+	unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
+	unsigned int total_num_entries;
+	const unsigned char *data, *buffer, *top;
+	unsigned char cmd;
+	struct delta_index *index;
+	struct unpacked_index_entry *entry, **hash;
+	void *mem;
+	unsigned long memsize;
+
+	if (!src->buf || !src->size)
+		return NULL;
+	buffer = src->buf;
+	top = buffer + src->size;
+
+	/* Determine index hash size.  Note that indexing skips the
+	   first byte to allow for optimizing the Rabin's polynomial
+	   initialization in create_delta().
+	   This computes the maximum number of entries that could be held. The
+	   actual number will be recomputed during processing.
+	   */
+	 
+	num_entries = (src->size - 1)  / RABIN_WINDOW;
+	if (old != NULL)
+		total_num_entries = num_entries + old->num_entries;
+	else
+		total_num_entries = num_entries;
+	hsize = total_num_entries / 4;
+	for (i = 4; (1u << i) < hsize && i < 31; i++);
+	hsize = 1 << i;
+	hmask = hsize - 1;
+
+	/* allocate lookup index */
+	memsize = sizeof(*hash) * hsize +
+		  sizeof(*entry) * total_num_entries;
+	mem = malloc(memsize);
+	if (!mem)
+		return NULL;
+	hash = mem;
+	mem = hash + hsize;
+	entry = mem;
+
+	memset(hash, 0, hsize * sizeof(*hash));
+
+	/* allocate an array to count hash num_entries */
+	hash_count = calloc(hsize, sizeof(*hash_count));
+	if (!hash_count) {
+		free(hash);
+		return NULL;
+	}
+
+	/* then populate the index for the new data */
+	/* The create_delta_index code starts at the end and works backward,
+	 * because it is easier to update the entry pointers (you always update the
+	 * head, rather than updating the tail).
+	 * However, we can't walk the delta structure that way.
+	 */
+	prev_val = ~0;
+	data = buffer;
+	/* source size */
+	get_delta_hdr_size(&data, top);
+	/* target size */
+	get_delta_hdr_size(&data, top);
+	num_entries = 0; /* calculate the real number of entries */
+	while (data < top) {
+		cmd = *data++;
+		if (cmd & 0x80) {
+			/* Copy instruction, skip it */
+			const unsigned char *start = data;
+			if (cmd & 0x01) data++;
+			if (cmd & 0x02) data++;
+			if (cmd & 0x04) data++;
+			if (cmd & 0x08) data++;
+			if (cmd & 0x10) data++;
+			if (cmd & 0x20) data++;
+			if (cmd & 0x40) data++;
+		} else if (cmd) {
+			/* Insert instruction, we want to index these bytes */
+			if (data + cmd > top) {
+				/* Invalid insert, not enough bytes in the delta */
+				break;
+			}
+			for (; cmd > RABIN_WINDOW; cmd -= RABIN_WINDOW,
+									   data += RABIN_WINDOW) {
+				unsigned int val = 0;
+				for (i = 1; i <= RABIN_WINDOW; i++)
+					val = ((val << 8) | data[i]) ^ T[val >> RABIN_SHIFT];
+				if (val != prev_val) {
+					/* Only keep the first of consecutive data */
+					prev_val = val;
+					i = val & hmask;
+					entry->entry.ptr = data + RABIN_WINDOW;
+					entry->entry.val = val;
+					entry->entry.src = src;
+					entry->next = NULL;
+					/* Now we have to insert this entry at the end of the hash
+					 * map
+					 */
+					if (hash[i] == NULL) {
+						hash[i] = entry;
+					} else {
+						struct unpacked_index_entry *this;
+						for (this = entry;
+							this->next != NULL;
+							this = this->next) { /* No action */ }
+						this->next = entry;
+						this = entry;
+					}
+					hash_count[i]++;
+					entry++;
+					num_entries++;
+				}
+			}
+			/* Move the data pointer by whatever remainder is left */
+			data += cmd;
+		} else {
+			/*
+			 * cmd == 0 is reserved for future encoding
+			 * extensions. In the mean time we must fail when
+			 * encountering them (might be data corruption).
+			 */
+			break;
+		}
+	}
+	if (data != top) {
+		/* Something was wrong with this delta */
+		free(hash);
+		free(hash_count);
+		return NULL;
+	}
+	if (old != NULL) {
+		total_num_entries = num_entries + old->num_entries;
+		include_entries_from_index(hash, hash_count, hsize, entry, old);
+	} else {
+		total_num_entries = num_entries;
+	}
 
 	total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
 										   total_num_entries);

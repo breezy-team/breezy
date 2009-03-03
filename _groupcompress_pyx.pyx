@@ -29,12 +29,10 @@ cdef extern from "delta.h":
         unsigned long size
         unsigned long agg_offset
     struct delta_index:
-        unsigned long memsize
-        void *src_buf
-        unsigned long src_size
-        unsigned int hash_mask
-        # struct index_entry *hash[]
+        pass
     delta_index * create_delta_index(source_info *src, delta_index *old)
+    delta_index * create_delta_index_from_delta(source_info *delta,
+                                                delta_index *old)
     void free_delta_index(delta_index *index)
     void *create_delta(delta_index *indexes,
              void *buf, unsigned long bufsize,
@@ -112,6 +110,41 @@ cdef class DeltaIndex:
             self._index = NULL
         safe_free(<void **>&self._source_infos)
 
+    def add_delta_source(self, delta, unadded_bytes):
+        """Add a new delta to the source texts.
+
+        :param delta: The text of the delta, this must be a byte string.
+        :param unadded_bytes: Number of bytes that were added to the source
+            that were not indexed.
+        """
+        cdef char *c_delta
+        cdef Py_ssize_t c_delta_size
+        cdef delta_index *index
+        cdef unsigned int source_location
+        cdef source_info *src
+        cdef unsigned int num_indexes
+
+        if not PyString_CheckExact(delta):
+            raise TypeError('delta is not a str')
+
+        source_location = len(self._sources)
+        if source_location >= self._max_num_sources:
+            self._expand_sources()
+        self._sources.append(delta)
+        c_delta = PyString_AS_STRING(delta)
+        c_delta_size = PyString_GET_SIZE(delta)
+        src = self._source_infos + source_location
+        src.buf = c_delta
+        src.size = c_delta_size
+        src.agg_offset = self._source_offset + unadded_bytes
+        index = create_delta_index_from_delta(src, self._index)
+        self._source_offset = src.agg_offset + src.size
+        if index == NULL:
+            raise RuntimeError('got back failure for adding: %r' % delta)
+        else:
+            free_delta_index(self._index)
+            self._index = index
+
     def add_source(self, source, unadded_bytes):
         """Add a new bit of source text to the delta indexes.
 
@@ -139,12 +172,6 @@ cdef class DeltaIndex:
         src.buf = c_source
         src.size = c_source_size
 
-        # TODO: Are usage is ultimately going to be different than the one that
-        #       was originally designed. Specifically, we are going to want to
-        #       be able to update the index by hashing future data. It should
-        #       fit just fine into the structure. But for now, we just wrap
-        #       create_delta_index (For example, we could always reserve enough
-        #       space to hash a 4MB string, etc.)
         src.agg_offset = self._source_offset + unadded_bytes
         index = create_delta_index(src, self._index)
         self._source_offset = src.agg_offset + src.size
