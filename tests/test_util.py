@@ -18,18 +18,28 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+try:
+    import hashlib as md5
+except ImportError:
+    import md5
 import os
+import shutil
+
+from debian_bundle.changelog import Version
 
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
                 )
 from bzrlib.plugins.builddeb.util import (
                   find_changelog,
+                  move_file_if_different,
                   recursive_copy,
                   get_snapshot_revision,
                   lookup_distribution,
                   strip_changelog_message,
                   suite_to_distribution,
+                  tarball_name,
+                  write_if_different,
                   )
 
 from bzrlib.tests import (TestCaseWithTransport,
@@ -201,6 +211,15 @@ class StripChangelogMessageTests(TestCase):
                     ['* foo', 'bar', '* baz'])
 
 
+class TarballNameTests(TestCase):
+
+    def test_tarball_name(self):
+        self.assertEqual(tarball_name("package", "0.1"),
+                "package_0.1.orig.tar.gz")
+        self.assertEqual(tarball_name("package", Version("0.1")),
+                "package_0.1.orig.tar.gz")
+
+
 class GetRevisionSnapshotTests(TestCase):
 
     def test_with_snapshot(self):
@@ -265,3 +284,82 @@ class LookupDistributionTests(SuiteToDistributionTests):
         self.lookup_debian("debian")
         self.lookup_ubuntu("ubuntu")
         self.lookup_ubuntu("Ubuntu")
+
+
+class MoveFileTests(TestCaseInTempDir):
+
+    def test_move_file_non_extant(self):
+        self.build_tree(['a'])
+        move_file_if_different('a', 'b', None)
+        self.failIfExists('a')
+        self.failUnlessExists('b')
+
+    def test_move_file_samefile(self):
+        self.build_tree(['a'])
+        move_file_if_different('a', 'a', None)
+        self.failUnlessExists('a')
+
+    def test_move_file_same_md5(self):
+        self.build_tree(['a'])
+        md5sum = md5.md5()
+        f = open('a', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        shutil.copy('a', 'b')
+        move_file_if_different('a', 'b', md5sum.hexdigest())
+        self.failUnlessExists('a')
+        self.failUnlessExists('b')
+
+    def test_move_file_diff_md5(self):
+        self.build_tree(['a', 'b'])
+        md5sum = md5.md5()
+        f = open('a', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        a_hexdigest = md5sum.hexdigest()
+        md5sum = md5.md5()
+        f = open('b', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        b_hexdigest = md5sum.hexdigest()
+        self.assertNotEqual(a_hexdigest, b_hexdigest)
+        move_file_if_different('a', 'b', a_hexdigest)
+        self.failIfExists('a')
+        self.failUnlessExists('b')
+        md5sum = md5.md5()
+        f = open('b', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        self.assertEqual(md5sum.hexdigest(), a_hexdigest)
+
+
+class WriteFileTests(TestCaseInTempDir):
+
+    def test_write_non_extant(self):
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+
+    def test_write_file_same(self):
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+
+    def test_write_file_different(self):
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+        write_if_different("bar", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "bar")

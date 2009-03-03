@@ -18,7 +18,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import md5
+try:
+    import hashlib as md5
+except ImportError:
+    import md5
 import shutil
 import tempfile
 import os
@@ -217,7 +220,7 @@ def move_file_if_different(source, target, md5sum):
     if os.path.exists(target):
         if os.path.samefile(source, target):
             return
-        t_md5sum = md5.new()
+        t_md5sum = md5.md5()
         target_f = open(target)
         try:
             for line in target_f:
@@ -230,7 +233,7 @@ def move_file_if_different(source, target, md5sum):
 
 
 def write_if_different(contents, target):
-    md5sum = md5.new()
+    md5sum = md5.md5()
     md5sum.update(contents)
     fd, temp_path = tempfile.mkstemp("builddeb-rename-")
     fobj = os.fdopen(fd, "wd")
