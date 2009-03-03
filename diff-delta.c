@@ -280,8 +280,11 @@ create_index_from_old_and_hash(const struct delta_index *old,
 	unsigned int i, memsize, total_num_entries;
 	struct unpacked_index_entry *entry;
 	struct delta_index *index;
-	struct index_entry *packed_entry, **packed_hash, *old_entry;
-	size_t to_copy;
+	struct index_entry *packed_entry, **packed_hash;
+	struct index_entry *copy_from_start, *copy_to_start;
+	size_t total_copy, to_copy;
+	unsigned int num_ops;
+	unsigned int bytes_copied;
 	void *mem;
 	/*
 	 * Now create the packed index in array form
@@ -306,9 +309,10 @@ create_index_from_old_and_hash(const struct delta_index *old,
 	mem = packed_hash + (hsize+1);
 	packed_entry = mem;
 
-	fprintf(stderr, "copying %d entries, adding %d\n",
-		old->num_entries, num_entries);
-	to_copy = 0;
+	total_copy = 0;
+	bytes_copied = 0;
+	num_ops = 0;
+	copy_from_start = copy_to_start = NULL;
 	for (i = 0; i < hsize; i++) {
 		/*
 		 * Coalesce all entries belonging to one linked list
@@ -316,15 +320,47 @@ create_index_from_old_and_hash(const struct delta_index *old,
 		 * The entries in old all come before the entries in hash.
 		 */
 		packed_hash[i] = packed_entry;
-		old_entry = old->hash[i];
-		to_copy = (old->hash[i+1] - old_entry);
+		to_copy = (old->hash[i+1] - old->hash[i]);
 		if (to_copy > 0) {
-			memcpy(packed_entry, old_entry, to_copy * sizeof(struct index_entry));
+			/* This next range can be copied wholesale. However, we will wait
+			 * until we have to insert something from the new data before we
+			 * copy everything.
+			 * So for now, just reserve space for the copy.
+			 */
+			if (total_copy == 0) {
+				copy_from_start = old->hash[i];
+				copy_to_start = packed_entry;
+			}
 			packed_entry += to_copy;
+			total_copy += to_copy;
+			assert((packed_entry - copy_to_start) == total_copy);
+			assert((old->hash[i+1] - copy_from_start) == total_copy);
 		}
-		for (entry = hash[i]; entry; entry = entry->next)
+		for (entry = hash[i]; entry; entry = entry->next) {
+			/* We have an entry to insert, so flush the copy buffer */
+			if (total_copy > 0) {
+				assert(copy_to_start != NULL);
+				assert(copy_from_start != NULL);
+				memcpy(copy_to_start, copy_from_start,
+					   total_copy * sizeof(struct index_entry));
+				bytes_copied += (total_copy * sizeof(struct index_entry));
+				total_copy = 0;
+				copy_from_start = copy_to_start = NULL;
+				num_ops += 1;
+			}
 			*packed_entry++ = entry->entry;
+		}
 	}
+	if (total_copy > 0) {
+		assert(copy_to_start != NULL);
+		assert(copy_from_start != NULL);
+		memcpy(copy_to_start, copy_from_start,
+			   total_copy * sizeof(struct index_entry));
+		bytes_copied += (total_copy * sizeof(struct index_entry));
+		num_ops += 1;
+	}
+	fprintf(stderr, "copied %d records (%d bytes) in %d ops, inserted %d\n",
+			old->num_entries, bytes_copied, num_ops, num_entries);
 
 	/* Sentinel value to indicate the length of the last hash bucket */
 	packed_hash[hsize] = packed_entry;
@@ -559,6 +595,8 @@ struct delta_index * create_delta_index_from_delta(
 	}
 	if (num_entries == 0) {
 		/** Nothing to index **/
+		free(hash);
+		free(hash_count);
 		return NULL;
 	}
 	if (old != NULL) {
