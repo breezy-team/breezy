@@ -97,8 +97,8 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
         control_format = self._bzrdir.cloning_metadir(
             require_stacking=require_stacking)
         control_name = control_format.network_name()
-        # XXX: Should be a method that tells us this, or delegated to the
-        # format, or something.
+        # XXX: There should be a method that tells us that the format does/does not
+        # have subformats.
         if isinstance(control_format, BzrDirMetaFormat1):
             branch_name = control_format.get_branch_format().network_name()
             repository_name = control_format.repository_format.network_name()
