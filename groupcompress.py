@@ -53,7 +53,7 @@ from bzrlib.versionedfile import (
     )
 
 _NO_LABELS = False
-_FAST = True
+_FAST = False
 
 def parse(bytes):
     if _NO_LABELS:
