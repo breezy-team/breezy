@@ -2086,6 +2086,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def __init__(self):
         self._workingtree_format = None
         self._branch_format = None
+        self._repository_format = None
 
     def __eq__(self, other):
         if other.__class__ is not self.__class__:
@@ -2155,7 +2156,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        if getattr(self, '_repository_format', None):
+        if self._repository_format:
             return self._repository_format
         from bzrlib.repository import RepositoryFormat
         return RepositoryFormat.get_default_format()

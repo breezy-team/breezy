@@ -140,6 +140,8 @@ IN DEVELOPMENT
       plugins to have hooks called on non-stacked instances.
       (Robert Collins, #334187)
 
+    * ``BzrDir.cloning_metadir`` now has a RPC call. (Robert Collins)
+
     * ``BzrDirFormat.__str__`` now uses the human readable description
       rather than the sometimes-absent disk label. (Robert Collins)
 

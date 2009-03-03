@@ -112,7 +112,6 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         if response == ('no',):
             raise errors.NotBranchError(path=transport.base)
-        self._ensure_real()
 
     def _ensure_real(self):
         """Ensure that there is a _real_bzrdir set.
@@ -134,9 +133,36 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._next_open_branch_result = None
         return BzrDir.break_lock(self)
 
-    def cloning_metadir(self, stacked=False):
+    def _vfs_cloning_metadir(self, require_stacking=False):
         self._ensure_real()
-        return self._real_bzrdir.cloning_metadir(stacked)
+        return self._real_bzrdir.cloning_metadir(
+            require_stacking=require_stacking)
+
+    def cloning_metadir(self, require_stacking=False):
+        medium = self._client._medium
+        if medium._is_remote_before((1, 13)):
+            return self._vfs_cloning_metadir(require_stacking=require_stacking)
+        verb = 'BzrDir.cloning_metadir'
+        if require_stacking:
+            stacking = 'True'
+        else:
+            stacking = 'False'
+        path = self._path_for_remote_call(self._client)
+        try:
+            response = self._call(verb, path, stacking)
+        except errors.UnknownSmartMethod:
+            return self._vfs_cloning_metadir(require_stacking=require_stacking)
+        if len(response) != 3:
+            raise errors.UnexpectedSmartServerResponse(response)
+        control_name, repo_name, branch_name = response
+        format = bzrdir.network_format_registry.get(control_name)
+        if repo_name:
+            format.repository_format = repository.network_format_registry.get(
+                repo_name)
+        if branch_name:
+            format.set_branch_format(
+                branch.network_format_registry.get(branch_name))
+        return format
 
     def create_repository(self, shared=False):
         # as per meta1 formats - just delegate to the format object which may

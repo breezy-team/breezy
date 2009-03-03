@@ -18,7 +18,7 @@
 
 
 from bzrlib import branch, errors, repository
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -53,6 +53,12 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
 
 class SmartServerRequestBzrDir(SmartServerRequest):
 
+    def do(self, path, *args):
+        """Open a BzrDir at path, and return self.do_bzrdir_request(*args)."""
+        self._bzrdir = BzrDir.open_from_transport(
+            self.transport_from_client_path(path))
+        return self.do_bzrdir_request(*args)
+
     def _boolean_to_yes_no(self, a_boolean):
         if a_boolean:
             return 'yes'
@@ -78,6 +84,30 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         else:
             segments = []
         return '/'.join(segments)
+
+
+class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self, require_stacking):
+        """Get the format that should be used when cloning from this dir."""
+        if require_stacking == "True":
+            require_stacking = True
+        else:
+            require_stacking = False
+        control_format = self._bzrdir.cloning_metadir(
+            require_stacking=require_stacking)
+        control_name = control_format.network_name()
+        # XXX: Should be a method that tells us this, or delegated to the
+        # format, or something.
+        if isinstance(control_format, BzrDirMetaFormat1):
+            branch_name = control_format.get_branch_format().network_name()
+            repository_name = control_format.repository_format.network_name()
+        else:
+            # Only MetaDir has delegated formats today.
+            branch_name = ''
+            repository_name = ''
+        return SuccessfulSmartServerResponse((control_name, repository_name,
+            branch_name))
 
 
 class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
