@@ -112,8 +112,16 @@ static const unsigned int U[256] = {
 	0x133eb0ac, 0x6d8b90a1, 0x450d4467, 0x3bb8646a
 };
 
+struct source_info {
+	const void *src_buf; /* Pointer to the beginning of source data */
+	unsigned long src_size; /* Total length of source data */
+	unsigned long agg_src_offset; /* Start of source data as part of the
+									 aggregate source */
+};
+
 struct index_entry {
 	const unsigned char *ptr;
+	const struct source_info *src;
 	unsigned int val;
 };
 
@@ -124,12 +132,10 @@ struct unpacked_index_entry {
 
 struct delta_index {
 	unsigned long memsize; /* Total bytes pointed to by this index */
-	const void *src_buf; /* Pointer to the beginning of source data */
-	unsigned long src_size; /* Total length of source data */
-	unsigned long agg_src_offset; /* Start of source data as part of the
-									 aggregate source */
+	struct source_info src; /* Information about the referenced source */
 	unsigned int hash_mask; /* val & hash_mask gives the hash index for a given
 							   entry */
+	unsigned int num_entries; /* The total number of entries in this index */
 	struct index_entry *hash[];
 };
 
@@ -216,6 +222,7 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 	index = mem;
 	index->memsize = memsize;
 	index->hash_mask = hsize - 1;
+	index->num_entries = entries;
 
 	mem = index->hash;
 	packed_hash = mem;
@@ -228,8 +235,10 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 		 * into consecutive array entries.
 		 */
 		packed_hash[i] = packed_entry;
-		for (entry = hash[i]; entry; entry = entry->next)
-			*packed_entry++ = entry->entry;
+		for (entry = hash[i]; entry; entry = entry->next, ++packed_entry) {
+			*packed_entry = entry->entry;
+			packed_entry->src = &index->src;
+		}
 	}
 
 	/* Sentinel value to indicate the length of the last hash bucket */
@@ -311,9 +320,9 @@ struct delta_index * create_delta_index(const void *buf, unsigned long bufsize,
 	if (!index) {
 		return NULL;
 	}
-	index->src_buf = buf;
-	index->src_size = bufsize;
-	index->agg_src_offset = agg_src_offset;
+	index->src.src_buf = buf;
+	index->src.src_size = bufsize;
+	index->src.agg_src_offset = agg_src_offset;
 	return index;
 }
 
@@ -343,7 +352,8 @@ create_delta(struct delta_index **indexes,
 			 unsigned long *delta_size, unsigned long max_size)
 {
 	unsigned int i, j, outpos, outsize, moff, msize, val;
-	const struct delta_index *index, *mindex;
+	const struct delta_index *index;
+	const struct source_info *msource;
 	int inscnt;
 	const unsigned char *ref_data, *ref_top, *data, *top;
 	unsigned char *out;
@@ -366,10 +376,10 @@ create_delta(struct delta_index **indexes,
 	index = indexes[0];
 	for (j = 0; j < num_indexes; ++j) {
 		index = indexes[j];
-		i += index->src_size;
+		i += index->src.src_size;
 	}
-	assert(i <= index->src_size + index->agg_src_offset);
-	i = index->src_size + index->agg_src_offset;
+	assert(i <= index->src.src_size + index->src.agg_src_offset);
+	i = index->src.src_size + index->src.agg_src_offset;
 	while (i >= 0x80) {
 		out[outpos++] = i | 0x80;
 		i >>= 7;
@@ -404,7 +414,7 @@ create_delta(struct delta_index **indexes,
 
 	moff = 0;
 	msize = 0;
-	mindex = NULL;
+	msource = NULL;
 	while (data < top) {
 		if (msize < 4096) {
 			/* we don't have a 'worthy enough' match yet, so let's look for
@@ -417,8 +427,6 @@ create_delta(struct delta_index **indexes,
 			for (j = 0; j < num_indexes; ++j) {
 				index = indexes[j];
 				i = val & index->hash_mask;
-				ref_top = index->src_buf + index->src_size;
-				ref_data = index->src_buf;
 				/* TODO: When using multiple indexes like this, the hash tables
 				 *		 mapping val => index_entry become less efficient.
 				 *		 You end up getting a lot more collisions in the hash,
@@ -426,11 +434,16 @@ create_delta(struct delta_index **indexes,
 				 */
 				for (entry = index->hash[i]; entry < index->hash[i+1];
 					 entry++) {
-					const unsigned char *ref = entry->ptr;
-					const unsigned char *src = data;
-					unsigned int ref_size = ref_top - ref;
+					const unsigned char *ref;
+					const unsigned char *src;
+					unsigned int ref_size;
 					if (entry->val != val)
 						continue;
+					ref = entry->ptr;
+					src = data;
+					ref_data = entry->src->src_buf;
+					ref_top = ref_data + entry->src->src_size;
+					ref_size = ref_top - ref;
 					/* ref_size is the longest possible match that we could make
 					 * here. If ref_size <= msize, then we know that we cannot
 					 * match more bytes with this location that we have already
@@ -446,7 +459,7 @@ create_delta(struct delta_index **indexes,
 					if (msize < ref - entry->ptr) {
 						/* this is our best match so far */
 						msize = ref - entry->ptr;
-						mindex = index;
+						msource = entry->src;
 						moff = entry->ptr - ref_data;
 						if (msize >= 4096) /* good enough */
 							break;
@@ -477,7 +490,7 @@ create_delta(struct delta_index **indexes,
 			unsigned char *op;
 
 			if (inscnt) {
-				ref_data = mindex->src_buf;
+				ref_data = msource->src_buf;
 				while (moff && ref_data[moff-1] == data[-1]) {
 					/* we can match one byte back */
 					msize++;
@@ -504,7 +517,7 @@ create_delta(struct delta_index **indexes,
 			/* moff is the offset in the local structure, for encoding, we need
 			 * to push it into the global offset
 			 */
-			moff += mindex->agg_src_offset;
+			moff += msource->agg_src_offset;
 			if (moff & 0x000000ff)
 				out[outpos++] = moff >> 0,  i |= 0x01;
 			if (moff & 0x0000ff00)
@@ -516,7 +529,7 @@ create_delta(struct delta_index **indexes,
 			/* Put it back into local coordinates, in case we have multiple
 			 * copies in a row.
 			 */
-			moff -= mindex->agg_src_offset;
+			moff -= msource->agg_src_offset;
 
 			if (msize & 0x00ff)
 				out[outpos++] = msize >> 0, i |= 0x10;
