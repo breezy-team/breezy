@@ -122,6 +122,8 @@ IN DEVELOPMENT
       UI at all - indeed it only reflects the repository status not
       changes to the branch itself. (Robert Collins)
 
+    * Remove deprecated EmptyTree.  (Martin Pool)
+
     * The ``_fetch_*`` attributes on ``Repository`` are now on
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular
