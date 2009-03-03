@@ -447,7 +447,7 @@ create_delta(struct delta_index **indexes,
 						/* this is our best match so far */
 						msize = ref - entry->ptr;
 						mindex = index;
-						moff = entry->ptr - ref_data + mindex->agg_src_offset;
+						moff = entry->ptr - ref_data;
 						if (msize >= 4096) /* good enough */
 							break;
 					}
@@ -477,17 +477,10 @@ create_delta(struct delta_index **indexes,
 			unsigned char *op;
 
 			if (inscnt) {
-				unsigned int local_moff;
-
-				/* moff is the offset in the global structure, we only want the
-				 * offset in the local source.
-				 */
-				local_moff = moff - mindex->agg_src_offset;
 				ref_data = mindex->src_buf;
-				while (local_moff && ref_data[local_moff-1] == data[-1]) {
+				while (moff && ref_data[moff-1] == data[-1]) {
 					/* we can match one byte back */
 					msize++;
-					local_moff--;
 					moff--;
 					data--;
 					outpos--;
@@ -508,6 +501,10 @@ create_delta(struct delta_index **indexes,
 			op = out + outpos++;
 			i = 0x80;
 
+			/* moff is the offset in the local structure, for encoding, we need
+			 * to push it into the global offset
+			 */
+			moff += mindex->agg_src_offset;
 			if (moff & 0x000000ff)
 				out[outpos++] = moff >> 0,  i |= 0x01;
 			if (moff & 0x0000ff00)
@@ -516,6 +513,10 @@ create_delta(struct delta_index **indexes,
 				out[outpos++] = moff >> 16, i |= 0x04;
 			if (moff & 0xff000000)
 				out[outpos++] = moff >> 24, i |= 0x08;
+			/* Put it back into local coordinates, in case we have multiple
+			 * copies in a row.
+			 */
+			moff -= mindex->agg_src_offset;
 
 			if (msize & 0x00ff)
 				out[outpos++] = msize >> 0, i |= 0x10;
