@@ -30,7 +30,10 @@ from debian_bundle.changelog import Version
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
                 )
+from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
 from bzrlib.plugins.builddeb.util import (
+                  dget,
+                  dget_changes,
                   find_changelog,
                   move_file_if_different,
                   recursive_copy,
@@ -42,6 +45,7 @@ from bzrlib.plugins.builddeb.util import (
                   write_if_different,
                   )
 
+from bzrlib import errors as bzr_errors
 from bzrlib.tests import (TestCaseWithTransport,
                           TestCaseInTempDir,
                           TestCase,
@@ -363,3 +367,67 @@ class WriteFileTests(TestCaseInTempDir):
         write_if_different("bar", 'a')
         self.failUnlessExists('a')
         self.check_file_contents('a', "bar")
+
+
+class DgetTests(TestCaseWithTransport):
+
+    def test_dget_local(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.build_tree(["target/"])
+        dget(builder.dsc_name(), 'target')
+        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
+        self.failUnlessExists(os.path.join("target", builder.tar_name()))
+        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+
+    def test_dget_transport(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.build_tree(["target/"])
+        dget(self.get_url(builder.dsc_name()), 'target')
+        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
+        self.failUnlessExists(os.path.join("target", builder.tar_name()))
+        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+
+    def test_dget_missing_dsc(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        # No builder.build()
+        self.build_tree(["target/"])
+        self.assertRaises(bzr_errors.NoSuchFile, dget,
+                self.get_url(builder.dsc_name()), 'target')
+
+    def test_dget_missing_file(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        os.unlink(builder.tar_name())
+        self.build_tree(["target/"])
+        self.assertRaises(bzr_errors.NoSuchFile, dget,
+                self.get_url(builder.dsc_name()), 'target')
+
+    def test_dget_missing_target(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.assertRaises(bzr_errors.NotADirectory, dget,
+                self.get_url(builder.dsc_name()), 'target')
+
+    def test_dget_changes(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.build_tree(["target/"])
+        dget_changes(builder.changes_name(), 'target')
+        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
+        self.failUnlessExists(os.path.join("target", builder.tar_name()))
+        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+        self.failUnlessExists(os.path.join("target", builder.changes_name()))

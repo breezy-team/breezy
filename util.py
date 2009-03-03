@@ -32,7 +32,10 @@ from bzrlib.trace import mutter
 from debian_bundle import deb822
 from debian_bundle.changelog import Changelog, ChangelogParseError
 
-from bzrlib import urlutils
+from bzrlib import (
+        errors,
+        urlutils,
+        )
 from bzrlib.transport import get_transport
 from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
@@ -272,6 +275,8 @@ def _download_part(name, base_transport, target_dir, md5sum):
 
 
 def _dget(cls, dsc_location, target_dir):
+    if not os.path.isdir(target_dir):
+        raise errors.NotADirectory(target_dir)
     base_dir, path = urlutils.split(dsc_location)
     dsc_t = get_transport(base_dir)
     dsc_contents = dsc_t.get_bytes(path)

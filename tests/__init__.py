@@ -221,6 +221,19 @@ class BuilddebTestCase(TestCaseWithTransport):
 
 
 class SourcePackageBuilder(object):
+    """An interface to ease building source packages.
+
+    >>> builder = SourcePackageBuilder("package", Version("0.1-1"))
+    >>> builder.add_upstream_file("foo")
+    >>> builder.add_debian_file("debian/copyright")
+    >>> builder.add_default_control()
+    >>> builder.build()
+    >>> builder.new_version(Version("0.2-1"))
+    >>> builder.add_upstream_file("bar")
+    >>> builder.remove_upstream_file("foo")
+    >>> builder.build()
+    >>> builder.dsc_name()
+    """
 
     def __init__(self, name, version, native=False):
         self.upstream_files = {}
@@ -251,7 +264,9 @@ class SourcePackageBuilder(object):
         del self.debian_files[filename]
 
     def add_default_control(self):
-        text = """Source: %s\n""" % self.name
+        text = """Source: %s\nSection: misc\n""" % self.name
+        text += "Priority: optional\n"
+        text += "Maintainer: Maintainer <maint@maint.org>\n"
         self.add_debian_file("debian/control", text)
 
     def new_version(self, version, change_text=None):
@@ -266,6 +281,19 @@ class SourcePackageBuilder(object):
 
     def dsc_name(self):
         return "%s_%s.dsc" % (self.name, str(self._cl.version))
+
+    def tar_name(self):
+        if self.native:
+            return "%s_%s.tar.gz" % (self.name, str(self._cl.version))
+        return "%s_%s.orig.tar.gz" % (self.name,
+                str(self._cl.version.upstream_version))
+
+    def diff_name(self):
+        assert not self.native, "Can't have a diff with a native package"
+        return "%s_%s.diff.gz" % (self.name, str(self._cl.version))
+
+    def changes_name(self):
+        return "%s_%s_source.changes" % (self.name, str(self._cl.version))
 
     def _make_files(self, files_list, basedir):
         for (path, content) in files_list.items():
@@ -307,5 +335,11 @@ class SourcePackageBuilder(object):
                 stderr=subprocess.PIPE)
         ret = proc.wait()
         assert ret == 0, "dpkg-source failed, output:\n%s\n%s" % \
+                (proc.stdout.read(), proc.stderr.read())
+        cmd = "dpkg-genchanges -S > ../%s" % self.changes_name()
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, cwd=basedir)
+        ret = proc.wait()
+        assert ret == 0, "dpkg-genchanges failed, output:\n%s\n%s" % \
                 (proc.stdout.read(), proc.stderr.read())
         shutil.rmtree(basedir)
