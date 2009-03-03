@@ -1126,17 +1126,9 @@ class BzrDir(object):
             # Not especially, but it's part of the contract.
             result_branch = result.create_branch()
         else:
-            # Force NULL revision to avoid using repository before stacking
-            # is configured.
-            result_branch = source_branch.sprout(
-                result, revision_id=_mod_revision.NULL_REVISION)
-            parent_location = result_branch.get_parent()
+            result_branch = source_branch.sprout(result,
+                revision_id=revision_id, repository_policy=repository_policy)
         mutter("created new branch %r" % (result_branch,))
-        repository_policy.configure_branch(result_branch)
-        if source_branch is not None:
-            source_branch.copy_content_into(result_branch, revision_id)
-            # Override copy_content_into
-            result_branch.set_parent(parent_location)
 
         # Create/update the result working tree
         if (create_tree_if_local and
