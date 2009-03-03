@@ -197,7 +197,8 @@ class GroupCompressor(object):
                 self._delta_index._source_offset += unadded_bytes
             else:
                 unadded_bytes = sum(map(len, new_chunks))
-                self._delta_index.add_source(delta, unadded_bytes)
+                self._delta_index.add_delta_source(delta, unadded_bytes)
+                add_delta()
                 new_chunks.append(delta)
         delta_start = (self.endpoint, len(self.lines))
         self.output_chunks(new_chunks)
