@@ -318,6 +318,8 @@ development.
 -Dmerge           Emit information for debugging merges.
 -Dpack            Emit information about pack operations.
 -Dsftp            Trace SFTP internals.
+
+These can also be set in the debug_flags configuration variable.
 """
 
 _standard_options = \

@@ -24,3 +24,17 @@ for a list of the available options.
 """
 
 debug_flags = set()
+
+
+def set_debug_flags_from_config():
+    """Turn on debug flags based on the global configuration"""
+
+    from bzrlib.config import GlobalConfig
+
+    c = GlobalConfig()
+    value = c.get_user_option("debug_flags")
+    if value is not None:
+        words = value.split(',')
+        for w in words:
+            w = w.strip()
+            debug_flags[w] = True
