@@ -60,7 +60,7 @@ class UpstreamProvider(object):
         self.tree = tree
         self.branch = branch
         self.package = package
-        self.version = version
+        self.version = Version(version)
         self.store_dir = store_dir
         self.larstiq = larstiq
         self.upstream_branch = upstream_branch
