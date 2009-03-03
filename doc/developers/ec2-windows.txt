@@ -8,7 +8,9 @@ building Windows packages and general testing on Windows.  As of
 but we aim to use it for the production Windows installer build of 1.13 in
 March.
 
-See also: `Bazaar Developer Documentation Catalog <index.html>`_.
+See also: 
+
+* `Bazaar Developer Documentation Catalog <index.html>`_.
 
 
 .. _Desolation: http://en.wikipedia.org/wiki/Desolation_Island
