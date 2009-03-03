@@ -125,9 +125,11 @@ def strip_changelog_message(changes):
         and the spaces the start of the lines split if there is only one logical
         entry.
     """
-    while changes[-1] == '':
+    if not changes:
+        return changes
+    while changes and changes[-1] == '':
         changes.pop()
-    while changes[0] == '':
+    while changes and changes[0] == '':
         changes.pop(0)
 
     whitespace_column_re = re.compile(r'  |\t')

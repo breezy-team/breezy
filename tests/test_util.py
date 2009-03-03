@@ -28,6 +28,7 @@ from bzrlib.plugins.builddeb.util import (
                   recursive_copy,
                   get_snapshot_revision,
                   lookup_distribution,
+                  strip_changelog_message,
                   suite_to_distribution,
                   )
 
@@ -165,6 +166,41 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         self.assertRaises(AddChangelogError, find_changelog, tree, False)
 
 
+class StripChangelogMessageTests(TestCase):
+
+    def test_None(self):
+        self.assertEqual(strip_changelog_message(None), None)
+
+    def test_no_changes(self):
+        self.assertEqual(strip_changelog_message([]), [])
+
+    def test_empty_changes(self):
+        self.assertEqual(strip_changelog_message(['']), [])
+
+    def test_removes_leading_whitespace(self):
+        self.assertEqual(strip_changelog_message(
+                    ['foo', '  bar', '\tbaz', '   bang']),
+                    ['foo', 'bar', 'baz', ' bang'])
+
+    def test_removes_star_if_one(self):
+        self.assertEqual(strip_changelog_message(['  * foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['\t* foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  + foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  - foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  *  foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  *  foo', '     bar']),
+                ['foo', 'bar'])
+
+    def test_leaves_start_if_multiple(self):
+        self.assertEqual(strip_changelog_message(['  * foo', '  * bar']),
+                    ['* foo', '* bar'])
+        self.assertEqual(strip_changelog_message(['  * foo', '  + bar']),
+                    ['* foo', '+ bar'])
+        self.assertEqual(strip_changelog_message(
+                    ['  * foo', '  bar', '  * baz']),
+                    ['* foo', 'bar', '* baz'])
+
+
 class GetRevisionSnapshotTests(TestCase):
 
     def test_with_snapshot(self):
@@ -217,6 +253,7 @@ class SuiteToDistributionTests(TestCase):
         self.lookup_other('not-a-target')
         self.lookup_other("debian")
         self.lookup_other("ubuntu")
+
 
 class LookupDistributionTests(SuiteToDistributionTests):
 
