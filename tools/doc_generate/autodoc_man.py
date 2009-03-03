@@ -92,11 +92,16 @@ def getcommand_list (params):
 def getcommand_help(params):
     """Shows individual options for a bzr command"""
     output='.SH "COMMAND REFERENCE"\n'
+    formatted = {}
     for cmd_name in command_name_list():
         cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
         if cmd_object.hidden:
             continue
-        output = output + format_command(params, cmd_object)
+        formatted[cmd_name] = format_command(params, cmd_object)
+        for alias in cmd_object.aliases:
+            formatted[alias] = format_alias(params, alias, cmd_name)
+    for cmd_name in sorted(formatted.keys()):
+        output = output + formatted[cmd_name]
     return output
 
 
@@ -142,6 +147,12 @@ def format_command (params, cmd):
         see_also_str += '\n'
 
     return subsection_header + option_str + aliases_str + see_also_str + "\n" + doc + "\n"
+
+
+def format_alias(params, alias, cmd_name):
+    help = '.SS "bzr %s"\n' % alias
+    help += 'Alias for "%s", see "bzr %s".\n' % (cmd_name, cmd_name)
+    return help
 
 
 man_preamble = """\
