@@ -44,10 +44,10 @@ class TextStore(bzrlib.store.TransportStore):
     def _add_compressed(self, fn, f):
         from cStringIO import StringIO
         from bzrlib.osutils import pumpfile
-        
+
         if isinstance(f, basestring):
             f = StringIO(f)
-            
+
         sio = StringIO()
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
         # if pumpfile handles files that don't fit in ram,

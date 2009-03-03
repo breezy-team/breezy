@@ -600,7 +600,7 @@ diff:
       +++ file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
       @@ -0,0 +1,1 @@
       +contents of parent/file1
-      
+\x20\x20\x20\x20\x20\x20
       === added file 'file2'
       --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
       +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ

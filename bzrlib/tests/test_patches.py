@@ -21,26 +21,27 @@ import os.path
 from bzrlib.tests import TestCase
 
 from bzrlib.iterablefile import IterableFile
-from bzrlib.patches import (MalformedLine, 
-                            MalformedHunkHeader, 
-                            MalformedPatchHeader, 
-                            ContextLine, 
+from bzrlib.patches import (MalformedLine,
+                            MalformedHunkHeader,
+                            MalformedPatchHeader,
+                            ContextLine,
                             InsertLine,
-                            RemoveLine, 
-                            difference_index, 
+                            RemoveLine,
+                            difference_index,
                             get_patch_names,
-                            hunk_from_header, 
-                            iter_patched, 
+                            hunk_from_header,
+                            iter_patched,
                             iter_patched_from_hunks,
                             parse_line,
                             parse_patch,
-                            parse_patches)
+                            parse_patches,
+                            NO_NL)
 
 
 class PatchesTester(TestCase):
 
     def datafile(self, filename):
-        data_path = os.path.join(os.path.dirname(__file__), 
+        data_path = os.path.join(os.path.dirname(__file__),
                                  "test_patches_data", filename)
         return file(data_path, "rb")
 
@@ -112,11 +113,15 @@ class PatchesTester(TestCase):
         self.lineThing(" hello\n", ContextLine)
         self.lineThing("+hello\n", InsertLine)
         self.lineThing("-hello\n", RemoveLine)
-    
+
     def testMalformedLine(self):
         """Parse invalid valid hunk lines"""
         self.makeMalformedLine("hello\n")
-    
+
+    def testMalformedLineNO_NL(self):
+        """Parse invalid '\ No newline at end of file' in hunk lines"""
+        self.makeMalformedLine(NO_NL)
+
     def compare_parsed(self, patchtext):
         lines = patchtext.splitlines(True)
         patch = parse_patch(lines.__iter__())
@@ -174,6 +179,7 @@ class PatchesTester(TestCase):
             ('diff-4', 'orig-4', 'mod-4'),
             ('diff-5', 'orig-5', 'mod-5'),
             ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
         ]
         for diff, orig, mod in files:
             patch = self.datafile(diff)
@@ -196,6 +202,7 @@ class PatchesTester(TestCase):
             ('diff-4', 'orig-4', 'mod-4'),
             ('diff-5', 'orig-5', 'mod-5'),
             ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
         ]
         for diff, orig, mod in files:
             parsed = parse_patch(self.datafile(diff))

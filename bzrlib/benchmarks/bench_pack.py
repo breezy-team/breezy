@@ -28,8 +28,8 @@ class BenchPack(Benchmark):
     """Benchmark pack performance."""
 
     def test_insert_one_gig_1k_chunks_no_names_disk(self):
-        # test real disk writing of many small chunks. 
-        # useful for testing whether buffer sizes are right 
+        # test real disk writing of many small chunks.
+        # useful for testing whether buffer sizes are right
         transport = self.get_transport()
         stream = transport.open_write_stream('pack.pack')
         writer = pack.ContainerWriter(stream.write)

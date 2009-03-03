@@ -20,6 +20,7 @@ from bzrlib.branch import Branch, ChangeBranchTipParams
 from bzrlib.errors import HookFailed, TipChangeRejected
 from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
+from bzrlib.smart import server
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -75,7 +76,7 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
 
     def capture_set_rh_hook(self, branch, rev_history):
         """Capture post set-rh hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the branch.
         """
         self.hook_calls.append(
@@ -147,12 +148,17 @@ class TestOpen(TestCaseWithMemoryTransport):
         b = self.make_branch('.')
         if isinstance(b, RemoteBranch):
             # RemoteBranch creation:
-            # - creates the branch via the VFS
+            # - creates the branch via the VFS (for older servers)
             # - does a branch open (by creating a RemoteBranch object)
-            # - this has the same behaviour as simple branch opening, with an
-            # additional VFS open at the front.
-            self.assertEqual(b._real_branch, self.hook_calls[0])
-            self.assertOpenedRemoteBranch(self.hook_calls[1:], b)
+            # - this has the nearly the same behaviour as simple branch opening
+            if (self.transport_readonly_server ==
+                server.ReadonlySmartTCPServer_for_testing_v2_only):
+                # Older servers:
+                self.assertEqual(b._real_branch, self.hook_calls[0])
+                self.assertOpenedRemoteBranch(self.hook_calls[1:], b)
+            else:
+                self.assertOpenedRemoteBranch(self.hook_calls, b,
+                    remote_first=True)
         else:
             self.assertEqual([b], self.hook_calls)
 
@@ -165,22 +171,36 @@ class TestOpen(TestCaseWithMemoryTransport):
         else:
             self.assertEqual([b], self.hook_calls)
 
-    def assertOpenedRemoteBranch(self, hook_calls, b):
-        """Assert that the expected calls were recorded for opening 'b'."""
+    def assertOpenedRemoteBranch(self, hook_calls, b, remote_first=False):
+        """Assert that the expected calls were recorded for opening 'b'.
+
+        :param remote_first: If True expect the server side operation to open
+            the branch object first.
+        """
         # RemoteBranch open always opens the backing branch to get stacking
         # details. As that is done remotely we can't see the branch object
         # nor even compare base url's etc. So we just assert that the first
         # branch returned is the RemoteBranch, and that the second is a
         # Branch but not a RemoteBranch.
+        #
+        # RemoteBranch *creation* on the other hand creates the branch object
+        # on the server, and then creates the local proxy object in the client,
+        # so it sees the reverse order.
         self.assertEqual(2, len(hook_calls))
-        self.assertEqual(b, hook_calls[0])
-        self.assertIsInstance(hook_calls[1], Branch)
-        self.assertFalse(isinstance(hook_calls[1], RemoteBranch))
+        if remote_first:
+            real_index = 0
+            remote_index = 1
+        else:
+            real_index = 1
+            remote_index = 0
+        self.assertEqual(b, hook_calls[remote_index])
+        self.assertIsInstance(hook_calls[real_index], Branch)
+        self.assertFalse(isinstance(hook_calls[real_index], RemoteBranch))
 
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for pre_change_branch_tip hook.
-    
+
     Most of these tests are very similar to the tests in
     TestPostChangeBranchTip.
     """
@@ -198,7 +218,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_hook_failure_prevents_change(self):
         """If a hook raises an exception, the change does not take effect.
-        
+
         Also, a HookFailed exception will be raised.
         """
         branch = self.make_branch_with_revision_ids(
@@ -214,7 +234,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsInstance(hook_failed_exc.exc_value, PearShapedError)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
     def test_empty_history(self):
         branch = self.make_branch('source')
         hook_calls = self.install_logging_hook('pre')
@@ -262,7 +282,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_explicit_reject_by_hook(self):
         """If a hook raises TipChangeRejected, the change does not take effect.
-        
+
         TipChangeRejected exceptions are propagated, not wrapped in HookFailed.
         """
         branch = self.make_branch_with_revision_ids(
@@ -275,7 +295,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
             TipChangeRejected, branch.set_last_revision_info, 0, NULL_REVISION)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
 
 class TestPostChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for post_change_branch_tip hook.
@@ -350,7 +370,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
     def setUp(self):
         ChangeBranchTipTestCase.setUp(self)
         self.installPreAndPostHooks()
-        
+
     def installPreAndPostHooks(self):
         self.pre_hook_calls = self.install_logging_hook('pre')
         self.post_hook_calls = self.install_logging_hook('post')

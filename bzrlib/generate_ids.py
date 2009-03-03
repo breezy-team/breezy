@@ -32,7 +32,7 @@ from bzrlib import (
     lazy_regex,
     )
 
-# the regex removes any weird characters; we don't escape them 
+# the regex removes any weird characters; we don't escape them
 # but rather just pull them out
 _file_id_chars_re = lazy_regex.lazy_compile(r'[^\w.]')
 _rev_id_chars_re = lazy_regex.lazy_compile(r'[^-\w.+@]')
@@ -42,12 +42,12 @@ _gen_file_id_serial = 0
 
 def _next_id_suffix():
     """Create a new file id suffix that is reasonably unique.
-    
+
     On the first call we combine the current time with 64 bits of randomness to
     give a highly probably globally unique number. Then each call in the same
     process adds 1 to a serial number we append to that unique value.
     """
-    # XXX TODO: change bzrlib.add.smart_add_tree to call workingtree.add() rather 
+    # XXX TODO: change bzrlib.add.smart_add_tree to call workingtree.add() rather
     # than having to move the id randomness out of the inner loop like this.
     # XXX TODO: for the global randomness this uses we should add the thread-id
     # before the serial #.

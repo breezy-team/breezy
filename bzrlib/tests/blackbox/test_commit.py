@@ -302,7 +302,7 @@ class TestCommit(ExternalBase):
     def test_commit_a_text_merge_in_a_checkout(self):
         # checkouts perform multiple actions in a transaction across bond
         # branches and their master, and have been observed to fail in the
-        # past. This is a user story reported to fail in bug #43959 where 
+        # past. This is a user story reported to fail in bug #43959 where
         # a merge done in a checkout (using the update command) failed to
         # commit correctly.
         trunk = self.make_branch_and_tree('trunk')

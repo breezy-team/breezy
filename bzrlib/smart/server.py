@@ -62,7 +62,7 @@ class SmartTCPServer(object):
         from socket import error as socket_error
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
-        addrs = socket.getaddrinfo(host, port, socket.AF_UNSPEC, 
+        addrs = socket.getaddrinfo(host, port, socket.AF_UNSPEC,
             socket.SOCK_STREAM, 0, socket.AI_PASSIVE)[0]
 
         (family, socktype, proto, canonname, sockaddr) = addrs
@@ -98,11 +98,11 @@ class SmartTCPServer(object):
         # We need all three because:
         #  * other machines see the first
         #  * local commits on this machine should be able to be mapped to
-        #    this server 
+        #    this server
         #  * commits the server does itself need to be mapped across to this
         #    server.
         # The latter two urls are different aliases to the servers url,
-        # so we group those in a list - as there might be more aliases 
+        # so we group those in a list - as there might be more aliases
         # in the future.
         backing_urls = [self.backing_transport.base]
         try:
@@ -178,7 +178,7 @@ class SmartTCPServer(object):
         self._should_terminate = True
         # close the socket - gives error to connections from here on in,
         # rather than a connection reset error to connections made during
-        # the period between setting _should_terminate = True and 
+        # the period between setting _should_terminate = True and
         # the current request completing/aborting. It may also break out the
         # main loop if it was currently in accept() (on some platforms).
         try:
@@ -222,7 +222,7 @@ SmartTCPServer.hooks = SmartServerHooks()
 
 class SmartTCPServer_for_testing(SmartTCPServer):
     """Server suitable for use by transport tests.
-    
+
     This server is backed by the process's cwd.
     """
 
@@ -230,7 +230,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         SmartTCPServer.__init__(self, None)
         self.client_path_extra = None
         self.thread_name_suffix = thread_name_suffix
-        
+
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         return transport.get_transport(backing_transport_server.get_url())
@@ -238,7 +238,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def setUp(self, backing_transport_server=None,
               client_path_extra='/extra/'):
         """Set up server for testing.
-        
+
         :param backing_transport_server: backing server to use.  If not
             specified, a LocalURLServer at the current working directory will
             be used.

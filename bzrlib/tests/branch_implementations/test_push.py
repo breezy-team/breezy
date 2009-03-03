@@ -18,7 +18,7 @@
 
 from cStringIO import StringIO
 import os
- 
+
 from bzrlib import (
     branch,
     builtins,
@@ -26,6 +26,7 @@ from bzrlib import (
     debug,
     errors,
     push,
+    repository,
     tests,
     )
 from bzrlib.branch import Branch
@@ -33,6 +34,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, server
+from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalURLServer
@@ -41,7 +43,7 @@ from bzrlib.transport.local import LocalURLServer
 class TestPush(TestCaseWithBranch):
 
     def test_push_convergence_simple(self):
-        # when revisions are pushed, the left-most accessible parents must 
+        # when revisions are pushed, the left-most accessible parents must
         # become the revision-history.
         mine = self.make_branch_and_tree('mine')
         mine.commit('1st post', rev_id='P1', allow_pointless=True)
@@ -165,7 +167,7 @@ class TestPush(TestCaseWithBranch):
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
-        
+
         This was <https://bugs.launchpad.net/bzr/+bug/234229>.
         """
         source = self.make_branch_and_tree('source')
@@ -224,6 +226,68 @@ class TestPush(TestCaseWithBranch):
         trunk.push(remote_branch)
         remote_branch.check()
 
+    def test_no_get_parent_map_after_insert_stream(self):
+        # Effort test for bug 331823
+        self.setup_smart_server_with_call_log()
+        # Make a local branch with four revisions.  Four revisions because:
+        # one to push, one there for _walk_to_common_revisions to find, one we
+        # don't want to access, one for luck :)
+        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+            # This test could in principle apply to BranchReferenceFormat, but
+            # make_branch_builder doesn't support it.
+            raise tests.TestSkipped(
+                "BranchBuilder can't make reference branches.")
+        try:
+            builder = self.make_branch_builder('local')
+        except (errors.TransportNotPossible, errors.UninitializableFormat):
+            raise tests.TestNotApplicable('format not directly constructable')
+        builder.start_series()
+        builder.build_snapshot('first', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('second', ['first'], [])
+        builder.build_snapshot('third', ['second'], [])
+        builder.build_snapshot('fourth', ['third'], [])
+        builder.finish_series()
+        local = builder.get_branch()
+        local = branch.Branch.open(self.get_vfs_only_url('local'))
+        # Initial push of three revisions
+        remote_bzrdir = local.bzrdir.sprout(
+            self.get_url('remote'), revision_id='third')
+        remote = remote_bzrdir.open_branch()
+        # Push fourth revision
+        self.reset_smart_call_log()
+        self.disableOptimisticGetParentMap()
+        self.assertFalse(local.is_locked())
+        local.push(remote)
+        hpss_call_names = [item[0].method for item in self.hpss_calls]
+        self.assertTrue('Repository.insert_stream' in hpss_call_names)
+        insert_stream_idx = hpss_call_names.index('Repository.insert_stream')
+        calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
+        # After inserting the stream the client has no reason to query the
+        # remote graph any further.
+        self.assertEqual(
+            ['Repository.insert_stream', 'Repository.insert_stream', 'get',
+             'Branch.set_last_revision_info', 'Branch.unlock'],
+            calls_after_insert_stream)
+
+    def disableOptimisticGetParentMap(self):
+        # Tweak some class variables to stop remote get_parent_map calls asking
+        # for or receiving more data than the caller asked for.
+        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
+        inter_classes = [repository.InterOtherToRemote,
+            repository.InterPackToRemotePack]
+        old_batch_sizes = []
+        for inter_class in inter_classes:
+            old_batch_sizes.append(
+                inter_class._walk_to_common_revisions_batch_size)
+            inter_class._walk_to_common_revisions_batch_size = 1
+        SmartServerRepositoryGetParentMap.no_extra_results = True
+        def reset_values():
+            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
+            for inter_class, size in zip(inter_classes, old_batch_sizes):
+                inter_class._walk_to_common_revisions_batch_size = size
+        self.addCleanup(reset_values)
+
 
 class TestPushHook(TestCaseWithBranch):
 
@@ -233,7 +297,7 @@ class TestPushHook(TestCaseWithBranch):
 
     def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if result.local_branch:
@@ -267,7 +331,7 @@ class TestPushHook(TestCaseWithBranch):
     def test_post_push_bound_branch(self):
         # pushing to a bound branch should pass in the master branch to the
         # hook, allowing the correct number of emails to be sent, while still
-        # allowing hooks that want to modify the target to do so to both 
+        # allowing hooks that want to modify the target to do so to both
         # instances.
         target = self.make_branch('target')
         local = self.make_branch('local')
@@ -355,7 +419,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         self.assertEqual(
             ['BzrDir.open',
              'BzrDir.open_branch',
-             'BzrDir.find_repositoryV2',
+             'BzrDir.find_repositoryV3',
              'Branch.get_stacked_on_url',
              'Branch.lock_write',
              'Branch.last_revision_info',

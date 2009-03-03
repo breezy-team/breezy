@@ -126,7 +126,7 @@ def _help_on_topics(dummy):
 
     topics = topic_registry.keys()
     lmax = max(len(topic) for topic in topics)
-        
+
     out = []
     for topic in topics:
         summary = topic_registry.get_summary(topic)
@@ -191,7 +191,7 @@ The keywords used as revision selection methods are the following:
             #doc = indent_re.sub('', doc)
             while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
                 doc = doc[:-1]
-        
+
         # Note: The leading : here are HACKs to get reStructuredText
         # 'field' formatting - we know that the prefix ends in a ':'.
         out.append(":%s\n\t%s" % (i.prefix, summary))
@@ -324,7 +324,7 @@ _standard_options = \
 """Standard Options
 
 Standard options are legal for all commands.
-      
+
 --help, -h     Show help message.
 --verbose, -v  Display more information.
 --quiet, -q    Only display errors and warnings.
@@ -382,7 +382,7 @@ the same disk then there won't be a noticeable difference.
 
 Another possible use for a checkout is to use it with a treeless repository
 containing your branches, where you maintain only one working tree by
-switching the master branch that the checkout points to when you want to 
+switching the master branch that the checkout points to when you want to
 work on a different branch.
 
 Obviously to commit on a checkout you need to be able to write to the master
@@ -403,7 +403,7 @@ Related commands::
               checkout
   update      Pull any changes in the master branch in to your checkout
   commit      Make a commit that is sent to the master branch. If you have
-              a heavy checkout then the --local option will commit to the 
+              a heavy checkout then the --local option will commit to the
               checkout without sending the commit to the master
   bind        Change the master branch that the commits in the checkout will
               be sent to
@@ -419,7 +419,7 @@ a repository associated with every branch.
 
 Repositories are a form of database. Bzr will usually maintain this for
 good performance automatically, but in some situations (e.g. when doing
-very many commits in a short time period) you may want to ask bzr to 
+very many commits in a short time period) you may want to ask bzr to
 optimise the database indices. This can be done by the 'bzr pack' command.
 
 By default just running 'bzr init' will create a repository within the new
@@ -727,7 +727,7 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return ("Bug Tracker Settings\n\n" + 
+    return ("Bug Tracker Settings\n\n" +
         bugtracker.tracker_registry.help_topic(topic))
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
@@ -824,7 +824,7 @@ class RegisteredTopic(object):
             returned instead of plain text.
         """
         result = topic_registry.get_detail(self.topic)
-        # there is code duplicated here and in bzrlib/plugin.py's 
+        # there is code duplicated here and in bzrlib/plugin.py's
         # matching Topic code. This should probably be factored in
         # to a helper function and a common base class.
         if additional_see_also is not None:

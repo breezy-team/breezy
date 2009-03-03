@@ -23,7 +23,7 @@ from bzrlib.tests import TestCase
 
 
 class TestEncodeCache(TestCase):
-    
+
     def setUp(self):
         super(TestEncodeCache, self).setUp()
         cache_utf8.clear_encoding_cache()
