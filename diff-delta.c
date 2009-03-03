@@ -11,7 +11,6 @@
  * published by the Free Software Foundation.
  */
 
-#include <stdio.h>
 #include "delta.h"
 #include <assert.h>
 
@@ -359,8 +358,6 @@ create_index_from_old_and_hash(const struct delta_index *old,
 		bytes_copied += (total_copy * sizeof(struct index_entry));
 		num_ops += 1;
 	}
-	fprintf(stderr, "copied %d records (%d bytes) in %d ops, inserted %d\n",
-			old->num_entries, bytes_copied, num_ops, num_entries);
 
 	/* Sentinel value to indicate the length of the last hash bucket */
 	packed_hash[hsize] = packed_entry;
