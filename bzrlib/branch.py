@@ -1275,8 +1275,9 @@ class BranchFormat(object):
     def register_format(klass, format):
         """Register a metadir format."""
         klass._formats[format.get_format_string()] = format
-        # Metadir formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format)
+        # Metadir formats have a network name of their format string, and get
+        # registered as class factories.
+        network_format_registry.register(format.get_format_string(), format.__class__)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1730,7 +1731,7 @@ BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
-    _legacy_formats[0].network_name(), _legacy_formats[0])
+    _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
 class BzrBranch(Branch):
