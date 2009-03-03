@@ -21,6 +21,7 @@
 
 import os
 
+
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
@@ -114,6 +115,32 @@ class TestLogFormats(TestCaseInTempDir):
 
         os.chdir('..')
 
+    def test_logformat_gnu_changelog(self):
+        # from http://launchpad.net/bugs/29582/
+        self.setup_config()
+        repo_url = self.make_trivial_history()
+
+        out, err = self.run_bzr(
+            ['log', self.get_url('repo/a'), '--log-format=changelog'])
+        self.assertEquals(err, '')
+        # FIXME: This test will only work today; branchbuilder needs to have a
+        # way to pass the commit date/time through to commit.  -- mbp 20090303
+        self.assertEqualDiff(out,
+"""2009-03-03  Joe Foo  <joe@foo.com>
+
+	commit 1
+
+""")
+
+    def make_trivial_history(self):
+        """Make a one-commit history and return the URL of the branch"""
+        repo = self.make_repository('repo', shared=True, format='1.6')
+        bb = self.make_branch_builder('repo/a')
+        bb.start_series()
+        bb.build_snapshot('rev-1', None,
+            [('add', ('', 'root-id', 'directory', ''))])
+        bb.finish_series()
+        return self.get_url('repo/a')
 
     def setup_config(self):
         if os.path.isfile(config_filename()):
