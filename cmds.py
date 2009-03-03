@@ -458,6 +458,7 @@ class cmd_merge_upstream(Command):
 
     def _update_changelog(self, tree, version, distribution_name, changelog,
             package):
+        from bzrlib.plugins.builddeb.merge_upstream import package_version
         if "~bzr" in str(version) or "+bzr" in str(version):
             entry_description = "New upstream snapshot."
         else:
@@ -477,7 +478,7 @@ class cmd_merge_upstream(Command):
             merge_type=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.merge_upstream import (upstream_branch_version, package_version)
+        from bzrlib.plugins.builddeb.merge_upstream import upstream_branch_version
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -698,7 +699,7 @@ class cmd_import_dsc(Command):
                         '..'))
             try:
                 if last_version is not None:
-                    if db.has_upstream_version_in_packaging_branch(
+                    if not db.has_upstream_version_in_packaging_branch(
                             last_version):
                         raise BzrCommandError("Unable to find the tag for "
                                 "the previous upstream version, %s, in the "

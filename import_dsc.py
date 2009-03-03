@@ -1019,14 +1019,17 @@ class DistributionBranch(object):
         """
         return str(version)
 
-    def upstream_tag_name(self, version):
+    def upstream_tag_name(self, version, distro=None):
         """Gets the tag name for the upstream part of version.
 
         :param version: the Version object to extract the upstream
             part of the version number from.
         :return: a String with the name of the tag.
         """
-        return "upstream-" + self.tag_name(version.upstream_version)
+        tag_name = self.tag_name(version.upstream_version)
+        if distro is None:
+            return "upstream-" + tag_name
+        return "upstream-%s-%s" % (distro, tag_name)
 
     def _has_version(self, branch, tag_name, md5=None):
         if branch.tags.has_tag(tag_name):
@@ -1064,7 +1067,15 @@ class DistributionBranch(object):
             package. False otherwise.
         """
         tag_name = self.tag_name(version)
-        return self._has_version(self.branch, tag_name, md5=md5)
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        debian_tag_name = "debian-" + tag_name
+        if self._has_version(self.branch, debian_tag_name, md5=md5):
+            return True
+        ubuntu_tag_name = "ubuntu-" + tag_name
+        if self._has_version(self.branch, ubuntu_tag_name, md5=md5):
+            return True
+        return False
 
     def has_upstream_version(self, version, md5=None):
         """Whether this branch contains the upstream version specified.
@@ -1082,11 +1093,27 @@ class DistributionBranch(object):
             version of the package. False otherwise.
         """
         tag_name = self.upstream_tag_name(version)
-        return self._has_version(self.upstream_branch, tag_name, md5=md5)
+        if self._has_version(self.upstream_branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.upstream_branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.upstream_branch, tag_name, md5=md5):
+            return True
+        return False
 
     def has_upstream_version_in_packaging_branch(self, version, md5=None):
         tag_name = self.upstream_tag_name(version)
-        return self._has_version(self.branch, tag_name, md5=md5)
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        return False
 
     def contained_versions(self, versions):
         """Splits a list of versions depending on presence in the branch.
@@ -2049,7 +2076,15 @@ class DistributionBranch(object):
 
     def _revid_of_upstream_version_from_branch(self, version):
         tag_name = self.upstream_tag_name(version)
-        return self.branch.tags.lookup_tag(tag_name)
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        assert False, "Unable to find upstream version"
 
     def merge_upstream(self, tarball_filename, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None):

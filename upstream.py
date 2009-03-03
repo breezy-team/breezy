@@ -182,7 +182,7 @@ class UpstreamProvider(object):
 
     def provide_with_pristine_tar(self, target_dir):
         db = DistributionBranch(self.branch, None, tree=self.tree)
-        if not db._has_upstream_version_in_packaging_branch(self.version):
+        if not db.has_upstream_version_in_packaging_branch(self.version):
             return False
         revid = db._revid_of_upstream_version_from_branch(self.version)
         if not db.has_pristine_tar_delta(revid):
