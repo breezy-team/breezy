@@ -1191,7 +1191,16 @@ class DistributionBranch(object):
             revision id of. The Version must be present in the branch.
         :return: the revision id corresponding to that version
         """
-        return self.branch.tags.lookup_tag(self.tag_name(version))
+        tag_name = self.tag_name(version)
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        debian_tag_name = "debian-" + tag_name
+        if self._has_version(self.branch, debian_tag_name):
+            return self.branch.tags.lookup_tag(debian_tag_name)
+        ubuntu_tag_name = "ubuntu-" + tag_name
+        if self._has_version(self.branch, ubuntu_tag_name):
+            return self.branch.tags.lookup_tag(ubuntu_tag_name)
+        return self.branch.tags.lookup_tag(tag_name)
 
     def revid_of_upstream_version(self, version):
         """Returns the revision id corresponding to the upstream version.
@@ -1202,6 +1211,15 @@ class DistributionBranch(object):
         :return: the revision id corresponding to the upstream portion
             of the version
         """
+        tag_name = self.upstream_tag_name(version)
+        if self._has_version(self.upstream_branch, tag_name):
+            return self.upstream_branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.upstream_branch, tag_name):
+            return self.upstream_branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.upstream_branch, tag_name):
+            return self.upstream_branch.tags.lookup_tag(tag_name)
         tag_name = self.upstream_tag_name(version)
         return self.upstream_branch.tags.lookup_tag(tag_name)
 
@@ -2084,7 +2102,8 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version, distro="ubuntu")
         if self._has_version(self.branch, tag_name):
             return self.branch.tags.lookup_tag(tag_name)
-        assert False, "Unable to find upstream version"
+        tag_name = self.upstream_tag_name(version)
+        return self.branch.tags.lookup_tag(tag_name)
 
     def merge_upstream(self, tarball_filename, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None):
