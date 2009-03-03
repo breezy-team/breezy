@@ -139,7 +139,8 @@ class UpstreamProvider(object):
         found = False
         info("Using apt to look for the upstream tarball.")
         while sources.Lookup(self.package):
-            if self.version == Version(sources.Version).upstream_version:
+            if self.version.upstream_version \
+                == Version(sources.Version).upstream_version:
                 command = 'apt-get source -y --only-source --tar-only %s=%s' % \
                     (self.package, sources.Version)
                 proc = subprocess.Popen(command, shell=True, cwd=target_dir)
@@ -171,8 +172,8 @@ class UpstreamProvider(object):
             r = os.system("uscan --upstream-version %s --force-download --rename "
                           "--package %s --watchfile %s --check-dirname-level 0 " 
                           "--download --repack --destdir %s" %
-                          (self.version, self.package, tempfilename,
-                           target_dir))
+                          (self.version.upstream_version, self.package,
+                           tempfilename, target_dir))
             if r != 0:
                 info("uscan could not find the needed tarball.")
                 return False
@@ -232,7 +233,8 @@ class UpstreamProvider(object):
         return False
 
     def _tarball_name(self):
-        return "%s_%s.orig.tar.gz" % (self.package, self.version)
+        return "%s_%s.orig.tar.gz" % (self.package,
+                self.version.upstream_version)
 
     def provide_from_upstream_branch(self, target_dir):
         if self.upstream_branch is None:
@@ -297,7 +299,7 @@ class _SimpleUpstreamProvider(UpstreamProvider):
 
     def __init__(self, package, version, store_dir):
         self.package = package
-        self.version = version
+        self.version = Version(version)
         self.store_dir = store_dir
 
     def provide(self, target_dir):
