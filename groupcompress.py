@@ -149,11 +149,11 @@ class GroupCompressor(object):
         :return: The sha1 of lines, and the number of bytes accumulated in
             the group output so far.
         """
-        sha1 = sha_strings(chunks)
+        target_text = ''.join(chunks)
+        sha1 = sha_string(target_text)
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         label = '\x00'.join(key)
-        target_text = ''.join(chunks)
         input_len = len(target_text)
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
