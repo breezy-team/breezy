@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,13 +75,20 @@ class BranchBuilder(object):
             format=format, force_new_tree=False)
         self._tree = None
 
-    def build_commit(self):
-        """Build a commit on the branch."""
+    def build_commit(self, **commit_kwargs):
+        """Build a commit on the branch.
+        
+        This makes a commit with no real file content for when you only want
+        to look at the revision graph structure.
+
+        :param commit_kwargs: Arguments to pass through to commit, such as
+             timestamp.
+        """
         tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
         try:
             tree.add('')
-            return self._do_commit(tree)
+            return self._do_commit(tree, **commit_kwargs)
         finally:
             tree.unlock()
 
@@ -137,7 +144,7 @@ class BranchBuilder(object):
         self._tree = None
 
     def build_snapshot(self, revision_id, parent_ids, actions,
-                       message=None):
+                       message=None, timestamp=None):
         """Build a commit, shaped in a specific way.
 
         :param revision_id: The handle for the new commit, can be None
@@ -150,6 +157,8 @@ class BranchBuilder(object):
             ('rename', ('orig-path', 'new-path'))
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
+        :param timestamp: If non-None, set the timestamp of the commit to this 
+            value.
         :return: The revision_id of the new commit
         """
         if parent_ids is not None:
@@ -210,7 +219,8 @@ class BranchBuilder(object):
             tree.add(to_add_files, to_add_file_ids, to_add_kinds)
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
-            return self._do_commit(tree, message=message, rev_id=revision_id)
+            return self._do_commit(tree, message=message, rev_id=revision_id,
+                timestamp=timestamp)
         finally:
             tree.unlock()
 
