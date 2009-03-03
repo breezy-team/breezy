@@ -139,9 +139,7 @@ cdef class DeltaIndex:
         src.agg_offset = self._source_offset + unadded_bytes
         index = create_delta_index_from_delta(src, self._index)
         self._source_offset = src.agg_offset + src.size
-        if index == NULL:
-            raise RuntimeError('got back failure for adding: %r' % delta)
-        else:
+        if index != NULL:
             free_delta_index(self._index)
             self._index = index
 

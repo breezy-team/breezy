@@ -11,6 +11,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <stdio.h>
 #include "delta.h"
 #include <assert.h>
 
@@ -270,6 +271,69 @@ void include_entries_from_index(struct unpacked_index_entry **hash,
 	}
 }
 
+struct delta_index *
+create_index_from_old_and_hash(const struct delta_index *old,
+							   struct unpacked_index_entry **hash,
+							   unsigned int hsize,
+							   unsigned int num_entries)
+{
+	unsigned int i, memsize, total_num_entries;
+	struct unpacked_index_entry *entry;
+	struct delta_index *index;
+	struct index_entry *packed_entry, **packed_hash, *old_entry;
+	size_t to_copy;
+	void *mem;
+	/*
+	 * Now create the packed index in array form
+	 * rather than linked lists.
+	 */
+	total_num_entries = num_entries + old->num_entries;
+	memsize = sizeof(*index)
+		+ sizeof(*packed_hash) * (hsize+1)
+		+ sizeof(*packed_entry) * total_num_entries;
+	mem = malloc(memsize);
+	if (!mem) {
+		return NULL;
+	}
+
+	index = mem;
+	index->memsize = memsize;
+	index->hash_mask = hsize - 1;
+	index->num_entries = total_num_entries;
+
+	mem = index->hash;
+	packed_hash = mem;
+	mem = packed_hash + (hsize+1);
+	packed_entry = mem;
+
+	fprintf(stderr, "copying %d entries, adding %d\n",
+		old->num_entries, num_entries);
+	to_copy = 0;
+	for (i = 0; i < hsize; i++) {
+		/*
+		 * Coalesce all entries belonging to one linked list
+		 * into consecutive array entries.
+		 * The entries in old all come before the entries in hash.
+		 */
+		packed_hash[i] = packed_entry;
+		old_entry = old->hash[i];
+		to_copy = (old->hash[i+1] - old_entry);
+		if (to_copy > 0) {
+			memcpy(packed_entry, old_entry, to_copy * sizeof(struct index_entry));
+			packed_entry += to_copy;
+		}
+		for (entry = hash[i]; entry; entry = entry->next)
+			*packed_entry++ = entry->entry;
+	}
+
+	/* Sentinel value to indicate the length of the last hash bucket */
+	packed_hash[hsize] = packed_entry;
+
+	assert(packed_entry - (struct index_entry *)mem == total_num_entries);
+	index->last_entry = (packed_entry - 1);
+	return index;
+}
+
 
 struct delta_index * create_delta_index(const struct source_info *src,
 										const struct delta_index *old)
@@ -432,7 +496,6 @@ struct delta_index * create_delta_index_from_delta(
 		cmd = *data++;
 		if (cmd & 0x80) {
 			/* Copy instruction, skip it */
-			const unsigned char *start = data;
 			if (cmd & 0x01) data++;
 			if (cmd & 0x02) data++;
 			if (cmd & 0x04) data++;
@@ -494,9 +557,29 @@ struct delta_index * create_delta_index_from_delta(
 		free(hash_count);
 		return NULL;
 	}
+	if (num_entries == 0) {
+		/** Nothing to index **/
+		return NULL;
+	}
 	if (old != NULL) {
-		total_num_entries = num_entries + old->num_entries;
-		include_entries_from_index(hash, hash_count, hsize, entry, old);
+		if (hmask == old->hash_mask) {
+			/* The total hash table size didn't change, which means that
+			 * entries will end up in the same pages. We can do bulk-copying to
+			 * get the final output
+			 */
+			index = create_index_from_old_and_hash(old, hash, hsize,
+												   num_entries);
+			free(hash_count);
+			free(hash);
+			if (!index) {
+				return NULL;
+			}
+			index->last_src = src;
+			return index;
+		} else {
+			total_num_entries = num_entries + old->num_entries;
+			include_entries_from_index(hash, hash_count, hsize, entry, old);
+		}
 	} else {
 		total_num_entries = num_entries;
 	}
@@ -505,11 +588,11 @@ struct delta_index * create_delta_index_from_delta(
 										   total_num_entries);
 	free(hash_count);
 	index = pack_delta_index(hash, hsize, total_num_entries);
-	index->last_src = src;
 	free(hash);
 	if (!index) {
 		return NULL;
 	}
+	index->last_src = src;
 	return index;
 }
 
