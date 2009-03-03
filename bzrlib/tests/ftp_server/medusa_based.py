@@ -279,6 +279,9 @@ class FTPServer(transport.Server):
             if e.args[0] != errno.EBADF:
                 raise
 
-
-
+    def add_user(self, user, password):
+        """Add a user with write access."""
+        authorizer = server = self._ftp_server.authorizer
+        authorizer.secured_user = user
+        authorizer.secured_password = password
 

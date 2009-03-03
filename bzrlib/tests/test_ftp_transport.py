@@ -69,26 +69,25 @@ class TestFTPServer(TestCaseWithFTPServer):
 
 class TestFTPServerUI(TestCaseWithFTPServer):
 
-    def _add_authorized_user(self, user, password):
-        server = self.get_server()
-        # FIXME: There should be a better way to declare authorized users and
-        # passwords to the server
-        authorizer = server._ftp_server.authorizer
-        authorizer.secured_user = user
-        authorizer.secured_password = password
+    def setUp(self):
+        super(TestFTPServerUI, self).setUp()
+        self.user = 'joe'
+        self.password = 'secret'
+        self.get_server().add_user(self.user, self.password)
+
+    def get_url(self, relpath=None):
+        """Overrides get_url to inject our user."""
+        base = super(TestFTPServerUI, self).get_url(relpath)
+        (scheme, user, password,
+         host, port, path) = transport.ConnectedTransport._split_url(base)
+        url = transport.ConnectedTransport._unsplit_url(
+            scheme, self.user, self.password, host, port, path)
+        return url
 
     def test_prompt_for_password(self):
         t = self.get_transport()
-        # Ensure that the test framework set the password
-        self.assertIsNot(t._password, None)
-        # Reset the password (get_url set the password to 'bar' so we
-        # reset it to None in the transport before the connection).
-        password = t._password
-        t._password = None
-        ui.ui_factory = tests.TestUIFactory(stdin=password+'\n',
+        ui.ui_factory = tests.TestUIFactory(stdin=self.password+'\n',
                                             stdout=tests.StringIOWrapper())
-        # Ask the server to check the password
-        self._add_authorized_user(t._user, password)
         # Issue a request to the server to connect
         t.has('whatever/not/existing')
         # stdin should be empty (the provided password have been consumed)
@@ -96,20 +95,13 @@ class TestFTPServerUI(TestCaseWithFTPServer):
 
     def test_no_prompt_for_password_when_using_auth_config(self):
         t = self.get_transport()
-        # Reset the password (get_url set the password to 'bar' so we
-        # reset it to None in the transport before the connection).
-        password = t._password
-        t._password = None
         ui.ui_factory = tests.TestUIFactory(stdin='precious\n',
                                             stdout=tests.StringIOWrapper())
-        # Ask the server to check the password
-        self._add_authorized_user(t._user, password)
-
         # Create a config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update({'ftptest': {'scheme': 'ftp',
-                                               'user': t._user,
-                                               'password': password}})
+                                               'user': self.user,
+                                               'password': self.password}})
         conf._save()
         # Issue a request to the server to connect
         t.put_bytes('foo', 'test bytes\n')

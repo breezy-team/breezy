@@ -149,7 +149,7 @@ class FTPServer(transport.Server):
 
     def get_url(self):
         """Calculate an ftp url to this server."""
-        return 'ftp://foo:bar@localhost:%d/' % (self._port)
+        return 'ftp://anonymous@localhost:%d/' % (self._port)
 
     def get_bogus_url(self):
         """Return a URL which cannot be connected to."""
@@ -169,7 +169,7 @@ class FTPServer(transport.Server):
 
         address = ('localhost', 0) # bind to a random port
         authorizer = AnonymousWithWriteAccessAuthorizer()
-        authorizer.add_user('foo', 'bar', self._root, perm='elradfmw')
+        authorizer.add_anonymous(self._root, perm='elradfmw')
         self._ftp_server = ftp_server(address, BZRConformingFTPHandler,
                                       authorizer)
         # This is hacky as hell, will not work if we need two servers working
@@ -209,3 +209,8 @@ class FTPServer(transport.Server):
         while self._ftpd_running:
             self._ftp_server.serve_forever(timeout=0.1, count=1)
         self._ftp_server.close_all(ignore_all=True)
+
+    def add_user(self, user, password):
+        """Add a user with write access."""
+        self._ftp_server.authorizer.add_user(user, password, self._root,
+                                             perm='elradfmw')

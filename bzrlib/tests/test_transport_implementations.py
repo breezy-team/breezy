@@ -1515,7 +1515,7 @@ class TransportTests(TestTransportImplementation):
 
         # now opening at a relative url should give use a sane result:
         transport.mkdir('newdir')
-        transport5 = get_transport("newdir")
+        transport5 = self.get_transport('newdir')
         transport6 = transport5.clone('..')
         self.check_transport_contents('bar', transport6, 'foo')
 
