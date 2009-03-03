@@ -51,8 +51,7 @@ extern unsigned long sizeof_delta_index(struct delta_index *index);
  * must be freed by the caller.
  */
 extern void *
-create_delta(struct delta_index **indexes,
-		 unsigned int num_indexes,
+create_delta(const struct delta_index *index,
 		 const void *buf, unsigned long bufsize,
 		 unsigned long *delta_size, unsigned long max_delta_size);
 

@@ -125,7 +125,7 @@ struct unpacked_index_entry {
 
 struct delta_index {
 	unsigned long memsize; /* Total bytes pointed to by this index */
-	struct source_info *src; /* Information about the referenced source */
+	const struct source_info *last_src; /* Information about the referenced source */
 	unsigned int hash_mask; /* val & hash_mask gives the hash index for a given
 							   entry */
 	unsigned int num_entries; /* The total number of entries in this index */
@@ -348,7 +348,7 @@ struct delta_index * create_delta_index(const struct source_info *src,
 										   total_num_entries);
 	free(hash_count);
 	index = pack_delta_index(hash, hsize, total_num_entries);
-	index->src = src;
+	index->last_src = src;
 	free(hash);
 	if (!index) {
 		return NULL;
@@ -376,13 +376,11 @@ unsigned long sizeof_delta_index(struct delta_index *index)
 #define MAX_OP_SIZE	(5 + 5 + 1 + RABIN_WINDOW + 7)
 
 void *
-create_delta(struct delta_index **indexes,
-			 unsigned int num_indexes,
+create_delta(const struct delta_index *index,
 			 const void *trg_buf, unsigned long trg_size,
 			 unsigned long *delta_size, unsigned long max_size)
 {
-	unsigned int i, j, outpos, outsize, moff, msize, val;
-	const struct delta_index *index;
+	unsigned int i, outpos, outsize, moff, msize, val;
 	const struct source_info *msource;
 	int inscnt;
 	const unsigned char *ref_data, *ref_top, *data, *top;
@@ -391,7 +389,7 @@ create_delta(struct delta_index **indexes,
 
 	if (!trg_buf || !trg_size)
 		return NULL;
-	if (num_indexes == 0)
+	if (index == NULL)
 		return NULL;
 
 	outpos = 0;
@@ -403,15 +401,8 @@ create_delta(struct delta_index **indexes,
 		return NULL;
 
 	/* store reference buffer size */
-	i = 0;
-	index = indexes[0];
-	for (j = 0; j < num_indexes; ++j) {
-		index = indexes[j];
-		i += index->src->size;
-	}
-	assert(i <= index->src->size + index->src->agg_offset);
-	i = index->src->size + index->src->agg_offset;
-	source_size = i;
+	source_size = index->last_src->size + index->last_src->agg_offset;
+	i = source_size;
 	while (i >= 0x80) {
 		out[outpos++] = i | 0x80;
 		i >>= 7;
@@ -456,46 +447,43 @@ create_delta(struct delta_index **indexes,
 			/* Shift the window by one byte. */
 			val ^= U[data[-RABIN_WINDOW]];
 			val = ((val << 8) | *data) ^ T[val >> RABIN_SHIFT];
-			for (j = 0; j < num_indexes; ++j) {
-				index = indexes[j];
-				i = val & index->hash_mask;
-				/* TODO: When using multiple indexes like this, the hash tables
-				 *		 mapping val => index_entry become less efficient.
-				 *		 You end up getting a lot more collisions in the hash,
-				 *		 which doesn't actually lead to a entry->val match.
+			i = val & index->hash_mask;
+			/* TODO: When using multiple indexes like this, the hash tables
+			 *		 mapping val => index_entry become less efficient.
+			 *		 You end up getting a lot more collisions in the hash,
+			 *		 which doesn't actually lead to a entry->val match.
+			 */
+			for (entry = index->hash[i]; entry < index->hash[i+1];
+				 entry++) {
+				const unsigned char *ref;
+				const unsigned char *src;
+				unsigned int ref_size;
+				if (entry->val != val)
+					continue;
+				ref = entry->ptr;
+				src = data;
+				ref_data = entry->src->buf;
+				ref_top = ref_data + entry->src->size;
+				ref_size = ref_top - ref;
+				/* ref_size is the longest possible match that we could make
+				 * here. If ref_size <= msize, then we know that we cannot
+				 * match more bytes with this location that we have already
+				 * matched.
 				 */
-				for (entry = index->hash[i]; entry < index->hash[i+1];
-					 entry++) {
-					const unsigned char *ref;
-					const unsigned char *src;
-					unsigned int ref_size;
-					if (entry->val != val)
-						continue;
-					ref = entry->ptr;
-					src = data;
-					ref_data = entry->src->buf;
-					ref_top = ref_data + entry->src->size;
-					ref_size = ref_top - ref;
-					/* ref_size is the longest possible match that we could make
-					 * here. If ref_size <= msize, then we know that we cannot
-					 * match more bytes with this location that we have already
-					 * matched.
-					 */
-					if (ref_size > top - src)
-						ref_size = top - src;
-					if (ref_size <= msize)
+				if (ref_size > top - src)
+					ref_size = top - src;
+				if (ref_size <= msize)
+					break;
+				/* See how many bytes actually match at this location. */
+				while (ref_size-- && *src++ == *ref)
+					ref++;
+				if (msize < ref - entry->ptr) {
+					/* this is our best match so far */
+					msize = ref - entry->ptr;
+					msource = entry->src;
+					moff = entry->ptr - ref_data;
+					if (msize >= 4096) /* good enough */
 						break;
-					/* See how many bytes actually match at this location. */
-					while (ref_size-- && *src++ == *ref)
-						ref++;
-					if (msize < ref - entry->ptr) {
-						/* this is our best match so far */
-						msize = ref - entry->ptr;
-						msource = entry->src;
-						moff = entry->ptr - ref_data;
-						if (msize >= 4096) /* good enough */
-							break;
-					}
 				}
 			}
 		}

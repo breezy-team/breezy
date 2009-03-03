@@ -36,8 +36,7 @@ cdef extern from "delta.h":
         # struct index_entry *hash[]
     delta_index * create_delta_index(source_info *src, delta_index *old)
     void free_delta_index(delta_index *index)
-    void *create_delta(delta_index **indexes,
-             unsigned int num_indexes,
+    void *create_delta(delta_index *indexes,
              void *buf, unsigned long bufsize,
              unsigned long *delta_size, unsigned long max_delta_size)
     unsigned long get_delta_hdr_size(unsigned char **datap,
@@ -180,7 +179,7 @@ cdef class DeltaIndex:
         # TODO: inline some of create_delta so we at least don't have to double
         #       malloc, and can instead use PyString_FromStringAndSize, to
         #       allocate the bytes into the final string
-        delta = create_delta(&self._index, 1,
+        delta = create_delta(self._index,
                              target, target_size,
                              &delta_size, max_delta_size)
         result = None
