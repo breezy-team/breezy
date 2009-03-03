@@ -1779,6 +1779,16 @@ class BzrDirFormat(object):
         """
         return True
 
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        Bzr control formats use thir disk format string to identify the format
+        over the wire. Its possible that other control formats have more
+        complex detection requirements, so we permit them to use any unique and
+        immutable string they desire.
+        """
+        raise NotImplementedError(self.network_name)
+
     def same_model(self, target_format):
         return (self.repository_format.rich_root_data ==
             target_format.rich_root_data)
@@ -1829,6 +1839,8 @@ class BzrDirFormat(object):
     @classmethod
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
+        # bzr native formats have a network name of their format string.
+        network_format_registry.register(format.get_format_string(), format)
 
     @classmethod
     def register_control_format(klass, format):
@@ -1923,6 +1935,9 @@ class BzrDirFormat4(BzrDirFormat):
         """
         return False
 
+    def network_name(self):
+        return self.get_format_string()
+
     def _open(self, transport):
         """See BzrDirFormat._open."""
         return BzrDir4(transport, self)
@@ -1981,6 +1996,9 @@ class BzrDirFormat5(BzrDirFormat):
             result._init_workingtree()
         return result
 
+    def network_name(self):
+        return self.get_format_string()
+
     def _open(self, transport):
         """See BzrDirFormat._open."""
         return BzrDir5(transport, self)
@@ -2037,6 +2055,9 @@ class BzrDirFormat6(BzrDirFormat):
             branch = BzrBranchFormat4().initialize(result)
             result._init_workingtree()
         return result
+
+    def network_name(self):
+        return self.get_format_string()
 
     def _open(self, transport):
         """See BzrDirFormat._open."""
@@ -2125,6 +2146,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """See BzrDirFormat.get_format_description()."""
         return "Meta directory format 1"
 
+    def network_name(self):
+        return self.get_format_string()
+
     def _open(self, transport):
         """See BzrDirFormat._open."""
         return BzrDirMeta1(transport, self)
@@ -2172,6 +2196,15 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)
+
+
+network_format_registry = registry.FormatRegistry()
+"""Registry of formats indexed by their network name.
+
+The network name for a BzrDirFormat is an identifier that can be used when
+referring to formats with smart server operations. See
+BzrDirFormat.network_name() for more detail.
+"""
 
 
 # Register bzr control format
@@ -2706,11 +2739,21 @@ class ConvertMetaToMeta(Converter):
 class RemoteBzrDirFormat(BzrDirMetaFormat1):
     """Format representing bzrdirs accessed via a smart server"""
 
+    def __init__(self):
+        BzrDirMetaFormat1.__init__(self)
+        self._network_name = None
+
     def get_format_description(self):
         return 'bzr remote bzrdir'
 
     def get_format_string(self):
         raise NotImplementedError(self.get_format_string)
+
+    def network_name(self):
+        if self._network_name:
+            return self._network_name
+        else:
+            raise AssertionError("No network name set.")
 
     @classmethod
     def probe_transport(klass, transport):
@@ -2830,7 +2873,7 @@ class BzrDirFormatRegistry(registry.Registry):
         """Register a metadir subformat.
 
         These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
-        by the Repository format.
+        by the Repository/Branch/WorkingTreeformats.
 
         :param repository_format: The fully-qualified repository format class
             name as a string.

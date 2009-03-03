@@ -1709,7 +1709,7 @@ class BranchReferenceFormat(BranchFormat):
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
-The network name for a repository format is an identifier that can be used when
+The network name for a branch format is an identifier that can be used when
 referring to formats with smart server operations. See
 BranchFormat.network_name() for more detail.
 """

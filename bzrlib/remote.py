@@ -112,6 +112,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         if response == ('no',):
             raise errors.NotBranchError(path=transport.base)
+        self._ensure_real()
 
     def _ensure_real(self):
         """Ensure that there is a _real_bzrdir set.
@@ -121,6 +122,8 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if not self._real_bzrdir:
             self._real_bzrdir = BzrDir.open_from_transport(
                 self.root_transport, _server_formats=False)
+            self._format._network_name = \
+                self._real_bzrdir._format.network_name()
 
     def _translate_error(self, err, **context):
         _translate_error(err, bzrdir=self, **context)
