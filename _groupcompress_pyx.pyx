@@ -80,7 +80,9 @@ def make_delta_index(source):
 
 cdef class DeltaIndex:
 
-    #cdef list _sources
+    # We need Pyrex 0.9.8+ to understand a 'list' definition, and this object
+    # isn't performance critical
+    # cdef readonly list _sources
     cdef readonly object _sources
     cdef delta_index **_indexes
     cdef readonly unsigned int _num_indexes
