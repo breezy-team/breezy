@@ -26,6 +26,9 @@ IN DEVELOPMENT
       in chapter 7 of the User Guide and ``bzr help view`` for details.
       (Ian Clatworthy)
 
+    * GNU Changelog output can now be produced by ``bzr log --format
+      changelog``.  (Andrea Bolognani, Martin Pool)
+
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
 
