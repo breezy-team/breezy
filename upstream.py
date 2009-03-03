@@ -54,7 +54,7 @@ class UpstreamProvider(object):
             if needed.
         :param upstream_revision: The revision to use of the upstream branch
             if it is used.
-        :param allows_split: Whether the provider can provide the tarball
+        :param allow_split: Whether the provider can provide the tarball
             by exporting the branch and removing the "debian" dir.
         """
         self.tree = tree
@@ -65,7 +65,7 @@ class UpstreamProvider(object):
         self.larstiq = larstiq
         self.upstream_branch = upstream_branch
         self.upstream_revision = upstream_revision
-        self.allows_split = allows_split
+        self.allow_split = allow_split
 
     def provide(self, target_dir):
         """Provide the upstream tarball any way possible.
