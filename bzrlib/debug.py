@@ -17,11 +17,13 @@
 
 """Set of flags that enable different debug behaviour.
 
-These are set with eg ``-Dlock`` on the bzr command line.
+These are set with eg ``-Dlock`` on the bzr command line or in
+~/.bazaar/bazaar.conf debug_flags.
 
 See "bzr help global-options" or bzrlib/help_topics/__init__.py
 for a list of the available options.
 """
+
 
 debug_flags = set()
 
@@ -34,7 +36,7 @@ def set_debug_flags_from_config():
     c = GlobalConfig()
     value = c.get_user_option("debug_flags")
     if value is not None:
-        words = value.split(',')
-        for w in words:
+        # for each comma-separated value
+        for w in value:
             w = w.strip()
-            debug_flags[w] = True
+            debug_flags.add(w)
