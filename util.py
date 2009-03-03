@@ -231,11 +231,12 @@ def write_if_different(contents, target):
     md5sum = md5.new()
     md5sum.update(contents)
     fd, temp_path = tempfile.mkstemp("builddeb-rename-")
+    fobj = os.fdopen(fd, "wd")
     try:
         try:
-            fd.write(contents)
+            fobj.write(contents)
         finally:
-            fd.close()
+            fobj.close()
         move_file_if_different(temp_path, target, md5sum.hexdigest())
     finally:
         if os.path.exists(temp_path):
@@ -251,11 +252,12 @@ def _download_part(name, base_transport, target_dir, md5sum):
     try:
         target_path = os.path.join(target_dir, part_path)
         fd, temp_path = tempfile.mkstemp(prefix="builldeb-")
+        fobj = os.fdopen(fd, "wb")
         try:
             try:
-                shutil.copyfileobj(f_f, fd)
+                shutil.copyfileobj(f_f, fobj)
             finally:
-                fd.close()
+                fobj.close()
             move_file_if_different(temp_path, target_path, md5sum)
         finally:
             if os.path.exists(temp_path):
