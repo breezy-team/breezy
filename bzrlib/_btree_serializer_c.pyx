@@ -27,7 +27,6 @@ cdef extern from "stdlib.h":
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
-        Py_ssize_t ob_refcnt
         pass
     int PyList_Append(object lst, object item) except -1
 
