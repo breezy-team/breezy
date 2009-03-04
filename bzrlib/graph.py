@@ -1504,7 +1504,7 @@ class MiniSearchResult(object):
     def get_keys(self):
         # XXX
         keys = [key for (key, parents) in
-                self.repo.get_graph().iter_ancestry(self.start_key)]
+                self.repo.get_graph().iter_ancestry([self.start_key])]
         if keys[-1] != 'null:':
             raise AssertionError(
                 "Ancestry ends with %r, not null." % (keys[-1],))

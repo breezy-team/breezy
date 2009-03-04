@@ -3050,21 +3050,14 @@ class InterPackRepo(InterSameDataRepository):
         return self.target._pack_collection
 
     @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True,
-            fetch_spec=None):
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids().
 
         :param find_ghosts: Find ghosts throughout the ancestry of
             revision_id.
         """
-        rev_specified = (revision_id is not None and fetch_spec is not None)
-        if not find_ghosts and rev_specified:
-            if fetch_spec is not None:
-                return fetch_spec
-            else:
-                return self._walk_to_common_revisions([revision_id])
-        elif fetch_spec is not None:
-            raise AssertionError("not implemented yet...")
+        if not find_ghosts and revision_id is not None:
+            return self._walk_to_common_revisions([revision_id])
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and vice versa, anywhere in the history of revision_id.
