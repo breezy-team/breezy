@@ -152,8 +152,8 @@ class GroupCompressBlock(object):
     This tracks the meta info (start of text, length, type, etc.)
     """
 
-    # Group Compress Block v1 Plain
-    GCB_HEADER = 'gcb1p\n'
+    # Group Compress Block v1 Zlib
+    GCB_HEADER = 'gcb1z\n'
 
     def __init__(self):
         # map by key? or just order in file?
@@ -163,26 +163,28 @@ class GroupCompressBlock(object):
         """Parse the meta-info from the stream."""
 
     @classmethod
-    def from_zlib_bytes(cls, bytes):
-        """Get the info about this block from the compressed bytes.
-
-        :return: A new GroupCompressBlock
-        """
-        return cls()
-
-    @classmethod
     def from_bytes(cls, bytes):
         out = cls()
         if bytes[:6] != cls.GCB_HEADER:
             raise gc_errors.InvalidGroupCompressBlock(
                 'bytes did not start with %r' % (cls.GCB_HEADER,))
         pos = bytes.index('\n', 6)
-        total_header_length = int(bytes[6:pos])
-        if total_header_length == 0:
-            return out
+        z_header_length = int(bytes[6:pos])
         pos += 1
-        header_bytes = bytes[pos:total_header_length+pos]
+        pos2 = bytes.index('\n', pos)
+        header_length = int(bytes[pos:pos2])
+        if z_header_length == 0:
+            assert header_length == 0
+            return out
+        pos = pos2 + 1
+        pos2 = pos + z_header_length
+        z_header_bytes = bytes[pos:pos2]
+        assert len(z_header_bytes) == z_header_length
+        header_bytes = zlib.decompress(z_header_bytes)
+        assert len(header_bytes) == header_length
+        del z_header_bytes
         lines = header_bytes.split('\n')
+        del header_bytes
         info_dict = {}
         for line in lines:
             if not line: #End of record
@@ -240,8 +242,13 @@ class GroupCompressBlock(object):
                           entry.length,
                           )
             chunks.append(chunk)
-        info_len = sum(map(len, chunks))
-        chunks = [self.GCB_HEADER, '%d\n' % (info_len,)] + chunks
+        bytes = ''.join(chunks)
+        info_len = len(bytes)
+        z_bytes = zlib.compress(bytes)
+        del bytes
+        z_len = len(z_bytes)
+        chunks = [self.GCB_HEADER, '%d\n' % (z_len,), '%d\n' % (info_len,),
+                  z_bytes]
         return ''.join(chunks)
 
 
