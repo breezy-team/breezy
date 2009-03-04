@@ -25,8 +25,10 @@ Each routine returns timestamp,timezone where
 
 import time
 
+from bzrlib.plugins.fastimport import errors
 
-def parse_raw(s):
+
+def parse_raw(s, lineno=0):
     """Parse a date from a raw string.
     
     The format must be exactly "seconds-since-epoch offset-utc".
@@ -34,24 +36,25 @@ def parse_raw(s):
     """
     timestamp_str, timezone_str = s.split(' ', 1)
     timestamp = float(timestamp_str)
-    timezone = _parse_tz(timezone_str)
+    timezone = _parse_tz(timezone_str, lineno)
     return timestamp, timezone
 
 
-def _parse_tz(tz):
+def _parse_tz(tz, lineno):
     """Parse a timezone specification in the [+|-]HHMM format.
 
     :return: the timezone offset in seconds.
     """
     # from git_repository.py in bzr-git
-    assert len(tz) == 5
+    if len(tz) != 5:
+	raise errors.InvalidTimezone(lineno, tz)
     sign = {'+': +1, '-': -1}[tz[0]]
     hours = int(tz[1:3])
     minutes = int(tz[3:])
     return sign * 60 * (60 * hours + minutes)
 
 
-def parse_rfc2822(s):
+def parse_rfc2822(s, lineno=0):
     """Parse a date from a rfc2822 string.
     
     See the spec for details.
@@ -59,7 +62,7 @@ def parse_rfc2822(s):
     raise NotImplementedError(parse_rfc2822)
 
 
-def parse_now(s):
+def parse_now(s, lineno=0):
     """Parse a date from a string.
 
     The format must be exactly "now".

@@ -472,7 +472,7 @@ class ImportParser(LineBasedParser):
                 else:
                     format = 'rfc2822'
                 self.date_parser = dates.DATE_PARSERS_BY_NAME[format]
-            when = self.date_parser(datestr)
+            when = self.date_parser(datestr, self.lineno)
         else:
             match = _WHO_RE.search(s)
             if accept_just_who and match:
