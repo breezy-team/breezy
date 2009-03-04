@@ -134,14 +134,14 @@ class GroupCompressor(object):
         self.labels_deltas = {}
         self._delta_index = _groupcompress_pyx.DeltaIndex()
 
-    def compress(self, key, chunks, expected_sha, soft=False):
+    def compress(self, key, bytes, expected_sha, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
             for identification of the text during decompression. If the last
             element is 'None' it is replaced with the sha1 of the text -
             e.g. sha1:xxxxxxx.
-        :param chunks: The chunks to be compressed
+        :param bytes: The bytes to be compressed
         :param expected_sha: If non-None, the sha the lines are believed to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
@@ -150,9 +150,6 @@ class GroupCompressor(object):
         :return: The sha1 of lines, and the number of bytes accumulated in
             the group output so far.
         """
-        # TODO: Change this to a bytes interface, since the output is now a
-        #       bytes interface anyway.
-        bytes = ''.join(chunks)
         if not _FAST or expected_sha is None:
             sha1 = sha_string(bytes)
         else:
@@ -629,7 +626,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         groups += 1
                 last_prefix = prefix
             found_sha1, end_point = self._compressor.compress(record.key,
-                [bytes], record.sha1, soft=soft)
+                bytes, record.sha1, soft=soft)
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
             else:
