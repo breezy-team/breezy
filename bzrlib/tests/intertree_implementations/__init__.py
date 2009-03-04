@@ -142,7 +142,11 @@ def load_tests(basic_tests, module, loader):
         (InterTree.__name__, InterTree, default_tree_format, default_tree_format,
          return_provided_trees)]
     for optimiser in InterTree._optimisers:
-        if optimiser is bzrlib.workingtree_4.InterDirStateTree:
+        if optimiser is revisiontree.InterCHKRevisionTree:
+            # XXX: handled later because I don't understand why we may want to
+            # handle it here -- vila 20090203
+            continue
+        elif optimiser is bzrlib.workingtree_4.InterDirStateTree:
             # Its a little ugly to be conditional here, but less so than having
             # the optimiser listed twice.
             # Add once, compiled version
