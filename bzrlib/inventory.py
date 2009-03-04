@@ -1458,7 +1458,7 @@ class CHKInventory(CommonInventory):
         if self.root_id is not None:
             entries.next()
         inv = Inventory(self.root_id, self.revision_id)
-        for inv_entry in entries:
+        for path, inv_entry in entries:
             inv.add(inv_entry)
         return inv
 
