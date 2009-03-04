@@ -1868,6 +1868,8 @@ class KnitVersionedFiles(VersionedFiles):
             df.close()
             yield key, data, rec[3]
 
+    # XXX: server should be using this directly, rather than
+    # _read_records_iter_raw. 3/3/2009
     def _read_records_iter_unchecked(self, records):
         """Read text records from data file and yield raw data.
 

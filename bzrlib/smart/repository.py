@@ -27,6 +27,7 @@ import threading
 
 from bzrlib import (
     errors,
+    graph,
     osutils,
     pack,
     )
@@ -74,6 +75,14 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         lines = recipe_bytes.split('\n')
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
+        if lines[2] == 'n/a':
+            if exclude_keys != set([_mod_revision.NULL_REVISION]):
+                raise (None, FailedSmartServerResponse(('bad search',)))
+            if len(start_keys) != 1:
+                raise (None, FailedSmartServerResponse(('bad search',)))
+            start_key = list(start_keys)[0]
+            search_result = graph.MiniSearchResult(start_key, repository)
+            return search_result, None
         revision_count = int(lines[2])
         repository.lock_read()
         try:
@@ -93,7 +102,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
-            return (search, None)
+            return (search_result, None)
         finally:
             repository.unlock()
 
@@ -147,12 +156,12 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        search, error = self.recreate_search(repository, body_bytes)
+        search_result, error = self.recreate_search(repository, body_bytes)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but thats not
         # written or tested yet.
-        client_seen_revs = set(search.get_result().get_keys())
+        client_seen_revs = set(search_result.get_keys())
         # Always include the requested ids.
         client_seen_revs.difference_update(revision_ids)
         lines = []
@@ -349,13 +358,12 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         repository = self._repository
         repository.lock_read()
         try:
-            search, error = self.recreate_search(repository, body_bytes)
+            search_result, error = self.recreate_search(repository, body_bytes)
             if error is not None:
                 repository.unlock()
                 return error
-            search = search.get_result()
             source = repository._get_source(self._to_format)
-            stream = source.get_stream(search)
+            stream = source.get_stream(search_result)
         except Exception:
             exc_info = sys.exc_info()
             try:

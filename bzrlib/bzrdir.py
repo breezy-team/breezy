@@ -217,7 +217,7 @@ class BzrDir(object):
                 force_new_repo, stacked_on, self.root_transport.base,
                 require_stacking=require_stacking)
             make_working_trees = local_repo.make_working_trees()
-            result_repo = repository_policy.acquire_repository(
+            result_repo, is_new_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
             if not require_stacking and repository_policy._require_stacking:
                 require_stacking = True
@@ -440,7 +440,7 @@ class BzrDir(object):
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
         policy = self.determine_repository_policy(force_new_repo)
-        return policy.acquire_repository()
+        return policy.acquire_repository()[0]
 
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
@@ -1114,11 +1114,19 @@ class BzrDir(object):
                     source_repository = None
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
-        result_repo = repository_policy.acquire_repository()
+        result_repo, is_new_repo = repository_policy.acquire_repository()
+        if is_new_repo and revision_id is not None:
+            #import pdb; pdb.set_trace()
+            fetch_spec = graph.MiniSearchResult(revision_id, source_repository)
+        else:
+            fetch_spec = None
         if source_repository is not None:
             # Fetch while stacked to prevent unstacked fetch from
             # Branch.sprout.
-            result_repo.fetch(source_repository, revision_id=revision_id)
+            if fetch_spec is None:
+                result_repo.fetch(source_repository, revision_id=revision_id)
+            else:
+                result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
         if source_branch is None:
             # this is for sprouting a bzrdir without a branch; is that
@@ -3084,7 +3092,7 @@ class CreateRepository(RepositoryAcquisitionPolicy):
                            possible_transports=[self._bzrdir.transport])
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
-        return repository
+        return repository, True
 
 
 class UseExistingRepository(RepositoryAcquisitionPolicy):
@@ -3110,7 +3118,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
         """
         self._add_fallback(self._repository,
                        possible_transports=[self._repository.bzrdir.transport])
-        return self._repository
+        return self._repository, False
 
 
 # Please register new formats after old formats so that formats

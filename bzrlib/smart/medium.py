@@ -193,6 +193,11 @@ class SmartServerStreamMedium(SmartMedium):
         SmartMedium.__init__(self)
 
     def serve(self):
+        #from bzrlib.commands import apply_lsprofiled
+        #return apply_lsprofiled('/tmp/server.callgrind', self._serve)
+        return self._serve()
+
+    def _serve(self):
         """Serve requests until the client disconnects."""
         # Keep a reference to stderr because the sys module's globals get set to
         # None during interpreter shutdown.

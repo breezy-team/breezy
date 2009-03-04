@@ -2218,6 +2218,12 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 repo.unlock()
 
+    def is_empty(self):
+        if self._fallback_repositories:
+            return False
+        else:
+            return len(self._pack_collection.names()) == 0
+
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):
     """Format logic for pack structured repositories.

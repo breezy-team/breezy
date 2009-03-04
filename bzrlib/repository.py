@@ -1096,7 +1096,8 @@ class Repository(object):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None all content is copied.
@@ -1104,8 +1105,11 @@ class Repository(object):
             ghosts in the target (and not reachable directly by walking out to
             the first-present revision in target from revision_id).
         """
+        if fetch_spec is not None and revision_id is not None:
+            raise AssertionError(
+                "fetch_spec and revision_id are mutually exclusive.")
         # fast path same-url fetch operations
-        if self.has_same_location(source):
+        if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
@@ -1117,7 +1121,7 @@ class Repository(object):
         # IncompatibleRepositories when asked to fetch.
         inter = InterRepository.get(source, self)
         return inter.fetch(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts)
+            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
     def create_bundle(self, target, base, fileobj, format=None):
         return serializer.write_bundle(self, target, base, fileobj, format)
@@ -2041,6 +2045,9 @@ class Repository(object):
         """
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
 
+    def is_empty(self):
+        return False
+
 
 # remove these delegates a while after bzr 0.15
 def __make_delegated(name, from_module):
@@ -2579,7 +2586,8 @@ class InterRepository(InterObject):
             pass
         self.target.fetch(self.source, revision_id=revision_id)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """Fetch the content required to construct revision_id.
 
         The content is copied from self.source to self.target.
@@ -2597,6 +2605,7 @@ class InterRepository(InterObject):
         f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
+                               fetch_spec=fetch_spec,
                                pb=pb, find_ghosts=find_ghosts)
 
     def _walk_to_common_revisions(self, revision_ids):
@@ -2812,7 +2821,8 @@ class InterWeaveRepo(InterSameDataRepository):
             self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
@@ -2820,6 +2830,7 @@ class InterWeaveRepo(InterSameDataRepository):
         f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
+                               fetch_spec=fetch_spec,
                                pb=pb, find_ghosts=find_ghosts)
 
     @needs_read_lock
@@ -2892,7 +2903,8 @@ class InterKnitRepo(InterSameDataRepository):
         return are_knits and InterRepository._same_model(source, target)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
@@ -2900,6 +2912,7 @@ class InterKnitRepo(InterSameDataRepository):
         f = RepoFetcher(to_repository=self.target,
                             from_repository=self.source,
                             last_revision=revision_id,
+                            fetch_spec=fetch_spec,
                             pb=pb, find_ghosts=find_ghosts)
 
     @needs_read_lock
@@ -2961,7 +2974,8 @@ class InterPackRepo(InterSameDataRepository):
         return are_packs and InterRepository._same_model(source, target)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """See InterRepository.fetch()."""
         if (len(self.source._fallback_repositories) > 0 or
             len(self.target._fallback_repositories) > 0):
@@ -2971,9 +2985,12 @@ class InterPackRepo(InterSameDataRepository):
             # attributes on repository.
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
-                                  pb, find_ghosts)
+                    pb, find_ghosts, fetch_spec=fetch_spec)
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
+        if fetch_spec is not None:
+            revision_id = fetch_spec.start_key
+            fetch_spec = None
         if revision_id is None:
             # TODO:
             # everything to do - use pack logic
@@ -3033,14 +3050,21 @@ class InterPackRepo(InterSameDataRepository):
         return self.target._pack_collection
 
     @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True,
+            fetch_spec=None):
         """See InterRepository.missing_revision_ids().
 
         :param find_ghosts: Find ghosts throughout the ancestry of
             revision_id.
         """
-        if not find_ghosts and revision_id is not None:
-            return self._walk_to_common_revisions([revision_id])
+        rev_specified = (revision_id is not None and fetch_spec is not None)
+        if not find_ghosts and rev_specified:
+            if fetch_spec is not None:
+                return fetch_spec
+            else:
+                return self._walk_to_common_revisions([revision_id])
+        elif fetch_spec is not None:
+            raise AssertionError("not implemented yet...")
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and vice versa, anywhere in the history of revision_id.
@@ -3198,8 +3222,11 @@ class InterDifferingSerializer(InterKnitRepo):
                   len(revision_ids))
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """See InterRepository.fetch()."""
+        if fetch_spec is not None:
+            raise AssertionError("Not implemented yet...")
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
@@ -3271,10 +3298,11 @@ class InterOtherToRemote(InterRepository):
         self._ensure_real_inter()
         self._real_inter.copy_content(revision_id=revision_id)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         self._ensure_real_inter()
         return self._real_inter.fetch(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts)
+            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
     @classmethod
     def _get_repo_format_to_test(self):
@@ -3300,13 +3328,14 @@ class InterRemoteToOther(InterRepository):
             self._real_inter = InterRepository.get(real_source, self.target)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """See InterRepository.fetch()."""
         # Always fetch using the generic streaming fetch code, to allow
         # streaming fetching from remote servers.
         from bzrlib.fetch import RepoFetcher
         fetcher = RepoFetcher(self.target, self.source, revision_id,
-                              pb, find_ghosts)
+                pb, find_ghosts, fetch_spec=fetch_spec)
 
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()
@@ -3344,13 +3373,14 @@ class InterPackToRemotePack(InterPackRepo):
         self.target.autopack()
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
         """See InterRepository.fetch()."""
         # Always fetch using the generic streaming fetch code, to allow
         # streaming fetching into remote servers.
         from bzrlib.fetch import RepoFetcher
         fetcher = RepoFetcher(self.target, self.source, revision_id,
-                              pb, find_ghosts)
+                              pb, find_ghosts, fetch_spec=fetch_spec)
 
     def _get_target_pack_collection(self):
         return self.target._real_repository._pack_collection

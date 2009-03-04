@@ -1495,6 +1495,23 @@ class SearchResult(object):
         return self._keys
 
 
+class MiniSearchResult(object):
+
+    def __init__(self, start_key, repo):
+        self.start_key = start_key
+        self.repo = repo
+
+    def get_keys(self):
+        # XXX
+        keys = [key for (key, parents) in
+                self.repo.get_graph().iter_ancestry(self.start_key)]
+        if keys[-1] != 'null:':
+            raise AssertionError(
+                "Ancestry ends with %r, not null." % (keys[-1],))
+        del keys[-1]
+        return keys
+
+
 def collapse_linear_regions(parent_map):
     """Collapse regions of the graph that are 'linear'.
 

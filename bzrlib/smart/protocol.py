@@ -1160,11 +1160,17 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         elif response.body_stream is not None:
             for exc_info, chunk in _iter_with_errors(response.body_stream):
                 if exc_info is not None:
+                    #import traceback; traceback.print_tb(exc_info[2])
                     self._write_error_status()
+                    #import pdb; pdb.set_trace()
                     error_struct = request._translate_error(exc_info[1])
                     self._write_structure(error_struct)
                     break
                 else:
+                    if isinstance(chunk, request.FailedSmartServerResponse):
+                        self._write_error_status()
+                        self._write_structure(chunk.args)
+                        break
                     self._write_prefixed_body(chunk)
                     self.flush()
         self._write_end()
