@@ -18,3 +18,12 @@
 """Error objects for compression functions."""
 
 from bzrlib.errors import BzrError
+
+
+class InvalidGroupCompressBlock(BzrError):
+    """Raised when a block has problems."""
+
+    _fmt = "Invalid Group Compress Block: %(msg)s"
+
+    def __init__(self, msg):
+        self.msg = msg

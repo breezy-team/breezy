@@ -42,7 +42,6 @@ from bzrlib.osutils import (
     )
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
-from bzrlib.plugins.groupcompress import equivalence_table
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
@@ -51,6 +50,7 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
     )
+from bzrlib.plugins.groupcompress import errors as gc_errors
 
 _NO_LABELS = False
 _FAST = False
@@ -102,6 +102,98 @@ def sort_gc_optimal(parent_map):
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
     return present_keys
+
+
+class GroupCompressBlockEntry(object):
+    """Track the information about a single object inside a GC group.
+
+    This is generally just the dumb data structure.
+    """
+
+    def __init__(self, key, type, sha1, start, length):
+        self.key = key
+        self.type = type # delta, fulltext, external?
+        self.sha1 = sha1 # Sha1 of content
+        self.start = start # Byte offset to start of data
+        self.length = length # Length of content
+
+
+class GroupCompressBlock(object):
+    """An object which maintains the internal structure of the compressed data.
+
+    This tracks the meta info (start of text, length, type, etc.)
+    """
+
+    # Group Compress Block v1 Plain
+    GCB_HEADER = 'gcb1p\n'
+
+    def __init__(self):
+        # map by key? or just order in file?
+        self._entries = {}
+
+    def _parse_header(self):
+        """Parse the meta-info from the stream."""
+
+    @classmethod
+    def from_zlib_bytes(cls, bytes):
+        """Get the info about this block from the compressed bytes.
+
+        :return: A new GroupCompressBlock
+        """
+        return cls()
+
+    @classmethod
+    def from_bytes(cls, bytes):
+        out = cls()
+        if bytes[:6] != cls.GCB_HEADER:
+            raise gc_errors.InvalidGroupCompressBlock(
+                'bytes did not start with %r' % (cls.GCB_HEADER,))
+        return out
+
+    def extract(self, key, sha1=None):
+        """Extract the text for a specific key.
+
+        :param key: The label used for this content
+        :param sha1: TODO (should we validate only when sha1 is supplied?)
+        :return: The bytes for the content
+        """
+
+    def add_entry(self, key, type, sha1, start, length):
+        """Add new meta info about an entry.
+
+        :param key: The key for the new content
+        :param type: Whether this is a delta or fulltext entry (external?)
+        :param sha1: sha1sum of the fulltext of this entry
+        :param start: where the encoded bytes start
+        :param length: total number of bytes in the encoded form
+        :return: The entry?
+        """
+        entry = GroupCompressBlockEntry(key, type, sha1, start, length)
+        assert key not in self._entries
+        self._entries[key] = entry
+        return entry
+
+    def to_bytes(self):
+        """Encode the information into a byte stream."""
+        chunks = []
+        for key in sorted(self._entries):
+            entry = self._entries[key]
+            chunk = ('key:%s\n'
+                     'type:%s\n'
+                     'sha1:%s\n'
+                     'start:%s\n'
+                     'length:%s\n'
+                     '\n'
+                     ) % ('\x00'.join(entry.key),
+                          entry.type,
+                          entry.sha1,
+                          entry.start,
+                          entry.length,
+                          )
+            chunks.append(chunk)
+        info_len = sum(map(len, chunks))
+        chunks = [self.GCB_HEADER, '%d\n' % (info_len,)] + chunks
+        return ''.join(chunks)
 
 
 class GroupCompressor(object):

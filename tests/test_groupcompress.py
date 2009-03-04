@@ -49,7 +49,7 @@ def load_tests(standard_tests, module, loader):
     return standard_tests
 
 
-class TestGroupCompressor(TestCaseWithTransport):
+class TestGroupCompressor(tests.TestCase):
     """Tests for GroupCompressor"""
 
     def test_empty_delta(self):
@@ -166,3 +166,43 @@ class TestGroupCompressor(TestCaseWithTransport):
         # and the second
         self.assertEqual((['common\ndifferent\nmoredifferent\n'],
             sha_2), compressor.extract(('newlabel',)))
+
+
+class TestGroupCompressBlock(tests.TestCase):
+
+    def test_from_empty_bytes(self):
+        self.assertRaises(errors.InvalidGroupCompressBlock,
+                          groupcompress.GroupCompressBlock.from_bytes, '')
+
+    def test_from_bytes(self):
+        block = groupcompress.GroupCompressBlock.from_bytes('gcb1p\n')
+        self.assertIsInstance(block, groupcompress.GroupCompressBlock)
+
+    def test_add_entry(self):
+        gcb = groupcompress.GroupCompressBlock()
+        e = gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
+        self.assertIsInstance(e, groupcompress.GroupCompressBlockEntry)
+        self.assertEqual(('foo', 'bar'), e.key)
+        self.assertEqual('fulltext', e.type)
+        self.assertEqual('abcd'*10, e.sha1)
+        self.assertEqual(0, e.start)
+        self.assertEqual(100, e.length)
+
+    def test_to_bytes(self):
+        gcb = groupcompress.GroupCompressBlock()
+        gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
+        gcb.add_entry(('bing',), 'fulltext', 'abcd'*10, 100, 100)
+        self.assertEqualDiff('gcb1p\n' # group compress block v1 plain
+                             '183\n' # Length of all meta-info
+                             'key:bing\n'
+                             'type:fulltext\n'
+                             'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
+                             'start:100\n'
+                             'length:100\n'
+                             '\n'
+                             'key:foo\x00bar\n'
+                             'type:fulltext\n'
+                             'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
+                             'start:0\n'
+                             'length:100\n'
+                             '\n', gcb.to_bytes())
