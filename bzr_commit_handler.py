@@ -27,6 +27,15 @@ from bzrlib import (
 from bzrlib.plugins.fastimport import helpers, processor
 
 
+def copy_inventory(inv):
+    if hasattr(inv, "_get_mutable_inventory"):
+        # TODO: Make this a public API on inventory
+        return inv._get_mutable_inventory()
+    else:
+        # TODO: Shallow copy - deep inventory copying is expensive
+        return inv.copy()
+
+
 class GenericCommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
@@ -285,12 +294,8 @@ class InventoryCommitHandler(GenericCommitHandler):
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
             self.inventory = self.basis_inventory
-        elif hasattr(self.basis_inventory, "_get_mutable_inventory"):
-            # TODO: Make this a public API on inventory
-            self.inventory = self.basis_inventory._get_mutable_inventory()
         else:
-            # TODO: Shallow copy - deep inventory copying is expensive
-            self.inventory = self.basis_inventory.copy()
+            self.inventory = copy_inventory(self.basis_inventory)
         self.inventory_root = self.inventory.root
 
         # directory-path -> inventory-entry for current inventory
@@ -485,5 +490,5 @@ class DeltaCommitHandler(GenericCommitHandler):
         # is added sounds ok in theory ...
         # We grab a copy as the basis is likely to be cached and
         # we don't want to destroy the cached version
-        self.basis_inventory = self.basis_inventory.copy()
+        self.basis_inventory = copy_inventory(self.basis_inventory)
         self._delete_all_items(self.basis_inventory)
