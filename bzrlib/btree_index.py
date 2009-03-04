@@ -585,7 +585,7 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
-            nodes.append(tuple(line.split('\0')))
+            nodes.append(tuple(map(intern, line.split('\0'))))
         return nodes
 
 

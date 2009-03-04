@@ -142,6 +142,11 @@ IN DEVELOPMENT
       plugins to have hooks called on non-stacked instances.
       (Robert Collins, #334187)
 
+    * ``BTreeIndex`` now interns the strings inside keys that it
+      processes. This should show some decrease in memory consumption when
+      doing operations that load large portions of the keyspace.
+      (John Arbash Meinel)
+
     * ``BzrDir.cloning_metadir`` now has a RPC call. (Robert Collins)
 
     * ``BzrDirFormat.__str__`` now uses the human readable description

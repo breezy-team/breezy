@@ -27,20 +27,24 @@ cdef extern from "stdlib.h":
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
+        Py_ssize_t ob_refcnt
         pass
     int PyList_Append(object lst, object item) except -1
 
     char *PyString_AsString(object p) except NULL
     object PyString_FromStringAndSize(char *, Py_ssize_t)
+    PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
     int PyString_CheckExact(object s)
     int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *)
     Py_ssize_t PyString_Size(object p)
     Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *)
     char * PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *)
     int PyString_AsStringAndSize_ptr(PyObject *, char **buf, Py_ssize_t *len)
+    void PyString_InternInPlace(PyObject **)
     int PyTuple_CheckExact(object t)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject *PyTuple_GET_ITEM_ptr_object "PyTuple_GET_ITEM" (object tpl, int index)
+    void Py_DECREF_ptr "Py_DECREF" (PyObject *)
 
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
@@ -72,6 +76,21 @@ cdef object safe_string_from_size(char *s, Py_ssize_t size):
             'tried to create a string with an invalid size: %d @0x%x'
             % (size, <int>s))
     return PyString_FromStringAndSize(s, size)
+
+
+cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
+    cdef PyObject *py_str
+    if size < 0:
+        raise AssertionError(
+            'tried to create a string with an invalid size: %d @0x%x'
+            % (size, <int>s))
+    py_str = PyString_FromStringAndSize_ptr(s, size)
+    PyString_InternInPlace(&py_str)
+    result = <object>py_str
+    # Casting a PyObject* to an <object> triggers an INCREF from Pyrex, so we
+    # DECREF it to avoid geting immortal strings
+    Py_DECREF_ptr(py_str)
+    return result
 
 
 cdef class BTreeLeafParser:
@@ -142,8 +161,8 @@ cdef class BTreeLeafParser:
             # TODO: Consider using PyIntern_FromString, the only caveat is that
             # it assumes a NULL-terminated string, so we have to check if
             # temp_ptr[0] == c'\0' or some other char.
-            key_element = safe_string_from_size(self._start,
-                                                temp_ptr - self._start)
+            key_element = safe_interned_string_from_size(self._start,
+                                                         temp_ptr - self._start)
             # advance our pointer
             self._start = temp_ptr + 1
             PyList_Append(key_segments, key_element)
