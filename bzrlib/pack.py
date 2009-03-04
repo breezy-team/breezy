@@ -411,10 +411,15 @@ class ContainerPushParser(object):
             self._state_handler()
             cur_buffer_length = len(self._buffer)
 
-    def read_pending_records(self):
-        records = self._parsed_records
-        self._parsed_records = []
-        return records
+    def read_pending_records(self, max=None):
+        if max:
+            records = self._parsed_records[:max]
+            del self._parsed_records[:max]
+            return records
+        else:
+            records = self._parsed_records
+            self._parsed_records = []
+            return records
 
     def _consume_line(self):
         """Take a line out of the buffer, and return the line.

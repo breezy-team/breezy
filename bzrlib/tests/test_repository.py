@@ -167,19 +167,19 @@ class TestFormat6(TestCaseWithTransport):
         """Weaves need topological data insertion."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Weaves do not reuse deltas."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(False, repo._fetch_uses_deltas)
+        self.assertEqual(False, repo._format._fetch_uses_deltas)
 
     def test_attribute__fetch_reconcile(self):
         """Weave repositories need a reconcile after fetch."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(True, repo._fetch_reconcile)
+        self.assertEqual(True, repo._format._fetch_reconcile)
 
     def test_no_ancestry_weave(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
@@ -202,19 +202,19 @@ class TestFormat7(TestCaseWithTransport):
         """Weaves need topological data insertion."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Weaves do not reuse deltas."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(False, repo._fetch_uses_deltas)
+        self.assertEqual(False, repo._format._fetch_uses_deltas)
 
     def test_attribute__fetch_reconcile(self):
         """Weave repositories need a reconcile after fetch."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(True, repo._fetch_reconcile)
+        self.assertEqual(True, repo._format._fetch_reconcile)
 
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -348,13 +348,13 @@ class TestFormatKnit1(TestCaseWithTransport):
         """Knits need topological data insertion."""
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
-        self.assertEqual(True, repo._fetch_uses_deltas)
+        self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -619,14 +619,14 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         repo = self.make_repository('.', format=format)
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         repo = self.make_repository('.', format=format)
-        self.assertEqual(True, repo._fetch_uses_deltas)
+        self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_convert(self):
         """Ensure the upgrade adds weaves for roots"""

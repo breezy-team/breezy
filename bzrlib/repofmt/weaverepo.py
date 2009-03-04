@@ -100,8 +100,6 @@ class AllInOneRepository(Repository):
             self.inventory_store = get_store('inventory-store')
             self._text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files)
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -194,8 +192,6 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     def __init__(self, _format, a_bzrdir, control_files):
         super(WeaveMetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
         self._serializer = _format._serializer
 
     @needs_read_lock
@@ -270,6 +266,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_ghosts = False
     supports_external_lookups = False
+    _fetch_order = 'topological'
+    _fetch_reconcile = True
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -335,11 +333,6 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     _matchingbzrdir = bzrdir.BzrDirFormat4()
 
-    def __init__(self):
-        super(RepositoryFormat4, self).__init__()
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
-
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Repository format 4"
@@ -391,11 +384,6 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def _serializer(self):
         return xml5.serializer_v5
 
-    def __init__(self):
-        super(RepositoryFormat5, self).__init__()
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
-
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 5"
@@ -441,11 +429,6 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def _serializer(self):
         return xml5.serializer_v5
 
-    def __init__(self):
-        super(RepositoryFormat6, self).__init__()
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
-
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 6"
@@ -490,6 +473,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
+    _fetch_order = 'topological'
+    _fetch_reconcile = True
     @property
     def _serializer(self):
         return xml5.serializer_v5
