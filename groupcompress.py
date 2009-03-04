@@ -176,6 +176,27 @@ class GroupCompressBlock(object):
         if bytes[:6] != cls.GCB_HEADER:
             raise gc_errors.InvalidGroupCompressBlock(
                 'bytes did not start with %r' % (cls.GCB_HEADER,))
+        pos = bytes.index('\n', 6)
+        total_header_length = int(bytes[6:pos])
+        if total_header_length == 0:
+            return out
+        pos += 1
+        header_bytes = bytes[pos:total_header_length+pos]
+        lines = header_bytes.split('\n')
+        info_dict = {}
+        for line in lines:
+            if not line: #End of record
+                if not info_dict:
+                    break
+                out.add_entry(**info_dict)
+                info_dict = {}
+                continue
+            key, value = line.split(':', 1)
+            if key == 'key':
+                value = tuple(map(intern, value.split('\x00')))
+            elif key in ('start', 'length'):
+                value = int(value)
+            info_dict[key] = value
         return out
 
     def extract(self, key, sha1=None):
@@ -207,14 +228,14 @@ class GroupCompressBlock(object):
         for key in sorted(self._entries):
             entry = self._entries[key]
             chunk = ('key:%s\n'
-                     'type:%s\n'
                      'sha1:%s\n'
+                     'type:%s\n'
                      'start:%s\n'
                      'length:%s\n'
                      '\n'
                      ) % ('\x00'.join(entry.key),
-                          entry.type,
                           entry.sha1,
+                          entry.type,
                           entry.start,
                           entry.length,
                           )

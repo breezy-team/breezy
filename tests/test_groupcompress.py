@@ -208,9 +208,40 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertRaises(errors.InvalidGroupCompressBlock,
                           groupcompress.GroupCompressBlock.from_bytes, '')
 
-    def test_from_bytes(self):
-        block = groupcompress.GroupCompressBlock.from_bytes('gcb1p\n')
+    def test_from_minimal_bytes(self):
+        block = groupcompress.GroupCompressBlock.from_bytes('gcb1p\n0\n')
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
+        self.assertEqual({}, block._entries)
+
+    def test_from_bytes(self):
+        block = groupcompress.GroupCompressBlock.from_bytes(
+            'gcb1p\n' # group compress block v1 plain
+            '183\n' # Length of all meta-info
+            'key:bing\n'
+            'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
+            'type:fulltext\n'
+            'start:100\n'
+            'length:100\n'
+            '\n'
+            'key:foo\x00bar\n'
+            'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
+            'type:fulltext\n'
+            'start:0\n'
+            'length:100\n'
+            '\n')
+        self.assertEqual([('bing',), ('foo', 'bar')], sorted(block._entries))
+        bing = block._entries[('bing',)]
+        self.assertEqual(('bing',), bing.key)
+        self.assertEqual('fulltext', bing.type)
+        self.assertEqual('abcd'*10, bing.sha1)
+        self.assertEqual(100, bing.start)
+        self.assertEqual(100, bing.length)
+        foobar = block._entries[('foo', 'bar')]
+        self.assertEqual(('foo', 'bar'), foobar.key)
+        self.assertEqual('fulltext', foobar.type)
+        self.assertEqual('abcd'*10, foobar.sha1)
+        self.assertEqual(0, foobar.start)
+        self.assertEqual(100, foobar.length)
 
     def test_add_entry(self):
         gcb = groupcompress.GroupCompressBlock()
@@ -229,14 +260,14 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqualDiff('gcb1p\n' # group compress block v1 plain
                              '183\n' # Length of all meta-info
                              'key:bing\n'
-                             'type:fulltext\n'
                              'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
+                             'type:fulltext\n'
                              'start:100\n'
                              'length:100\n'
                              '\n'
                              'key:foo\x00bar\n'
-                             'type:fulltext\n'
                              'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
+                             'type:fulltext\n'
                              'start:0\n'
                              'length:100\n'
                              '\n', gcb.to_bytes())
