@@ -76,6 +76,14 @@ class DebBuildConfigTests(TestCaseWithTransport):
   def test_no_entry(self):
     self.assertEqual(self.config.merge, False)
 
+  def test_parse_error(self):
+    f = open('invalid.conf', 'wb')
+    try:
+      f.write('['+DebBuildConfig.section+'\n')
+    finally:
+      f.close()
+    DebBuildConfig([('invalid.conf', True, 'invalid.conf')])
+
 try:
   from bzrlib.plugins.svn.config import SubversionBuildPackageConfig
 except ImportError:

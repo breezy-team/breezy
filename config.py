@@ -20,6 +20,7 @@
 
 from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter, warning
+from bzrlib.util.configobj.configobj import ParseError
 from bzrlib.plugins.builddeb.util import get_snapshot_revision
 
 
@@ -89,7 +90,15 @@ class DebBuildConfig(object):
     """
     self._config_files = []
     for input in files:
-      config = ConfigObj(input[0])
+      try:
+        config = ConfigObj(input[0])
+      except ParseError, e:
+        if len(input) > 2:
+          content = input[2]
+        else:
+          content = input[0]
+        warning("There was an error parsing '%s': %s" % (content, e.msg))
+        continue
       if len(input) > 2:
         config.filename = input[2]
       self._config_files.append((config, input[1]))
