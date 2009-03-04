@@ -157,15 +157,18 @@ class TestGroupCompressor(tests.TestCase):
         # Knit fetching will try to reconstruct texts locally which results in
         # reading something that is in the compressor stream already.
         compressor = groupcompress.GroupCompressor(True)
-        sha_1,  _ = compressor.compress(('label',), 'strange\ncommon\n', None)
-        sha_2, _ = compressor.compress(('newlabel',),
-            'common\ndifferent\nmoredifferent\n', None)
+        sha1_1, _ = compressor.compress(('label',),
+            'strange\ncommon long line\nthat needs a 16 byte match\n', None)
+        expected_lines = list(compressor.lines)
+        sha1_2, end_point = compressor.compress(('newlabel',),
+            'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         # get the first out
-        self.assertEqual((['strange\ncommon\n'], sha_1),
+        self.assertEqual(('strange\ncommon\n', sha1_1),
             compressor.extract(('label',)))
         # and the second
-        self.assertEqual((['common\ndifferent\nmoredifferent\n'],
-            sha_2), compressor.extract(('newlabel',)))
+        self.assertEqual(('common long line\nthat needs a 16 byte match\n'
+                          'different\n', sha1_2),
+                         compressor.extract(('newlabel',)))
 
 
 class TestBase128Int(tests.TestCase):
@@ -214,7 +217,7 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual({}, block._entries)
 
     def test_from_bytes(self):
-        block = groupcompress.GroupCompressBlock.from_bytes(
+        z_header_bytes = (
             'gcb1z\n' # group compress block v1 plain
             '76\n' # Length of zlib bytes
             '183\n' # Length of all meta-info
@@ -231,6 +234,10 @@ class TestGroupCompressBlock(tests.TestCase):
             'start:0\n'
             'length:100\n'
             '\n'))
+        block = groupcompress.GroupCompressBlock.from_bytes(
+            z_header_bytes)
+        self.assertIs(None, block._content)
+        self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         self.assertEqual([('bing',), ('foo', 'bar')], sorted(block._entries))
         bing = block._entries[('bing',)]
         self.assertEqual(('bing',), bing.key)
