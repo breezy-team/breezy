@@ -1,6 +1,16 @@
 Todo for groupcompress:
 
  * layers - gc reader/writer and vf layers should be separate
- * mpdiff usage
+ * alternate copy/insert encoding?
  * other stuff from design
- * use byte offsets not line offsets.
+
+ * Look at splitting the 'labels' section into a header/index for all
+   compressed entries, separate from the actual content. This could potentially
+   improve compression efficiency.
+
+ * Consider a more 'binary' layout for things like sha1 sums, or length
+   indicators.
+
+ * Investigate sha1 overhead. Currently when doing 'bzr pack' we sha once on
+   extraction, and then one more time on insertion. Removing both calls saves
+   6s out of 32s for 'bzr pack' (and 8s=>5.5s for 'repository-details')
