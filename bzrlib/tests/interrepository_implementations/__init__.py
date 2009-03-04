@@ -33,8 +33,6 @@ from bzrlib.errors import (
 
 from bzrlib.repository import (
                                InterKnitRepo,
-                               InterKnit1and2,
-                               InterModel1and2,
                                InterRepository,
                                )
 from bzrlib.tests import (
@@ -100,14 +98,14 @@ class InterRepositoryTestProviderAdapter(TestScenarioApplier):
                 result.append((optimiser_class,
                                format_to_test, format_to_test))
         # if there are specific combinations we want to use, we can add them
-        # here.
-        result.append((InterModel1and2,
+        # here. We want to test rich root upgrading.
+        result.append((InterRepository,
                        weaverepo.RepositoryFormat5(),
                        knitrepo.RepositoryFormatKnit3()))
-        result.append((InterModel1and2,
+        result.append((InterRepository,
                        knitrepo.RepositoryFormatKnit1(),
                        knitrepo.RepositoryFormatKnit3()))
-        result.append((InterKnit1and2,
+        result.append((InterRepository,
                        knitrepo.RepositoryFormatKnit1(),
                        knitrepo.RepositoryFormatKnit3()))
         result.append((InterKnitRepo,

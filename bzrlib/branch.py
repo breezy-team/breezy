@@ -45,6 +45,7 @@ from bzrlib.tag import (
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import Hooks
+from bzrlib.inter import InterObject
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -463,9 +464,7 @@ class Branch(object):
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
         :param pb: An optional progress bar to use.
-
-        Returns the copied revision count and the failed revisions in a tuple:
-        (copied, failures).
+        :return: None
         """
         if self.base == from_branch.base:
             return (0, [])
@@ -704,44 +703,8 @@ class Branch(object):
             information. This can be None.
         :return: None
         """
-        other.lock_read()
-        try:
-            other_revno, other_last_revision = other.last_revision_info()
-            stop_revno = None # unknown
-            if stop_revision is None:
-                stop_revision = other_last_revision
-                if _mod_revision.is_null(stop_revision):
-                    # if there are no commits, we're done.
-                    return
-                stop_revno = other_revno
-
-            # what's the current last revision, before we fetch [and change it
-            # possibly]
-            last_rev = _mod_revision.ensure_null(self.last_revision())
-            # we fetch here so that we don't process data twice in the common
-            # case of having something to pull, and so that the check for
-            # already merged can operate on the just fetched graph, which will
-            # be cached in memory.
-            self.fetch(other, stop_revision)
-            # Check to see if one is an ancestor of the other
-            if not overwrite:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                if self._check_if_descendant_or_diverged(
-                        stop_revision, last_rev, graph, other):
-                    # stop_revision is a descendant of last_rev, but we aren't
-                    # overwriting, so we're done.
-                    return
-            if stop_revno is None:
-                if graph is None:
-                    graph = self.repository.get_graph()
-                this_revno, this_last_revision = self.last_revision_info()
-                stop_revno = graph.find_distance_to_null(stop_revision,
-                                [(other_last_revision, other_revno),
-                                 (this_last_revision, this_revno)])
-            self.set_last_revision_info(stop_revno, stop_revision)
-        finally:
-            other.unlock()
+        return InterBranch.get(other, self).update_revisions(stop_revision,
+            overwrite, graph)
 
     def import_last_revision_info(self, source_repo, revno, revid):
         """Set the last revision info, importing from another repo if necessary.
@@ -927,7 +890,7 @@ class Branch(object):
             raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None):
+    def clone(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -937,11 +900,13 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 
     @needs_read_lock
-    def sprout(self, to_bzrdir, revision_id=None):
+    def sprout(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Create a new line of development from the branch, into to_bzrdir.
 
         to_bzrdir controls the branch format.
@@ -950,6 +915,8 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -1717,7 +1684,8 @@ class BranchReferenceFormat(BranchFormat):
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
-        def clone(to_bzrdir, revision_id=None):
+        def clone(to_bzrdir, revision_id=None,
+            repository_policy=None):
             """See Branch.clone()."""
             return format.initialize(to_bzrdir, a_branch)
             # cannot obey revision_id limits when cloning a reference ...
@@ -1757,7 +1725,7 @@ class BranchReferenceFormat(BranchFormat):
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
-The network name for a repository format is an identifier that can be used when
+The network name for a branch format is an identifier that can be used when
 referring to formats with smart server operations. See
 BranchFormat.network_name() for more detail.
 """
@@ -2659,9 +2627,9 @@ class PushResult(_Result):
     def report(self, to_file):
         """Write a human-readable description of the result."""
         if self.old_revid == self.new_revid:
-            to_file.write('No new revisions to push.\n')
+            note('No new revisions to push.')
         else:
-            to_file.write('Pushed up to revision %d.\n' % self.new_revno)
+            note('Pushed up to revision %d.' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 
@@ -2758,3 +2726,93 @@ def _run_with_write_locked_target(target, callable, *args, **kwargs):
     else:
         target.unlock()
         return result
+
+
+class InterBranch(InterObject):
+    """This class represents operations taking place between two branches.
+
+    Its instances have methods like pull() and push() and contain
+    references to the source and target repositories these operations
+    can be carried out on.
+    """
+
+    _optimisers = []
+    """The available optimised InterBranch types."""
+
+    @staticmethod
+    def _get_branch_formats_to_test():
+        """Return a tuple with the Branch formats to use when testing."""
+        raise NotImplementedError(self._get_branch_formats_to_test)
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+                         graph=None):
+        """Pull in new perfect-fit revisions.
+
+        :param stop_revision: Updated until the given revision
+        :param overwrite: Always set the branch pointer, rather than checking
+            to see if it is a proper descendant.
+        :param graph: A Graph object that can be used to query history
+            information. This can be None.
+        :return: None
+        """
+        raise NotImplementedError(self.update_revisions)
+
+
+class GenericInterBranch(InterBranch):
+    """InterBranch implementation that uses public Branch functions.
+    """
+
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return BranchFormat._default_format, BranchFormat._default_format
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+        graph=None):
+        """See InterBranch.update_revisions()."""
+        self.source.lock_read()
+        try:
+            other_revno, other_last_revision = self.source.last_revision_info()
+            stop_revno = None # unknown
+            if stop_revision is None:
+                stop_revision = other_last_revision
+                if _mod_revision.is_null(stop_revision):
+                    # if there are no commits, we're done.
+                    return
+                stop_revno = other_revno
+
+            # what's the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = _mod_revision.ensure_null(self.target.last_revision())
+            # we fetch here so that we don't process data twice in the common
+            # case of having something to pull, and so that the check for
+            # already merged can operate on the just fetched graph, which will
+            # be cached in memory.
+            self.target.fetch(self.source, stop_revision)
+            # Check to see if one is an ancestor of the other
+            if not overwrite:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                if self.target._check_if_descendant_or_diverged(
+                        stop_revision, last_rev, graph, self.source):
+                    # stop_revision is a descendant of last_rev, but we aren't
+                    # overwriting, so we're done.
+                    return
+            if stop_revno is None:
+                if graph is None:
+                    graph = self.target.repository.get_graph()
+                this_revno, this_last_revision = \
+                        self.target.last_revision_info()
+                stop_revno = graph.find_distance_to_null(stop_revision,
+                                [(other_last_revision, other_revno),
+                                 (this_last_revision, this_revno)])
+            self.target.set_last_revision_info(stop_revno, stop_revision)
+        finally:
+            self.source.unlock()
+
+    @classmethod
+    def is_compatible(self, source, target):
+        # GenericBranch uses the public API, so always compatible
+        return True
+
+
+InterBranch.register_optimiser(GenericInterBranch)

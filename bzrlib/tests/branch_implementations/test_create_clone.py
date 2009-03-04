@@ -16,6 +16,10 @@
 
 """Tests for branch.create_clone behaviour."""
 
+from bzrlib.branch import Branch
+from bzrlib import errors
+from bzrlib import remote
+from bzrlib import tests
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
@@ -54,3 +58,46 @@ class TestCreateClone(TestCaseWithBranch):
             stacked_on=trunk.base)
         self.assertEqual(revid, result.last_revision())
         self.assertEqual(trunk.base, result.get_stacked_on_url())
+
+    def test_create_clone_of_multiple_roots(self):
+        try:
+            builder = self.make_branch_builder('local')
+        except (errors.TransportNotPossible, errors.UninitializableFormat):
+            raise tests.TestNotApplicable('format not directly constructable')
+        builder.start_series()
+        builder.build_snapshot('rev1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev2', ['rev1'], [])
+        builder.build_snapshot('other', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev3', ['rev2', 'other'], [])
+        builder.finish_series()
+        local = builder.get_branch()
+        local.bzrdir.clone(self.get_url('remote'), revision_id='rev3')
+
+    def assertBranchHookBranchIsStacked(self, pre_change_params):
+        # Just calling will either succeed or fail.
+        pre_change_params.branch.get_stacked_on_url()
+        self.hook_calls.append(pre_change_params)
+
+    def test_create_clone_on_transport_stacked_hooks_get_stacked_branch(self):
+        tree = self.make_branch_and_tree('source')
+        tree.commit('a commit')
+        trunk = tree.branch.create_clone_on_transport(
+            self.get_transport('trunk'))
+        revid = tree.commit('a second commit')
+        source = tree.branch
+        target_transport = self.get_transport('target')
+        self.hook_calls = []
+        Branch.hooks.install_named_hook("pre_change_branch_tip",
+            self.assertBranchHookBranchIsStacked, None)
+        result = tree.branch.create_clone_on_transport(target_transport,
+            stacked_on=trunk.base)
+        self.assertEqual(revid, result.last_revision())
+        self.assertEqual(trunk.base, result.get_stacked_on_url())
+        # Smart servers invoke hooks on both sides
+        if isinstance(result, remote.RemoteBranch):
+            expected_calls = 2
+        else:
+            expected_calls = 1
+        self.assertEqual(expected_calls, len(self.hook_calls))

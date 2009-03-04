@@ -10,13 +10,13 @@ recover from mistakes as explained below.
 Dropping the revision history for a project
 -------------------------------------------
 
-If you accidently put the wrong tree under version control, simply
+If you accidentally put the wrong tree under version control, simply
 delete the ``.bzr`` directory.
 
 Deregistering a file or directory
 ---------------------------------
 
-If you accidently register a file using ``add`` that you
+If you accidentally register a file using ``add`` that you
 don't want version controlled, you can use the ``remove``
 command to tell Bazaar to forget about it.
 

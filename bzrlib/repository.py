@@ -637,7 +637,6 @@ class Repository(object):
         self.inventories.add_fallback_versioned_files(repository.inventories)
         self.revisions.add_fallback_versioned_files(repository.revisions)
         self.signatures.add_fallback_versioned_files(repository.signatures)
-        self._fetch_order = 'topological'
 
     def _check_fallback_repository(self, repository):
         """Check that this repository can fallback to repository safely.
@@ -831,18 +830,6 @@ class Repository(object):
         self._write_group = None
         # Additional places to query for data.
         self._fallback_repositories = []
-        # What order should fetch operations request streams in?
-        # The default is unordered as that is the cheapest for an origin to
-        # provide.
-        self._fetch_order = 'unordered'
-        # Does this repository use deltas that can be fetched as-deltas ?
-        # (E.g. knits, where the knit deltas can be transplanted intact.
-        # We default to False, which will ensure that enough data to get
-        # a full text out of any fetch stream will be grabbed.
-        self._fetch_uses_deltas = False
-        # Should fetch trigger a reconcile after the fetch? Only needed for
-        # some repository formats that can suffer internal inconsistencies.
-        self._fetch_reconcile = False
         # An InventoryEntry cache, used during deserialization
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
 
@@ -1238,6 +1225,10 @@ class Repository(object):
     def _get_sink(self):
         """Return a sink for streaming into this repository."""
         return StreamSink(self)
+
+    def _get_source(self, to_format):
+        """Return a source for streaming from this repository."""
+        return StreamSource(self, to_format)
 
     @needs_read_lock
     def has_revision(self, revision_id):
@@ -2265,6 +2256,18 @@ class RepositoryFormat(object):
     # Can this repository be given external locations to lookup additional
     # data. Set to True or False in derived classes.
     supports_external_lookups = None
+    # What order should fetch operations request streams in?
+    # The default is unordered as that is the cheapest for an origin to
+    # provide.
+    _fetch_order = 'unordered'
+    # Does this repository format use deltas that can be fetched as-deltas ?
+    # (E.g. knits, where the knit deltas can be transplanted intact.
+    # We default to False, which will ensure that enough data to get
+    # a full text out of any fetch stream will be grabbed.
+    _fetch_uses_deltas = False
+    # Should fetch trigger a reconcile after the fetch? Only needed for
+    # some repository formats that can suffer internal inconsistencies.
+    _fetch_reconcile = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -2560,8 +2563,21 @@ class InterRepository(InterObject):
         self.target_get_graph = self.target.get_graph
         self.target_get_parent_map = self.target.get_parent_map
 
+    @needs_write_lock
     def copy_content(self, revision_id=None):
-        raise NotImplementedError(self.copy_content)
+        """Make a complete copy of the content in self into destination.
+
+        This is a destructive operation! Do not use it on existing
+        repositories.
+
+        :param revision_id: Only copy the content needed to construct
+                            revision_id and its parents.
+        """
+        try:
+            self.target.set_make_working_trees(self.source.make_working_trees())
+        except NotImplementedError:
+            pass
+        self.target.fetch(self.source, revision_id=revision_id)
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
         """Fetch the content required to construct revision_id.
@@ -2572,17 +2588,16 @@ class InterRepository(InterObject):
                             content is copied.
         :param pb: optional progress bar to use for progress reports. If not
                    provided a default one will be created.
-
-        :returns: (copied_revision_count, failures).
+        :return: None.
         """
-        # Normally we should find a specific InterRepository subclass to do
-        # the fetch; if nothing else then at least InterSameDataRepository.
-        # If none of them is suitable it looks like fetching is not possible;
-        # we try to give a good message why.  _assert_same_model will probably
-        # give a helpful message; otherwise a generic one.
-        self._assert_same_model(self.source, self.target)
-        raise errors.IncompatibleRepositories(self.source, self.target,
-            "no suitableInterRepository found")
+        from bzrlib.fetch import RepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target,
+               self.target._format)
+        f = RepoFetcher(to_repository=self.target,
+                               from_repository=self.source,
+                               last_revision=revision_id,
+                               pb=pb, find_ghosts=find_ghosts)
 
     def _walk_to_common_revisions(self, revision_ids):
         """Walk out from revision_ids in source to revisions target has.
@@ -2728,42 +2743,6 @@ class InterSameDataRepository(InterRepository):
     def is_compatible(source, target):
         return InterRepository._same_model(source, target)
 
-    @needs_write_lock
-    def copy_content(self, revision_id=None):
-        """Make a complete copy of the content in self into destination.
-
-        This copies both the repository's revision data, and configuration information
-        such as the make_working_trees setting.
-
-        This is a destructive operation! Do not use it on existing
-        repositories.
-
-        :param revision_id: Only copy the content needed to construct
-                            revision_id and its parents.
-        """
-        try:
-            self.target.set_make_working_trees(self.source.make_working_trees())
-        except NotImplementedError:
-            pass
-        # but don't bother fetching if we have the needed data now.
-        if (revision_id not in (None, _mod_revision.NULL_REVISION) and
-            self.target.has_revision(revision_id)):
-            return
-        self.target.fetch(self.source, revision_id=revision_id)
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target,
-               self.target._format)
-        f = RepoFetcher(to_repository=self.target,
-                               from_repository=self.source,
-                               last_revision=revision_id,
-                               pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
-
 
 class InterWeaveRepo(InterSameDataRepository):
     """Optimised code paths between Weave based repositories.
@@ -2842,7 +2821,6 @@ class InterWeaveRepo(InterSameDataRepository):
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2923,7 +2901,6 @@ class InterKnitRepo(InterSameDataRepository):
                             from_repository=self.source,
                             last_revision=revision_id,
                             pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2995,10 +2972,8 @@ class InterPackRepo(InterSameDataRepository):
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                                   pb, find_ghosts)
-            return fetcher.count_copied, fetcher.failed_revisions
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        self.count_copied = 0
         if revision_id is None:
             # TODO:
             # everything to do - use pack logic
@@ -3097,123 +3072,6 @@ class InterPackRepo(InterSameDataRepository):
         return self.source.revision_ids_to_search_result(result_set)
 
 
-class InterModel1and2(InterRepository):
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-    @staticmethod
-    def is_compatible(source, target):
-        if not source.supports_rich_root() and target.supports_rich_root():
-            return True
-        else:
-            return False
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import Model1toKnit2Fetcher
-        f = Model1toKnit2Fetcher(to_repository=self.target,
-                                 from_repository=self.source,
-                                 last_revision=revision_id,
-                                 pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
-
-    @needs_write_lock
-    def copy_content(self, revision_id=None):
-        """Make a complete copy of the content in self into destination.
-
-        This is a destructive operation! Do not use it on existing
-        repositories.
-
-        :param revision_id: Only copy the content needed to construct
-                            revision_id and its parents.
-        """
-        try:
-            self.target.set_make_working_trees(self.source.make_working_trees())
-        except NotImplementedError:
-            pass
-        # but don't bother fetching if we have the needed data now.
-        if (revision_id not in (None, _mod_revision.NULL_REVISION) and
-            self.target.has_revision(revision_id)):
-            return
-        self.target.fetch(self.source, revision_id=revision_id)
-
-
-class InterKnit1and2(InterKnitRepo):
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with Knit1 source and Knit3 target"""
-        try:
-            from bzrlib.repofmt.knitrepo import (
-                RepositoryFormatKnit1,
-                RepositoryFormatKnit3,
-                )
-            from bzrlib.repofmt.pack_repo import (
-                RepositoryFormatKnitPack1,
-                RepositoryFormatKnitPack3,
-                RepositoryFormatKnitPack4,
-                RepositoryFormatKnitPack5,
-                RepositoryFormatKnitPack5RichRoot,
-                RepositoryFormatKnitPack6,
-                RepositoryFormatKnitPack6RichRoot,
-                RepositoryFormatPackDevelopment2,
-                RepositoryFormatPackDevelopment2Subtree,
-                )
-            norichroot = (
-                RepositoryFormatKnit1,            # no rr, no subtree
-                RepositoryFormatKnitPack1,        # no rr, no subtree
-                RepositoryFormatPackDevelopment2, # no rr, no subtree
-                RepositoryFormatKnitPack5,        # no rr, no subtree
-                RepositoryFormatKnitPack6,        # no rr, no subtree
-                )
-            richroot = (
-                RepositoryFormatKnit3,            # rr, subtree
-                RepositoryFormatKnitPack3,        # rr, subtree
-                RepositoryFormatKnitPack4,        # rr, no subtree
-                RepositoryFormatKnitPack5RichRoot,# rr, no subtree
-                RepositoryFormatKnitPack6RichRoot,# rr, no subtree
-                RepositoryFormatPackDevelopment2Subtree, # rr, subtree
-                )
-            for format in norichroot:
-                if format.rich_root_data:
-                    raise AssertionError('Format %s is a rich-root format'
-                        ' but is included in the non-rich-root list'
-                        % (format,))
-            for format in richroot:
-                if not format.rich_root_data:
-                    raise AssertionError('Format %s is not a rich-root format'
-                        ' but is included in the rich-root list'
-                        % (format,))
-            # TODO: One alternative is to just check format.rich_root_data,
-            #       instead of keeping membership lists. However, the formats
-            #       *also* have to use the same 'Knit' style of storage
-            #       (line-deltas, fulltexts, etc.)
-            return (isinstance(source._format, norichroot) and
-                    isinstance(target._format, richroot))
-        except AttributeError:
-            return False
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import Knit1to2Fetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target,
-               self.target._format)
-        f = Knit1to2Fetcher(to_repository=self.target,
-                            from_repository=self.source,
-                            last_revision=revision_id,
-                            pb=pb, find_ghosts=find_ghosts)
-        return f.count_copied, f.failed_revisions
-
-
 class InterDifferingSerializer(InterKnitRepo):
 
     @classmethod
@@ -3294,8 +3152,8 @@ class InterDifferingSerializer(InterKnitRepo):
         from_texts = self.source.texts
         to_texts = self.target.texts
         to_texts.insert_record_stream(from_texts.get_record_stream(
-            text_keys, self.target._fetch_order,
-            not self.target._fetch_uses_deltas))
+            text_keys, self.target._format._fetch_order,
+            not self.target._format._fetch_uses_deltas))
         # insert deltas
         for delta in pending_deltas:
             self.target.add_inventory_by_delta(*delta)
@@ -3433,13 +3291,7 @@ class InterRemoteToOther(InterRepository):
     def is_compatible(source, target):
         if not isinstance(source, remote.RemoteRepository):
             return False
-        # Is source's model compatible with target's model?
-        source._ensure_real()
-        real_source = source._real_repository
-        if isinstance(real_source, remote.RemoteRepository):
-            raise NotImplementedError(
-                "We don't support remote repos backed by remote repos yet.")
-        return InterRepository._same_model(real_source, target)
+        return InterRepository._same_model(source, target)
 
     def _ensure_real_inter(self):
         if self._real_inter is None:
@@ -3447,10 +3299,14 @@ class InterRemoteToOther(InterRepository):
             real_source = self.source._real_repository
             self._real_inter = InterRepository.get(real_source, self.target)
 
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False):
-        self._ensure_real_inter()
-        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts)
+        """See InterRepository.fetch()."""
+        # Always fetch using the generic streaming fetch code, to allow
+        # streaming fetching from remote servers.
+        from bzrlib.fetch import RepoFetcher
+        fetcher = RepoFetcher(self.target, self.source, revision_id,
+                              pb, find_ghosts)
 
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()
@@ -3477,8 +3333,8 @@ class InterPackToRemotePack(InterPackRepo):
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
         if isinstance(source._format, RepositoryFormatPack):
             if isinstance(target, remote.RemoteRepository):
-                target._ensure_real()
-                if isinstance(target._real_repository._format,
+                target._format._ensure_real()
+                if isinstance(target._format._custom_format,
                               RepositoryFormatPack):
                     if InterRepository._same_model(source, target):
                         return True
@@ -3495,7 +3351,6 @@ class InterPackToRemotePack(InterPackRepo):
         from bzrlib.fetch import RepoFetcher
         fetcher = RepoFetcher(self.target, self.source, revision_id,
                               pb, find_ghosts)
-        return fetcher.count_copied, fetcher.failed_revisions
 
     def _get_target_pack_collection(self):
         return self.target._real_repository._pack_collection
@@ -3509,8 +3364,6 @@ InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
-InterRepository.register_optimiser(InterModel1and2)
-InterRepository.register_optimiser(InterKnit1and2)
 InterRepository.register_optimiser(InterPackRepo)
 InterRepository.register_optimiser(InterOtherToRemote)
 InterRepository.register_optimiser(InterRemoteToOther)
@@ -3783,6 +3636,145 @@ class StreamSink(object):
             self.target_repo.add_revision(revision_id, rev)
 
     def finished(self):
-        if self.target_repo._fetch_reconcile:
+        if self.target_repo._format._fetch_reconcile:
             self.target_repo.reconcile()
+
+
+class StreamSource(object):
+    """A source of a stream for fetching between repositories."""
+
+    def __init__(self, from_repository, to_format):
+        """Create a StreamSource streaming from from_repository."""
+        self.from_repository = from_repository
+        self.to_format = to_format
+
+    def delta_on_metadata(self):
+        """Return True if delta's are permitted on metadata streams.
+
+        That is on revisions and signatures.
+        """
+        src_serializer = self.from_repository._format._serializer
+        target_serializer = self.to_format._serializer
+        return (self.to_format._fetch_uses_deltas and
+            src_serializer == target_serializer)
+
+    def _fetch_revision_texts(self, revs):
+        # fetch signatures first and then the revision texts
+        # may need to be a InterRevisionStore call here.
+        from_sf = self.from_repository.signatures
+        # A missing signature is just skipped.
+        keys = [(rev_id,) for rev_id in revs]
+        signatures = versionedfile.filter_absent(from_sf.get_record_stream(
+            keys,
+            self.to_format._fetch_order,
+            not self.to_format._fetch_uses_deltas))
+        # If a revision has a delta, this is actually expanded inside the
+        # insert_record_stream code now, which is an alternate fix for
+        # bug #261339
+        from_rf = self.from_repository.revisions
+        revisions = from_rf.get_record_stream(
+            keys,
+            self.to_format._fetch_order,
+            not self.delta_on_metadata())
+        return [('signatures', signatures), ('revisions', revisions)]
+
+    def _generate_root_texts(self, revs):
+        """This will be called by __fetch between fetching weave texts and
+        fetching the inventory weave.
+
+        Subclasses should override this if they need to generate root texts
+        after fetching weave texts.
+        """
+        if self._rich_root_upgrade():
+            import bzrlib.fetch
+            return bzrlib.fetch.Inter1and2Helper(
+                self.from_repository).generate_root_texts(revs)
+        else:
+            return []
+
+    def get_stream(self, search):
+        phase = 'file'
+        revs = search.get_keys()
+        graph = self.from_repository.get_graph()
+        revs = list(graph.iter_topo_order(revs))
+        data_to_fetch = self.from_repository.item_keys_introduced_by(revs)
+        text_keys = []
+        for knit_kind, file_id, revisions in data_to_fetch:
+            if knit_kind != phase:
+                phase = knit_kind
+                # Make a new progress bar for this phase
+            if knit_kind == "file":
+                # Accumulate file texts
+                text_keys.extend([(file_id, revision) for revision in
+                    revisions])
+            elif knit_kind == "inventory":
+                # Now copy the file texts.
+                from_texts = self.from_repository.texts
+                yield ('texts', from_texts.get_record_stream(
+                    text_keys, self.to_format._fetch_order,
+                    not self.to_format._fetch_uses_deltas))
+                # Cause an error if a text occurs after we have done the
+                # copy.
+                text_keys = None
+                # Before we process the inventory we generate the root
+                # texts (if necessary) so that the inventories references
+                # will be valid.
+                for _ in self._generate_root_texts(revs):
+                    yield _
+                # NB: This currently reopens the inventory weave in source;
+                # using a single stream interface instead would avoid this.
+                from_weave = self.from_repository.inventories
+                # we fetch only the referenced inventories because we do not
+                # know for unselected inventories whether all their required
+                # texts are present in the other repository - it could be
+                # corrupt.
+                yield ('inventories', from_weave.get_record_stream(
+                    [(rev_id,) for rev_id in revs],
+                    self.inventory_fetch_order(),
+                    not self.delta_on_metadata()))
+            elif knit_kind == "signatures":
+                # Nothing to do here; this will be taken care of when
+                # _fetch_revision_texts happens.
+                pass
+            elif knit_kind == "revisions":
+                for record in self._fetch_revision_texts(revs):
+                    yield record
+            else:
+                raise AssertionError("Unknown knit kind %r" % knit_kind)
+
+    def get_stream_for_missing_keys(self, missing_keys):
+        # missing keys can only occur when we are byte copying and not
+        # translating (because translation means we don't send
+        # unreconstructable deltas ever).
+        keys = {}
+        keys['texts'] = set()
+        keys['revisions'] = set()
+        keys['inventories'] = set()
+        keys['signatures'] = set()
+        for key in missing_keys:
+            keys[key[0]].add(key[1:])
+        if len(keys['revisions']):
+            # If we allowed copying revisions at this point, we could end up
+            # copying a revision without copying its required texts: a
+            # violation of the requirements for repository integrity.
+            raise AssertionError(
+                'cannot copy revisions to fill in missing deltas %s' % (
+                    keys['revisions'],))
+        for substream_kind, keys in keys.iteritems():
+            vf = getattr(self.from_repository, substream_kind)
+            # Ask for full texts always so that we don't need more round trips
+            # after this stream.
+            stream = vf.get_record_stream(keys,
+                self.to_format._fetch_order, True)
+            yield substream_kind, stream
+
+    def inventory_fetch_order(self):
+        if self._rich_root_upgrade():
+            return 'topological'
+        else:
+            return self.to_format._fetch_order
+
+    def _rich_root_upgrade(self):
+        return (not self.from_repository._format.rich_root_data and
+            self.to_format.rich_root_data)
 
