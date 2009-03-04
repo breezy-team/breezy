@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1436,8 +1436,9 @@ log_formatter_registry.register('long', LongLogFormatter,
                                 'Detailed log format')
 log_formatter_registry.register('line', LineLogFormatter,
                                 'Log format with one line per revision')
-log_formatter_registry.register('changelog', ChangeLogLogFormatter,
-                                'ChangeLog-like log format')
+log_formatter_registry.register(
+    'gnu-changelog', ChangeLogLogFormatter,
+    'Format used by GNU ChangeLog files')
 
 
 def register_formatter(name, formatter):

@@ -121,7 +121,9 @@ class TestLogFormats(TestCaseInTempDir):
         repo_url = self.make_trivial_history()
 
         out, err = self.run_bzr(
-            ['log', self.get_url('repo/a'), '--log-format=changelog', '--timezone=utc'])
+            ['log', self.get_url('repo/a'),
+             '--log-format=gnu-changelog',
+             '--timezone=utc'])
         self.assertEquals(err, '')
         self.assertEqualDiff(out,
 """2009-03-03  Joe Foo  <joe@foo.com>
