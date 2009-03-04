@@ -125,6 +125,8 @@ IN DEVELOPMENT
       UI at all - indeed it only reflects the repository status not
       changes to the branch itself. (Robert Collins)
 
+    * Remove deprecated EmptyTree.  (Martin Pool)
+
     * The ``BranchBuilder`` test helper now accepts a ``timestamp``
       parameter to ``build_commit`` and ``build_snapshot``.  (Martin Pool)
 
@@ -145,6 +147,8 @@ IN DEVELOPMENT
       fixes a race condition cloning stacked branches that would cause
       plugins to have hooks called on non-stacked instances.
       (Robert Collins, #334187)
+
+    * ``BzrDir.cloning_metadir`` now has a RPC call. (Robert Collins)
 
     * ``BzrDirFormat.__str__`` now uses the human readable description
       rather than the sometimes-absent disk label. (Robert Collins)
@@ -176,8 +180,9 @@ IN DEVELOPMENT
       ``resume_write_group`` methods.  These are currently only useful
       with pack repositories. (Andrew Bennetts, Robert Collins)
 
-    * ``RepositoryFormat`` objects now have a ``network_name`` for passing
-      the format across RPC calls. (Robert Collins, Andrew Bennetts)
+    * ``BzrDirFormat``, ``BranchFormat`` and ``RepositoryFormat`` objects
+      now have a ``network_name`` for passing the format across RPC calls.
+      (Robert Collins, Andrew Bennetts)
 
     * ``RepositoryFormat`` objects now all have a new attribute
       ``_serializer`` used by fetch when reserialising is required.

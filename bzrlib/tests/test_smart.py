@@ -38,7 +38,8 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch, BranchReferenceFormat
 import bzrlib.smart.branch
-import bzrlib.smart.bzrdir
+import bzrlib.smart.bzrdir, bzrlib.smart.bzrdir as smart_dir
+import bzrlib.smart.packrepository
 import bzrlib.smart.repository
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
@@ -160,6 +161,24 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         self.assertEqual(
             transport.base,
             request.transport_from_client_path('foo/').base)
+
+
+class TestSmartServerBzrDirRequestCloningMetaDir(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.cloning_metadir."""
+
+    def test_cloning_metadir(self):
+        """When there is a bzrdir present, the call succeeds."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        local_result = dir.cloning_metadir()
+        request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
+        request = request_class(backing)
+        expected = SuccessfulSmartServerResponse(
+            (local_result.network_name(),
+            local_result.repository_format.network_name(),
+            local_result.get_branch_format().network_name()))
+        self.assertEqual(expected, request.execute('', 'False'))
 
 
 class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
@@ -1175,6 +1194,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('BzrDirFormat.initialize'),
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
+        self.assertEqual(
+            smart.request.request_handlers.get('BzrDir.cloning_metadir'),
+            smart.bzrdir.SmartServerBzrDirRequestCloningMetaDir)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)
