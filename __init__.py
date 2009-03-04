@@ -67,18 +67,7 @@ def _run(source, processor_factory, control, params, verbose):
     import parser
     if source == '-':
         import sys
-        stream = sys.stdin
-        try:
-            import os
-            if os.name == 'nt':
-                fileno = getattr(sys.stdin, 'fileno', None)
-                if fileno:
-                    no = fileno()
-                    if no >= 0:     # -1 means we're working as subprocess
-                        import msvcrt
-                        msvcrt.setmode(no, os.O_BINARY)
-        except ImportError:
-            pass
+        stream = helpers.binary_stream(sys.stdin)
     else:
         stream = open(source, "rb")
     proc = processor_factory(control, params=params, verbose=verbose)

@@ -43,7 +43,7 @@ class BzrFastExporter(object):
     def __init__(self, source, git_branch=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None):
         self.source = source
-        self.outf = sys.stdout
+        self.outf = helpers.binary_stream(sys.stdout)
         self.git_branch = git_branch
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file
