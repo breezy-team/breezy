@@ -627,7 +627,10 @@ if chk_support:
         """A hashed CHK+group compress pack repository."""
 
         repository_class = GCCHKPackRepository
-        rich_root_data = True
+        # Setting this to True causes us to use InterModel1And2, so for now set
+        # it to False which uses InterDifferingSerializer. When IM1&2 is
+        # removed (as it is in bzr.dev) we can set this back to True.
+        rich_root_data = False
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
@@ -641,7 +644,7 @@ if chk_support:
 
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     """Be incompatible with the regular fetch code."""
-    formats = (RepositoryFormatPackGC,)
+    formats = (RepositoryFormatPackGCPlain,)
     if chk_support:
         formats = formats + (RepositoryFormatPackGCCHK16,
                              RepositoryFormatPackGCCHK255)
