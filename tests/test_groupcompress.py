@@ -63,9 +63,6 @@ class TestGroupCompressor(tests.TestCase):
             'strange\ncommon\n', None)
         self.assertEqual(sha_string('strange\ncommon\n'), sha1)
         expected_lines = [
-            'fulltext\n',
-            'label:label\nsha1:%s\n' % sha1,
-            'len:15\n',
             'strange\ncommon\n',
             ]
         self.assertEqual(expected_lines, compressor.lines)
@@ -97,14 +94,10 @@ class TestGroupCompressor(tests.TestCase):
                                     'that needs a 16 byte match\n'
                                     'different\n'), sha1_2)
         expected_lines.extend([
-            'delta\n'
-            'label:newlabel\n',
-            'sha1:%s\n' % sha1_2,
-            'len:16\n',
             # source and target length
-            '\x7e\x36',
+            '\x34\x36',
             # copy the line common
-            '\x91\x52\x2c', #copy, offset 0x52, len 0x2c
+            '\x91\x08\x2c', #copy, offset 0x08, len 0x2c
             # add the line different, and the trailing newline
             '\x0adifferent\n', # insert 10 bytes
             ])
@@ -129,29 +122,28 @@ class TestGroupCompressor(tests.TestCase):
                        'different\nmoredifferent\nand then some more\n'),
             sha1_3)
         expected_lines.extend([
-            'delta\n',
-            'label:label3\n',
-            'sha1:%s\n' % sha1_3,
-            'len:13\n',
-            '\xfa\x01\x5f' # source and target length
+            '\x63\x5f' # source and target length
             # insert new
             '\x03new',
             # Copy of first parent 'common' range
-            '\x91\x51\x31' # copy, offset 0x51, 0x31 bytes
+            '\x91\x07\x31' # copy, offset 0x07, 0x31 bytes
             # Copy of second parent 'different' range
-            '\x91\xcf\x2b' # copy, offset 0xcf, 0x2b bytes
+            '\x91\x38\x2b' # copy, offset 0x38, 0x2b bytes
             ])
         self.assertEqualDiffEncoded(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_stats(self):
         compressor = groupcompress.GroupCompressor(True)
-        compressor.compress(('label',), 'strange\ncommon\n', None)
+        compressor.compress(('label',), 'strange\ncommon long line\n'
+                                        'plus more text\n', None)
         compressor.compress(('newlabel',),
-                            'common\ndifferent\nmoredifferent\n', None)
+                            'common long line\nplus more text\n'
+                            'different\nmoredifferent\n', None)
         compressor.compress(('label3',),
-                            'new\ncommon\ndifferent\nmoredifferent\n', None)
-        self.assertAlmostEqual(0.3, compressor.ratio(), 1)
+                            'new\ncommon long line\nplus more text\n'
+                            '\ndifferent\nmoredifferent\n', None)
+        self.assertAlmostEqual(1.4, compressor.ratio(), 1)
 
     def test_extract_from_compressor(self):
         # Knit fetching will try to reconstruct texts locally which results in
@@ -163,7 +155,8 @@ class TestGroupCompressor(tests.TestCase):
         sha1_2, end_point = compressor.compress(('newlabel',),
             'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         # get the first out
-        self.assertEqual(('strange\ncommon\n', sha1_1),
+        self.assertEqual(('strange\ncommon long line\n'
+                          'that needs a 16 byte match\n', sha1_1),
             compressor.extract(('label',)))
         # and the second
         self.assertEqual(('common long line\nthat needs a 16 byte match\n'
@@ -269,7 +262,7 @@ class TestGroupCompressBlock(tests.TestCase):
         bytes = gcb.to_bytes()
         self.assertStartsWith(bytes,
                               'gcb1z\n' # group compress block v1 zlib
-                              '76\n' # Length of compressed bytes
+                              '77\n' # Length of compressed bytes
                               '183\n' # Length of all meta-info
                              )
         remaining_bytes = bytes[13:]

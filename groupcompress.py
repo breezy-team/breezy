@@ -380,7 +380,7 @@ class GroupCompressor(object):
             assert entry.type == 'delta'
             # XXX: This is inefficient at best
             source = ''.join(self.lines)
-            bytes = _groupcompress_pyx.apply_delta(source, delta)
+            bytes = _groupcompress_pyx.apply_delta(source, stored_bytes)
             assert entry.sha1 == sha_string(bytes)
         return bytes, entry.sha1
 
