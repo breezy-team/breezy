@@ -780,6 +780,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
             keys_to_add.append((key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
+            # Interestingly, the sweet spot is 4MB, at 8 and 2 MB the total
+            # size increases... we need a better way of deciding than just
+            # random testing against a given dataset.
+            #   2MB     10.3MB
+            #   3MB      8.4MB
+            #   4MB      8.6MB
+            #   8MB     10.0MB
+            # This effects file content more than other bits, because they
+            # don't get *large* enough to overflow here. (The total compressed
+            # inventory size is only 1.5MB on my test set.)
             if basis_end > 1024 * 1024 * 4:
                 flush()
                 self._compressor = GroupCompressor(self._delta)
