@@ -709,7 +709,7 @@ class Branch(object):
     def import_last_revision_info(self, source_repo, revno, revid):
         """Set the last revision info, importing from another repo if necessary.
 
-        This is used by the bound branch code to upload a revision to 
+        This is used by the bound branch code to upload a revision to
         the master branch first before updating the tip of the local branch.
 
         :param source_repo: Source repository to optionally fetch from
