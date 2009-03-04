@@ -706,6 +706,20 @@ class Branch(object):
         return InterBranch.get(other, self).update_revisions(stop_revision,
             overwrite, graph)
 
+    def import_last_revision_info(self, source_repo, revno, revid):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to
+        the master branch first before updating the tip of the local branch.
+
+        :param source_repo: Source repository to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        """
+        if not self.repository.has_same_location(source_repo):
+            self.repository.fetch(source_repo, revision_id=revid)
+        self.set_last_revision_info(revno, revid)
+
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
@@ -892,7 +906,7 @@ class Branch(object):
         return  result
 
     @needs_read_lock
-    def sprout(self, to_bzrdir, revision_id=None):
+    def sprout(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Create a new line of development from the branch, into to_bzrdir.
 
         to_bzrdir controls the branch format.
@@ -901,6 +915,8 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -1709,7 +1725,7 @@ class BranchReferenceFormat(BranchFormat):
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
-The network name for a repository format is an identifier that can be used when
+The network name for a branch format is an identifier that can be used when
 referring to formats with smart server operations. See
 BranchFormat.network_name() for more detail.
 """
