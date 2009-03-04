@@ -19,6 +19,7 @@
 
 from itertools import izip
 from cStringIO import StringIO
+import struct
 import zlib
 
 from bzrlib import (
@@ -74,6 +75,33 @@ def parse(bytes):
     if not len(delta_bytes) == length:
         raise AssertionError("bad length record %r" % (bytes,))
     return action, label, sha1, delta_bytes
+
+
+def encode_base128_int(val):
+    """Convert an integer into a 7-bit lsb encoding."""
+    bytes = []
+    count = 0
+    while val >= 0x80:
+        bytes.append(chr((val | 0x80) & 0xFF))
+        val >>= 7
+    bytes.append(chr(val))
+    return ''.join(bytes)
+
+
+def decode_base128_int(bytes):
+    """Decode an integer from a 7-bit lsb encoding."""
+    offset = 0
+    val = 0
+    shift = 0
+    bval = ord(bytes[offset])
+    while bval >= 0x80:
+        val |= (bval & 0x7F) << shift
+        shift += 7
+        offset += 1
+        bval = ord(bytes[offset])
+    val |= bval << shift
+    offset += 1
+    return val, offset
 
 
 def sort_gc_optimal(parent_map):

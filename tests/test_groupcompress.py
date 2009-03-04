@@ -168,6 +168,40 @@ class TestGroupCompressor(tests.TestCase):
             sha_2), compressor.extract(('newlabel',)))
 
 
+class TestBase128Int(tests.TestCase):
+
+    def assertEqualEncode(self, bytes, val):
+        self.assertEqual(bytes, groupcompress.encode_base128_int(val))
+
+    def assertEqualDecode(self, val, num_decode, bytes):
+        self.assertEqual((val, num_decode),
+                         groupcompress.decode_base128_int(bytes))
+
+    def test_encode(self):
+        self.assertEqualEncode('\x01', 1)
+        self.assertEqualEncode('\x02', 2)
+        self.assertEqualEncode('\x7f', 127)
+        self.assertEqualEncode('\x80\x01', 128)
+        self.assertEqualEncode('\xff\x01', 255)
+        self.assertEqualEncode('\x80\x02', 256)
+        self.assertEqualEncode('\xff\xff\xff\xff\x0f', 0xFFFFFFFF)
+
+    def test_decode(self):
+        self.assertEqualDecode(1, 1, '\x01')
+        self.assertEqualDecode(2, 1, '\x02')
+        self.assertEqualDecode(127, 1, '\x7f')
+        self.assertEqualDecode(128, 2, '\x80\x01')
+        self.assertEqualDecode(255, 2, '\xff\x01')
+        self.assertEqualDecode(256, 2, '\x80\x02')
+        self.assertEqualDecode(0xFFFFFFFF, 5, '\xff\xff\xff\xff\x0f')
+
+    def test_decode_with_trailing_bytes(self):
+        self.assertEqualDecode(1, 1, '\x01abcdef')
+        self.assertEqualDecode(127, 1, '\x7f\x01')
+        self.assertEqualDecode(128, 2, '\x80\x01abcdef')
+        self.assertEqualDecode(255, 2, '\xff\x01\xff')
+
+
 class TestGroupCompressBlock(tests.TestCase):
 
     def test_from_empty_bytes(self):
