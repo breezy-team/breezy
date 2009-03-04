@@ -69,6 +69,8 @@ IN DEVELOPMENT
       passed on the command line. This makes ``bzr lp-open lp:foo`` work as
       expected. (Jonathan Lange, #332705)
 
+    * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
+
   BUG FIXES:
 
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
