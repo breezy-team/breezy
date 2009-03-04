@@ -20,7 +20,7 @@
 import zlib
 
 from bzrlib import tests
-from bzrlib.osutils import sha_strings
+from bzrlib.osutils import sha_string
 from bzrlib.plugins.groupcompress import errors, groupcompress
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -35,7 +35,7 @@ def load_tests(standard_tests, module, loader):
     vf_interface_tests = loader.loadTestsFromTestCase(TestVersionedFiles)
     cleanup_pack_group = groupcompress.cleanup_pack_group
     make_pack_factory = groupcompress.make_pack_factory
-    group_scenario = ('groupcompress-nograph', {
+    group_scenario = ('groupcompressrabin-nograph', {
             'cleanup':cleanup_pack_group,
             'factory':make_pack_factory(False, False, 1),
             'graph': False,
@@ -60,40 +60,55 @@ class TestGroupCompressor(TestCaseWithTransport):
         # diff against NUKK
         compressor = groupcompress.GroupCompressor(True)
         sha1, end_point = compressor.compress(('label',),
-            ['strange\n', 'common\n'], None)
-        self.assertEqual(sha_strings(['strange\n', 'common\n']), sha1)
+            'strange\ncommon\n', None)
+        self.assertEqual(sha_string('strange\ncommon\n'), sha1)
         expected_lines = [
-            'label: label\n',
-            'sha1: %s\n' % sha1,
-            'i,3\n',
-            'strange\n',
-            'common\n',
-            '\n', # the last \n in a text is removed, which allows safe
-            # serialisation of lines without trailing \n.
+            'fulltext\n',
+            'label:label\nsha1:%s\n' % sha1,
+            'len:15\n',
+            'strange\ncommon\n',
             ]
         self.assertEqual(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
+    def _chunks_to_repr_lines(self, chunks):
+        return '\n'.join(map(repr, ''.join(chunks).split('\n')))
+
+    def assertEqualDiffEncoded(self, expected, actual):
+        """Compare the actual content to the expected content.
+
+        :param expected: A group of chunks that we expect to see
+        :param actual: The measured 'chunks'
+
+        We will transform the chunks back into lines, and then run 'repr()'
+        over them to handle non-ascii characters.
+        """
+        self.assertEqualDiff(self._chunks_to_repr_lines(expected),
+                             self._chunks_to_repr_lines(actual))
+
     def test_two_nosha_delta(self):
         compressor = groupcompress.GroupCompressor(True)
         sha1_1, _ = compressor.compress(('label',),
-            ['strange\n', 'common long line\n'], None)
+            'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.lines)
         sha1_2, end_point = compressor.compress(('newlabel',),
-            ['common long line\n', 'different\n'], None)
-        self.assertEqual(sha_strings(['common long line\n', 'different\n']),
-                         sha1_2)
+            'common long line\nthat needs a 16 byte match\ndifferent\n', None)
+        self.assertEqual(sha_string('common long line\n'
+                                    'that needs a 16 byte match\n'
+                                    'different\n'), sha1_2)
         expected_lines.extend([
-            'label: newlabel\n',
-            'sha1: %s\n' % sha1_2,
+            'delta\n'
+            'label:newlabel\n',
+            'sha1:%s\n' % sha1_2,
+            'len:16\n',
+            # source and target length
+            '\x7e\x36',
             # copy the line common
-            'c,72,17\n',
+            '\x91\x52\x2c', #copy, offset 0x52, len 0x2c
             # add the line different, and the trailing newline
-            'i,2\n',
-            'different\n',
-            '\n'
+            '\x0adifferent\n', # insert 10 bytes
             ])
-        self.assertEqualDiff(''.join(expected_lines), ''.join(compressor.lines))
+        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_three_nosha_delta(self):
@@ -101,53 +116,53 @@ class TestGroupCompressor(TestCaseWithTransport):
         # both parents.
         compressor = groupcompress.GroupCompressor(True)
         sha1_1, end_point = compressor.compress(('label',),
-            ['strange\n', 'common long line\n'], None)
+            'strange\ncommon very very long line\nwith some extra text\n', None)
         sha1_2, _ = compressor.compress(('newlabel',),
-            ['common long line\n', 'different\n', 'moredifferent\n'], None)
+            'different\nmoredifferent\nand then some more\n', None)
         expected_lines = list(compressor.lines)
         sha1_3, end_point = compressor.compress(('label3',),
-            ['new\n', 'common long line\n', 'different\n', 'moredifferent\n'],
+            'new\ncommon very very long line\nwith some extra text\n'
+            'different\nmoredifferent\nand then some more\n',
             None)
         self.assertEqual(
-            sha_strings(['new\n', 'common long line\n', 'different\n',
-                         'moredifferent\n']),
+            sha_string('new\ncommon very very long line\nwith some extra text\n'
+                       'different\nmoredifferent\nand then some more\n'),
             sha1_3)
         expected_lines.extend([
-            'label: label3\n',
-            'sha1: %s\n' % sha1_3,
+            'delta\n',
+            'label:label3\n',
+            'sha1:%s\n' % sha1_3,
+            'len:13\n',
+            '\xfa\x01\x5f' # source and target length
             # insert new
-            'i,1\n',
-            'new\n',
-            # copy the line common
-            'c,72,17\n',
-            # copy the lines different, moredifferent and trailing newline
-            'c,165,25\n',
+            '\x03new',
+            # Copy of first parent 'common' range
+            '\x91\x51\x31' # copy, offset 0x51, 0x31 bytes
+            # Copy of second parent 'different' range
+            '\x91\xcf\x2b' # copy, offset 0xcf, 0x2b bytes
             ])
-        self.assertEqualDiff(''.join(expected_lines),
-                             ''.join(compressor.lines))
+        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_stats(self):
         compressor = groupcompress.GroupCompressor(True)
-        compressor.compress(('label',),
-            ['strange\n', 'common\n'], None)
+        compressor.compress(('label',), 'strange\ncommon\n', None)
         compressor.compress(('newlabel',),
-            ['common\n', 'different\n', 'moredifferent\n'], None)
+                            'common\ndifferent\nmoredifferent\n', None)
         compressor.compress(('label3',),
-            ['new\n', 'common\n', 'different\n', 'moredifferent\n'], None)
+                            'new\ncommon\ndifferent\nmoredifferent\n', None)
         self.assertAlmostEqual(0.3, compressor.ratio(), 1)
 
     def test_extract_from_compressor(self):
         # Knit fetching will try to reconstruct texts locally which results in
         # reading something that is in the compressor stream already.
         compressor = groupcompress.GroupCompressor(True)
-        sha_1,  _ = compressor.compress(('label',),
-            ['strange\n', 'common\n'], None)
+        sha_1,  _ = compressor.compress(('label',), 'strange\ncommon\n', None)
         sha_2, _ = compressor.compress(('newlabel',),
-            ['common\n', 'different\n', 'moredifferent\n'], None)
+            'common\ndifferent\nmoredifferent\n', None)
         # get the first out
-        self.assertEqual((['strange\n', 'common\n'], sha_1),
+        self.assertEqual((['strange\ncommon\n'], sha_1),
             compressor.extract(('label',)))
         # and the second
-        self.assertEqual((['common\n', 'different\n', 'moredifferent\n'],
+        self.assertEqual((['common\ndifferent\nmoredifferent\n'],
             sha_2), compressor.extract(('newlabel',)))

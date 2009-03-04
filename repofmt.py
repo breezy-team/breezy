@@ -27,6 +27,7 @@ from bzrlib import (
     inventory,
     pack,
     repository,
+    trace,
     ui,
     )
 from bzrlib.btree_index import (
@@ -45,11 +46,8 @@ from bzrlib.repofmt.pack_repo import (
     NewPack,
     KnitPackRepository,
     RepositoryPackCollection,
-    RepositoryFormatPackDevelopment2,
-    RepositoryFormatPackDevelopment2Subtree,
-    RepositoryFormatKnitPack1,
-    RepositoryFormatKnitPack3,
-    RepositoryFormatKnitPack4,
+    RepositoryFormatKnitPack6,
+    RepositoryFormatKnitPack6RichRoot,
     Packer,
     ReconcilePacker,
     OptimisingPacker,
@@ -69,7 +67,6 @@ try:
     chk_support = True
 except ImportError:
     chk_support = False
-from bzrlib.trace import mutter, note
 
 
 def open_pack(self):
@@ -166,7 +163,7 @@ class GCPack(NewPack):
         self.write_stream = self.upload_transport.open_write_stream(
             self.random_name, mode=self._file_mode)
         if 'pack' in debug.debug_flags:
-            mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
+            trace.mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
                 time.time() - self.start_time)
         # A list of byte sequences to be written to the new pack, and the 
@@ -320,8 +317,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         for stream in _get_referenced_stream(p_id_roots):
             yield stream
         if remaining_keys:
-            note('There were %d keys in the chk index, which were not'
-                ' referenced from inventories', len(remaining_keys))
+            trace.note('There were %d keys in the chk index, which were not'
+                       ' referenced from inventories', len(remaining_keys))
             stream = source_vf.get_record_stream(remaining_keys, 'unordered',
                                                  True)
             yield stream
@@ -376,6 +373,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                     for pack in packs:
                         source_index = getattr(pack, index_name)
                         keys.update(e[1] for e in source_index.iter_all_entries())
+                    trace.mutter('repacking %s with %d keys',
+                                 vf_name, len(keys))
                     source_vf = getattr(self.repo, vf_name)
                     target_access = knit._DirectPackAccess({})
                     target_access.set_writer(new_pack._writer, new_index,
@@ -590,15 +589,16 @@ if chk_support:
             self._fetch_uses_deltas = False
 
 
-class RepositoryFormatPackGCPlain(RepositoryFormatPackDevelopment2):
+class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
     """A B+Tree index using pack repository."""
 
     repository_class = GCPackRepository
+    rich_root_data = False
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar development format - btree+gc "
-            "(needs bzr.dev from 1.6)\n")
+            "(needs bzr.dev from 1.13)\n")
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -606,61 +606,16 @@ class RepositoryFormatPackGCPlain(RepositoryFormatPackDevelopment2):
             ", interoperates with pack-0.92\n")
 
 
-class RepositoryFormatPackGCRichRoot(RepositoryFormatKnitPack4):
-    """A B+Tree index using pack repository."""
-
-    repository_class = GCPackRepository
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format - btree+gc-rich-root "
-            "(needs bzr.dev from 1.6)\n")
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format - btree+groupcompress "
-            ", interoperates with rich-root-pack\n")
-
-
-class RepositoryFormatPackGCSubtrees(RepositoryFormatPackDevelopment2Subtree):
-    """A B+Tree index using pack repository."""
-
-    repository_class = GCPackRepository
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ("Bazaar development format - btree+gc-subtrees "
-            "(needs bzr.dev from 1.6)\n")
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format - btree+groupcompress "
-            ", interoperates with pack-0.92-subtrees\n")
-
 if chk_support:
-    class RepositoryFormatPackGCPlainCHK(RepositoryFormatPackDevelopment5):
-        """A CHK+group compress pack repository."""
-
-        repository_class = GCCHKPackRepository
-
-        def get_format_string(self):
-            """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - chk+gc'
-                    ' (needs bzr.dev from 1.13)\n')
-
-        def get_format_description(self):
-            """See RepositoryFormat.get_format_description()."""
-            return ("Development repository format - chk+groupcompress")
-
-
-    class RepositoryFormatPackGCPlainCHK16(RepositoryFormatPackDevelopment5Hash16):
+    class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
         """A hashed CHK+group compress pack repository."""
 
         repository_class = GCCHKPackRepository
+        rich_root_data = True
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - hash16chk+gc'
+            return ('Bazaar development format - hash16chk+gc rich-root'
                     ' (needs bzr.dev from 1.13)\n')
 
         def get_format_description(self):
@@ -668,74 +623,15 @@ if chk_support:
             return ("Development repository format - hash16chk+groupcompress")
 
 
-##    class RepositoryFormatPackGCPlainCHK16b(RepositoryFormatPackDevelopment5Hash16b):
-##        """A hashed CHK+group compress pack repository."""
-##
-##        repository_class = GCCHKPackRepository
-##
-##        def get_format_string(self):
-##            """See RepositoryFormat.get_format_string()."""
-##            return ('Bazaar development format - hash16bchk+gc'
-##                    ' (needs bzr.dev from 1.13)\n')
-##
-##        def get_format_description(self):
-##            """See RepositoryFormat.get_format_description()."""
-##            return ("Development repository format - hash16bchk+groupcompress")
-##
-##
-##    class RepositoryFormatPackGCPlainCHK63(RepositoryFormatPackDevelopment5Hash63):
-##        """A hashed CHK+group compress pack repository."""
-##
-##        repository_class = GCCHKPackRepository
-##
-##        def get_format_string(self):
-##            """See RepositoryFormat.get_format_string()."""
-##            return ('Bazaar development format - hash63+gc'
-##                    ' (needs bzr.dev from 1.13)\n')
-##
-##        def get_format_description(self):
-##            """See RepositoryFormat.get_format_description()."""
-##            return ("Development repository format - hash63+groupcompress")
-##
-##
-##    class RepositoryFormatPackGCPlainCHK127a(RepositoryFormatPackDevelopment5Hash127a):
-##        """A hashed CHK+group compress pack repository."""
-##
-##        repository_class = GCCHKPackRepository
-##
-##        def get_format_string(self):
-##            """See RepositoryFormat.get_format_string()."""
-##            return ('Bazaar development format - hash127a+gc'
-##                    ' (needs bzr.dev from 1.13)\n')
-##
-##        def get_format_description(self):
-##            """See RepositoryFormat.get_format_description()."""
-##            return ("Development repository format - hash127a+groupcompress")
-##
-##
-##    class RepositoryFormatPackGCPlainCHK127b(RepositoryFormatPackDevelopment5Hash127b):
-##        """A hashed CHK+group compress pack repository."""
-##
-##        repository_class = GCCHKPackRepository
-##
-##        def get_format_string(self):
-##            """See RepositoryFormat.get_format_string()."""
-##            return ('Bazaar development format - hash127b+gc'
-##                    ' (needs bzr.dev from 1.13)\n')
-##
-##        def get_format_description(self):
-##            """See RepositoryFormat.get_format_description()."""
-##            return ("Development repository format - hash127b+groupcompress")
-
-
-    class RepositoryFormatPackGCPlainCHK255(RepositoryFormatPackDevelopment5Hash255):
+    class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
         """A hashed CHK+group compress pack repository."""
 
         repository_class = GCCHKPackRepository
+        rich_root_data = True
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - hash255chk+gc'
+            return ('Bazaar development format - hash255chk+gc rich-root'
                     ' (needs bzr.dev from 1.13)\n')
 
         def get_format_description(self):
@@ -745,16 +641,10 @@ if chk_support:
 
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     """Be incompatible with the regular fetch code."""
-    formats = (RepositoryFormatPackGCPlain, RepositoryFormatPackGCRichRoot,
-        RepositoryFormatPackGCSubtrees)
+    formats = (RepositoryFormatPackGC,)
     if chk_support:
-        formats = formats + (RepositoryFormatPackGCPlainCHK,
-                             RepositoryFormatPackGCPlainCHK16,
-                             ## RepositoryFormatPackGCPlainCHK16b,
-                             ## RepositoryFormatPackGCPlainCHK63,
-                             ## RepositoryFormatPackGCPlainCHK127a,
-                             ## RepositoryFormatPackGCPlainCHK127b,
-                             RepositoryFormatPackGCPlainCHK255)
+        formats = formats + (RepositoryFormatPackGCCHK16,
+                             RepositoryFormatPackGCCHK255)
     if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
     else:

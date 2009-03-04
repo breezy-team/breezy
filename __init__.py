@@ -35,38 +35,14 @@ See DESIGN in the groupcompress source.
 
 from bzrlib.bzrdir import format_registry
 from bzrlib.repository import format_registry as repo_registry
-format_registry.register_metadir('gc-plain',
+format_registry.register_metadir('gc-no-rich-root',
     'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlain',
-    help='pack-0.92 with btree index and group compress. '
+    help='pack-1.9 with xml inv, group compress '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=False,
-    experimental=True,
-    )
-
-format_registry.register_metadir('gc-rich-root',
-    'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCRichRoot',
-    help='rich-root-pack with btree index and group compress. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=False,
-    experimental=True,
-    )
-
-format_registry.register_metadir('gc-subtrees',
-    'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCSubtrees',
-    help='pack-0.92-subtress with btree index and group compress. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     hidden=False,
     experimental=True,
     )
@@ -79,10 +55,11 @@ try:
     from bzrlib.repofmt.pack_repo import (
     RepositoryFormatPackDevelopment5,
     RepositoryFormatPackDevelopment5Hash16,
+    RepositoryFormatPackDevelopment5Hash255,
     )
-    format_registry.register_metadir('gc-plain-chk',
-        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlainCHK',
-        help='pack-1.9 with CHK inv and group compress. '
+    format_registry.register_metadir('gc-chk16',
+        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCCHK16',
+        help='pack-1.9 with 16-way hashed CHK inv, group compress, rich roots. '
             'Please read '
             'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
             'before use.',
@@ -92,13 +69,13 @@ try:
         experimental=True,
         )
     repo_registry.register_lazy(
-        'Bazaar development format - chk+gc (needs bzr.dev from 1.13)\n',
-        'bzrlib.plugins.groupcompress.repofmt',
-        'RepositoryFormatPackGCPlainCHK',
+        'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.13)\n',
+        'bzrlib.plugins.groupcompres.repofmt',
+        'RepositoryFormatPackGCCHK16',
         )
-    format_registry.register_metadir('gc-plain-chk16',
-        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlainCHK16',
-        help='pack-1.9 with 16-way hashed CHK inv and group compress. '
+    format_registry.register_metadir('gc-chk255',
+        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCCHK255',
+        help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
             'Please read '
             'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
             'before use.',
@@ -108,52 +85,18 @@ try:
         experimental=True,
         )
     repo_registry.register_lazy(
-        'Bazaar development format - hash16chk+gc (needs bzr.dev from 1.13)\n',
+        'Bazaar development format - hash255chk+gc rich-root (needs bzr.dev from 1.13)\n',
         'bzrlib.plugins.groupcompress.repofmt',
-        'RepositoryFormatPackGCPlainCHK16',
-        )
-    format_registry.register_metadir('gc-plain-chk255',
-        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlainCHK255',
-        help='pack-1.9 with 255-way hashed CHK inv and group compress. '
-            'Please read '
-            'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-            'before use.',
-        branch_format='bzrlib.branch.BzrBranchFormat7',
-        tree_format='bzrlib.workingtree.WorkingTreeFormat5',
-        hidden=False,
-        experimental=True,
-        )
-    repo_registry.register_lazy(
-        'Bazaar development format - hash255chk+gc (needs bzr.dev from 1.13)\n',
-        'bzrlib.plugins.groupcompress.repofmt',
-        'RepositoryFormatPackGCPlainCHK255',
+        'RepositoryFormatPackGCCHK255',
         )
 except ImportError:
     pass
 
 repo_registry.register_lazy(
-    'Bazaar development format - btree+gc (needs bzr.dev from 1.6)\n',
+    'Bazaar development format - btree+gc (needs bzr.dev from 1.13)\n',
     'bzrlib.plugins.groupcompress.repofmt',
     'RepositoryFormatPackGCPlain',
     )
-repo_registry.register_lazy(
-    'Bazaar development format - btree+gc-rich-root (needs bzr.dev from 1.6)\n',
-    'bzrlib.plugins.groupcompress.repofmt',
-    'RepositoryFormatPackGCRichRoot',
-    )
-repo_registry.register_lazy(
-    'Bazaar development format - btree+gc-subtrees (needs bzr.dev from 1.6)\n',
-    'bzrlib.plugins.groupcompress.repofmt',
-    'RepositoryFormatPackGCSubtrees',
-    )
-
-
-
-def test_suite():
-    # Thunk across to load_tests for niceness with older bzr versions
-    from bzrlib.tests import TestLoader
-    loader = TestLoader()
-    return loader.loadTestsFromModuleNames(['bzrlib.plugins.groupcompress'])
 
 
 def load_tests(standard_tests, module, loader):

@@ -1,2 +1,3 @@
-./_groupcompress_c.c
+./_groupcompress_pyx.c
 ./build
+./tags
