@@ -379,7 +379,8 @@ class cmd_builddeb(Command):
                 distiller_cls = FullSourceDistiller
 
             distiller = distiller_cls(tree, upstream_provider,
-                    larstiq=larstiq, use_existing=use_existing)
+                    larstiq=larstiq, use_existing=use_existing,
+                    is_working_tree=working_tree)
 
             build_source_dir = os.path.join(build_dir,
                     changelog.package + "-"

@@ -45,7 +45,7 @@ class SourceDistiller(object):
     supports_use_existing = False
 
     def __init__(self, tree, upstream_provider, larstiq=False,
-            use_existing=False):
+            use_existing=False, is_working_tree=False):
         """Create a SourceDistiller to distill from the specified tree.
 
         :param tree: The tree to use as the source.
@@ -54,6 +54,7 @@ class SourceDistiller(object):
         :param larstiq: if the tree is in the "LarstiQ" layout.
         :param use_existing: whether the distiller should re-use an existing
             target if the distiller supports it.
+        :param is_working_tree: if `tree` is a working tree.
         """
         self.tree = tree
         self.upstream_provider = upstream_provider
@@ -61,6 +62,7 @@ class SourceDistiller(object):
         self.use_existing = use_existing
         if not self.supports_use_existing:
             assert not self.use_existing, "distiller doesn't support use_existing"
+        self.is_working_tree = is_working_tree
 
     def distill(self, target):
         """Extract the source to a tree rooted at the given location.
@@ -83,11 +85,17 @@ class SourceDistiller(object):
         """Subclasses should override this to implement distill."""
         raise NotImplementedError(self._distill)
 
+    def _prepare_working_tree(self):
+        for (dp, ie) in self.tree.inventory.iter_entries():
+            ie._read_tree_state(dp, self.tree)
+
 
 class NativeSourceDistiller(SourceDistiller):
     """A SourceDistiller for unpacking a native package from a branch."""
 
     def _distill(self, target):
+        if self.is_working_tree:
+            self._prepare_working_tree()
         export(self.tree, target, None, None)
 
 
@@ -97,6 +105,8 @@ class FullSourceDistiller(SourceDistiller):
     def _distill(self, target):
         parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
+        if self.is_working_tree:
+            self._prepare_working_tree()
         export(self.tree, target, None, None)
 
 
@@ -138,6 +148,8 @@ class MergeModeDistiller(SourceDistiller):
                 export_dir = os.path.join(tempdir,'debian')
             else:
                 export_dir = tempdir
+            if self.is_working_tree:
+                self._prepare_working_tree()
             export(self.tree,export_dir,None,None)
             # Remove any upstream debian dir, or from previous export with
             # use_existing

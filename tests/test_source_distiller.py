@@ -17,6 +17,8 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+import os
+
 from debian_bundle.changelog import Version
 
 from bzrlib.errors import (
@@ -44,7 +46,7 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         wt = self.make_branch_and_tree(".")
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        sd = NativeSourceDistiller(wt, None)
+        sd = NativeSourceDistiller(wt, None, is_working_tree=True)
         self.build_tree(['target/'])
         self.assertRaises(FileExists, sd.distill, 'target')
 
@@ -76,6 +78,19 @@ class NativeSourceDistillerTests(TestCaseWithTransport):
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
         self.failIfExists('target/.bzr-builddeb')
+
+    def test_distill_working_tree_with_symlinks(self):
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['a'])
+        os.symlink('a', 'b')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        wt.add(['a', 'b'])
+        sd = NativeSourceDistiller(wt, None, is_working_tree=True)
+        sd.distill('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/a')
+        self.failUnlessExists('target/b')
 
 
 class FullSourceDistillerTests(TestCaseWithTransport):
@@ -115,6 +130,20 @@ class FullSourceDistillerTests(TestCaseWithTransport):
         self.failUnlessExists('target')
         self.failUnlessExists('target/a')
         self.failIfExists('target/.bzr-builddeb')
+
+    def test_distill_working_tree_with_symlinks(self):
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['a'])
+        os.symlink('a', 'b')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        wt.add(['a', 'b'])
+        sd = FullSourceDistiller(wt, _TouchUpstreamProvider('tarball'),
+                is_working_tree=True)
+        sd.distill('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/a')
+        self.failUnlessExists('target/b')
 
 class MergeModeDistillerTests(TestCaseWithTransport):
 
@@ -224,3 +253,20 @@ class MergeModeDistillerTests(TestCaseWithTransport):
         self.failUnlessExists('target/debian/a')
         self.failIfExists('target/a')
         self.failIfExists('target/debian/b')
+
+    def test_distill_working_tree_with_symlinks(self):
+        wt = self.make_branch_and_tree(".")
+        self.build_tree(['debian/', 'debian/a'])
+        os.symlink('a', 'debian/b')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        wt.add(['debian', 'debian/a', 'debian/b'])
+        name = "package"
+        version = Version("0.1-1")
+        self.make_tarball(name, version)
+        sd = MergeModeDistiller(wt, _SimpleUpstreamProvider(name,
+                    version.upstream_version, "."), is_working_tree=True)
+        sd.distill('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/debian/a')
+        self.failUnlessExists('target/debian/b')
