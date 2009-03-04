@@ -7,10 +7,10 @@
 struct delta_index;
 
 struct source_info {
-	const void *buf; /* Pointer to the beginning of source data */
-	unsigned long size; /* Total length of source data */
-	unsigned long agg_offset; /* Start of source data as part of the
-								 aggregate source */
+    const void *buf; /* Pointer to the beginning of source data */
+    unsigned long size; /* Total length of source data */
+    unsigned long agg_offset; /* Start of source data as part of the
+                                 aggregate source */
 };
 
 /*
@@ -24,7 +24,7 @@ struct source_info {
  */
 extern struct delta_index *
 create_delta_index(const struct source_info *src,
-				   const struct delta_index *old);
+                   const struct delta_index *old);
 
 
 /*
@@ -39,7 +39,7 @@ create_delta_index(const struct source_info *src,
  */
 extern struct delta_index *
 create_delta_index_from_delta(const struct source_info *delta,
-							  const struct delta_index *old);
+                              const struct delta_index *old);
 /*
  * free_delta_index: free the index created by create_delta_index()
  *
@@ -66,8 +66,8 @@ extern unsigned long sizeof_delta_index(struct delta_index *index);
  */
 extern void *
 create_delta(const struct delta_index *index,
-		 const void *buf, unsigned long bufsize,
-		 unsigned long *delta_size, unsigned long max_delta_size);
+         const void *buf, unsigned long bufsize,
+         unsigned long *delta_size, unsigned long max_delta_size);
 
 /* the smallest possible delta size is 4 bytes */
 #define DELTA_SIZE_MIN  4
@@ -77,19 +77,19 @@ create_delta(const struct delta_index *index,
  * expected source buffer size, and again to get the target buffer size.
  */
 static inline unsigned long get_delta_hdr_size(const unsigned char **datap,
-						   const unsigned char *top)
+                           const unsigned char *top)
 {
-	const unsigned char *data = *datap;
-	unsigned char cmd;
-	unsigned long size = 0;
-	int i = 0;
-	do {
-		cmd = *data++;
-		size |= (cmd & ~0x80) << i;
-		i += 7;
-	} while (cmd & 0x80 && data < top);
-	*datap = data;
-	return size;
+    const unsigned char *data = *datap;
+    unsigned char cmd;
+    unsigned long size = 0;
+    int i = 0;
+    do {
+        cmd = *data++;
+        size |= (cmd & ~0x80) << i;
+        i += 7;
+    } while (cmd & 0x80 && data < top);
+    *datap = data;
+    return size;
 }
 
 #endif
