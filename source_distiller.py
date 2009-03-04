@@ -29,7 +29,10 @@ from bzrlib.export import export
 from bzrlib.plugins.builddeb.errors import (
         TarFailed,
         )
-from bzrlib.plugins.builddeb.util import recursive_copy
+from bzrlib.plugins.builddeb.util import (
+        get_parent_dir,
+        recursive_copy,
+        )
 
 
 class SourceDistiller(object):
@@ -92,7 +95,7 @@ class FullSourceDistiller(SourceDistiller):
     """A SourceDistiller for full-source branches, a.k.a. normal mode"""
 
     def _distill(self, target):
-        parent_dir = os.path.dirname(target)
+        parent_dir = get_parent_dir(target)
         self.upstream_provider.provide(parent_dir)
         export(self.tree, target, None, None)
 
@@ -103,9 +106,7 @@ class MergeModeDistiller(SourceDistiller):
 
     def _distill(self, target):
         # Get the upstream tarball
-        parent_dir = os.path.dirname(target)
-        if os.path.basename(target) == '':
-            parent_dir = os.path.dirname(parent_dir)
+        parent_dir = get_parent_dir(target)
         if parent_dir != '' and not os.path.exists(parent_dir):
             os.makedirs(parent_dir)
         if not self.use_existing:

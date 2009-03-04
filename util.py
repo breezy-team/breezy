@@ -293,3 +293,10 @@ def dget(dsc_location, target_dir):
 
 def dget_changes(changes_location, target_dir):
     return _dget(deb822.Changes, changes_location, target_dir)
+
+
+def get_parent_dir(target):
+    parent = os.path.dirname(target)
+    if os.path.basename(target) == '':
+        parent = os.path.dirname(parent)
+    return parent

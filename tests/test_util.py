@@ -35,10 +35,11 @@ from bzrlib.plugins.builddeb.util import (
                   dget,
                   dget_changes,
                   find_changelog,
-                  move_file_if_different,
-                  recursive_copy,
                   get_snapshot_revision,
                   lookup_distribution,
+                  move_file_if_different,
+                  get_parent_dir,
+                  recursive_copy,
                   strip_changelog_message,
                   suite_to_distribution,
                   tarball_name,
@@ -431,3 +432,13 @@ class DgetTests(TestCaseWithTransport):
         self.failUnlessExists(os.path.join("target", builder.tar_name()))
         self.failUnlessExists(os.path.join("target", builder.diff_name()))
         self.failUnlessExists(os.path.join("target", builder.changes_name()))
+
+
+class ParentDirTests(TestCase):
+
+    def test_get_parent_dir(self):
+        self.assertEqual(get_parent_dir("a"), '')
+        self.assertEqual(get_parent_dir("a/"), '')
+        self.assertEqual(get_parent_dir("a/b"), 'a')
+        self.assertEqual(get_parent_dir("a/b/"), 'a')
+        self.assertEqual(get_parent_dir("a/b/c"), 'a/b')

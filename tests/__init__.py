@@ -130,6 +130,7 @@ def test_suite():
             'test_repack_tarball_extra',
             'test_revspec',
             'test_source_distiller',
+            'test_upstream',
             'test_util',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
@@ -266,7 +267,7 @@ class SourcePackageBuilder(object):
     def add_default_control(self):
         text = """Source: %s\nSection: misc\n""" % self.name
         text += "Priority: optional\n"
-        text += "Maintainer: Maintainer <maint@maint.org>\n"
+        text += "Maintainer: Maintainer <nobody@ubuntu.com>\n"
         self.add_debian_file("debian/control", text)
 
     def new_version(self, version, change_text=None):

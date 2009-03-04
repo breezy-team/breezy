@@ -28,6 +28,9 @@ from bzrlib.plugins.builddeb.errors import (
                     NoSourceDirError,
                     BuildFailedError,
                     )
+from bzrlib.plugins.builddeb.util import (
+        get_parent_dir,
+        )
 
 
 class DebBuild(object):
@@ -53,9 +56,7 @@ class DebBuild(object):
         It checks that everything is well, and that some needed dirs are
         created.
         """
-        parent_dir = os.path.dirname(self.target_dir)
-        if os.path.basename(self.target_dir) == '':
-            parent_dir = os.path.dirname(parent_dir)
+        parent_dir = get_parent_dir(self.target_dir)
         if parent_dir != '' and not os.path.exists(parent_dir):
             os.makedirs(parent_dir)
         if os.path.exists(self.target_dir):

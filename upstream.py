@@ -32,6 +32,100 @@ from bzrlib.plugins.builddeb.errors import MissingUpstreamTarball
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 
+
+def provide_with_apt(package, upstream_version, target_dir):
+    import apt_pkg
+    apt_pkg.init()
+    sources = apt_pkg.GetPkgSrcRecords()
+    sources.Restart()
+    found = False
+    info("Using apt to look for the upstream tarball.")
+    while sources.Lookup(package):
+        if upstream_version \
+            == Version(sources.Version).upstream_version:
+            command = 'apt-get source -y --only-source --tar-only %s=%s' % \
+                (self.package, sources.Version)
+            proc = subprocess.Popen(command, shell=True, cwd=target_dir)
+            proc.wait()
+            if proc.returncode != 0:
+                break
+            return True
+    info("apt could not find the needed tarball.")
+    return False
+
+
+def provide_with_uscan(package, upstream_version, watch_file, target_dir):
+    info("Using uscan to look for the upstream tarball.")
+    r = os.system("uscan --upstream-version %s --force-download --rename "
+                  "--package %s --watchfile %s --check-dirname-level 0 " 
+                  "--download --repack --destdir %s" %
+                  (upstream_version, package, watch_file, target_dir))
+    if r != 0:
+        info("uscan could not find the needed tarball.")
+        return False
+    return True
+
+
+def provide_with_pristine_tar(tree, branch, package, version,
+        target_filename):
+    db = DistributionBranch(branch, None, tree=tree)
+    if not db.has_upstream_version_in_packaging_branch(version):
+        return False
+    revid = db._revid_of_upstream_version_from_branch(version)
+    if not db.has_pristine_tar_delta(revid):
+        return False
+    info("Using pristine-tar to reconstruct the needed tarball.")
+    db.reconstruct_pristine_tar(revid, package, version, target_filename)
+    return True
+
+
+def provide_with_get_orig_source(source_dir, fetch_dir, desired_tarball_name,
+        target_dir):
+    info("Trying to use get-orig-source to retrieve needed tarball.")
+    command = ["/usr/bin/make", "-f", "debian/rules", "get-orig-source"]
+    proc = subprocess.Popen(command, cwd=source_dir)
+    ret = proc.wait()
+    if ret != 0:
+        info("Trying to run get-orig-source rule failed")
+        return False
+    fetched_tarball = os.path.join(fetch_dir, desired_tarball_name)
+    if not os.path.exists(fetched_tarball):
+        info("get-orig-source did not create %s"
+                % desired_tarball_name)
+        return False
+    repack_tarball(fetched_tarball, desired_tarball_name,
+                   target_dir=target_dir)
+    return True
+
+
+def provide_from_other_branch(branch, revision, target_filename,
+        tarball_base):
+    branch.lock_read()
+    try:
+        rev_tree = branch.repository.revision_tree(revision)
+        export(rev_tree, target_filename, 'tgz', tarball_base)
+        return True
+    finally:
+        branch.unlock()
+
+
+def provide_by_split(tree, package, upstream_version, target_filename):
+    tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
+    try:
+        export_dir = os.path.join(tmpdir,
+                "%s-%s" % (package, upstream_version))
+        export(tree, export_dir, format="dir")
+        shutil.rmtree(os.path.join(export_dir, "debian"))
+        tar = tarfile.open(target_filename, "w:gz")
+        try:
+            tar.add(export_dir, "%s-%s" % (package, upstream_version))
+        finally:
+            tar.close()
+        return True
+    finally:
+        shutil.rmtree(tmpdir)
+
+
 class UpstreamProvider(object):
     """An upstream provider can provide the upstream source for a package.
 
@@ -66,6 +160,13 @@ class UpstreamProvider(object):
         self.upstream_branch = upstream_branch
         self.upstream_revision = upstream_revision
         self.allow_split = allow_split
+        # for testing
+        self._apt_provider = provide_with_apt
+        self._uscan_provider = provide_with_uscan
+        self._pristine_provider = provide_with_pristine_tar
+        self._orig_source_provider = provide_with_get_orig_source
+        self._upstream_branch_provider = provide_from_other_branch
+        self._split_provider = provide_by_split
 
     def provide(self, target_dir):
         """Provide the upstream tarball any way possible.
@@ -104,11 +205,11 @@ class UpstreamProvider(object):
                 pass
             elif self.provide_with_uscan(self.store_dir):
                 pass
-            elif self.provide_with_get_orig_source(self.store_dir):
-                pass
             elif self.provide_from_upstream_branch(self.store_dir):
                 pass
             elif self.provide_from_self_by_split(self.store_dir):
+                pass
+            elif self.provide_with_get_orig_source(self.store_dir):
                 pass
         else:
              info("Using the upstream tarball that is present in "
@@ -132,24 +233,8 @@ class UpstreamProvider(object):
         return False
 
     def provide_with_apt(self, target_dir):
-        import apt_pkg
-        apt_pkg.init()
-        sources = apt_pkg.GetPkgSrcRecords()
-        sources.Restart()
-        found = False
-        info("Using apt to look for the upstream tarball.")
-        while sources.Lookup(self.package):
-            if self.version.upstream_version \
-                == Version(sources.Version).upstream_version:
-                command = 'apt-get source -y --only-source --tar-only %s=%s' % \
-                    (self.package, sources.Version)
-                proc = subprocess.Popen(command, shell=True, cwd=target_dir)
-                proc.wait()
-                if proc.returncode != 0:
-                    break
-                return True
-        info("apt could not find the needed tarball.")
-        return False
+        return self._apt_provider(self.package, self.version.upstream_version,
+                target_dir)
 
     def provide_with_uscan(self, target_dir):
         if self.larstiq:
@@ -167,33 +252,16 @@ class UpstreamProvider(object):
             tmp.write(watch)
         finally:
             tmp.close()
-        info("Using uscan to look for the upstream tarball.")
         try:
-            r = os.system("uscan --upstream-version %s --force-download --rename "
-                          "--package %s --watchfile %s --check-dirname-level 0 " 
-                          "--download --repack --destdir %s" %
-                          (self.version.upstream_version, self.package,
-                           tempfilename, target_dir))
-            if r != 0:
-                info("uscan could not find the needed tarball.")
-                return False
-            return True
+            return self._uscan_provider(self.package,
+                    self.version.upstream_version, tempfilename, target_dir)
         finally:
           os.unlink(tempfilename)
 
     def provide_with_pristine_tar(self, target_dir):
-        db = DistributionBranch(self.branch, None, tree=self.tree)
-        if not db.has_upstream_version_in_packaging_branch(self.version):
-            return False
-        revid = db._revid_of_upstream_version_from_branch(self.version)
-        if not db.has_pristine_tar_delta(revid):
-            return False
-        info("Using pristine-tar to reconstruct the needed tarball.")
-        dest_filename = os.path.join(target_dir,
-                self._tarball_name())
-        db.reconstruct_pristine_tar(revid, self.package, self.version,
-                dest_filename)
-        return True
+        target_filename = os.path.join(target_dir, self._tarball_name())
+        return self._pristine_provider(self.tree, self.branch, self.package,
+                self.version, target_filename)
 
     def provide_with_get_orig_source(self, target_dir):
         if self.larstiq:
@@ -202,30 +270,17 @@ class UpstreamProvider(object):
             rules_name = 'debian/rules'
         rules_id = self.tree.path2id(rules_name)
         if rules_id is not None:
-            info("Trying to use get-orig-source to retrieve needed tarball.")
             desired_tarball_name = self._tarball_name()
             tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
             try:
                 base_export_dir = os.path.join(tmpdir, "export")
                 export_dir = base_export_dir
                 if self.larstiq:
+                    os.mkdir(export_dir)
                     export_dir = os.path.join(export_dir, "debian")
                 export(self.tree, export_dir, format="dir")
-                command = ["/usr/bin/make", "-f", "debian/rules",
-                        "get-orig-source"]
-                proc = subprocess.Popen(command, cwd=base_export_dir)
-                ret = proc.wait()
-                if ret != 0:
-                    info("Trying to run get-orig-source rule failed")
-                    return False
-                fetched_tarball = os.path.join(tmpdir, desired_tarball_name)
-                if not os.path.exists(fetched_tarball):
-                    info("get-orig-source did not create %s"
-                            % desired_tarball_name)
-                    return False
-                repack_tarball(fetched_tarball, desired_tarball_name,
-                               target_dir=target_dir)
-                return True
+                return self._orig_source_provider(base_export_dir, tmpdir,
+                        desired_tarball_name, target_dir)
             finally:
                 shutil.rmtree(tmpdir)
         info("No debian/rules file to try and use for a get-orig-source "
@@ -241,36 +296,19 @@ class UpstreamProvider(object):
             return False
         assert self.upstream_revision is not None
         info("Exporting the upstream branch to create the tarball")
-        self.upstream_branch.lock_read()
-        try:
-            rev_tree = self.upstream_branch.repository.revision_tree(
-                    self.upstream_revision)
-            dest = os.path.join(target_dir, self._tarball_name())
-            tarball_base = "%s-%s" % (self.package, self.version)
-            export(rev_tree, dest, 'tgz', tarball_base)
-            return True
-        finally:
-            self.upstream_branch.unlock()
+        target_filename = os.path.join(target_dir, self._tarball_name())
+        tarball_base = "%s-%s" % (self.package, self.version.upstream_version)
+        return self._upstream_branch_provider(self.upstream_branch,
+                self.upstream_revision, target_filename, tarball_base)
 
     def provide_from_self_by_split(self, target_dir):
         if not self.allow_split:
             return False
         info("Using the current branch without the 'debian' directory "
                 "to create the tarball")
-        tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
-        try:
-            export_dir = os.path.join(tmpdir,
-                    "%s-%s" % (self.package, self.version))
-            export(self.tree, export_dir, format="dir")
-            shutil.rmtree(os.path.join(export_dir, "debian"))
-            target_file = os.path.join(target_dir, self._tarball_name())
-            tar = tarfile.open(target_file, "w:gz")
-            try:
-                tar.add(export_dir, "%s-%s" % (self.package, self.version))
-            finally:
-                tar.close()
-        finally:
-            shutil.rmtree(tmpdir)
+        target_filename = os.path.join(target_dir, self._tarball_name())
+        return self._split_provider(self.tree, self.package,
+                self.version.upstream_version, target_filename)
 
 
 class _MissingUpstreamProvider(UpstreamProvider):
