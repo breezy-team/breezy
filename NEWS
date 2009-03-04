@@ -217,6 +217,14 @@ IN DEVELOPMENT
       clone if we cannot get a local_abspath for the new bzrdir.
       (Robert Collins)
 
+    * Xml deserialization (inventory and revision texts) now use
+      ``intern()`` rather than ``_get_cached_ascii()``. This avoids having
+      a cache that never expires, and doesn't require casting to Unicode
+      (and caching the Unicode object). This should decrease the total
+      memory consumption when processing many revisions/inventories.
+      (John Arbash Meinel)
+
+
 
 bzr 1.12 "1234567890" 2009-02-13
 --------------------------------
