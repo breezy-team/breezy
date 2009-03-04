@@ -169,7 +169,8 @@ class GroupCompressBlock(object):
         pos2 = pos + z_header_length
         z_header_bytes = bytes[pos:pos2]
         assert len(z_header_bytes) == z_header_length
-        header_bytes = zlib.decompress(z_header_bytes)
+        d = zlib.decompressobj()
+        header_bytes = d.decompress(z_header_bytes)
         assert len(header_bytes) == header_length
         del z_header_bytes
         lines = header_bytes.split('\n')
@@ -193,7 +194,8 @@ class GroupCompressBlock(object):
             info_dict[key] = value
         zcontent = bytes[pos2:]
         if zcontent:
-            out._content = zlib.decompress(zcontent)
+            out._content = d.decompress(zcontent)
+            assert d.flush() == ''
             out._size = header_len + len(out._content)
         return out
 
@@ -228,7 +230,7 @@ class GroupCompressBlock(object):
         self._entries[key] = entry
         return entry
 
-    def to_bytes(self):
+    def to_bytes(self, content=''):
         """Encode the information into a byte stream."""
         chunks = []
         for key in sorted(self._entries):
@@ -248,11 +250,21 @@ class GroupCompressBlock(object):
             chunks.append(chunk)
         bytes = ''.join(chunks)
         info_len = len(bytes)
-        z_bytes = zlib.compress(bytes)
+        c = zlib.compressobj()
+        z_bytes = []
+        z_bytes.append(c.compress(bytes))
         del bytes
-        z_len = len(z_bytes)
-        chunks = [self.GCB_HEADER, '%d\n' % (z_len,), '%d\n' % (info_len,),
-                  z_bytes]
+        z_bytes.append(c.flush(zlib.Z_SYNC_FLUSH))
+        z_len = sum(map(len, z_bytes))
+        c_len = len(content)
+        z_bytes.append(c.compress(content))
+        z_bytes.append(c.flush())
+        chunks = [self.GCB_HEADER,
+                  '%d\n' % (z_len,),
+                  '%d\n' % (info_len,),
+                  #'%d\n' % (c_len,),
+                 ]
+        chunks.extend(z_bytes)
         return ''.join(chunks)
 
 
@@ -725,11 +737,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
             #       label in the header is duplicated in the text.
             #       For chk pages and real bytes, I would guess this is not
             #       true.
-            header = self._compressor._block.to_bytes()
-            compressed = zlib.compress(''.join(self._compressor.lines))
-            out = header + compressed
+            bytes = self._compressor._block.to_bytes(
+                ''.join(self._compressor.lines))
             index, start, length = self._access.add_raw_records(
-                [(None, len(out))], out)[0]
+                [(None, len(bytes))], bytes)[0]
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, "%d %d %s" % (start, length, reads), refs))
