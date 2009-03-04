@@ -1951,8 +1951,6 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append(revid)
-                mutter("Adding merge from lesser of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
@@ -1966,8 +1964,6 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append(revid)
-                mutter("Adding merge from greater of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
