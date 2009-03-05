@@ -766,6 +766,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         last_prefix = None
         last_fulltext_len = None
         max_fulltext_len = 0
+        max_fulltext_prefix = None
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -778,20 +779,30 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 bytes = adapter.get_bytes(record)
             if len(record.key) > 1:
                 prefix = record.key[0]
+                soft = (prefix == last_prefix)
             else:
                 prefix = None
-            max_fulltext_len = max(max_fulltext_len, len(bytes))
+                soft = False
+            if max_fulltext_len < len(bytes):
+                max_fulltext_len = len(bytes)
+                max_fulltext_prefix = prefix
             (found_sha1, end_point, type,
              length) = self._compressor.compress(record.key,
-                bytes, record.sha1)
+                bytes, record.sha1, soft=soft)
+            # delta_ratio = float(len(bytes)) / length
             # Check if we want to continue to include that text
-            start_new_block = False
-            if end_point > 2 * max_fulltext_len:
-                if end_point > 4*1024*1024:
-                    start_new_block = True
-                elif (prefix is not None and prefix != last_prefix
-                      and end_point > 2*1024*1024):
-                    start_new_block = True
+            if (prefix == max_fulltext_prefix
+                and end_point < 2 * max_fulltext_len):
+                # As long as we are on the same file_id, we will fill at least
+                # 2 * max_fulltext_len
+                start_new_block = False
+            elif end_point > 4*1024*1024:
+                start_new_block = True
+            elif (prefix is not None and prefix != last_prefix
+                  and end_point > 2*1024*1024):
+                start_new_block = True
+            else:
+                start_new_block = False
             # if type == 'fulltext':
             #     # If this is the first text, we don't do anything
             #     if self._compressor.num_keys > 1:
