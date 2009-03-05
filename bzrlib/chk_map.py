@@ -607,8 +607,9 @@ class LeafNode(Node):
             elements = line.split('\x00')
             pos += 1
             if len(elements) != width + 1:
-                raise AssertionError('Incorrect number of elements for: %s'
-                                     % (line,))
+                raise AssertionError(
+                    'Incorrect number of elements (%d vs %d) for: %r'
+                    % (len(elements), width + 1, line))
             num_value_lines = int(elements[-1])
             value_lines = lines[pos:pos+num_value_lines]
             pos += num_value_lines
