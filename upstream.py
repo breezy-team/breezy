@@ -33,23 +33,38 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 
 
-def provide_with_apt(package, upstream_version, target_dir):
-    import apt_pkg
+def get_apt_command_for_source(package, version_str):
+    return 'apt-get source -y --only-source --tar-only %s=%s' % \
+        (package, version_str)
+
+
+def call_apt_for_source(package, version_str, target_dir):
+    command = get_apt_command_for_source(package, version_str)
+    proc = subprocess.Popen(command, shell=True, cwd=target_dir)
+    proc.wait()
+    if proc.returncode != 0:
+        return False
+    return True
+
+
+def provide_with_apt(package, upstream_version, target_dir, _apt_pkg=None,
+        _apt_caller=None):
+    if _apt_pkg is None:
+        import apt_pkg
+    else:
+        apt_pkg = _apt_pkg
+    if _apt_caller is None:
+        _apt_caller = call_apt_for_source
     apt_pkg.init()
     sources = apt_pkg.GetPkgSrcRecords()
     sources.Restart()
-    found = False
     info("Using apt to look for the upstream tarball.")
     while sources.Lookup(package):
         if upstream_version \
             == Version(sources.Version).upstream_version:
-            command = 'apt-get source -y --only-source --tar-only %s=%s' % \
-                (self.package, sources.Version)
-            proc = subprocess.Popen(command, shell=True, cwd=target_dir)
-            proc.wait()
-            if proc.returncode != 0:
-                break
-            return True
+            if _apt_caller(package, sources.Version, target_dir):
+                return True
+            break
     info("apt could not find the needed tarball.")
     return False
 

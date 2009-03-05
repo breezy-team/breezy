@@ -30,6 +30,8 @@ from bzrlib.plugins.builddeb.errors import (
         )
 from bzrlib.plugins.builddeb.upstream import (
         UpstreamProvider,
+        get_apt_command_for_source,
+        provide_with_apt,
         )
 from bzrlib.plugins.builddeb.util import (
         get_parent_dir,
@@ -185,6 +187,62 @@ class MockSplitProvider(MockProvider):
         if self.find:
             self.create_target(self.target_filename)
         return self.find
+
+
+class MockSources(object):
+
+    def __init__(self, versions):
+        self.restart_called_times = 0
+        self.lookup_called_times = 0
+        self.lookup_package = None
+        self.versions = versions
+        self.Version = None
+
+    def Restart(self):
+        self.restart_called_times += 1
+
+    def Lookup(self, package):
+        self.lookup_called_times += 1
+        assert not self.lookup_package or self.lookup_package == package
+        self.lookup_package = package
+        if self.lookup_called_times <= len(self.versions):
+            self.Version = self.versions[self.lookup_called_times-1]
+            return True
+        else:
+            self.Version = None
+            return False
+
+
+class MockAptPkg(object):
+
+    def __init__(self, sources):
+        self.init_called_times = 0
+        self.get_pkg_source_records_called_times = 0
+        self.sources = sources
+
+    def init(self):
+        self.init_called_times += 1
+
+    def GetPkgSrcRecords(self):
+        self.get_pkg_source_records_called_times += 1
+        return self.sources
+
+
+class MockAptCaller(object):
+
+    def __init__(self, work=False):
+        self.work = work
+        self.called = 0
+        self.package = None
+        self.version_str = None
+        self.target_dir = None
+
+    def call(self, package, version_str, target_dir):
+        self.package = package
+        self.version_str = version_str
+        self.target_dir = target_dir
+        self.called += 1
+        return self.work
 
 
 class UpstreamProviderTests(TestCaseWithTransport):
@@ -381,3 +439,68 @@ class UpstreamProviderTests(TestCaseWithTransport):
         self.watch_file_contents = "contents of debian/rules\n"
         self.provider.allow_split = True
         self.assertSuccesfulCall("split", ["pristine", "apt"])
+
+    def test_get_apt_command_for_source(self):
+        self.assertEqual("apt-get source -y --only-source --tar-only "
+                "apackage=someversion",
+                get_apt_command_for_source("apackage", "someversion"))
+
+    def test_apt_provider_no_package(self):
+        caller = MockAptCaller()
+        sources = MockSources([])
+        apt_pkg = MockAptPkg(sources)
+        self.assertEqual(False, provide_with_apt("apackage", "0.2",
+                    "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        self.assertEqual(1, apt_pkg.init_called_times)
+        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
+        self.assertEqual(1, sources.restart_called_times)
+        self.assertEqual(1, sources.lookup_called_times)
+        self.assertEqual("apackage", sources.lookup_package)
+        self.assertEqual(0, caller.called)
+
+    def test_apt_provider_wrong_version(self):
+        caller = MockAptCaller()
+        sources = MockSources(["0.1-1"])
+        apt_pkg = MockAptPkg(sources)
+        self.assertEqual(False, provide_with_apt("apackage", "0.2",
+                    "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        self.assertEqual(1, apt_pkg.init_called_times)
+        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
+        self.assertEqual(1, sources.restart_called_times)
+        self.assertEqual(2, sources.lookup_called_times)
+        self.assertEqual("apackage", sources.lookup_package)
+        self.assertEqual(0, caller.called)
+
+    def test_apt_provider_right_version(self):
+        caller = MockAptCaller(work=True)
+        sources = MockSources(["0.1-1", "0.2-1"])
+        apt_pkg = MockAptPkg(sources)
+        self.assertEqual(True, provide_with_apt("apackage", "0.2",
+                    "target", _apt_pkg=apt_pkg, _apt_caller=caller.call))
+        self.assertEqual(1, apt_pkg.init_called_times)
+        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
+        self.assertEqual(1, sources.restart_called_times)
+        # Only called twice means it stops when the command works.
+        self.assertEqual(2, sources.lookup_called_times)
+        self.assertEqual("apackage", sources.lookup_package)
+        self.assertEqual(1, caller.called)
+        self.assertEqual("apackage", caller.package)
+        self.assertEqual("0.2-1", caller.version_str)
+        self.assertEqual("target", caller.target_dir)
+
+    def test_apt_provider_right_version_command_fails(self):
+        caller = MockAptCaller()
+        sources = MockSources(["0.1-1", "0.2-1"])
+        apt_pkg = MockAptPkg(sources)
+        self.assertEqual(False, provide_with_apt("apackage", "0.2",
+                    "target", _apt_pkg=apt_pkg, _apt_caller=caller.call))
+        self.assertEqual(1, apt_pkg.init_called_times)
+        self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
+        self.assertEqual(1, sources.restart_called_times)
+        # Only called twice means it stops when the command fails.
+        self.assertEqual(2, sources.lookup_called_times)
+        self.assertEqual("apackage", sources.lookup_package)
+        self.assertEqual(1, caller.called)
+        self.assertEqual("apackage", caller.package)
+        self.assertEqual("0.2-1", caller.version_str)
+        self.assertEqual("target", caller.target_dir)
