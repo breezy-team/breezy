@@ -940,7 +940,7 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_sprout_bzrdir_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
-        referenced_branch = self.make_branch('referencced')
+        referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
