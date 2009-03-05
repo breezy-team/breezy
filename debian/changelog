@@ -1,3 +1,9 @@
+bzr-builddeb (2.1ubuntu1) jaunty; urgency=low
+
+  * Add --install-layout=deb to avoid files ending up in /usr/local
+
+ -- James Westby <james.westby@ubuntu.com>  Thu, 05 Mar 2009 14:14:18 +0000
+
 bzr-builddeb (2.1) experimental; urgency=low
 
   * Merge the tags from the upstream branch when doing merge-upstream with

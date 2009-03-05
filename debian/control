@@ -1,7 +1,8 @@
 Source: bzr-builddeb
 Section: devel
 Priority: optional
-Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
+Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>, James Westby <james.westby@ubuntu.com>
 Build-Depends: debhelper (>= 5.0.37.2), python-all (>= 2.3.5-11)
 Build-Depends-Indep: bzr (>= 1.10~), python-central (>= 0.5.8), python-docutils, python-debian (>= 0.1.11), python-apt, bzrtools (>= 1.2~), patchutils
