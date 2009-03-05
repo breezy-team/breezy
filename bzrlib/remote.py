@@ -165,7 +165,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
                 repo_name)
         if branch_ref == 'reference':
             # XXX: we need possible_transports here to avoid reopening the
-            # referenced location
+            # connection to the referenced location
             ref_bzrdir = BzrDir.open(branch_name)
             branch_format = ref_bzrdir.cloning_metadir().get_branch_format()
             format.set_branch_format(branch_format)
