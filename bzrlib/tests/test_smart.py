@@ -177,7 +177,26 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         expected = SuccessfulSmartServerResponse(
             (local_result.network_name(),
             local_result.repository_format.network_name(),
-            local_result.get_branch_format().network_name()))
+            ('direct', local_result.get_branch_format().network_name())))
+        self.assertEqual(expected, request.execute('', 'False'))
+
+    def test_cloning_metadir_reference(self):
+        """The request works when bzrdir contains a branch reference."""
+        backing = self.get_transport()
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_bzrdir('.')
+        local_result = dir.cloning_metadir()
+        reference = BranchReferenceFormat().initialize(dir, referenced_branch)
+        reference_url = BranchReferenceFormat().get_reference(dir)
+        # The server shouldn't try to follow the branch reference, so it's fine
+        # if the referenced branch isn't reachable.
+        backing.rename('referenced', 'moved')
+        request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
+        request = request_class(backing)
+        expected = SuccessfulSmartServerResponse(
+            (local_result.network_name(),
+            local_result.repository_format.network_name(),
+            ('reference', reference_url)))
         self.assertEqual(expected, request.execute('', 'False'))
 
 
