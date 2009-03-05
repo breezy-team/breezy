@@ -165,6 +165,8 @@ class GroupCompressBlock(object):
         header_length = int(bytes[pos:pos2])
         if z_header_length == 0:
             assert header_length == 0
+            out._content = zlib.decompress(bytes[pos2+1:])
+            out._size = len(out._content)
             return out
         pos = pos2 + 1
         pos2 = pos + z_header_length
@@ -207,6 +209,20 @@ class GroupCompressBlock(object):
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
+        if _NO_LABELS:
+            start, end = index_memo[3:5]
+            c = self._content[start]
+            if c == 'f':
+                bytes = self._content[start+1:end]
+                type = 'fulltext'
+            else:
+                assert c == 'd'
+                type = 'delta'
+                delta = self._content[start+1:end]
+                bytes = _groupcompress_pyx.apply_delta(self._content, delta)
+            entry = GroupCompressBlockEntry(key, type, sha_string(bytes),
+                                            start, end-start)
+            return entry, bytes
         entry = self._entries[key]
         if entry.type == 'fulltext':
             assert self._content[entry.start] == 'f'
@@ -267,6 +283,11 @@ class GroupCompressBlock(object):
         z_bytes.append(c.flush(zlib.Z_SYNC_FLUSH))
         z_len = sum(map(len, z_bytes))
         c_len = len(content)
+        if _NO_LABELS:
+            z_bytes = []
+            z_len = 0
+            info_len = 0
+            c = zlib.compressobj()
         z_bytes.append(c.compress(content))
         z_bytes.append(c.flush())
         chunks = [self.GCB_HEADER,
