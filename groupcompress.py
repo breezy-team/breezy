@@ -380,7 +380,7 @@ class GroupCompressor(object):
             length = len(delta) + 1
             new_chunks = ['d', delta]
             if _FAST:
-                self._delta_index._source_offset += len(delta)
+                self._delta_index._source_offset += length
             else:
                 self._delta_index.add_delta_source(delta, 1)
         self._block.add_entry(key, type=type, sha1=sha1,
