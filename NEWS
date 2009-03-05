@@ -111,7 +111,7 @@ IN DEVELOPMENT
       (Vincent Ladeuil)
 
     * Make ``bzr push --quiet <non-local location>`` less chatty.
-     (Kent Gibson, #221461)
+      (Kent Gibson, #221461)
 
   DOCUMENTATION:
 
