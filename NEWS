@@ -110,6 +110,12 @@ IN DEVELOPMENT
       when needed.
       (Vincent Ladeuil)
 
+    * Corrected a disconnect between ``AuthenticationConfig`` and credential 
+      provider plug-ins where the credentials dictionary passed to 
+      providers would not contain expected keys, as tested by the netrc 
+      provider plug-in tests.
+      (Jean-Francois Roy)
+
   DOCUMENTATION:
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
@@ -146,6 +152,10 @@ IN DEVELOPMENT
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular
       repository of that format). (Robert Collins)
+
+    * The ``get_credentials`` and ``set_credentials`` methods of 
+      ``AuthenticationConfig`` now accept an optional realm argument.
+      (Jean-Francois Roy)
 
   INTERNALS:
 
