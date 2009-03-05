@@ -53,8 +53,8 @@ from bzrlib.versionedfile import (
     )
 from bzrlib.plugins.groupcompress import errors as gc_errors
 
-_NO_LABELS = False
-_FAST = False
+_NO_LABELS = True
+_FAST = True
 
 def encode_base128_int(val):
     """Convert an integer into a 7-bit lsb encoding."""

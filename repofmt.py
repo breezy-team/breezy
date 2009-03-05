@@ -607,6 +607,7 @@ class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
 
 
 if chk_support:
+    from bzrlib import chk_serializer 
     class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
         """A hashed CHK+group compress pack repository."""
 
@@ -629,7 +630,7 @@ if chk_support:
         repository_class = GCCHKPackRepository
         # For right now, setting this to True gives us InterModel1And2 rather
         # than InterDifferingSerializer
-        rich_root_data = False
+        rich_root_data = True
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
@@ -639,6 +640,26 @@ if chk_support:
         def get_format_description(self):
             """See RepositoryFormat.get_format_description()."""
             return ("Development repository format - hash255chk+groupcompress")
+
+
+    chk_serializer_255_bigpage = chk_serializer.CHKSerializer(65536, True, 'hash-255-way')
+    class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackDevelopment5Hash255):
+        """A hashed CHK+group compress pack repository."""
+
+        repository_class = GCCHKPackRepository
+        # For right now, setting this to True gives us InterModel1And2 rather
+        # than InterDifferingSerializer
+        rich_root_data = False
+        _serializer = chk_serializer_255_bigpage
+
+        def get_format_string(self):
+            """See RepositoryFormat.get_format_string()."""
+            return ('Bazaar development format - hash255chk+gc rich-root bigpage'
+                    ' (needs bzr.dev from 1.13)\n')
+
+        def get_format_description(self):
+            """See RepositoryFormat.get_format_description()."""
+            return ("Development repository format - hash255chk+groupcompress + bigpage")
 
 
 def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
