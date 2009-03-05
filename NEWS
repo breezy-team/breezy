@@ -26,6 +26,9 @@ IN DEVELOPMENT
       in chapter 7 of the User Guide and ``bzr help view`` for details.
       (Ian Clatworthy)
 
+    * GNU Changelog output can now be produced by ``bzr log --format
+      gnu-changelog``.  (Andrea Bolognani, Martin Pool)
+
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
 
@@ -136,6 +139,9 @@ IN DEVELOPMENT
       Revision.get_apparent_authors(), which returns a list. The former
       now returns the first item that would be returned from the second.
 
+    * The ``BranchBuilder`` test helper now accepts a ``timestamp``
+      parameter to ``build_commit`` and ``build_snapshot``.  (Martin Pool)
+
     * The ``_fetch_*`` attributes on ``Repository`` are now on
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular
@@ -213,6 +219,9 @@ IN DEVELOPMENT
 
     * There is a RemoteSink object which handles pushing to smart servers.
       (Andrew Bennetts, Robert Collins)
+
+    * ``TransportTraceDecorator`` now logs ``put_bytes_non_atomic`` and
+      ``rmdir`` calls. (Robert Collins)
 
     * ``VersionedFiles`` record adapters have had their signature change
       from ``(record, record.get_bytes_as(record.storage_kind))`` to
