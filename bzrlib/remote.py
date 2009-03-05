@@ -152,24 +152,29 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             response = self._call(verb, path, stacking)
         except errors.UnknownSmartMethod:
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
-        except errors.UnknownErrorFromSmartServer, err:
-            if err.error_tuple == ('BranchReference',):
-                # The remote branch is actually a branch reference.  For now we
-                # fallback to VFS logic, which can resolve the reference.
-                return self._vfs_cloning_metadir(
-                    require_stacking=require_stacking)
-            raise
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
-        control_name, repo_name, branch_name = response
+        control_name, repo_name, branch_info = response
+        if len(branch_info) != 2:
+            raise errors.UnexpectedSmartServerResponse(response)
+        branch_ref, branch_name = branch_info
         # ICK: perhaps change these registries to be factories only?
         format = bzrdir.network_format_registry.get(control_name).__class__()
         if repo_name:
             format.repository_format = repository.network_format_registry.get(
                 repo_name)
-        if branch_name:
-            format.set_branch_format(
-                branch.network_format_registry.get(branch_name))
+        if branch_ref == 'reference':
+            # XXX: we need possible_transports here to avoid reopening the
+            # referenced location
+            ref_bzrdir = BzrDir.open(branch_name)
+            branch_format = ref_bzrdir.cloning_metadir().get_branch_format()
+            format.set_branch_format(branch_format)
+        elif branch_ref == 'direct':
+            if branch_name:
+                format.set_branch_format(
+                    branch.network_format_registry.get(branch_name))
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
         return format
 
     def create_repository(self, shared=False):
