@@ -213,27 +213,37 @@ class GroupCompressBlock(object):
         """
         if _NO_LABELS or not self._entries:
             start, end = index_memo[3:5]
+            # The bytes are 'f' or 'd' for the type, then a variable-length
+            # base128 integer for the content size, then the actual content
+            # We know that the variable-length integer won't be longer than 10
+            # bytes (it only takes 5 bytes to encode 2^32)
             c = self._content[start]
             if c == 'f':
-                bytes = self._content[start+1:end]
                 type = 'fulltext'
             else:
                 assert c == 'd'
                 type = 'delta'
-                delta = self._content[start+1:end]
-                bytes = _groupcompress_pyx.apply_delta(self._content, delta)
-            entry = GroupCompressBlockEntry(key, type, sha_string(bytes),
-                                            start, end-start)
-            return entry, bytes
-        entry = self._entries[key]
-        if entry.type == 'fulltext':
-            assert self._content[entry.start] == 'f'
-            bytes = self._content[entry.start+1:entry.start + entry.length]
-        elif entry.type == 'delta':
-            assert self._content[entry.start] == 'd'
-            delta = self._content[entry.start+1:entry.start + entry.length]
-            bytes = _groupcompress_pyx.apply_delta(self._content, delta)
-        # XXX: sha1?
+            entry = GroupCompressBlockEntry(key, type, sha1=None,
+                                            start=start, length=end-start)
+        else:
+            entry = self._entries[key]
+            c = self._content[entry.start]
+            if entry.type == 'fulltext':
+                assert c == 'f'
+            elif entry.type == 'delta':
+                assert c == 'd'
+        content_len, len_len = decode_base128_int(
+                                self._content[start + 1:start + 11])
+        assert entry.length == content_len + 1 + len_len
+        content_start = start + 1 + len_len
+        end = entry.start + entry.length
+        content = self._content[content_start:end]
+        if c == 'f':
+            bytes = content
+        elif c == 'd':
+            bytes = _groupcompress_pyx.apply_delta(self._content, content)
+        if entry.sha1 is None:
+            entry.sha1 = sha_string(bytes)
         return entry, bytes
 
     def add_entry(self, key, type, sha1, start, length):
@@ -374,17 +384,21 @@ class GroupCompressor(object):
         delta = self._delta_index.make_delta(bytes, max_delta_size)
         if (delta is None):
             type = 'fulltext'
-            length = len(bytes) + 1
-            self._delta_index.add_source(bytes, 1)
-            new_chunks = ['f', bytes]
+            enc_length = encode_base128_int(len(bytes))
+            len_mini_header = 1 + len(enc_length)
+            length = len(bytes) + len_mini_header
+            self._delta_index.add_source(bytes, len_mini_header)
+            new_chunks = ['f', enc_length, bytes]
         else:
             type = 'delta'
-            length = len(delta) + 1
-            new_chunks = ['d', delta]
+            enc_length = encode_base128_int(len(delta))
+            len_mini_header = 1 + len(enc_length)
+            length = len(delta) + len_mini_header
+            new_chunks = ['d', enc_length, delta]
             if _FAST:
                 self._delta_index._source_offset += length
             else:
-                self._delta_index.add_delta_source(delta, 1)
+                self._delta_index.add_delta_source(delta, len_mini_header)
         self._block.add_entry(key, type=type, sha1=sha1,
                               start=self.endpoint, length=length)
         delta_start = (self.endpoint, len(self.lines))
@@ -412,13 +426,18 @@ class GroupCompressor(object):
         entry = self._block._entries[key]
         if entry.type == 'fulltext':
             assert stored_bytes[0] == 'f'
-            bytes = stored_bytes[1:]
+            fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
+            assert fulltext_len + 1 + offset == len(stored_bytes)
+            bytes = stored_bytes[offset + 1:]
         else:
             assert entry.type == 'delta'
             # XXX: This is inefficient at best
             source = ''.join(self.lines)
             assert stored_bytes[0] == 'd'
-            bytes = _groupcompress_pyx.apply_delta(source, stored_bytes[1:])
+            delta_len, offset = decode_base128_int(stored_bytes[1:10])
+            assert delta_len + 1 + offset == len(stored_bytes)
+            bytes = _groupcompress_pyx.apply_delta(source,
+                                                   stored_bytes[offset + 1:])
             assert entry.sha1 == sha_string(bytes)
         return bytes, entry.sha1
 
@@ -726,6 +745,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 block = self._get_block(index_memo)
                 entry, bytes = block.extract(key, index_memo)
                 sha1 = entry.sha1
+                # TODO: If we don't have labels, then the sha1 here is computed
+                #       from the data, so we don't want to re-sha the string.
                 if not _FAST and sha_string(bytes) != sha1:
                     raise AssertionError('sha1 sum did not match')
             yield FulltextContentFactory(key, parents, sha1, bytes)

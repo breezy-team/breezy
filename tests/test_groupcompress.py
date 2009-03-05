@@ -63,7 +63,7 @@ class TestGroupCompressor(tests.TestCase):
             'strange\ncommon\n', None)
         self.assertEqual(sha_string('strange\ncommon\n'), sha1)
         expected_lines = [
-            'f', 'strange\ncommon\n',
+            'f', '\x0f', 'strange\ncommon\n',
             ]
         self.assertEqual(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
@@ -94,10 +94,12 @@ class TestGroupCompressor(tests.TestCase):
                                     'that needs a 16 byte match\n'
                                     'different\n'), sha1_2)
         expected_lines.extend([
+            # 'delta', delta length
+            'd\x10',
             # source and target length
-            'd\x35\x36',
+            '\x36\x36',
             # copy the line common
-            '\x91\x09\x2c', #copy, offset 0x09, len 0x2c
+            '\x91\x0a\x2c', #copy, offset 0x0a, len 0x2c
             # add the line different, and the trailing newline
             '\x0adifferent\n', # insert 10 bytes
             ])
@@ -122,13 +124,16 @@ class TestGroupCompressor(tests.TestCase):
                        'different\nmoredifferent\nand then some more\n'),
             sha1_3)
         expected_lines.extend([
-            'd\x65\x5f' # source and target length
+            # 'delta', delta length
+            'd\x0c',
+            # source and target length
+            '\x67\x5f'
             # insert new
             '\x03new',
             # Copy of first parent 'common' range
-            '\x91\x08\x31' # copy, offset 0x08, 0x31 bytes
+            '\x91\x09\x31' # copy, offset 0x09, 0x31 bytes
             # Copy of second parent 'different' range
-            '\x91\x3a\x2b' # copy, offset 0x3a, 0x2b bytes
+            '\x91\x3c\x2b' # copy, offset 0x3c, 0x2b bytes
             ])
         self.assertEqualDiffEncoded(expected_lines, compressor.lines)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
