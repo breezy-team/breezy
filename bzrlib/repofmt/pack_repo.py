@@ -3080,6 +3080,7 @@ class RepositoryFormatPackDevelopment5(RepositoryFormatPack):
 
 
 class RepositoryFormatPackDevelopment5Subtree(RepositoryFormatPack):
+    # merge-bbc-dev4-to-bzr.dev
     """A subtrees development repository.
 
     This format should be retained until the second release after bzr 1.13.

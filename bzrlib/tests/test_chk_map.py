@@ -52,6 +52,8 @@ class TestNode(tests.TestCase):
 
     def test_not_a_prefix(self):
         self.assertCommonPrefix('b', 'begin', 'b')
+
+
 class TestCaseWithStore(tests.TestCaseWithTransport):
 
     def get_chk_bytes(self):
