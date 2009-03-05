@@ -167,6 +167,14 @@ class GenericProcessor(processor.ImportProcessor):
         else:
             self.info = None
 
+        # Decide which CommitHandler to use
+        if hasattr(self.repo, 'chk_bytes'):
+            self.commit_handler_factory = \
+                bzr_commit_handler.DeltaCommitHandler
+        else:
+            self.commit_handler_factory = \
+                bzr_commit_handler.InventoryCommitHandler
+
         # Decide how often to automatically report progress
         # (not a parameter yet)
         self.progress_every = _DEFAULT_AUTO_PROGRESS
@@ -395,12 +403,8 @@ class GenericProcessor(processor.ImportProcessor):
             self._gen_file_ids_cache(parents)
 
         # 'Commit' the revision and report progress
-        if self._experimental:
-            handler = bzr_commit_handler.DeltaCommitHandler(cmd,
-                self.cache_mgr, self.rev_store, verbose=self.verbose)
-        else:
-            handler = bzr_commit_handler.InventoryCommitHandler(cmd,
-                self.cache_mgr, self.rev_store, verbose=self.verbose)
+        handler = self.commit_handler_factory(cmd, self.cache_mgr,
+            self.rev_store, verbose=self.verbose)
         handler.process()
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
         self._revision_count += 1

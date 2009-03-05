@@ -67,7 +67,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # Keep the basis inventory. This needs to be treated as read-only.
         if len(self.parents) == 0:
-            self.basis_inventory = self.init_inventory()
+            self.basis_inventory = self._init_inventory()
         else:
             self.basis_inventory = self.get_inventory(self.parents[0])
         self.inventory_root = self.basis_inventory.root
@@ -75,13 +75,8 @@ class GenericCommitHandler(processor.CommitHandler):
         # directory-path -> inventory-entry for current inventory
         self.directory_entries = dict(self.basis_inventory.directories())
 
-    def init_inventory(self):
-        """Generate an inventory for a parentless revision."""
-        inv = inventory.Inventory(revision_id=self.revision_id)
-        if self.rev_store.expects_rich_root():
-            # The very first root needs to have the right revision
-            inv.root.revision = self.revision_id
-        return inv
+    def _init_inventory(self):
+        return self.rev_store.init_inventory(self.revision_id)
 
     def get_inventory(self, revision_id):
         """Get the inventory for a revision id."""
@@ -121,7 +116,7 @@ class GenericCommitHandler(processor.CommitHandler):
                     inv = self.get_inventory(revision_id)
                     present.append(revision_id)
                 except:
-                    inv = self.init_inventory()
+                    inv = self._init_inventory()
                 self.cache_mgr.inventories[revision_id] = inv
             inventories.append(inv)
         return present, inventories
@@ -429,7 +424,7 @@ class DeltaCommitHandler(GenericCommitHandler):
         #    print "ie for %s:\n%r" % (path, entry)
         #print "delta:\n%r" % (self.delta,)
         rev = self.build_revision()
-        inv = self.rev_store.load_using_delta(rev, self.basis_inventory,
+        inv = self.rev_store.chk_load(rev, self.basis_inventory,
             self.delta, None,
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
