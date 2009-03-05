@@ -1367,11 +1367,24 @@ class Inventory(CommonInventory):
 
 
 class CHKInventory(CommonInventory):
-    """A inventory persisted in a CHK store.
+    """An inventory persisted in a CHK store.
+
+    By design, a CHKInventory is immutable so many of the methods
+    supported by Inventory - add, rename, apply_delta, etc - are *not*
+    supported. To create a new CHKInventory, use create_by_apply_delta()
+    or from_inventory(), say.
+
+    Internally, a CHKInventory has one or two CHKMaps:
+
+    * id_to_entry - a map from (file_id,) => InventoryEntry as bytes
+    * parent_id_basename_to_file_id - a map from (parent_id, basename_utf8)
+        => file_id as bytes
+
+    The second map is optional and not present in early CHkRepository's.
 
     No caching is performed: every method call or item access will perform
-    requests to the storage layer. As such, keep references to objects you want
-    to reuse.
+    requests to the storage layer. As such, keep references to objects you
+    want to reuse.
     """
 
     def __init__(self, search_key_name):
@@ -1387,11 +1400,12 @@ class CHKInventory(CommonInventory):
 
         The BNF:
         ENTRY ::= FILE | DIR | SYMLINK | TREE
-        FILE ::= "file: " COMMON NULL SHA NULL SIZE NULL EXECUTABLE
+        FILE ::= "file: " COMMON SEP SHA SEP SIZE SEP EXECUTABLE
         DIR ::= "dir: " COMMON
-        SYMLINK ::= "symlink: " COMMON NULL TARGET_UTF8
+        SYMLINK ::= "symlink: " COMMON SEP TARGET_UTF8
         TREE ::= "tree: " COMMON REFERENCE_REVISION
-        COMMON ::= FILE_ID NULL PARENT_ID NULL NAME_UTF8 NULL REVISION
+        COMMON ::= FILE_ID SEP PARENT_ID SEP NAME_UTF8 SEP REVISION
+        SEP ::= "\n"
         """
         if entry.parent_id is not None:
             parent_str = entry.parent_id
@@ -1458,7 +1472,7 @@ class CHKInventory(CommonInventory):
         if self.root_id is not None:
             entries.next()
         inv = Inventory(self.root_id, self.revision_id)
-        for inv_entry in entries:
+        for path, inv_entry in entries:
             inv.add(inv_entry)
         return inv
 
@@ -1472,16 +1486,26 @@ class CHKInventory(CommonInventory):
         """
         result = CHKInventory(self._search_key_name)
         search_key_func = chk_map.search_key_registry.get(self._search_key_name)
+        self.id_to_entry._ensure_root()
+        maximum_size = self.id_to_entry._root_node.maximum_size
         result.revision_id = new_revision_id
         result.id_to_entry = chk_map.CHKMap(
             self.id_to_entry._store,
-            self.id_to_entry._root_node,
+            self.id_to_entry.key(),
             search_key_func=search_key_func)
+        result.id_to_entry._ensure_root()
+        result.id_to_entry._root_node.set_maximum_size(maximum_size)
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
-                self.parent_id_basename_to_file_id._root_node,
+                self.parent_id_basename_to_file_id.key(),
                 search_key_func=search_key_func)
+            result.parent_id_basename_to_file_id._ensure_root()
+            self.parent_id_basename_to_file_id._ensure_root()
+            result_p_id_root = self.parent_id_basename_to_file_id._root_node
+            p_id_root = self.parent_id_basename_to_file_id._root_node
+            result_p_id_root.set_maximum_size(p_id_root.maximum_size)
+            result_p_id_root._key_width = p_id_root._key_width
             parent_id_basename_delta = []
         else:
             result.parent_id_basename_to_file_id = None
@@ -1631,6 +1655,8 @@ class CHKInventory(CommonInventory):
 
     def has_id(self, file_id):
         # Perhaps have an explicit 'contains' method on CHKMap ?
+        if self._entry_cache.get(file_id, None) is not None:
+            return True
         return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
 
     def is_root(self, file_id):

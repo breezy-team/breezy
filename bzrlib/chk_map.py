@@ -475,7 +475,7 @@ class Node(object):
         self._search_prefix = None
 
     def __repr__(self):
-        items_str = sorted(self._items)
+        items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[16] + '...]'
         return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
@@ -557,6 +557,15 @@ class LeafNode(Node):
         else:
             self._search_key_func = search_key_func
 
+    def __repr__(self):
+        items_str = sorted(self._items)
+        if len(items_str) > 20:
+            items_str = items_str[16] + '...]'
+        return \
+            '%s(key:%s len:%s size:%s max:%s prefix:%s keywidth:%s items:%s)' \
+            % (self.__class__.__name__, self._key, self._len, self._raw_size,
+            self._maximum_size, self._search_prefix, self._key_width, items_str)
+
     def _current_size(self):
         """Answer the current serialised size of this node.
 
@@ -607,8 +616,9 @@ class LeafNode(Node):
             elements = line.split('\x00')
             pos += 1
             if len(elements) != width + 1:
-                raise AssertionError('Incorrect number of elements for: %s'
-                                     % (line,))
+                raise AssertionError(
+                    'Incorrect number of elements (%d vs %d) for: %r'
+                    % (len(elements), width + 1, line))
             num_value_lines = int(elements[-1])
             value_lines = lines[pos:pos+num_value_lines]
             pos += num_value_lines
@@ -745,7 +755,7 @@ class LeafNode(Node):
             return self._search_prefix, [("", self)]
 
     def serialise(self, store):
-        """Serialise the tree to store.
+        """Serialise the LeafNode to store.
 
         :param store: A VersionedFiles honouring the CHK extensions.
         :return: An iterable of the keys inserted by this operation.
@@ -763,7 +773,7 @@ class LeafNode(Node):
             lines.append('%s\n' % (self._common_serialised_prefix,))
             prefix_len = len(self._common_serialised_prefix)
         for key, value in sorted(self._items.items()):
-            # Add always add a final newline
+            # Always add a final newline
             value_lines = osutils.chunks_to_lines([value + '\n'])
             serialized = "%s\x00%s\n" % (self._serialise_key(key),
                                          len(value_lines))
