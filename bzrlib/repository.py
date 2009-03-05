@@ -2045,9 +2045,6 @@ class Repository(object):
         """
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
 
-    def is_empty(self):
-        return False
-
 
 # remove these delegates a while after bzr 0.15
 def __make_delegated(name, from_module):
