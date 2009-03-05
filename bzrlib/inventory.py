@@ -1475,12 +1475,12 @@ class CHKInventory(CommonInventory):
         result.revision_id = new_revision_id
         result.id_to_entry = chk_map.CHKMap(
             self.id_to_entry._store,
-            self.id_to_entry._root_node,
+            self.id_to_entry.key(),
             search_key_func=search_key_func)
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
-                self.parent_id_basename_to_file_id._root_node,
+                self.parent_id_basename_to_file_id.key(),
                 search_key_func=search_key_func)
             parent_id_basename_delta = []
         else:
