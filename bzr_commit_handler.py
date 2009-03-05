@@ -287,7 +287,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
 
 class InventoryCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves full inventories."""
+    """A CommitHandler that builds and saves Inventory objects."""
 
     def pre_process_files(self):
         super(InventoryCommitHandler, self).pre_process_files()
@@ -417,15 +417,14 @@ class InventoryCommitHandler(GenericCommitHandler):
         self._delete_all_items(self.inventory)
 
 
-class DeltaCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves inventory deltas."""
+class CHKInventoryCommitHandler(GenericCommitHandler):
+    """A CommitHandler that builds and saves CHKInventory objects."""
 
     def pre_process_files(self):
-        super(DeltaCommitHandler, self).pre_process_files()
-        if self.parents:
-            self.delta = []
-        else:
+        super(CHKInventoryCommitHandler, self).pre_process_files()
+        if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
             # Need to explicitly add the root entry for the first revision
+            # and for non rich-root inventories
             root_id = inventory.ROOT_ID
             # XXX: We *could* make this a CHKInventoryDirectory but it
             # seems that deltas ought to use normal InventoryDirectory's
@@ -434,6 +433,8 @@ class DeltaCommitHandler(GenericCommitHandler):
             root_ie = inventory.InventoryDirectory(root_id, u'', None)
             root_ie.revision = self.revision_id
             self.delta = [(None, '', root_id, root_ie)]
+        else:
+            self.delta = []
 
     def post_process_files(self):
         """Save the revision."""

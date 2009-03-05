@@ -170,7 +170,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Decide which CommitHandler to use
         if hasattr(self.repo, 'chk_bytes'):
             self.commit_handler_factory = \
-                bzr_commit_handler.DeltaCommitHandler
+                bzr_commit_handler.CHKInventoryCommitHandler
         else:
             self.commit_handler_factory = \
                 bzr_commit_handler.InventoryCommitHandler
