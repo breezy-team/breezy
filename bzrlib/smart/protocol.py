@@ -1060,16 +1060,18 @@ class _ProtocolThreeEncoder(object):
     response_marker = request_marker = MESSAGE_VERSION_THREE
 
     def __init__(self, write_func):
-        self._buf = ''
+        self._buf = []
         self._real_write_func = write_func
 
     def _write_func(self, bytes):
-        self._buf += bytes
+        self._buf.append(bytes)
+        if len(self._buf) > 100:
+            self.flush()
 
     def flush(self):
         if self._buf:
-            self._real_write_func(self._buf)
-            self._buf = ''
+            self._real_write_func(''.join(self._buf))
+            del self._buf[:]
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
@@ -1165,8 +1167,11 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                     self._write_structure(error_struct)
                     break
                 else:
+                    if isinstance(chunk, request.FailedSmartServerResponse):
+                        self._write_error_status()
+                        self._write_structure(chunk.args)
+                        break
                     self._write_prefixed_body(chunk)
-                    self.flush()
         self._write_end()
 
 
