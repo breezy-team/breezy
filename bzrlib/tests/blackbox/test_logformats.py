@@ -128,7 +128,7 @@ class TestLogFormats(TestCaseInTempDir):
         self.assertEqualDiff(out,
 """2009-03-03  Joe Foo  <joe@foo.com>
 
-	commit 1
+\tcommit 1
 
 """)
 
