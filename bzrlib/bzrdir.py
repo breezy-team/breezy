@@ -1116,7 +1116,6 @@ class BzrDir(object):
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
         if is_new_repo and revision_id is not None:
-            #import pdb; pdb.set_trace()
             fetch_spec = graph.MiniSearchResult(revision_id, source_repository)
         else:
             fetch_spec = None

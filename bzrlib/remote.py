@@ -1423,6 +1423,14 @@ class RemoteRepository(_RpcHelper):
         count = str(recipe[2])
         return '\n'.join((start_keys, stop_keys, count))
 
+    def _serialise_search_result(self, search_result):
+        if isinstance(search_result, graph.MiniSearchResult):
+            parts = ['ancestry-of', search_result.start_key]
+        else:
+            recipe = search_result.get_recipe()
+            parts = ['search', self._serialise_search_recipe(recipe)]
+        return '\n'.join(parts)
+
     def autopack(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
@@ -1515,17 +1523,10 @@ class RemoteStreamSource(repository.StreamSource):
             return repository.StreamSource.get_stream(self, search)
         path = repo.bzrdir._path_for_remote_call(client)
         try:
-            if isinstance(search, graph.MiniSearchResult):
-                start_keys = [search.start_key]
-                stop_keys = [NULL_REVISION]
-                count = 'n/a'
-                recipe = (start_keys, stop_keys, count)
-            else:
-                recipe = search._recipe
-            recipe = repo._serialise_search_recipe(recipe)
+            search_bytes = repo._serialise_search_result(search)
             response = repo._call_with_body_bytes_expecting_body(
                 'Repository.get_stream',
-                (path, self.to_format.network_name()), recipe)
+                (path, self.to_format.network_name()), search_bytes)
             response_tuple, response_handler = response
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1,13))

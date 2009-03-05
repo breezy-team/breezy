@@ -1496,13 +1496,17 @@ class SearchResult(object):
 
 
 class MiniSearchResult(object):
+    """A search result that just reconstructs the full ancestry of one key."""
 
     def __init__(self, start_key, repo):
         self.start_key = start_key
         self.repo = repo
 
+    def get_recipe(self):
+        raise NotImplementedError(self.get_recipe)
+
     def get_keys(self):
-        # XXX
+        """See SearchResult.get_keys."""
         keys = [key for (key, parents) in
                 self.repo.get_graph().iter_ancestry([self.start_key])]
         if keys[-1] != 'null:':

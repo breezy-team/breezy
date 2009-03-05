@@ -71,18 +71,22 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         # is expected)
         return None
 
-    def recreate_search(self, repository, recipe_bytes):
-        lines = recipe_bytes.split('\n')
-        start_keys = set(lines[0].split(' '))
-        exclude_keys = set(lines[1].split(' '))
-        if lines[2] == 'n/a':
-            if exclude_keys != set([_mod_revision.NULL_REVISION]):
-                raise (None, FailedSmartServerResponse(('bad search',)))
-            if len(start_keys) != 1:
-                raise (None, FailedSmartServerResponse(('bad search',)))
-            start_key = list(start_keys)[0]
+    def recreate_search(self, repository, search_bytes):
+        lines = search_bytes.split('\n')
+        from bzrlib.trace import mutter
+        mutter('lines: %r', lines)
+        if lines[0] == 'ancestry-of':
+            start_key = lines[1]
             search_result = graph.MiniSearchResult(start_key, repository)
             return search_result, None
+        elif lines[0] == 'search':
+            return self.recreate_search_from_recipe(repository, lines[1:])
+        else:
+            return (None, FailedSmartServerResponse(('BadSearch',)))
+
+    def recreate_search_from_recipe(self, repository, lines):
+        start_keys = set(lines[0].split(' '))
+        exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
         repository.lock_read()
         try:
@@ -156,7 +160,9 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        search_result, error = self.recreate_search(repository, body_bytes)
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but thats not
