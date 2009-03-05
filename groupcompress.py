@@ -165,8 +165,10 @@ class GroupCompressBlock(object):
         header_length = int(bytes[pos:pos2])
         if z_header_length == 0:
             assert header_length == 0
-            out._content = zlib.decompress(bytes[pos2+1:])
-            out._size = len(out._content)
+            zcontent = bytes[pos2+1:]
+            if zcontent:
+                out._content = zlib.decompress(zcontent)
+                out._size = len(out._content)
             return out
         pos = pos2 + 1
         pos2 = pos + z_header_length
@@ -409,12 +411,14 @@ class GroupCompressor(object):
         # TODO: Fix this, we shouldn't really be peeking here
         entry = self._block._entries[key]
         if entry.type == 'fulltext':
-            bytes = stored_bytes
+            assert stored_bytes[0] == 'f'
+            bytes = stored_bytes[1:]
         else:
             assert entry.type == 'delta'
             # XXX: This is inefficient at best
             source = ''.join(self.lines)
-            bytes = _groupcompress_pyx.apply_delta(source, stored_bytes)
+            assert stored_bytes[0] == 'd'
+            bytes = _groupcompress_pyx.apply_delta(source, stored_bytes[1:])
             assert entry.sha1 == sha_string(bytes)
         return bytes, entry.sha1
 
