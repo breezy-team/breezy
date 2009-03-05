@@ -77,7 +77,7 @@ class BranchBuilder(object):
 
     def build_commit(self, **commit_kwargs):
         """Build a commit on the branch.
-        
+
         This makes a commit with no real file content for when you only want
         to look at the revision graph structure.
 
@@ -157,7 +157,7 @@ class BranchBuilder(object):
             ('rename', ('orig-path', 'new-path'))
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
-        :param timestamp: If non-None, set the timestamp of the commit to this 
+        :param timestamp: If non-None, set the timestamp of the commit to this
             value.
         :return: The revision_id of the new commit
         """
