@@ -1367,11 +1367,24 @@ class Inventory(CommonInventory):
 
 
 class CHKInventory(CommonInventory):
-    """A inventory persisted in a CHK store.
+    """An inventory persisted in a CHK store.
+
+    By design, a CHKInventory is immutable so many of the methods
+    supported by Inventory - add, rename, apply_delta, etc - are *not*
+    supported. To create a new CHKInventory, use create_by_apply_delta()
+    or from_inventory(), say.
+
+    Internally, a CHKInventory has one or two CHKMaps:
+
+    * id_to_entry - a map from (file_id,) => InventoryEntry as bytes
+    * parent_id_basename_to_file_id - a map from (parent_id, basename_utf8)
+        => file_id as bytes
+
+    The second map is optional and not present in early CHkRepository's.
 
     No caching is performed: every method call or item access will perform
-    requests to the storage layer. As such, keep references to objects you want
-    to reuse.
+    requests to the storage layer. As such, keep references to objects you
+    want to reuse.
     """
 
     def __init__(self, search_key_name):
