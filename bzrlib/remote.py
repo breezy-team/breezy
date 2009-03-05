@@ -152,6 +152,13 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             response = self._call(verb, path, stacking)
         except errors.UnknownSmartMethod:
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
+        except errors.UnknownErrorFromSmartServer, err:
+            if err.error_tuple == ('BranchReference',):
+                # The remote branch is actually a branch reference.  For now we
+                # fallback to VFS logic, which can resolve the reference.
+                return self._vfs_cloning_metadir(
+                    require_stacking=require_stacking)
+            raise
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
         control_name, repo_name, branch_name = response

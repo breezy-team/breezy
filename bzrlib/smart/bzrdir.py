@@ -90,6 +90,10 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, require_stacking):
         """Get the format that should be used when cloning from this dir."""
+        if self._bzrdir.get_branch_reference() is not None:
+            # If there's a branch reference, the client will have to resolve
+            # the branch reference to figure out the cloning metadir
+            return FailedSmartServerResponse(('BranchReference',))
         if require_stacking == "True":
             require_stacking = True
         else:

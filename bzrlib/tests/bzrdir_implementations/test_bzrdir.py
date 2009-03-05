@@ -940,9 +940,8 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_sprout_bzrdir_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
-        referenced_branch = self.make_branch('referencced')
-        self.make_bzrdir('source')
-        dir = bzrlib.bzrdir.BzrDir.open(self.get_vfs_only_url('source'))
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
@@ -962,8 +961,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # sprouting should create a repository if needed and a sprouted branch.
         referenced_tree = self.make_branch_and_tree('referenced')
         referenced_tree.commit('1', rev_id='1', allow_pointless=True)
-        self.make_bzrdir('source')
-        dir = bzrlib.bzrdir.BzrDir.open(self.get_vfs_only_url('source'))
+        dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_tree.branch)
@@ -989,8 +987,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # sprouting should create a repository if needed and a sprouted branch.
         referenced_tree = self.make_branch_and_tree('referenced')
         referenced_tree.commit('1', rev_id='1', allow_pointless=True)
-        self.make_bzrdir('source')
-        dir = bzrlib.bzrdir.BzrDir.open(self.get_vfs_only_url('source'))
+        dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_tree.branch)
