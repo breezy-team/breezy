@@ -70,10 +70,16 @@ class GenericCommitHandler(processor.CommitHandler):
             self.basis_inventory = self._init_inventory()
         else:
             self.basis_inventory = self.get_inventory(self.parents[0])
-        self.inventory_root = self.basis_inventory.root
+        if hasattr(self.basis_inventory, "root_id"):
+            self.inventory_root_id = self.basis_inventory.root_id
+        else:
+            self.inventory_root_id = self.basis_inventory.root.file_id
 
         # directory-path -> inventory-entry for current inventory
-        self.directory_entries = dict(self.basis_inventory.directories())
+        if self.parents:
+            self.directory_entries = dict(self.basis_inventory.directories())
+        else:
+            self.directory_entries = {}
 
     def _init_inventory(self):
         return self.rev_store.init_inventory(self.revision_id)
@@ -173,9 +179,9 @@ class GenericCommitHandler(processor.CommitHandler):
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
         # Create the new InventoryEntry
-        basename, parent_ie = self._ensure_directory(path, inv)
+        basename, parent_id = self._ensure_directory(path, inv)
         file_id = self.bzr_file_id(path)
-        ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
+        ie = inventory.make_entry(kind, basename, parent_id, file_id)
         ie.revision = self.revision_id
         if kind == 'file':
             ie.executable = is_executable
@@ -196,7 +202,7 @@ class GenericCommitHandler(processor.CommitHandler):
             old_ie = inv[file_id]
             if old_ie.kind == 'directory':
                 self.record_delete(path, old_ie)
-            self.record_changed(path, ie, parent_ie)
+            self.record_changed(path, ie, parent_id)
         else:
             self.record_new(path, ie)
 
@@ -205,21 +211,21 @@ class GenericCommitHandler(processor.CommitHandler):
         dirname, basename = osutils.split(path)
         if dirname == '':
             # the root node doesn't get updated
-            return basename, self.inventory_root
+            return basename, self.inventory_root_id
         try:
             ie = self.directory_entries[dirname]
         except KeyError:
             # We will create this entry, since it doesn't exist
             pass
         else:
-            return basename, ie
+            return basename, ie.file_id
 
         # No directory existed, we will just create one, first, make sure
         # the parent exists
-        dir_basename, parent_ie = self._ensure_directory(dirname, inv)
+        dir_basename, parent_id = self._ensure_directory(dirname, inv)
         dir_file_id = self.bzr_file_id(dirname)
         ie = inventory.entry_factory['directory'](dir_file_id,
-            dir_basename, parent_ie.file_id)
+            dir_basename, parent_id)
         ie.revision = self.revision_id
         self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
@@ -231,7 +237,7 @@ class GenericCommitHandler(processor.CommitHandler):
         if dir_file_id in inv:
             self.record_delete(dirname, ie)
         self.record_new(dirname, ie)
-        return basename, ie
+        return basename, ie.file_id
 
     def _delete_item(self, path, inv):
         file_id = inv.path2id(path)
@@ -322,18 +328,18 @@ class InventoryCommitHandler(GenericCommitHandler):
             # Try again
             self.inventory.add(ie)
 
-    def record_changed(self, path, ie, parent_ie):
+    def record_changed(self, path, ie, parent_id):
         # HACK: no API for this (del+add does more than it needs to)
         self.inventory._byid[ie.file_id] = ie
+        parent_ie = self.inventory._byid[parent_id]
         parent_ie.children[ie.name] = ie
 
     def record_delete(self, path, ie):
         self.inventory.remove_recursive_id(ie.file_id)
 
     def record_rename(self, old_path, new_path, file_id, ie):
-        new_basename, new_parent_ie = self._ensure_directory(new_path,
+        new_basename, new_parent_id = self._ensure_directory(new_path,
             self.inventory)
-        new_parent_id = new_parent_ie.file_id
         self.inventory.rename(file_id, new_parent_id, new_basename)
         self.inventory[file_id].revision = self.revision_id
 
@@ -416,13 +422,21 @@ class DeltaCommitHandler(GenericCommitHandler):
 
     def pre_process_files(self):
         super(DeltaCommitHandler, self).pre_process_files()
-        self.delta = []
+        if self.parents:
+            self.delta = []
+        else:
+            # Need to explicitly add the root entry for the first revision
+            root_id = inventory.ROOT_ID
+            # XXX: We *could* make this a CHKInventoryDirectory but it
+            # seems that deltas ought to use normal InventoryDirectory's
+            # because they simply don't know the chk_inventory that they
+            # are about to become a part of.
+            root_ie = inventory.InventoryDirectory(root_id, u'', None)
+            root_ie.revision = self.revision_id
+            self.delta = [(None, '', root_id, root_ie)]
 
     def post_process_files(self):
         """Save the revision."""
-        #for path, entry in self.basis_inventory.iter_entries_by_dir():
-        #    print "ie for %s:\n%r" % (path, entry)
-        #print "delta:\n%r" % (self.delta,)
         rev = self.build_revision()
         inv = self.rev_store.chk_load(rev, self.basis_inventory,
             self.delta, None,
@@ -433,7 +447,7 @@ class DeltaCommitHandler(GenericCommitHandler):
     def record_new(self, path, ie):
         self.delta.append((None, path, ie.file_id, ie))
 
-    def record_changed(self, path, ie, parent_ie=None):
+    def record_changed(self, path, ie, parent_id=None):
         self.delta.append((path, path, ie.file_id, ie))
 
     def record_delete(self, path, ie):
@@ -446,10 +460,10 @@ class DeltaCommitHandler(GenericCommitHandler):
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
         new_ie = old_ie.copy()
-        new_basename, new_parent_ie = self._ensure_directory(new_path,
+        new_basename, new_parent_id = self._ensure_directory(new_path,
             self.basis_inventory)
         new_ie.name = new_basename
-        new_ie.parent_id = new_parent_ie.file_id
+        new_ie.parent_id = new_parent_id
         new_ie.revision = self.revision_id
         self.delta.append((old_path, new_path, file_id, new_ie))
 
