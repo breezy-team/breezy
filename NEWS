@@ -32,6 +32,9 @@ IN DEVELOPMENT
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
 
+    * Multiple authors for a commit can now be recorded by using the "--author"
+      option multiple times. (James Westby, #185772)
+
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
@@ -71,6 +74,8 @@ IN DEVELOPMENT
     * ``bzr lp-open`` will try to find the Launchpad URL for the location
       passed on the command line. This makes ``bzr lp-open lp:foo`` work as
       expected. (Jonathan Lange, #332705)
+
+    * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
   BUG FIXES:
 
@@ -125,7 +130,14 @@ IN DEVELOPMENT
       UI at all - indeed it only reflects the repository status not
       changes to the branch itself. (Robert Collins)
 
+    * MutableTree.commit now favours the "authors" argument, with the old
+      "author" argument being deprecated.
+
     * Remove deprecated EmptyTree.  (Martin Pool)
+
+    * Revision.get_apparent_author() is now deprecated, replaced by
+      Revision.get_apparent_authors(), which returns a list. The former
+      now returns the first item that would be returned from the second.
 
     * The ``BranchBuilder`` test helper now accepts a ``timestamp``
       parameter to ``build_commit`` and ``build_snapshot``.  (Martin Pool)
