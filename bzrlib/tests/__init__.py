@@ -1820,6 +1820,29 @@ class TestCase(unittest.TestCase):
         return sio
 
 
+class CapturedCall(object):
+    """A helper for capturing smart server calls for easy debug analysis."""
+
+    def __init__(self, params, prefix_length):
+        """Capture the call with params and skip prefix_length stack frames."""
+        self.call = params
+        import traceback
+        # The last 5 frames are the __init__, the hook frame, and 3 smart
+        # client frames. Beyond this we could get more clever, but this is good
+        # enough for now.
+        stack = traceback.extract_stack()[prefix_length:-5]
+        self.stack = ''.join(traceback.format_list(stack))
+
+    def __str__(self):
+        return self.call.method
+
+    def __repr__(self):
+        return self.call.method
+
+    def stack(self):
+        return self.stack
+
+
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
@@ -2091,9 +2114,8 @@ class TestCaseWithMemoryTransport(TestCase):
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        url = self.get_url(relpath)
-        tran = get_transport(url)
-        return branchbuilder.BranchBuilder(get_transport(url), format=format)
+        return branchbuilder.BranchBuilder(self.get_transport(relpath),
+            format=format)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
@@ -2116,9 +2138,13 @@ class TestCaseWithMemoryTransport(TestCase):
         """Sets up a smart server as the transport server with a call log."""
         self.transport_server = server.SmartTCPServer_for_testing
         self.hpss_calls = []
+        import traceback
+        # Skip the current stack down to the caller of
+        # setup_smart_server_with_call_log
+        prefix_length = len(traceback.extract_stack()) - 2
         def capture_hpss_call(params):
-            import traceback
-            self.hpss_calls.append((params, traceback.format_stack()))
+            self.hpss_calls.append(
+                CapturedCall(params, prefix_length))
         client._SmartClient.hooks.install_named_hook(
             'call', capture_hpss_call, None)
 

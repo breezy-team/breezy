@@ -349,6 +349,41 @@ class Test_ClientMedium_remote_is_at_least(tests.TestCase):
             AssertionError, client_medium._remember_remote_is_before, (1, 9))
 
 
+class TestBzrDirCloningMetaDir(TestRemote):
+
+    def test_backwards_compat(self):
+        self.setup_smart_server_with_call_log()
+        a_dir = self.make_bzrdir('.')
+        self.reset_smart_call_log()
+        verb = 'BzrDir.cloning_metadir'
+        self.disable_verb(verb)
+        format = a_dir.cloning_metadir()
+        call_count = len([call for call in self.hpss_calls if
+            call.call.method == verb])
+        self.assertEqual(1, call_count)
+
+    def test_current_server(self):
+        transport = self.get_transport('.')
+        transport = transport.clone('quack')
+        self.make_bzrdir('quack')
+        client = FakeClient(transport.base)
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        control_name = reference_bzrdir_format.network_name()
+        client.add_expected_call(
+            'BzrDir.cloning_metadir', ('quack/', 'False'),
+            'success', (control_name, '', '')),
+        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        result = a_bzrdir.cloning_metadir()
+        # We should have got a reference control dir with default branch and
+        # repository formats.
+        # This pokes a little, just to be sure.
+        self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
+        self.assertEqual(None, result._repository_format)
+        self.assertEqual(None, result._branch_format)
+        client.finished_test()
+
+
 class TestBzrDirOpenBranch(TestRemote):
 
     def test_branch_present(self):
@@ -479,7 +514,7 @@ class TestBzrDirCreateBranch(TestRemote):
         self.disable_verb('BzrDir.create_branch')
         branch = repo.bzrdir.create_branch()
         create_branch_call_count = len([call for call in self.hpss_calls if
-            call[0].method == 'BzrDir.create_branch'])
+            call.call.method == 'BzrDir.create_branch'])
         self.assertEqual(1, create_branch_call_count)
 
     def test_current_server(self):
@@ -515,7 +550,7 @@ class TestBzrDirCreateRepository(TestRemote):
         self.disable_verb('BzrDir.create_repository')
         repo = bzrdir.create_repository()
         create_repo_call_count = len([call for call in self.hpss_calls if
-            call[0].method == 'BzrDir.create_repository'])
+            call.call.method == 'BzrDir.create_repository'])
         self.assertEqual(1, create_repo_call_count)
 
     def test_current_server(self):
@@ -1595,7 +1630,7 @@ class TestRepositorySetMakeWorkingTrees(TestRemoteRepository):
         self.disable_verb(verb)
         repo.set_make_working_trees(True)
         call_count = len([call for call in self.hpss_calls if
-            call[0].method == verb])
+            call.call.method == verb])
         self.assertEqual(1, call_count)
 
     def test_current(self):

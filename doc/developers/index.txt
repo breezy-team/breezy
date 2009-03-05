@@ -42,6 +42,9 @@ Process
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
 
+* `EC2 Windows server <ec2-windows.html>`_ |--| A team resource for 
+  Windows packaging and testing.
+
 Plans
 =====
 

@@ -273,7 +273,7 @@ class TestSmartServerBranching(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(87, rpc_count)
+        self.assertEqual(59, rpc_count)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -289,7 +289,7 @@ class TestSmartServerBranching(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(24, rpc_count)
+        self.assertEqual(16, rpc_count)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
