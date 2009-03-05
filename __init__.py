@@ -89,6 +89,22 @@ try:
         'bzrlib.plugins.groupcompress.repofmt',
         'RepositoryFormatPackGCCHK255',
         )
+    format_registry.register_metadir('gc-chk255-big',
+        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCCHK255Big',
+        help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
+            'Please read '
+            'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+            'before use.',
+        branch_format='bzrlib.branch.BzrBranchFormat7',
+        tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+        hidden=False,
+        experimental=True,
+        )
+    repo_registry.register_lazy(
+        'Bazaar development format - hash255chk+gc rich-root bigpage (needs bzr.dev from 1.13)\n',
+        'bzrlib.plugins.groupcompress.repofmt',
+        'RepositoryFormatPackGCCHK255Big',
+        )
 except ImportError:
     pass
 

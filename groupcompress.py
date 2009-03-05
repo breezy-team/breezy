@@ -19,6 +19,7 @@
 
 from itertools import izip
 from cStringIO import StringIO
+import struct
 import zlib
 
 from bzrlib import (
@@ -42,7 +43,6 @@ from bzrlib.osutils import (
     )
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
-from bzrlib.plugins.groupcompress import equivalence_table
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
@@ -51,29 +51,36 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
     )
+from bzrlib.plugins.groupcompress import errors as gc_errors
 
 _NO_LABELS = False
 _FAST = False
 
-def parse(bytes):
-    if _NO_LABELS:
-        action_byte = bytes[0]
-        action = {'f':'fulltext', 'd':'delta'}[action_byte]
-        return action, None, None, bytes[1:]
-    (action, label_line, sha1_line, len_line,
-     delta_bytes) = bytes.split('\n', 4)
-    if (action not in ('fulltext', 'delta')
-        or not label_line.startswith('label:')
-        or not sha1_line.startswith('sha1:')
-        or not len_line.startswith('len:')
-        ):
-        raise AssertionError("bad text record %r" % (bytes,))
-    label = tuple(label_line[6:].split('\x00'))
-    sha1 = sha1_line[5:]
-    length = int(len_line[4:])
-    if not len(delta_bytes) == length:
-        raise AssertionError("bad length record %r" % (bytes,))
-    return action, label, sha1, delta_bytes
+def encode_base128_int(val):
+    """Convert an integer into a 7-bit lsb encoding."""
+    bytes = []
+    count = 0
+    while val >= 0x80:
+        bytes.append(chr((val | 0x80) & 0xFF))
+        val >>= 7
+    bytes.append(chr(val))
+    return ''.join(bytes)
+
+
+def decode_base128_int(bytes):
+    """Decode an integer from a 7-bit lsb encoding."""
+    offset = 0
+    val = 0
+    shift = 0
+    bval = ord(bytes[offset])
+    while bval >= 0x80:
+        val |= (bval & 0x7F) << shift
+        shift += 7
+        offset += 1
+        bval = ord(bytes[offset])
+    val |= bval << shift
+    offset += 1
+    return val, offset
 
 
 def sort_gc_optimal(parent_map):
@@ -104,6 +111,194 @@ def sort_gc_optimal(parent_map):
     return present_keys
 
 
+class GroupCompressBlockEntry(object):
+    """Track the information about a single object inside a GC group.
+
+    This is generally just the dumb data structure.
+    """
+
+    def __init__(self, key, type, sha1, start, length):
+        self.key = key
+        self.type = type # delta, fulltext, external?
+        self.sha1 = sha1 # Sha1 of content
+        self.start = start # Byte offset to start of data
+        self.length = length # Length of content
+
+    def __repr__(self):
+        return '%s(%s, %s, %s, %s, %s)' % (
+            self.__class__.__name__,
+            self.key, self.type, self.sha1, self.start, self.length
+            )
+
+
+class GroupCompressBlock(object):
+    """An object which maintains the internal structure of the compressed data.
+
+    This tracks the meta info (start of text, length, type, etc.)
+    """
+
+    # Group Compress Block v1 Zlib
+    GCB_HEADER = 'gcb1z\n'
+
+    def __init__(self):
+        # map by key? or just order in file?
+        self._entries = {}
+        self._content = None
+        self._size = 0
+
+    def _parse_header(self):
+        """Parse the meta-info from the stream."""
+
+    def __len__(self):
+        return self._size
+
+    @classmethod
+    def from_bytes(cls, bytes):
+        out = cls()
+        if bytes[:6] != cls.GCB_HEADER:
+            raise gc_errors.InvalidGroupCompressBlock(
+                'bytes did not start with %r' % (cls.GCB_HEADER,))
+        pos = bytes.index('\n', 6)
+        z_header_length = int(bytes[6:pos])
+        pos += 1
+        pos2 = bytes.index('\n', pos)
+        header_length = int(bytes[pos:pos2])
+        if z_header_length == 0:
+            assert header_length == 0
+            out._content = zlib.decompress(bytes[pos2+1:])
+            out._size = len(out._content)
+            return out
+        pos = pos2 + 1
+        pos2 = pos + z_header_length
+        z_header_bytes = bytes[pos:pos2]
+        assert len(z_header_bytes) == z_header_length
+        d = zlib.decompressobj()
+        header_bytes = d.decompress(z_header_bytes)
+        assert len(header_bytes) == header_length
+        del z_header_bytes
+        lines = header_bytes.split('\n')
+        header_len = len(header_bytes)
+        del header_bytes
+        info_dict = {}
+        for line in lines:
+            if not line: #End of record
+                if not info_dict:
+                    break
+                out.add_entry(**info_dict)
+                info_dict = {}
+                continue
+            key, value = line.split(':', 1)
+            if key == 'key':
+                value = tuple(map(intern, value.split('\x00')))
+            elif key in ('start', 'length'):
+                value = int(value)
+            elif key == 'type':
+                value = intern(value)
+            info_dict[key] = value
+        zcontent = bytes[pos2:]
+        if zcontent:
+            out._content = d.decompress(zcontent)
+            assert d.flush() == ''
+            out._size = header_len + len(out._content)
+        return out
+
+    def extract(self, key, index_memo, sha1=None):
+        """Extract the text for a specific key.
+
+        :param key: The label used for this content
+        :param sha1: TODO (should we validate only when sha1 is supplied?)
+        :return: The bytes for the content
+        """
+        if _NO_LABELS or not self._entries:
+            start, end = index_memo[3:5]
+            c = self._content[start]
+            if c == 'f':
+                bytes = self._content[start+1:end]
+                type = 'fulltext'
+            else:
+                assert c == 'd'
+                type = 'delta'
+                delta = self._content[start+1:end]
+                bytes = _groupcompress_pyx.apply_delta(self._content, delta)
+            entry = GroupCompressBlockEntry(key, type, sha_string(bytes),
+                                            start, end-start)
+            return entry, bytes
+        entry = self._entries[key]
+        if entry.type == 'fulltext':
+            assert self._content[entry.start] == 'f'
+            bytes = self._content[entry.start+1:entry.start + entry.length]
+        elif entry.type == 'delta':
+            assert self._content[entry.start] == 'd'
+            delta = self._content[entry.start+1:entry.start + entry.length]
+            bytes = _groupcompress_pyx.apply_delta(self._content, delta)
+        # XXX: sha1?
+        return entry, bytes
+
+    def add_entry(self, key, type, sha1, start, length):
+        """Add new meta info about an entry.
+
+        :param key: The key for the new content
+        :param type: Whether this is a delta or fulltext entry (external?)
+        :param sha1: sha1sum of the fulltext of this entry
+        :param start: where the encoded bytes start
+        :param length: total number of bytes in the encoded form
+        :return: The entry?
+        """
+        entry = GroupCompressBlockEntry(key, type, sha1, start, length)
+        assert key not in self._entries
+        self._entries[key] = entry
+        return entry
+
+    def to_bytes(self, content=''):
+        """Encode the information into a byte stream."""
+        chunks = []
+        for key in sorted(self._entries):
+            entry = self._entries[key]
+            chunk = ('key:%s\n'
+                     'sha1:%s\n'
+                     'type:%s\n'
+                     'start:%s\n'
+                     'length:%s\n'
+                     '\n'
+                     ) % ('\x00'.join(entry.key),
+                          entry.sha1,
+                          entry.type,
+                          entry.start,
+                          entry.length,
+                          )
+            chunks.append(chunk)
+        bytes = ''.join(chunks)
+        info_len = len(bytes)
+        c = zlib.compressobj()
+        z_bytes = []
+        z_bytes.append(c.compress(bytes))
+        del bytes
+        # TODO: we may want to have the header compressed in the same chain
+        #       as the data, or we may not, evaulate it
+        #       having them compressed together is probably a win for
+        #       revisions and the 'inv' portion of chk inventories. As the
+        #       label in the header is duplicated in the text.
+        #       For chk pages and real bytes, I would guess this is not
+        #       true.
+        z_bytes.append(c.flush(zlib.Z_SYNC_FLUSH))
+        z_len = sum(map(len, z_bytes))
+        c_len = len(content)
+        if _NO_LABELS:
+            z_bytes = []
+            z_len = 0
+            info_len = 0
+            c = zlib.compressobj()
+        z_bytes.append(c.compress(content))
+        z_bytes.append(c.flush())
+        chunks = [self.GCB_HEADER,
+                  '%d\n' % (z_len,),
+                  '%d\n' % (info_len,),
+                  #'%d\n' % (c_len,),
+                 ]
+        chunks.extend(z_bytes)
+        return ''.join(chunks)
+
+
 class GroupCompressor(object):
     """Produce a serialised group of compressed texts.
 
@@ -131,8 +326,11 @@ class GroupCompressor(object):
         self.lines = []
         self.endpoint = 0
         self.input_bytes = 0
+        self.num_keys = 0
         self.labels_deltas = {}
+        self._last = None
         self._delta_index = _groupcompress_pyx.DeltaIndex()
+        self._block = GroupCompressBlock()
 
     def compress(self, key, bytes, expected_sha, soft=False):
         """Compress lines with label key.
@@ -156,7 +354,6 @@ class GroupCompressor(object):
             sha1 = expected_sha
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
-        label = '\x00'.join(key)
         input_len = len(bytes)
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
@@ -166,10 +363,7 @@ class GroupCompressor(object):
         # 'len: %d\n' costs approximately 1% increase in total data
         # Having the labels at all costs us 9-10% increase, 38% increase for
         # inventory pages, and 5.8% increase for text pages
-        if _NO_LABELS:
-            new_chunks = []
-        else:
-            new_chunks = ['label:%s\nsha1:%s\n' % (label, sha1)]
+        # new_chunks = ['label:%s\nsha1:%s\n' % (label, sha1)]
         if self._delta_index._source_offset != self.endpoint:
             raise AssertionError('_source_offset != endpoint'
                 ' somehow the DeltaIndex got out of sync with'
@@ -177,31 +371,22 @@ class GroupCompressor(object):
         max_delta_size = len(bytes) / 2
         delta = self._delta_index.make_delta(bytes, max_delta_size)
         if (delta is None):
-            # We can't delta (perhaps source_text is empty)
-            # so mark this as an insert
-            if _NO_LABELS:
-                new_chunks = ['f']
-            else:
-                new_chunks.insert(0, 'fulltext\n')
-                new_chunks.append('len:%s\n' % (input_len,))
-            unadded_bytes = sum(map(len, new_chunks))
-            self._delta_index.add_source(bytes, unadded_bytes)
-            new_chunks.append(bytes)
+            type = 'fulltext'
+            length = len(bytes) + 1
+            self._delta_index.add_source(bytes, 1)
+            new_chunks = ['f', bytes]
         else:
-            if _NO_LABELS:
-                new_chunks = ['d']
-            else:
-                new_chunks.insert(0, 'delta\n')
-                new_chunks.append('len:%s\n' % (len(delta),))
+            type = 'delta'
+            length = len(delta) + 1
+            new_chunks = ['d', delta]
             if _FAST:
-                new_chunks.append(delta)
-                unadded_bytes = sum(map(len, new_chunks))
-                self._delta_index._source_offset += unadded_bytes
+                self._delta_index._source_offset += length
             else:
-                unadded_bytes = sum(map(len, new_chunks))
-                self._delta_index.add_delta_source(delta, unadded_bytes)
-                new_chunks.append(delta)
+                self._delta_index.add_delta_source(delta, 1)
+        self._block.add_entry(key, type=type, sha1=sha1,
+                              start=self.endpoint, length=length)
         delta_start = (self.endpoint, len(self.lines))
+        self.num_keys += 1
         self.output_chunks(new_chunks)
         self.input_bytes += input_len
         delta_end = (self.endpoint, len(self.lines))
@@ -210,7 +395,7 @@ class GroupCompressor(object):
             raise AssertionError('the delta index is out of sync'
                 'with the output lines %s != %s'
                 % (self._delta_index._source_offset, self.endpoint))
-        return sha1, self.endpoint
+        return sha1, self.endpoint, type, length
 
     def extract(self, key):
         """Extract a key previously added to the compressor.
@@ -220,29 +405,40 @@ class GroupCompressor(object):
         """
         delta_details = self.labels_deltas[key]
         delta_chunks = self.lines[delta_details[0][1]:delta_details[1][1]]
-        action, label, sha1, delta = parse(''.join(delta_chunks))
-        if not _NO_LABELS and label != key:
-            raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-        if action == 'fulltext':
-            bytes = delta
+        stored_bytes = ''.join(delta_chunks)
+        # TODO: Fix this, we shouldn't really be peeking here
+        entry = self._block._entries[key]
+        if entry.type == 'fulltext':
+            bytes = stored_bytes
         else:
-            source = ''.join(self.lines[delta_details[0][0]])
-            bytes = _groupcompress_pyx.apply_delta(source, delta)
-        if _NO_LABELS:
-            sha1 = sha_string(bytes)
-        else:
-            assert sha1 == sha_string(bytes)
-        return [bytes], sha1
+            assert entry.type == 'delta'
+            # XXX: This is inefficient at best
+            source = ''.join(self.lines)
+            bytes = _groupcompress_pyx.apply_delta(source, stored_bytes)
+            assert entry.sha1 == sha_string(bytes)
+        return bytes, entry.sha1
 
     def output_chunks(self, new_chunks):
         """Output some chunks.
 
         :param new_chunks: The chunks to output.
         """
+        self._last = (len(self.lines), self.endpoint)
         endpoint = self.endpoint
         self.lines.extend(new_chunks)
         endpoint += sum(map(len, new_chunks))
         self.endpoint = endpoint
+
+    def pop_last(self):
+        """Call this if you want to 'revoke' the last compression.
+
+        After this, the data structures will be rolled back, but you cannot do
+        more compression.
+        """
+        self._delta_index = None
+        del self.lines[self._last[0]:]
+        self.endpoint = self._last[1]
+        self._last = None
 
     def ratio(self):
         """Return the overall compression ratio."""
@@ -425,11 +621,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     result[key] = self._unadded_refs[key]
         return result
 
-    def _get_group_and_delta_bytes(self, index_memo):
+    def _get_block(self, index_memo):
         read_memo = index_memo[0:3]
         # get the group:
         try:
-            plain = self._group_cache[read_memo]
+            block = self._group_cache[read_memo]
         except KeyError:
             # read the group
             zdata = self._access.get_raw_records([read_memo]).next()
@@ -437,14 +633,14 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # permits caching. We might want to store the partially
             # decompresed group and decompress object, so that recent
             # texts are not penalised by big groups.
-            plain = zlib.decompress(zdata) #, index_memo[4])
-            self._group_cache[read_memo] = plain
+            block = GroupCompressBlock.from_bytes(zdata)
+            self._group_cache[read_memo] = block
         # cheapo debugging:
         # print len(zdata), len(plain)
         # parse - requires split_lines, better to have byte offsets
         # here (but not by much - we only split the region for the
         # recipe, and we often want to end up with lines anyway.
-        return plain, plain[index_memo[3]:index_memo[4]]
+        return block
 
     def get_missing_compression_parent_keys(self):
         """Return the keys of missing compression parents.
@@ -523,26 +719,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
-                plain, delta_bytes = self._get_group_and_delta_bytes(index_memo)
-                action, label, sha1, delta = parse(delta_bytes)
-                if not _NO_LABELS and label != key:
-                    raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-                if action == 'fulltext':
-                    chunks = [delta]
-                else:
-                    # TODO: relax apply_delta so that it can allow source to be
-                    #       longer than expected
-                    bytes = _groupcompress_pyx.apply_delta(plain, delta)
-                    if bytes is None:
-                        import pdb; pdb.set_trace()
-                    chunks = [bytes]
-                    del bytes
-                if _NO_LABELS:
-                    sha1 = sha_strings(chunks)
-                else:
-                    if not _FAST and sha_strings(chunks) != sha1:
-                        raise AssertionError('sha1 sum did not match')
-            yield ChunkedContentFactory(key, parents, sha1, chunks)
+                block = self._get_block(index_memo)
+                entry, bytes = block.extract(key, index_memo)
+                sha1 = entry.sha1
+                if not _FAST and sha_string(bytes) != sha1:
+                    raise AssertionError('sha1 sum did not match')
+            yield FulltextContentFactory(key, parents, sha1, bytes)
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
@@ -592,16 +774,23 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._unadded_refs = {}
         keys_to_add = []
         basis_end = 0
-        groups = 1
         def flush():
-            compressed = zlib.compress(''.join(self._compressor.lines))
+            bytes = self._compressor._block.to_bytes(
+                ''.join(self._compressor.lines))
             index, start, length = self._access.add_raw_records(
-                [(None, len(compressed))], compressed)[0]
+                [(None, len(bytes))], bytes)[0]
             nodes = []
             for key, reads, refs in keys_to_add:
                 nodes.append((key, "%d %d %s" % (start, length, reads), refs))
             self._index.add_records(nodes, random_id=random_id)
+            self._unadded_refs = {}
+            del keys_to_add[:]
+            self._compressor = GroupCompressor(self._delta)
+
         last_prefix = None
+        last_fulltext_len = None
+        max_fulltext_len = 0
+        max_fulltext_prefix = None
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -612,21 +801,69 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 bytes = adapter.get_bytes(record)
-            soft = False
             if len(record.key) > 1:
                 prefix = record.key[0]
-                if (last_prefix is not None and prefix != last_prefix):
-                    soft = True
-                    if basis_end > 1024 * 1024 * 2:
-                        flush()
-                        self._compressor = GroupCompressor(self._delta)
-                        self._unadded_refs = {}
-                        keys_to_add = []
-                        basis_end = 0
-                        groups += 1
-                last_prefix = prefix
-            found_sha1, end_point = self._compressor.compress(record.key,
+                soft = (prefix == last_prefix)
+            else:
+                prefix = None
+                soft = False
+            if max_fulltext_len < len(bytes):
+                max_fulltext_len = len(bytes)
+                max_fulltext_prefix = prefix
+            (found_sha1, end_point, type,
+             length) = self._compressor.compress(record.key,
                 bytes, record.sha1, soft=soft)
+            # delta_ratio = float(len(bytes)) / length
+            # Check if we want to continue to include that text
+            if (prefix == max_fulltext_prefix
+                and end_point < 2 * max_fulltext_len):
+                # As long as we are on the same file_id, we will fill at least
+                # 2 * max_fulltext_len
+                start_new_block = False
+            elif end_point > 4*1024*1024:
+                start_new_block = True
+            elif (prefix is not None and prefix != last_prefix
+                  and end_point > 2*1024*1024):
+                start_new_block = True
+            else:
+                start_new_block = False
+            # if type == 'fulltext':
+            #     # If this is the first text, we don't do anything
+            #     if self._compressor.num_keys > 1:
+            #         if prefix is not None and prefix != last_prefix:
+            #             # We just inserted a fulltext for a different prefix
+            #             # (aka file-id).
+            #             if end_point > 512 * 1024:
+            #                 start_new_block = True
+            #             # TODO: Consider packing several small texts together
+            #             #       maybe only flush if end_point > some threshold
+            #             # if end_point > 512 * 1024 or len(bytes) <
+            #             #     start_new_block = true
+            #         else:
+            #             # We just added a fulltext, part of the same file-id
+            #             if (end_point > 2*1024*1024
+            #                 and end_point > 5*max_fulltext_len):
+            #                 start_new_block = True
+            #     last_fulltext_len = len(bytes)
+            # else:
+            #     delta_ratio = float(len(bytes)) / length
+            #     if delta_ratio < 3: # Not much compression
+            #         if end_point > 1*1024*1024:
+            #             start_new_block = True
+            #     elif delta_ratio < 10: # 10:1 compression
+            #         if end_point > 4*1024*1024:
+            #             start_new_block = True
+            last_prefix = prefix
+            if start_new_block:
+                self._compressor.pop_last()
+                flush()
+                basis_end = 0
+                max_fulltext_len = len(bytes)
+                (found_sha1, end_point, type,
+                 length) = self._compressor.compress(record.key,
+                    bytes, record.sha1)
+                assert type == 'fulltext'
+                last_fulltext_len = length
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
             else:
@@ -636,17 +873,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
             keys_to_add.append((key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
-            if basis_end > 1024 * 1024 * 4:
-                flush()
-                self._compressor = GroupCompressor(self._delta)
-                self._unadded_refs = {}
-                keys_to_add = []
-                basis_end = 0
-                groups += 1
         if len(keys_to_add):
             flush()
         self._compressor = None
-        self._unadded_refs = {}
+        assert self._unadded_refs == {}
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
@@ -874,44 +1104,6 @@ class _GCGraphIndex(object):
         basis_end = int(bits[2])
         delta_end = int(bits[3])
         return node[0], start, stop, basis_end, delta_end
-
-
-def _get_longest_match(equivalence_table, pos, max_pos, locations):
-    """Get the longest possible match for the current position."""
-    range_start = pos
-    range_len = 0
-    copy_ends = None
-    while pos < max_pos:
-        if locations is None:
-            locations = equivalence_table.get_idx_matches(pos)
-        if locations is None:
-            # No more matches, just return whatever we have, but we know that
-            # this last position is not going to match anything
-            pos += 1
-            break
-        else:
-            if copy_ends is None:
-                # We are starting a new range
-                copy_ends = [loc + 1 for loc in locations]
-                range_len = 1
-                locations = None # Consumed
-            else:
-                # We are currently in the middle of a match
-                next_locations = set(copy_ends).intersection(locations)
-                if len(next_locations):
-                    # range continues
-                    copy_ends = [loc + 1 for loc in next_locations]
-                    range_len += 1
-                    locations = None # Consumed
-                else:
-                    # But we are done with this match, we should be
-                    # starting a new one, though. We will pass back 'locations'
-                    # so that we don't have to do another lookup.
-                    break
-        pos += 1
-    if copy_ends is None:
-        return None, pos, locations
-    return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
 
 
 try:
