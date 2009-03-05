@@ -1400,11 +1400,12 @@ class CHKInventory(CommonInventory):
 
         The BNF:
         ENTRY ::= FILE | DIR | SYMLINK | TREE
-        FILE ::= "file: " COMMON NULL SHA NULL SIZE NULL EXECUTABLE
+        FILE ::= "file: " COMMON SEP SHA SEP SIZE SEP EXECUTABLE
         DIR ::= "dir: " COMMON
-        SYMLINK ::= "symlink: " COMMON NULL TARGET_UTF8
+        SYMLINK ::= "symlink: " COMMON SEP TARGET_UTF8
         TREE ::= "tree: " COMMON REFERENCE_REVISION
-        COMMON ::= FILE_ID NULL PARENT_ID NULL NAME_UTF8 NULL REVISION
+        COMMON ::= FILE_ID SEP PARENT_ID SEP NAME_UTF8 SEP REVISION
+        SEP ::= "\n"
         """
         if entry.parent_id is not None:
             parent_str = entry.parent_id
