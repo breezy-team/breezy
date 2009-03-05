@@ -1486,16 +1486,24 @@ class CHKInventory(CommonInventory):
         """
         result = CHKInventory(self._search_key_name)
         search_key_func = chk_map.search_key_registry.get(self._search_key_name)
+        self.id_to_entry._ensure_root()
+        maximum_size = self.id_to_entry._root_node.maximum_size
         result.revision_id = new_revision_id
         result.id_to_entry = chk_map.CHKMap(
             self.id_to_entry._store,
             self.id_to_entry.key(),
             search_key_func=search_key_func)
+        result.id_to_entry._ensure_root()
+        result.id_to_entry._root_node.set_maximum_size(maximum_size)
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
                 self.parent_id_basename_to_file_id.key(),
                 search_key_func=search_key_func)
+            result.parent_id_basename_to_file_id._ensure_root()
+            result.parent_id_basename_to_file_id._root_node.set_maximum_size(
+                maximum_size)
+            result.parent_id_basename_to_file_id._root_node._key_width = 2
             parent_id_basename_delta = []
         else:
             result.parent_id_basename_to_file_id = None
