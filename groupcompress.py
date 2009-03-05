@@ -53,8 +53,8 @@ from bzrlib.versionedfile import (
     )
 from bzrlib.plugins.groupcompress import errors as gc_errors
 
-_NO_LABELS = True
-_FAST = True
+_NO_LABELS = False
+_FAST = False
 
 def encode_base128_int(val):
     """Convert an integer into a 7-bit lsb encoding."""
@@ -209,7 +209,7 @@ class GroupCompressBlock(object):
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
-        if _NO_LABELS:
+        if _NO_LABELS or not self._entries:
             start, end = index_memo[3:5]
             c = self._content[start]
             if c == 'f':

@@ -630,7 +630,7 @@ if chk_support:
         repository_class = GCCHKPackRepository
         # For right now, setting this to True gives us InterModel1And2 rather
         # than InterDifferingSerializer
-        rich_root_data = True
+        rich_root_data = False
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
@@ -643,7 +643,7 @@ if chk_support:
 
 
     chk_serializer_255_bigpage = chk_serializer.CHKSerializer(65536, True, 'hash-255-way')
-    class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackDevelopment5Hash255):
+    class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
         """A hashed CHK+group compress pack repository."""
 
         repository_class = GCCHKPackRepository
@@ -667,7 +667,8 @@ def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
     formats = (RepositoryFormatPackGCPlain,)
     if chk_support:
         formats = formats + (RepositoryFormatPackGCCHK16,
-                             RepositoryFormatPackGCCHK255)
+                             RepositoryFormatPackGCCHK255,
+                             RepositoryFormatPackGCCHK255Big)
     if isinstance(source._format, formats) or isinstance(target._format, formats):
         return False
     else:
