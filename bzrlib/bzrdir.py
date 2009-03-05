@@ -222,7 +222,11 @@ class BzrDir(object):
             if not require_stacking and repository_policy._require_stacking:
                 require_stacking = True
                 result._format.require_stacking()
-            result_repo.fetch(local_repo, revision_id=revision_id)
+            if is_new_repo:
+                fetch_spec = graph.MiniSearchResult(revision_id, local_repo)
+                result_repo.fetch(local_repo, fetch_spec=fetch_spec)
+            else:
+                result_repo.fetch(local_repo, revision_id=revision_id)
         else:
             result_repo = None
         # 1 if there is a branch present
@@ -3096,7 +3100,8 @@ class RepositoryAcquisitionPolicy(object):
         :param make_working_trees: If creating a repository, set
             make_working_trees to this value (if non-None)
         :param shared: If creating a repository, make it shared if True
-        :return: A repository
+        :return: A repository, is_new_flag (True if the repository was
+            created).
         """
         raise NotImplemented(RepositoryAcquisitionPolicy.acquire_repository)
 
@@ -3149,7 +3154,7 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Implementation of RepositoryAcquisitionPolicy.acquire_repository
 
-        Returns an existing repository to use
+        Returns an existing repository to use.
         """
         self._add_fallback(self._repository,
                        possible_transports=[self._repository.bzrdir.transport])
