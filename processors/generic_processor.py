@@ -168,7 +168,7 @@ class GenericProcessor(processor.ImportProcessor):
             self.info = None
 
         # Decide which CommitHandler to use
-        if hasattr(self.repo, 'chk_bytes'):
+        if getattr(self.repo._format, 'supports_chks', False):
             self.commit_handler_factory = \
                 bzr_commit_handler.CHKInventoryCommitHandler
         else:

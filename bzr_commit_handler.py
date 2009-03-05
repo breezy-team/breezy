@@ -444,6 +444,7 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
         self.cache_mgr.inventories[self.revision_id] = inv
+        #print "committed %s" % self.revision_id
 
     def record_new(self, path, ie):
         self.delta.append((None, path, ie.file_id, ie))

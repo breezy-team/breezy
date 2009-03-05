@@ -33,7 +33,7 @@ class AbstractRevisionStore(object):
         :param repository: the target repository
         """
         self.repo = repo
-        self._chk_store = getattr(repo, 'chk_bytes', None)
+        self._supports_chks = getattr(repo._format, 'supports_chks', False)
 
     def expects_rich_root(self):
         """Does this store expect inventories with rich roots?"""
@@ -41,7 +41,7 @@ class AbstractRevisionStore(object):
 
     def init_inventory(self, revision_id):
         """Generate an inventory for a parentless revision."""
-        if self._chk_store:
+        if self._supports_chks:
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
             inv = inventory.Inventory(revision_id=revision_id)
@@ -54,7 +54,7 @@ class AbstractRevisionStore(object):
         """Generate a CHKInventory for a parentless revision."""
         from bzrlib import chk_map
         # Get the creation parameters
-        chk_store = self._chk_store
+        chk_store = self.repo.chk_bytes
         serializer = self.repo._format._serializer
         search_key_name = serializer.search_key_name
         maximum_size = serializer.maximum_size
@@ -167,7 +167,7 @@ class AbstractRevisionStore(object):
         :returns: The validator(which is a sha1 digest, though what is sha'd is
             repository format specific) of the serialized inventory.
         """
-        if self._chk_store and len(parents):
+        if self._supports_chks and len(parents):
             # Do we need to search for the first non-empty inventory?
             # parent_invs can be a longer list than parents if there
             # are ghosts????
