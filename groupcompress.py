@@ -53,6 +53,7 @@ from bzrlib.versionedfile import (
     )
 from bzrlib.plugins.groupcompress import errors as gc_errors
 
+_NO_LABELS = False
 _FAST = False
 
 def encode_base128_int(val):
@@ -199,7 +200,7 @@ class GroupCompressBlock(object):
             out._size = header_len + len(out._content)
         return out
 
-    def extract(self, key, sha1=None):
+    def extract(self, key, index_memo, sha1=None):
         """Extract the text for a specific key.
 
         :param key: The label used for this content
@@ -208,9 +209,11 @@ class GroupCompressBlock(object):
         """
         entry = self._entries[key]
         if entry.type == 'fulltext':
-            bytes = self._content[entry.start:entry.start + entry.length]
+            assert self._content[entry.start] == 'f'
+            bytes = self._content[entry.start+1:entry.start + entry.length]
         elif entry.type == 'delta':
-            delta = self._content[entry.start:entry.start + entry.length]
+            assert self._content[entry.start] == 'd'
+            delta = self._content[entry.start+1:entry.start + entry.length]
             bytes = _groupcompress_pyx.apply_delta(self._content, delta)
         # XXX: sha1?
         return entry, bytes
@@ -348,17 +351,17 @@ class GroupCompressor(object):
         delta = self._delta_index.make_delta(bytes, max_delta_size)
         if (delta is None):
             type = 'fulltext'
-            length = len(bytes)
-            self._delta_index.add_source(bytes, 0)
-            new_chunks = [bytes]
+            length = len(bytes) + 1
+            self._delta_index.add_source(bytes, 1)
+            new_chunks = ['f', bytes]
         else:
             type = 'delta'
-            length = len(delta)
-            new_chunks = [delta]
+            length = len(delta) + 1
+            new_chunks = ['d', delta]
             if _FAST:
                 self._delta_index._source_offset += len(delta)
             else:
-                self._delta_index.add_delta_source(delta, 0)
+                self._delta_index.add_delta_source(delta, 1)
         self._block.add_entry(key, type=type, sha1=sha1,
                               start=self.endpoint, length=length)
         delta_start = (self.endpoint, len(self.lines))
@@ -696,7 +699,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             else:
                 index_memo, _, parents, (method, _) = locations[key]
                 block = self._get_block(index_memo)
-                entry, bytes = block.extract(key)
+                entry, bytes = block.extract(key, index_memo)
                 sha1 = entry.sha1
                 if not _FAST and sha_string(bytes) != sha1:
                     raise AssertionError('sha1 sum did not match')
