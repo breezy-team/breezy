@@ -1,4 +1,4 @@
-bzr-builddeb (2.1) jaunty; urgency=low
+bzr-builddeb (2.1) experimental; urgency=low
 
   * The build command now defaults to "debuild" instead of
     "dpkg-buildpackage -rfakeroot -uc -us". The most obvious change here will be
