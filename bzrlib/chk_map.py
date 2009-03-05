@@ -51,6 +51,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     registry,
+    trace,
     )
 
 # approx 4MB
@@ -834,7 +835,11 @@ class LeafNode(Node):
 
     def unmap(self, store, key):
         """Unmap key from the node."""
-        self._raw_size -= self._key_value_len(key, self._items[key])
+        try:
+            self._raw_size -= self._key_value_len(key, self._items[key])
+        except KeyError:
+            trace.mutter("key %s not found in %r", key, self._items)
+            raise
         self._len -= 1
         del self._items[key]
         self._key = None
