@@ -45,9 +45,9 @@ class AbstractRevisionStore(object):
             inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
         else:
             inv = inventory.Inventory(revision_id=revision_id)
-        if self.expects_rich_root():
-            # The very first root needs to have the right revision
-            inv.root.revision = revision_id
+            if self.expects_rich_root():
+                # The very first root needs to have the right revision
+                inv.root.revision = revision_id
         return inv
 
     def _init_chk_inventory(self, revision_id, root_id):
@@ -70,6 +70,9 @@ class AbstractRevisionStore(object):
         if parent_id_basename_index:
             inv.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
                 None, search_key_func)
+            inv.parent_id_basename_to_file_id._root_node.set_maximum_size(
+                maximum_size)
+            inv.parent_id_basename_to_file_id._root_node._key_width = 2
         return inv
 
     def get_inventory(self, revision_id):
