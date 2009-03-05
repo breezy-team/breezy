@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1371,6 +1371,43 @@ class LineLogFormatter(LogFormatter):
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
 
+class ChangeLogLogFormatter(LogFormatter):
+
+    supports_merge_revisions = True
+    supports_delta = True
+    supports_tags = True
+
+    def log_revision(self, revision):
+        """Log a revision, either merged or not."""
+        to_file = self.to_file
+
+        date_str = format_date(revision.rev.timestamp,
+                               revision.rev.timezone or 0,
+                               self.show_timezone,
+                               date_fmt='%Y-%m-%d',
+                               show_offset=False)
+        committer_str = revision.rev.committer.replace (' <', '  <')
+        to_file.write('%s  %s\n\n' % (date_str,committer_str))
+
+        if revision.delta is not None:
+            for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
+                path, = c[:1]
+                to_file.write('\t* %s:\n' % (path,))
+            for c in revision.delta.renamed:
+                oldpath,newpath = c[:2]
+                # For renamed files, show both the old and the new path
+                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath,newpath))
+            to_file.write('\n')
+
+        if not revision.rev.message:
+            to_file.write('\tNo commit message\n')
+        else:
+            message = revision.rev.message.rstrip('\r\n')
+            for l in message.split('\n'):
+                to_file.write('\t%s\n' % (l.lstrip(),))
+            to_file.write('\n')
+
+
 def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
     return lf.log_string(None, rev, max_chars)
@@ -1400,6 +1437,9 @@ log_formatter_registry.register('long', LongLogFormatter,
                                 'Detailed log format')
 log_formatter_registry.register('line', LineLogFormatter,
                                 'Log format with one line per revision')
+log_formatter_registry.register(
+    'gnu-changelog', ChangeLogLogFormatter,
+    'Format used by GNU ChangeLog files')
 
 
 def register_formatter(name, formatter):
