@@ -1645,6 +1645,8 @@ class CHKInventory(CommonInventory):
 
     def has_id(self, file_id):
         # Perhaps have an explicit 'contains' method on CHKMap ?
+        if self._entry_cache.get(file_id, None) is not None:
+            return True
         return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
 
     def is_root(self, file_id):
