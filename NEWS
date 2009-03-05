@@ -214,6 +214,9 @@ IN DEVELOPMENT
     * There is a RemoteSink object which handles pushing to smart servers.
       (Andrew Bennetts, Robert Collins)
 
+    * ``TransportTraceDecorator`` now logs ``put_bytes_non_atomic`` and
+      ``rmdir`` calls. (Robert Collins)
+
     * ``VersionedFiles`` record adapters have had their signature change
       from ``(record, record.get_bytes_as(record.storage_kind))`` to
       ``(record)`` reducing excess duplication and allowing adapters
