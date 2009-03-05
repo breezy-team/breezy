@@ -254,6 +254,13 @@ class GroupCompressBlock(object):
         z_bytes = []
         z_bytes.append(c.compress(bytes))
         del bytes
+        # TODO: we may want to have the header compressed in the same chain
+        #       as the data, or we may not, evaulate it
+        #       having them compressed together is probably a win for
+        #       revisions and the 'inv' portion of chk inventories. As the
+        #       label in the header is duplicated in the text.
+        #       For chk pages and real bytes, I would guess this is not
+        #       true.
         z_bytes.append(c.flush(zlib.Z_SYNC_FLUSH))
         z_len = sum(map(len, z_bytes))
         c_len = len(content)
@@ -295,7 +302,9 @@ class GroupCompressor(object):
         self.lines = []
         self.endpoint = 0
         self.input_bytes = 0
+        self.num_keys = 0
         self.labels_deltas = {}
+        self._last = None
         self._delta_index = _groupcompress_pyx.DeltaIndex()
         self._block = GroupCompressBlock()
 
@@ -338,21 +347,22 @@ class GroupCompressor(object):
         max_delta_size = len(bytes) / 2
         delta = self._delta_index.make_delta(bytes, max_delta_size)
         if (delta is None):
-            # We can't delta (perhaps source_text is empty)
-            # so mark this as an insert
-            self._block.add_entry(key, type='fulltext', sha1=sha1,
-                                  start=self.endpoint, length=len(bytes))
+            type = 'fulltext'
+            length = len(bytes)
             self._delta_index.add_source(bytes, 0)
             new_chunks = [bytes]
         else:
-            self._block.add_entry(key, type='delta', sha1=sha1,
-                                  start=self.endpoint, length=len(delta))
+            type = 'delta'
+            length = len(delta)
             new_chunks = [delta]
             if _FAST:
                 self._delta_index._source_offset += len(delta)
             else:
                 self._delta_index.add_delta_source(delta, 0)
+        self._block.add_entry(key, type=type, sha1=sha1,
+                              start=self.endpoint, length=length)
         delta_start = (self.endpoint, len(self.lines))
+        self.num_keys += 1
         self.output_chunks(new_chunks)
         self.input_bytes += input_len
         delta_end = (self.endpoint, len(self.lines))
@@ -361,7 +371,7 @@ class GroupCompressor(object):
             raise AssertionError('the delta index is out of sync'
                 'with the output lines %s != %s'
                 % (self._delta_index._source_offset, self.endpoint))
-        return sha1, self.endpoint
+        return sha1, self.endpoint, type, length
 
     def extract(self, key):
         """Extract a key previously added to the compressor.
@@ -389,10 +399,22 @@ class GroupCompressor(object):
 
         :param new_chunks: The chunks to output.
         """
+        self._last = (len(self.lines), self.endpoint)
         endpoint = self.endpoint
         self.lines.extend(new_chunks)
         endpoint += sum(map(len, new_chunks))
         self.endpoint = endpoint
+
+    def pop_last(self):
+        """Call this if you want to 'revoke' the last compression.
+
+        After this, the data structures will be rolled back, but you cannot do
+        more compression.
+        """
+        self._delta_index = None
+        del self.lines[self._last[0]:]
+        self.endpoint = self._last[1]
+        self._last = None
 
     def ratio(self):
         """Return the overall compression ratio."""
@@ -728,15 +750,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._unadded_refs = {}
         keys_to_add = []
         basis_end = 0
-        groups = 1
         def flush():
-            # TODO: we may want to have the header compressed in the same chain
-            #       as the data, or we may not, evaulate it
-            #       having them compressed together is probably a win for
-            #       revisions and the 'inv' portion of chk inventories. As the
-            #       label in the header is duplicated in the text.
-            #       For chk pages and real bytes, I would guess this is not
-            #       true.
             bytes = self._compressor._block.to_bytes(
                 ''.join(self._compressor.lines))
             index, start, length = self._access.add_raw_records(
@@ -745,7 +759,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
             for key, reads, refs in keys_to_add:
                 nodes.append((key, "%d %d %s" % (start, length, reads), refs))
             self._index.add_records(nodes, random_id=random_id)
+            self._unadded_refs = {}
+            del keys_to_add[:]
+            self._compressor = GroupCompressor(self._delta)
+
         last_prefix = None
+        last_fulltext_len = None
+        max_fulltext_len = 0
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -756,21 +776,59 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 adapter_key = record.storage_kind, 'fulltext'
                 adapter = get_adapter(adapter_key)
                 bytes = adapter.get_bytes(record)
-            soft = False
             if len(record.key) > 1:
                 prefix = record.key[0]
-                if (last_prefix is not None and prefix != last_prefix):
-                    soft = True
-                    if basis_end > 1024 * 1024 * 2:
-                        flush()
-                        self._compressor = GroupCompressor(self._delta)
-                        self._unadded_refs = {}
-                        keys_to_add = []
-                        basis_end = 0
-                        groups += 1
-                last_prefix = prefix
-            found_sha1, end_point = self._compressor.compress(record.key,
-                bytes, record.sha1, soft=soft)
+            else:
+                prefix = None
+            max_fulltext_len = max(max_fulltext_len, len(bytes))
+            (found_sha1, end_point, type,
+             length) = self._compressor.compress(record.key,
+                bytes, record.sha1)
+            # Check if we want to continue to include that text
+            start_new_block = False
+            if end_point > 2 * max_fulltext_len:
+                if end_point > 4*1024*1024:
+                    start_new_block = True
+                elif (prefix is not None and prefix != last_prefix
+                      and end_point > 2*1024*1024):
+                    start_new_block = True
+            # if type == 'fulltext':
+            #     # If this is the first text, we don't do anything
+            #     if self._compressor.num_keys > 1:
+            #         if prefix is not None and prefix != last_prefix:
+            #             # We just inserted a fulltext for a different prefix
+            #             # (aka file-id).
+            #             if end_point > 512 * 1024:
+            #                 start_new_block = True
+            #             # TODO: Consider packing several small texts together
+            #             #       maybe only flush if end_point > some threshold
+            #             # if end_point > 512 * 1024 or len(bytes) <
+            #             #     start_new_block = true
+            #         else:
+            #             # We just added a fulltext, part of the same file-id
+            #             if (end_point > 2*1024*1024
+            #                 and end_point > 5*max_fulltext_len):
+            #                 start_new_block = True
+            #     last_fulltext_len = len(bytes)
+            # else:
+            #     delta_ratio = float(len(bytes)) / length
+            #     if delta_ratio < 3: # Not much compression
+            #         if end_point > 1*1024*1024:
+            #             start_new_block = True
+            #     elif delta_ratio < 10: # 10:1 compression
+            #         if end_point > 4*1024*1024:
+            #             start_new_block = True
+            last_prefix = prefix
+            if start_new_block:
+                self._compressor.pop_last()
+                flush()
+                basis_end = 0
+                max_fulltext_len = len(bytes)
+                (found_sha1, end_point, type,
+                 length) = self._compressor.compress(record.key,
+                    bytes, record.sha1)
+                assert type == 'fulltext'
+                last_fulltext_len = length
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
             else:
@@ -780,27 +838,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
             keys_to_add.append((key, '%d %d' % (basis_end, end_point),
                 (record.parents,)))
             basis_end = end_point
-            # Interestingly, the sweet spot is 4MB, at 8 and 2 MB the total
-            # size increases... we need a better way of deciding than just
-            # random testing against a given dataset.
-            #   2MB     10.3MB
-            #   3MB      8.4MB
-            #   4MB      8.6MB
-            #   8MB     10.0MB
-            # This effects file content more than other bits, because they
-            # don't get *large* enough to overflow here. (The total compressed
-            # inventory size is only 1.5MB on my test set.)
-            if basis_end > 1024 * 1024 * 4:
-                flush()
-                self._compressor = GroupCompressor(self._delta)
-                self._unadded_refs = {}
-                keys_to_add = []
-                basis_end = 0
-                groups += 1
         if len(keys_to_add):
             flush()
         self._compressor = None
-        self._unadded_refs = {}
+        assert self._unadded_refs == {}
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
