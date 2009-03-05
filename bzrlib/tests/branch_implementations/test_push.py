@@ -259,7 +259,7 @@ class TestPush(TestCaseWithBranch):
         self.disableOptimisticGetParentMap()
         self.assertFalse(local.is_locked())
         local.push(remote)
-        hpss_call_names = [item[0].method for item in self.hpss_calls]
+        hpss_call_names = [item.call.method for item in self.hpss_calls]
         self.assertTrue('Repository.insert_stream' in hpss_call_names)
         insert_stream_idx = hpss_call_names.index('Repository.insert_stream')
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]

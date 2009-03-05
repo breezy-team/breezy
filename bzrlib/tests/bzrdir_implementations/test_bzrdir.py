@@ -1165,6 +1165,28 @@ class TestBzrDir(TestCaseWithBzrDir):
                          opened_dir._format)
         self.failUnless(isinstance(opened_dir, bzrdir.BzrDir))
 
+    def test_format_network_name(self):
+        # All control formats must have a network name.
+        dir = self.make_bzrdir('.')
+        format = dir._format
+        # We want to test that the network_name matches the actual format on
+        # disk. For local control dirsthat means that using network_name as a
+        # key in the registry gives back the same format. For remote obects
+        # we check that the network_name of the RemoteBzrDirFormat we have
+        # locally matches the actual format present on disk.
+        if isinstance(format, bzrdir.RemoteBzrDirFormat):
+            dir._ensure_real()
+            real_dir = dir._real_bzrdir
+            network_name = format.network_name()
+            self.assertEqual(real_dir._format.network_name(), network_name)
+        else:
+            registry = bzrdir.network_format_registry
+            network_name = format.network_name()
+            looked_up_format = registry.get(network_name)
+            self.assertEqual(format.__class__, looked_up_format.__class__)
+        # The network name must be a byte string.
+        self.assertIsInstance(network_name, str)
+
     def test_open_not_bzrdir(self):
         # test the formats specific behaviour for no-content or similar dirs.
         self.assertRaises(NotBranchError,

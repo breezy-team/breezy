@@ -26,8 +26,14 @@ IN DEVELOPMENT
       in chapter 7 of the User Guide and ``bzr help view`` for details.
       (Ian Clatworthy)
 
+    * GNU Changelog output can now be produced by ``bzr log --format
+      gnu-changelog``.  (Andrea Bolognani, Martin Pool)
+
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
+
+    * Multiple authors for a commit can now be recorded by using the "--author"
+      option multiple times. (James Westby, #185772)
 
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
@@ -68,6 +74,8 @@ IN DEVELOPMENT
     * ``bzr lp-open`` will try to find the Launchpad URL for the location
       passed on the command line. This makes ``bzr lp-open lp:foo`` work as
       expected. (Jonathan Lange, #332705)
+
+    * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
   BUG FIXES:
 
@@ -125,6 +133,18 @@ IN DEVELOPMENT
       UI at all - indeed it only reflects the repository status not
       changes to the branch itself. (Robert Collins)
 
+    * MutableTree.commit now favours the "authors" argument, with the old
+      "author" argument being deprecated.
+
+    * Remove deprecated EmptyTree.  (Martin Pool)
+
+    * Revision.get_apparent_author() is now deprecated, replaced by
+      Revision.get_apparent_authors(), which returns a list. The former
+      now returns the first item that would be returned from the second.
+
+    * The ``BranchBuilder`` test helper now accepts a ``timestamp``
+      parameter to ``build_commit`` and ``build_snapshot``.  (Martin Pool)
+
     * The ``_fetch_*`` attributes on ``Repository`` are now on
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular
@@ -142,6 +162,8 @@ IN DEVELOPMENT
       fixes a race condition cloning stacked branches that would cause
       plugins to have hooks called on non-stacked instances.
       (Robert Collins, #334187)
+
+    * ``BzrDir.cloning_metadir`` now has a RPC call. (Robert Collins)
 
     * ``BzrDirFormat.__str__`` now uses the human readable description
       rather than the sometimes-absent disk label. (Robert Collins)
@@ -173,8 +195,9 @@ IN DEVELOPMENT
       ``resume_write_group`` methods.  These are currently only useful
       with pack repositories. (Andrew Bennetts, Robert Collins)
 
-    * ``RepositoryFormat`` objects now have a ``network_name`` for passing
-      the format across RPC calls. (Robert Collins, Andrew Bennetts)
+    * ``BzrDirFormat``, ``BranchFormat`` and ``RepositoryFormat`` objects
+      now have a ``network_name`` for passing the format across RPC calls.
+      (Robert Collins, Andrew Bennetts)
 
     * ``RepositoryFormat`` objects now all have a new attribute
       ``_serializer`` used by fetch when reserialising is required.
@@ -199,6 +222,9 @@ IN DEVELOPMENT
 
     * There is a RemoteSink object which handles pushing to smart servers.
       (Andrew Bennetts, Robert Collins)
+
+    * ``TransportTraceDecorator`` now logs ``put_bytes_non_atomic`` and
+      ``rmdir`` calls. (Robert Collins)
 
     * ``VersionedFiles`` record adapters have had their signature change
       from ``(record, record.get_bytes_as(record.storage_kind))`` to
