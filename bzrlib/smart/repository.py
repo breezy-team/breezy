@@ -73,11 +73,9 @@ class SmartServerRepositoryRequest(SmartServerRequest):
 
     def recreate_search(self, repository, search_bytes):
         lines = search_bytes.split('\n')
-        from bzrlib.trace import mutter
-        mutter('lines: %r', lines)
         if lines[0] == 'ancestry-of':
-            start_key = lines[1]
-            search_result = graph.MiniSearchResult(start_key, repository)
+            heads = lines[1:]
+            search_result = graph.PendingAncestryResult(heads, repository)
             return search_result, None
         elif lines[0] == 'search':
             return self.recreate_search_from_recipe(repository, lines[1:])

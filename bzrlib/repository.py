@@ -1100,10 +1100,19 @@ class Repository(object):
             fetch_spec=None):
         """Fetch the content required to construct revision_id from source.
 
-        If revision_id is None all content is copied.
+        If revision_id is None and fetch_spec is None, then all content is
+        copied.
+
         :param find_ghosts: Find and copy revisions in the source that are
             ghosts in the target (and not reachable directly by walking out to
             the first-present revision in target from revision_id).
+        :param revision_id: If specified, all the content needed for this
+            revision ID will be copied to the target.  Fetch will determine for
+            itself which content needs to be copied.
+        :param fetch_spec: If specified, a SearchResult or
+            PendingAncestryResult that describes which revisions to copy.  This
+            allows copying multiple heads at once.  Mutually exclusive with
+            revision_id.
         """
         if fetch_spec is not None and revision_id is not None:
             raise AssertionError(

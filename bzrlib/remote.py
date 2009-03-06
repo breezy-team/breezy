@@ -1436,8 +1436,9 @@ class RemoteRepository(_RpcHelper):
         return '\n'.join((start_keys, stop_keys, count))
 
     def _serialise_search_result(self, search_result):
-        if isinstance(search_result, graph.MiniSearchResult):
-            parts = ['ancestry-of', search_result.start_key]
+        if isinstance(search_result, graph.PendingAncestryResult):
+            parts = ['ancestry-of']
+            parts.extend(search_result.heads)
         else:
             recipe = search_result.get_recipe()
             parts = ['search', self._serialise_search_recipe(recipe)]

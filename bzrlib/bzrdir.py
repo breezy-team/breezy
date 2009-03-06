@@ -223,7 +223,8 @@ class BzrDir(object):
                 require_stacking = True
                 result._format.require_stacking()
             if is_new_repo:
-                fetch_spec = graph.MiniSearchResult(revision_id, local_repo)
+                fetch_spec = graph.PendingAncestryResult(
+                    [revision_id], local_repo)
                 result_repo.fetch(local_repo, fetch_spec=fetch_spec)
             else:
                 result_repo.fetch(local_repo, revision_id=revision_id)
@@ -1120,7 +1121,8 @@ class BzrDir(object):
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
         if is_new_repo and revision_id is not None:
-            fetch_spec = graph.MiniSearchResult(revision_id, source_repository)
+            fetch_spec = graph.PendingAncestryResult(
+                [revision_id], source_repository)
         else:
             fetch_spec = None
         if source_repository is not None:
