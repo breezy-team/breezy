@@ -158,8 +158,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if len(branch_info) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         branch_ref, branch_name = branch_info
-        # ICK: perhaps change these registries to be factories only?
-        format = bzrdir.network_format_registry.get(control_name).__class__()
+        format = bzrdir.network_format_registry.get(control_name)
         if repo_name:
             format.repository_format = repository.network_format_registry.get(
                 repo_name)
