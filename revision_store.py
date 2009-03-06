@@ -208,7 +208,7 @@ class RevisionStore1(AbstractRevisionStore):
 
     def get_file_lines(self, revision_id, file_id):
         tx = self.repo.get_transaction()
-        w = self.repo.weave_store.get_weave(ie.file_id, tx)
+        w = self.repo.weave_store.get_weave(file_id, tx)
         return w.get_lines(revision_id)
 
     def _add_revision(self, rev, inv):
