@@ -222,7 +222,7 @@ class BzrDir(object):
             if not require_stacking and repository_policy._require_stacking:
                 require_stacking = True
                 result._format.require_stacking()
-            if is_new_repo and not require_stacking:
+            if is_new_repo and not require_stacking and revision_id is not None:
                 fetch_spec = graph.PendingAncestryResult(
                     [revision_id], local_repo)
                 result_repo.fetch(local_repo, fetch_spec=fetch_spec)
