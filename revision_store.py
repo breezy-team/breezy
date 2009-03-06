@@ -109,31 +109,28 @@ class AbstractRevisionStore(object):
         # NOTE: This is bzrlib.repository._install_revision refactored to
         # to provide more flexibility in how previous revisions are cached,
         # data is feed in, etc.
+
+        # Get the non-ghost parents and their inventories
         if inventories_provider is None:
             inventories_provider = self._default_inventories_provider
         present_parents, parent_invs = inventories_provider(rev.parent_ids)
-        if hasattr(inv, 'iter_non_root_entries'):
-            entries = inv.iter_non_root_entries()
-        else:
-            path_entries = inv.iter_entries()
-            # Backwards compatibility hack: skip the root id.
-            if not self.repo.supports_rich_root():
-                path, root = path_entries.next()
-                if root.revision != rev.revision_id:
-                    raise errors.IncompatibleRevision(repr(self.repo))
-            entries = iter([ie for path, ie in path_entries])
-        self._load_texts(rev.revision_id, entries, parent_invs, text_provider)
+
+        # Load the inventory
         try:
             rev.inventory_sha1 = self._add_inventory(rev.revision_id,
                 inv, present_parents, parent_invs)
         except errors.RevisionAlreadyPresent:
             pass
+
+        # Load the texts, signature and revision
+        entries = self._non_root_entries_iter(inv, rev.revision_id)
+        self._load_texts(rev.revision_id, entries, parent_invs, text_provider)
         if signature is not None:
             self.repo.add_signature_text(rev.revision_id, signature)
         self._add_revision(rev, inv)
 
     def chk_load(self, rev, basis_inv, inv_delta, signature,
-        text_provider, inventories_provider=None):
+            text_provider, inventories_provider=None):
         """Load a revision for a CHKInventory.
 
         :param rev: the Revision
@@ -149,9 +146,41 @@ class AbstractRevisionStore(object):
                 including an empty inventory for the missing revisions
             If None, a default implementation is provided.
         """
-        inv = basis_inv.create_by_apply_delta(inv_delta, rev.revision_id)
-        self.load(rev, inv, signature, text_provider, inventories_provider)
+        # Get the non-ghost parents and their inventories
+        if inventories_provider is None:
+            inventories_provider = self._default_inventories_provider
+        present_parents, parent_invs = inventories_provider(rev.parent_ids)
+
+        # Load the inventory
+        try:
+            rev_id = rev.revision_id
+            rev.inventory_sha1, inv = self._add_inventory_by_delta(
+                rev_id, basis_inv, inv_delta, present_parents, parent_invs)
+        except errors.RevisionAlreadyPresent:
+            pass
+
+        # Load the texts, signature and revision
+        fileids_needing_texts = [id for _, n, id, ie in inv_delta
+            if n is not None and ie.kind == 'file']
+        self._load_texts_for_file_ids(rev_id, fileids_needing_texts,
+            parent_invs, text_provider)
+        if signature is not None:
+            self.repo.add_signature_text(rev_id, signature)
+        self._add_revision(rev, inv)
         return inv
+
+    def _non_root_entries_iter(self, inv, revision_id):
+        if hasattr(inv, 'iter_non_root_entries'):
+            entries = inv.iter_non_root_entries()
+        else:
+            path_entries = inv.iter_entries()
+            # Backwards compatibility hack: skip the root id.
+            if not self.repo.supports_rich_root():
+                path, root = path_entries.next()
+                if root.revision != revision_id:
+                    raise errors.IncompatibleRevision(repr(self.repo))
+            entries = iter([ie for path, ie in path_entries])
+        return entries
 
     def _load_texts(self, revision_id, entries, parent_invs, text_provider):
         """Load texts to a repository for inventory entries.
@@ -186,6 +215,29 @@ class AbstractRevisionStore(object):
                 revision_id, parents)
         else:
             return self.repo.add_inventory(revision_id, inv, parents)
+
+    def _add_inventory_by_delta(self, revision_id, basis_inv, inv_delta,
+        parents, parent_invs):
+        """Add the inventory to the repository as revision_id.
+        
+        :param basis_inv: the basis CHKInventory
+        :param inv_delta: the inventory delta
+        :param parents: The revision ids of the parents that revision_id
+                        is known to have and are in the repository already.
+        :param parent_invs: the parent inventories
+
+        :returns: (validator, inv) where validator is the the validator
+          (which is a sha1 digest, though what is sha'd is repository format
+          specific) of the serialized inventory;
+          inv is the generated inventory
+        """
+        if len(parents):
+            validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
+                inv_delta, revision_id, parents)
+        else:
+            new_inv = basis_inv.create_by_apply_delta(inv_delta, revision_id)
+            validator = self.repo.add_inventory(revision_id, new_inv, parents)
+        return validator, new_inv
 
     def _add_revision(self, rev, inv):
         """Add a revision and its inventory to a repository.
@@ -266,6 +318,7 @@ class RevisionStore2(AbstractRevisionStore):
             text_keys[(ie.file_id, ie.revision)] = ie
         text_parent_map = self.repo.texts.get_parent_map(text_keys)
         missing_texts = set(text_keys) - set(text_parent_map)
+        # TODO: reuse _load_texts_from_file_ids() for the rest of this routine
         # Add the texts that are not already present
         for text_key in missing_texts:
             ie = text_keys[text_key]
@@ -278,6 +331,29 @@ class RevisionStore2(AbstractRevisionStore):
                     continue
                 text_parents.append((ie.file_id, parent_id))
             lines = text_provider(ie.file_id)
+            self.repo.texts.add_lines(text_key, text_parents, lines)
+
+    def _load_texts_for_file_ids(self, revision_id, file_ids, parent_invs,
+        text_provider):
+        """Load texts to a repository for file_ids.
+        
+        :param revision_id: the revision identifier
+        :param file_ids: iterator over the file_ids
+        :param parent_invs: the parent inventories
+        :param text_provider: a callable expecting a file_id parameter
+            that returns the text for that file-id
+        """
+        for file_id in file_ids:
+            text_parents = []
+            for parent_inv in parent_invs:
+                if file_id not in parent_inv:
+                    continue
+                parent_id = parent_inv[file_id].revision
+                if parent_id in text_parents:
+                    continue
+                text_parents.append((file_id, parent_id))
+            lines = text_provider(file_id)
+            text_key = (file_id, revision_id)
             self.repo.texts.add_lines(text_key, text_parents, lines)
 
     def get_file_lines(self, revision_id, file_id):
