@@ -2041,14 +2041,22 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             hook(self, rev_history)
         self._cache_revision_history(rev_history)
 
-    def get_parent(self):
+    def _get_parent_location(self):
+        medium = self._client._medium
+        if medium._is_remote_before((1, 13)):
+            return self._vfs_get_parent_location()
+        try:
+            response = self._call('Branch.get_parent',
+                self._remote_path())
+        except errors.UnknownSmartMethod:
+            return self._vfs_get_parent_location()
+        if not response:
+            return None
+        return response
+
+    def _vfs_get_parent_location(self):
         self._ensure_real()
         return self._real_branch.get_parent()
-
-    def _get_parent_location(self):
-        # Used by tests, when checking normalisation of given vs stored paths.
-        self._ensure_real()
-        return self._real_branch._get_parent_location()
 
     def set_parent(self, url):
         self._ensure_real()

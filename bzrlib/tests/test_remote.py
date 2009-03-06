@@ -704,6 +704,56 @@ class RemoteBranchTestCase(tests.TestCase):
         return RemoteBranch(bzrdir, repo, _client=client)
 
 
+class TestBranchGetParent(RemoteBranchTestCase):
+
+    def test_no_parent(self):
+        # in an empty branch we decode the response properly
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_parent', ('quack/',),
+            'success', (''))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_parent()
+        client.finished_test()
+        self.assertEqual(None, result)
+
+    def test_parent_relative(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('kwaak/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_parent', ('kwaak/',),
+            'success', ('../foo/'))
+        transport.mkdir('kwaak')
+        transport = transport.clone('kwaak')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_parent()
+        self.assertEqual(transport.clone('../foo').base, result)
+
+    def test_parent_absolute(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('kwaak/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.get_parent', ('kwaak/',),
+            'success', ('http://foo/'))
+        transport.mkdir('kwaak')
+        transport = transport.clone('kwaak')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.get_parent()
+        self.assertEqual('http://foo/', result)
+
+
 class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
     def test_empty_branch(self):

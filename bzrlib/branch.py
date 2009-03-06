@@ -768,7 +768,20 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        raise NotImplementedError(self.get_parent)
+        parent = self._get_parent_location()
+        if parent is None:
+            return parent
+        # This is an old-format absolute path to a local branch
+        # turn it into a url
+        if parent.startswith('/'):
+            parent = urlutils.local_path_to_url(parent.decode('utf8'))
+        try:
+            return urlutils.join(self.base[:-1], parent)
+        except errors.InvalidURLJoin, e:
+            raise errors.InaccessibleParent(parent, self.base)
+
+    def _get_parent_location(self):
+        raise NotImplementedError(self._get_parent_location)
 
     def _set_config_location(self, name, url, config=None,
                              make_relative=False):
@@ -2081,20 +2094,6 @@ class BzrBranch(Branch):
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
-
-    def get_parent(self):
-        """See Branch.get_parent."""
-        parent = self._get_parent_location()
-        if parent is None:
-            return parent
-        # This is an old-format absolute path to a local branch
-        # turn it into a url
-        if parent.startswith('/'):
-            parent = urlutils.local_path_to_url(parent.decode('utf8'))
-        try:
-            return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin, e:
-            raise errors.InaccessibleParent(parent, self.base)
 
     def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.base)
