@@ -55,8 +55,11 @@ class SmartServerRequestBzrDir(SmartServerRequest):
 
     def do(self, path, *args):
         """Open a BzrDir at path, and return self.do_bzrdir_request(*args)."""
-        self._bzrdir = BzrDir.open_from_transport(
-            self.transport_from_client_path(path))
+        try:
+            self._bzrdir = BzrDir.open_from_transport(
+                self.transport_from_client_path(path))
+        except errors.NotBranchError:
+            return FailedSmartServerResponse(('nobranch', ))
         return self.do_bzrdir_request(*args)
 
     def _boolean_to_yes_no(self, a_boolean):
@@ -298,21 +301,30 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         return SuccessfulSmartServerResponse(('ok', ))
 
 
-class SmartServerRequestOpenBranch(SmartServerRequest):
+class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
 
-    def do(self, path):
-        """try to open a branch at path and return ok/nobranch.
-
-        If a bzrdir is not present, an exception is propogated
-        rather than 'no branch' because these are different conditions.
-        """
-        bzrdir = BzrDir.open_from_transport(
-            self.transport_from_client_path(path))
+    def do_bzrdir_request(self):
+        """open a branch at path and return the branch reference or branch."""
         try:
-            reference_url = bzrdir.get_branch_reference()
+            reference_url = self._bzrdir.get_branch_reference()
             if reference_url is None:
                 return SuccessfulSmartServerResponse(('ok', ''))
             else:
                 return SuccessfulSmartServerResponse(('ok', reference_url))
+        except errors.NotBranchError:
+            return FailedSmartServerResponse(('nobranch', ))
+
+
+class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self):
+        """open a branch at path and return the reference or format."""
+        try:
+            reference_url = self._bzrdir.get_branch_reference()
+            if reference_url is None:
+                format = self._bzrdir.open_branch()._format.network_name()
+                return SuccessfulSmartServerResponse(('branch', format))
+            else:
+                return SuccessfulSmartServerResponse(('ref', reference_url))
         except errors.NotBranchError:
             return FailedSmartServerResponse(('nobranch', ))

@@ -226,17 +226,30 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
 
     def get_branch_reference(self):
         """See BzrDir.get_branch_reference()."""
-        path = self._path_for_remote_call(self._client)
-        response = self._call('BzrDir.open_branch', path)
-        if response[0] == 'ok':
-            if response[1] == '':
-                # branch at this location.
-                return None
-            else:
-                # a branch reference, use the existing BranchReference logic.
-                return response[1]
+        response = self._get_branch_reference()
+        if response[0] == 'ref':
+            return response[1]
         else:
+            return None
+
+    def _get_branch_reference(self):
+        path = self._path_for_remote_call(self._client)
+        medium = self._client._medium
+        if not medium._is_remote_before((1, 13)):
+            try:
+                response = self._call('BzrDir.open_branchV2', path)
+                if response[0] not in ('ref', 'branch'):
+                    raise errors.UnexpectedSmartServerResponse(response)
+                return response
+            except errors.UnknownSmartMethod:
+                pass
+        response = self._call('BzrDir.open_branch', path)
+        if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
+        if response[1] != '':
+            return ('ref', response[1])
+        else:
+            return ('branch', '')
 
     def _get_tree_branch(self):
         """See BzrDir._get_tree_branch()."""
@@ -250,14 +263,16 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             result = self._next_open_branch_result
             self._next_open_branch_result = None
             return result
-        reference_url = self.get_branch_reference()
-        if reference_url is None:
-            # branch at this location.
-            return RemoteBranch(self, self.find_repository())
-        else:
+        response = self._get_branch_reference()
+        if response[0] == 'ref':
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
             return format.open(self, _found=True, location=reference_url)
+        branch_format_name = response[1]
+        if not branch_format_name:
+            branch_format_name = None
+        format = RemoteBranchFormat(network_name=branch_format_name)
+        return RemoteBranch(self, self.find_repository(), format=format)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
@@ -1562,15 +1577,21 @@ class RemoteBranchLockableFiles(LockableFiles):
 
 class RemoteBranchFormat(branch.BranchFormat):
 
-    def __init__(self):
+    def __init__(self, network_name=None):
         super(RemoteBranchFormat, self).__init__()
         self._matchingbzrdir = RemoteBzrDirFormat()
         self._matchingbzrdir.set_branch_format(self)
         self._custom_format = None
+        self._network_name = network_name
 
     def __eq__(self, other):
         return (isinstance(other, RemoteBranchFormat) and
             self.__dict__ == other.__dict__)
+
+    def _ensure_real(self):
+        if self._custom_format is None:
+            self._custom_format = branch.network_format_registry.get(
+                self._network_name)
 
     def get_format_description(self):
         return 'Remote BZR Branch'
@@ -1625,8 +1646,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         # Turn the response into a RemoteRepository object.
-        format = RemoteBranchFormat()
-        format._network_name = response[1]
+        format = RemoteBranchFormat(network_name=response[1])
         repo_format = response_tuple_to_repo_format(response[3:])
         if response[2] == '':
             repo_bzrdir = a_bzrdir
@@ -1643,10 +1663,15 @@ class RemoteBranchFormat(branch.BranchFormat):
         remote_branch._last_revision_info_cache = 0, NULL_REVISION
         return remote_branch
 
+    def make_tags(self, branch):
+        self._ensure_real()
+        return self._custom_format.make_tags(branch)
+
     def supports_tags(self):
         # Remote branches might support tags, but we won't know until we
         # access the real remote branch.
-        return True
+        self._ensure_real()
+        return self._custom_format.supports_tags()
 
 
 class RemoteBranch(branch.Branch, _RpcHelper):
@@ -1711,13 +1736,14 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             if real_branch is not None:
                 self._format._network_name = \
                     self._real_branch._format.network_name()
-            #else:
-            #    # XXX: Need to get this from BzrDir.open_branch's return value.
-            #    self._ensure_real()
-            #    self._format._network_name = \
-            #        self._real_branch._format.network_name()
         else:
             self._format = format
+        if not self._format._network_name:
+            # Did not get from open_branchV2 - old server.
+            self._ensure_real()
+            self._format._network_name = \
+                self._real_branch._format.network_name()
+        self.tags = self._format.make_tags(self)
         # The base class init is not called, so we duplicate this:
         hooks = branch.Branch.hooks['open']
         for hook in hooks:
@@ -1848,6 +1874,20 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         return response[1]
 
+    def _vfs_get_tags_bytes(self):
+        self._ensure_real()
+        return self._real_branch._get_tags_bytes()
+
+    def _get_tags_bytes(self):
+        medium = self._client._medium
+        if medium._is_remote_before((1, 13)):
+            return self._vfs_get_tags_bytes()
+        try:
+            response = self._call('Branch.get_tags_bytes', self._remote_path())
+        except errors.UnknownSmartMethod:
+            return self._vfs_get_tags_bytes()
+        return response[0]
+
     def lock_read(self):
         self.repository.lock_read()
         if not self._lock_mode:
@@ -1906,6 +1946,10 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             # Re-lock the repository too.
             self.repository.lock_write(self._repo_lock_token)
         return self._lock_token or None
+
+    def _set_tags_bytes(self, bytes):
+        self._ensure_real()
+        return self._real_branch._set_tags_bytes(bytes)
 
     def _unlock(self, branch_token, repo_token):
         err_context = {'token': str((branch_token, repo_token))}
@@ -2149,11 +2193,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         self._clear_cached_state_of_remote_branch_only()
         self.set_revision_history(self._lefthand_history(revision_id,
             last_rev=last_rev,other_branch=other_branch))
-
-    @property
-    def tags(self):
-        self._ensure_real()
-        return self._real_branch.tags
 
     def set_push_location(self, location):
         self._ensure_real()
