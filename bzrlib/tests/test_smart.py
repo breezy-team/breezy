@@ -177,7 +177,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         expected = SuccessfulSmartServerResponse(
             (local_result.network_name(),
             local_result.repository_format.network_name(),
-            ('direct', local_result.get_branch_format().network_name())))
+            ('branch', local_result.get_branch_format().network_name())))
         self.assertEqual(expected, request.execute('', 'False'))
 
     def test_cloning_metadir_reference(self):
@@ -196,7 +196,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         expected = SuccessfulSmartServerResponse(
             (local_result.network_name(),
             local_result.repository_format.network_name(),
-            ('reference', reference_url)))
+            ('ref', reference_url)))
         self.assertEqual(expected, request.execute('', 'False'))
 
 
@@ -361,6 +361,36 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         reference_url = BranchReferenceFormat().get_reference(checkout.bzrdir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(SmartServerResponse(('ok', reference_url)),
+            request.execute('reference'))
+
+
+class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
+
+    def test_no_branch(self):
+        """When there is no branch, ('nobranch', ) is returned."""
+        backing = self.get_transport()
+        self.make_bzrdir('.')
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        self.assertEqual(SmartServerResponse(('nobranch', )),
+            request.execute(''))
+
+    def test_branch(self):
+        """When there is a branch, 'ok' is returned."""
+        backing = self.get_transport()
+        expected = self.make_branch('.')._format.network_name()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        self.assertEqual(SuccessfulSmartServerResponse(('branch', expected)),
+            request.execute(''))
+
+    def test_branch_reference(self):
+        """When there is a branch reference, the reference URL is returned."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('reference',lightweight=True)
+        reference_url = BranchReferenceFormat().get_reference(checkout.bzrdir)
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
+        self.assertEqual(SuccessfulSmartServerResponse(('ref', reference_url)),
             request.execute('reference'))
 
 
@@ -694,6 +724,19 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
         self.assertEquals(
             SuccessfulSmartServerResponse(("../foo",)),
             response)
+
+
+class TestSmartServerBranchRequestGetTagsBytes(tests.TestCaseWithMemoryTransport):
+# Only called when the branch format and tags match [yay factory
+# methods] so only need to test straight forward cases.
+
+    def test_get_bytes(self):
+        base_branch = self.make_branch('base')
+        request = smart.branch.SmartServerBranchGetTagsBytes(
+            self.get_transport())
+        response = request.execute('base')
+        self.assertEquals(
+            SuccessfulSmartServerResponse(('',)), response)
 
 
 class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransport):
@@ -1209,6 +1252,9 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Branch.get_parent'),
             smart.branch.SmartServerBranchGetParent)
         self.assertEqual(
+            smart.request.request_handlers.get('Branch.get_tags_bytes'),
+            smart.branch.SmartServerBranchGetTagsBytes)
+        self.assertEqual(
             smart.request.request_handlers.get('Branch.lock_write'),
             smart.branch.SmartServerBranchRequestLockWrite)
         self.assertEqual(
@@ -1241,6 +1287,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)
+        self.assertEqual(
+            smart.request.request_handlers.get('BzrDir.open_branchV2'),
+            smart.bzrdir.SmartServerRequestOpenBranchV2)
         self.assertEqual(
             smart.request.request_handlers.get('PackRepository.autopack'),
             smart.packrepository.SmartServerPackRepositoryAutopack)

@@ -776,6 +776,11 @@ class TestCase(unittest.TestCase):
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
 
+    def debug(self):
+        # debug a frame up.
+        import pdb
+        pdb.Pdb().set_trace(sys._getframe().f_back)
+
     def exc_info(self):
         absent_attr = object()
         exc_info = getattr(self, '_exc_info', absent_attr)

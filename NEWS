@@ -163,6 +163,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Branching from a non-stacked branch on a smart protocol is now
+      free of virtual file system methods.
+      (Robert Collins, Andrew Bennetts)
+
     * Branch and Repository creation on a bzr+ssh://server are now done
       via RPC calls rather than VFS calls, reducing round trips for
       pushing new branches substantially. (Robert Collins)
