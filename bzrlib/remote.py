@@ -2046,13 +2046,15 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         if medium._is_remote_before((1, 13)):
             return self._vfs_get_parent_location()
         try:
-            response = self._call('Branch.get_parent',
-                self._remote_path())
+            response = self._call('Branch.get_parent', self._remote_path())
         except errors.UnknownSmartMethod:
             return self._vfs_get_parent_location()
-        if not response:
+        if len(response) != 1:
+            raise UnexpectedSmartServerResponse(response)
+        parent_location = response[0]
+        if parent_location == '':
             return None
-        return response
+        return parent_location
 
     def _vfs_get_parent_location(self):
         self._ensure_real()
