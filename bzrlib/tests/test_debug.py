@@ -21,6 +21,7 @@ import os
 
 
 from bzrlib import debug
+from bzrlib.config import config_filename, ensure_config_dir_exists
 from bzrlib.transport import get_transport
 from bzrlib.tests import TestCaseInTempDir
 
@@ -28,16 +29,13 @@ from bzrlib.tests import TestCaseInTempDir
 class TestDebugFlags(TestCaseInTempDir):
 
     def test_set_debug_flags_from_config(self):
-        # TestCase already makes a dummy HOME so we don't have to
-        t = get_transport(os.environ['HOME'])
-
-        # guard against being run from the wrong directory
-        self.assertFalse(t.has(".bazaar"))
-
-        t.mkdir(".bazaar")
-
         # test both combinations because configobject automatically splits up
         # comma-separated lists
+        if os.path.isfile(config_filename()):
+            # Something is wrong in environment,
+            # we risk overwriting users config
+            self.assert_(config_filename() + "exists, abort")
+
         self.try_debug_flags(
             """debug_flags = hpss, error\n""",
             set(['hpss', 'error']))
@@ -46,10 +44,15 @@ class TestDebugFlags(TestCaseInTempDir):
             """debug_flags = hpss\n""",
             set(['hpss']))
 
-    def try_debug_flags(self, conf_file, expected_flags):
-        t = get_transport(os.environ['HOME'])
-        t.put_bytes(".bazaar/bazaar.conf", conf_file)
+    def try_debug_flags(self, conf_bytes, expected_flags):
+        ensure_config_dir_exists()
+        f = open(config_filename(), 'wb')
+        try:
+            f.write(conf_bytes)
+        finally:
+            f.close()
         saved_debug = set(debug.debug_flags)
+        debug.debug_flags.clear()
         try:
             debug.set_debug_flags_from_config()
             self.assertEqual(expected_flags,
