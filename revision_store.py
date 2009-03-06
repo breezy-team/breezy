@@ -112,8 +112,17 @@ class AbstractRevisionStore(object):
         if inventories_provider is None:
             inventories_provider = self._default_inventories_provider
         present_parents, parent_invs = inventories_provider(rev.parent_ids)
-        self._load_texts(rev.revision_id, inv.iter_entries(), parent_invs,
-            text_provider)
+        if hasattr(inv, 'iter_non_root_entries'):
+            entries = inv.iter_non_root_entries()
+        else:
+            path_entries = inv.iter_entries()
+            # Backwards compatibility hack: skip the root id.
+            if not self.repo.supports_rich_root():
+                path, root = path_entries.next()
+                if root.revision != rev.revision_id:
+                    raise errors.IncompatibleRevision(repr(self.repo))
+            entries = iter([ie for path, ie in path_entries])
+        self._load_texts(rev.revision_id, entries, parent_invs, text_provider)
         try:
             rev.inventory_sha1 = self._add_inventory(rev.revision_id,
                 inv, present_parents, parent_invs)
@@ -208,14 +217,9 @@ class RevisionStore1(AbstractRevisionStore):
 
     def _load_texts(self, revision_id, entries, parent_invs, text_provider):
         """See RevisionStore._load_texts()."""
-        # Backwards compatibility hack: skip the root id.
-        if not self.repo.supports_rich_root():
-            path, root = entries.next()
-            if root.revision != revision_id:
-                raise errors.IncompatibleRevision(repr(self.repo))
         # Add the texts that are not already present
         tx = self.repo.get_transaction()
-        for path, ie in entries:
+        for ie in entries:
             # This test is *really* slow: over 50% of import time
             #w = self.repo.weave_store.get_weave_or_empty(ie.file_id, tx)
             #if ie.revision in w:
@@ -257,13 +261,8 @@ class RevisionStore2(AbstractRevisionStore):
 
     def _load_texts(self, revision_id, entries, parent_invs, text_provider):
         """See RevisionStore._load_texts()."""
-        # Backwards compatibility hack: skip the root id.
-        if not self.repo.supports_rich_root():
-            path, root = entries.next()
-            if root.revision != revision_id:
-                raise errors.IncompatibleRevision(repr(self.repo))
         text_keys = {}
-        for path, ie in entries:
+        for ie in entries:
             text_keys[(ie.file_id, ie.revision)] = ie
         text_parent_map = self.repo.texts.get_parent_map(text_keys)
         missing_texts = set(text_keys) - set(text_parent_map)
