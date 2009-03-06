@@ -684,7 +684,7 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
         request = smart.branch.SmartServerBranchGetParent(self.get_transport())
         response = request.execute('base')
         self.assertEquals(
-            SuccessfulSmartServerResponse(('')), response)
+            SuccessfulSmartServerResponse(('',)), response)
 
     def test_get_parent_something(self):
         base_branch = self.make_branch('base')
@@ -692,7 +692,7 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
         request = smart.branch.SmartServerBranchGetParent(self.get_transport())
         response = request.execute('base')
         self.assertEquals(
-            SuccessfulSmartServerResponse(("../foo")),
+            SuccessfulSmartServerResponse(("../foo",)),
             response)
 
 

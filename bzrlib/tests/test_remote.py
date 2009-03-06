@@ -715,7 +715,7 @@ class TestBranchGetParent(RemoteBranchTestCase):
             'error', ('NotStacked',))
         client.add_expected_call(
             'Branch.get_parent', ('quack/',),
-            'success', (''))
+            'success', ('',))
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
@@ -731,7 +731,7 @@ class TestBranchGetParent(RemoteBranchTestCase):
             'error', ('NotStacked',))
         client.add_expected_call(
             'Branch.get_parent', ('kwaak/',),
-            'success', ('../foo/'))
+            'success', ('../foo/',))
         transport.mkdir('kwaak')
         transport = transport.clone('kwaak')
         branch = self.make_remote_branch(transport, client)
@@ -746,7 +746,7 @@ class TestBranchGetParent(RemoteBranchTestCase):
             'error', ('NotStacked',))
         client.add_expected_call(
             'Branch.get_parent', ('kwaak/',),
-            'success', ('http://foo/'))
+            'success', ('http://foo/',))
         transport.mkdir('kwaak')
         transport = transport.clone('kwaak')
         branch = self.make_remote_branch(transport, client)
