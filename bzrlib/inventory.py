@@ -1502,7 +1502,7 @@ class CHKInventory(CommonInventory):
                 search_key_func=search_key_func)
             result.parent_id_basename_to_file_id._ensure_root()
             self.parent_id_basename_to_file_id._ensure_root()
-            result_p_id_root = self.parent_id_basename_to_file_id._root_node
+            result_p_id_root = result.parent_id_basename_to_file_id._root_node
             p_id_root = self.parent_id_basename_to_file_id._root_node
             result_p_id_root.set_maximum_size(p_id_root.maximum_size)
             result_p_id_root._key_width = p_id_root._key_width
