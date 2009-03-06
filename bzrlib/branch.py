@@ -768,7 +768,20 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        raise NotImplementedError(self.get_parent)
+        parent = self._get_parent_location()
+        if parent is None:
+            return parent
+        # This is an old-format absolute path to a local branch
+        # turn it into a url
+        if parent.startswith('/'):
+            parent = urlutils.local_path_to_url(parent.decode('utf8'))
+        try:
+            return urlutils.join(self.base[:-1], parent)
+        except errors.InvalidURLJoin, e:
+            raise errors.InaccessibleParent(parent, self.base)
+
+    def _get_parent_location(self):
+        raise NotImplementedError(self._get_parent_location)
 
     def _set_config_location(self, name, url, config=None,
                              make_relative=False):
@@ -1289,8 +1302,9 @@ class BranchFormat(object):
     def register_format(klass, format):
         """Register a metadir format."""
         klass._formats[format.get_format_string()] = format
-        # Metadir formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format)
+        # Metadir formats have a network name of their format string, and get
+        # registered as class factories.
+        network_format_registry.register(format.get_format_string(), format.__class__)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1744,7 +1758,7 @@ BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
-    _legacy_formats[0].network_name(), _legacy_formats[0])
+    _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
 class BzrBranch(Branch):
@@ -2080,20 +2094,6 @@ class BzrBranch(Branch):
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
-
-    def get_parent(self):
-        """See Branch.get_parent."""
-        parent = self._get_parent_location()
-        if parent is None:
-            return parent
-        # This is an old-format absolute path to a local branch
-        # turn it into a url
-        if parent.startswith('/'):
-            parent = urlutils.local_path_to_url(parent.decode('utf8'))
-        try:
-            return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin, e:
-            raise errors.InaccessibleParent(parent, self.base)
 
     def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.base)

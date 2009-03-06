@@ -158,8 +158,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if len(branch_info) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         branch_ref, branch_name = branch_info
-        # ICK: perhaps change these registries to be factories only?
-        format = bzrdir.network_format_registry.get(control_name).__class__()
+        format = bzrdir.network_format_registry.get(control_name)
         if repo_name:
             format.repository_format = repository.network_format_registry.get(
                 repo_name)
@@ -2042,12 +2041,22 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             hook(self, rev_history)
         self._cache_revision_history(rev_history)
 
-    def get_parent(self):
-        self._ensure_real()
-        return self._real_branch.get_parent()
-
     def _get_parent_location(self):
-        # Used by tests, when checking normalisation of given vs stored paths.
+        medium = self._client._medium
+        if medium._is_remote_before((1, 13)):
+            return self._vfs_get_parent_location()
+        try:
+            response = self._call('Branch.get_parent', self._remote_path())
+        except errors.UnknownSmartMethod:
+            return self._vfs_get_parent_location()
+        if len(response) != 1:
+            raise errors.UnexpectedSmartServerResponse(response)
+        parent_location = response[0]
+        if parent_location == '':
+            return None
+        return parent_location
+
+    def _vfs_get_parent_location(self):
         self._ensure_real()
         return self._real_branch._get_parent_location()
 

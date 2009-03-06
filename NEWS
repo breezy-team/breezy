@@ -41,6 +41,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr add`` no longer prints ``add completed`` on success. Failure
+      still prints an error message. (Robert Collins)
+
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
       generation of a working tree in the new branch.
       (Daniel Watkins, John Klinger, #273993)
