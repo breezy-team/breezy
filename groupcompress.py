@@ -232,6 +232,7 @@ class GroupCompressBlock(object):
                 assert c == 'f'
             elif entry.type == 'delta':
                 assert c == 'd'
+            start = entry.start
         content_len, len_len = decode_base128_int(
                                 self._content[start + 1:start + 11])
         assert entry.length == content_len + 1 + len_len
