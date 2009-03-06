@@ -376,7 +376,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
         control_name = reference_bzrdir_format.network_name()
         client.add_expected_call(
             'BzrDir.cloning_metadir', ('quack/', 'False'),
-            'success', (control_name, '', ('direct', ''))),
+            'success', (control_name, '', ('branch', ''))),
         a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.cloning_metadir()

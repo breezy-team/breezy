@@ -580,11 +580,8 @@ class Branch(object):
 
         :seealso: Branch._get_tags_bytes.
         """
-        self.lock_write()
-        try:
-            self._transport.put_bytes('tags', bytes)
-        finally:
-            self.unlock()
+        return _run_with_write_locked_target(self, self._transport.put_bytes,
+            'tags', bytes)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.

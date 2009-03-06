@@ -177,7 +177,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         expected = SuccessfulSmartServerResponse(
             (local_result.network_name(),
             local_result.repository_format.network_name(),
-            ('direct', local_result.get_branch_format().network_name())))
+            ('branch', local_result.get_branch_format().network_name())))
         self.assertEqual(expected, request.execute('', 'False'))
 
     def test_cloning_metadir_reference(self):
@@ -196,7 +196,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         expected = SuccessfulSmartServerResponse(
             (local_result.network_name(),
             local_result.repository_format.network_name(),
-            ('reference', reference_url)))
+            ('ref', reference_url)))
         self.assertEqual(expected, request.execute('', 'False'))
 
 

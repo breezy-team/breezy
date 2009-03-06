@@ -110,14 +110,14 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             if branch_ref is not None:
                 # If there's a branch reference, the client will have to resolve
                 # the branch reference to figure out the cloning metadir
-                branch_name = ('reference', branch_ref)
+                branch_name = ('ref', branch_ref)
             else:
-                branch_name = (
-                    'direct', control_format.get_branch_format().network_name())
+                branch_name = ('branch',
+                    control_format.get_branch_format().network_name())
             repository_name = control_format.repository_format.network_name()
         else:
             # Only MetaDir has delegated formats today.
-            branch_name = ''
+            branch_name = ('branch', '')
             repository_name = ''
         return SuccessfulSmartServerResponse((control_name, repository_name,
             branch_name))
