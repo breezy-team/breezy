@@ -677,6 +677,25 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.assertEqual('child-1', self.tree.branch.last_revision())
 
 
+class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
+
+    def test_get_parent_none(self):
+        base_branch = self.make_branch('base')
+        request = smart.branch.SmartServerBranchGetParent(self.get_transport())
+        response = request.execute('base')
+        self.assertEquals(
+            SuccessfulSmartServerResponse(('',)), response)
+
+    def test_get_parent_something(self):
+        base_branch = self.make_branch('base')
+        base_branch.set_parent(self.get_url('foo'))
+        request = smart.branch.SmartServerBranchGetParent(self.get_transport())
+        response = request.execute('base')
+        self.assertEquals(
+            SuccessfulSmartServerResponse(("../foo",)),
+            response)
+
+
 class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransport):
 
     def test_get_stacked_on_url(self):
@@ -1225,6 +1244,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Branch.get_config_file'),
             smart.branch.SmartServerBranchGetConfigFile)
+        self.assertEqual(
+            smart.request.request_handlers.get('Branch.get_parent'),
+            smart.branch.SmartServerBranchGetParent)
         self.assertEqual(
             smart.request.request_handlers.get('Branch.lock_write'),
             smart.branch.SmartServerBranchRequestLockWrite)

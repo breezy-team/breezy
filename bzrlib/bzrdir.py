@@ -1845,7 +1845,7 @@ class BzrDirFormat(object):
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
         # bzr native formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format)
+        network_format_registry.register(format.get_format_string(), format.__class__)
 
     @classmethod
     def register_control_format(klass, format):

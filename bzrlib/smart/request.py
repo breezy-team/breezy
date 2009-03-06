@@ -390,6 +390,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
 request_handlers.register_lazy(
+    'Branch.get_parent', 'bzrlib.smart.branch', 'SmartServerBranchGetParent')
+request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')

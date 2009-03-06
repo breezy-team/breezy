@@ -1079,6 +1079,14 @@ Debug flags may have effects other than just emitting trace messages.
 
 Run ``bzr help global-options`` to see them all.
 
+These flags may also be set as a comma-separated list in the
+``debug_flags`` option in e.g.  ``~/.bazaar/bazaar.conf``.  (Note that it
+must be in this global file, not in the branch or location configuration,
+because it's currently only loaded at startup time.)  For instance you may
+want to always record hpss traces and to see full error tracebacks::
+
+    debug_flags = hpss, error
+
 
 Jargon
 ======

@@ -92,6 +92,14 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse( ('ok', ), content)
 
 
+class SmartServerBranchGetParent(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the parent of branch."""
+        parent = branch._get_parent_location() or ''
+        return SuccessfulSmartServerResponse((parent,))
+
+
 class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):

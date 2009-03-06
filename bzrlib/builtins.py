@@ -585,8 +585,6 @@ class cmd_add(Command):
         finally:
             if base_tree is not None:
                 base_tree.unlock()
-        if not is_quiet() and len(added) > 0:
-            self.outf.write('add completed\n')
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
