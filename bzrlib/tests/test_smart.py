@@ -974,6 +974,45 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithMemoryTranspor
             request.execute('', 'missingrevision'))
 
 
+class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
+
+    def make_two_commit_repo(self):
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
+        tree.unlock()
+        repo = tree.branch.repository
+        return repo, r1, r2
+
+    def test_ancestry_of(self):
+        """The search argument may be a 'ancestry-of' some heads'."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetStream(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        fetch_spec = ['ancestry-of', r2]
+        lines = '\n'.join(fetch_spec)
+        request.execute('', repo._format.network_name())
+        response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+    def test_search(self):
+        """The search argument may be a 'search' of some explicit keys."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetStream(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        fetch_spec = ['search', '%s %s' % (r1, r2), 'null:', '2']
+        lines = '\n'.join(fetch_spec)
+        request.execute('', repo._format.network_name())
+        response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+
 class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
 
     def test_missing_revision(self):

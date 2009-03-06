@@ -1077,10 +1077,14 @@ class RemoteRepository(_RpcHelper):
         return repository.InterRepository.get(
             other, self).search_missing_revision_ids(revision_id, find_ghosts)
 
-    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False):
+    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
+        if fetch_spec is not None and revision_id is not None:
+            raise AssertionError(
+                "fetch_spec and revision_id are mutually exclusive.")
         # Not delegated to _real_repository so that InterRepository.get has a
         # chance to find an InterRepository specialised for RemoteRepository.
-        if self.has_same_location(source):
+        if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
@@ -1089,7 +1093,8 @@ class RemoteRepository(_RpcHelper):
             return 0, []
         inter = repository.InterRepository.get(source, self)
         try:
-            return inter.fetch(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts)
+            return inter.fetch(revision_id=revision_id, pb=pb,
+                    find_ghosts=find_ghosts, fetch_spec=fetch_spec)
         except NotImplementedError:
             raise errors.IncompatibleRepositories(source, self)
 
@@ -1450,6 +1455,15 @@ class RemoteRepository(_RpcHelper):
         count = str(recipe[2])
         return '\n'.join((start_keys, stop_keys, count))
 
+    def _serialise_search_result(self, search_result):
+        if isinstance(search_result, graph.PendingAncestryResult):
+            parts = ['ancestry-of']
+            parts.extend(search_result.heads)
+        else:
+            recipe = search_result.get_recipe()
+            parts = ['search', self._serialise_search_recipe(recipe)]
+        return '\n'.join(parts)
+
     def autopack(self):
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
@@ -1542,10 +1556,10 @@ class RemoteStreamSource(repository.StreamSource):
             return repository.StreamSource.get_stream(self, search)
         path = repo.bzrdir._path_for_remote_call(client)
         try:
-            recipe = repo._serialise_search_recipe(search._recipe)
+            search_bytes = repo._serialise_search_result(search)
             response = repo._call_with_body_bytes_expecting_body(
                 'Repository.get_stream',
-                (path, self.to_format.network_name()), recipe)
+                (path, self.to_format.network_name()), search_bytes)
             response_tuple, response_handler = response
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1,13))

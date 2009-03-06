@@ -149,6 +149,15 @@ IN DEVELOPMENT
 
     * Remove deprecated EmptyTree.  (Martin Pool)
 
+    * ``Repository.fetch`` now accepts an optional ``fetch_spec``
+      parameter.  A ``SearchResult`` or ``MiniSearchResult`` may be passed
+      to ``fetch_spec`` instead of a ``last_revision`` to specify exactly
+      which revisions to fetch. (Andrew Bennetts)
+
+    * ``RepositoryAcquisitionPolicy.acquire_repository`` now returns a
+      tuple of ``(repository, is_new_flag)``, rather than just the
+      repository.  (Andrew Bennetts)
+
     * Revision.get_apparent_author() is now deprecated, replaced by
       Revision.get_apparent_authors(), which returns a list. The former
       now returns the first item that would be returned from the second.

@@ -432,11 +432,10 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         """The default acquisition policy should create a standalone branch."""
         my_bzrdir = self.make_bzrdir('.')
         repo_policy = my_bzrdir.determine_repository_policy()
-        repo = repo_policy.acquire_repository()
+        repo, is_new = repo_policy.acquire_repository()
         self.assertEqual(repo.bzrdir.root_transport.base,
                          my_bzrdir.root_transport.base)
         self.assertFalse(repo.is_shared())
-
 
     def test_determine_stacking_policy(self):
         parent_bzrdir = self.make_bzrdir('.')

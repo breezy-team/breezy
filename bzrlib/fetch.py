@@ -70,8 +70,8 @@ class RepoFetcher(object):
     the logic in InterRepository.fetch().
     """
 
-    def __init__(self, to_repository, from_repository, last_revision=None, pb=None,
-        find_ghosts=True):
+    def __init__(self, to_repository, from_repository, last_revision=None,
+        pb=None, find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
         :param find_ghosts: If True search the entire history for ghosts.
@@ -89,6 +89,7 @@ class RepoFetcher(object):
         self.sink = to_repository._get_sink()
         # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
+        self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -176,6 +177,8 @@ class RepoFetcher(object):
 
         If no revisions need to be fetched, then this just returns None.
         """
+        if self._fetch_spec is not None:
+            return self._fetch_spec
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
