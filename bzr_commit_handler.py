@@ -242,6 +242,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _delete_item(self, path, inv):
         file_id = inv.path2id(path)
+        #print "**** deleting %s with file-id %s" % (path, file_id)
         ie = inv[file_id]
         self.record_delete(path, ie)
 
@@ -344,7 +345,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         self.inventory.rename(file_id, new_parent_id, new_basename)
         self.inventory[file_id].revision = self.revision_id
 
-    def _delete_item(self, path):
+    def _delete_item(self, path, inv):
         # NOTE: I'm retaining this method for now, instead of using the
         # one in the superclass, because it's taken quite a lot of tweaking
         # to cover all the edge cases seen in the wild. Long term, it can
@@ -352,18 +353,18 @@ class InventoryCommitHandler(GenericCommitHandler):
         # and handles all the various special cases ...
         fileid = self.bzr_file_id(path)
         dirname, basename = osutils.split(path)
-        if (fileid in self.inventory and
-            isinstance(self.inventory[fileid], inventory.InventoryDirectory)):
-            for child_path in self.inventory[fileid].children.keys():
-                self._delete_item(osutils.pathjoin(path, child_path))
+        if (fileid in inv and
+            isinstance(inv[fileid], inventory.InventoryDirectory)):
+            for child_path in inv[fileid].children.keys():
+                self._delete_item(osutils.pathjoin(path, child_path), inv)
         try:
             if self.inventory.id2path(fileid) == path:
-                del self.inventory[fileid]
+                del inv[fileid]
             else:
                 # already added by some other name?
                 if dirname in self.cache_mgr.file_ids:
                     parent_id = self.cache_mgr.file_ids[dirname]
-                    del self.inventory[parent_id].children[basename]
+                    del inv[parent_id].children[basename]
         except KeyError:
             self._warn_unless_in_merges(fileid, path)
         except errors.NoSuchId:
@@ -399,7 +400,7 @@ class InventoryCommitHandler(GenericCommitHandler):
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        self._delete_item(filecmd.path)
+        self._delete_item(filecmd.path, self.inventory)
 
     def copy_handler(self, filecmd):
         src_path = filecmd.src_path
@@ -427,6 +428,10 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         # the entries in a dict then build the actual delta at the end
         self._delta_entries_by_fileid = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
+            if self.parents:
+                old_path = ''
+            else:
+                old_path = None
             # Need to explicitly add the root entry for the first revision
             # and for non rich-root inventories
             root_id = inventory.ROOT_ID
@@ -436,7 +441,7 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
             # are about to become a part of.
             root_ie = inventory.InventoryDirectory(root_id, u'', None)
             root_ie.revision = self.revision_id
-            self._add_entry((None, '', root_id, root_ie))
+            self._add_entry((old_path, '', root_id, root_ie))
 
     def post_process_files(self):
         """Save the revision."""
