@@ -1497,7 +1497,7 @@ class SearchResult(object):
 
 class PendingAncestryResult(object):
     """A search result that will reconstruct the ancestry for some graph heads.
-    
+
     Unlike SearchResult, this doesn't hold the complete search result in
     memory, it just holds a description of how to generate it.
     """
