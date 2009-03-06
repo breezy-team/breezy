@@ -70,7 +70,7 @@ try:
         )
     repo_registry.register_lazy(
         'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.13)\n',
-        'bzrlib.plugins.groupcompres.repofmt',
+        'bzrlib.plugins.groupcompress.repofmt',
         'RepositoryFormatPackGCCHK16',
         )
     format_registry.register_metadir('gc-chk255',
