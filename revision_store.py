@@ -17,7 +17,7 @@
 """An abstraction of a repository providing just the bits importing needs."""
 
 
-from bzrlib import errors, knit, lru_cache, osutils
+from bzrlib import errors, inventory, knit, lru_cache, osutils
 from bzrlib import revision as _mod_revision
 
 
@@ -33,12 +33,47 @@ class AbstractRevisionStore(object):
         :param repository: the target repository
         """
         self.repo = repo
-        self.try_inv_deltas = getattr(self.repo._format, '_commit_inv_deltas',
-            False)
+        self._supports_chks = getattr(repo._format, 'supports_chks', False)
 
     def expects_rich_root(self):
         """Does this store expect inventories with rich roots?"""
         return self.repo.supports_rich_root()
+
+    def init_inventory(self, revision_id):
+        """Generate an inventory for a parentless revision."""
+        if self._supports_chks:
+            inv = self._init_chk_inventory(revision_id, inventory.ROOT_ID)
+        else:
+            inv = inventory.Inventory(revision_id=revision_id)
+            if self.expects_rich_root():
+                # The very first root needs to have the right revision
+                inv.root.revision = revision_id
+        return inv
+
+    def _init_chk_inventory(self, revision_id, root_id):
+        """Generate a CHKInventory for a parentless revision."""
+        from bzrlib import chk_map
+        # Get the creation parameters
+        chk_store = self.repo.chk_bytes
+        serializer = self.repo._format._serializer
+        search_key_name = serializer.search_key_name
+        maximum_size = serializer.maximum_size
+        parent_id_basename_index = serializer.parent_id_basename_index
+
+        # Maybe the rest of this ought to be part of the CHKInventory API?
+        inv = inventory.CHKInventory(search_key_name)
+        inv.revision_id = revision_id
+        inv.root_id = root_id
+        search_key_func = chk_map.search_key_registry.get(search_key_name)
+        inv.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
+        inv.id_to_entry._root_node.set_maximum_size(maximum_size)
+        if parent_id_basename_index:
+            inv.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+                None, search_key_func)
+            inv.parent_id_basename_to_file_id._root_node.set_maximum_size(
+                maximum_size)
+            inv.parent_id_basename_to_file_id._root_node._key_width = 2
+        return inv
 
     def get_inventory(self, revision_id):
         """Get a stored inventory."""
@@ -88,12 +123,12 @@ class AbstractRevisionStore(object):
             self.repo.add_signature_text(rev.revision_id, signature)
         self._add_revision(rev, inv)
 
-    def load_using_delta(self, rev, basis_inv, inv_delta, signature,
+    def chk_load(self, rev, basis_inv, inv_delta, signature,
         text_provider, inventories_provider=None):
-        """Load a revision.
+        """Load a revision for a CHKInventory.
 
         :param rev: the Revision
-        :param basis_inv: the basis inventory
+        :param basis_inv: the basis CHKInventory
         :param inv_delta: the inventory delta
         :param signature: signing information
         :param text_provider: a callable expecting a file_id parameter
@@ -105,9 +140,7 @@ class AbstractRevisionStore(object):
                 including an empty inventory for the missing revisions
             If None, a default implementation is provided.
         """
-        inv = basis_inv.copy()
-        inv.apply_delta(inv_delta)
-        inv.root.revision = rev.revision_id
+        inv = basis_inv.create_by_apply_delta(inv_delta, rev.revision_id)
         self.load(rev, inv, signature, text_provider, inventories_provider)
         return inv
 
@@ -134,7 +167,7 @@ class AbstractRevisionStore(object):
         :returns: The validator(which is a sha1 digest, though what is sha'd is
             repository format specific) of the serialized inventory.
         """
-        if self.try_inv_deltas and len(parents):
+        if self._supports_chks and len(parents):
             # Do we need to search for the first non-empty inventory?
             # parent_invs can be a longer list than parents if there
             # are ghosts????

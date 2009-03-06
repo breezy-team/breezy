@@ -27,6 +27,16 @@ from bzrlib import (
 from bzrlib.plugins.fastimport import helpers, processor
 
 
+def copy_inventory(inv):
+    # This currently breaks revision-id matching
+    #if hasattr(inv, "_get_mutable_inventory"):
+    #    # TODO: Make this a public API on inventory
+    #    return inv._get_mutable_inventory()
+
+    # TODO: Shallow copy - deep inventory copying is expensive
+    return inv.copy()
+
+
 class GenericCommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
@@ -58,21 +68,22 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # Keep the basis inventory. This needs to be treated as read-only.
         if len(self.parents) == 0:
-            self.basis_inventory = self.init_inventory()
+            self.basis_inventory = self._init_inventory()
         else:
             self.basis_inventory = self.get_inventory(self.parents[0])
-        self.inventory_root = self.basis_inventory.root
+        if hasattr(self.basis_inventory, "root_id"):
+            self.inventory_root_id = self.basis_inventory.root_id
+        else:
+            self.inventory_root_id = self.basis_inventory.root.file_id
 
         # directory-path -> inventory-entry for current inventory
-        self.directory_entries = dict(self.basis_inventory.directories())
+        if self.parents:
+            self.directory_entries = dict(self.basis_inventory.directories())
+        else:
+            self.directory_entries = {}
 
-    def init_inventory(self):
-        """Generate an inventory for a parentless revision."""
-        inv = inventory.Inventory(revision_id=self.revision_id)
-        if self.rev_store.expects_rich_root():
-            # The very first root needs to have the right revision
-            inv.root.revision = self.revision_id
-        return inv
+    def _init_inventory(self):
+        return self.rev_store.init_inventory(self.revision_id)
 
     def get_inventory(self, revision_id):
         """Get the inventory for a revision id."""
@@ -112,7 +123,7 @@ class GenericCommitHandler(processor.CommitHandler):
                     inv = self.get_inventory(revision_id)
                     present.append(revision_id)
                 except:
-                    inv = self.init_inventory()
+                    inv = self._init_inventory()
                 self.cache_mgr.inventories[revision_id] = inv
             inventories.append(inv)
         return present, inventories
@@ -169,9 +180,9 @@ class GenericCommitHandler(processor.CommitHandler):
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
         # Create the new InventoryEntry
-        basename, parent_ie = self._ensure_directory(path, inv)
+        basename, parent_id = self._ensure_directory(path, inv)
         file_id = self.bzr_file_id(path)
-        ie = inventory.make_entry(kind, basename, parent_ie.file_id, file_id)
+        ie = inventory.make_entry(kind, basename, parent_id, file_id)
         ie.revision = self.revision_id
         if kind == 'file':
             ie.executable = is_executable
@@ -192,7 +203,7 @@ class GenericCommitHandler(processor.CommitHandler):
             old_ie = inv[file_id]
             if old_ie.kind == 'directory':
                 self.record_delete(path, old_ie)
-            self.record_changed(path, ie, parent_ie)
+            self.record_changed(path, ie, parent_id)
         else:
             self.record_new(path, ie)
 
@@ -201,21 +212,21 @@ class GenericCommitHandler(processor.CommitHandler):
         dirname, basename = osutils.split(path)
         if dirname == '':
             # the root node doesn't get updated
-            return basename, self.inventory_root
+            return basename, self.inventory_root_id
         try:
             ie = self.directory_entries[dirname]
         except KeyError:
             # We will create this entry, since it doesn't exist
             pass
         else:
-            return basename, ie
+            return basename, ie.file_id
 
         # No directory existed, we will just create one, first, make sure
         # the parent exists
-        dir_basename, parent_ie = self._ensure_directory(dirname, inv)
+        dir_basename, parent_id = self._ensure_directory(dirname, inv)
         dir_file_id = self.bzr_file_id(dirname)
         ie = inventory.entry_factory['directory'](dir_file_id,
-            dir_basename, parent_ie.file_id)
+            dir_basename, parent_id)
         ie.revision = self.revision_id
         self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
@@ -227,10 +238,11 @@ class GenericCommitHandler(processor.CommitHandler):
         if dir_file_id in inv:
             self.record_delete(dirname, ie)
         self.record_new(dirname, ie)
-        return basename, ie
+        return basename, ie.file_id
 
     def _delete_item(self, path, inv):
         file_id = inv.path2id(path)
+        #print "**** deleting %s with file-id %s" % (path, file_id)
         ie = inv[file_id]
         self.record_delete(path, ie)
 
@@ -277,7 +289,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
 
 class InventoryCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves full inventories."""
+    """A CommitHandler that builds and saves Inventory objects."""
 
     def pre_process_files(self):
         super(InventoryCommitHandler, self).pre_process_files()
@@ -285,12 +297,8 @@ class InventoryCommitHandler(GenericCommitHandler):
         # Seed the inventory from the previous one
         if len(self.parents) == 0:
             self.inventory = self.basis_inventory
-        elif hasattr(self.basis_inventory, "_get_mutable_inventory"):
-            # TODO: Make this a public API on inventory
-            self.inventory = self.basis_inventory._get_mutable_inventory()
         else:
-            # TODO: Shallow copy - deep inventory copying is expensive
-            self.inventory = self.basis_inventory.copy()
+            self.inventory = copy_inventory(self.basis_inventory)
         self.inventory_root = self.inventory.root
 
         # directory-path -> inventory-entry for current inventory
@@ -322,22 +330,22 @@ class InventoryCommitHandler(GenericCommitHandler):
             # Try again
             self.inventory.add(ie)
 
-    def record_changed(self, path, ie, parent_ie):
+    def record_changed(self, path, ie, parent_id):
         # HACK: no API for this (del+add does more than it needs to)
         self.inventory._byid[ie.file_id] = ie
+        parent_ie = self.inventory._byid[parent_id]
         parent_ie.children[ie.name] = ie
 
     def record_delete(self, path, ie):
         self.inventory.remove_recursive_id(ie.file_id)
 
     def record_rename(self, old_path, new_path, file_id, ie):
-        new_basename, new_parent_ie = self._ensure_directory(new_path,
+        new_basename, new_parent_id = self._ensure_directory(new_path,
             self.inventory)
-        new_parent_id = new_parent_ie.file_id
         self.inventory.rename(file_id, new_parent_id, new_basename)
         self.inventory[file_id].revision = self.revision_id
 
-    def _delete_item(self, path):
+    def _delete_item(self, path, inv):
         # NOTE: I'm retaining this method for now, instead of using the
         # one in the superclass, because it's taken quite a lot of tweaking
         # to cover all the edge cases seen in the wild. Long term, it can
@@ -345,18 +353,18 @@ class InventoryCommitHandler(GenericCommitHandler):
         # and handles all the various special cases ...
         fileid = self.bzr_file_id(path)
         dirname, basename = osutils.split(path)
-        if (fileid in self.inventory and
-            isinstance(self.inventory[fileid], inventory.InventoryDirectory)):
-            for child_path in self.inventory[fileid].children.keys():
-                self._delete_item(osutils.pathjoin(path, child_path))
+        if (fileid in inv and
+            isinstance(inv[fileid], inventory.InventoryDirectory)):
+            for child_path in inv[fileid].children.keys():
+                self._delete_item(osutils.pathjoin(path, child_path), inv)
         try:
             if self.inventory.id2path(fileid) == path:
-                del self.inventory[fileid]
+                del inv[fileid]
             else:
                 # already added by some other name?
                 if dirname in self.cache_mgr.file_ids:
                     parent_id = self.cache_mgr.file_ids[dirname]
-                    del self.inventory[parent_id].children[basename]
+                    del inv[parent_id].children[basename]
         except KeyError:
             self._warn_unless_in_merges(fileid, path)
         except errors.NoSuchId:
@@ -392,7 +400,7 @@ class InventoryCommitHandler(GenericCommitHandler):
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        self._delete_item(filecmd.path)
+        self._delete_item(filecmd.path, self.inventory)
 
     def copy_handler(self, filecmd):
         src_path = filecmd.src_path
@@ -411,47 +419,87 @@ class InventoryCommitHandler(GenericCommitHandler):
         self._delete_all_items(self.inventory)
 
 
-class DeltaCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves inventory deltas."""
+class CHKInventoryCommitHandler(GenericCommitHandler):
+    """A CommitHandler that builds and saves CHKInventory objects."""
 
     def pre_process_files(self):
-        super(DeltaCommitHandler, self).pre_process_files()
-        self.delta = []
+        super(CHKInventoryCommitHandler, self).pre_process_files()
+        # A given file-id can only appear once so we accumulate
+        # the entries in a dict then build the actual delta at the end
+        self._delta_entries_by_fileid = {}
+        if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
+            if self.parents:
+                old_path = ''
+            else:
+                old_path = None
+            # Need to explicitly add the root entry for the first revision
+            # and for non rich-root inventories
+            root_id = inventory.ROOT_ID
+            # XXX: We *could* make this a CHKInventoryDirectory but it
+            # seems that deltas ought to use normal InventoryDirectory's
+            # because they simply don't know the chk_inventory that they
+            # are about to become a part of.
+            root_ie = inventory.InventoryDirectory(root_id, u'', None)
+            root_ie.revision = self.revision_id
+            self._add_entry((old_path, '', root_id, root_ie))
 
     def post_process_files(self):
         """Save the revision."""
-        #for path, entry in self.basis_inventory.iter_entries_by_dir():
-        #    print "ie for %s:\n%r" % (path, entry)
-        #print "delta:\n%r" % (self.delta,)
+        delta = list(self._delta_entries_by_fileid.values())
+        #print "delta:\n%s\n\n" % "\n".join([str(de) for de in delta])
         rev = self.build_revision()
-        inv = self.rev_store.load_using_delta(rev, self.basis_inventory,
-            self.delta, None,
+        inv = self.rev_store.chk_load(rev, self.basis_inventory, delta, None,
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
         self.cache_mgr.inventories[self.revision_id] = inv
+        #print "committed %s" % self.revision_id
+
+    def _add_entry(self, entry):
+        # We need to combine the data if multiple entries have the same fileid.
+        # For example, a rename followed by a modification looks like:
+        #
+        # (x, y, f, e) & (y, y, f, g) => (x, y, f, g)
+        #
+        # Likewise, a modification followed by a rename looks like:
+        #
+        # (x, x, f, e) & (x, y, f, g) => (x, y, f, g)
+        #
+        # Here's a rename followed by a delete and a modification followed by
+        # a delete:
+        #
+        # (x, y, f, e) & (y, None, f, None) => (x, None, f, None)
+        # (x, x, f, e) & (x, None, f, None) => (x, None, f, None)
+        #
+        # In summary, we use the original old-path, new new-path and new ie
+        # when combining entries.
+        file_id = entry[2]
+        existing = self._delta_entries_by_fileid.get(file_id, None)
+        if existing is not None:
+            entry = (existing[0], entry[1], file_id, entry[3])
+        self._delta_entries_by_fileid[file_id] = entry
 
     def record_new(self, path, ie):
-        self.delta.append((None, path, ie.file_id, ie))
+        self._add_entry((None, path, ie.file_id, ie))
 
-    def record_changed(self, path, ie, parent_ie=None):
-        self.delta.append((path, path, ie.file_id, ie))
+    def record_changed(self, path, ie, parent_id=None):
+        self._add_entry((path, path, ie.file_id, ie))
 
     def record_delete(self, path, ie):
-        self.delta.append((path, None, ie.file_id, None))
+        self._add_entry((path, None, ie.file_id, None))
         if ie.kind == 'directory':
             for child_path, entry in \
                 self.basis_inventory.iter_entries_by_dir(from_dir=ie):
                 #print "deleting child %s" % child_path
-                self.delta.append((child_path, None, entry.file_id, None))
+                self._add_entry((child_path, None, entry.file_id, None))
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
         new_ie = old_ie.copy()
-        new_basename, new_parent_ie = self._ensure_directory(new_path,
+        new_basename, new_parent_id = self._ensure_directory(new_path,
             self.basis_inventory)
         new_ie.name = new_basename
-        new_ie.parent_id = new_parent_ie.file_id
+        new_ie.parent_id = new_parent_id
         new_ie.revision = self.revision_id
-        self.delta.append((old_path, new_path, file_id, new_ie))
+        self._add_entry((old_path, new_path, file_id, new_ie))
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
@@ -485,5 +533,5 @@ class DeltaCommitHandler(GenericCommitHandler):
         # is added sounds ok in theory ...
         # We grab a copy as the basis is likely to be cached and
         # we don't want to destroy the cached version
-        self.basis_inventory = self.basis_inventory.copy()
+        self.basis_inventory = copy_inventory(self.basis_inventory)
         self._delete_all_items(self.basis_inventory)
