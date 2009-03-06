@@ -35,12 +35,24 @@ class TestDebugFlags(TestCaseInTempDir):
         self.assertFalse(t.has(".bazaar"))
 
         t.mkdir(".bazaar")
-        t.put_bytes(".bazaar/bazaar.conf",
-            """debug_flags = hpss, error\n""")
+
+        # test both combinations because configobject automatically splits up
+        # comma-separated lists
+        self.try_debug_flags(
+            """debug_flags = hpss, error\n""",
+            set(['hpss', 'error']))
+
+        self.try_debug_flags(
+            """debug_flags = hpss\n""",
+            set(['hpss']))
+
+    def try_debug_flags(self, conf_file, expected_flags):
+        t = get_transport(os.environ['HOME'])
+        t.put_bytes(".bazaar/bazaar.conf", conf_file)
         saved_debug = set(debug.debug_flags)
         try:
             debug.set_debug_flags_from_config()
-            self.assertEqual(set(['hpss', 'error']),
+            self.assertEqual(expected_flags,
                 debug.debug_flags)
         finally:
             # restore without rebinding the variable

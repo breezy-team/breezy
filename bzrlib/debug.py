@@ -36,7 +36,10 @@ def set_debug_flags_from_config():
     c = GlobalConfig()
     value = c.get_user_option("debug_flags")
     if value is not None:
-        # for each comma-separated value
+        # configobject gives us either a string if there's just one or a list
+        # if there's multiple
+        if isinstance(value, basestring):
+            value = [value]
         for w in value:
             w = w.strip()
             debug_flags.add(w)
