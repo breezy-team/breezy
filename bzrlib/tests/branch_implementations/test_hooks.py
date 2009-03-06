@@ -148,17 +148,22 @@ class TestOpen(TestCaseWithMemoryTransport):
         b = self.make_branch('.')
         if isinstance(b, RemoteBranch):
             # RemoteBranch creation:
-            # - creates the branch via the VFS (for older servers)
-            # - does a branch open (by creating a RemoteBranch object)
-            # - this has the nearly the same behaviour as simple branch opening
             if (self.transport_readonly_server ==
                 server.ReadonlySmartTCPServer_for_testing_v2_only):
                 # Older servers:
+                self.assertEqual(3, len(self.hook_calls))
+                # creates the branch via the VFS (for older servers)
                 self.assertEqual(b._real_branch, self.hook_calls[0])
-                self.assertOpenedRemoteBranch(self.hook_calls[1:], b)
+                # creates a RemoteBranch object
+                self.assertEqual(b, self.hook_calls[1])
+                # get_stacked_on_url RPC
+                self.assertRealBranch(self.hook_calls[2])
             else:
-                self.assertOpenedRemoteBranch(self.hook_calls, b,
-                    remote_first=True)
+                self.assertEqual(2, len(self.hook_calls))
+                # create_branch RPC
+                self.assertRealBranch(self.hook_calls[0])
+                # create RemoteBranch locally
+                self.assertEqual(b, self.hook_calls[1])
         else:
             self.assertEqual([b], self.hook_calls)
 
@@ -167,35 +172,21 @@ class TestOpen(TestCaseWithMemoryTransport):
         self.install_hook()
         b = Branch.open(branch_url)
         if isinstance(b, RemoteBranch):
-            self.assertOpenedRemoteBranch(self.hook_calls, b)
+            self.assertEqual(3, len(self.hook_calls))
+            # open_branchV2 RPC
+            self.assertRealBranch(self.hook_calls[0])
+            # create RemoteBranch locally
+            self.assertEqual(b, self.hook_calls[1])
+            # get_stacked_on_url RPC
+            self.assertRealBranch(self.hook_calls[2])
         else:
             self.assertEqual([b], self.hook_calls)
 
-    def assertOpenedRemoteBranch(self, hook_calls, b, remote_first=False):
-        """Assert that the expected calls were recorded for opening 'b'.
-
-        :param remote_first: If True expect the server side operation to open
-            the branch object first.
-        """
-        # RemoteBranch open always opens the backing branch to get stacking
-        # details. As that is done remotely we can't see the branch object
-        # nor even compare base url's etc. So we just assert that the first
-        # branch returned is the RemoteBranch, and that the second is a
-        # Branch but not a RemoteBranch.
-        #
-        # RemoteBranch *creation* on the other hand creates the branch object
-        # on the server, and then creates the local proxy object in the client,
-        # so it sees the reverse order.
-        self.assertEqual(2, len(hook_calls))
-        if remote_first:
-            real_index = 0
-            remote_index = 1
-        else:
-            real_index = 1
-            remote_index = 0
-        self.assertEqual(b, hook_calls[remote_index])
-        self.assertIsInstance(hook_calls[real_index], Branch)
-        self.assertFalse(isinstance(hook_calls[real_index], RemoteBranch))
+    def assertRealBranch(self, b):
+        # Branches opened on the server don't have comparable URLs, so we just
+        # assert that it is not a RemoteBranch.
+        self.assertIsInstance(b, Branch)
+        self.assertFalse(isinstance(b, RemoteBranch))
 
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
