@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2923,6 +2923,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
+                   'bzrlib.tests.test_debug',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_directory_service',
