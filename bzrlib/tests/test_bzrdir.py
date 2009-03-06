@@ -1227,10 +1227,15 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
         return _TestBzrDirFormat()
 
 
+class _TestBranchFormat(bzrlib.branch.BranchFormat):
+    """Test Branch format for TestBzrDirSprout."""
+
+
 class _TestBranch(bzrlib.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
     def __init__(self, *args, **kwargs):
+        self._format = _TestBranchFormat()
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
         self._parent = None
