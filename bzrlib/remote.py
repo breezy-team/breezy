@@ -2050,7 +2050,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except errors.UnknownSmartMethod:
             return self._vfs_get_parent_location()
         if len(response) != 1:
-            raise UnexpectedSmartServerResponse(response)
+            raise errors.UnexpectedSmartServerResponse(response)
         parent_location = response[0]
         if parent_location == '':
             return None
