@@ -8,6 +8,9 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
+bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
+------------------------------------------------
+
   COMPATIBILITY BREAKS:
 
     * ``bzr log --line`` now indicates which revisions are merges with
