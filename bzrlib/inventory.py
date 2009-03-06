@@ -1854,36 +1854,29 @@ class CHKInventoryDirectory(InventoryDirectory):
         """
         if self._children is not None:
             return self._children
-        if self._chk_inventory.parent_id_basename_to_file_id is None:
-            # Slow path - read the entire inventory looking for kids.
-            result = {}
-            for file_id, bytes in self._chk_inventory.id_to_entry.iteritems():
-                entry = self._chk_inventory._bytes_to_entry(bytes)
-                if entry.parent_id == self.file_id:
-                    result[entry.name] = entry
-            self._children = result
-            return result
+        # No longer supported
+        assert self._chk_inventory.parent_id_basename_to_file_id is not None
         result = {}
         # XXX: Todo - use proxy objects for the children rather than loading
         # all when the attribute is referenced.
         parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
-        child_ids = set()
+        child_keys = set()
         for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
             key_filter=[(self.file_id,)]):
-            child_ids.add((file_id,))
+            child_keys.add((file_id,))
         cached = set()
-        for file_id in child_ids:
-            entry = self._chk_inventory._entry_cache.get(file_id, None)
+        for file_id_key in child_keys:
+            entry = self._chk_inventory._entry_cache.get(file_id_key[0], None)
             if entry is not None:
                 result[entry.name] = entry
-                cached.add(file_id)
-        child_ids.difference_update(cached)
+                cached.add(file_id_key)
+        child_keys.difference_update(cached)
         # populate; todo: do by name
         id_to_entry = self._chk_inventory.id_to_entry
-        for file_id, bytes in id_to_entry.iteritems(child_ids):
+        for file_id_key, bytes in id_to_entry.iteritems(child_keys):
             entry = self._chk_inventory._bytes_to_entry(bytes)
             result[entry.name] = entry
-            self._chk_inventory._entry_cache[file_id] = entry
+            self._chk_inventory._entry_cache[file_id_key[0]] = entry
         self._children = result
         return result
 
