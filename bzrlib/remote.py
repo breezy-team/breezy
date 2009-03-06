@@ -2058,7 +2058,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def _vfs_get_parent_location(self):
         self._ensure_real()
-        return self._real_branch.get_parent()
+        return self._real_branch._get_parent_location()
 
     def set_parent(self, url):
         self._ensure_real()
