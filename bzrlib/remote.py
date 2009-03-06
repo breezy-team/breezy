@@ -860,6 +860,12 @@ class RemoteRepository(_RpcHelper):
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
+        # If the _real_repository has _fallback_repositories, clear them out,
+        # because we want it to have the same set as this repository.  This is
+        # reasonable to do because the fallbacks we clear here are from a
+        # "real" branch, and we're about to replace them with the equivalents
+        # from a RemoteBranch.
+        self._real_repository._fallback_repositories = []
         for fb in self._fallback_repositories:
             self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
@@ -1762,15 +1768,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         # it's relative to this branch...
         fallback_url = urlutils.join(self.base, fallback_url)
         transports = [self.bzrdir.root_transport]
-        if self._real_branch is not None:
-            # The real repository is setup already:
-            transports.append(self._real_branch._transport)
-            self.repository.add_fallback_repository(
-                self.repository._real_repository._fallback_repositories[0])
-        else:
-            stacked_on = branch.Branch.open(fallback_url,
-                                            possible_transports=transports)
-            self.repository.add_fallback_repository(stacked_on.repository)
+        stacked_on = branch.Branch.open(fallback_url,
+                                        possible_transports=transports)
+        self.repository.add_fallback_repository(stacked_on.repository)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
