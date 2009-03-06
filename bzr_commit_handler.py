@@ -28,12 +28,13 @@ from bzrlib.plugins.fastimport import helpers, processor
 
 
 def copy_inventory(inv):
-    if hasattr(inv, "_get_mutable_inventory"):
-        # TODO: Make this a public API on inventory
-        return inv._get_mutable_inventory()
-    else:
-        # TODO: Shallow copy - deep inventory copying is expensive
-        return inv.copy()
+    # This currently breaks revision-id matching
+    #if hasattr(inv, "_get_mutable_inventory"):
+    #    # TODO: Make this a public API on inventory
+    #    return inv._get_mutable_inventory()
+
+    # TODO: Shallow copy - deep inventory copying is expensive
+    return inv.copy()
 
 
 class GenericCommitHandler(processor.CommitHandler):
@@ -422,6 +423,9 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
 
     def pre_process_files(self):
         super(CHKInventoryCommitHandler, self).pre_process_files()
+        # A given file-id can only appear once so we accumulate
+        # the entries in a dict then build the actual delta at the end
+        self._delta_entries_by_fileid = {}
         if len(self.parents) == 0 or not self.rev_store.expects_rich_root():
             # Need to explicitly add the root entry for the first revision
             # and for non rich-root inventories
@@ -432,33 +436,56 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
             # are about to become a part of.
             root_ie = inventory.InventoryDirectory(root_id, u'', None)
             root_ie.revision = self.revision_id
-            self.delta = [(None, '', root_id, root_ie)]
-        else:
-            self.delta = []
+            self._add_entry((None, '', root_id, root_ie))
 
     def post_process_files(self):
         """Save the revision."""
+        delta = list(self._delta_entries_by_fileid.values())
+        #print "delta:\n%s\n\n" % "\n".join([str(de) for de in delta])
         rev = self.build_revision()
-        inv = self.rev_store.chk_load(rev, self.basis_inventory,
-            self.delta, None,
+        inv = self.rev_store.chk_load(rev, self.basis_inventory, delta, None,
             lambda file_id: self._get_lines(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
         self.cache_mgr.inventories[self.revision_id] = inv
         #print "committed %s" % self.revision_id
 
+    def _add_entry(self, entry):
+        # We need to combine the data if multiple entries have the same fileid.
+        # For example, a rename followed by a modification looks like:
+        #
+        # (x, y, f, e) & (y, y, f, g) => (x, y, f, g)
+        #
+        # Likewise, a modification followed by a rename looks like:
+        #
+        # (x, x, f, e) & (x, y, f, g) => (x, y, f, g)
+        #
+        # Here's a rename followed by a delete and a modification followed by
+        # a delete:
+        #
+        # (x, y, f, e) & (y, None, f, None) => (x, None, f, None)
+        # (x, x, f, e) & (x, None, f, None) => (x, None, f, None)
+        #
+        # In summary, we use the original old-path, new new-path and new ie
+        # when combining entries.
+        file_id = entry[2]
+        existing = self._delta_entries_by_fileid.get(file_id, None)
+        if existing is not None:
+            entry = (existing[0], entry[1], file_id, entry[3])
+        self._delta_entries_by_fileid[file_id] = entry
+
     def record_new(self, path, ie):
-        self.delta.append((None, path, ie.file_id, ie))
+        self._add_entry((None, path, ie.file_id, ie))
 
     def record_changed(self, path, ie, parent_id=None):
-        self.delta.append((path, path, ie.file_id, ie))
+        self._add_entry((path, path, ie.file_id, ie))
 
     def record_delete(self, path, ie):
-        self.delta.append((path, None, ie.file_id, None))
+        self._add_entry((path, None, ie.file_id, None))
         if ie.kind == 'directory':
             for child_path, entry in \
                 self.basis_inventory.iter_entries_by_dir(from_dir=ie):
                 #print "deleting child %s" % child_path
-                self.delta.append((child_path, None, entry.file_id, None))
+                self._add_entry((child_path, None, entry.file_id, None))
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
         new_ie = old_ie.copy()
@@ -467,7 +494,7 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         new_ie.name = new_basename
         new_ie.parent_id = new_parent_id
         new_ie.revision = self.revision_id
-        self.delta.append((old_path, new_path, file_id, new_ie))
+        self._add_entry((old_path, new_path, file_id, new_ie))
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
