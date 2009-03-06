@@ -930,7 +930,11 @@ class InternalNode(Node):
         return result
 
     def iteritems(self, store, key_filter=None):
-        for node in self._iter_nodes(store, key_filter=key_filter):
+        # XXX: It doesn't work if we pass the key-filter to _iter_nodes
+        # when filtering (parent_file_id,) against the parent_id_basename
+        # CHKMap. We probably need to fix something in iter_nodes but, for
+        # now, this at least gets things working - IGC 20090306
+        for node in self._iter_nodes(store, key_filter=None):
             for item in node.iteritems(store, key_filter=key_filter):
                 yield item
 
