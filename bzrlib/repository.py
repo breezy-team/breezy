@@ -2995,7 +2995,11 @@ class InterPackRepo(InterSameDataRepository):
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
         if fetch_spec is not None:
-            revision_id = fetch_spec.start_key
+            if len(list(fetch_spec.heads)) != 1:
+                raise AssertionError(
+                    "InterPackRepo.fetch doesn't support "
+                    "fetching multiple heads yet.")
+            revision_id = fetch_spec.heads[0]
             fetch_spec = None
         if revision_id is None:
             # TODO:
