@@ -1439,10 +1439,10 @@ class KnitVersionedFiles(VersionedFiles):
                 if source is parent_maps[0]:
                     # this KnitVersionedFiles
                     records = [(key, positions[key][1]) for key in keys]
-                    for key, raw_data, sha1 in self._read_records_iter_raw(records):
+                    for key, raw_data in self._read_records_iter_unchecked(records):
                         (record_details, index_memo, _) = positions[key]
                         yield KnitContentFactory(key, global_map[key],
-                            record_details, sha1, raw_data, self._factory.annotated, None)
+                            record_details, None, raw_data, self._factory.annotated, None)
                 else:
                     vf = self._fallback_vfs[parent_maps.index(source) - 1]
                     for record in vf.get_record_stream(keys, ordering,
