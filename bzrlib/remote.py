@@ -267,7 +267,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if response[0] == 'ref':
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
-            return format.open(self, _found=True, location=reference_url)
+            return format.open(self, _found=True, location=response[1])
         branch_format_name = response[1]
         if not branch_format_name:
             branch_format_name = None
