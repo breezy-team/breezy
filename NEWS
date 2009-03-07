@@ -210,6 +210,12 @@ IN DEVELOPMENT
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)
 
+    * Test adaptation has been made consistent throughout the built in
+      tests. ``TestScenarioApplier``, ``multiply_tests_from_modules``,
+      ``adapt_tests``, ``adapt_modules`` have all been deleted. Please
+      use ``multiply_tests``, or for lower level needs ``apply_scenarios``
+      and ``apply_scenario``. (Robert Collins)
+
     * ``TestSkipped`` is now detected by TestCase and passed to the
       ``TestResult`` by calling ``addSkip``. For older TestResult objects,
       where ``addSkip`` is not available, ``addError`` is still called.

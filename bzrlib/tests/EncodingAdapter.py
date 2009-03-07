@@ -79,61 +79,34 @@ _something = u'\u0165ou\u010dk\xfd'
 _shalom = u'\u05e9\u05dc\u05d5\u05dd'
 
 
-class EncodingTestAdapter(object):
-    """A tool to generate a suite, testing multiple encodings for a single test.
-
-    This is similar to bzrlib.transport.TransportTestProviderAdapter.
-    It is done by copying the test once for each encoding, and injecting
-    the encoding name, and the list of valid strings for that encoding.
-    Each copy is also given a new id() to make it easy to identify.
-    """
-
-    _encodings = [
+encoding_scenarios = [
         # Permutation 1 of utf-8
-        ('utf-8', 1, {'committer':_erik
+        ('utf-8,1', {'committer':_erik
                   , 'message':_yellow_horse
                   , 'filename':_shrimp_sandwich
                   , 'directory':_nihonjin}),
         # Permutation 2 of utf-8
-        ('utf-8', 2, {'committer':_alexander
+        ('utf-8,2', {'committer':_alexander
                   , 'message':u'Testing ' + _mu
                   , 'filename':_shalom
                   , 'directory':_juju}),
-        ('iso-8859-1', 0, {'committer':_erik
+        ('iso-8859-1', {'committer':_erik
                   , 'message':u'Testing ' + _mu
                   , 'filename':_juju_alt
                   , 'directory':_shrimp_sandwich}),
-        ('iso-8859-2', 0, {'committer':_someone
+        ('iso-8859-2', {'committer':_someone
                   , 'message':_yellow_horse
                   , 'filename':_yellow
                   , 'directory':_something}),
-        ('cp1251', 0, {'committer':_alexander
+        ('cp1251', {'committer':_alexander
                   , 'message':u'Testing ' + _mu
                   , 'filename':_russian_test
                   , 'directory':_russian_test + 'dir'}),
 # The iso-8859-1 tests run on a default windows cp437 installation
 # and it takes a long time to run an extra permutation of the tests
 # But just in case we want to add this back in:
-#        ('cp437', 0, {'committer':_erik
+#        ('cp437', {'committer':_erik
 #                  , 'message':u'Testing ' + _mu
 #                  , 'filename':'file_' + _omega
 #                  , 'directory':_epsilon + '_dir'}),
     ]
-
-    def adapt(self, test):
-        result = TestSuite()
-        for encoding, count, info in self._encodings:
-            new_test = deepcopy(test)
-            new_test.encoding = encoding
-            new_test.info = info
-            def make_new_test_id():
-                if count:
-                    new_id = "%s(%s,%s)" % (new_test.id(), encoding, count)
-                else:
-                    new_id = "%s(%s)" % (new_test.id(), encoding)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-

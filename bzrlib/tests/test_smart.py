@@ -48,9 +48,7 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib.tests import (
-    iter_suite_tests,
     split_suite_by_re,
-    TestScenarioApplier,
     )
 from bzrlib.transport import chroot, get_transport
 from bzrlib.util import bencode
@@ -60,8 +58,7 @@ def load_tests(standard_tests, module, loader):
     """Multiply tests version and protocol consistency."""
     # FindRepository tests.
     bzrdir_mod = bzrlib.smart.bzrdir
-    applier = TestScenarioApplier()
-    applier.scenarios = [
+    scenarios = [
         ("find_repository", {
             "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV1}),
         ("find_repositoryV2", {
@@ -73,11 +70,10 @@ def load_tests(standard_tests, module, loader):
         "TestSmartServerRequestFindRepository")
     v2_only, v1_and_2 = split_suite_by_re(to_adapt,
         "_v2")
-    for test in iter_suite_tests(v1_and_2):
-        result.addTests(applier.adapt(test))
-    del applier.scenarios[0]
-    for test in iter_suite_tests(v2_only):
-        result.addTests(applier.adapt(test))
+    tests.multiply_tests(v1_and_2, scenarios, result)
+    # The first scenario is only applicable to v1 protocols, it is deleted
+    # since.
+    tests.multiply_tests(v2_only, scenarios[1:], result)
     return result
 
 

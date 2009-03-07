@@ -585,15 +585,15 @@ class TextTestRunner(object):
 
 def iter_suite_tests(suite):
     """Return all tests in a suite, recursing through nested suites"""
-    for item in suite._tests:
-        if isinstance(item, unittest.TestCase):
-            yield item
-        elif isinstance(item, unittest.TestSuite):
+    if isinstance(suite, unittest.TestCase):
+        yield suite
+    elif isinstance(suite, unittest.TestSuite):
+        for item in suite._tests:
             for r in iter_suite_tests(item):
                 yield r
-        else:
-            raise Exception('unknown object %r inside test suite %r'
-                            % (item, suite))
+    else:
+        raise Exception('unknown type %r for object %r'
+                        % (type(suite), suite))
 
 
 class TestSkipped(Exception):
@@ -3158,54 +3158,6 @@ def test_suite(keep_only=None, starting_with=None):
     return suite
 
 
-def multiply_tests_from_modules(module_name_list, scenario_iter, loader=None):
-    """Adapt all tests in some given modules to given scenarios.
-
-    This is the recommended public interface for test parameterization.
-    Typically the test_suite() method for a per-implementation test
-    suite will call multiply_tests_from_modules and return the
-    result.
-
-    :param module_name_list: List of fully-qualified names of test
-        modules.
-    :param scenario_iter: Iterable of pairs of (scenario_name,
-        scenario_param_dict).
-    :param loader: If provided, will be used instead of a new
-        bzrlib.tests.TestLoader() instance.
-
-    This returns a new TestSuite containing the cross product of
-    all the tests in all the modules, each repeated for each scenario.
-    Each test is adapted by adding the scenario name at the end
-    of its name, and updating the test object's __dict__ with the
-    scenario_param_dict.
-
-    >>> r = multiply_tests_from_modules(
-    ...     ['bzrlib.tests.test_sampler'],
-    ...     [('one', dict(param=1)),
-    ...      ('two', dict(param=2))])
-    >>> tests = list(iter_suite_tests(r))
-    >>> len(tests)
-    2
-    >>> tests[0].id()
-    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
-    >>> tests[0].param
-    1
-    >>> tests[1].param
-    2
-    """
-    # XXX: Isn't load_tests() a better way to provide the same functionality
-    # without forcing a predefined TestScenarioApplier ? --vila 080215
-    if loader is None:
-        loader = TestUtil.TestLoader()
-
-    suite = loader.suiteClass()
-
-    adapter = TestScenarioApplier()
-    adapter.scenarios = list(scenario_iter)
-    adapt_modules(module_name_list, adapter, loader, suite)
-    return suite
-
-
 def multiply_scenarios(scenarios_left, scenarios_right):
     """Multiply two sets of scenarios.
 
@@ -3220,17 +3172,85 @@ def multiply_scenarios(scenarios_left, scenarios_right):
         for right_name, right_dict in scenarios_right]
 
 
+def multiply_tests(tests, scenarios, result):
+    """Multiply tests_list by scenarios into result.
 
-def adapt_modules(mods_list, adapter, loader, suite):
-    """Adapt the modules in mods_list using adapter and add to suite."""
-    tests = loader.loadTestsFromModuleNames(mods_list)
-    adapt_tests(tests, adapter, suite)
+    This is the core workhorse for test parameterisation.
+
+    Typically the load_tests() method for a per-implementation test suite will
+    call multiply_tests and return the result.
+
+    :param tests: The tests to parameterise.
+    :param scenarios: The scenarios to apply: pairs of (scenario_name,
+        scenario_param_dict).
+    :param result: A TestSuite to add created tests to.
+
+    This returns the passed in result TestSuite with the cross product of all
+    the tests repeated once for each scenario.  Each test is adapted by adding
+    the scenario name at the end of its id(), and updating the test object's
+    __dict__ with the scenario_param_dict.
+
+    >>> r = multiply_tests(
+    ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
+    ...     [('one', dict(param=1)),
+    ...      ('two', dict(param=2))],
+    ...     TestSuite())
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    for test in iter_suite_tests(tests):
+        apply_scenarios(test, scenarios, result)
+    return result
 
 
-def adapt_tests(tests_list, adapter, suite):
-    """Adapt the tests in tests_list using adapter and add to suite."""
-    for test in iter_suite_tests(tests_list):
-        suite.addTests(adapter.adapt(test))
+def apply_scenarios(test, scenarios, result):
+    """Apply the scenarios in scenarios to test and add to result.
+
+    :param test: The test to apply scenarios to.
+    :param scenarios: An iterable of scenarios to apply to test.
+    :return: result
+    :seealso: apply_scenario
+    """
+    for scenario in scenarios:
+        result.addTest(apply_scenario(test, scenario))
+    return result
+
+
+def apply_scenario(test, scenario):
+    """Copy test and apply scenario to it.
+
+    :param test: A test to adapt.
+    :param scenario: A tuple describing the scenarion.
+        The first element of the tuple is the new test id.
+        The second element is a dict containing attributes to set on the
+        test.
+    :return: The adapted test.
+    """
+    new_id = "%s(%s)" % (test.id(), scenario[0])
+    new_test = clone_test(test, new_id)
+    for name, value in scenario[1].items():
+        setattr(new_test, name, value)
+    return new_test
+
+
+def clone_test(test, new_id):
+    """Clone a test giving it a new id.
+
+    :param test: The test to clone.
+    :param new_id: The id to assign to it.
+    :return: The new test.
+    """
+    from copy import deepcopy
+    new_test = deepcopy(test)
+    new_test.id = lambda: new_id
+    return new_test
 
 
 def _rmtree_temp_dir(dirname):
@@ -3339,35 +3359,6 @@ class _UnicodeFilenameFeature(Feature):
             return True
 
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
-
-
-class TestScenarioApplier(object):
-    """A tool to apply scenarios to tests."""
-
-    def adapt(self, test):
-        """Return a TestSuite containing a copy of test for each scenario."""
-        result = unittest.TestSuite()
-        for scenario in self.scenarios:
-            result.addTest(self.adapt_test_to_scenario(test, scenario))
-        return result
-
-    def adapt_test_to_scenario(self, test, scenario):
-        """Copy test and apply scenario to it.
-
-        :param test: A test to adapt.
-        :param scenario: A tuple describing the scenarion.
-            The first element of the tuple is the new test id.
-            The second element is a dict containing attributes to set on the
-            test.
-        :return: The adapted test.
-        """
-        from copy import deepcopy
-        new_test = deepcopy(test)
-        for name, value in scenario[1].items():
-            setattr(new_test, name, value)
-        new_id = "%s(%s)" % (new_test.id(), scenario[0])
-        new_test.id = lambda: new_id
-        return new_test
 
 
 def probe_unicode_in_user_encoding():
