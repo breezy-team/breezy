@@ -1087,6 +1087,7 @@ class Inventory(CommonInventory):
         return deepcopy(self)
 
     def __iter__(self):
+        """Iterate over all file-ids."""
         return iter(self._byid)
 
     def __len__(self):
@@ -1545,7 +1546,7 @@ class CHKInventory(CommonInventory):
                     # as its always the file id.
                     parent_id_basename_delta.append((old_key, new_key, new_value))
         result.id_to_entry.apply_delta(id_to_entry_delta)
-        if result.parent_id_basename_to_file_id is not None:
+        if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
         return result
 
@@ -1673,7 +1674,7 @@ class CHKInventory(CommonInventory):
             file_id = ie.parent_id
 
     def __iter__(self):
-        """Iterate over the entire inventory contents; size-of-tree - beware!."""
+        """Iterate over all file-ids."""
         for key, _ in self.id_to_entry.iteritems():
             yield key[-1]
 
@@ -1844,7 +1845,7 @@ class CHKInventoryDirectory(InventoryDirectory):
 
     @property
     def children(self):
-        """Access the list of children of this inventory.
+        """Access the list of children of this directory.
 
         With a parent_id_basename_to_file_id index, loads all the children,
         without loads the entire index. Without is bad. A more sophisticated
