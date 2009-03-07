@@ -579,9 +579,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been requested (as we generally have the
         # size available, and doing many small readvs is inappropriate).
         # We can't tell how much was actually read here, but - check the code.
-        self.assertEqual([('get', 'index'),
-            ('readv', 'index', [(0, 72)], False, None)],
-            transport._activity)
+        self.assertEqual([('get', 'index')], transport._activity)
 
     def test_empty_key_count(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
@@ -611,6 +609,28 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             transport._activity)
         self.assertEqual(1199, size)
+
+    def test__read_nodes_no_size_one_page_reads_once(self):
+        self.make_index(nodes=[(('key',), 'value', ())])
+        trans = get_transport('trace+' + self.get_url())
+        index = btree_index.BTreeGraphIndex(trans, 'index', None)
+        del trans._activity[:]
+        nodes = dict(index._read_nodes([0]))
+        self.assertEqual([0], nodes.keys())
+        node = nodes[0]
+        self.assertEqual([('key',)], node.keys.keys())
+        self.assertEqual([('get', 'index')], trans._activity)
+
+    def test__read_nodes_no_size_multiple_pages(self):
+        index = self.make_index(2, 2, nodes=self.make_nodes(160, 2, 2))
+        index.key_count()
+        num_pages = index._row_offsets[-1]
+        # Reopen with a traced transport and no size
+        trans = get_transport('trace+' + self.get_url())
+        index = btree_index.BTreeGraphIndex(trans, 'index', None)
+        del trans._activity[:]
+        nodes = dict(index._read_nodes([0]))
+        self.assertEqual(range(num_pages), nodes.keys())
 
     def test_2_levels_key_count_2_2(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
@@ -698,6 +718,15 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertTrue(
             btree_index.BTreeGraphIndex(transport1, 'index', 10) !=
             btree_index.BTreeGraphIndex(transport1, 'index', 20))
+
+    def test_iter_all_only_root_no_size(self):
+        self.make_index(nodes=[(('key',), 'value', ())])
+        trans = get_transport('trace+' + self.get_url(''))
+        index = btree_index.BTreeGraphIndex(trans, 'index', None)
+        del trans._activity[:]
+        self.assertEqual([(('key',), 'value')],
+                         [x[1:] for x in index.iter_all_entries()])
+        self.assertEqual([('get', 'index')], trans._activity)
 
     def test_iter_all_entries_reads(self):
         # iterating all entries reads the header, then does a linear
@@ -839,6 +868,37 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
             (index, ('name', 'fin2'), 'beta', ((), ))]),
             set(index.iter_entries_prefix([('name', None)])))
+
+    # XXX: external_references tests are duplicated in test_index.  We
+    # probably should have per_graph_index tests...
+    def test_external_references_no_refs(self):
+        index = self.make_index(ref_lists=0, nodes=[])
+        self.assertRaises(ValueError, index.external_references, 0)
+
+    def test_external_references_no_results(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([],))])
+        self.assertEqual(set(), index.external_references(0))
+
+    def test_external_references_missing_ref(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([missing_key],))])
+        self.assertEqual(set([missing_key]), index.external_references(0))
+
+    def test_external_references_multiple_ref_lists(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=2, nodes=[
+            (('key',), 'value', ([], [missing_key]))])
+        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set([missing_key]), index.external_references(1))
+
+    def test_external_references_two_records(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key-1',), 'value', ([('key-2',)],)),
+            (('key-2',), 'value', ([],)),
+            ])
+        self.assertEqual(set([]), index.external_references(0))
 
 
 class TestBTreeNodes(BTreeTestCase):

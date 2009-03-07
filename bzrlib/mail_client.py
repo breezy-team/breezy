@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib
 
 import bzrlib
 from bzrlib import (
@@ -302,6 +303,32 @@ mail_client_registry.register('kmail', KMail,
                               help=KMail.__doc__)
 
 
+class Claws(ExternalMailClient):
+    """Claws mail client."""
+
+    _client_commands = ['claws-mail']
+
+    def _get_compose_commandline(self, to, subject, attach_path):
+        """See ExternalMailClient._get_compose_commandline"""
+        compose_url = ['mailto:']
+        if to is not None:
+            compose_url.append(self._encode_safe(to))
+        compose_url.append('?')
+        if subject is not None:
+            # Don't use urllib.quote_plus because Claws doesn't seem
+            # to recognise spaces encoded as "+".
+            compose_url.append(
+                'subject=%s' % urllib.quote(self._encode_safe(subject)))
+        # Collect command-line options.
+        message_options = ['--compose', ''.join(compose_url)]
+        if attach_path is not None:
+            message_options.extend(
+                ['--attach', self._encode_path(attach_path, 'attachment')])
+        return message_options
+mail_client_registry.register('claws', Claws,
+                              help=Claws.__doc__)
+
+
 class XDGEmail(ExternalMailClient):
     """xdg-email attempts to invoke the user's preferred mail client"""
 
@@ -364,7 +391,9 @@ class EmacsMail(ExternalMailClient):
             (if (functionp 'etach-attach)
               (etach-attach file)
               (mail-attach-file file))))
-         ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
+         ((or (eq agent 'message-user-agent)
+              (eq agent 'gnus-user-agent)
+              (eq agent 'mh-e-user-agent))
           (progn
             (mml-attach-file file "text/x-patch" "BZR merge" "inline")))
          ((eq agent 'mew-user-agent)

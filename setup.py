@@ -197,8 +197,8 @@ class build_ext_if_possible(build_ext):
         except DistutilsPlatformError, e:
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extensions.\n'
-                         '  Use --allow-python-fallback to use slower'
-                         ' python implementations instead.\n')
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n')
                 raise
             log.warn(str(e))
             log.warn('\n  Extensions cannot be built.\n'
@@ -209,9 +209,9 @@ class build_ext_if_possible(build_ext):
             build_ext.build_extension(self, ext)
         except CCompilerError:
             if not self.allow_python_fallback:
-                log.warn('\n  Failed to build "%s".\n'
-                         '  Use --allow-python-fallback to use slower'
-                         ' python implementations instead.\n'
+                log.warn('\n  Cannot build extensions.\n'
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n'
                          % (ext.name,))
                 raise
             log.warn('\n  Building of "%s" extension failed.\n'
@@ -258,6 +258,7 @@ def add_pyrex_extension(module_name, libraries=None):
 
 
 add_pyrex_extension('bzrlib._btree_serializer_c')
+add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_c',
@@ -288,7 +289,7 @@ if unavailable_files:
 
 
 def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
-                         gui_targets):
+                         gui_targets, data_files):
     packages.append('tbzrcommands')
 
     # ModuleFinder can't handle runtime changes to __path__, but
@@ -340,16 +341,21 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
 
+    # NOTE: We still create a DLL version of the Python implemented shell
+    # extension for testing purposes - but it is *not* registered by
+    # default - our C++ one is instead.  To discourage people thinking
+    # this DLL is still necessary, its called 'tbzr_old.dll'
     tbzr = dict(
         modules=["tbzr"],
         create_exe = False, # we only want a .dll
+        dest_base = 'tbzr_old',
     )
     com_targets.append(tbzr)
 
     # tbzrcache executables - a "console" version for debugging and a
     # GUI version that is generally used.
     tbzrcache = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
+        script = os.path.join(tbzr_root, "scripts", "tbzrcache.py"),
         icon_resources = icon_resources,
         other_resources = other_resources,
     )
@@ -362,7 +368,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrcommand.py"),
+        script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
         icon_resources = [(0,'bzr.ico')],
     )
     console_targets.append(tbzrcommand)
@@ -370,21 +376,16 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     tbzrcommandw["dest_base"]="tbzrcommandw"
     gui_targets.append(tbzrcommandw)
     
-    # tbzr tests
-    tbzrtest = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrtest.py"),
-    )
-    console_targets.append(tbzrtest)
-
-    # A utility to see python output from the shell extension - this will
-    # die when we get a c++ extension
-    # any .py file from pywin32's win32 lib will do (other than
-    # win32traceutil itself that is)
-    import winerror
-    win32_lib_dir = os.path.dirname(winerror.__file__)
-    tracer = dict(script = os.path.join(win32_lib_dir, "win32traceutil.py"),
-                  dest_base="tbzr_tracer")
+    # A utility to see python output from both C++ and Python based shell
+    # extensions
+    tracer = dict(script=os.path.join(tbzr_root, "scripts", "tbzrtrace.py"))
     console_targets.append(tracer)
+
+    # The C++ implemented shell extensions.
+    dist_dir = os.path.join(tbzr_root, "shellext", "cpp", "tbzrshellext",
+                            "build", "dist")
+    data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x86.dll')]))
+    data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x64.dll')]))
 
 
 def get_qbzr_py2exe_info(includes, excludes, packages):
@@ -405,6 +406,10 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
     path = os.environ.get("PATH","")
     if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
         os.environ["PATH"] = path + os.pathsep + qt_dir
+
+
+def get_svn_py2exe_info(includes, excludes, packages):
+    packages.append('subvertpy')
 
 
 if 'bdist_wininst' in sys.argv:
@@ -550,6 +555,13 @@ elif 'py2exe' in sys.argv:
     for root, dirs, files in os.walk('bzrlib/plugins'):
         if root == 'bzrlib/plugins':
             plugins = set(dirs)
+            # We ship plugins as normal files on the file-system - however,
+            # the build process can cause *some* of these plugin files to end
+            # up in library.zip. Thus, we saw (eg) "plugins/svn/test" in
+            # library.zip, and then saw import errors related to that as the
+            # rest of the svn plugin wasn't. So we tell py2exe to leave the
+            # plugins out of the .zip file
+            excludes.extend(["bzrlib.plugins." + d for d in dirs])
         x = []
         for i in files:
             if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
@@ -573,22 +585,28 @@ elif 'py2exe' in sys.argv:
                        ]
     gui_targets = []
     com_targets = []
+    data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages)
+
+    if 'svn' in plugins:
+        get_svn_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the
         # TortoiseOverlays MSI installer file. It is in the TSVN svn repo and
         # can be downloaded from (username=guest, blank password):
         # http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
-        if not os.path.isfile(os.environ.get('TORTOISE_OVERLAYS_MSI_WIN32',
-                                             '<nofile>')):
-            raise RuntimeError("Please set TORTOISE_OVERLAYS_MSI_WIN32 to the"
-                               " location of the Win32 TortoiseOverlays .msi"
-                               " installer file")
+        # Ditto for TORTOISE_OVERLAYS_MSI_X64, pointing at *-x64.msi.
+        for needed in ('TORTOISE_OVERLAYS_MSI_WIN32',
+                       'TORTOISE_OVERLAYS_MSI_X64'):
+            if not os.path.isfile(os.environ.get(needed, '<nofile>')):
+                raise RuntimeError("Please set %s to the"
+                                   " location of the relevant TortoiseOverlays"
+                                   " .msi installer file" % needed)
         get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
-                             gui_targets)
+                             gui_targets, data_files)
     else:
         # print this warning to stderr as output is redirected, so it is seen
         # at build time.  Also to stdout so it appears in the log
@@ -598,7 +616,7 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.append("MSWSOCK.dll")
+    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,
@@ -613,7 +631,7 @@ elif 'py2exe' in sys.argv:
           windows=gui_targets,
           com_server=com_targets,
           zipfile='lib/library.zip',
-          data_files=topics_files + plugins_files,
+          data_files=data_files,
           cmdclass={'install_data': install_data_with_bytecompile},
           )
 

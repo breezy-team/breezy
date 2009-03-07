@@ -19,6 +19,7 @@ import errno
 import sys
 
 from bzrlib import (
+    builtins,
     commands,
     config,
     errors,
@@ -175,3 +176,45 @@ class TestRegisterLazy(tests.TestCase):
         self.addCleanup(self.remove_fake)
         fake_instance = commands.get_cmd_object('fake_alias')
         self.assertIsFakeCommand(fake_instance)
+
+
+class TestExtendCommandHook(tests.TestCase):
+
+    def test_fires_on_get_cmd_object(self):
+        # The extend_command(cmd) hook fires when commands are delivered to the
+        # ui, not simply at registration (because lazy registered plugin
+        # commands are registered).
+        # when they are simply created.
+        hook_calls = []
+        commands.Command.hooks.install_named_hook(
+            "extend_command", hook_calls.append, None)
+        # create a command, should not fire
+        class ACommand(commands.Command):
+            """A sample command."""
+        cmd = ACommand()
+        self.assertEqual([], hook_calls)
+        # -- as a builtin
+        # register the command class, should not fire
+        try:
+            builtins.cmd_test_extend_command_hook = ACommand
+            self.assertEqual([], hook_calls)
+            # and ask for the object, should fire
+            cmd = commands.get_cmd_object('test-extend-command-hook')
+            # For resilience - to ensure all code paths hit it - we
+            # fire on everything returned in the 'cmd_dict', which is currently
+            # all known commands, so assert that cmd is in hook_calls
+            self.assertSubset([cmd], hook_calls)
+            del hook_calls[:]
+        finally:
+            del builtins.cmd_test_extend_command_hook
+        # -- as a plugin lazy registration
+        try:
+            # register the command class, should not fire
+            commands.plugin_cmds.register_lazy('cmd_fake', [],
+                                               'bzrlib.tests.fake_command')
+            self.assertEqual([], hook_calls)
+            # and ask for the object, should fire
+            cmd = commands.get_cmd_object('fake')
+            self.assertEqual([cmd], hook_calls)
+        finally:
+            commands.plugin_cmds.remove('fake')

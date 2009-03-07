@@ -126,12 +126,27 @@ class TestDiff(DiffBase):
         # Get an error from a file that does not exist at all
         # (Malone #3619)
         self.make_example_branch()
-        out, err = self.run_bzr('diff does-not-exist', retcode=3)
-        self.assertContainsRe(err, 'not versioned.*does-not-exist')
+        out, err = self.run_bzr('diff does-not-exist', retcode=3,
+            error_regexes=('not versioned.*does-not-exist',))
 
     def test_diff_illegal_revision_specifiers(self):
-        out, err = self.run_bzr('diff -r 1..23..123', retcode=3)
-        self.assertContainsRe(err, 'one or two revision specifiers')
+        out, err = self.run_bzr('diff -r 1..23..123', retcode=3,
+            error_regexes=('one or two revision specifiers',))
+
+    def test_diff_nonexistent_revision(self):
+        out, err = self.run_bzr('diff -r 123', retcode=3,
+            error_regexes=("Requested revision: '123' does not "
+                "exist in branch:",))
+
+    def test_diff_nonexistent_dotted_revision(self):
+        out, err = self.run_bzr('diff -r 1.1', retcode=3)
+        self.assertContainsRe(err,
+            "Requested revision: '1.1' does not exist in branch:")
+
+    def test_diff_nonexistent_dotted_revision_change(self):
+        out, err = self.run_bzr('diff -c 1.1', retcode=3)
+        self.assertContainsRe(err,
+            "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
@@ -187,7 +202,7 @@ class TestDiff(DiffBase):
 
     def test_diff_branches(self):
         self.example_branches()
-        # should open branch1 and diff against branch2, 
+        # should open branch1 and diff against branch2,
         self.check_b2_vs_b1('diff -r branch:branch2 branch1')
         # Compare two working trees using various syntax forms
         self.check_b2_vs_b1('diff --old branch2 --new branch1')
@@ -356,7 +371,7 @@ class TestExternalDiff(DiffBase):
                 del os.environ['BZR_PROGRESS_BAR']
             else:
                 os.environ['BZR_PROGRESS_BAR'] = orig_progress
-            
+
         if 'Diff is not installed on this machine' in err:
             raise TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)

@@ -21,6 +21,7 @@ See ``bzr help rules`` for details.
 
 from bzrlib import (
     config,
+    commands,
     errors,
     globbing,
     osutils,
@@ -73,8 +74,15 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         options = {'encoding': 'utf-8'}
         self._cfg = configobj.ConfigObj(inifile, options=options)
         sections = self._cfg.keys()
-        patterns = [s[FILE_PREFS_PREFIX_LEN:] for s in sections
-            if s.startswith(FILE_PREFS_PREFIX)]
+        patterns = []
+        self.pattern_to_section = {}
+        for s in sections:
+            if s.startswith(FILE_PREFS_PREFIX):
+                file_patterns = commands.shlex_split_unicode(
+                    s[FILE_PREFS_PREFIX_LEN:])
+                patterns.extend(file_patterns)
+                for fp in file_patterns:
+                    self.pattern_to_section[fp] = s
         if len(patterns) < len(sections):
             unknowns = [s for s in sections
                 if not s.startswith(FILE_PREFS_PREFIX)]
@@ -92,7 +100,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         if pat is None:
             return ()
         else:
-            all = self._cfg[FILE_PREFS_PREFIX + pat]
+            all = self._cfg[self.pattern_to_section[pat]]
             return tuple(all.items())
 
     def get_selected_items(self, path, names):
@@ -103,7 +111,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         if pat is None:
             return ()
         else:
-            all = self._cfg[FILE_PREFS_PREFIX + pat]
+            all = self._cfg[self.pattern_to_section[pat]]
             return tuple((k, all.get(k)) for k in names)
 
 

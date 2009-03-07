@@ -46,7 +46,7 @@ class cmd_echo_replace(cmd_echo_exact):
 
 
 class TestCommandEncoding(TestCase):
-    
+
     def test_exact(self):
         def bzr(*args, **kwargs):
             return self.run_bzr(*args, **kwargs)[0]

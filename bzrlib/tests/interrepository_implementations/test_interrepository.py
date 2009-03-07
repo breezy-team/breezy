@@ -130,7 +130,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 
     def test_search_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones
-        # are stripped. (fake meaning no revision object, but an inventory 
+        # are stripped. (fake meaning no revision object, but an inventory
         # as some formats keyed off inventory data in the past.)
         # make a repository to compare against that claims to have rev1
         repo_b = self.make_to_repository('rev1_only')
@@ -168,7 +168,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertEqual(set(['rev1']), result.get_keys())
         self.assertEqual((set(['rev1']), set([NULL_REVISION]), 1),
             result.get_recipe())
-        
+
     def test_fetch_fetches_signatures_too(self):
         from_repo = self.bzrdir.open_repository()
         from_signature = from_repo.get_signature_text('rev2')

@@ -20,7 +20,7 @@
 """Repository implementation tests for bzr.
 
 These test the conformance of all the repository variations to the expected API.
-Specific tests for individual formats are in the tests/test_repository.py file 
+Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/branch_implementations/*.py.
 """
 
@@ -56,7 +56,7 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
 
     :param formats: A list of (scenario_name_suffix, repo_format)
         where the scenario_name_suffix is to be appended to the format
-        name, and the repo_format is a RepositoryFormat subclass 
+        name, and the repo_format is a RepositoryFormat subclass
         instance.
     :returns: Scenarios of [(scenario_name, {parameter_name: value})]
     """
@@ -138,7 +138,7 @@ class BrokenRepoScenario(object):
             of the file is verified to have the given parents after the
             reconcile.  i.e. this is used to assert that reconcile made the
             changes we expect it to make.
-    
+
     A subclass may define the following optional method as well:
         :corrected_fulltexts: a list of file versions that should be stored as
             fulltexts (not deltas) after reconcile.  run_test will verify that
@@ -213,7 +213,7 @@ class UndamagedRepositoryScenario(BrokenRepoScenario):
 class FileParentIsNotInRevisionAncestryScenario(BrokenRepoScenario):
     """A scenario where a revision 'rev2' has 'a-file' with a
     parent 'rev1b' that is not in the revision ancestry.
-    
+
     Reconcile should remove 'rev1b' from the parents list of 'a-file' in
     'rev2', preserving 'rev1a' as a parent.
     """
@@ -633,11 +633,11 @@ class TooManyParentsScenario(BrokenRepoScenario):
         inv = self.make_one_file_inventory(
             repo, 'bad-parent', (), root_revision='bad-parent')
         self.add_revision(repo, 'bad-parent', inv, ())
-        
+
         inv = self.make_one_file_inventory(
             repo, 'good-parent', ('bad-parent',))
         self.add_revision(repo, 'good-parent', inv, ('bad-parent',))
-        
+
         inv = self.make_one_file_inventory(
             repo, 'broken-revision', ('good-parent', 'bad-parent'))
         self.add_revision(repo, 'broken-revision', inv, ('good-parent',))
@@ -653,7 +653,7 @@ class TooManyParentsScenario(BrokenRepoScenario):
                        ('a-file-id', 'broken-revision'): True,
                        ('a-file-id', 'good-parent'): True})
         return result
-             
+
     def repository_text_keys(self):
         return {('a-file-id', 'bad-parent'): [NULL_REVISION],
                 ('a-file-id', 'broken-revision'):
@@ -744,7 +744,7 @@ class ClaimedFileParentDidNotModifyFileScenario(BrokenRepoScenario):
                     [('TREE_ROOT', 'modified-something-else')],
                 ('TREE_ROOT', 'modified-something-else'):
                     [('TREE_ROOT', 'basis')]}
-            
+
 
 class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
     """A scenario where the set parents of a version of a file are correct, but
@@ -838,7 +838,7 @@ class IncorrectlyOrderedParentsScenario(BrokenRepoScenario):
                     [('TREE_ROOT', 'parent-2'), ('TREE_ROOT', 'parent-1')],
                 ('TREE_ROOT', 'parent-1'): [NULL_REVISION],
                 ('TREE_ROOT', 'parent-2'): [NULL_REVISION]}
-               
+
 
 all_broken_scenario_classes = [
     UndamagedRepositoryScenario,
@@ -859,6 +859,7 @@ def load_tests(basic_tests, module, loader):
     prefix = 'bzrlib.tests.per_repository.'
     test_repository_modules = [
         'test_add_fallback_repository',
+        'test_add_inventory_by_delta',
         'test_break_lock',
         'test_check',
         # test_check_reconcile is intentionally omitted, see below.

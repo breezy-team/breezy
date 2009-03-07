@@ -407,19 +407,19 @@ class TestRangeFileMultipleRanges(tests.TestCase, TestRangeFileMixin):
 
 
 class TestRangeFileMultipleRangesQuotedBoundaries(TestRangeFileMultipleRanges):
-    """Perform the same tests as TestRangeFileMultipleRanges, but uses 
+    """Perform the same tests as TestRangeFileMultipleRanges, but uses
     an angle-bracket quoted boundary string like IIS 6.0 and 7.0
     (but not IIS 5, which breaks the RFC in a different way
     by using square brackets, not angle brackets)
-    
-    This reveals a bug caused by 
-    
-    - The bad implementation of RFC 822 unquoting in Python (angles are not 
-      quotes), coupled with 
+
+    This reveals a bug caused by
+
+    - The bad implementation of RFC 822 unquoting in Python (angles are not
+      quotes), coupled with
 
     - The bad implementation of RFC 2046 in IIS (angles are not permitted chars
       in boundary lines).
- 
+
     """
     # The boundary as it appears in boundary lines
     # IIS 6 and 7 use this value

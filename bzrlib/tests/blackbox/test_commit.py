@@ -23,6 +23,7 @@ import sys
 from bzrlib import (
     osutils,
     ignores,
+    msgeditor,
     osutils,
     )
 from bzrlib.bzrdir import BzrDir
@@ -301,7 +302,7 @@ class TestCommit(ExternalBase):
     def test_commit_a_text_merge_in_a_checkout(self):
         # checkouts perform multiple actions in a transaction across bond
         # branches and their master, and have been observed to fail in the
-        # past. This is a user story reported to fail in bug #43959 where 
+        # past. This is a user story reported to fail in bug #43959 where
         # a merge done in a checkout (using the update command) failed to
         # commit correctly.
         trunk = self.make_branch_and_tree('trunk')
@@ -553,7 +554,7 @@ class TestCommit(ExternalBase):
                      "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['author'])
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['authors'])
 
     def test_author_no_email(self):
         """Author's name without an email address is allowed, too."""
@@ -564,7 +565,18 @@ class TestCommit(ExternalBase):
                                 "tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe', properties['author'])
+        self.assertEqual('John Doe', properties['authors'])
+
+    def test_multiple_authors(self):
+        """Multiple authors can be specyfied, and all are stored."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "--author='Jane Rey' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe\nJane Rey', properties['authors'])
 
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
@@ -595,3 +607,29 @@ class TestCommit(ExternalBase):
             retcode=3)
         self.assertContainsRe(err,
             r'^bzr: ERROR: Cannot lock.*readonly transport')
+
+    def test_commit_hook_template(self):
+        # Test that commit template hooks work
+        def restoreDefaults():
+            msgeditor.hooks['commit_message_template'] = []
+            osutils.set_or_unset_env('BZR_EDITOR', default_editor)
+        if sys.platform == "win32":
+            f = file('fed.bat', 'w')
+            f.write('@rem dummy fed')
+            f.close()
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+        else:
+            f = file('fed.sh', 'wb')
+            f.write('#!/bin/sh\n')
+            f.close()
+            os.chmod('fed.sh', 0755)
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+        self.addCleanup(restoreDefaults)
+        msgeditor.hooks.install_named_hook("commit_message_template",
+                lambda commit_obj, msg: "save me some typing\n", None)
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('save me some typing\n', last_rev.message)

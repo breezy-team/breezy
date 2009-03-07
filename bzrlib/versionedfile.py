@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -22,6 +22,7 @@
 from copy import copy
 from cStringIO import StringIO
 import os
+import struct
 from zlib import adler32
 
 from bzrlib.lazy_import import lazy_import
@@ -30,6 +31,8 @@ import urllib
 
 from bzrlib import (
     errors,
+    index,
+    knit,
     osutils,
     multiparent,
     tsort,
@@ -43,6 +46,7 @@ from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
+from bzrlib.util import bencode
 
 
 adapter_registry = Registry()
@@ -58,11 +62,13 @@ adapter_registry.register_lazy(('knit-annotated-ft-gz', 'knit-ft-gz'),
     'bzrlib.knit', 'FTAnnotatedToUnannotated')
 adapter_registry.register_lazy(('knit-annotated-ft-gz', 'fulltext'),
     'bzrlib.knit', 'FTAnnotatedToFullText')
+# adapter_registry.register_lazy(('knit-annotated-ft-gz', 'chunked'),
+#     'bzrlib.knit', 'FTAnnotatedToChunked')
 
 
 class ContentFactory(object):
     """Abstract interface for insertion and retrieval from a VersionedFile.
-    
+
     :ivar sha1: None, or the sha1 of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. One of
         'mpdiff', 'knit-annotated-ft', 'knit-annotated-delta', 'knit-ft',
@@ -83,12 +89,46 @@ class ContentFactory(object):
         self.parents = None
 
 
+class ChunkedContentFactory(ContentFactory):
+    """Static data content factory.
+
+    This takes a 'chunked' list of strings. The only requirement on 'chunked' is
+    that ''.join(lines) becomes a valid fulltext. A tuple of a single string
+    satisfies this, as does a list of lines.
+
+    :ivar sha1: None, or the sha1 of the content fulltext.
+    :ivar storage_kind: The native storage kind of this factory. Always
+        'chunked'
+    :ivar key: The key of this content. Each key is a tuple with a single
+        string in it.
+    :ivar parents: A tuple of parent keys for self.key. If the object has
+        no parent information, None (as opposed to () for an empty list of
+        parents).
+     """
+
+    def __init__(self, key, parents, sha1, chunks):
+        """Create a ContentFactory."""
+        self.sha1 = sha1
+        self.storage_kind = 'chunked'
+        self.key = key
+        self.parents = parents
+        self._chunks = chunks
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == 'chunked':
+            return self._chunks
+        elif storage_kind == 'fulltext':
+            return ''.join(self._chunks)
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
+
+
 class FulltextContentFactory(ContentFactory):
     """Static data content factory.
 
     This takes a fulltext when created and just returns that during
     get_bytes_as('fulltext').
-    
+
     :ivar sha1: None, or the sha1 of the content fulltext.
     :ivar storage_kind: The native storage kind of this factory. Always
         'fulltext'.
@@ -110,13 +150,15 @@ class FulltextContentFactory(ContentFactory):
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
             return self._text
+        elif storage_kind == 'chunked':
+            return [self._text]
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
 
 class AbsentContentFactory(ContentFactory):
     """A placeholder content factory for unavailable texts.
-    
+
     :ivar sha1: None.
     :ivar storage_kind: 'absent'.
     :ivar key: The key of this content. Each key is a tuple with a single
@@ -158,7 +200,7 @@ def filter_absent(record_stream):
 
 class VersionedFile(object):
     """Versioned text file storage.
-    
+
     A versioned file manages versions of line-based text files,
     keeping track of the originating version for each line.
 
@@ -202,7 +244,7 @@ class VersionedFile(object):
     def insert_record_stream(self, stream):
         """Insert a record stream into this versioned file.
 
-        :param stream: A stream of records to insert. 
+        :param stream: A stream of records to insert.
         :return: None
         :seealso VersionedFile.get_record_stream:
         """
@@ -227,7 +269,7 @@ class VersionedFile(object):
             the data back accurately. (Checking the lines have been split
             correctly is expensive and extremely unlikely to catch bugs so it
             is not done at runtime unless check_content is True.)
-        :param parent_texts: An optional dictionary containing the opaque 
+        :param parent_texts: An optional dictionary containing the opaque
             representations of some or all of the parents of version_id to
             allow delta optimisations.  VERY IMPORTANT: the texts must be those
             returned by add_lines or data corruption can be caused.
@@ -261,7 +303,7 @@ class VersionedFile(object):
         parent_texts=None, nostore_sha=None, random_id=False,
         check_content=True, left_matching_blocks=None):
         """Add lines to the versioned file, allowing ghosts to be present.
-        
+
         This takes the same parameters as add_lines and returns the same.
         """
         self._check_write_ok()
@@ -291,7 +333,7 @@ class VersionedFile(object):
 
     def get_format_signature(self):
         """Get a text description of the data encoding in this file.
-        
+
         :since: 0.90
         """
         raise NotImplementedError(self.get_format_signature)
@@ -418,19 +460,19 @@ class VersionedFile(object):
         if isinstance(version_ids, basestring):
             version_ids = [version_ids]
         raise NotImplementedError(self.get_ancestry)
-        
+
     def get_ancestry_with_ghosts(self, version_ids):
         """Return a list of all ancestors of given version(s). This
         will not include the null revision.
 
         Must raise RevisionNotPresent if any of the given versions are
         not present in file history.
-        
+
         Ghosts that are known about will be included in ancestry list,
         but are not explicitly marked.
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
-    
+
     def get_parent_map(self, version_ids):
         """Get a map of the parents of version_ids.
 
@@ -499,12 +541,12 @@ class VersionedFile(object):
         unchanged   Alive in both a and b (possibly created in both)
         new-a       Created in a
         new-b       Created in b
-        ghost-a     Killed in a, unborn in b    
+        ghost-a     Killed in a, unborn in b
         ghost-b     Killed in b, unborn in a
         irrelevant  Not in either revision
         """
         raise NotImplementedError(VersionedFile.plan_merge)
-        
+
     def weave_merge(self, plan, a_marker=TextMerge.A_MARKER,
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
@@ -512,7 +554,7 @@ class VersionedFile(object):
 
 class RecordingVersionedFilesDecorator(object):
     """A minimal versioned files that records calls made on it.
-    
+
     Only enough methods have been added to support tests using it to date.
 
     :ivar calls: A list of the calls made; can be reset at any time by
@@ -520,8 +562,8 @@ class RecordingVersionedFilesDecorator(object):
     """
 
     def __init__(self, backing_vf):
-        """Create a RecordingVersionedFileDsecorator decorating backing_vf.
-        
+        """Create a RecordingVersionedFilesDecorator decorating backing_vf.
+
         :param backing_vf: The versioned file to answer all methods.
         """
         self._backing_vf = backing_vf
@@ -561,6 +603,44 @@ class RecordingVersionedFilesDecorator(object):
         return self._backing_vf.keys()
 
 
+class OrderingVersionedFilesDecorator(RecordingVersionedFilesDecorator):
+    """A VF that records calls, and returns keys in specific order.
+
+    :ivar calls: A list of the calls made; can be reset at any time by
+        assigning [] to it.
+    """
+
+    def __init__(self, backing_vf, key_priority):
+        """Create a RecordingVersionedFilesDecorator decorating backing_vf.
+
+        :param backing_vf: The versioned file to answer all methods.
+        :param key_priority: A dictionary defining what order keys should be
+            returned from an 'unordered' get_record_stream request.
+            Keys with lower priority are returned first, keys not present in
+            the map get an implicit priority of 0, and are returned in
+            lexicographical order.
+        """
+        RecordingVersionedFilesDecorator.__init__(self, backing_vf)
+        self._key_priority = key_priority
+
+    def get_record_stream(self, keys, sort_order, include_delta_closure):
+        self.calls.append(("get_record_stream", list(keys), sort_order,
+            include_delta_closure))
+        if sort_order == 'unordered':
+            def sort_key(key):
+                return (self._key_priority.get(key, 0), key)
+            # Use a defined order by asking for the keys one-by-one from the
+            # backing_vf
+            for key in sorted(keys, key=sort_key):
+                for record in self._backing_vf.get_record_stream([key],
+                                'unordered', include_delta_closure):
+                    yield record
+        else:
+            for record in self._backing_vf.get_record_stream(keys, sort_order,
+                            include_delta_closure):
+                yield record
+
+
 class KeyMapper(object):
     """KeyMappers map between keys and underlying partitioned storage."""
 
@@ -575,7 +655,7 @@ class KeyMapper(object):
 
     def unmap(self, partition_id):
         """Map a partitioned storage id back to a key prefix.
-        
+
         :param partition_id: The underlying partition id.
         :return: As much of a key (or prefix) as is derivable from the partition
             id.
@@ -613,7 +693,7 @@ class URLEscapeMapper(KeyMapper):
 
 class PrefixMapper(URLEscapeMapper):
     """A key mapper that extracts the first component of a key.
-    
+
     This mapper is for use with a transport based backend.
     """
 
@@ -652,7 +732,7 @@ class HashPrefixMapper(URLEscapeMapper):
 
 class HashEscapedPrefixMapper(HashPrefixMapper):
     """Combines the escaped first component of a key with a hash.
-    
+
     This mapper is for use with a transport based backend.
     """
 
@@ -724,7 +804,7 @@ class VersionedFiles(object):
             the data back accurately. (Checking the lines have been split
             correctly is expensive and extremely unlikely to catch bugs so it
             is not done at runtime unless check_content is True.)
-        :param parent_texts: An optional dictionary containing the opaque 
+        :param parent_texts: An optional dictionary containing the opaque
             representations of some or all of the parents of version_id to
             allow delta optimisations.  VERY IMPORTANT: the texts must be those
             returned by add_lines or data corruption can be caused.
@@ -765,12 +845,12 @@ class VersionedFiles(object):
                                   if not mpvf.has_version(p))
         # It seems likely that adding all the present parents as fulltexts can
         # easily exhaust memory.
-        split_lines = osutils.split_lines
+        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(needed_parents, 'unordered',
             True):
             if record.storage_kind == 'absent':
                 continue
-            mpvf.add_version(split_lines(record.get_bytes_as('fulltext')),
+            mpvf.add_version(chunks_to_lines(record.get_bytes_as('chunked')),
                 record.key, [])
         for (key, parent_keys, expected_sha1, mpdiff), lines in\
             zip(records, mpvf.get_line_list(versions)):
@@ -846,10 +926,24 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.get_sha1s)
 
+    has_key = index._has_key_from_parent_map
+
+    def get_missing_compression_parent_keys(self):
+        """Return an iterable of keys of missing compression parents.
+
+        Check this after calling insert_record_stream to find out if there are
+        any missing compression parents.  If there are, the records that
+        depend on them are not able to be inserted safely. The precise
+        behaviour depends on the concrete VersionedFiles class in use.
+
+        Classes that do not support this will raise NotImplementedError.
+        """
+        raise NotImplementedError(self.get_missing_compression_parent_keys)
+
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
-        :param stream: A stream of records to insert. 
+        :param stream: A stream of records to insert.
         :return: None
         :seealso VersionedFile.get_record_stream:
         """
@@ -899,9 +993,9 @@ class VersionedFiles(object):
         ghosts = maybe_ghosts - set(self.get_parent_map(maybe_ghosts))
         knit_keys.difference_update(ghosts)
         lines = {}
-        split_lines = osutils.split_lines
+        chunks_to_lines = osutils.chunks_to_lines
         for record in self.get_record_stream(knit_keys, 'topological', True):
-            lines[record.key] = split_lines(record.get_bytes_as('fulltext'))
+            lines[record.key] = chunks_to_lines(record.get_bytes_as('chunked'))
             # line_block_dict = {}
             # for parent, blocks in record.extract_line_blocks():
             #   line_blocks[parent] = blocks
@@ -921,6 +1015,8 @@ class VersionedFiles(object):
             diffs.append(multiparent.MultiParent.from_lines(target,
                 parent_lines, left_parent_blocks))
         return diffs
+
+    missing_keys = index._missing_keys_from_parent_map
 
     def _extract_blocks(self, version_id, source, target):
         return None
@@ -1081,7 +1177,7 @@ class ThunkedVersionedFiles(VersionedFiles):
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
-        :param stream: A stream of records to insert. 
+        :param stream: A stream of records to insert.
         :return: None
         :seealso VersionedFile.get_record_stream:
         """
@@ -1208,8 +1304,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
                 lines = self._lines[key]
                 parents = self._parents[key]
                 pending.remove(key)
-                yield FulltextContentFactory(key, parents, None,
-                    ''.join(lines))
+                yield ChunkedContentFactory(key, parents, None, lines)
         for versionedfile in self.fallback_versionedfiles:
             for record in versionedfile.get_record_stream(
                 pending, 'unordered', True):
@@ -1245,7 +1340,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
 
 class PlanWeaveMerge(TextMerge):
     """Weave merge that takes a plan as its input.
-    
+
     This exists so that VersionedFile.plan_merge is implementable.
     Most callers will want to use WeaveMerge instead.
     """
@@ -1272,7 +1367,7 @@ class PlanWeaveMerge(TextMerge):
                 yield(lines_a,)
             else:
                 yield (lines_a, lines_b)
-       
+
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
         # on killed-both lines may be too aggressive. -- mbp 20060324
@@ -1284,7 +1379,7 @@ class PlanWeaveMerge(TextMerge):
                 lines_a = []
                 lines_b = []
                 ch_a = ch_b = False
-                
+
             if state == 'unchanged':
                 if line:
                     yield ([line],)
@@ -1317,17 +1412,17 @@ class PlanWeaveMerge(TextMerge):
 class WeaveMerge(PlanWeaveMerge):
     """Weave merge that takes a VersionedFile and two versions as its input."""
 
-    def __init__(self, versionedfile, ver_a, ver_b, 
+    def __init__(self, versionedfile, ver_a, ver_b,
         a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
         plan = versionedfile.plan_merge(ver_a, ver_b)
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
 
 class VirtualVersionedFiles(VersionedFiles):
-    """Dummy implementation for VersionedFiles that uses other functions for 
+    """Dummy implementation for VersionedFiles that uses other functions for
     obtaining fulltexts and parent maps.
 
-    This is always on the bottom of the stack and uses string keys 
+    This is always on the bottom of the stack and uses string keys
     (rather than tuples) internally.
     """
 
@@ -1335,13 +1430,13 @@ class VirtualVersionedFiles(VersionedFiles):
         """Create a VirtualVersionedFiles.
 
         :param get_parent_map: Same signature as Repository.get_parent_map.
-        :param get_lines: Should return lines for specified key or None if 
+        :param get_lines: Should return lines for specified key or None if
                           not available.
         """
         super(VirtualVersionedFiles, self).__init__()
         self._get_parent_map = get_parent_map
         self._get_lines = get_lines
-        
+
     def check(self, progressbar=None):
         """See VersionedFiles.check.
 
@@ -1379,11 +1474,84 @@ class VirtualVersionedFiles(VersionedFiles):
             if lines is not None:
                 if not isinstance(lines, list):
                     raise AssertionError
-                yield FulltextContentFactory((k,), None, 
+                yield ChunkedContentFactory((k,), None,
                         sha1=osutils.sha_strings(lines),
-                        text=''.join(lines))
+                        chunks=lines)
             else:
                 yield AbsentContentFactory((k,))
 
+    def iter_lines_added_or_present_in_keys(self, keys, pb=None):
+        """See VersionedFile.iter_lines_added_or_present_in_versions()."""
+        for i, (key,) in enumerate(keys):
+            if pb is not None:
+                pb.update("iterating texts", i, len(keys))
+            for l in self._get_lines(key):
+                yield (l, key)
 
 
+def network_bytes_to_kind_and_offset(network_bytes):
+    """Strip of a record kind from the front of network_bytes.
+
+    :param network_bytes: The bytes of a record.
+    :return: A tuple (storage_kind, offset_of_remaining_bytes)
+    """
+    line_end = network_bytes.find('\n')
+    storage_kind = network_bytes[:line_end]
+    return storage_kind, line_end + 1
+
+
+class NetworkRecordStream(object):
+    """A record_stream which reconstitures a serialised stream."""
+
+    def __init__(self, bytes_iterator):
+        """Create a NetworkRecordStream.
+
+        :param bytes_iterator: An iterator of bytes. Each item in this
+            iterator should have been obtained from a record_streams'
+            record.get_bytes_as(record.storage_kind) call.
+        """
+        self._bytes_iterator = bytes_iterator
+        self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
+            'knit-delta-gz':knit.knit_network_to_record,
+            'knit-annotated-ft-gz':knit.knit_network_to_record,
+            'knit-annotated-delta-gz':knit.knit_network_to_record,
+            'knit-delta-closure':knit.knit_delta_closure_to_records,
+            'fulltext':fulltext_network_to_record,
+            }
+
+    def read(self):
+        """Read the stream.
+
+        :return: An iterator as per VersionedFiles.get_record_stream().
+        """
+        for bytes in self._bytes_iterator:
+            storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
+            for record in self._kind_factory[storage_kind](
+                storage_kind, bytes, line_end):
+                yield record
+
+
+def fulltext_network_to_record(kind, bytes, line_end):
+    """Convert a network fulltext record to record."""
+    meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
+    record_meta = bytes[line_end+4:line_end+4+meta_len]
+    key, parents = bencode.bdecode_as_tuple(record_meta)
+    if parents == 'nil':
+        parents = None
+    fulltext = bytes[line_end+4+meta_len:]
+    return [FulltextContentFactory(key, parents, None, fulltext)]
+
+
+def _length_prefix(bytes):
+    return struct.pack('!L', len(bytes))
+
+
+def record_to_fulltext_bytes(record):
+    if record.parents is None:
+        parents = 'nil'
+    else:
+        parents = record.parents
+    record_meta = bencode.bencode((record.key, parents))
+    record_content = record.get_bytes_as('fulltext')
+    return "fulltext\n%s%s%s" % (
+        _length_prefix(record_meta), record_meta, record_content)

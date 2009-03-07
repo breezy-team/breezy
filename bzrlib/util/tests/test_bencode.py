@@ -9,10 +9,10 @@
 # publish, distribute, sublicense, and/or sell copies of the Software,
 # and to permit persons to whom the Software is furnished to do so,
 # subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-# 
+#
 # The Software is provided "AS IS", without warranty of any kind,
 # express or implied, including but not limited to the warranties of
 # merchantability,  fitness for a particular purpose and
@@ -23,7 +23,7 @@
 # Software.
 
 
-from bzrlib.util.bencode import bencode, bdecode, Bencached
+from bzrlib.util.bencode import bencode, bdecode, bdecode_as_tuple, Bencached
 from bzrlib.tests import TestCase
 
 class TestBencode(TestCase):
@@ -189,6 +189,25 @@ class TestBencode(TestCase):
         bdecode('d0:i3ee')
 
 
+    def test_bdecode_as_tuple(self):
+        assert bdecode_as_tuple('le') == ()
+        try:
+            bdecode_as_tuple('leanfdldjfh')
+            assert 0
+        except ValueError:
+            pass
+        assert bdecode_as_tuple('l0:0:0:e') == ('', '', '')
+        assert bdecode_as_tuple('li1ei2ei3ee') == (1, 2, 3)
+        assert bdecode_as_tuple('l3:asd2:xye') == ('asd', 'xy')
+        assert bdecode_as_tuple('ll5:Alice3:Bobeli2ei3eee') == (('Alice', 'Bob'),
+                (2, 3))
+        try:
+            bdecode_as_tuple('l-3:e')
+            assert 0
+        except ValueError:
+            pass
+
+
     def test_bencode(self):
         assert bencode(4) == 'i4e'
         assert bencode(0) == 'i0e'
@@ -204,9 +223,12 @@ class TestBencode(TestCase):
         assert bencode({'age': 25, 'eyes': 'blue'}) == 'd3:agei25e4:eyes4:bluee'
         assert bencode({'spam.mp3': {'author': 'Alice', 'length': 100000}}) == 'd8:spam.mp3d6:author5:Alice6:lengthi100000eee'
         assert bencode(Bencached(bencode(3))) == 'i3e'
+        assert bencode(True) == 'i1e'
+        assert bencode(False) == 'i0e'
         try:
             bencode({1: 'foo'})
+            assert 0
         except TypeError:
-            return
-        assert 0
+            pass
+
 

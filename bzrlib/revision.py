@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# TODO: Some kind of command-line display of revision properties: 
+# TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
 
 
@@ -47,10 +47,10 @@ class Revision(object):
 
     properties
         Dictionary of revision properties.  These are attached to the
-        revision as extra metadata.  The name must be a single 
+        revision as extra metadata.  The name must be a single
         word; the value can be an arbitrary string.
     """
-    
+
     def __init__(self, revision_id, properties=None, **args):
         self.revision_id = revision_id
         self.properties = properties or {}
@@ -85,7 +85,7 @@ class Revision(object):
             if not isinstance(name, basestring) or contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)
             if not isinstance(value, basestring):
-                raise ValueError("invalid property value %r for %r" % 
+                raise ValueError("invalid property value %r for %r" %
                                  (name, value))
 
     def get_history(self, repository):
@@ -112,13 +112,33 @@ class Revision(object):
         """
         return self.message.lstrip().split('\n', 1)[0]
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((1, 13, 0)))
     def get_apparent_author(self):
         """Return the apparent author of this revision.
 
-        If the revision properties contain the author name,
-        return it. Otherwise return the committer name.
+        This method is deprecated in favour of get_apparent_authors.
+
+        If the revision properties contain any author names,
+        return the first. Otherwise return the committer name.
         """
-        return self.properties.get('author', self.committer)
+        return self.get_apparent_authors()[0]
+
+    def get_apparent_authors(self):
+        """Return the apparent authors of this revision.
+
+        If the revision properties contain the names of the authors,
+        return them. Otherwise return the committer name.
+
+        The return value will be a list containing at least one element.
+        """
+        authors = self.properties.get('authors', None)
+        if authors is None:
+            author = self.properties.get('author', None)
+            if author is None:
+                return [self.committer]
+            return [author]
+        else:
+            return authors.split("\n")
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -133,7 +153,7 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
                 revision = revision_source.get_revision(ancestor)
             except errors.NoSuchRevision, e:
                 if e.revision == revision_id:
-                    raise 
+                    raise
                 else:
                     continue
             if only_present:
@@ -147,7 +167,7 @@ def find_present_ancestors(revision_id, revision_source):
     """Return the ancestors of a revision present in a branch.
 
     It's possible that a branch won't have the complete ancestry of
-    one of its revisions.  
+    one of its revisions.
 
     """
     found_ancestors = {}
@@ -157,11 +177,11 @@ def find_present_ancestors(revision_id, revision_source):
         if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)
     return found_ancestors
-    
+
 
 def __get_closest(intersection):
     intersection.sort()
-    matches = [] 
+    matches = []
     for entry in intersection:
         if entry[0] == intersection[0][0]:
             matches.append(entry[2])

@@ -64,7 +64,7 @@ may wish to do a normal merge followed by a few reverse cherrypicks.
 Merging uncommitted changes
 ---------------------------
 
-If you have several branches and you accidently start making changes in the
+If you have several branches and you accidentally start making changes in the
 wrong one, here are the steps to take to correct this. Assuming you began
 working in branch ``foo`` when you meant to work in branch ``bar``:
 

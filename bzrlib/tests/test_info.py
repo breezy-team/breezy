@@ -152,8 +152,10 @@ class TestInfo(tests.TestCaseWithTransport):
                     '1.9 or 1.9-rich-root or ' \
                     'dirstate or dirstate-tags or pack-0.92 or'\
                     ' rich-root or rich-root-pack'
-            if key in ('knit', 'metaweave'):
+            elif key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
+            elif key in ('development-wt5', 'development-wt5-rich-root'):
+                expected = 'development-wt5 or development-wt5-rich-root'
             self.assertCheckoutDescription(key, expected)
 
     def test_describe_branch_format(self):
@@ -163,6 +165,10 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = None
             if key in ('dirstate', 'knit'):
                 expected = 'dirstate or knit'
+            elif key in ('1.9', 'development-wt5'):
+                expected = '1.9 or development-wt5'
+            elif key in ('1.9-rich-root', 'development-wt5-rich-root'):
+                expected = '1.9-rich-root or development-wt5-rich-root'
             self.assertBranchDescription(key, expected)
 
     def test_describe_repo_format(self):
@@ -172,6 +178,10 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):
                 expected = 'dirstate or dirstate-tags or knit'
+            elif key in ('1.9', 'development-wt5'):
+                expected = '1.9 or development-wt5'
+            elif key in ('1.9-rich-root', 'development-wt5-rich-root'):
+                expected = '1.9-rich-root or development-wt5-rich-root'
             self.assertRepoDescription(key, expected)
 
         format = bzrdir.format_registry.make_bzrdir('metaweave')

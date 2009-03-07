@@ -189,8 +189,6 @@ doc/developers
 
 Automatically-generated API reference information is available at 
 <http://starship.python.net/crew/mwh/bzrlibapi/>.  
-(There is an experimental editable version at 
-<http://starship.python.net/crew/mwh/bzrlibapi-oe/>.)
 
 See also the `Bazaar Architectural Overview  <../../developers/overview.html>`_.
 
@@ -249,7 +247,7 @@ Please put a "cover letter" on your merge request explaining:
 
 * the reason **why** you're making this change
 
-* **how** this change acheives this purpose
+* **how** this change achieves this purpose
 
 * anything else you may have fixed in passing 
 
@@ -386,6 +384,12 @@ should be a self-contained one-sentence summary.
 
 We use 4 space indents for blocks, and never use tab characters.  (In vim,
 ``set expandtab``.)
+
+No trailing white space is allowed.
+
+Unix style newlines (LF) are used.
+
+Each file must have a newline at the end of it.
 
 Lines should be no more than 79 characters if at all possible.
 Lines that continue a long statement may be indented in either of 
@@ -886,6 +890,17 @@ New exception classes should be defined when callers might want to catch
 that exception specifically, or when it needs a substantially different
 format string.
 
+#. If it is something that a caller can recover from, a custom exception
+   is reasonable. 
+
+#. If it is a data consistency issue, using a builtin like
+   ``ValueError``/``TypeError`` is reasonable. 
+
+#. If it is a programmer error (using an api incorrectly)
+   ``AssertionError`` is reasonable. 
+
+#. Otherwise, use ``BzrError`` or ``InternalBzrError``.
+
 Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
 
@@ -1049,6 +1064,20 @@ If you send a SIGQUIT signal to bzr, which can be done by pressing
 Ctrl-\\ on Unix, bzr will go into the debugger immediately.  You can
 continue execution by typing ``c``.  This can be disabled if necessary
 by setting the environment variable ``BZR_SIGQUIT_PDB=0``.
+
+
+Debug Flags
+===========
+
+Bazaar accepts some global options starting with ``-D`` such as
+``-Dhpss``.  These set a value in `bzrlib.debug.debug_flags`, and
+typically cause more information to be written to the trace file.  Most
+`mutter` calls should be guarded by a check of those flags so that we
+don't write out too much information if it's not needed.
+
+Debug flags may have effects other than just emitting trace messages.
+
+Run ``bzr help global-options`` to see them all.
 
 
 Jargon

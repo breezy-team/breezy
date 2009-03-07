@@ -38,6 +38,7 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    urlutils,
     versionedfile,
     weave,
     weavefile,
@@ -67,6 +68,13 @@ class AllInOneRepository(Repository):
     def _serializer(self):
         return xml5.serializer_v5
 
+    def _escape(self, file_or_path):
+        if not isinstance(file_or_path, basestring):
+            file_or_path = '/'.join(file_or_path)
+        if file_or_path == '':
+            return u''
+        return urlutils.escape(osutils.safe_unicode(file_or_path))
+
     def __init__(self, _format, a_bzrdir):
         # we reuse one control files instance.
         dir_mode = a_bzrdir._get_dir_mode()
@@ -74,10 +82,10 @@ class AllInOneRepository(Repository):
 
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
-            # or entirely uncompressed is tidy, but breaks upgrade from 
-            # some existing branches where there's a mixture; we probably 
+            # or entirely uncompressed is tidy, but breaks upgrade from
+            # some existing branches where there's a mixture; we probably
             # still want the option to look for both.
-            relpath = a_bzrdir._control_files._escape(name)
+            relpath = self._escape(name)
             store = TextStore(a_bzrdir.transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,
@@ -87,13 +95,11 @@ class AllInOneRepository(Repository):
         # not broken out yet because the controlweaves|inventory_store
         # and texts bits are still different.
         if isinstance(_format, RepositoryFormat4):
-            # cannot remove these - there is still no consistent api 
+            # cannot remove these - there is still no consistent api
             # which allows access to this old info.
             self.inventory_store = get_store('inventory-store')
             self._text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files)
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -104,9 +110,9 @@ class AllInOneRepository(Repository):
 
     @needs_read_lock
     def _all_revision_ids(self):
-        """Returns a list of all the revision ids in the repository. 
+        """Returns a list of all the revision ids in the repository.
 
-        These are in as much topological order as the underlying store can 
+        These are in as much topological order as the underlying store can
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
@@ -184,14 +190,9 @@ class AllInOneRepository(Repository):
 class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
 
-    @property
-    def _serializer(self):
-        return xml5.serializer_v5
-
     def __init__(self, _format, a_bzrdir, control_files):
         super(WeaveMetaDirRepository, self).__init__(_format, a_bzrdir, control_files)
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
+        self._serializer = _format._serializer
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -202,9 +203,9 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     @needs_read_lock
     def _all_revision_ids(self):
-        """Returns a list of all the revision ids in the repository. 
+        """Returns a list of all the revision ids in the repository.
 
-        These are in as much topological order as the underlying store can 
+        These are in as much topological order as the underlying store can
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
@@ -265,6 +266,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_ghosts = False
     supports_external_lookups = False
+    _fetch_order = 'topological'
+    _fetch_reconcile = True
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -274,14 +277,14 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         if not _internal:
             # always initialized when the bzrdir is.
             return self.open(a_bzrdir, _found=True)
-        
+
         # Create an empty weave
         sio = StringIO()
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        
+
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = lockable_files.LockableFiles(a_bzrdir.transport,
@@ -330,11 +333,6 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     _matchingbzrdir = bzrdir.BzrDirFormat4()
 
-    def __init__(self):
-        super(RepositoryFormat4, self).__init__()
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
-
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Repository format 4"
@@ -347,7 +345,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         """Format 4 is not supported.
 
         It is not supported because the model changed from 4 to 5 and the
-        conversion logic is expensive - so doing it on the fly was not 
+        conversion logic is expensive - so doing it on the fly was not
         feasible.
         """
         return False
@@ -382,15 +380,17 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat5()
-
-    def __init__(self):
-        super(RepositoryFormat5, self).__init__()
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 5"
+
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -398,9 +398,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, False, versionedfile.PrefixMapper(),
+            xml5.serializer_v5, False, versionedfile.PrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -426,15 +425,17 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat6()
-
-    def __init__(self):
-        super(RepositoryFormat6, self).__init__()
-        self._fetch_order = 'topological'
-        self._fetch_reconcile = True
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 6"
+
+    def network_name(self):
+        """The network name for this format is the control dirs disk label."""
+        return self._matchingbzrdir.get_format_string()
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -442,9 +443,8 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, False, versionedfile.HashPrefixMapper(),
+            xml5.serializer_v5, False, versionedfile.HashPrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -473,6 +473,11 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
+    _fetch_order = 'topological'
+    _fetch_reconcile = True
+    @property
+    def _serializer(self):
+        return xml5.serializer_v5
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -491,9 +496,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml5 import serializer_v5
         return RevisionTextStore(repo_transport.clone('revision-store'),
-            serializer_v5, True, versionedfile.HashPrefixMapper(),
+            xml5.serializer_v5, True, versionedfile.HashPrefixMapper(),
             repo.is_locked, repo.is_write_locked)
 
     def _get_signatures(self, repo_transport, repo):
@@ -520,16 +524,16 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
-        files = [('inventory.weave', StringIO(empty_weave)), 
+        files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         utf8_files = [('format', self.get_format_string())]
- 
+
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         return self.open(a_bzrdir=a_bzrdir, _found=True)
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
-        
+
         :param _override_transport: INTERNAL USE ONLY. Allows opening the
                                     repository at a slightly different url
                                     than normal. I.e. during 'upgrade'.
@@ -656,7 +660,7 @@ class RevisionTextStore(TextVersionedFiles):
                 continue
             result[key] = parents
         return result
-    
+
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         for key in keys:
             text, parents = self._load_text_parents(key)
@@ -696,7 +700,7 @@ class SignatureTextStore(TextVersionedFiles):
                 continue
             result[key] = None
         return result
-    
+
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         for key in keys:
             text = self._load_text(key)

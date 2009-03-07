@@ -26,6 +26,7 @@ import datetime
 from bzrlib import (
     errors,
     osutils,
+    registry,
     revision,
     symbol_versioning,
     trace,
@@ -114,7 +115,6 @@ class RevisionInfo(object):
 
 # classes in this list should have a "prefix" attribute, against which
 # string specs are matched
-SPEC_TYPES = []
 _revno_regex = None
 
 
@@ -153,12 +153,18 @@ class RevisionSpec(object):
 
         if spec is None:
             return RevisionSpec(None, _internal=True)
-        for spectype in SPEC_TYPES:
-            if spec.startswith(spectype.prefix):
+        match = revspec_registry.get_prefix(spec)
+        if match is not None:
+            spectype, specsuffix = match
+            trace.mutter('Returning RevisionSpec %s for %s',
+                         spectype.__name__, spec)
+            return spectype(spec, _internal=True)
+        else:
+            for spectype in SPEC_TYPES:
                 trace.mutter('Returning RevisionSpec %s for %s',
                              spectype.__name__, spec)
-                return spectype(spec, _internal=True)
-        else:
+                if spec.startswith(spectype.prefix):
+                    return spectype(spec, _internal=True)
             # RevisionSpec_revno is special cased, because it is the only
             # one that directly handles plain integers
             # TODO: This should not be special cased rather it should be
@@ -267,7 +273,7 @@ class RevisionSpec(object):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
                               self.user_spec)
-    
+
     def needs_branch(self):
         """Whether this revision spec needs a branch.
 
@@ -277,7 +283,7 @@ class RevisionSpec(object):
 
     def get_branch(self):
         """When the revision specifier contains a branch location, return it.
-        
+
         Otherwise, return None.
         """
         return None
@@ -334,7 +340,7 @@ class RevisionSpec_revno(RevisionSpec):
                 dotted = False
             except ValueError:
                 # dotted decimal. This arguably should not be here
-                # but the from_string method is a little primitive 
+                # but the from_string method is a little primitive
                 # right now - RBC 20060928
                 try:
                     match_revno = tuple((int(number) for number in revno_spec.split('.')))
@@ -352,20 +358,15 @@ class RevisionSpec_revno(RevisionSpec):
             revs_or_none = None
 
         if dotted:
-            branch.lock_read()
             try:
-                revision_id_to_revno = branch.get_revision_id_to_revno_map()
-                revisions = [revision_id for revision_id, revno
-                             in revision_id_to_revno.iteritems()
-                             if revno == match_revno]
-            finally:
-                branch.unlock()
-            if len(revisions) != 1:
-                return branch, None, None
+                revision_id = branch.dotted_revno_to_revision_id(match_revno,
+                    _cache_reverse=True)
+            except errors.NoSuchRevision:
+                raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return branch, None, revisions[0]
+                return branch, None, revision_id
         else:
             last_revno, last_revision_id = branch.last_revision_info()
             if revno < 0:
@@ -395,10 +396,9 @@ class RevisionSpec_revno(RevisionSpec):
         else:
             return self.spec[self.spec.find(':')+1:]
 
-# Old compatibility 
+# Old compatibility
 RevisionSpec_int = RevisionSpec_revno
 
-SPEC_TYPES.append(RevisionSpec_revno)
 
 
 class RevisionSpec_revid(RevisionSpec):
@@ -407,7 +407,7 @@ class RevisionSpec_revid(RevisionSpec):
     help_txt = """Selects a revision using the revision id.
 
     Supply a specific revision id, that can be used to specify any
-    revision id in the ancestry of the branch. 
+    revision id in the ancestry of the branch.
     Including merges, and pending merges.
     Examples::
 
@@ -426,7 +426,6 @@ class RevisionSpec_revid(RevisionSpec):
     def _as_revision_id(self, context_branch):
         return osutils.safe_revision_id(self.spec, warn=False)
 
-SPEC_TYPES.append(RevisionSpec_revid)
 
 
 class RevisionSpec_last(RevisionSpec):
@@ -478,7 +477,6 @@ class RevisionSpec_last(RevisionSpec):
         revno, revision_id = self._revno_and_revision_id(context_branch, None)
         return revision_id
 
-SPEC_TYPES.append(RevisionSpec_last)
 
 
 class RevisionSpec_before(RevisionSpec):
@@ -504,7 +502,7 @@ class RevisionSpec_before(RevisionSpec):
     """
 
     prefix = 'before:'
-    
+
     def _match_on(self, branch, revs):
         r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
         if r.revno == 0:
@@ -553,7 +551,6 @@ class RevisionSpec_before(RevisionSpec):
                 'No parents for revision.')
         return parents[0]
 
-SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
@@ -575,7 +572,6 @@ class RevisionSpec_tag(RevisionSpec):
     def _as_revision_id(self, context_branch):
         return context_branch.tags.lookup_tag(self.spec)
 
-SPEC_TYPES.append(RevisionSpec_tag)
 
 
 class _RevListToTimestamps(object):
@@ -616,7 +612,7 @@ class RevisionSpec_date(RevisionSpec):
       date:yesterday            -> select the first revision since yesterday
       date:2006-08-14,17:10:14  -> select the first revision after
                                    August 14th, 2006 at 5:10pm.
-    """    
+    """
     prefix = 'date:'
     _date_re = re.compile(
             r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
@@ -682,7 +678,6 @@ class RevisionSpec_date(RevisionSpec):
         else:
             return RevisionInfo(branch, rev + 1)
 
-SPEC_TYPES.append(RevisionSpec_date)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
@@ -733,6 +728,8 @@ class RevisionSpec_ancestor(RevisionSpec):
             revision_a = revision.ensure_null(branch.last_revision())
             if revision_a == revision.NULL_REVISION:
                 raise errors.NoCommits(branch)
+            if other_location == '':
+                other_location = branch.get_parent()
             other_branch = Branch.open(other_location)
             other_branch.lock_read()
             try:
@@ -750,7 +747,6 @@ class RevisionSpec_ancestor(RevisionSpec):
             branch.unlock()
 
 
-SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
 class RevisionSpec_branch(RevisionSpec):
@@ -799,7 +795,6 @@ class RevisionSpec_branch(RevisionSpec):
             raise errors.NoCommits(other_branch)
         return other_branch.repository.revision_tree(last_revision)
 
-SPEC_TYPES.append(RevisionSpec_branch)
 
 
 class RevisionSpec_submit(RevisionSpec_ancestor):
@@ -844,4 +839,19 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             self._get_submit_location(context_branch))
 
 
-SPEC_TYPES.append(RevisionSpec_submit)
+revspec_registry = registry.Registry()
+def _register_revspec(revspec):
+    revspec_registry.register(revspec.prefix, revspec)
+
+_register_revspec(RevisionSpec_revno)
+_register_revspec(RevisionSpec_revid)
+_register_revspec(RevisionSpec_last)
+_register_revspec(RevisionSpec_before)
+_register_revspec(RevisionSpec_tag)
+_register_revspec(RevisionSpec_date)
+_register_revspec(RevisionSpec_ancestor)
+_register_revspec(RevisionSpec_branch)
+_register_revspec(RevisionSpec_submit)
+
+SPEC_TYPES = symbol_versioning.deprecated_list(
+    symbol_versioning.deprecated_in((1, 12, 0)), "SPEC_TYPES", [])

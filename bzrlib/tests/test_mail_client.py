@@ -14,11 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import urllib
+
 from bzrlib import (
     errors,
     mail_client,
     tests,
     urlutils,
+    osutils,
     )
 
 class TestMutt(tests.TestCase):
@@ -174,6 +177,38 @@ class TestKMail(tests.TestCase):
             u'Hi there!', u'file%')
         self.assertEqual(
             ['-s', 'Hi there!', '--attach', 'file%', 'jrandom@example.org'],
+            cmdline)
+        for item in cmdline:
+            self.assertFalse(isinstance(item, unicode),
+                'Command-line item %r is unicode!' % item)
+
+
+class TestClaws(tests.TestCase):
+
+    def test_commandline(self):
+        claws = mail_client.Claws(None)
+        commandline = claws._get_compose_commandline(
+            None, None, 'file%')
+        self.assertEqual(
+            ['--compose', 'mailto:?', '--attach', 'file%'], commandline)
+        commandline = claws._get_compose_commandline(
+            'jrandom@example.org', 'Hi there!', None)
+        self.assertEqual(
+            ['--compose',
+             'mailto:jrandom@example.org?subject=Hi%20there%21'],
+            commandline)
+
+    def test_commandline_is_8bit(self):
+        claws = mail_client.Claws(None)
+        cmdline = claws._get_compose_commandline(
+            u'jrandom@example.org', u'\xb5cosm of fun!', u'file%')
+        subject_string = urllib.quote(
+            u'\xb5cosm of fun!'.encode(osutils.get_user_encoding(), 'replace'))
+        self.assertEqual(
+            ['--compose',
+             'mailto:jrandom@example.org?subject=%s' % subject_string,
+             '--attach',
+             'file%'],
             cmdline)
         for item in cmdline:
             self.assertFalse(isinstance(item, unicode),

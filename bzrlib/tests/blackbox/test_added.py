@@ -33,7 +33,7 @@ class TestAdded(ExternalBase):
     def test_added_with_spaces(self):
         """Test that 'added' command reports added files with spaces in their names quoted"""
         self._test_added('a filename with spaces', '"a filename with spaces"\n')
-    
+
     def test_added_null_separator(self):
         """Test that added uses its null operator properly"""
         self._test_added('a', 'a\0', null=True)
@@ -57,12 +57,12 @@ class TestAdded(ExternalBase):
         # with unknown file, still nothing added
         self.build_tree_contents([(name, 'contents of %s\n' % (name))])
         check_added('')
-        
+
         # after add, shows up in list
         # bug report 20060119 by Nathan McCallum -- 'bzr added' causes
         # NameError
         tree.add(name)
-        check_added(output, null) 
+        check_added(output, null)
 
         # after commit, now no longer listed
         tree.commit(message='add "%s"' % (name))

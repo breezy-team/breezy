@@ -13,7 +13,7 @@ Overall developer documentation
 * `Architectural Overview <overview.html>`_ |--| describes some of the
   most important classes and concepts.
 
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_ 
   (external link)
   |--| automatically generated API reference information
 
@@ -41,6 +41,9 @@ Process
 
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
+
+* `EC2 Windows server <ec2-windows.html>`_ |--| A team resource for 
+  Windows packaging and testing.
 
 Plans
 =====
@@ -78,6 +81,10 @@ Specifications
 
 * `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
   any python application.
+
+* `Bazaar and case-insensitive file systems <case-insensitive-file-systems.html>`_
+  |--| How Bazaar operates on case-insensitive file systems such as commonly
+  found on Windows, USB sticks, etc.
 
 Data formats
 ============

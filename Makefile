@@ -23,7 +23,7 @@
 PYTHON=python
 PYTHON_BUILDFLAGS=
 
-.PHONY: all clean extensions pyflakes api-docs
+.PHONY: all clean extensions pyflakes api-docs check-nodocs check
 
 all: extensions
 
@@ -31,7 +31,9 @@ extensions:
 	@echo "building extension modules."
 	$(PYTHON) setup.py build_ext -i $(PYTHON_BUILDFLAGS)
 
-check: docs extensions
+check: docs check-nodocs
+
+check-nodocs: extensions
 	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests) 2>&1 | sed -e 's/^/[ascii] /'
@@ -109,6 +111,26 @@ dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files))
 doc/en/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
 	$(rst2html) --stylesheet=../../default.css doc/en/user-guide/index.txt $@
 
+# Set the paper size for PDF files.
+# Options:  'a4' (ISO A4 size), 'letter' (US Letter size)
+PAPERSIZE = a4
+PDF_DOCS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
+
+# Copy and modify the RST sources, and convert SVG images to PDF
+# files for use a images in the LaTeX-generated PDF.
+# Then generate the PDF output from the modified RST sources.
+doc/en/user-guide/user-guide.$(PAPERSIZE).pdf: $(wildcard $(addsuffix /*.txt, doc/en/user-guide))
+	mkdir -p doc/en/user-guide/latex_prepared
+	$(PYTHON) tools/prepare_for_latex.py \
+	    --out-dir=doc/en/user-guide/latex_prepared \
+	    --in-dir=doc/en/user-guide
+	cd doc/en/user-guide/latex_prepared && \
+	    $(PYTHON) ../../../../tools/rst2pdf.py \
+	        --documentoptions=10pt,$(PAPERSIZE)paper \
+	        --input-encoding=UTF-8:strict --output-encoding=UTF-8:strict \
+	        --strict --title="Bazaar User Guide" \
+	        index.txt ../user-guide.$(PAPERSIZE).pdf
+
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
@@ -122,6 +144,7 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
 		 bzrlib/conflicts.py \
 		 bzrlib/help_topics/__init__.py \
+		 bzrlib/bzrdir.py \
 		 bzrlib/sign_my_commits.py \
 		 bzrlib/bugtracker.py \
 		 generate_docs.py \
@@ -160,10 +183,15 @@ HTMLDIR := html_docs
 html-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
 
+# Produce PDF documents.  Requires pdfLaTeX, rubber, and Inkscape.
+pdf-docs: $(PDF_DOCS)
+
 # clean produced docs
 clean-docs:
 	$(PYTHON) tools/win32/ostools.py remove $(ALL_DOCS) \
-	$(HTMLDIR) $(derived_txt_files)
+	    $(HTMLDIR) $(derived_txt_files)
+	rm -f doc/en/user-guide/*.pdf
+	rm -rf doc/en/user-guide/latex_prepared
 
 
 ### Windows Support ###

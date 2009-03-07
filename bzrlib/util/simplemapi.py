@@ -28,11 +28,11 @@ Web     : http://www.johnnypops.demon.co.uk/python/
 Origin  : Based on the original script by Ian Cook
           http://www.kirbyfooty.com/simplemapi.py
 Comments: Works (and tested) with:
-          Outlook Express, Outlook 97 and 2000, 
+          Outlook Express, Outlook 97 and 2000,
           Eudora, Incredimail and Mozilla Thunderbird (1.5.0.2)
 Thanks  : Werner F. Bruhin and Michele Petrazzo on the ctypes list.
 
-If you have any bug-fixes, enhancements or suggestions regarding this 
+If you have any bug-fixes, enhancements or suggestions regarding this
 software, please contact me at the above email address.
 """
 
@@ -181,26 +181,26 @@ def _resolveName(session, name):
 
 def _sendMail(session, recipient, subject, body, attach):
     nFileCount = len(attach)
-    if attach: 
-        MapiFileDesc_A = MapiFileDesc * len(attach) 
-        fda = MapiFileDesc_A() 
-        for fd, fa in zip(fda, attach): 
-            fd.ulReserved = 0 
-            fd.flFlags = 0 
-            fd.nPosition = -1 
-            fd.lpszPathName = fa 
-            fd.lpszFileName = None 
-            fd.lpFileType = None 
+    if attach:
+        MapiFileDesc_A = MapiFileDesc * len(attach)
+        fda = MapiFileDesc_A()
+        for fd, fa in zip(fda, attach):
+            fd.ulReserved = 0
+            fd.flFlags = 0
+            fd.nPosition = -1
+            fd.lpszPathName = fa
+            fd.lpszFileName = None
+            fd.lpFileType = None
         lpFiles = fda
     else:
         lpFiles = lpMapiFileDesc()
 
     RecipWork = recipient.split(';')
     RecipCnt = len(RecipWork)
-    MapiRecipDesc_A = MapiRecipDesc * len(RecipWork) 
-    rda = MapiRecipDesc_A() 
+    MapiRecipDesc_A = MapiRecipDesc * len(RecipWork)
+    rda = MapiRecipDesc_A()
     for rd, ra in zip(rda, RecipWork):
-        rd.ulReserved = 0 
+        rd.ulReserved = 0
         rd.ulRecipClass = MAPI_TO
         try:
             rd.lpszName, rd.lpszAddress = _resolveName(session, ra)
@@ -222,7 +222,7 @@ def _sendMail(session, recipient, subject, body, attach):
 
 def SendMail(recipient, subject="", body="", attachfiles=""):
     """Post an e-mail message using Simple MAPI
-    
+
     recipient - string: address to send to (multiple addresses separated with a semicolon)
     subject   - string: subject header
     body      - string: message text
