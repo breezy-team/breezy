@@ -61,6 +61,13 @@ _PAGE_CACHE_SIZE = 4*1024*1024
 # We are caching bytes so len(value) is perfectly accurate
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
+# If a ChildNode falls below this many bytes, we check for a remap
+_INTERESTING_NEW_SIZE = 50
+# If a ChildNode shrinks by more than this amount, we check for a remap
+_INTERESTING_SHRINKAGE_LIMIT = 20
+# If we delete more than this many nodes applying a delta, we check for a remap
+_INTERESTING_DELETES_LIMIT = 5
+
 
 def _search_key_plain(key):
     """Map the key tuple into a search string that just uses the key bytes."""
@@ -133,15 +140,16 @@ class CHKMap(object):
             into the map; if old_key is not None, then the old mapping
             of old_key is removed.
         """
-        check_remap_at_end = False
+        delete_count = 0
         for old, new, value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
-                check_remap_at_end = True
+                delete_count += 1
         for old, new, value in delta:
             if new is not None:
                 self.map(new, value)
-        if check_remap_at_end:
+        if delete_count > _INTERESTING_DELETES_LIMIT:
+            trace.mutter("checking remap as %d deletions", delete_count)
             self._check_remap()
         return self._save()
 
@@ -1060,13 +1068,28 @@ class InternalNode(Node):
             self._items[search_key] = child
             self._key = None
             new_node = self
-            if (isinstance(child, LeafNode)
-                and (old_size is None or child._current_size() < old_size)):
-                # The old node was an InternalNode which means it has now
-                # collapsed, so we need to check if it will chain to a collapse
-                # at this level. Or the LeafNode has shrunk in size, so we need
-                # to check that as well.
-                new_node = self._check_remap(store)
+            if isinstance(child, LeafNode):
+                if old_size is None:
+                    # The old node was an InternalNode which means it has now
+                    # collapsed, so we need to check if it will chain to a
+                    # collapse at this level.
+                    trace.mutter("checking remap as InternalNode -> LeafNode")
+                    new_node = self._check_remap(store)
+                else:
+                    # If the LeafNode has shrunk in size, we may want to run
+                    # a remap check. Checking for a remap is expensive though
+                    # and the frequency of a successful remap is very low.
+                    # Shrinkage by small amounts is common, so we only do the
+                    # remap check if the new_size is low or the shrinkage
+                    # amount is over a configurable limit.
+                    new_size = child._current_size()
+                    shrinkage = old_size - new_size
+                    if (shrinkage > 0 and new_size < _INTERESTING_NEW_SIZE
+                        or shrinkage > _INTERESTING_SHRINKAGE_LIMIT):
+                        trace.mutter(
+                            "checking remap as size shrunk by %d to be %d",
+                            shrinkage, new_size)
+                        new_node = self._check_remap(store)
             assert new_node._search_prefix is not None
             return new_node._search_prefix, [('', new_node)]
         # child has overflown - create a new intermediate node.
@@ -1246,6 +1269,7 @@ class InternalNode(Node):
             for key, value in node._items.iteritems():
                 if new_leaf._map_no_split(key, value):
                     return self
+        trace.mutter("remap generated a new LeafNode")
         return new_leaf
 
 
