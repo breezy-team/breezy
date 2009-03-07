@@ -77,10 +77,7 @@ class GenericCommitHandler(processor.CommitHandler):
             self.inventory_root_id = self.basis_inventory.root.file_id
 
         # directory-path -> inventory-entry for current inventory
-        if self.parents:
-            self.directory_entries = dict(self.basis_inventory.directories())
-        else:
-            self.directory_entries = {}
+        self.directory_entries = {}
 
     def _init_inventory(self):
         return self.rev_store.init_inventory(self.revision_id)
@@ -214,7 +211,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # the root node doesn't get updated
             return basename, self.inventory_root_id
         try:
-            ie = self.directory_entries[dirname]
+            ie = self._get_directory_entry(inv, dirname)
         except KeyError:
             # We will create this entry, since it doesn't exist
             pass
@@ -239,6 +236,24 @@ class GenericCommitHandler(processor.CommitHandler):
             self.record_delete(dirname, ie)
         self.record_new(dirname, ie)
         return basename, ie.file_id
+
+    def _get_directory_entry(self, inv, dirname):
+        """Get the inventory entry for a directory.
+        
+        Raises KeyError if dirname is not a directory in inv.
+        """
+        result = self.directory_entries.get(dirname)
+        if result is None:
+            file_id = inv.path2id(dirname)
+            if file_id is None:
+                raise KeyError
+            result = inv[file_id]
+            # dirname must be a directory for us to return it
+            if result.kind == 'directory':
+                self.directory_entries[dirname] = result
+            else:
+                raise KeyError
+        return result
 
     def _delete_item(self, path, inv):
         file_id = inv.path2id(path)
