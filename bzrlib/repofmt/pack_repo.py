@@ -2343,7 +2343,7 @@ class CHKInventoryRepository(KnitPackRepository):
             inv_lines, check_content=False)
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
-                               parents):
+                               parents, basis_inv=None):
         """Add a new inventory expressed as a delta against another revision.
 
         :param basis_revision_id: The inventory id the delta was created
@@ -2357,6 +2357,8 @@ class CHKInventoryRepository(KnitPackRepository):
             for repositories that depend on the inventory graph for revision
             graph access, as well as for those that pun ancestry with delta
             compression.
+        :param basis_inv: The basis inventory if it is already known,
+            otherwise None.
 
         :returns: (validator, new_inv)
             The validator(which is a sha1 digest, though what is sha'd is
@@ -2372,7 +2374,8 @@ class CHKInventoryRepository(KnitPackRepository):
         basis_tree = self.revision_tree(basis_revision_id)
         basis_tree.lock_read()
         try:
-            basis_inv = basis_tree.inventory
+            if basis_inv is None:
+                basis_inv = basis_tree.inventory
             result = basis_inv.create_by_apply_delta(delta, new_revision_id)
             inv_lines = result.to_lines()
             return self._inventory_add_lines(new_revision_id, parents,

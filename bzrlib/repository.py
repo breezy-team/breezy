@@ -712,7 +712,7 @@ class Repository(object):
             inv_lines, check_content=False)
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
-                               parents):
+                               parents, basis_inv=None):
         """Add a new inventory expressed as a delta against another revision.
 
         :param basis_revision_id: The inventory id the delta was created
@@ -726,6 +726,8 @@ class Repository(object):
             for repositories that depend on the inventory graph for revision
             graph access, as well as for those that pun ancestry with delta
             compression.
+        :param basis_inv: The basis inventory if it is already known,
+            otherwise None.
 
         :returns: (validator, new_inv)
             The validator(which is a sha1 digest, though what is sha'd is
@@ -742,7 +744,8 @@ class Repository(object):
             # inventory implementations may support: A better idiom would be to
             # return a new inventory, but as there is no revision tree cache in
             # repository this is safe for now - RBC 20081013
-            basis_inv = basis_tree.inventory
+            if basis_inv is None:
+                basis_inv = basis_tree.inventory
             basis_inv.apply_delta(delta)
             basis_inv.revision_id = new_revision_id
             return (self.add_inventory(new_revision_id, basis_inv, parents),
