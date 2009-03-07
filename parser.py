@@ -218,23 +218,12 @@ class LineBasedParser(object):
 
         :return: a string
         """
-        lines = ''
-        left = count
-        found = 0
-        while left > 0:
-            line = self.input.readline(left)
-            if line:
-                line_len = len(line)
-                left -= line_len
-                found += line_len
-                lines += line
-                if line.endswith('\n'):
-                    self.lineno += 1
-            else:
-                left = 0
+        result = self.input.read(count)
+        found = len(result)
+        self.lineno += result.count("\n")
         if found != count:
             self.abort(errors.MissingBytes, count, found)
-        return lines
+        return result
 
     def read_until(self, terminator):
         """Read the input stream until the terminator is found.
