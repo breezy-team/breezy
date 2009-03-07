@@ -233,7 +233,8 @@ class AbstractRevisionStore(object):
         """
         if len(parents):
             validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
-                inv_delta, revision_id, parents)
+                inv_delta, revision_id, parents, basis_inv=basis_inv,
+                propagate_caches=True)
         else:
             new_inv = basis_inv.create_by_apply_delta(inv_delta, revision_id)
             validator = self.repo.add_inventory(revision_id, new_inv, parents)
