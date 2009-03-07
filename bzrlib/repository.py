@@ -712,7 +712,7 @@ class Repository(object):
             inv_lines, check_content=False)
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
-                               parents, basis_inv=None):
+                               parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
 
         :param basis_revision_id: The inventory id the delta was created
@@ -728,6 +728,8 @@ class Repository(object):
             compression.
         :param basis_inv: The basis inventory if it is already known,
             otherwise None.
+        :param propagate_caches: If True, the caches for this inventory are
+          copied to and updated for the result if possible.
 
         :returns: (validator, new_inv)
             The validator(which is a sha1 digest, though what is sha'd is

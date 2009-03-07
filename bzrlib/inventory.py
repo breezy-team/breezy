@@ -1478,15 +1478,21 @@ class CHKInventory(CommonInventory):
             inv.add(inv_entry)
         return inv
 
-    def create_by_apply_delta(self, inventory_delta, new_revision_id):
+    def create_by_apply_delta(self, inventory_delta, new_revision_id,
+        propagate_caches=False):
         """Create a new CHKInventory by applying inventory_delta to this one.
 
         :param inventory_delta: The inventory delta to apply. See
             Inventory.apply_delta for details.
         :param new_revision_id: The revision id of the resulting CHKInventory.
+        :param propagate_caches: If True, the caches for this inventory are
+          copied to and updated for the result.
         :return: The new CHKInventory.
         """
         result = CHKInventory(self._search_key_name)
+        if propagate_caches:
+            # Just propagate the path-to-fileid cache for now
+            result._path_to_fileid_cache = dict(self._path_to_fileid_cache.iteritems())
         search_key_func = chk_map.search_key_registry.get(self._search_key_name)
         self.id_to_entry._ensure_root()
         maximum_size = self.id_to_entry._root_node.maximum_size
@@ -1521,9 +1527,17 @@ class CHKInventory(CommonInventory):
                 # Make a delete:
                 new_key = None
                 new_value = None
+                # Update caches
+                if propagate_caches:
+                    try:
+                        del result._path_to_fileid_cache[old_path]
+                    except KeyError:
+                        pass
             else:
                 new_key = (file_id,)
                 new_value = result._entry_to_bytes(entry)
+                # Update caches. It's worth doing this whether
+                # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
             if old_path is None:
                 old_key = None
