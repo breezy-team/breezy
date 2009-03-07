@@ -133,12 +133,16 @@ class CHKMap(object):
             into the map; if old_key is not None, then the old mapping
             of old_key is removed.
         """
+        check_remap_at_end = False
         for old, new, value in delta:
             if old is not None and old != new:
-                self.unmap(old)
+                self.unmap(old, check_remap=False)
+                check_remap_at_end = True
         for old, new, value in delta:
             if new is not None:
                 self.map(new, value)
+        if check_remap_at_end:
+            self._check_remap()
         return self._save()
 
     def _ensure_root(self):
@@ -433,11 +437,21 @@ class CHKMap(object):
         else:
             return node._key
 
-    def unmap(self, key):
+    def unmap(self, key, check_remap=True):
         """remove key from the map."""
         self._ensure_root()
-        unmapped = self._root_node.unmap(self._store, key)
+        if isinstance(self._root_node, InternalNode):
+            unmapped = self._root_node.unmap(self._store, key,
+                check_remap=check_remap)
+        else:
+            unmapped = self._root_node.unmap(self._store, key)
         self._root_node = unmapped
+
+    def _check_remap(self):
+        """Check if nodes can be collapsed."""
+        self._ensure_root()
+        if isinstance(self._root_node, InternalNode):
+            self._root_node._check_remap(self._store)
 
     def _save(self):
         """Save the map completely.
@@ -1011,7 +1025,7 @@ class InternalNode(Node):
     def map(self, store, key, value):
         """Map key to value."""
         if not len(self._items):
-            raise AssertionError("cant map in an empty InternalNode.")
+            raise AssertionError("can't map in an empty InternalNode.")
         search_key = self._search_key(key)
         assert self._node_width == len(self._search_prefix) + 1
         if not search_key.startswith(self._search_prefix):
@@ -1157,7 +1171,7 @@ class InternalNode(Node):
         self._search_prefix = self.common_prefix_for_keys(self._items)
         return self._search_prefix
 
-    def unmap(self, store, key):
+    def unmap(self, store, key, check_remap=True):
         """Remove key from this node and it's children."""
         if not len(self._items):
             raise AssertionError("cant unmap in an empty InternalNode.")
@@ -1182,7 +1196,10 @@ class InternalNode(Node):
             return self._items.values()[0]
         if isinstance(unmapped, InternalNode):
             return self
-        return self._check_remap(store)
+        if check_remap:
+            return self._check_remap(store)
+        else:
+            return self
 
     def _check_remap(self, store):
         """Check if all keys contained by children fit in a single LeafNode.
