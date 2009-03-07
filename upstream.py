@@ -218,13 +218,13 @@ class UpstreamProvider(object):
                 pass
             elif self.provide_with_apt(self.store_dir):
                 pass
-            elif self.provide_with_uscan(self.store_dir):
-                pass
             elif self.provide_from_upstream_branch(self.store_dir):
                 pass
-            elif self.provide_from_self_by_split(self.store_dir):
-                pass
             elif self.provide_with_get_orig_source(self.store_dir):
+                pass
+            elif self.provide_with_uscan(self.store_dir):
+                pass
+            elif self.provide_from_self_by_split(self.store_dir):
                 pass
         else:
              info("Using the upstream tarball that is present in "
