@@ -147,7 +147,16 @@ class GenericProcessor(processor.ImportProcessor):
                 _max_pack_count_for_import
         else:
             self._original_max_pack_count = None
-            
+ 
+        # Make groupcompress use the fast algorithm during importing.
+        # We want to repack at the end anyhow when more information
+        # is available to do a better job of saving space.
+        try:
+            from bzrlib.plugins.groupcompress import groupcompress
+            groupcompress._FAST = True
+        except ImportError:
+            pass
+
         # Create a write group. This is committed at the end of the import.
         # Checkpointing closes the current one and starts a new one.
         self.repo.start_write_group()
