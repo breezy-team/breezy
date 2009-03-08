@@ -30,7 +30,10 @@ from base64 import (
         standard_b64encode,
         )
 import gzip
-import md5
+try:
+    import hashlib as md5
+except ImportError:
+    import md5
 import os
 import re
 import select
@@ -2132,7 +2135,7 @@ class DistributionBranch(object):
                             self.branch.last_revision()):
                         raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
-                m = md5.new()
+                m = md5.md5()
                 m.update(open(tarball_filename).read())
                 md5sum = m.hexdigest()
                 tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
