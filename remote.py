@@ -65,8 +65,7 @@ class GitSmartTransport(Transport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port, 
-            capabilities=["multi_ack", "side-band-64k", "ofs-delta", "side-band"])
+        return git.client.TCPGitClient(self._host, self._port, thin_packs=False)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
