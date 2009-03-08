@@ -244,7 +244,11 @@ class GenericCommitHandler(processor.CommitHandler):
         """
         result = self.directory_entries.get(dirname)
         if result is None:
-            file_id = inv.path2id(dirname)
+            try:
+                file_id = inv.path2id(dirname)
+            except errors.NoSuchId:
+                # In a CHKInventory, this is raised if there's no root yet
+                raise KeyError
             if file_id is None:
                 raise KeyError
             result = inv[file_id]
