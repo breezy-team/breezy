@@ -210,6 +210,11 @@ class CommitHandler(object):
         msg = "WARNING: %s (%s)" % (msg, self.command.id)
         warning(msg, *args)
 
+    def mutter(self, msg, *args):
+        """Output a mutter but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        mutter(msg, *args)
+
     def debug(self, msg, *args):
         """Output a mutter if the appropriate -D option was given."""
         if "fast-import" in debug.debug_flags:

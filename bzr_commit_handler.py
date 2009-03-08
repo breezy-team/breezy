@@ -88,7 +88,7 @@ class GenericCommitHandler(processor.CommitHandler):
             inv = self.cache_mgr.inventories[revision_id]
         except KeyError:
             if self.verbose:
-                self.note("get_inventory cache miss for %s", revision_id)
+                self.mutter("get_inventory cache miss for %s", revision_id)
             # Not cached so reconstruct from the RevisionStore
             inv = self.rev_store.get_inventory(revision_id)
             self.cache_mgr.inventories[revision_id] = inv
@@ -261,10 +261,13 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _delete_item(self, path, inv):
         file_id = inv.path2id(path)
+        if file_id is None:
+            self.mutter("ignoring delete of %s as not in inventory", path)
+            return
         try:
             ie = inv[file_id]
         except errors.NoSuchId:
-            self.warning("ignoring delete of %s as not in inventory", path)
+            self.mutter("ignoring delete of %s as not in inventory", path)
         else:
             self.record_delete(path, ie)
 
