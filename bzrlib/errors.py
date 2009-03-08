@@ -154,7 +154,7 @@ class BzrError(StandardError):
                )
 
     def __eq__(self, other):
-        if self.__class__ != other.__class__:
+        if self.__class__ is not other.__class__:
             return NotImplemented
         return self.__dict__ == other.__dict__
 

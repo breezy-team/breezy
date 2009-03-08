@@ -92,7 +92,7 @@ def _encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_or_utf8_str)
     if text is None:
-        if unicode_or_utf8_str.__class__ == unicode:
+        if unicode_or_utf8_str.__class__ is unicode:
             # The alternative policy is to do a regular UTF8 encoding
             # and then escape only XML meta characters.
             # Performance is equivalent once you use cache_utf8. *However*
@@ -128,7 +128,7 @@ def _get_utf8_or_ascii(a_str,
     # This is fairly optimized because we know what cElementTree does, this is
     # not meant as a generic function for all cases. Because it is possible for
     # an 8-bit string to not be ascii or valid utf8.
-    if a_str.__class__ == unicode:
+    if a_str.__class__ is unicode:
         return _encode_utf8(a_str)
     else:
         return intern(a_str)

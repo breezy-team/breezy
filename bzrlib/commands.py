@@ -943,7 +943,7 @@ def run_bzr_catch_errors(argv):
                 p.setup(tb.tb_frame, tb)
                 # Point the debugger at the deepest frame of the stack
                 p.curindex = len(p.stack) - 1
-                p.curframe = p.stack[p.curindex]
+                p.curframe = p.stack[p.curindex][0]
                 # Start the pdb prompt.
                 p.print_stack_entry(p.stack[p.curindex])
                 p.execRcLines()
