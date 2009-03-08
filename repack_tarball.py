@@ -23,7 +23,10 @@ import os
 from StringIO import StringIO
 import tarfile
 import bz2
-import sha
+try:
+    import hashlib as sha
+except ImportError:
+    import sha
 import shutil
 import time
 import zipfile
