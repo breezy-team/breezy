@@ -257,9 +257,12 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _delete_item(self, path, inv):
         file_id = inv.path2id(path)
-        #print "**** deleting %s with file-id %s" % (path, file_id)
-        ie = inv[file_id]
-        self.record_delete(path, ie)
+        try:
+            ie = inv[file_id]
+        except errors.NoSuchId:
+            self.warning("ignoring delete of %s as not in inventory", path)
+        else:
+            self.record_delete(path, ie)
 
     def _copy_item(self, src_path, dest_path, inv):
         if not self.parents:
@@ -301,6 +304,14 @@ class GenericCommitHandler(processor.CommitHandler):
     def _delete_all_items(self, inv):
         for name, root_item in inv.root.children.iteritems():
             inv.remove_recursive_id(root_item.file_id)
+
+    def _warn_unless_in_merges(self, fileid, path):
+        if len(self.parents) <= 1:
+            return
+        for parent in self.parents[1:]:
+            if fileid in self.get_inventory(parent):
+                return
+        self.warning("ignoring delete of %s as not in parent inventories", path)
 
 
 class InventoryCommitHandler(GenericCommitHandler):
@@ -395,14 +406,6 @@ class InventoryCommitHandler(GenericCommitHandler):
             self.cache_mgr.delete_path(path)
         except KeyError:
             pass
-
-    def _warn_unless_in_merges(self, fileid, path):
-        if len(self.parents) <= 1:
-            return
-        for parent in self.parents[1:]:
-            if fileid in self.get_inventory(parent):
-                return
-        self.warning("ignoring delete of %s as not in parent inventories", path)
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
