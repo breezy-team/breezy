@@ -672,12 +672,13 @@ def apply_coveraged(dirname, the_callable, *args, **kwargs):
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
 
-    ret = the_callable(*args, **kwargs)
-
-    sys.settrace(None)
-    results = tracer.results()
-    results.write_results(show_missing=1, summary=False,
-                          coverdir=dirname)
+    try:
+        return exception_to_return_code(the_callable, *args, **kwargs)
+    finally:
+        sys.settrace(None)
+        results = tracer.results()
+        results.write_results(show_missing=1, summary=False,
+                              coverdir=dirname)
 
 
 def apply_profiled(the_callable, *args, **kwargs):
@@ -688,7 +689,8 @@ def apply_profiled(the_callable, *args, **kwargs):
     try:
         prof = hotshot.Profile(pfname)
         try:
-            ret = prof.runcall(the_callable, *args, **kwargs) or 0
+            ret = prof.runcall(exception_to_return_code, the_callable, *args,
+                **kwargs) or 0
         finally:
             prof.close()
         stats = hotshot.stats.load(pfname)
@@ -703,9 +705,50 @@ def apply_profiled(the_callable, *args, **kwargs):
         os.remove(pfname)
 
 
+def exception_to_return_code(the_callable, *args, **kwargs):
+    """UI level helper for profiling and coverage.
+
+    This transforms exceptions into a return value of 3. As such its only 
+    relevant to the UI layer, and should never be called where catching
+    exceptions may be desirable.
+    """
+    try:
+        return the_callable(*args, **kwargs)
+    except (KeyboardInterrupt, Exception), e:
+        # used to handle AssertionError and KeyboardInterrupt
+        # specially here, but hopefully they're handled ok by the logger now
+        exc_info = sys.exc_info()
+        exitcode = trace.report_exception(exc_info, sys.stderr)
+        if os.environ.get('BZR_PDB'):
+            print '**** entering debugger'
+            tb = exc_info[2]
+            import pdb
+            if sys.version_info[:2] < (2, 6):
+                # XXX: we want to do
+                #    pdb.post_mortem(tb)
+                # but because pdb.post_mortem gives bad results for tracebacks
+                # from inside generators, we do it manually.
+                # (http://bugs.python.org/issue4150, fixed in Python 2.6)
+
+                # Setup pdb on the traceback
+                p = pdb.Pdb()
+                p.reset()
+                p.setup(tb.tb_frame, tb)
+                # Point the debugger at the deepest frame of the stack
+                p.curindex = len(p.stack) - 1
+                p.curframe = p.stack[p.curindex]
+                # Start the pdb prompt.
+                p.print_stack_entry(p.stack[p.curindex])
+                p.execRcLines()
+                p.cmdloop()
+            else:
+                pdb.post_mortem(tb)
+        return exitcode
+
+
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    ret, stats = profile(the_callable, *args, **kwargs)
+    ret, stats = profile(exception_to_return_code, the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
@@ -915,40 +958,12 @@ def main(argv):
 
 
 def run_bzr_catch_errors(argv):
-    # Note: The except clause logic below should be kept in sync with the
-    # profile() routine in lsprof.py.
-    try:
-        return run_bzr(argv)
-    except (KeyboardInterrupt, Exception), e:
-        # used to handle AssertionError and KeyboardInterrupt
-        # specially here, but hopefully they're handled ok by the logger now
-        exc_info = sys.exc_info()
-        exitcode = trace.report_exception(exc_info, sys.stderr)
-        if os.environ.get('BZR_PDB'):
-            print '**** entering debugger'
-            tb = exc_info[2]
-            import pdb
-            if sys.version_info[:2] < (2, 6):
-                # XXX: we want to do
-                #    pdb.post_mortem(tb)
-                # but because pdb.post_mortem gives bad results for tracebacks
-                # from inside generators, we do it manually.
-                # (http://bugs.python.org/issue4150, fixed in Python 2.6)
-
-                # Setup pdb on the traceback
-                p = pdb.Pdb()
-                p.reset()
-                p.setup(tb.tb_frame, tb)
-                # Point the debugger at the deepest frame of the stack
-                p.curindex = len(p.stack) - 1
-                p.curframe = p.stack[p.curindex]
-                # Start the pdb prompt.
-                p.print_stack_entry(p.stack[p.curindex])
-                p.execRcLines()
-                p.cmdloop()
-            else:
-                pdb.post_mortem(tb)
-        return exitcode
+    """Run a bzr command with parameters as described by argv.
+    
+    This function assumed that that UI layer is setup, that symbol deprecations
+    are already applied, and that unicode decoding has already been performed on argv.
+    """
+    return exception_to_return_code(run_bzr, argv)
 
 
 def run_bzr_catch_user_errors(argv):
