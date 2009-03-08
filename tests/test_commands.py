@@ -254,3 +254,28 @@ class TestFileDeleteAllDisplay(tests.TestCase):
     def test_filedeleteall(self):
         c = commands.FileDeleteAllCommand()
         self.assertEqual("deleteall", repr(c))
+
+
+class TestPathChecking(tests.TestCase):
+
+    def test_filemodify_path_checking(self):
+        self.assertRaises(ValueError, commands.FileModifyCommand, "",
+            "file", False, None, "text")
+        self.assertRaises(ValueError, commands.FileModifyCommand, None,
+            "file", False, None, "text")
+
+    def test_filedelete_path_checking(self):
+        self.assertRaises(ValueError, commands.FileDeleteCommand, "")
+        self.assertRaises(ValueError, commands.FileDeleteCommand, None)
+
+    def test_filerename_path_checking(self):
+        self.assertRaises(ValueError, commands.FileRenameCommand, "", "foo")
+        self.assertRaises(ValueError, commands.FileRenameCommand, None, "foo")
+        self.assertRaises(ValueError, commands.FileRenameCommand, "foo", "")
+        self.assertRaises(ValueError, commands.FileRenameCommand, "foo", None)
+
+    def test_filecopy_path_checking(self):
+        self.assertRaises(ValueError, commands.FileCopyCommand, "", "foo")
+        self.assertRaises(ValueError, commands.FileCopyCommand, None, "foo")
+        self.assertRaises(ValueError, commands.FileCopyCommand, "foo", "")
+        self.assertRaises(ValueError, commands.FileCopyCommand, "foo", None)

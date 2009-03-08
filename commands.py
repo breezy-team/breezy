@@ -235,7 +235,7 @@ class FileModifyCommand(FileCommand):
     def __init__(self, path, kind, is_executable, dataref, data):
         # Either dataref or data should be null
         FileCommand.__init__(self, 'filemodify')
-        self.path = path
+        self.path = check_path(path)
         self.kind = kind
         self.is_executable = is_executable
         self.dataref = dataref
@@ -263,7 +263,7 @@ class FileDeleteCommand(FileCommand):
 
     def __init__(self, path):
         FileCommand.__init__(self, 'filedelete')
-        self.path = path
+        self.path = check_path(path)
 
     def __repr__(self):
         return "D %s" % (format_path(self.path),)
@@ -273,8 +273,8 @@ class FileCopyCommand(FileCommand):
 
     def __init__(self, src_path, dest_path):
         FileCommand.__init__(self, 'filecopy')
-        self.src_path = src_path
-        self.dest_path = dest_path
+        self.src_path = check_path(src_path)
+        self.dest_path = check_path(dest_path)
 
     def __repr__(self):
         return "C %s %s" % (
@@ -286,8 +286,8 @@ class FileRenameCommand(FileCommand):
 
     def __init__(self, old_path, new_path):
         FileCommand.__init__(self, 'filerename')
-        self.old_path = old_path
-        self.new_path = new_path
+        self.old_path = check_path(old_path)
+        self.new_path = check_path(new_path)
 
     def __repr__(self):
         return "R %s %s" % (
@@ -302,6 +302,17 @@ class FileDeleteAllCommand(FileCommand):
 
     def __repr__(self):
         return "deleteall"
+
+
+def check_path(path):
+    """Check that a path is legal.
+
+    :return: the path if all is OK
+    :raise ValueError: if the path is illegal
+    """
+    if path is None or path == '':
+        raise ValueError("illegal path '%s'" % path)
+    return path
 
 
 def format_path(p, quote_spaces=False):
