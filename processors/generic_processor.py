@@ -457,21 +457,19 @@ class GenericProcessor(processor.ImportProcessor):
         self.cache_mgr.file_ids = file_ids
 
     def report_progress(self, details=''):
-        # TODO: use a progress bar with ETA enabled
         if self._revision_count % self.progress_every == 0:
-            if self.total_commits is not None:
+            if self.verbose:
                 counts = "%d/%d" % (self._revision_count, self.total_commits)
-                eta = progress.get_eta(self._start_time, self._revision_count,
-                    self.total_commits)
-                eta_str = progress.str_tdelta(eta)
-                if eta_str.endswith('--'):
-                    eta_str = ''
+                minutes = (time.time() - self._start_time) / 60
+                rate = self._revision_count * 1.0 / minutes
+                if rate > 10:
+                    rate_str = "at %.0f/minute " % rate
                 else:
-                    eta_str = '[%s] ' % eta_str
+                    rate_str = "at %.1f/minute " % rate
             else:
                 counts = "%d" % (self._revision_count,)
-                eta_str = ''
-            self.note("%s commits processed %s%s" % (counts, eta_str, details))
+                rate_str = ''
+            self.note("%s commits processed %s%s" % (counts, rate_str, details))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
