@@ -61,14 +61,21 @@ class cmd_git_import(Command):
 
     def run(self, src_location, dest_location=None):
         from bzrlib.bzrdir import BzrDir, format_registry
-        from bzrlib.errors import NoRepositoryPresent, NotBranchError
+        from bzrlib.errors import (
+            BzrCommandError,
+            NoRepositoryPresent,
+            NotBranchError,
+            )
         from bzrlib.repository import Repository
         import os
+        from bzrlib.plugins.git.repository import GitRepository
 
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))
 
         source_repo = Repository.open(src_location)
+        if not isinstance(source_repo, GitRepository):
+            raise BzrCommandError("%r is not a git repository" % src_location)
         format = format_registry.make_bzrdir('rich-root-pack')
         try:
             target_bzrdir = BzrDir.open(dest_location)
