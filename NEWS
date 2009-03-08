@@ -114,6 +114,12 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
       for branches. This is now fixed and a test added to prevent it
       reoccuring. (Robert Collins, Andrew Bennetts)
 
+    * Restore the progress bar on Windows. We were disabling it when TERM
+      wasn't set, but Windows doesn't set TERM. (Alexander Belchenko)
+
+    * ``setup.py build_ext`` now gives a proper error when an extension
+      fails to build. (John Arbash Meinel)
+
     * Under rare circumstances (aka nobody reported a bug about it), the ftp
       transport could revert to ascii mode. It now stays in binary mode except
       when needed.
@@ -203,6 +209,12 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
 
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
+
+    * Change how file_ids and revision_ids are interned as part of
+      inventory deserialization. Now we use the real ``intern()``, rather
+      than our own workaround that would also cache a Unicode copy of the
+      string, and never emptied the cache. This should slightly reduce
+      memory consumption. (John Arbash Meinel)
 
     * New branch method ``create_clone_on_transport`` that returns a
       branch object. (Robert Collins)
