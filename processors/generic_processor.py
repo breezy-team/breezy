@@ -49,6 +49,7 @@ _DEFAULT_AUTO_CHECKPOINT = 10000
 
 # How many inventories to cache
 _DEFAULT_INV_CACHE_SIZE = 10
+_DEFAULT_CHK_INV_CACHE_SIZE = 100
 
 
 class GenericProcessor(processor.ImportProcessor):
@@ -89,7 +90,7 @@ class GenericProcessor(processor.ImportProcessor):
       or negative, all commits are imported.
     
     * inv-cache - number of inventories to cache.
-      If not set, the default is 10.
+      If not set, the default is 100 for CHK formats and 10 otherwise.
 
     * experimental - enable experimental mode, i.e. use features
       not yet fully tested.
@@ -177,7 +178,8 @@ class GenericProcessor(processor.ImportProcessor):
             self.info = None
 
         # Decide which CommitHandler to use
-        if getattr(self.repo._format, 'supports_chks', False):
+        supports_chk = getattr(self.repo._format, 'supports_chks', False)
+        if supports_chk:
             self.commit_handler_factory = \
                 bzr_commit_handler.CHKInventoryCommitHandler
         else:
@@ -195,8 +197,13 @@ class GenericProcessor(processor.ImportProcessor):
             _DEFAULT_AUTO_CHECKPOINT))
 
         # Decide how big to make the inventory cache
-        self.inventory_cache_size = int(self.params.get('inv-cache',
-            _DEFAULT_INV_CACHE_SIZE))
+        cache_size = int(self.params.get('inv-cache', -1))
+        if cache_size == -1:
+            if supports_chk:
+                cache_size = _DEFAULT_CHK_INV_CACHE_SIZE
+            else:
+                cache_size = _DEFAULT_INV_CACHE_SIZE
+        self.inventory_cache_size = cache_size
 
         # Find the maximum number of commits to import (None means all)
         # and prepare progress reporting. Just in case the info file

@@ -184,7 +184,7 @@ class cmd_fast_import(Command):
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
-        checkpoint=10000, count=-1, inv_cache=10,
+        checkpoint=10000, count=-1, inv_cache=-1,
         experimental=False, import_marks=None, export_marks=None):
         from bzrlib import bzrdir
         from bzrlib.errors import BzrCommandError, NotBranchError
