@@ -69,7 +69,7 @@ class cmd_git_import(Command):
             dest_location = os.path.basename(src_location.rstrip("/\\"))
 
         source_repo = Repository.open(src_location)
-        format = format_registry.make_bzrdir('rich-root-pack')
+        format = format_registry.make_bzrdir("1.9-rich-root")
         try:
             target_bzrdir = BzrDir.open(dest_location)
         except NotBranchError:
