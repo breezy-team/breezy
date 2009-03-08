@@ -739,7 +739,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             yield AbsentContentFactory(key)
         for key in present_keys:
             if key in self._unadded_refs:
-                chunks, sha1 = self._compressor.extract(key)
+                bytes, sha1 = self._compressor.extract(key)
                 parents = self._unadded_refs[key]
             else:
                 index_memo, _, parents, (method, _) = locations[key]
