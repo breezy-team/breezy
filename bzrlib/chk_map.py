@@ -181,7 +181,9 @@ class CHKMap(object):
             return _page_cache[key]
         except KeyError:
             stream = self._store.get_record_stream([key], 'unordered', True)
-            return stream.next().get_bytes_as('fulltext')
+            bytes = stream.next().get_bytes_as('fulltext')
+            _page_cache[key] = bytes
+            return bytes
 
     def _dump_tree(self, include_keys=False):
         """Return the tree in a string representation."""
