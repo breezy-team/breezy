@@ -1,8 +1,13 @@
-bzr-builddeb (2.1.1) UNRELEASED; urgency=low
+bzr-builddeb (2.1.1) experimental; urgency=low
 
-  * 
+  * Make get-orig-source priority higher than uscan. Thanks Martin Pitt.
+    (LP: #339343).
+  * Correct variable used in provide_with_apt. Thanks also to Martin Pitt.
+    (LP: #339333)
+  * Use hashlib instead of the sha and md5 modules. Thanks Kees Cook.
+    (LP: #338525)
 
- -- James Westby <james.westby@ubuntu.com>  Thu, 05 Mar 2009 16:21:42 +0000
+ -- James Westby <james.westby@ubuntu.com>  Sun, 08 Mar 2009 17:34:15 +1000
 
 bzr-builddeb (2.1ubuntu1) jaunty; urgency=low
 
