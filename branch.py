@@ -201,7 +201,8 @@ class InterGitGenericBranch(branch.InterBranch):
         graph=None):
         """See InterBranch.update_revisions()."""
         # TODO: stop_revision, overwrite
-        interrepo = repository.InterRepository.get(self.source.repository, self.target.repository)
+        interrepo = repository.InterRepository.get(self.source.repository, 
+            self.target.repository)
         self._last_revid = None
         def determine_wants(heads):
             if not self.source.name in heads:
