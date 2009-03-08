@@ -3369,6 +3369,10 @@ class InterDifferingSerializer(InterKnitRepo):
         pending_deltas = []
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
+        # NB: This fails with dubious inventory data (when inv A has rev OLD
+        # for file F, and in B, after A, has rev A for file F) when A and B are
+        # in different groups.
+        revision_id_set = set(revision_ids)
         for tree in self.source.revision_trees(revision_ids):
             current_revision_id = tree.get_revision_id()
             parent_ids = parent_map.get(current_revision_id, ())
@@ -3381,9 +3385,7 @@ class InterDifferingSerializer(InterKnitRepo):
                         # We don't copy the text for the root node unless the
                         # target supports_rich_root.
                         continue
-                    # TODO: Do we need:
-                    #       "if entry.revision == current_revision_id" ?
-                    if entry.revision == current_revision_id:
+                    if entry.revision in revision_id_set:
                         text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
