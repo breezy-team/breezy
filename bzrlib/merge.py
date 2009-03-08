@@ -89,6 +89,8 @@ class Merger(object):
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
+        if pb is None:
+            pb = DummyProgress()
         self._pb = pb
         self.pp = None
         self.recurse = recurse
@@ -132,7 +134,7 @@ class Merger(object):
                                       _set_base_is_other_ancestor)
 
     @staticmethod
-    def from_uncommitted(tree, other_tree, pb, base_tree=None):
+    def from_uncommitted(tree, other_tree, pb=None, base_tree=None):
         """Return a Merger for uncommitted changes in other_tree.
 
         :param tree: The tree to merge into

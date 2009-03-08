@@ -313,6 +313,11 @@ class TestMerge(TestCaseWithTransport):
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
 
+    def test_Merger_defaults_to_DummyProgress(self):
+        branch = self.make_branch('branch')
+        merger = _mod_merge.Merger(branch, pb=None)
+        self.assertIsInstance(merger._pb, progress.DummyProgress)
+
     def prepare_cherrypick(self):
         """Prepare a pair of trees for cherrypicking tests.
 
