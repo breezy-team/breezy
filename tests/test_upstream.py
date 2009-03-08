@@ -409,7 +409,7 @@ class UpstreamProviderTests(TestCaseWithTransport):
         self.provider.allow_split = True
         self.assertSuccesfulCall("split", ["pristine", "apt"])
 
-    def test_uscan_before_upstream(self):
+    def test_upstream_before_orig_source(self):
         upstream_tree = self.make_branch_and_tree("upstream")
         self.build_tree(["upstream/foo"])
         upstream_tree.add(["foo"])
@@ -417,28 +417,26 @@ class UpstreamProviderTests(TestCaseWithTransport):
         self.upstream_revision = upstream_tree.commit("upstream one")
         self.provider.upstream_revision = self.upstream_revision
         self.provider.upstream_branch = self.upstream_branch
-        self.build_tree(["watch", "debian/", "debian/watch"])
-        self.tree.add(["watch", "debian/", "debian/watch"])
-        self.watch_file_contents = "contents of debian/watch\n"
-        self.assertSuccesfulCall("uscan", ["pristine", "apt"])
-
-    def test_upstream_before_split(self):
-        self.provider.allow_split = True
-        upstream_tree = self.make_branch_and_tree("upstream")
-        self.build_tree(["upstream/foo"])
-        upstream_tree.add(["foo"])
-        self.upstream_branch = upstream_tree.branch
-        self.upstream_revision = upstream_tree.commit("upstream one")
-        self.provider.upstream_revision = self.upstream_revision
-        self.provider.upstream_branch = self.upstream_branch
-        self.assertSuccesfulCall("upstream", ["pristine", "apt"])
-
-    def test_split_before_get_orig_source(self):
         self.build_tree(["rules", "debian/", "debian/rules"])
         self.tree.add(["rules", "debian/", "debian/rules"])
         self.watch_file_contents = "contents of debian/rules\n"
+        self.assertSuccesfulCall("upstream", ["pristine", "apt"])
+
+    def test_get_orig_source_before_uscan(self):
+        self.build_tree(["rules", "debian/", "debian/rules"])
+        self.tree.add(["rules", "debian/", "debian/rules"])
+        self.watch_file_contents = "contents of debian/rules\n"
+        self.build_tree(["watch", "debian/watch"])
+        self.tree.add(["watch", "debian/watch"])
+        self.watch_file_contents = "contents of debian/watch\n"
+        self.assertSuccesfulCall("orig", ["pristine", "apt"])
+
+    def test_uscan_before_split(self):
+        self.build_tree(["watch", "debian/", "debian/watch"])
+        self.tree.add(["watch", "debian/", "debian/watch"])
+        self.watch_file_contents = "contents of debian/watch\n"
         self.provider.allow_split = True
-        self.assertSuccesfulCall("split", ["pristine", "apt"])
+        self.assertSuccesfulCall("uscan", ["pristine", "apt"])
 
     def test_get_apt_command_for_source(self):
         self.assertEqual("apt-get source -y --only-source --tar-only "
