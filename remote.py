@@ -17,7 +17,7 @@
 import bzrlib
 from bzrlib import urlutils
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.errors import NoSuchFile, NotLocalUrl
+from bzrlib.errors import BzrError, NoSuchFile, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
 from bzrlib.repository import Repository
 from bzrlib.trace import info
@@ -38,6 +38,7 @@ import urllib
 import urlparse
 
 import dulwich as git
+from dulwich.errors import GitProtocolError
 from dulwich.pack import PackData, Pack, PackIndex
 
 # Don't run any tests on GitSmartTransport as it is not intended to be 
@@ -71,8 +72,12 @@ class GitSmartTransport(Transport):
         if progress is None:
             def progress(text):
                 info("git: %s" % text)
-        self._get_client().fetch_pack(self._path, determine_wants, 
-            graph_walker, pack_data, progress)
+        client = self._get_client()
+        try:
+            client.fetch_pack(self._path, determine_wants, 
+                graph_walker, pack_data, progress)
+        except GitProtocolError, e:
+            raise BzrError(e)
 
     def get(self, path):
         raise NoSuchFile(path)
