@@ -1576,31 +1576,44 @@ class CHKInventory(CommonInventory):
             for.
         :return: A CHKInventory
         """
-        lines = bytes.splitlines()
+        lines = bytes.split('\n')
+        assert lines[-1] == ''
+        lines.pop()
         if lines[0] != 'chkinventory:':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
-        revision_id = lines[1][13:]
-        root_id = lines[2][9:]
-        if lines[3].startswith('search_key_name:'):
-            search_key_name = lines[3][17:]
-            next = 4
-        else:
-            search_key_name = 'plain'
-            next = 3
+        info = {}
+        allowed_keys = frozenset(['root_id', 'revision_id', 'search_key_name',
+                                  'parent_id_basename_to_file_id',
+                                  'id_to_entry'])
+        for line in lines[1:]:
+            key, value = line.split(': ', 1)
+            if key not in allowed_keys:
+                raise errors.BzrError('Unknown key in inventory: %r\n%r'
+                                      % (key, bytes))
+            if key in info:
+                raise errors.BzrError('Duplicate key in inventory: %r\n%r'
+                                      % (key, bytes))
+            info[key] = value
+        revision_id = info['revision_id']
+        root_id = info['root_id']
+        search_key_name = info.get('search_key_name', 'plain')
+        parent_id_basename_to_file_id = info.get(
+            'parent_id_basename_to_file_id', None)
+        id_to_entry = info['id_to_entry']
+
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id
         result.root_id = root_id
         search_key_func = chk_map.search_key_registry.get(
                             result._search_key_name)
-        if lines[next].startswith('parent_id_basename_to_file_id:'):
+        if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
-                chk_store, (lines[next][31:],),
+                chk_store, (parent_id_basename_to_file_id,),
                 search_key_func=search_key_func)
-            next += 1
         else:
             result.parent_id_basename_to_file_id = None
 
-        result.id_to_entry = chk_map.CHKMap(chk_store, (lines[next][13:],),
+        result.id_to_entry = chk_map.CHKMap(chk_store, (id_to_entry,),
                                             search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
@@ -1798,14 +1811,21 @@ class CHKInventory(CommonInventory):
     def to_lines(self):
         """Serialise the inventory to lines."""
         lines = ["chkinventory:\n"]
-        lines.append("revision_id: %s\n" % self.revision_id)
-        lines.append("root_id: %s\n" % self.root_id)
         if self._search_key_name != 'plain':
+            # custom ordering grouping things that don't change together
             lines.append('search_key_name: %s\n' % (self._search_key_name,))
-        if self.parent_id_basename_to_file_id is not None:
+            lines.append("root_id: %s\n" % self.root_id)
             lines.append('parent_id_basename_to_file_id: %s\n' %
                 self.parent_id_basename_to_file_id.key())
-        lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+            lines.append("revision_id: %s\n" % self.revision_id)
+            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+        else:
+            lines.append("revision_id: %s\n" % self.revision_id)
+            lines.append("root_id: %s\n" % self.root_id)
+            if self.parent_id_basename_to_file_id is not None:
+                lines.append('parent_id_basename_to_file_id: %s\n' %
+                    self.parent_id_basename_to_file_id.key())
+            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
         return lines
 
     @property

@@ -254,10 +254,10 @@ class TestCHKInventory(TestCaseWithTransport):
         lines = chk_inv.to_lines()
         self.assertEqual([
             'chkinventory:\n',
-            'revision_id: foo\n',
-            'root_id: TREE_ROOT\n',
             'search_key_name: hash-16-way\n',
+            'root_id: TREE_ROOT\n',
             'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'revision_id: foo\n',
             'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
