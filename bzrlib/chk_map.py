@@ -567,6 +567,9 @@ class Node(object):
         return common_prefix
 
 
+# Singleton indicating we have not computed _search_prefix yet
+_unknown = object()
+
 class LeafNode(Node):
     """A node containing actual key:value pairs.
 
@@ -663,11 +666,11 @@ class LeafNode(Node):
         result._raw_size = (sum(map(len, lines[5:])) # the length of the suffix
             + (length)*(len(prefix))
             + (len(lines)-5))
-        result._compute_search_prefix()
-        # result._compute_serialised_prefix()
         if not items:
+            result._search_prefix = None
             result._common_serialised_prefix = None
         else:
+            result._search_prefix = _unknown
             result._common_serialised_prefix = prefix
         if len(bytes) != result._current_size():
             raise AssertionError('_current_size computed incorrectly')
@@ -725,6 +728,8 @@ class LeafNode(Node):
             self._common_serialised_prefix = self.common_prefix(
                 self._common_serialised_prefix, serialised_key)
         search_key = self._search_key(key)
+        if self._search_prefix is _unknown:
+            self._compute_search_prefix()
         if self._search_prefix is None:
             self._search_prefix = search_key
         else:
@@ -749,6 +754,7 @@ class LeafNode(Node):
 
         :return: (common_serialised_prefix, [(node_serialised_prefix, node)])
         """
+        assert self._search_prefix is not _unknown
         common_prefix = self._search_prefix
         split_at = len(common_prefix) + 1
         result = {}
@@ -784,6 +790,7 @@ class LeafNode(Node):
         if self._map_no_split(key, value):
             return self._split(store)
         else:
+            assert self._search_prefix is not _unknown
             return self._search_prefix, [("", self)]
 
     def serialise(self, store):
@@ -833,7 +840,7 @@ class LeafNode(Node):
         :return: A bytestring of the longest search key prefix that is
             unique within this node.
         """
-        search_keys = [self._search_key(key) for key in self._items]
+        search_keys = [self._search_key_func(key) for key in self._items]
         self._search_prefix = self.common_prefix_for_keys(search_keys)
         return self._search_prefix
 
@@ -965,7 +972,6 @@ class InternalNode(Node):
         #      change if we add prefix compression
         result._raw_size = None # len(bytes)
         result._node_width = len(prefix)
-        # result._compute_search_prefix()
         assert len(items) > 0
         result._search_prefix = common_prefix
         return result

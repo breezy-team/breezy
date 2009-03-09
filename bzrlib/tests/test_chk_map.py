@@ -1291,7 +1291,7 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo", "1"), "bar\x00baz"), (("foo", "2"), "blarh")],
             sorted(node.iteritems(None)))
-        self.assertEqual('foo\x00', node._search_prefix)
+        self.assertIs(chk_map._unknown, node._search_prefix)
         self.assertEqual('foo\x00', node._common_serialised_prefix)
 
     def test_deserialise_multi_line(self):
@@ -1302,7 +1302,7 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual([(("foo", "1"), "bar\nbaz"),
                           (("foo", "2"), "blarh\n"),
                          ], sorted(node.iteritems(None)))
-        self.assertEqual('foo\x00', node._search_prefix)
+        self.assertIs(chk_map._unknown, node._search_prefix)
         self.assertEqual('foo\x00', node._common_serialised_prefix)
 
     def test_key_new(self):
