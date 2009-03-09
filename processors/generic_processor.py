@@ -458,17 +458,17 @@ class GenericProcessor(processor.ImportProcessor):
 
     def report_progress(self, details=''):
         if self._revision_count % self.progress_every == 0:
-            if self.verbose:
+            if self.total_commits is not None:
                 counts = "%d/%d" % (self._revision_count, self.total_commits)
-                minutes = (time.time() - self._start_time) / 60
-                rate = self._revision_count * 1.0 / minutes
-                if rate > 10:
-                    rate_str = "at %.0f/minute " % rate
-                else:
-                    rate_str = "at %.1f/minute " % rate
             else:
                 counts = "%d" % (self._revision_count,)
-                rate_str = ''
+            minutes = (time.time() - self._start_time) / 60
+            revisions_added = self._revision_count - self.skip_total
+            rate = revisions_added * 1.0 / minutes
+            if rate > 10:
+                rate_str = "at %.0f/minute " % rate
+            else:
+                rate_str = "at %.1f/minute " % rate
             self.note("%s commits processed %s%s" % (counts, rate_str, details))
 
     def progress_handler(self, cmd):
