@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Aaron Bentley
+# Copyright (C) 2005, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,11 @@ class TestBzrTools(TestCaseWithTransport):
 
     @staticmethod
     def touch(filename):
-        file(filename, 'wb').write('')
+        my_file = open(filename, 'wb')
+        try:
+            my_file.write('')
+        finally:
+            my_file.close()
 
     def test_clean_tree(self):
         self.run_bzr('init')
@@ -56,5 +60,3 @@ class TestBzrTools(TestCaseWithTransport):
         assert not os.path.lexists('name')
         assert not os.path.lexists('name~')
         assert not os.path.lexists('name.pyc')
-
-

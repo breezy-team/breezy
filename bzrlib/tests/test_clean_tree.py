@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Aaron Bentley
+# Copyright (C) 2005, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,19 +52,15 @@ class TestCleanTree(TestCaseInTempDir):
         """Files are selected for deletion appropriately"""
         os.mkdir('branch')
         tree = BzrDir.create_standalone_workingtree('branch')
-        f = file('branch/.bzrignore', 'wb')
-        try:
-            f.write('*~\n*.pyc\n.bzrignore\n')
-        finally:
-            f.close()
-        file('branch/file.BASE', 'wb').write('contents')
+        transport = tree.bzrdir.root_transport
+        transport.put_bytes('.bzrignore', '*~\n*.pyc\n.bzrignore\n')
+        transport.put_bytes('file.BASE', 'contents')
         tree.lock_write()
         try:
             self.assertEqual(len(list(iter_deletables(tree, unknown=True))), 1)
-            file('branch/file', 'wb').write('contents')
-            file('branch/file~', 'wb').write('contents')
-            file('branch/file.pyc', 'wb').write('contents')
-
+            transport.put_bytes('file', 'contents')
+            transport.put_bytes('file~', 'contents')
+            transport.put_bytes('file.pyc', 'contents')
             dels = sorted([r for a,r in iter_deletables(tree, unknown=True)])
             assert sorted(['file', 'file.BASE']) == dels
 
