@@ -107,6 +107,9 @@ IN DEVELOPMENT
       when needed.
       (Vincent Ladeuil)
 
+    * Unshelve does not generate warnings about progress bars.
+      (Aaron Bentley, #328148)
+
   DOCUMENTATION:
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
