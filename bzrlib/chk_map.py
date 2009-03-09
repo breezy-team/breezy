@@ -901,13 +901,20 @@ class InternalNode(Node):
         :param prefix: The search key prefix for node.
         :param node: The node being added.
         """
-        assert self._search_prefix is not None
-        assert prefix.startswith(self._search_prefix)
-        assert len(prefix) == len(self._search_prefix) + 1
+        if self._search_prefix is None:
+            raise AssertionError("_search_prefix should not be None")
+        if not prefix.startswith(self._search_prefix):
+            raise AssertionError("prefixes mismatch: %s must start with %s"
+                % (prefix,self._search_prefix))
+        if len(prefix) != len(self._search_prefix) + 1:
+            raise AssertionError("prefix wrong length: len(%s) is not %d" %
+                (prefix, len(self._search_prefix) + 1))
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
-        assert self._node_width == len(self._search_prefix) + 1
+        if self._node_width != len(self._search_prefix) + 1:
+            raise AssertionError("node width mismatch: %d is not %d" %
+                (self._node_width, len(self._search_prefix) + 1))
         self._items[prefix] = node
         self._key = None
 
@@ -929,7 +936,8 @@ class InternalNode(Node):
         # from the result of split('\n') because we should have a trailing
         # newline
         lines = bytes.split('\n')
-        assert lines[-1] == ''
+        if lines[-1] != '':
+            raise AssertionError("last line must be ''")
         lines.pop(-1)
         items = {}
         if lines[0] != 'chknode:':
@@ -1038,7 +1046,9 @@ class InternalNode(Node):
         if not len(self._items):
             raise AssertionError("can't map in an empty InternalNode.")
         search_key = self._search_key(key)
-        assert self._node_width == len(self._search_prefix) + 1
+        if self._node_width != len(self._search_prefix) + 1:
+            raise AssertionError("node width mismatch: %d is not %d" %
+                (self._node_width, len(self._search_prefix) + 1))
         if not search_key.startswith(self._search_prefix):
             # This key doesn't fit in this index, so we need to split at the
             # point where it would fit, insert self into that internal node,
@@ -1093,7 +1103,8 @@ class InternalNode(Node):
                             "checking remap as size shrunk by %d to be %d",
                             shrinkage, new_size)
                         new_node = self._check_remap(store)
-            assert new_node._search_prefix is not None
+            if new_node._search_prefix is None:
+                raise AssertionError("_search_prefix should not be None")
             return new_node._search_prefix, [('', new_node)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
@@ -1135,7 +1146,8 @@ class InternalNode(Node):
         lines.append("%d\n" % self._maximum_size)
         lines.append("%d\n" % self._key_width)
         lines.append("%d\n" % self._len)
-        assert self._search_prefix is not None
+        if self._search_prefix is None:
+            raise AssertionError("_search_prefix should not be None")
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
@@ -1144,7 +1156,9 @@ class InternalNode(Node):
             else:
                 key = node._key[0]
             serialised = "%s\x00%s\n" % (prefix, key)
-            assert serialised.startswith(self._search_prefix)
+            if not serialised.startswith(self._search_prefix):
+                raise AssertionError("prefixes mismatch: %s must start with %s"
+                    % (serialised, self._search_prefix))
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
@@ -1200,7 +1214,7 @@ class InternalNode(Node):
     def unmap(self, store, key, check_remap=True):
         """Remove key from this node and it's children."""
         if not len(self._items):
-            raise AssertionError("cant unmap in an empty InternalNode.")
+            raise AssertionError("can't unmap in an empty InternalNode.")
         children = list(self._iter_nodes(store, key_filter=[key]))
         if children:
             child = children[0]
