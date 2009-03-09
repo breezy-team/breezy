@@ -1660,6 +1660,8 @@ class CHKInventory(CommonInventory):
 
     def __getitem__(self, file_id):
         """map a single file_id -> InventoryEntry."""
+        if file_id is None:
+            raise errors.NoSuchId(self, file_id)
         result = self._fileid_to_entry_cache.get(file_id, None)
         if result is not None:
             return result
