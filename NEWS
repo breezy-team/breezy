@@ -85,6 +85,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Bazaar now gives a better message including the filename if it's
+      unable to read a file in the working directory, for example because
+      of a permission error.  (Martin Pool, #338653)
+
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
