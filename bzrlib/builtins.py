@@ -3367,6 +3367,16 @@ class cmd_merge(Command):
         allow_pending = True
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
+
+        # die as quickly as possible if there are uncommitted changes
+        try:
+            basis_tree = tree.revision_tree(tree.last_revision())
+        except errors.NoSuchRevision:
+            basis_tree = tree.basis_tree()
+        changes = tree.changes_from(basis_tree)
+        if changes.has_changed():
+            raise errors.UncommittedChanges(tree)
+
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored, view_info=view_info)
@@ -3425,7 +3435,7 @@ class cmd_merge(Command):
                                        merger.other_rev_id)
                     result.report(self.outf)
                     return 0
-            merger.check_basis(not force)
+            merger.check_basis(False)
             if preview:
                 return self._do_preview(merger)
             else:
