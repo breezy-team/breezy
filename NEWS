@@ -8,8 +8,12 @@ Bazaar Release Notes
 IN DEVELOPMENT
 --------------
 
-bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
+bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
 ------------------------------------------------
+This release includes bug fixes and a few performance and feature improvements.
+GNU Changelog output can now be produced by ``bzr log --format gnu-changelog``.
+Debug flags can now be set in ``~/.bazaar/bazaar.conf``. Lightweight Checkouts
+and Stacked Branches should both be much faster over remote connections.
 
   COMPATIBILITY BREAKS:
 
