@@ -17,8 +17,8 @@
 """A manager of caches."""
 
 
-from bzrlib import lru_cache
-
+from bzrlib import lru_cache, trace
+from bzrlib.plugins.fastimport import helpers
 
 class CacheManager(object):
 
@@ -60,6 +60,40 @@ class CacheManager(object):
             except KeyError:
                 # info not in file - possible when no blobs used
                 pass
+
+    def dump_stats(self, note=trace.note):
+        """Dump some statistics about what we cached."""
+        # TODO: add in inventory stastistics
+        note("Cache statistics:")
+        self._show_stats_for(self._sticky_blobs, "sticky blobs", note=note)
+        self._show_stats_for(self.revision_ids, "revision-ids", note=note)
+        self._show_stats_for(self.file_ids, "file-ids", note=note)
+        # These aren't interesting so omit from the output, at least for now
+        #self._show_stats_for(self._blobs, "other blobs", note=note)
+        #self._show_stats_for(self.last_ids, "last-ids", note=note)
+        #self._show_stats_for(self.heads, "heads", note=note)
+
+    def _show_stats_for(self, dict, label, note=trace.note):
+        """Dump statistics about a given dictionary.
+
+        By the key and value need to support len().
+        """
+        count = len(dict)
+        size = sum(map(len, dict.keys()))
+        size += sum(map(len, dict.values()))
+        kbytes = size * 1.0 / 1024
+        note("    %-12s: %8.1fs kB (%d %s)" % (label, kbytes, count,
+            helpers.single_plural(count, "item", "items")))
+
+    def clear_all(self):
+        """Free up any memory used by the caches."""
+        self._blobs.clear()
+        self._sticky_blobs.clear()
+        self.revision_ids.clear()
+        self.file_ids.clear()
+        self.last_ids.clear()
+        self.heads.clear()
+        self.inventories.clear()
 
     def store_blob(self, id, data):
         """Store a blob of data."""

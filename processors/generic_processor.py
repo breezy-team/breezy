@@ -314,6 +314,10 @@ class GenericProcessor(processor.ImportProcessor):
             # checkpoint instead. We now pack the repository to optimise
             # how data is stored.
             if self._revision_count > self.checkpoint_every:
+                # Free whatever memory we can before packing
+                import gc
+                self.cache_mgr.clear_all()
+                gc.collect()
                 self.note("Packing repository ...")
                 self.repo.pack()
                 # To be conservative, packing puts the old packs and
@@ -357,6 +361,8 @@ class GenericProcessor(processor.ImportProcessor):
             bc, helpers.single_plural(bc, "branch", "branches"),
             wtc, helpers.single_plural(wtc, "tree", "trees"),
             time_required)
+        if self.verbose:
+            self.cache_mgr.dump_stats()
 
     def _init_id_map(self):
         """Load the id-map and check it matches the repository.
@@ -410,8 +416,6 @@ class GenericProcessor(processor.ImportProcessor):
             # load the file-ids cache
             if self._revision_count == self.skip_total:
                 self._gen_file_ids_cache()
-                self.note("Generated the file-ids cache - %d entries",
-                    len(self.cache_mgr.file_ids.keys()))
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
@@ -449,12 +453,14 @@ class GenericProcessor(processor.ImportProcessor):
         # Update the fileid cache
         file_ids = {}
         for revision_id in revision_ids:
+            self.note("Collecting file-ids for head %s ..." % revision_id)
             inv = self.repo.revision_tree(revision_id).inventory
             # Cache the inventories while we're at it
             self.cache_mgr.inventories[revision_id] = inv
             for path, ie in inv.iter_entries():
                 file_ids[path] = ie.file_id
         self.cache_mgr.file_ids = file_ids
+        self.note("Generated the file-ids cache - %d entries" % len(file_ids))
 
     def report_progress(self, details=''):
         if self._revision_count % self.progress_every == 0:
