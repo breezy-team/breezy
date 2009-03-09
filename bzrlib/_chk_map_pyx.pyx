@@ -19,14 +19,18 @@ cdef extern from *:
     void sprintf(char *, char *, ...)
 
 cdef extern from "Python.h":
-    int PyString_CheckExact(object p)
+    struct _PyObject:
+        pass
+    ctypedef _PyObject PyObject
     int PyTuple_CheckExact(object p)
     Py_ssize_t PyTuple_GET_SIZE(object t)
-    # Do we want to use the PyObject * instead?
-    object PyTuple_GET_ITEM(object t, Py_ssize_t offset)
-
-    Py_ssize_t PyString_GET_SIZE(object s)
     char *PyString_AS_STRING(object s)
+
+    PyObject * PyTuple_GET_ITEM_ptr "PyTuple_GET_ITEM" (object t,
+                                                        Py_ssize_t offset)
+    int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *p)
+    Py_ssize_t PyString_GET_SIZE_ptr "PyTuple_GET_SIZE" (PyObject *s)
+    char *PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *s)
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
 cdef extern from "zlib.h":
@@ -47,6 +51,7 @@ def _search_key_16(key):
     cdef uInt crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
+    cdef PyObject *bit
 
     if not PyTuple_CheckExact(key):
         raise TypeError('key %r is not a tuple' % (key,))
@@ -59,11 +64,14 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        bit = PyTuple_GET_ITEM(key, i)
-        if not PyString_CheckExact(bit):
+        # We use the _ptr variant, because GET_ITEM returns a borrowed
+        # reference, and Pyrex assumes that returned 'object' are a new
+        # reference
+        bit = PyTuple_GET_ITEM_ptr(key, i)
+        if not PyString_CheckExact_ptr(bit):
             raise TypeError('Bit %d of %r is not a string' % (i, key))
-        c_bit = <Bytef *>PyString_AS_STRING(bit)
-        c_len = PyString_GET_SIZE(bit)
+        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
+        c_len = PyString_GET_SIZE_ptr(bit)
         crc_val = crc32(0, c_bit, c_len)
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
@@ -81,6 +89,7 @@ def _search_key_255(key):
     cdef uInt crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
+    cdef PyObject *bit
 
     if not PyTuple_CheckExact(key):
         raise TypeError('key %r is not a tuple' % (key,))
@@ -93,11 +102,12 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        bit = PyTuple_GET_ITEM(key, i)
-        if not PyString_CheckExact(bit):
-            raise TypeError('Bit %d of %r is not a string' % (i, key))
-        c_bit = <Bytef *>PyString_AS_STRING(bit)
-        c_len = PyString_GET_SIZE(bit)
+        bit = PyTuple_GET_ITEM_ptr(key, i)
+        if not PyString_CheckExact_ptr(bit):
+            raise TypeError('Bit %d of %r is not a string: %r' % (i, key,
+            <object>bit))
+        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
+        c_len = PyString_GET_SIZE_ptr(bit)
         crc_val = crc32(0, c_bit, c_len)
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
