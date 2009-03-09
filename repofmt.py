@@ -643,7 +643,7 @@ if chk_support:
             return ("Development repository format - hash255chk+groupcompress")
 
 
-    chk_serializer_255_bigpage = chk_serializer.CHKSerializer(65536, True, 'hash-255-way')
+    chk_serializer_255_bigpage = chk_serializer.CHKSerializer(65536, 'hash-255-way')
     class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
         """A hashed CHK+group compress pack repository."""
 
