@@ -41,9 +41,6 @@ import heapq
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
-import zlib
-import struct
-
 from bzrlib import versionedfile
 """)
 from bzrlib import (
@@ -74,40 +71,8 @@ def _search_key_plain(key):
     return '\x00'.join(key)
 
 
-def _crc32(bit):
-    # Depending on python version and platform, zlib.crc32 will return either a
-    # signed (<= 2.5 >= 3.0) or an unsigned (2.5, 2.6).
-    # http://docs.python.org/library/zlib.html recommends using a mask to force
-    # an unsigned value to ensure the same numeric value (unsigned) is obtained
-    # across all python versions and platforms.
-    # Note: However, on 32-bit platforms this causes an upcast to PyLong, which
-    #       are generally slower than PyInts. However, if performance becomes
-    #       critical, we should probably write the whole thing as an extension
-    #       anyway.
-    #       Though we really don't need that 32nd bit of accuracy. (even 2**24
-    #       is probably enough node fan out for realistic trees.)
-    return zlib.crc32(bit)&0xFFFFFFFF
-
-
-def _search_key_16(key):
-    """Map the key tuple into a search key string which has 16-way fan out."""
-    return '\x00'.join(['%08X' % _crc32(bit) for bit in key])
-
-
-def _search_key_255(key):
-    """Map the key tuple into a search key string which has 255-way fan out.
-
-    We use 255-way because '\n' is used as a delimiter, and causes problems
-    while parsing.
-    """
-    bytes = '\x00'.join([struct.pack('>L', _crc32(bit)) for bit in key])
-    return bytes.replace('\n', '_')
-
-
 search_key_registry = registry.Registry()
 search_key_registry.register('plain', _search_key_plain)
-search_key_registry.register('hash-16-way', _search_key_16)
-search_key_registry.register('hash-255-way', _search_key_255)
 
 
 class CHKMap(object):
@@ -1489,3 +1454,17 @@ def iter_interesting_nodes(store, interesting_root_keys,
                 # all_uninteresting_items.update(interesting_items)
             yield {record.key: record}, interesting_items
         chks_to_read = next_chks
+
+
+try:
+    from bzrlib._chk_map_pyx import (
+        _search_key_16,
+        _search_key_255,
+        )
+except ImportError:
+    from bzrlib._chk_map_py import (
+        _search_key_16,
+        _search_key_255,
+        )
+search_key_registry.register('hash-16-way', _search_key_16)
+search_key_registry.register('hash-255-way', _search_key_255)

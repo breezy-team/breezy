@@ -2904,6 +2904,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
