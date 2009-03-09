@@ -70,7 +70,7 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 
 class Merger(object):
     def __init__(self, this_branch, other_tree=None, base_tree=None,
-                 this_tree=None, pb=DummyProgress(), change_reporter=None,
+                 this_tree=None, pb=None, change_reporter=None,
                  recurse='down', revision_graph=None):
         object.__init__(self)
         self.this_branch = this_branch
