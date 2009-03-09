@@ -1503,6 +1503,7 @@ class CHKInventory(CommonInventory):
             search_key_func=search_key_func)
         result.id_to_entry._ensure_root()
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
+        parent_id_basename_delta = []
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
@@ -1514,7 +1515,6 @@ class CHKInventory(CommonInventory):
             p_id_root = self.parent_id_basename_to_file_id._root_node
             result_p_id_root.set_maximum_size(p_id_root.maximum_size)
             result_p_id_root._key_width = p_id_root._key_width
-            parent_id_basename_delta = []
         else:
             result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
@@ -1851,7 +1851,8 @@ class CHKInventoryDirectory(InventoryDirectory):
         if self._children is not None:
             return self._children
         # No longer supported
-        assert self._chk_inventory.parent_id_basename_to_file_id is not None
+        if self._chk_inventory.parent_id_basename_to_file_id is None:
+            raise AssertionError
         result = {}
         # XXX: Todo - use proxy objects for the children rather than loading
         # all when the attribute is referenced.
