@@ -1634,6 +1634,8 @@ class SocketConnectionError(ConnectionError):
             self.port = ':%s' % port
 
 
+# XXX: This is also used for unexpected end of file, which is different at the
+# TCP level from "connection reset".
 class ConnectionReset(TransportError):
 
     _fmt = "Connection closed: %(msg)s %(orig_error)s"

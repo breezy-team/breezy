@@ -391,7 +391,9 @@ class EmacsMail(ExternalMailClient):
             (if (functionp 'etach-attach)
               (etach-attach file)
               (mail-attach-file file))))
-         ((or (eq agent 'message-user-agent)(eq agent 'gnus-user-agent))
+         ((or (eq agent 'message-user-agent)
+              (eq agent 'gnus-user-agent)
+              (eq agent 'mh-e-user-agent))
           (progn
             (mml-attach-file file "text/x-patch" "BZR merge" "inline")))
          ((eq agent 'mew-user-agent)

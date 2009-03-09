@@ -809,6 +809,8 @@ def run_bzr(argv):
             argv_copy.append(a)
         i += 1
 
+    debug.set_debug_flags_from_config()
+
     argv = argv_copy
     if (not argv):
         from bzrlib.builtins import cmd_help

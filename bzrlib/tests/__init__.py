@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -216,8 +216,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         fails with an unexpected error.
         """
         self._testConcluded(test)
-        if isinstance(err[1], TestSkipped):
-            return self._addSkipped(test, err)
+        if isinstance(err[1], TestNotApplicable):
+            return self._addNotApplicable(test, err)
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
@@ -286,19 +286,21 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported[str(feature)] += 1
         self.report_unsupported(test, feature)
 
-    def _addSkipped(self, test, skip_excinfo):
+    def addSkip(self, test, reason):
+        """A test has not run for 'reason'."""
+        self.skip_count += 1
+        self.report_skip(test, reason)
+
+    def _addNotApplicable(self, test, skip_excinfo):
         if isinstance(skip_excinfo[1], TestNotApplicable):
             self.not_applicable_count += 1
             self.report_not_applicable(test, skip_excinfo)
-        else:
-            self.skip_count += 1
-            self.report_skip(test, skip_excinfo)
         try:
             test.tearDown()
         except KeyboardInterrupt:
             raise
         except:
-            self.addError(test, test._exc_info())
+            self.addError(test, test.exc_info())
         else:
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
@@ -416,7 +418,7 @@ class TextTestResult(ExtendedTestResult):
         self.pb.note('XFAIL: %s\n%s\n',
             self._test_description(test), err[1])
 
-    def report_skip(self, test, skip_excinfo):
+    def report_skip(self, test, reason):
         pass
 
     def report_not_applicable(self, test, skip_excinfo):
@@ -485,10 +487,9 @@ class VerboseTestResult(ExtendedTestResult):
         # used to show the output in PQM.
         self.stream.flush()
 
-    def report_skip(self, test, skip_excinfo):
+    def report_skip(self, test, reason):
         self.stream.writeln(' SKIP %s\n%s'
-                % (self._testTimeString(test),
-                   self._error_summary(skip_excinfo)))
+                % (self._testTimeString(test), reason))
 
     def report_not_applicable(self, test, skip_excinfo):
         self.stream.writeln('  N/A %s\n%s'
@@ -774,6 +775,18 @@ class TestCase(unittest.TestCase):
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
+
+    def debug(self):
+        # debug a frame up.
+        import pdb
+        pdb.Pdb().set_trace(sys._getframe().f_back)
+
+    def exc_info(self):
+        absent_attr = object()
+        exc_info = getattr(self, '_exc_info', absent_attr)
+        if exc_info is absent_attr:
+            exc_info = getattr(self, '_TestCase__exc_info')
+        return exc_info()
 
     def _check_leaked_threads(self):
         active = threading.activeCount()
@@ -1282,6 +1295,13 @@ class TestCase(unittest.TestCase):
         """This test has failed for some known reason."""
         raise KnownFailure(reason)
 
+    def _do_skip(self, result, reason):
+        addSkip = getattr(result, 'addSkip', None)
+        if not callable(addSkip):
+            result.addError(self, self.exc_info())
+        else:
+            addSkip(self, reason)
+
     def run(self, result=None):
         if result is None: result = self.defaultTestResult()
         for feature in getattr(self, '_test_needs_features', []):
@@ -1294,7 +1314,61 @@ class TestCase(unittest.TestCase):
                 result.stopTest(self)
                 return
         try:
-            return unittest.TestCase.run(self, result)
+            try:
+                result.startTest(self)
+                absent_attr = object()
+                # Python 2.5
+                method_name = getattr(self, '_testMethodName', absent_attr)
+                if method_name is absent_attr:
+                    # Python 2.4
+                    method_name = getattr(self, '_TestCase__testMethodName')
+                testMethod = getattr(self, method_name)
+                try:
+                    try:
+                        self.setUp()
+                    except KeyboardInterrupt:
+                        raise
+                    except TestSkipped, e:
+                        self._do_skip(result, e.args[0])
+                        self.tearDown()
+                        return
+                    except:
+                        result.addError(self, self.exc_info())
+                        return
+
+                    ok = False
+                    try:
+                        testMethod()
+                        ok = True
+                    except self.failureException:
+                        result.addFailure(self, self.exc_info())
+                    except TestSkipped, e:
+                        if not e.args:
+                            reason = "No reason given."
+                        else:
+                            reason = e.args[0]
+                        self._do_skip(result, reason)
+                    except KeyboardInterrupt:
+                        raise
+                    except:
+                        result.addError(self, self.exc_info())
+
+                    try:
+                        self.tearDown()
+                    except KeyboardInterrupt:
+                        raise
+                    except:
+                        result.addError(self, self.exc_info())
+                        ok = False
+                    if ok: result.addSuccess(self)
+                finally:
+                    result.stopTest(self)
+                return
+            except TestNotApplicable:
+                # Not moved from the result [yet].
+                raise
+            except KeyboardInterrupt:
+                raise
         finally:
             saved_attrs = {}
             absent_attr = object()
@@ -1306,6 +1380,7 @@ class TestCase(unittest.TestCase):
 
     def tearDown(self):
         self._runCleanups()
+        self._log_contents = ''
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):
@@ -1750,6 +1825,29 @@ class TestCase(unittest.TestCase):
         return sio
 
 
+class CapturedCall(object):
+    """A helper for capturing smart server calls for easy debug analysis."""
+
+    def __init__(self, params, prefix_length):
+        """Capture the call with params and skip prefix_length stack frames."""
+        self.call = params
+        import traceback
+        # The last 5 frames are the __init__, the hook frame, and 3 smart
+        # client frames. Beyond this we could get more clever, but this is good
+        # enough for now.
+        stack = traceback.extract_stack()[prefix_length:-5]
+        self.stack = ''.join(traceback.format_list(stack))
+
+    def __str__(self):
+        return self.call.method
+
+    def __repr__(self):
+        return self.call.method
+
+    def stack(self):
+        return self.stack
+
+
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
@@ -2021,9 +2119,8 @@ class TestCaseWithMemoryTransport(TestCase):
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        url = self.get_url(relpath)
-        tran = get_transport(url)
-        return branchbuilder.BranchBuilder(get_transport(url), format=format)
+        return branchbuilder.BranchBuilder(self.get_transport(relpath),
+            format=format)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
@@ -2046,9 +2143,13 @@ class TestCaseWithMemoryTransport(TestCase):
         """Sets up a smart server as the transport server with a call log."""
         self.transport_server = server.SmartTCPServer_for_testing
         self.hpss_calls = []
+        import traceback
+        # Skip the current stack down to the caller of
+        # setup_smart_server_with_call_log
+        prefix_length = len(traceback.extract_stack()) - 2
         def capture_hpss_call(params):
-            import traceback
-            self.hpss_calls.append((params, traceback.format_stack()))
+            self.hpss_calls.append(
+                CapturedCall(params, prefix_length))
         client._SmartClient.hooks.install_named_hook(
             'call', capture_hpss_call, None)
 
@@ -2829,6 +2930,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
+                   'bzrlib.tests.test_debug',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_directory_service',

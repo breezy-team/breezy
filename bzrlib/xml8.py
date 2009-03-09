@@ -131,7 +131,7 @@ def _get_utf8_or_ascii(a_str,
     if a_str.__class__ == unicode:
         return _encode_utf8(a_str)
     else:
-        return _get_cached_ascii(a_str)
+        return intern(a_str)
 
 
 def _clear_cache():

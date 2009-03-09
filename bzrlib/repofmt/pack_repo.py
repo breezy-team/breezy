@@ -861,6 +861,7 @@ class Packer(object):
             if missing_text_keys:
                 # TODO: raise a specific error that can handle many missing
                 # keys.
+                mutter("missing keys during fetch: %r", missing_text_keys)
                 a_missing_key = missing_text_keys.pop()
                 raise errors.RevisionNotPresent(a_missing_key[1],
                     a_missing_key[0])

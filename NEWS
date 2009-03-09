@@ -21,19 +21,31 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * Debug flags can now be set in ``~/.bazaar/bazaar.conf``.
+      (Martin Pool)
+
     * Filtered views provide a mask over the tree so that users can focus
       on a subset of a tree when doing their work. See ``Filtered views``
       in chapter 7 of the User Guide and ``bzr help view`` for details.
       (Ian Clatworthy)
 
+    * GNU Changelog output can now be produced by ``bzr log --format
+      gnu-changelog``.  (Andrea Bolognani, Martin Pool)
+
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
+
+    * Multiple authors for a commit can now be recorded by using the "--author"
+      option multiple times. (James Westby, #185772)
 
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
 
   IMPROVEMENTS:
+
+    * ``bzr add`` no longer prints ``add completed`` on success. Failure
+      still prints an error message. (Robert Collins)
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
       generation of a working tree in the new branch.
@@ -61,6 +73,15 @@ IN DEVELOPMENT
 
     * The ``bzr shelve`` prompt now includes a '?' help option to explain the
       short options better. (Daniel Watkins, #327429)
+
+    * ``bzr lp-open`` now falls back to the push location if it cannot find a
+      public location. (Jonathan Lange, #332372)
+
+    * ``bzr lp-open`` will try to find the Launchpad URL for the location
+      passed on the command line. This makes ``bzr lp-open lp:foo`` work as
+      expected. (Jonathan Lange, #332705)
+
+    * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
   BUG FIXES:
 
@@ -90,7 +111,26 @@ IN DEVELOPMENT
       for branches. This is now fixed and a test added to prevent it
       reoccuring. (Robert Collins, Andrew Bennetts)
 
+    * Restore the progress bar on Windows. We were disabling it when TERM
+      wasn't set, but Windows doesn't set TERM. (Alexander Belchenko)
+
+    * ``setup.py build_ext`` now gives a proper error when an extension
+      fails to build. (John Arbash Meinel)
+
+    * Under rare circumstances (aka nobody reported a bug about it), the ftp
+      transport could revert to ascii mode. It now stays in binary mode except
+      when needed.
+      (Vincent Ladeuil)
+
+    * Make ``bzr push --quiet <non-local location>`` less chatty.
+      (Kent Gibson, #221461)
+
   DOCUMENTATION:
+
+    * Added ``Organizing your workspace`` to the User Guide appendices,
+      summarizing some common ways of organizing trees, branches and
+      repositories and the processes/workflows implied/enabled by each.
+      (Ian Clatworthy)
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
@@ -103,12 +143,44 @@ IN DEVELOPMENT
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
 
+    * ``Branch.fetch`` and ``Repository.fetch`` now return None rather
+      than a count of copied revisions and failed revisions. A while back
+      we stopped ever reporting failed revisions because we started
+      erroring instead, and the copied revisions count is not used in the
+      UI at all - indeed it only reflects the repository status not
+      changes to the branch itself. (Robert Collins)
+
+    * MutableTree.commit now favours the "authors" argument, with the old
+      "author" argument being deprecated.
+
+    * Remove deprecated EmptyTree.  (Martin Pool)
+
+    * ``Repository.fetch`` now accepts an optional ``fetch_spec``
+      parameter.  A ``SearchResult`` or ``MiniSearchResult`` may be passed
+      to ``fetch_spec`` instead of a ``last_revision`` to specify exactly
+      which revisions to fetch. (Andrew Bennetts)
+
+    * ``RepositoryAcquisitionPolicy.acquire_repository`` now returns a
+      tuple of ``(repository, is_new_flag)``, rather than just the
+      repository.  (Andrew Bennetts)
+
+    * Revision.get_apparent_author() is now deprecated, replaced by
+      Revision.get_apparent_authors(), which returns a list. The former
+      now returns the first item that would be returned from the second.
+
+    * The ``BranchBuilder`` test helper now accepts a ``timestamp``
+      parameter to ``build_commit`` and ``build_snapshot``.  (Martin Pool)
+
     * The ``_fetch_*`` attributes on ``Repository`` are now on
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular
       repository of that format). (Robert Collins)
 
   INTERNALS:
+
+    * Branching from a non-stacked branch on a smart protocol is now
+      free of virtual file system methods.
+      (Robert Collins, Andrew Bennetts)
 
     * Branch and Repository creation on a bzr+ssh://server are now done
       via RPC calls rather than VFS calls, reducing round trips for
@@ -121,16 +193,25 @@ IN DEVELOPMENT
       plugins to have hooks called on non-stacked instances.
       (Robert Collins, #334187)
 
+    * ``BzrDir.cloning_metadir`` now has a RPC call. (Robert Collins)
+
     * ``BzrDirFormat.__str__`` now uses the human readable description
       rather than the sometimes-absent disk label. (Robert Collins)
 
     * ``bzrlib.fetch`` is now composed of a sender and a sink component
-      allowing for decoupling over a network connection. Fetching into
-      a RemoteRepository uses this to stream the operation.
+      allowing for decoupling over a network connection. Fetching from
+      or into a RemoteRepository with a 1.13 server will use this to
+      stream the operation.
       (Andrew Bennetts, Robert Collins)
 
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
+
+    * Change how file_ids and revision_ids are interned as part of
+      inventory deserialization. Now we use the real ``intern()``, rather
+      than our own workaround that would also cache a Unicode copy of the
+      string, and never emptied the cache. This should slightly reduce
+      memory consumption. (John Arbash Meinel)
 
     * New branch method ``create_clone_on_transport`` that returns a
       branch object. (Robert Collins)
@@ -150,8 +231,9 @@ IN DEVELOPMENT
       ``resume_write_group`` methods.  These are currently only useful
       with pack repositories. (Andrew Bennetts, Robert Collins)
 
-    * ``RepositoryFormat`` objects now have a ``network_name`` for passing
-      the format across RPC calls. (Robert Collins, Andrew Bennetts)
+    * ``BzrDirFormat``, ``BranchFormat`` and ``RepositoryFormat`` objects
+      now have a ``network_name`` for passing the format across RPC calls.
+      (Robert Collins, Andrew Bennetts)
 
     * ``RepositoryFormat`` objects now all have a new attribute
       ``_serializer`` used by fetch when reserialising is required.
@@ -161,6 +243,13 @@ IN DEVELOPMENT
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)
 
+    * ``TestSkipped`` is now detected by TestCase and passed to the
+      ``TestResult`` by calling ``addSkip``. For older TestResult objects,
+      where ``addSkip`` is not available, ``addError`` is still called.
+      This permits test filtering in subunit to strip out skipped tests
+      resulting in a faster fix-shrink-list-run cycle. This is compatible
+      with the testtools protocol for skips. (Robert Collins)
+
     * The ``_index`` of ``KnitVersionedFiles`` now supports the ability
       to scan an underlying index that is going to be incorporated into
       the ``KnitVersionedFiles`` object, to determine if it has missing
@@ -169,6 +258,9 @@ IN DEVELOPMENT
 
     * There is a RemoteSink object which handles pushing to smart servers.
       (Andrew Bennetts, Robert Collins)
+
+    * ``TransportTraceDecorator`` now logs ``put_bytes_non_atomic`` and
+      ``rmdir`` calls. (Robert Collins)
 
     * ``VersionedFiles`` record adapters have had their signature change
       from ``(record, record.get_bytes_as(record.storage_kind))`` to
