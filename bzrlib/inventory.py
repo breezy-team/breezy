@@ -1608,8 +1608,7 @@ class CHKInventory(CommonInventory):
         return result
 
     @classmethod
-    def from_inventory(klass, chk_store, inventory, maximum_size=0,
-        parent_id_basename_index=False, search_key_name='plain'):
+    def from_inventory(klass, chk_store, inventory, maximum_size=0, search_key_name='plain'):
         """Create a CHKInventory from an existing inventory.
 
         The content of inventory is copied into the chk_store, and a
@@ -1618,8 +1617,6 @@ class CHKInventory(CommonInventory):
         :param chk_store: A CHK capable VersionedFiles instance.
         :param inventory: The inventory to copy.
         :param maximum_size: The CHKMap node size limit.
-        :param parent_id_basename_index: If True create and use a
-            parent_id,basename->file_id index.
         :param search_key_name: The identifier for the search key function
         """
         result = CHKInventory(search_key_name)
@@ -1629,25 +1626,20 @@ class CHKInventory(CommonInventory):
         result.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
         file_id_delta = []
-        if parent_id_basename_index:
-            result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-                None, search_key_func)
-            result.parent_id_basename_to_file_id._root_node.set_maximum_size(
-                maximum_size)
-            result.parent_id_basename_to_file_id._root_node._key_width = 2
-            parent_id_delta = []
-        else:
-            result.parent_id_basename_to_file_id = None
+        result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+            None, search_key_func)
+        result.parent_id_basename_to_file_id._root_node.set_maximum_size(
+            maximum_size)
+        result.parent_id_basename_to_file_id._root_node._key_width = 2
+        parent_id_delta = []
         for path, entry in inventory.iter_entries():
             file_id_delta.append((None, (entry.file_id,),
                 result._entry_to_bytes(entry)))
-            if parent_id_basename_index:
-                parent_id_delta.append(
-                    (None, result._parent_id_basename_key(entry),
-                     entry.file_id))
+            parent_id_delta.append(
+                (None, result._parent_id_basename_key(entry),
+                 entry.file_id))
         result.id_to_entry.apply_delta(file_id_delta)
-        if parent_id_basename_index:
-            result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+        result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
         return result
 
     def _parent_id_basename_key(self, entry):
@@ -1852,7 +1844,8 @@ class CHKInventoryDirectory(InventoryDirectory):
             return self._children
         # No longer supported
         if self._chk_inventory.parent_id_basename_to_file_id is None:
-            raise AssertionError
+            raise AssertionError("Inventories without"
+                " parent_id_basename_to_file_id are no longer supported")
         result = {}
         # XXX: Todo - use proxy objects for the children rather than loading
         # all when the attribute is referenced.
