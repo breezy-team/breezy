@@ -499,7 +499,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return 'bzr remote repository'
 
     def __eq__(self, other):
-        return self.__class__ == other.__class__
+        return self.__class__ is other.__class__
 
     def check_conversion_target(self, target_format):
         if self.rich_root_data and not target_format.rich_root_data:
@@ -710,7 +710,7 @@ class RemoteRepository(_RpcHelper):
         return result
 
     def has_same_location(self, other):
-        return (self.__class__ == other.__class__ and
+        return (self.__class__ is other.__class__ and
                 self.bzrdir.transport.base == other.bzrdir.transport.base)
 
     def get_graph(self, other_repository=None):

@@ -966,7 +966,7 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             options.append('fulltext')
             # isinstance is slower and we have no hierarchy.
-            if self._factory.__class__ == KnitPlainFactory:
+            if self._factory.__class__ is KnitPlainFactory:
                 # Use the already joined bytes saving iteration time in
                 # _record_to_data.
                 size, bytes = self._record_to_data(key, digest,
