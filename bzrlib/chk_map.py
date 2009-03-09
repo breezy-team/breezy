@@ -289,14 +289,31 @@ class CHKMap(object):
             if type(node) == LeafNode:
                 path = (node._key, path)
                 for key, value in node._items.items():
+                    # XXX: We need to use the self._search_key_func(key) here,
+                    #      to get proper ordering
                     heapq.heappush(pending, ('\x00'.join(key), value, path))
             else:
                 # type(node) == InternalNode
                 path = (node._key, path)
                 for prefix, child in node._items.items():
                     heapq.heappush(pending, (prefix, child, path))
-        process_node(None, self_node, None, self, self_pending)
-        process_node(None, basis_node, None, basis, basis_pending)
+        if (type(self_node) == InternalNode
+            and type(basis_node) == InternalNode):
+            # Optimize for a common case, where both sides are InternalNode,
+            # and will have many keys that are common
+            def process_common_internal_nodes():
+                self_items = set(self_node._items.items())
+                basis_items = set(basis_node._items.items())
+                path = (self_node._key, None)
+                for prefix, child in self_items - basis_items:
+                    heapq.heappush(self_pending, (prefix, child, path))
+                path = (basis_node._key, None)
+                for prefix, child in basis_items - self_items:
+                    heapq.heappush(basis_pending, (prefix, child, path))
+            process_common_internal_nodes()
+        else:
+            process_node(None, self_node, None, self, self_pending)
+            process_node(None, basis_node, None, basis, basis_pending)
         self_seen = set()
         basis_seen = set()
         excluded_keys = set()
