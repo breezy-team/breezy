@@ -26,7 +26,7 @@ import bzrlib.errors as errors
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
+from bzrlib.tests.test_transport_implementations import transport_test_permutations
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
@@ -34,17 +34,10 @@ import bzrlib.urlutils
 
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
-    result = loader.suiteClass()
     transport_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((TestReadBundleFromURL)))
-
-    adapter = TransportTestProviderAdapter()
-    tests.adapt_tests(transport_tests, adapter, result)
-
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+        standard_tests, tests.condition_isinstance(TestReadBundleFromURL))
+    return tests.multiply_tests(transport_tests, transport_test_permutations(),
+        remaining_tests)
 
 
 def create_bundle_file(test_case):

@@ -109,6 +109,9 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
       error branching from old repositories.
       (Martin Pool, #321695)
 
+    * Make ``bzr push --quiet <non-local location>`` less chatty.
+      (Kent Gibson, #221461)
+
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
       for branches. This is now fixed and a test added to prevent it
@@ -125,8 +128,8 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
       when needed.
       (Vincent Ladeuil)
 
-    * Make ``bzr push --quiet <non-local location>`` less chatty.
-      (Kent Gibson, #221461)
+    * Unshelve does not generate warnings about progress bars.
+      (Aaron Bentley, #328148)
 
   DOCUMENTATION:
 
@@ -245,6 +248,12 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
     * Some methods have been pulled up from ``BzrBranch`` to ``Branch``
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)
+
+    * Test adaptation has been made consistent throughout the built in
+      tests. ``TestScenarioApplier``, ``multiply_tests_from_modules``,
+      ``adapt_tests``, ``adapt_modules`` have all been deleted. Please
+      use ``multiply_tests``, or for lower level needs ``apply_scenarios``
+      and ``apply_scenario``. (Robert Collins)
 
     * ``TestSkipped`` is now detected by TestCase and passed to the
       ``TestResult`` by calling ``addSkip``. For older TestResult objects,

@@ -27,9 +27,8 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
-    TestScenarioApplier,
-    adapt_tests,
     condition_isinstance,
+    multiply_tests,
     split_suite_by_condition,
     )
 from bzrlib.transport import get_transport
@@ -39,16 +38,14 @@ def load_tests(standard_tests, module, loader):
     # parameterise the TestBTreeNodes tests
     node_tests, others = split_suite_by_condition(standard_tests,
         condition_isinstance(TestBTreeNodes))
-    applier = TestScenarioApplier()
     import bzrlib._btree_serializer_py as py_module
-    applier.scenarios = [('python', {'parse_btree': py_module})]
+    scenarios = [('python', {'parse_btree': py_module})]
     if CompiledBtreeParserFeature.available():
         # Is there a way to do this that gets missing feature failures rather
         # than no indication to the user?
         import bzrlib._btree_serializer_c as c_module
-        applier.scenarios.append(('C', {'parse_btree': c_module}))
-    adapt_tests(node_tests, applier, others)
-    return others
+        scenarios.append(('C', {'parse_btree': c_module}))
+    return multiply_tests(node_tests, scenarios, others)
 
 
 class _CompiledBtreeParserFeature(tests.Feature):
