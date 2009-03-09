@@ -23,7 +23,14 @@ import os
 from StringIO import StringIO
 import tarfile
 import bz2
-import sha
+try:
+    import hashlib
+    def new_sha(*args):
+        return hashlib.sha1(*args)
+except ImportError:
+    import sha
+    def new_sha(*args):
+        return sha.new(*args)
 import shutil
 import time
 import zipfile
@@ -142,12 +149,12 @@ def _error_if_exists(target_transport, new_name, source_name):
         raise FileExists(new_name)
     source_f = _get_file_from_location(source_name)
     try:
-        source_sha = sha.sha(source_f.read()).hexdigest()
+        source_sha = new_sha(source_f.read()).hexdigest()
     finally:
         source_f.close()
     target_f = target_transport.get(new_name)
     try:
-        target_sha = sha.sha(target_f.read()).hexdigest()
+        target_sha = new_sha(target_f.read()).hexdigest()
     finally:
         target_f.close()
     if source_sha != target_sha:

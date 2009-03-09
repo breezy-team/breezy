@@ -19,12 +19,10 @@
 #
 
 import os
-import shutil
 import tarfile
 
 from bzrlib.errors import (NoSuchFile,
                            FileExists,
-                           NotADirectory,
                            )
 from bzrlib.tests import TestCaseInTempDir
 
@@ -101,7 +99,7 @@ class TestRepackTarball(TestCaseInTempDir):
             tar.close()
         self.assertEqual(members,
                          [self.basedir] +
-                         [os.path.join(self.basedir, file) for file in self.files])
+                         [os.path.join(self.basedir, file).rstrip("/") for file in self.files])
 
     def test_repack_tarball_with_target_dir(self):
         self.create_old_tarball()

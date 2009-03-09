@@ -18,19 +18,35 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+try:
+    import hashlib as md5
+except ImportError:
+    import md5
 import os
+import shutil
+
+from debian_bundle.changelog import Version
 
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
                 )
+from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
 from bzrlib.plugins.builddeb.util import (
+                  dget,
+                  dget_changes,
                   find_changelog,
-                  recursive_copy,
                   get_snapshot_revision,
                   lookup_distribution,
+                  move_file_if_different,
+                  get_parent_dir,
+                  recursive_copy,
+                  strip_changelog_message,
                   suite_to_distribution,
+                  tarball_name,
+                  write_if_different,
                   )
 
+from bzrlib import errors as bzr_errors
 from bzrlib.tests import (TestCaseWithTransport,
                           TestCaseInTempDir,
                           TestCase,
@@ -165,6 +181,50 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         self.assertRaises(AddChangelogError, find_changelog, tree, False)
 
 
+class StripChangelogMessageTests(TestCase):
+
+    def test_None(self):
+        self.assertEqual(strip_changelog_message(None), None)
+
+    def test_no_changes(self):
+        self.assertEqual(strip_changelog_message([]), [])
+
+    def test_empty_changes(self):
+        self.assertEqual(strip_changelog_message(['']), [])
+
+    def test_removes_leading_whitespace(self):
+        self.assertEqual(strip_changelog_message(
+                    ['foo', '  bar', '\tbaz', '   bang']),
+                    ['foo', 'bar', 'baz', ' bang'])
+
+    def test_removes_star_if_one(self):
+        self.assertEqual(strip_changelog_message(['  * foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['\t* foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  + foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  - foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  *  foo']), ['foo'])
+        self.assertEqual(strip_changelog_message(['  *  foo', '     bar']),
+                ['foo', 'bar'])
+
+    def test_leaves_start_if_multiple(self):
+        self.assertEqual(strip_changelog_message(['  * foo', '  * bar']),
+                    ['* foo', '* bar'])
+        self.assertEqual(strip_changelog_message(['  * foo', '  + bar']),
+                    ['* foo', '+ bar'])
+        self.assertEqual(strip_changelog_message(
+                    ['  * foo', '  bar', '  * baz']),
+                    ['* foo', 'bar', '* baz'])
+
+
+class TarballNameTests(TestCase):
+
+    def test_tarball_name(self):
+        self.assertEqual(tarball_name("package", "0.1"),
+                "package_0.1.orig.tar.gz")
+        self.assertEqual(tarball_name("package", Version("0.1")),
+                "package_0.1.orig.tar.gz")
+
+
 class GetRevisionSnapshotTests(TestCase):
 
     def test_with_snapshot(self):
@@ -218,6 +278,7 @@ class SuiteToDistributionTests(TestCase):
         self.lookup_other("debian")
         self.lookup_other("ubuntu")
 
+
 class LookupDistributionTests(SuiteToDistributionTests):
 
     def _do_lookup(self, target):
@@ -228,3 +289,156 @@ class LookupDistributionTests(SuiteToDistributionTests):
         self.lookup_debian("debian")
         self.lookup_ubuntu("ubuntu")
         self.lookup_ubuntu("Ubuntu")
+
+
+class MoveFileTests(TestCaseInTempDir):
+
+    def test_move_file_non_extant(self):
+        self.build_tree(['a'])
+        move_file_if_different('a', 'b', None)
+        self.failIfExists('a')
+        self.failUnlessExists('b')
+
+    def test_move_file_samefile(self):
+        self.build_tree(['a'])
+        move_file_if_different('a', 'a', None)
+        self.failUnlessExists('a')
+
+    def test_move_file_same_md5(self):
+        self.build_tree(['a'])
+        md5sum = md5.md5()
+        f = open('a', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        shutil.copy('a', 'b')
+        move_file_if_different('a', 'b', md5sum.hexdigest())
+        self.failUnlessExists('a')
+        self.failUnlessExists('b')
+
+    def test_move_file_diff_md5(self):
+        self.build_tree(['a', 'b'])
+        md5sum = md5.md5()
+        f = open('a', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        a_hexdigest = md5sum.hexdigest()
+        md5sum = md5.md5()
+        f = open('b', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        b_hexdigest = md5sum.hexdigest()
+        self.assertNotEqual(a_hexdigest, b_hexdigest)
+        move_file_if_different('a', 'b', a_hexdigest)
+        self.failIfExists('a')
+        self.failUnlessExists('b')
+        md5sum = md5.md5()
+        f = open('b', 'rb')
+        try:
+            md5sum.update(f.read())
+        finally:
+            f.close()
+        self.assertEqual(md5sum.hexdigest(), a_hexdigest)
+
+
+class WriteFileTests(TestCaseInTempDir):
+
+    def test_write_non_extant(self):
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+
+    def test_write_file_same(self):
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+
+    def test_write_file_different(self):
+        write_if_different("foo", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "foo")
+        write_if_different("bar", 'a')
+        self.failUnlessExists('a')
+        self.check_file_contents('a', "bar")
+
+
+class DgetTests(TestCaseWithTransport):
+
+    def test_dget_local(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.build_tree(["target/"])
+        dget(builder.dsc_name(), 'target')
+        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
+        self.failUnlessExists(os.path.join("target", builder.tar_name()))
+        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+
+    def test_dget_transport(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.build_tree(["target/"])
+        dget(self.get_url(builder.dsc_name()), 'target')
+        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
+        self.failUnlessExists(os.path.join("target", builder.tar_name()))
+        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+
+    def test_dget_missing_dsc(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        # No builder.build()
+        self.build_tree(["target/"])
+        self.assertRaises(bzr_errors.NoSuchFile, dget,
+                self.get_url(builder.dsc_name()), 'target')
+
+    def test_dget_missing_file(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        os.unlink(builder.tar_name())
+        self.build_tree(["target/"])
+        self.assertRaises(bzr_errors.NoSuchFile, dget,
+                self.get_url(builder.dsc_name()), 'target')
+
+    def test_dget_missing_target(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.assertRaises(bzr_errors.NotADirectory, dget,
+                self.get_url(builder.dsc_name()), 'target')
+
+    def test_dget_changes(self):
+        builder = SourcePackageBuilder("package", Version("0.1-1"))
+        builder.add_upstream_file("foo")
+        builder.add_default_control()
+        builder.build()
+        self.build_tree(["target/"])
+        dget_changes(builder.changes_name(), 'target')
+        self.failUnlessExists(os.path.join("target", builder.dsc_name()))
+        self.failUnlessExists(os.path.join("target", builder.tar_name()))
+        self.failUnlessExists(os.path.join("target", builder.diff_name()))
+        self.failUnlessExists(os.path.join("target", builder.changes_name()))
+
+
+class ParentDirTests(TestCase):
+
+    def test_get_parent_dir(self):
+        self.assertEqual(get_parent_dir("a"), '')
+        self.assertEqual(get_parent_dir("a/"), '')
+        self.assertEqual(get_parent_dir("a/b"), 'a')
+        self.assertEqual(get_parent_dir("a/b/"), 'a')
+        self.assertEqual(get_parent_dir("a/b/c"), 'a/b')

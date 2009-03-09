@@ -46,7 +46,7 @@ install-all-stamp:
 	touch install-all-stamp
 
 install-python%: install-all-stamp
-	python$* setup.py install --root=$(CURDIR)/debian/bzr-builddeb --no-compile
+	python$* setup.py install --root=$(CURDIR)/debian/bzr-builddeb --no-compile --install-layout=deb
 
 binary-indep: build install
 	dh_testdir

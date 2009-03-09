@@ -22,7 +22,7 @@ from bzrlib.errors import BzrError
 
 
 class DebianError(BzrError):
-    _fmt = "A Debian packaging error occurred: %(asdf)s"
+    _fmt = "A Debian packaging error occurred: %(cause)s"
 
     def __init__(self, cause):
         BzrError.__init__(self, cause=cause)
@@ -33,8 +33,29 @@ class NoSourceDirError(BzrError):
             "--export-only or --dont-purge to get one that can be used")
 
 
+class MissingUpstreamTarball(BzrError):
+    _fmt = "Unable to find the needed upstream tarball: %(tarball_name)s."
+
+    def __init__(self, tarball_name):
+        BzrError.__init__(self, tarball_name=tarball_name)
+
+
+class TarFailed(BzrError):
+    _fmt = "There was an error executing tar to %(operation)s %(tarball)s."
+
+    def __init__(self, operation, tarball):
+        BzrError.__init__(self, operation=operation, tarball=tarball)
+
+
 class BuildFailedError(BzrError):
     _fmt = "The build failed."
+
+
+class UnparseableChangelog(BzrError):
+    _fmt = "There was an error parsing the changelog: %(error)s"
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)
 
 
 class StopBuild(BzrError):

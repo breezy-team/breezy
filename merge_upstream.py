@@ -33,7 +33,7 @@ from StringIO import StringIO
 
 from debian_bundle.changelog import Changelog, Version
 
-from bzrlib.errors import (BzrCommandError,
+from bzrlib.errors import (
                            NoSuchTag,
                            TagAlreadyExists,
                            )

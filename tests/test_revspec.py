@@ -23,8 +23,6 @@ from bzrlib.tests.test_revisionspec import TestRevisionSpec
 from bzrlib.revisionspec import RevisionSpec
 
 from bzrlib.plugins.builddeb.errors import (
-        AmbiguousPackageSpecification,
-        UnknownDistribution,
         UnknownVersion,
         VersionNotSpecified,
         )

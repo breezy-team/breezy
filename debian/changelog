@@ -1,3 +1,51 @@
+bzr-builddeb (2.1.2) UNRELEASED; urgency=low
+
+  * 
+
+ -- James Westby <james.westby@ubuntu.com>  Mon, 09 Mar 2009 09:04:48 +1000
+
+bzr-builddeb (2.1.1) experimental; urgency=low
+
+  * Make get-orig-source priority higher than uscan. Thanks Martin Pitt.
+    (LP: #339343).
+  * Correct variable used in provide_with_apt. Thanks also to Martin Pitt.
+    (LP: #339333)
+  * Use hashlib instead of the sha and md5 modules. Thanks Kees Cook.
+    (LP: #338525)
+
+ -- James Westby <james.westby@ubuntu.com>  Sun, 08 Mar 2009 17:34:15 +1000
+
+bzr-builddeb (2.1ubuntu1) jaunty; urgency=low
+
+  * Add --install-layout=deb to avoid files ending up in /usr/local
+
+ -- James Westby <james.westby@ubuntu.com>  Thu, 05 Mar 2009 14:14:18 +0000
+
+bzr-builddeb (2.1) experimental; urgency=low
+
+  * Merge the tags from the upstream branch when doing merge-upstream with
+    a branch.
+  * Catch and wrap ChangelogParseError to avoid the traceback (LP: #215732)
+  * Warn when a key is defined outside of any sections in a config file.
+    (LP: #309335)
+  * Warn when the user uses the deprecated --result option. (LP: #268675)
+  * Add "--release-heuristic changelog" to dch call after merge-upstream so
+    that UNRELEASED entries are edited rather than a new stanza added.
+    (Closes: #515921, LP: #331994)
+  * Allow specifying the merge type in merge-upstream (LP: #310694)
+  * Make merge mode work with Python 2.6 (LP: #336686)
+  * Give a more informative message if pristine-tar isn't installed.
+    (LP: #336442)
+  * Record extra authors in import-dsc based on what is in the changelog
+    entry (LP: #335071)
+  * Provide a commit message template based on additions to debian/changelog,
+    similar to debcommit. Bump version of bzr required to 1.10, which is the
+    release that introduced the hook. (Closes: #497415, LP: #331993)
+  * Give a better error if the pristine upstream branch can't be located.
+    (Closes: #517869)
+
+ -- James Westby <james.westby@ubuntu.com>  Thu, 19 Feb 2009 09:26:34 +0000
+
 bzr-builddeb (2.1~0ubuntu1) jaunty; urgency=low
 
   [ Jelmer Vernooij ]

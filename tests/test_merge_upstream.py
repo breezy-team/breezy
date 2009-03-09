@@ -18,20 +18,16 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import os
 import tarfile
 import shutil
 
 from debian_bundle.changelog import Changelog, Version
 
-from bzrlib.errors import (BzrCommandError,
+from bzrlib.errors import (
                            NoSuchFile,
-                           NoSuchTag,
-                           TagAlreadyExists,
                            )
 from bzrlib.revision import Revision
 from bzrlib.tests import KnownFailure, TestCase, TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb.errors import (
         UpstreamAlreadyImported,
@@ -41,7 +37,6 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranchSet,
         )
 from bzrlib.plugins.builddeb.merge_upstream import (
-        merge_upstream, 
         package_version,
         _upstream_branch_version,
         upstream_tag_to_version,

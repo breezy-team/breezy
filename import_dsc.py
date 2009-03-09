@@ -30,8 +30,12 @@ from base64 import (
         standard_b64encode,
         )
 import gzip
-import md5
+try:
+    import hashlib as md5
+except ImportError:
+    import md5
 import os
+import re
 import select
 import shutil
 import stat
@@ -52,9 +56,9 @@ from bzrlib import (bzrdir,
 from bzrlib.config import ConfigObj
 from bzrlib.errors import (FileExists,
         BzrError,
+        BzrCommandError,
         UncommittedChanges,
         NotBranchError,
-        NoRepositoryPresent,
         AlreadyBranchError,
         )
 from bzrlib.export import export
@@ -1018,14 +1022,17 @@ class DistributionBranch(object):
         """
         return str(version)
 
-    def upstream_tag_name(self, version):
+    def upstream_tag_name(self, version, distro=None):
         """Gets the tag name for the upstream part of version.
 
         :param version: the Version object to extract the upstream
             part of the version number from.
         :return: a String with the name of the tag.
         """
-        return "upstream-" + self.tag_name(version.upstream_version)
+        tag_name = self.tag_name(version.upstream_version)
+        if distro is None:
+            return "upstream-" + tag_name
+        return "upstream-%s-%s" % (distro, tag_name)
 
     def _has_version(self, branch, tag_name, md5=None):
         if branch.tags.has_tag(tag_name):
@@ -1063,7 +1070,15 @@ class DistributionBranch(object):
             package. False otherwise.
         """
         tag_name = self.tag_name(version)
-        return self._has_version(self.branch, tag_name, md5=md5)
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        debian_tag_name = "debian-" + tag_name
+        if self._has_version(self.branch, debian_tag_name, md5=md5):
+            return True
+        ubuntu_tag_name = "ubuntu-" + tag_name
+        if self._has_version(self.branch, ubuntu_tag_name, md5=md5):
+            return True
+        return False
 
     def has_upstream_version(self, version, md5=None):
         """Whether this branch contains the upstream version specified.
@@ -1081,11 +1096,27 @@ class DistributionBranch(object):
             version of the package. False otherwise.
         """
         tag_name = self.upstream_tag_name(version)
-        return self._has_version(self.upstream_branch, tag_name, md5=md5)
+        if self._has_version(self.upstream_branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.upstream_branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.upstream_branch, tag_name, md5=md5):
+            return True
+        return False
 
-    def _has_upstream_version_in_packaging_branch(self, version, md5=None):
+    def has_upstream_version_in_packaging_branch(self, version, md5=None):
         tag_name = self.upstream_tag_name(version)
-        return self._has_version(self.branch, tag_name, md5=md5)
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.branch, tag_name, md5=md5):
+            return True
+        return False
 
     def contained_versions(self, versions):
         """Splits a list of versions depending on presence in the branch.
@@ -1163,7 +1194,16 @@ class DistributionBranch(object):
             revision id of. The Version must be present in the branch.
         :return: the revision id corresponding to that version
         """
-        return self.branch.tags.lookup_tag(self.tag_name(version))
+        tag_name = self.tag_name(version)
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        debian_tag_name = "debian-" + tag_name
+        if self._has_version(self.branch, debian_tag_name):
+            return self.branch.tags.lookup_tag(debian_tag_name)
+        ubuntu_tag_name = "ubuntu-" + tag_name
+        if self._has_version(self.branch, ubuntu_tag_name):
+            return self.branch.tags.lookup_tag(ubuntu_tag_name)
+        return self.branch.tags.lookup_tag(tag_name)
 
     def revid_of_upstream_version(self, version):
         """Returns the revision id corresponding to the upstream version.
@@ -1174,6 +1214,15 @@ class DistributionBranch(object):
         :return: the revision id corresponding to the upstream portion
             of the version
         """
+        tag_name = self.upstream_tag_name(version)
+        if self._has_version(self.upstream_branch, tag_name):
+            return self.upstream_branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.upstream_branch, tag_name):
+            return self.upstream_branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.upstream_branch, tag_name):
+            return self.upstream_branch.tags.lookup_tag(tag_name)
         tag_name = self.upstream_tag_name(version)
         return self.upstream_branch.tags.lookup_tag(tag_name)
 
@@ -1577,6 +1626,7 @@ class DistributionBranch(object):
                 upstream_revision = upstream_branch.last_revision()
             self.upstream_branch.fetch(upstream_branch,
                     last_revision=upstream_revision)
+            upstream_branch.tags.merge_to(self.upstream_branch.tags)
             upstream_parents.append(upstream_revision)
         self.upstream_tree.set_parent_ids(upstream_parents)
         revprops = {"deb-md5": md5}
@@ -1598,25 +1648,54 @@ class DistributionBranch(object):
         text of the changes in that section, it also returns the 
         uploader of that change.
 
-        :return: a tuple (message, author), both Strings. If the
-            information is not available then either can be None.
+        :return: a tuple (message, authors, thanks). message is the commit
+            message that should be used. authors is a list of strings,
+            with those that contributed to the change, thanks is a list
+            of string, with those who were thanked in the changelog entry.
+            If the information is not available then any can be None.
         """
         changelog_path = os.path.join(self.tree.basedir, 'debian',
             'changelog')
-        author = None
+        extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*", re.UNICODE)
+        thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
+                "((?:\s+(?:(?:[A-Z]\.)|(?:[A-Z]\w+(?:-[A-Z]\w+)*)))+"
+                "(?:\s+<[^@>]+@[^@>]+>)?)",
+                re.UNICODE)
+        authors = None
         message = None
+        thanks = None
         if os.path.exists(changelog_path):
-          changelog_contents = open(changelog_path).read()
-          changelog = Changelog(file=changelog_contents, max_blocks=1)
-          if changelog._blocks:
-            author = changelog._blocks[0].author
-            changes = strip_changelog_message(changelog._blocks[0].changes())
-            message = ''
-            sep = ''
-            for change in reversed(changes):
-              message = change + sep + message
-              sep = "\n"
-        return (message, author)
+            changelog_contents = open(changelog_path).read()
+            changelog = Changelog(file=changelog_contents, max_blocks=1)
+            if changelog._blocks:
+                authors = [changelog._blocks[0].author]
+                changes = strip_changelog_message(
+                        changelog._blocks[0].changes())
+                for change in changes:
+                    # Parse out any extra authors.
+                    match = extra_author_re.match(change.decode("utf-8"))
+                    if match is not None:
+                        new_author = match.group(1).strip()
+                        already_included = False
+                        for author in authors:
+                            if author.startswith(new_author):
+                                already_included = True
+                                break
+                        if not already_included:
+                            authors.append(new_author.encode("utf-8"))
+                changes_str = " ".join(changes).decode("utf-8")
+                for match in thanks_re.finditer(changes_str):
+                    if thanks is None:
+                        thanks = []
+                    thanks_str = match.group(1).strip()
+                    thanks_str = re.sub(r"\s+", " ", thanks_str)
+                    thanks.append(thanks_str.encode("utf-8"))
+                message = ''
+                sep = ''
+                for change in reversed(changes):
+                    message = change + sep + message
+                    sep = "\n"
+        return (message, authors, thanks)
 
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.repository.revision_tree(
@@ -1713,15 +1792,19 @@ class DistributionBranch(object):
                      (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|
                       stat.S_IROTH|stat.S_IXOTH))
         self.tree.set_parent_ids(parents)
-        (message, author) = self._get_commit_message_from_changelog()
+        message, authors, thanks = self._get_commit_message_from_changelog()
         if message is None:
             message = 'Import packaging changes for version %s' % \
                         (str(version),)
         revprops={"deb-md5":md5}
         if native:
             revprops['deb-native'] = "True"
+        if authors is not None:
+            revprops['authors'] = "\n".join(authors)
+        if thanks is not None:
+            revprops['deb-thanks'] = "\n".join(thanks)
         self._mark_native_config(native)
-        self.tree.commit(message, author=author, revprops=revprops)
+        self.tree.commit(message, revprops=revprops)
         self.tag_version(version)
 
     def _get_dsc_part(self, dsc, end):
@@ -1871,8 +1954,6 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append(revid)
-                mutter("Adding merge from lesser of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
@@ -1886,8 +1967,6 @@ class DistributionBranch(object):
             if merged:
                 revid = branch.revid_of_version(merged[0])
                 parents.append(revid)
-                mutter("Adding merge from greater of %s for version %s from "
-                    "branch %s" % (revid, str(merged[0]), branch.name))
                 #FIXME: should this really be here?
                 branch.branch.tags.merge_to(self.branch.tags)
                 self.branch.fetch(branch.branch,
@@ -1995,7 +2074,7 @@ class DistributionBranch(object):
                     possible_transports=[to_transport])
         else:
             if existing_bzrdir.has_branch():
-                raise AlreadyBranchError(location)
+                raise AlreadyBranchError(to_location)
             else:
                 branch = existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()
@@ -2014,21 +2093,36 @@ class DistributionBranch(object):
 
     def _revid_of_upstream_version_from_branch(self, version):
         tag_name = self.upstream_tag_name(version)
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="debian")
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version, distro="ubuntu")
+        if self._has_version(self.branch, tag_name):
+            return self.branch.tags.lookup_tag(tag_name)
+        tag_name = self.upstream_tag_name(version)
         return self.branch.tags.lookup_tag(tag_name)
 
     def merge_upstream(self, tarball_filename, version, previous_version,
-            upstream_branch=None, upstream_revision=None):
+            upstream_branch=None, upstream_revision=None, merge_type=None):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
+                if not self.has_upstream_version_in_packaging_branch(
+                        previous_version):
+                    raise BzrCommandError("Unable to find the tag for the "
+                            "previous upstream version, %s, in the branch: "
+                            "%s" % (previous_version,
+                                self.upstream_tag_name(previous_version)))
                 upstream_tip = self._revid_of_upstream_version_from_branch(
                         previous_version)
                 self._extract_upstream_tree(upstream_tip, tempdir)
             else:
                 self._create_empty_upstream_tree(tempdir)
-            if self._has_upstream_version_in_packaging_branch(version):
+            if self.has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
             try:
                 if upstream_branch is not None:
@@ -2041,7 +2135,7 @@ class DistributionBranch(object):
                             self.branch.last_revision()):
                         raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
-                m = md5.new()
+                m = md5.md5()
                 m.update(open(tarball_filename).read())
                 md5sum = m.hexdigest()
                 tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
@@ -2058,7 +2152,8 @@ class DistributionBranch(object):
                 finally:
                     shutil.rmtree(tarball_dir)
                 if self.branch.last_revision() != NULL_REVISION:
-                    conflicts = self.tree.merge_from_branch(self.upstream_branch)
+                    conflicts = self.tree.merge_from_branch(
+                            self.upstream_branch, merge_type=merge_type)
                 else:
                     # Pull so that merge-upstream allows you to start a branch
                     # from upstream tarball.
@@ -2084,6 +2179,8 @@ class DistributionBranch(object):
 
     def reconstruct_pristine_tar(self, revid, package, version,
             dest_filename):
+        if not os.path.exists("/usr/bin/pristine-tar"):
+            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tree = self.branch.repository.revision_tree(revid)
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
@@ -2103,6 +2200,8 @@ class DistributionBranch(object):
             shutil.rmtree(tmpdir)
 
     def make_pristine_tar_delta(self, tree, tarball_path):
+        if not os.path.exists("/usr/bin/pristine-tar"):
+            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
