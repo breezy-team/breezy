@@ -631,7 +631,7 @@ if chk_support:
         # Setting this to True causes us to use InterModel1And2, so for now set
         # it to False which uses InterDifferingSerializer. When IM1&2 is
         # removed (as it is in bzr.dev) we can set this back to True.
-        rich_root_data = False
+        rich_root_data = True
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
@@ -650,7 +650,7 @@ if chk_support:
         repository_class = GCCHKPackRepository
         # For right now, setting this to True gives us InterModel1And2 rather
         # than InterDifferingSerializer
-        rich_root_data = False
+        rich_root_data = True
         _serializer = chk_serializer_255_bigpage
 
         def get_format_string(self):
