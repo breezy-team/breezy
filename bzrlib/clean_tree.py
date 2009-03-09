@@ -45,7 +45,7 @@ def iter_deletables(tree, unknown=False, ignored=False, detritus=False):
                 yield tree.abspath(subp), subp
 
 
-def clean_tree(directory, unknown=False, ignored=False, detritus=False, 
+def clean_tree(directory, unknown=False, ignored=False, detritus=False,
                dry_run=False, no_prompt=False):
     """Remove files in the specified classes from the tree"""
     tree = WorkingTree.open_containing(directory)[0]

@@ -5475,7 +5475,7 @@ class cmd_clean_tree(Command):
             unknown = True
         if dry_run:
             force = True
-        clean_tree('.', unknown=unknown, ignored=ignored, detritus=detritus, 
+        clean_tree('.', unknown=unknown, ignored=ignored, detritus=detritus,
                    dry_run=dry_run, no_prompt=force)
 
 

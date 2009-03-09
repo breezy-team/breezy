@@ -32,6 +32,7 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     )
 
+
 class TestCleanTree(TestCaseInTempDir):
 
     def test_symlinks(self):
