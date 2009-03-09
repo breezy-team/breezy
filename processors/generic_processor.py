@@ -316,8 +316,10 @@ class GenericProcessor(processor.ImportProcessor):
             if self._revision_count > self.checkpoint_every:
                 # Free whatever memory we can before packing
                 import gc
+                from bzrlib.plugins.groupcompress import groupcompress
                 self.cache_mgr.clear_all()
                 gc.collect()
+                groupcompress._FAST = False
                 self.note("Packing repository ...")
                 self.repo.pack()
                 # To be conservative, packing puts the old packs and
