@@ -34,7 +34,6 @@ from bzrlib.inventory import (
 
 from bzrlib.tests import (
         TestCase,
-        multiply_tests_from_modules,
         )
 
 
