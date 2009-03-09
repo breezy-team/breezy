@@ -41,6 +41,8 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
     * Multiple authors for a commit can now be recorded by using the "--author"
       option multiple times. (James Westby, #185772)
 
+    * New clean-tree command, from bzrtools.  (Aaron Bentley, Jelmer Vernoij)
+
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
@@ -87,6 +89,13 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
     * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
   BUG FIXES:
+
+    * Bazaar now gives a better message including the filename if it's
+      unable to read a file in the working directory, for example because
+      of a permission error.  (Martin Pool, #338653)
+
+    * ``bzr send`` help is more specific about how to apply merge
+      directives.  (Neil Martinsen-Burrell, #253470)
 
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
@@ -137,6 +146,9 @@ bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-06
       summarizing some common ways of organizing trees, branches and
       repositories and the processes/workflows implied/enabled by each.
       (Ian Clatworthy)
+
+    * Hooks can now be self documenting. ``bzrlib.hooks.Hooks.create_hook``
+      is the entry point for this feature. (Robert Collins)
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
