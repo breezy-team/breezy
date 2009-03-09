@@ -1588,7 +1588,7 @@ class DirState(object):
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
-        return os.readlink(abspath.encode(osutils._fs_enc))
+        return os.readlink(abspath)
 
     def get_ghosts(self):
         """Return a list of the parent tree revision ids that are ghosts."""
@@ -1866,8 +1866,7 @@ class DirState(object):
             size = 0
             executable = False
         elif kind == 'symlink':
-            # We don't support non-ascii targets for symlinks yet.
-            fingerprint = str(inv_entry.symlink_target or '')
+            fingerprint = inv_entry.symlink_target.encode('utf8') or ''
             size = 0
             executable = False
         elif kind == 'file':
