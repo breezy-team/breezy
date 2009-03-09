@@ -126,6 +126,7 @@ class TestMap(TestCaseWithStore):
             else:
                 # Leaf nodes must have identical contents
                 self.assertEqual(node_one._items, node_two._items)
+        self.assertEquals([], node_two_stack)
 
     def assertCanonicalForm(self, chkmap):
         """Assert that the chkmap is in 'canonical' form.
