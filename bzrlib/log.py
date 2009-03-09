@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -625,7 +625,7 @@ def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
 def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
     direction):
     """Create deltas for each batch of revisions in log_rev_iterator.
-    
+
     If we're only generating deltas for the sake of filtering against
     file-ids, we stop generating deltas once all file-ids reach the
     appropriate life-cycle point. If we're receiving data newest to
@@ -665,7 +665,7 @@ def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
 
 def _delta_matches_fileids(delta, fileids, stop_on='add'):
     """Check is a delta matches one of more file-ids.
-    
+
     :param fileids: a set of fileids to match against.
     :param stop_on: either 'add' or 'remove' - take file-ids out of the
       fileids set once their add or remove entry is detected respectively
@@ -739,7 +739,7 @@ def _make_batch_filter(branch, generate_delta, search, log_rev_iterator):
 def _get_revision_limits(branch, start_revision, end_revision):
     """Get and check revision limits.
 
-    :param  branch: The branch containing the revisions. 
+    :param  branch: The branch containing the revisions.
 
     :param  start_revision: The first revision to be logged.
             For backwards compatibility this may be a mainline integer revno,
@@ -788,10 +788,10 @@ def _get_revision_limits(branch, start_revision, end_revision):
 
 def _get_mainline_revs(branch, start_revision, end_revision):
     """Get the mainline revisions from the branch.
-    
+
     Generates the list of mainline revisions for the branch.
-    
-    :param  branch: The branch containing the revisions. 
+
+    :param  branch: The branch containing the revisions.
 
     :param  start_revision: The first revision to be logged.
             For backwards compatibility this may be a mainline integer revno,
@@ -807,9 +807,9 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     if branch_revno == 0:
         return None, None, None, None
 
-    # For mainline generation, map start_revision and end_revision to 
-    # mainline revnos. If the revision is not on the mainline choose the 
-    # appropriate extreme of the mainline instead - the extra will be 
+    # For mainline generation, map start_revision and end_revision to
+    # mainline revnos. If the revision is not on the mainline choose the
+    # appropriate extreme of the mainline instead - the extra will be
     # filtered later.
     # Also map the revisions to rev_ids, to be used in the later filtering
     # stage.
@@ -871,7 +871,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
 def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     """Filter view_revisions based on revision ranges.
 
-    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth) 
+    :param view_revisions: A list of (revision_id, dotted_revno, merge_depth)
             tuples to be filtered.
 
     :param start_rev_id: If not NONE specifies the first revision to be logged.
@@ -897,7 +897,7 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
                 end_index = revision_ids.index(end_rev_id)
             else:
                 end_index = len(view_revisions) - 1
-        # To include the revisions merged into the last revision, 
+        # To include the revisions merged into the last revision,
         # extend end_rev_id down to, but not including, the next rev
         # with the same or lesser merge_depth
         end_merge_depth = view_revisions[end_index][2]
@@ -1072,7 +1072,7 @@ class LogRevision(object):
     """A revision to be logged (by LogFormatter.log_revision).
 
     A simple wrapper for the attributes of a revision to be logged.
-    The attributes may or may not be populated, as determined by the 
+    The attributes may or may not be populated, as determined by the
     logging options and the log formatter capabilities.
     """
 
@@ -1094,17 +1094,17 @@ class LogFormatter(object):
     If the LogFormatter needs to be informed of the beginning or end of
     a log it should implement the begin_log and/or end_log hook methods.
 
-    A LogFormatter should define the following supports_XXX flags 
+    A LogFormatter should define the following supports_XXX flags
     to indicate which LogRevision attributes it supports:
 
     - supports_delta must be True if this log formatter supports delta.
         Otherwise the delta attribute may not be populated.  The 'delta_format'
         attribute describes whether the 'short_status' format (1) or the long
         one (2) should be used.
- 
-    - supports_merge_revisions must be True if this log formatter supports 
+
+    - supports_merge_revisions must be True if this log formatter supports
         merge revisions.  If not, and if supports_single_merge_revision is
-        also not True, then only mainline revisions will be passed to the 
+        also not True, then only mainline revisions will be passed to the
         formatter.
 
     - preferred_levels is the number of levels this formatter defaults to.
@@ -1125,7 +1125,7 @@ class LogFormatter(object):
     the properties_handler_registry. The registered function
     must respect the following interface description:
         def my_show_properties(properties_dict):
-            # code that returns a dict {'name':'value'} of the properties 
+            # code that returns a dict {'name':'value'} of the properties
             # to be shown
     """
     preferred_levels = 0
@@ -1174,14 +1174,14 @@ class LogFormatter(object):
         return address
 
     def short_author(self, rev):
-        name, address = config.parse_username(rev.get_apparent_author())
+        name, address = config.parse_username(rev.get_apparent_authors()[0])
         if name:
             return name
         return address
 
     def show_properties(self, revision, indent):
         """Displays the custom properties returned by each registered handler.
-        
+
         If a registered handler raises an error it is propagated.
         """
         for key, handler in properties_handler_registry.iteritems():
@@ -1216,10 +1216,11 @@ class LongLogFormatter(LogFormatter):
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
         self.show_properties(revision.rev, indent)
 
-        author = revision.rev.properties.get('author', None)
-        if author is not None:
-            to_file.write(indent + 'author: %s\n' % (author,))
-        to_file.write(indent + 'committer: %s\n' % (revision.rev.committer,))
+        committer = revision.rev.committer
+        authors = revision.rev.get_apparent_authors()
+        if authors != [committer]:
+            to_file.write(indent + 'author: %s\n' % (", ".join(authors),))
+        to_file.write(indent + 'committer: %s\n' % (committer,))
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
@@ -1370,6 +1371,43 @@ class LineLogFormatter(LogFormatter):
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
 
+class ChangeLogLogFormatter(LogFormatter):
+
+    supports_merge_revisions = True
+    supports_delta = True
+    supports_tags = True
+
+    def log_revision(self, revision):
+        """Log a revision, either merged or not."""
+        to_file = self.to_file
+
+        date_str = format_date(revision.rev.timestamp,
+                               revision.rev.timezone or 0,
+                               self.show_timezone,
+                               date_fmt='%Y-%m-%d',
+                               show_offset=False)
+        committer_str = revision.rev.committer.replace (' <', '  <')
+        to_file.write('%s  %s\n\n' % (date_str,committer_str))
+
+        if revision.delta is not None:
+            for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
+                path, = c[:1]
+                to_file.write('\t* %s:\n' % (path,))
+            for c in revision.delta.renamed:
+                oldpath,newpath = c[:2]
+                # For renamed files, show both the old and the new path
+                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath,newpath))
+            to_file.write('\n')
+
+        if not revision.rev.message:
+            to_file.write('\tNo commit message\n')
+        else:
+            message = revision.rev.message.rstrip('\r\n')
+            for l in message.split('\n'):
+                to_file.write('\t%s\n' % (l.lstrip(),))
+            to_file.write('\n')
+
+
 def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
     return lf.log_string(None, rev, max_chars)
@@ -1399,6 +1437,9 @@ log_formatter_registry.register('long', LongLogFormatter,
                                 'Detailed log format')
 log_formatter_registry.register('line', LineLogFormatter,
                                 'Log format with one line per revision')
+log_formatter_registry.register(
+    'gnu-changelog', ChangeLogLogFormatter,
+    'Format used by GNU ChangeLog files')
 
 
 def register_formatter(name, formatter):

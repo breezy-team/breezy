@@ -131,7 +131,7 @@ def _get_utf8_or_ascii(a_str,
     if a_str.__class__ == unicode:
         return _encode_utf8(a_str)
     else:
-        return _get_cached_ascii(a_str)
+        return intern(a_str)
 
 
 def _clear_cache():
@@ -211,7 +211,7 @@ class Serializer_v8(Serializer):
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.
-        
+
         :param inv: the inventory to write.
         :param f: the file to write. (May be None if the lines are the desired
             output).

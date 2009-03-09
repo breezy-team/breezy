@@ -32,9 +32,9 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
 
     def test_stack_upgrade(self):
         """Correct checks when stacked-on repository is upgraded.
-        
-        We initially stack on a repo with the same rich root support, 
-        we then upgrade it and should fail, we then upgrade the overlaid 
+
+        We initially stack on a repo with the same rich root support,
+        we then upgrade it and should fail, we then upgrade the overlaid
         repository.
         """
         base = self.make_branch_and_tree('base',

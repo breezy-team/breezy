@@ -49,12 +49,12 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         """
         base_tree, sub_tree = self.make_trees(format='knit',
                                               same_root=True)
-        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           sub_tree)
 
     def test_knit1_failure(self):
         base_tree, sub_tree = self.make_trees(format='knit')
-        self.assertRaises(errors.SubsumeTargetNeedsUpgrade, base_tree.subsume, 
+        self.assertRaises(errors.SubsumeTargetNeedsUpgrade, base_tree.subsume,
                           sub_tree)
 
     def test_subsume_tree(self):
@@ -100,13 +100,13 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         if base_tree.get_root_id() == sub_tree.get_root_id():
             raise tests.TestSkipped('This test requires unique roots')
         sub_root_id = sub_tree.get_root_id()
-        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           base_tree)
-        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume,
                           base_tree)
         self.build_tree(['subtree2/'])
         sub_tree2 = self.make_branch_and_tree('subtree2')
-        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume,
                           sub_tree2)
         self.build_tree(['tree/subtree/subtree3/'])
         sub_tree3 = self.make_branch_and_tree('tree/subtree/subtree3')

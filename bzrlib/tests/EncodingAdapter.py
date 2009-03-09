@@ -53,11 +53,11 @@ _russian_test = u'\u0422\u0435\u0441\u0442'
 
 # Kanji
 # It is a kanji sequence for nihonjin, or Japanese in English.
-# 
+#
 # '\u4eba' being person, 'u\65e5' sun and '\u672c' origin. Ie,
 # sun-origin-person, 'native from the land where the sun rises'. Note, I'm
 # not a fluent speaker, so this is just my crude breakdown.
-# 
+#
 # Wouter van Heyst
 _nihonjin = u'\u65e5\u672c\u4eba'
 
@@ -81,7 +81,7 @@ _shalom = u'\u05e9\u05dc\u05d5\u05dd'
 
 class EncodingTestAdapter(object):
     """A tool to generate a suite, testing multiple encodings for a single test.
-    
+
     This is similar to bzrlib.transport.TransportTestProviderAdapter.
     It is done by copying the test once for each encoding, and injecting
     the encoding name, and the list of valid strings for that encoding.

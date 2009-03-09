@@ -48,7 +48,7 @@ class TextUIFactory(CLIUIFactory):
                  stderr=None):
         """Create a TextUIFactory.
 
-        :param bar_type: The type of progress bar to create. It defaults to 
+        :param bar_type: The type of progress bar to create. It defaults to
                          letting the bzrlib.progress.ProgressBar factory auto
                          select.   Deprecated.
         """
@@ -63,7 +63,7 @@ class TextUIFactory(CLIUIFactory):
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
         self.stdout.write(prompt)
-        
+
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -72,7 +72,7 @@ class TextUIFactory(CLIUIFactory):
         # XXX: If this is preparing to write to stdout, but that's for example
         # directed into a file rather than to the terminal, and the progress
         # bar _is_ going to the terminal, we shouldn't need
-        # to clear it.  We might need to separately check for the case of 
+        # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
 
     def note(self, msg):
@@ -82,7 +82,7 @@ class TextUIFactory(CLIUIFactory):
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
-        
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
@@ -91,7 +91,10 @@ class TextUIFactory(CLIUIFactory):
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
-        if task != self._task_stack[-1]:
+        if not self._task_stack:
+            warnings.warn("%r updated but no tasks are active" %
+                (task,))
+        elif task != self._task_stack[-1]:
             warnings.warn("%r is not the top progress task %r" %
                 (task, self._task_stack[-1]))
         self._progress_view.show_progress(task)
@@ -102,8 +105,8 @@ class TextUIFactory(CLIUIFactory):
 
 class TextProgressView(object):
     """Display of progress bar and other information on a tty.
-    
-    This shows one line of text, including possibly a network indicator, spinner, 
+
+    This shows one line of text, including possibly a network indicator, spinner,
     progress bar, message, etc.
 
     One instance of this is created and held by the UI, and fed updates when a
@@ -207,7 +210,7 @@ class TextProgressView(object):
 
     def show_transport_activity(self, byte_count):
         """Called by transports as they do IO.
-        
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
@@ -219,7 +222,7 @@ class TextProgressView(object):
         now = time.time()
         if self._transport_update_time is None:
             self._transport_update_time = now
-        elif now >= (self._transport_update_time + 0.2):
+        elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)

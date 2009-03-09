@@ -23,7 +23,7 @@ Task branches
 
 Each new feature or fix is developed in its own branch.
 These branches are referred to as *feature branches* or
-*task branches* - the terms are used interchangably.
+*task branches* - the terms are used interchangeably.
 
 To create a task branch, use the ``branch`` command
 against your mirror branch. For example::

@@ -183,7 +183,7 @@ class MemoryTransport(Transport):
         for file in self._files:
             if file.startswith(self._cwd):
                 yield urlutils.escape(file[len(self._cwd):])
-    
+
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         _abspath = self._abspath(relpath)
@@ -222,7 +222,7 @@ class MemoryTransport(Transport):
                     del container[path]
         do_renames(self._files)
         do_renames(self._dirs)
-    
+
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         _abspath = self._abspath(relpath)
@@ -243,7 +243,7 @@ class MemoryTransport(Transport):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
         if _abspath in self._files:
-            return MemoryStat(len(self._files[_abspath][0]), False, 
+            return MemoryStat(len(self._files[_abspath][0]), False,
                               self._files[_abspath][1])
         elif _abspath in self._dirs:
             return MemoryStat(0, True, self._dirs[_abspath])

@@ -19,6 +19,7 @@
 import os
 from bzrlib import (
     branch as _mod_branch,
+    errors,
     remote,
     revision as _mod_revision,
     tests,
@@ -70,6 +71,9 @@ class TestSprout(TestCaseWithBranch):
             # did the right thing.
             target._ensure_real()
             target = target._real_branch
+        if isinstance(result_format, remote.RemoteBranchFormat):
+            # Unwrap a parameterised RemoteBranchFormat for comparison.
+            result_format = result_format._custom_format
         self.assertIs(result_format.__class__, target._format.__class__)
 
     def test_sprout_partial(self):
@@ -147,4 +151,37 @@ class TestSprout(TestCaseWithBranch):
         except UnicodeEncodeError, e:
             raise KnownFailure('there is no support for'
                                ' symlinks to non-ASCII targets (bug #272444)')
+
+    def assertBranchHookBranchIsStacked(self, pre_change_params):
+        # Just calling will either succeed or fail.
+        pre_change_params.branch.get_stacked_on_url()
+        self.hook_calls.append(pre_change_params)
+
+    def test_sprout_stacked_hooks_get_stacked_branch(self):
+        tree = self.make_branch_and_tree('source')
+        tree.commit('a commit')
+        revid = tree.commit('a second commit')
+        source = tree.branch
+        target_transport = self.get_transport('target')
+        self.hook_calls = []
+        _mod_branch.Branch.hooks.install_named_hook("pre_change_branch_tip",
+            self.assertBranchHookBranchIsStacked, None)
+        try:
+            dir = source.bzrdir.sprout(target_transport.base,
+                source.last_revision(), possible_transports=[target_transport],
+                source_branch=source, stacked=True)
+        except errors.UnstackableBranchFormat:
+            if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
+                raise KnownFailure("Format 4 doesn't auto stack successfully.")
+            else:
+                raise
+        result = dir.open_branch()
+        self.assertEqual(revid, result.last_revision())
+        self.assertEqual(source.base, result.get_stacked_on_url())
+        # Smart servers invoke hooks on both sides
+        if isinstance(result, remote.RemoteBranch):
+            expected_calls = 2
+        else:
+            expected_calls = 1
+        self.assertEqual(expected_calls, len(self.hook_calls))
 

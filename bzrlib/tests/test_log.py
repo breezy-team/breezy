@@ -240,7 +240,7 @@ def make_commits_with_trailing_newlines(wt):
     wt.commit('multiline\nlog\nmessage\n', rev_id='a2',
               timestamp=1132586842.411175966, timezone=-6*3600,
               committer='Joe Foo <joe@foo.com>',
-              author='Joe Bar <joe@bar.com>')
+              authors=['Joe Bar <joe@bar.com>'])
 
     open('c', 'wb').write('just another manic monday\n')
     wt.add('c')
@@ -488,7 +488,7 @@ class TestLongLogFormatter(TestCaseWithoutPropsHandler):
 
     def test_verbose_log(self):
         """Verbose log includes changed files
-        
+
         bug #4676
         """
         wt = self.make_branch_and_tree('.')
@@ -679,14 +679,15 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  author='John Doe <jdoe@example.com>')
+                  authors=['John Doe <jdoe@example.com>',
+                           'Jane Rey <jrey@example.com>'])
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio)
         log.show_log(b, formatter)
         self.assertEqualDiff('''\
 ------------------------------------------------------------
 revno: 1
-author: John Doe <jdoe@example.com>
+author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
 committer: Lorem Ipsum <test@example.com>
 branch nick: test_author_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
@@ -696,7 +697,7 @@ message:
                              sio.getvalue())
 
     def test_properties_in_log(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -708,7 +709,7 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  author='John Doe <jdoe@example.com>')
+                  authors=['John Doe <jdoe@example.com>'])
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio)
         try:
@@ -736,7 +737,7 @@ message:
                                  sio.getvalue())
 
     def test_properties_in_short_log(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -748,7 +749,7 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  author='John Doe <jdoe@example.com>')
+                  authors=['John Doe <jdoe@example.com>'])
         sio = StringIO()
         formatter = log.ShortLogFormatter(to_file=sio)
         try:
@@ -771,7 +772,7 @@ message:
                                  sio.getvalue())
 
     def test_error_in_properties_handler(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -783,7 +784,7 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  author='John Doe <jdoe@example.com>',
+                  authors=['John Doe <jdoe@example.com>'],
                   revprops={'first_prop':'first_value'})
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio)
@@ -809,7 +810,7 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  author='John Doe <jdoe@example.com>',
+                  authors=['John Doe <jdoe@example.com>'],
                   revprops={'a_prop':'test_value'})
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio)
@@ -837,7 +838,7 @@ class TestLongLogFormatterWithoutMergeRevisions(TestCaseWithoutPropsHandler):
 
     def test_long_verbose_log(self):
         """Verbose log includes changed files
-        
+
         bug #4676
         """
         wt = self.make_branch_and_tree('.')
@@ -959,7 +960,7 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  author='John Doe <jdoe@example.com>')
+                  authors=['John Doe <jdoe@example.com>'])
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio, levels=1)
         log.show_log(b, formatter)
@@ -976,7 +977,7 @@ message:
                              sio.getvalue())
 
     def test_long_properties_in_log(self):
-        """Log includes the custom properties returned by the registered 
+        """Log includes the custom properties returned by the registered
         handlers.
         """
         wt = self.make_branch_and_tree('.')
@@ -988,7 +989,7 @@ message:
                   timestamp=1132711707,
                   timezone=36000,
                   committer='Lorem Ipsum <test@example.com>',
-                  author='John Doe <jdoe@example.com>')
+                  authors=['John Doe <jdoe@example.com>'])
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio, levels=1)
         try:
@@ -1020,7 +1021,7 @@ class TestLineLogFormatter(tests.TestCaseWithTransport):
 
     def test_line_log(self):
         """Line log should show revno
-        
+
         bug #5162
         """
         wt = self.make_branch_and_tree('.')
@@ -1109,7 +1110,7 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
 
     def test_line_merge_revs_log(self):
         """Line log should show revno
-        
+
         bug #5162
         """
         wt = self.make_branch_and_tree('.')
@@ -1544,6 +1545,10 @@ class TestLogFormatter(tests.TestCase):
         rev.properties['author'] = '<jsmith@example.com>'
         self.assertEqual('jsmith@example.com', lf.short_author(rev))
         rev.properties['author'] = 'John Smith jsmith@example.com'
+        self.assertEqual('John Smith', lf.short_author(rev))
+        del rev.properties['author']
+        rev.properties['authors'] = ('John Smith <jsmith@example.com>\n'
+                'Jane Rey <jrey@example.com>')
         self.assertEqual('John Smith', lf.short_author(rev))
 
 

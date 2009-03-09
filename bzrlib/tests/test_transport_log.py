@@ -38,7 +38,7 @@ class TestTransportLog(TestCaseWithMemoryTransport):
             '  --> None')
         # they have the expected effect
         self.assertTrue(logging_transport.has('subdir'))
-        # and they operate on the underlying transport 
+        # and they operate on the underlying transport
         self.assertTrue(base_transport.has('subdir'))
 
 

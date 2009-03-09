@@ -98,18 +98,18 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
         self.assertEquals(out,
-                          'Using saved push location: %s\n' 
-                          'Pushed up to revision 2.\n'
+                          'Using saved push location: %s\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
-                         'All changes applied successfully.\n')
+                         'All changes applied successfully.\n'
+                         'Pushed up to revision 2.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
         self.run_bzr('push ../branch_c --remember')
         self.assertEquals(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
-    
+
     def test_push_without_tree(self):
         # bzr push from a branch that does not have a checkout should work.
         b = self.make_branch('.')
@@ -120,8 +120,8 @@ class TestPush(ExternalBase):
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_new_branch_revision_count(self):
-        # bzr push of a branch with revisions to a new location 
-        # should print the number of revisions equal to the length of the 
+        # bzr push of a branch with revisions to a new location
+        # should print the number of revisions equal to the length of the
         # local branch.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
@@ -186,7 +186,7 @@ class TestPush(ExternalBase):
                 message='first commit')
         self.run_bzr('push -d from to-one')
         self.failUnlessExists('to-one')
-        self.run_bzr('push -d %s %s' 
+        self.run_bzr('push -d %s %s'
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.failUnlessExists('to-two')
 
@@ -202,7 +202,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(94, rpc_count)
+        self.assertEqual(20, rpc_count)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -219,7 +219,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(119, rpc_count)
+        self.assertEqual(56, rpc_count)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 

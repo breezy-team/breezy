@@ -35,7 +35,7 @@ class TestWhoami(ExternalBase):
         out = self.run_bzr("whoami --email")[0]
         self.assertTrue(len(out) > 0)
         self.assertEquals(1, out.count('@'))
-        
+
     def test_whoami_branch(self):
         """branch specific user identity works."""
         wt = self.make_branch_and_tree('.')
@@ -51,7 +51,7 @@ class TestWhoami(ExternalBase):
             whoami_email = self.run_bzr("whoami --email")[0]
             self.assertEquals('branch@identi.ty\n', whoami_email)
 
-            # Verify that the environment variable overrides the value 
+            # Verify that the environment variable overrides the value
             # in the file
             os.environ['BZR_EMAIL'] = 'Different ID <other@environ.ment>'
             whoami = self.run_bzr("whoami")[0]

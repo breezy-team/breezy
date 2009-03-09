@@ -42,6 +42,7 @@ from bzrlib.knit import (
     KnitSequenceMatcher,
     KnitVersionedFiles,
     PlainKnitContent,
+    _VFContentMapGenerator,
     _DirectPackAccess,
     _KndxIndex,
     _KnitGraphIndex,
@@ -63,6 +64,7 @@ from bzrlib.tuned_gzip import GzipFile
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
+    network_bytes_to_kind_and_offset,
     RecordingVersionedFilesDecorator,
     )
 
@@ -297,7 +299,7 @@ class KnitRecordAccessTestsMixin(object):
         access = self.get_access()
         memos = access.add_raw_records([('key', 10)], '1234567890')
         self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
- 
+
     def test_add_several_raw_records(self):
         """add_raw_records with many records and read some back."""
         access = self.get_access()
@@ -1091,6 +1093,26 @@ class LowLevelKnitIndexTests(TestCase):
             call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
 
+    def assertTotalBuildSize(self, size, keys, positions):
+        self.assertEqual(size,
+                         knit._get_total_build_size(None, keys, positions))
+
+    def test__get_total_build_size(self):
+        positions = {
+            ('a',): (('fulltext', False), (('a',), 0, 100), None),
+            ('b',): (('line-delta', False), (('b',), 100, 21), ('a',)),
+            ('c',): (('line-delta', False), (('c',), 121, 35), ('b',)),
+            ('d',): (('line-delta', False), (('d',), 156, 12), ('b',)),
+            }
+        self.assertTotalBuildSize(100, [('a',)], positions)
+        self.assertTotalBuildSize(121, [('b',)], positions)
+        # c needs both a & b
+        self.assertTotalBuildSize(156, [('c',)], positions)
+        # we shouldn't count 'b' twice
+        self.assertTotalBuildSize(156, [('b',), ('c',)], positions)
+        self.assertTotalBuildSize(133, [('d',)], positions)
+        self.assertTotalBuildSize(168, [('c',), ('d',)], positions)
+
     def test_get_position(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
@@ -1237,6 +1259,15 @@ class LowLevelKnitIndexTests(TestCase):
             else:
                 raise
 
+    def test_scan_unvalidated_index_not_implemented(self):
+        transport = MockTransport()
+        index = self.get_knit_index(transport, 'filename', 'r')
+        self.assertRaises(
+            NotImplementedError, index.scan_unvalidated_index,
+            'dummy graph_index')
+        self.assertRaises(
+            NotImplementedError, index.get_missing_compression_parents)
+
     def test_short_line(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
@@ -1296,7 +1327,7 @@ class KnitTests(TestCaseWithTransport):
 class TestBadShaError(KnitTests):
     """Tests for handling of sha errors."""
 
-    def test_exception_has_text(self):
+    def test_sha_exception_has_text(self):
         # having the failed text included in the error allows for recovery.
         source = self.make_test_knit()
         target = self.make_test_knit(name="target")
@@ -1313,7 +1344,8 @@ class TestBadShaError(KnitTests):
         target.insert_record_stream(
             source.get_record_stream([broken], 'unordered', False))
         err = self.assertRaises(errors.KnitCorrupt,
-            target.get_record_stream([broken], 'unordered', True).next)
+            target.get_record_stream([broken], 'unordered', True
+            ).next().get_bytes_as, 'chunked')
         self.assertEqual(['gam\n', 'bar\n'], err.content)
         # Test for formatting with live data
         self.assertStartsWith(str(err), "Knit ")
@@ -1524,7 +1556,7 @@ class TestGraphIndexKnit(KnitTests):
             [('parent',)])])
         # but neither should have added data:
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_version_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
@@ -1536,7 +1568,7 @@ class TestGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
-        
+
     def test_add_versions_nodeltas(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
@@ -1584,7 +1616,7 @@ class TestGraphIndexKnit(KnitTests):
             [('parent',)])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
@@ -1601,6 +1633,81 @@ class TestGraphIndexKnit(KnitTests):
              (('tip',), 'line-delta', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
 
+    def make_g_index_missing_compression_parent(self):
+        graph_index = self.make_g_index('missing_comp', 2,
+            [(('tip', ), ' 100 78',
+              ([('missing-parent', ), ('ghost', )], [('missing-parent', )]))])
+        return graph_index
+
+    def make_g_index_no_external_refs(self):
+        graph_index = self.make_g_index('no_external_refs', 2,
+            [(('rev', ), ' 100 78',
+              ([('parent', ), ('ghost', )], []))])
+        return graph_index
+
+    def test_add_good_unvalidated_index(self):
+        unvalidated = self.make_g_index_no_external_refs()
+        combined = CombinedGraphIndex([unvalidated])
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
+        index.scan_unvalidated_index(unvalidated)
+        self.assertEqual(frozenset(), index.get_missing_compression_parents())
+
+    def test_add_incomplete_unvalidated_index(self):
+        unvalidated = self.make_g_index_missing_compression_parent()
+        combined = CombinedGraphIndex([unvalidated])
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
+        index.scan_unvalidated_index(unvalidated)
+        # This also checks that its only the compression parent that is
+        # examined, otherwise 'ghost' would also be reported as a missing
+        # parent.
+        self.assertEqual(
+            frozenset([('missing-parent',)]),
+            index.get_missing_compression_parents())
+
+    def test_add_unvalidated_index_with_present_external_references(self):
+        index = self.two_graph_index(deltas=True)
+        # Ugly hack to get at one of the underlying GraphIndex objects that
+        # two_graph_index built.
+        unvalidated = index._graph_index._indices[1]
+        # 'parent' is an external ref of _indices[1] (unvalidated), but is
+        # present in _indices[0].
+        index.scan_unvalidated_index(unvalidated)
+        self.assertEqual(frozenset(), index.get_missing_compression_parents())
+
+    def make_new_missing_parent_g_index(self, name):
+        missing_parent = name + '-missing-parent'
+        graph_index = self.make_g_index(name, 2,
+            [((name + 'tip', ), ' 100 78',
+              ([(missing_parent, ), ('ghost', )], [(missing_parent, )]))])
+        return graph_index
+
+    def test_add_mulitiple_unvalidated_indices_with_missing_parents(self):
+        g_index_1 = self.make_new_missing_parent_g_index('one')
+        g_index_2 = self.make_new_missing_parent_g_index('two')
+        combined = CombinedGraphIndex([g_index_1, g_index_2])
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
+        index.scan_unvalidated_index(g_index_1)
+        index.scan_unvalidated_index(g_index_2)
+        self.assertEqual(
+            frozenset([('one-missing-parent',), ('two-missing-parent',)]),
+            index.get_missing_compression_parents())
+
+    def test_add_mulitiple_unvalidated_indices_with_mutual_dependencies(self):
+        graph_index_a = self.make_g_index('one', 2,
+            [(('parent-one', ), ' 100 78', ([('non-compression-parent',)], [])),
+             (('child-of-two', ), ' 100 78',
+              ([('parent-two',)], [('parent-two',)]))])
+        graph_index_b = self.make_g_index('two', 2,
+            [(('parent-two', ), ' 100 78', ([('non-compression-parent',)], [])),
+             (('child-of-one', ), ' 100 78',
+              ([('parent-one',)], [('parent-one',)]))])
+        combined = CombinedGraphIndex([graph_index_a, graph_index_b])
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True)
+        index.scan_unvalidated_index(graph_index_a)
+        index.scan_unvalidated_index(graph_index_b)
+        self.assertEqual(
+            frozenset([]), index.get_missing_compression_parents())
+
 
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using _KnitGraphIndex with no parents."""
@@ -1613,6 +1720,14 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         trans = self.get_transport()
         size = trans.put_file(name, stream)
         return GraphIndex(trans, name, size)
+
+    def test_add_good_unvalidated_index(self):
+        unvalidated = self.make_g_index('unvalidated')
+        combined = CombinedGraphIndex([unvalidated])
+        index = _KnitGraphIndex(combined, lambda: True, parents=False)
+        index.scan_unvalidated_index(unvalidated)
+        self.assertEqual(frozenset(),
+            index.get_missing_compression_parents())
 
     def test_parents_deltas_incompatible(self):
         index = CombinedGraphIndex([])
@@ -1700,7 +1815,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_version_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
@@ -1714,7 +1829,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
-        
+
     def test_add_versions(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
@@ -1752,7 +1867,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
@@ -1770,6 +1885,91 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), []),
              (('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
+
+
+class TestKnitVersionedFiles(KnitTests):
+
+    def assertGroupKeysForIo(self, exp_groups, keys, non_local_keys,
+                             positions, _min_buffer_size=None):
+        kvf = self.make_test_knit()
+        if _min_buffer_size is None:
+            _min_buffer_size = knit._STREAM_MIN_BUFFER_SIZE
+        self.assertEqual(exp_groups, kvf._group_keys_for_io(keys,
+                                        non_local_keys, positions,
+                                        _min_buffer_size=_min_buffer_size))
+
+    def assertSplitByPrefix(self, expected_map, expected_prefix_order,
+                            keys):
+        split, prefix_order = KnitVersionedFiles._split_by_prefix(keys)
+        self.assertEqual(expected_map, split)
+        self.assertEqual(expected_prefix_order, prefix_order)
+
+    def test__group_keys_for_io(self):
+        ft_detail = ('fulltext', False)
+        ld_detail = ('line-delta', False)
+        f_a = ('f', 'a')
+        f_b = ('f', 'b')
+        f_c = ('f', 'c')
+        g_a = ('g', 'a')
+        g_b = ('g', 'b')
+        g_c = ('g', 'c')
+        positions = {
+            f_a: (ft_detail, (f_a, 0, 100), None),
+            f_b: (ld_detail, (f_b, 100, 21), f_a),
+            f_c: (ld_detail, (f_c, 180, 15), f_b),
+            g_a: (ft_detail, (g_a, 121, 35), None),
+            g_b: (ld_detail, (g_b, 156, 12), g_a),
+            g_c: (ld_detail, (g_c, 195, 13), g_a),
+            }
+        self.assertGroupKeysForIo([([f_a], set())],
+                                  [f_a], [], positions)
+        self.assertGroupKeysForIo([([f_a], set([f_a]))],
+                                  [f_a], [f_a], positions)
+        self.assertGroupKeysForIo([([f_a, f_b], set([]))],
+                                  [f_a, f_b], [], positions)
+        self.assertGroupKeysForIo([([f_a, f_b], set([f_b]))],
+                                  [f_a, f_b], [f_b], positions)
+        self.assertGroupKeysForIo([([f_a, f_b, g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions)
+        self.assertGroupKeysForIo([([f_a, f_b, g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions,
+                                  _min_buffer_size=150)
+        self.assertGroupKeysForIo([([f_a, f_b], set()), ([g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions,
+                                  _min_buffer_size=100)
+        self.assertGroupKeysForIo([([f_c], set()), ([g_b], set())],
+                                  [f_c, g_b], [], positions,
+                                  _min_buffer_size=125)
+        self.assertGroupKeysForIo([([g_b, f_c], set())],
+                                  [g_b, f_c], [], positions,
+                                  _min_buffer_size=125)
+
+    def test__split_by_prefix(self):
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('g', 'b'),
+                                  ('g', 'a'), ('f', 'b')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('f', 'b'),
+                                  ('g', 'b'), ('g', 'a')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('f', 'b'),
+                                  ('g', 'b'), ('g', 'a')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                  '': [('a',), ('b',)]
+                                 }, ['f', 'g', ''],
+                                 [('f', 'a'), ('g', 'b'),
+                                  ('a',), ('b',),
+                                  ('g', 'a'), ('f', 'b')])
 
 
 class TestStacking(KnitTests):
@@ -1838,7 +2038,7 @@ class TestStacking(KnitTests):
 
     def test_check(self):
         # At the moment checking a stacked knit does implicitly check the
-        # fallback files.  
+        # fallback files.
         basis, test = self.get_basis_and_test_knit()
         test.check()
 
@@ -1936,7 +2136,10 @@ class TestStacking(KnitTests):
                 True).next()
             self.assertEqual(record.key, result[0])
             self.assertEqual(record.sha1, result[1])
-            self.assertEqual(record.storage_kind, result[2])
+            # We used to check that the storage kind matched, but actually it
+            # depends on whether it was sourced from the basis, or in a single
+            # group, because asking for full texts returns proxy objects to a
+            # _ContentMapGenerator object; so checking the kind is unneeded.
             self.assertEqual(record.get_bytes_as('fulltext'), result[3])
         # It's not strictly minimal, but it seems reasonable for now for it to
         # ask which fallbacks have which parents.
@@ -2079,7 +2282,7 @@ class TestStacking(KnitTests):
 
     def test_iter_lines_added_or_present_in_keys(self):
         # Lines from the basis are returned, and lines for a given key are only
-        # returned once. 
+        # returned once.
         key1 = ('foo1',)
         key2 = ('foo2',)
         # all sources are asked for keys:
@@ -2173,3 +2376,65 @@ class TestStacking(KnitTests):
         self.assertEqual(set([key_left, key_right]), set(last_call[1]))
         self.assertEqual('unordered', last_call[2])
         self.assertEqual(True, last_call[3])
+
+
+class TestNetworkBehaviour(KnitTests):
+    """Tests for getting data out of/into knits over the network."""
+
+    def test_include_delta_closure_generates_a_knit_delta_closure(self):
+        vf = self.make_test_knit(name='test')
+        # put in three texts, giving ft, delta, delta
+        vf.add_lines(('base',), (), ['base\n', 'content\n'])
+        vf.add_lines(('d1',), (('base',),), ['d1\n'])
+        vf.add_lines(('d2',), (('d1',),), ['d2\n'])
+        # But heuristics could interfere, so check what happened:
+        self.assertEqual(['knit-ft-gz', 'knit-delta-gz', 'knit-delta-gz'],
+            [record.storage_kind for record in
+             vf.get_record_stream([('base',), ('d1',), ('d2',)],
+                'topological', False)])
+        # generate a stream of just the deltas include_delta_closure=True,
+        # serialise to the network, and check that we get a delta closure on the wire.
+        stream = vf.get_record_stream([('d1',), ('d2',)], 'topological', True)
+        netb = [record.get_bytes_as(record.storage_kind) for record in stream]
+        # The first bytes should be a memo from _ContentMapGenerator, and the
+        # second bytes should be empty (because its a API proxy not something
+        # for wire serialisation.
+        self.assertEqual('', netb[1])
+        bytes = netb[0]
+        kind, line_end = network_bytes_to_kind_and_offset(bytes)
+        self.assertEqual('knit-delta-closure', kind)
+
+
+class TestContentMapGenerator(KnitTests):
+    """Tests for ContentMapGenerator"""
+
+    def test_get_record_stream_gives_records(self):
+        vf = self.make_test_knit(name='test')
+        # put in three texts, giving ft, delta, delta
+        vf.add_lines(('base',), (), ['base\n', 'content\n'])
+        vf.add_lines(('d1',), (('base',),), ['d1\n'])
+        vf.add_lines(('d2',), (('d1',),), ['d2\n'])
+        keys = [('d1',), ('d2',)]
+        generator = _VFContentMapGenerator(vf, keys,
+            global_map=vf.get_parent_map(keys))
+        for record in generator.get_record_stream():
+            if record.key == ('d1',):
+                self.assertEqual('d1\n', record.get_bytes_as('fulltext'))
+            else:
+                self.assertEqual('d2\n', record.get_bytes_as('fulltext'))
+
+    def test_get_record_stream_kinds_are_raw(self):
+        vf = self.make_test_knit(name='test')
+        # put in three texts, giving ft, delta, delta
+        vf.add_lines(('base',), (), ['base\n', 'content\n'])
+        vf.add_lines(('d1',), (('base',),), ['d1\n'])
+        vf.add_lines(('d2',), (('d1',),), ['d2\n'])
+        keys = [('base',), ('d1',), ('d2',)]
+        generator = _VFContentMapGenerator(vf, keys,
+            global_map=vf.get_parent_map(keys))
+        kinds = {('base',): 'knit-delta-closure',
+            ('d1',): 'knit-delta-closure-ref',
+            ('d2',): 'knit-delta-closure-ref',
+            }
+        for record in generator.get_record_stream():
+            self.assertEqual(kinds[record.key], record.storage_kind)

@@ -161,7 +161,7 @@ class FakeManager(object):
 
 class RecordingServer(object):
     """A fake HTTP server.
-    
+
     It records the bytes sent to it, and replies with a 200.
     """
 
@@ -214,6 +214,35 @@ class RecordingServer(object):
             pass
         self.host = None
         self.port = None
+
+
+class TestAuthHeader(tests.TestCase):
+
+    def parse_header(self, header):
+        ah =  _urllib2_wrappers.AbstractAuthHandler()
+        return ah._parse_auth_header(header)
+
+    def test_empty_header(self):
+        scheme, remainder = self.parse_header('')
+        self.assertEquals('', scheme)
+        self.assertIs(None, remainder)
+
+    def test_negotiate_header(self):
+        scheme, remainder = self.parse_header('Negotiate')
+        self.assertEquals('negotiate', scheme)
+        self.assertIs(None, remainder)
+
+    def test_basic_header(self):
+        scheme, remainder = self.parse_header(
+            'Basic realm="Thou should not pass"')
+        self.assertEquals('basic', scheme)
+        self.assertEquals('realm="Thou should not pass"', remainder)
+
+    def test_digest_header(self):
+        scheme, remainder = self.parse_header(
+            'Digest realm="Thou should not pass"')
+        self.assertEquals('digest', scheme)
+        self.assertEquals('realm="Thou should not pass"', remainder)
 
 
 class TestHTTPServer(tests.TestCase):
@@ -800,7 +829,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # bytes on the socket
         ireadv = iter(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
         self.assertEqual((0, '0'), ireadv.next())
-        # The server should have issued one request so far 
+        # The server should have issued one request so far
         self.assertEqual(1, server.GET_request_nb)
         self.assertEqual('0123456789', t.get_bytes('a'))
         # get_bytes issued an additional request, the readv pending ones are

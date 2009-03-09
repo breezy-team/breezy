@@ -36,8 +36,8 @@ class TestAliases(ExternalBase):
 
 
         if os.path.isfile(config_filename()):
-            # Something is wrong in environment, 
-            # we risk overwriting users config 
+            # Something is wrong in environment,
+            # we risk overwriting users config
             self.assert_(config_filename() + "exists, abort")
 
         ensure_config_dir_exists()

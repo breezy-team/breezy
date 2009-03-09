@@ -21,7 +21,7 @@
 
 # TODO: Check for extra files in the control directory.
 
-# TODO: Check revision, inventory and entry objects have all 
+# TODO: Check revision, inventory and entry objects have all
 # required fields.
 
 # TODO: Get every revision in the revision-store even if they're not
@@ -166,13 +166,14 @@ class Check(object):
         rev_id - the one to check
         """
         rev = self.repository.get_revision(rev_id)
-                
+
         if rev.revision_id != rev_id:
             raise BzrCheckError('wrong internal revision id in revision {%s}'
                                 % rev_id)
 
         for parent in rev.parent_ids:
             if not parent in self.planned_revisions:
+                # rev has a parent we didn't know about.
                 missing_links = self.missing_parent_links.get(parent, [])
                 missing_links.append(rev_id)
                 self.missing_parent_links[parent] = missing_links
@@ -181,13 +182,18 @@ class Check(object):
                 if self.repository.has_revision(parent):
                     missing_ancestry = self.repository.get_ancestry(parent)
                     for missing in missing_ancestry:
-                        if (missing is not None 
+                        if (missing is not None
                             and missing not in self.planned_revisions):
                             self.planned_revisions.append(missing)
                 else:
                     self.ghosts.append(rev_id)
 
         if rev.inventory_sha1:
+            # Loopback - this is currently circular logic as the
+            # knit get_inventory_sha1 call returns rev.inventory_sha1.
+            # Repository.py's get_inventory_sha1 should instead return
+            # inventories.get_record_stream([(revid,)]).next().sha1 or
+            # similar.
             inv_sha1 = self.repository.get_inventory_sha1(rev_id)
             if inv_sha1 != rev.inventory_sha1:
                 raise BzrCheckError('Inventory sha1 hash doesn\'t match'
@@ -244,9 +250,9 @@ class Check(object):
 @deprecated_function(deprecated_in((1,6,0)))
 def check(branch, verbose):
     """Run consistency checks on a branch.
-    
+
     Results are reported through logging.
-    
+
     Deprecated in 1.6.  Please use check_branch instead.
 
     :raise BzrCheckError: if there's a consistency error.
@@ -278,7 +284,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
 
     if do_tree:
         if tree is not None:
-            note("Checking working tree at '%s'." 
+            note("Checking working tree at '%s'."
                  % (tree.bzrdir.root_transport.base,))
             tree._check()
         else:

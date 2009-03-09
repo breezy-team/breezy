@@ -20,7 +20,7 @@
 """BzrDir implementation tests for bzr.
 
 These test the conformance of all the bzrdir variations to the expected API.
-Specific tests for individual formats are in the tests/test_bzrdir.py file 
+Specific tests for individual formats are in the tests/test_bzrdir.py file
 rather than in tests/branch_implementations/*.py.
 """
 
@@ -55,7 +55,7 @@ class BzrDirTestProviderAdapter(TestScenarioApplier):
         self._transport_readonly_server = transport_readonly_server
         self._name_suffix = name_suffix
         self.scenarios = self.formats_to_scenarios(formats)
-    
+
     def formats_to_scenarios(self, formats):
         """Transform the input formats to a list of scenarios.
 

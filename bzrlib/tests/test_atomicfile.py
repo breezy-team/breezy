@@ -68,7 +68,7 @@ class TestAtomicFile(TestCaseInTempDir):
 
         # close is re-entrant safe
         f.close()
-        
+
     def test_text_mode(self):
         f = atomicfile.AtomicFile('test', mode='wt')
         f.write('foo\n')

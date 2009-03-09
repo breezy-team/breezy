@@ -61,7 +61,39 @@ Location:
 """, out)
         self.assertEqual('', err)
 
+        # Standalone branch - verbose mode
         out, err = self.run_bzr('info standalone -v')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: standalone
+
+Format:
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: Weave repository format 6
+
+In the working tree:
+         0 unchanged
+         0 modified
+         1 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""", out)
+        self.assertEqual('', err)
+
+        # Standalone branch - really verbose mode
+        out, err = self.run_bzr('info standalone -vv')
         self.assertEqualDiff(
 """Standalone tree (format: weave)
 Location:
@@ -139,7 +171,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -186,7 +217,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -230,7 +260,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -273,7 +302,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -319,7 +347,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -361,7 +388,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -401,7 +427,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -444,7 +469,6 @@ In the working tree:
 
 Branch history:
          2 revisions
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -472,7 +496,6 @@ Format:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
@@ -523,7 +546,6 @@ Format:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
@@ -535,7 +557,7 @@ Repository:
         # Create lightweight checkout
         transport.mkdir('tree')
         transport.mkdir('tree/lightcheckout')
-        tree2 = branch1.create_checkout('tree/lightcheckout', 
+        tree2 = branch1.create_checkout('tree/lightcheckout',
             lightweight=True)
         branch2 = tree2.branch
         self.assertCheckoutStatusOutput('-v tree/lightcheckout', tree2,
@@ -581,7 +603,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -622,7 +643,6 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
@@ -660,7 +680,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -708,7 +727,6 @@ In the working tree:
 
 Branch history:
          2 revisions
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -736,7 +754,6 @@ Format:
 
 Branch history:
          2 revisions
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -823,7 +840,6 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
@@ -864,7 +880,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -906,7 +921,6 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          1 revision
@@ -946,7 +960,6 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
@@ -978,7 +991,7 @@ Repository:
        ),
        out)
         self.assertEqual('', err)
-    
+
     def test_info_shared_repository_with_tree_in_root(self):
         format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
@@ -1033,7 +1046,6 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
@@ -1057,7 +1069,7 @@ Repository:
         allow us, the test writers, to document what *should* be present in
         the output. Removing this separation would remove the value of the
         tests.
-        
+
         :param path: the path to the light checkout.
         :param lco_tree: the tree object for the light checkout.
         :param shared_repo: A shared repository is in use, expect that in
@@ -1071,7 +1083,7 @@ Repository:
             actually locked then this parameter is overridden. This is because
             pack repositories do not have any public API for obtaining an
             exclusive repository wide lock.
-        :param verbose: If true, expect verbose output
+        :param verbose: verbosity level: 2 or higher to show committers
         """
         def friendly_location(url):
             path = urlutils.unescape_for_display(url, 'ascii')
@@ -1143,12 +1155,12 @@ Repository:
         else:
             branch_data = ("   checkout of branch: %s\n" %
                 lco_tree.branch.bzrdir.root_transport.base)
-        
-        if verbose:
+
+        if verbose >= 2:
             verbose_info = '         0 committers\n'
         else:
             verbose_info = ''
-            
+
         self.assertEqualDiff(
 """%s (format: %s)
 Location:
@@ -1336,7 +1348,6 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
@@ -1369,7 +1380,6 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
