@@ -55,8 +55,11 @@ class SmartServerRequestBzrDir(SmartServerRequest):
 
     def do(self, path, *args):
         """Open a BzrDir at path, and return self.do_bzrdir_request(*args)."""
-        self._bzrdir = BzrDir.open_from_transport(
-            self.transport_from_client_path(path))
+        try:
+            self._bzrdir = BzrDir.open_from_transport(
+                self.transport_from_client_path(path))
+        except errors.NotBranchError:
+            return FailedSmartServerResponse(('nobranch', ))
         return self.do_bzrdir_request(*args)
 
     def _boolean_to_yes_no(self, a_boolean):
@@ -90,6 +93,10 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, require_stacking):
         """Get the format that should be used when cloning from this dir."""
+        try:
+            branch_ref = self._bzrdir.get_branch_reference()
+        except errors.NotBranchError:
+            branch_ref = None
         if require_stacking == "True":
             require_stacking = True
         else:
@@ -100,11 +107,17 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
         # XXX: There should be a method that tells us that the format does/does not
         # have subformats.
         if isinstance(control_format, BzrDirMetaFormat1):
-            branch_name = control_format.get_branch_format().network_name()
+            if branch_ref is not None:
+                # If there's a branch reference, the client will have to resolve
+                # the branch reference to figure out the cloning metadir
+                branch_name = ('ref', branch_ref)
+            else:
+                branch_name = ('branch',
+                    control_format.get_branch_format().network_name())
             repository_name = control_format.repository_format.network_name()
         else:
             # Only MetaDir has delegated formats today.
-            branch_name = ''
+            branch_name = ('branch', '')
             repository_name = ''
         return SuccessfulSmartServerResponse((control_name, repository_name,
             branch_name))
@@ -288,21 +301,30 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         return SuccessfulSmartServerResponse(('ok', ))
 
 
-class SmartServerRequestOpenBranch(SmartServerRequest):
+class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
 
-    def do(self, path):
-        """try to open a branch at path and return ok/nobranch.
-
-        If a bzrdir is not present, an exception is propogated
-        rather than 'no branch' because these are different conditions.
-        """
-        bzrdir = BzrDir.open_from_transport(
-            self.transport_from_client_path(path))
+    def do_bzrdir_request(self):
+        """open a branch at path and return the branch reference or branch."""
         try:
-            reference_url = bzrdir.get_branch_reference()
+            reference_url = self._bzrdir.get_branch_reference()
             if reference_url is None:
                 return SuccessfulSmartServerResponse(('ok', ''))
             else:
                 return SuccessfulSmartServerResponse(('ok', reference_url))
+        except errors.NotBranchError:
+            return FailedSmartServerResponse(('nobranch', ))
+
+
+class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self):
+        """open a branch at path and return the reference or format."""
+        try:
+            reference_url = self._bzrdir.get_branch_reference()
+            if reference_url is None:
+                format = self._bzrdir.open_branch()._format.network_name()
+                return SuccessfulSmartServerResponse(('branch', format))
+            else:
+                return SuccessfulSmartServerResponse(('ref', reference_url))
         except errors.NotBranchError:
             return FailedSmartServerResponse(('nobranch', ))

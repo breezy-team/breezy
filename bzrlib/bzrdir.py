@@ -217,12 +217,17 @@ class BzrDir(object):
                 force_new_repo, stacked_on, self.root_transport.base,
                 require_stacking=require_stacking)
             make_working_trees = local_repo.make_working_trees()
-            result_repo = repository_policy.acquire_repository(
+            result_repo, is_new_repo = repository_policy.acquire_repository(
                 make_working_trees, local_repo.is_shared())
             if not require_stacking and repository_policy._require_stacking:
                 require_stacking = True
                 result._format.require_stacking()
-            result_repo.fetch(local_repo, revision_id=revision_id)
+            if is_new_repo and not require_stacking and revision_id is not None:
+                fetch_spec = graph.PendingAncestryResult(
+                    [revision_id], local_repo)
+                result_repo.fetch(local_repo, fetch_spec=fetch_spec)
+            else:
+                result_repo.fetch(local_repo, revision_id=revision_id)
         else:
             result_repo = None
         # 1 if there is a branch present
@@ -440,7 +445,7 @@ class BzrDir(object):
     def _find_or_create_repository(self, force_new_repo):
         """Create a new repository if needed, returning the repository."""
         policy = self.determine_repository_policy(force_new_repo)
-        return policy.acquire_repository()
+        return policy.acquire_repository()[0]
 
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
@@ -1114,11 +1119,19 @@ class BzrDir(object):
                     source_repository = None
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
-        result_repo = repository_policy.acquire_repository()
+        result_repo, is_new_repo = repository_policy.acquire_repository()
+        if is_new_repo and revision_id is not None and not stacked:
+            fetch_spec = graph.PendingAncestryResult(
+                [revision_id], source_repository)
+        else:
+            fetch_spec = None
         if source_repository is not None:
             # Fetch while stacked to prevent unstacked fetch from
             # Branch.sprout.
-            result_repo.fetch(source_repository, revision_id=revision_id)
+            if fetch_spec is None:
+                result_repo.fetch(source_repository, revision_id=revision_id)
+            else:
+                result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
         if source_branch is None:
             # this is for sprouting a bzrdir without a branch; is that
@@ -1832,7 +1845,7 @@ class BzrDirFormat(object):
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
         # bzr native formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format)
+        network_format_registry.register(format.get_format_string(), format.__class__)
 
     @classmethod
     def register_control_format(klass, format):
@@ -3089,7 +3102,8 @@ class RepositoryAcquisitionPolicy(object):
         :param make_working_trees: If creating a repository, set
             make_working_trees to this value (if non-None)
         :param shared: If creating a repository, make it shared if True
-        :return: A repository
+        :return: A repository, is_new_flag (True if the repository was
+            created).
         """
         raise NotImplemented(RepositoryAcquisitionPolicy.acquire_repository)
 
@@ -3120,7 +3134,7 @@ class CreateRepository(RepositoryAcquisitionPolicy):
                            possible_transports=[self._bzrdir.transport])
         if make_working_trees is not None:
             repository.set_make_working_trees(make_working_trees)
-        return repository
+        return repository, True
 
 
 class UseExistingRepository(RepositoryAcquisitionPolicy):
@@ -3142,11 +3156,11 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Implementation of RepositoryAcquisitionPolicy.acquire_repository
 
-        Returns an existing repository to use
+        Returns an existing repository to use.
         """
         self._add_fallback(self._repository,
                        possible_transports=[self._repository.bzrdir.transport])
-        return self._repository
+        return self._repository, False
 
 
 # Please register new formats after old formats so that formats

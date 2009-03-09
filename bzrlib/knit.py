@@ -966,7 +966,7 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             options.append('fulltext')
             # isinstance is slower and we have no hierarchy.
-            if self._factory.__class__ == KnitPlainFactory:
+            if self._factory.__class__ is KnitPlainFactory:
                 # Use the already joined bytes saving iteration time in
                 # _record_to_data.
                 size, bytes = self._record_to_data(key, digest,
@@ -1297,9 +1297,6 @@ class KnitVersionedFiles(VersionedFiles):
         if cur_keys:
             result.append((cur_keys, cur_non_local))
             sizes.append(cur_size)
-        trace.mutter('Collapsed %d keys into %d requests w/ %d file_ids'
-                     ' w/ sizes: %s', total_keys, len(result),
-                     len(prefix_split_keys), sizes)
         return result
 
     def get_record_stream(self, keys, ordering, include_delta_closure):

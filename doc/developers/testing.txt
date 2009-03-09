@@ -516,6 +516,10 @@ testing how we work with disk objects should, of course, use a real
 
 Please see bzrlib.branchbuilder for more details.
 
+If you're going to examine the commit timestamps e.g. in a test for log
+output, you should set the timestamp on the tree, rather than using fuzzy
+matches in the test.
+
 
 TreeBuilder
 ~~~~~~~~~~~

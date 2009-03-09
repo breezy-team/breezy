@@ -21,10 +21,16 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * Debug flags can now be set in ``~/.bazaar/bazaar.conf``.
+      (Martin Pool)
+
     * Filtered views provide a mask over the tree so that users can focus
       on a subset of a tree when doing their work. See ``Filtered views``
       in chapter 7 of the User Guide and ``bzr help view`` for details.
       (Ian Clatworthy)
+
+    * GNU Changelog output can now be produced by ``bzr log --format
+      gnu-changelog``.  (Andrea Bolognani, Martin Pool)
 
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
@@ -37,6 +43,9 @@ IN DEVELOPMENT
       (Jonathan Lange)
 
   IMPROVEMENTS:
+
+    * ``bzr add`` no longer prints ``add completed`` on success. Failure
+      still prints an error message. (Robert Collins)
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
       generation of a working tree in the new branch.
@@ -97,10 +106,19 @@ IN DEVELOPMENT
       error branching from old repositories.
       (Martin Pool, #321695)
 
+    * Make ``bzr push --quiet <non-local location>`` less chatty.
+      (Kent Gibson, #221461)
+
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
       for branches. This is now fixed and a test added to prevent it
       reoccuring. (Robert Collins, Andrew Bennetts)
+
+    * Restore the progress bar on Windows. We were disabling it when TERM
+      wasn't set, but Windows doesn't set TERM. (Alexander Belchenko)
+
+    * ``setup.py build_ext`` now gives a proper error when an extension
+      fails to build. (John Arbash Meinel)
 
     * Under rare circumstances (aka nobody reported a bug about it), the ftp
       transport could revert to ascii mode. It now stays in binary mode except
@@ -111,6 +129,11 @@ IN DEVELOPMENT
       (Aaron Bentley, #328148)
 
   DOCUMENTATION:
+
+    * Added ``Organizing your workspace`` to the User Guide appendices,
+      summarizing some common ways of organizing trees, branches and
+      repositories and the processes/workflows implied/enabled by each.
+      (Ian Clatworthy)
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
@@ -135,9 +158,21 @@ IN DEVELOPMENT
 
     * Remove deprecated EmptyTree.  (Martin Pool)
 
+    * ``Repository.fetch`` now accepts an optional ``fetch_spec``
+      parameter.  A ``SearchResult`` or ``MiniSearchResult`` may be passed
+      to ``fetch_spec`` instead of a ``last_revision`` to specify exactly
+      which revisions to fetch. (Andrew Bennetts)
+
+    * ``RepositoryAcquisitionPolicy.acquire_repository`` now returns a
+      tuple of ``(repository, is_new_flag)``, rather than just the
+      repository.  (Andrew Bennetts)
+
     * Revision.get_apparent_author() is now deprecated, replaced by
       Revision.get_apparent_authors(), which returns a list. The former
       now returns the first item that would be returned from the second.
+
+    * The ``BranchBuilder`` test helper now accepts a ``timestamp``
+      parameter to ``build_commit`` and ``build_snapshot``.  (Martin Pool)
 
     * The ``_fetch_*`` attributes on ``Repository`` are now on
       ``RepositoryFormat``, more accurately reflecting their intent (they
@@ -145,6 +180,10 @@ IN DEVELOPMENT
       repository of that format). (Robert Collins)
 
   INTERNALS:
+
+    * Branching from a non-stacked branch on a smart protocol is now
+      free of virtual file system methods.
+      (Robert Collins, Andrew Bennetts)
 
     * Branch and Repository creation on a bzr+ssh://server are now done
       via RPC calls rather than VFS calls, reducing round trips for
@@ -170,6 +209,12 @@ IN DEVELOPMENT
 
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
+
+    * Change how file_ids and revision_ids are interned as part of
+      inventory deserialization. Now we use the real ``intern()``, rather
+      than our own workaround that would also cache a Unicode copy of the
+      string, and never emptied the cache. This should slightly reduce
+      memory consumption. (John Arbash Meinel)
 
     * New branch method ``create_clone_on_transport`` that returns a
       branch object. (Robert Collins)

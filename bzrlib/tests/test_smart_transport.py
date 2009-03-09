@@ -1528,8 +1528,8 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
+            "please check connectivity and permissions ",
+            str(ex))
 
     def test_server_offset_serialisation(self):
         """The Smart protocol serialises offsets as a comma and \n string.
@@ -2873,17 +2873,30 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.responder.send_response(response)
         self.assertWriteCount(1)
 
-    def test_send_response_with_body_stream_writes_once_per_chunk(self):
-        """A normal response with a stream body is written to the medium
-        writes to the medium once per chunk.
-        """
+    def test_send_response_with_body_stream_buffers_writes(self):
+        """A normal response with a stream body writes to the medium once."""
         # Construct a response with stream with 2 chunks in it.
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
         self.responder.send_response(response)
-        # We will write 3 times: exactly once for each chunk, plus a final
-        # write to end the response.
-        self.assertWriteCount(3)
+        # We will write just once, despite the multiple chunks, due to
+        # buffering.
+        self.assertWriteCount(1)
+
+    def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
+        """When there are many chunks (>100), multiple writes will occur rather
+        than buffering indefinitely.
+        """
+        # Construct a response with stream with 40 chunks in it.  Every chunk
+        # triggers 3 buffered writes, so we expect > 100 buffered writes, but <
+        # 200.
+        body_stream = ['chunk %d' % count for count in range(40)]
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('arg', 'arg'), body_stream=body_stream)
+        self.responder.send_response(response)
+        # The write buffer is flushed every 100 buffered writes, so we expect 2
+        # actual writes.
+        self.assertWriteCount(2)
 
 
 class TestSmartClientUnicode(tests.TestCase):
