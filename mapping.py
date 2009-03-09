@@ -190,7 +190,7 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
             commit._parents.append(git_p)
     commit._message = rev.message.encode("utf-8")
     commit._committer = rev.committer.encode("utf-8")
-    commit._author = rev.get_apparent_author().encode("utf-8")
+    commit._author = rev.get_apparent_authors()[0].encode("utf-8")
     commit._commit_time = long(rev.timestamp)
     commit.serialize()
     return commit
