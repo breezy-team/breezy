@@ -46,26 +46,48 @@ default login anonymous password joe@home
             f.write(netrc_content)
         finally:
             f.close()
+        
+        # Create a test AuthenticationConfig object
+        ac_content = """
+[host1]
+host = host
+user = joe
+password_encoding = netrc
 
-    def _get_netrc_cs(self):
-        return  config.credential_store_registry.get_credential_store('netrc')
+[host2]
+host = host
+user = jim
+password_encoding = netrc
+
+[other]
+host = other
+user = anonymous
+password_encoding = netrc
+"""
+        ac_path = osutils.pathjoin(self.test_home_dir, 'netrc-authentication.conf')
+        f = open(ac_path, 'wb')
+        try:
+            f.write(ac_content)
+        finally:
+            f.close()
+        self.ac = config.AuthenticationConfig(_file=ac_path)
 
     def test_not_matching_user(self):
-        cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host='host', user='jim'))
-        self.assertIs(None, password)
+        credentials = self.ac.get_credentials('scheme', 'host', user='jim')
+        self.assertIsNot(None, credentials)
+        self.assertIs(None, credentials.get('password', None))
 
     def test_matching_user(self):
-        cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host='host', user='joe'))
-        self.assertEquals('secret', password)
+        credentials = self.ac.get_credentials('scheme', 'host', user='joe')
+        self.assertIsNot(None, credentials)
+        self.assertEquals('secret', credentials.get('password', None))
 
     def test_default_password(self):
-        cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host='other', user='anonymous'))
-        self.assertEquals('joe@home', password)
+        credentials = self.ac.get_credentials('scheme', 'other', user='anonymous')
+        self.assertIsNot(None, credentials)
+        self.assertEquals('joe@home', credentials.get('password', None))
 
     def test_default_password_without_user(self):
-        cs = self._get_netrc_cs()
-        password = cs.decode_password(dict(host='other'))
-        self.assertIs(None, password)
+        self.assertIsNot(None, self.ac)
+        credentials = self.ac.get_credentials('scheme', 'other')
+        self.assertIs(None, credentials)
