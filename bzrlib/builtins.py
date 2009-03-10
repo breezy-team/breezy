@@ -4741,6 +4741,7 @@ class cmd_send(Command):
                type=unicode),
         'revision',
         'message',
+        Option('body', help='Body for the email.', type=unicode),
         RegistryOption.from_kwargs('format',
         'Use the specified output format.',
         **{'4': 'Bundle format 4, Merge Directive 2 (default)',
@@ -4749,13 +4750,13 @@ class cmd_send(Command):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', mail_to=None, message=None, **kwargs):
+            format='4', mail_to=None, message=None, body=None, **kwargs):
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), mail_to, message)
+                         kwargs.get('from', '.'), mail_to, message, body)
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
-             no_bundle, no_patch, output, from_, mail_to, message):
+             no_bundle, no_patch, output, from_, mail_to, message, body):
         from bzrlib.revision import NULL_REVISION
         branch = Branch.open_containing(from_)[0]
         if output is None:
@@ -4855,7 +4856,8 @@ class cmd_send(Command):
                     subject += revision.get_summary()
                 basename = directive.get_disk_name(branch)
                 mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue(), basename)
+                                                  outfile.getvalue(),
+                                                  basename, body)
         finally:
             if output != '-':
                 outfile.close()

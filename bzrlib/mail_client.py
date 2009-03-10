@@ -41,7 +41,7 @@ class MailClient(object):
         self.config = config
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension, basename=None):
+                extension, basename=None, body=None):
         """Compose (and possibly send) an email message
 
         Must be implemented by subclasses.
@@ -61,7 +61,8 @@ class MailClient(object):
         """
         raise NotImplementedError
 
-    def compose_merge_request(self, to, subject, directive, basename=None):
+    def compose_merge_request(self, to, subject, directive, basename=None,
+                              body=None):
         """Compose (and possibly send) a merge request
 
         :param to: The address to send the request to
@@ -74,7 +75,7 @@ class MailClient(object):
         prompt = self._get_merge_prompt("Please describe these changes:", to,
                                         subject, directive)
         self.compose(prompt, to, subject, directive,
-            'x-patch', '.patch', basename)
+            'x-patch', '.patch', basename, body)
 
     def _get_merge_prompt(self, prompt, to, subject, attachment):
         """Generate a prompt string.  Overridden by Editor.
@@ -99,11 +100,11 @@ class Editor(MailClient):
                          attachment.decode('utf-8', 'replace')))
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension, basename=None):
+                extension, basename=None, body=None):
         """See MailClient.compose"""
         if not to:
             raise errors.NoMailAddressSpecified()
-        body = msgeditor.edit_commit_message(prompt)
+        body = msgeditor.edit_commit_message(prompt, start_message=body)
         if body == '':
             raise errors.NoMessageSupplied()
         email_message.EmailMessage.send(self.config,
@@ -129,7 +130,7 @@ class ExternalMailClient(MailClient):
             return self._client_commands
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension, basename=None):
+                extension, basename=None, body=None):
         """See MailClient.compose.
 
         Writes the attachment to a temporary file, invokes _compose.
@@ -144,10 +145,10 @@ class ExternalMailClient(MailClient):
         finally:
             outfile.close()
         self._compose(prompt, to, subject, attach_path, mime_subtype,
-                      extension)
+                      extension, body)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
-                extension):
+                extension, body):
         """Invoke a mail client as a commandline process.
 
         Overridden by MAPIClient.
@@ -162,7 +163,7 @@ class ExternalMailClient(MailClient):
         for name in self._get_client_commands():
             cmdline = [self._encode_path(name, 'executable')]
             cmdline.extend(self._get_compose_commandline(to, subject,
-                                                         attach_path))
+                                                         attach_path, body))
             try:
                 subprocess.call(cmdline)
             except OSError, e:
@@ -173,7 +174,7 @@ class ExternalMailClient(MailClient):
         else:
             raise errors.MailClientNotFound(self._client_commands)
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body):
         """Determine the commandline to use for composing a message
 
         Implemented by various subclasses
@@ -494,24 +495,25 @@ class DefaultMail(MailClient):
             return XDGEmail(self.config)
 
     def compose(self, prompt, to, subject, attachment, mime_subtype,
-                extension, basename=None):
+                extension, basename=None, body=None):
         """See MailClient.compose"""
         try:
             return self._mail_client().compose(prompt, to, subject,
                                                attachment, mimie_subtype,
-                                               extension, basename)
+                                               extension, basename, body)
         except errors.MailClientNotFound:
             return Editor(self.config).compose(prompt, to, subject,
-                          attachment, mimie_subtype, extension)
+                          attachment, mimie_subtype, extension, body)
 
-    def compose_merge_request(self, to, subject, directive, basename=None):
+    def compose_merge_request(self, to, subject, directive, basename=None,
+                              body=None):
         """See MailClient.compose_merge_request"""
         try:
             return self._mail_client().compose_merge_request(to, subject,
-                    directive, basename=basename)
+                    directive, basename=basename, body=body)
         except errors.MailClientNotFound:
             return Editor(self.config).compose_merge_request(to, subject,
-                          directive, basename=basename)
+                          directive, basename=basename, body=body)
 mail_client_registry.register('default', DefaultMail,
                               help=DefaultMail.__doc__)
 mail_client_registry.default_key = 'default'
