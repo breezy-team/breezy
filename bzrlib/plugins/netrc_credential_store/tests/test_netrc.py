@@ -72,6 +72,9 @@ password_encoding = netrc
             f.close()
         self.ac = config.AuthenticationConfig(_file=ac_path)
 
+    def _get_netrc_cs(self):
+        return  config.credential_store_registry.get_credential_store('netrc')
+
     def test_not_matching_user(self):
         credentials = self.ac.get_credentials('scheme', 'host', user='jim')
         self.assertIsNot(None, credentials)
@@ -88,6 +91,8 @@ password_encoding = netrc
         self.assertEquals('joe@home', credentials.get('password', None))
 
     def test_default_password_without_user(self):
-        self.assertIsNot(None, self.ac)
-        credentials = self.ac.get_credentials('scheme', 'other')
-        self.assertIs(None, credentials)
+        # We need to test the plug-in directly here because it's impossible
+        # to not provide a user through the AuthenticationConfig path
+        cs = self._get_netrc_cs()
+        password = cs.decode_password(dict(host='other'))
+        self.assertIs(None, password)
