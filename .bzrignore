@@ -60,3 +60,5 @@ debian
 ./stamp-*
 ./*.debhelper
 ./*.substvars
+./doc/en/user-guide/latex_prepared
+./doc/en/user-guide/*.pdf

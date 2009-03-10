@@ -348,7 +348,7 @@ class HttpTransportBase(ConnectedTransport):
 
     def _post(self, body_bytes):
         """POST body_bytes to .bzr/smart on this transport.
-        
+
         :returns: (response code, response body file-like object).
         """
         # TODO: Requiring all the body_bytes to be available at the beginning of

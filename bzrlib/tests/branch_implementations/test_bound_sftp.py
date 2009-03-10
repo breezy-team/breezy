@@ -52,7 +52,7 @@ class BoundSFTPBranch(TestCaseWithTransport):
                 self.get_url('base'), format=format)
         except errors.NotLocalUrl:
             raise TestSkipped('Not a local URL')
-    
+
         b_base = wt_base.branch
 
         wt_base.add('a')

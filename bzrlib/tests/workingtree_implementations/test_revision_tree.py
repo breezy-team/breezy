@@ -16,7 +16,7 @@
 
 """Tests for WorkingTree.revision_tree.
 
-These tests are in addition to the tests from 
+These tests are in addition to the tests from
 tree_implementations.test_revision_tree which cover the behaviour expected from
 all Trees. WorkingTrees implement the revision_tree api to allow access to
 cached data, but we don't require that all WorkingTrees have such a cache,

@@ -47,7 +47,7 @@ class InvalidLaunchpadInstance(errors.BzrError):
 
 class NotLaunchpadBranch(errors.BzrError):
 
-    _fmt = "%(url)s is not hosted on Launchpad."
+    _fmt = "%(url)s is not registered on Launchpad."
 
     def __init__(self, url):
         errors.BzrError.__init__(self, url=url)
@@ -237,7 +237,7 @@ class BaseRequest(object):
 
 class DryRunLaunchpadService(LaunchpadService):
     """Service that just absorbs requests without sending to server.
-    
+
     The dummy service does not need authentication.
     """
 

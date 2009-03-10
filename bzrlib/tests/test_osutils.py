@@ -40,16 +40,13 @@ from bzrlib.osutils import (
         canonical_relpath,
         )
 from bzrlib.tests import (
-        adapt_tests,
         Feature,
         probe_unicode_in_user_encoding,
-        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
         CaseInsCasePresFilenameFeature,
         TestCase,
         TestCaseInTempDir,
-        TestScenarioApplier,
         TestSkipped,
         )
 from bzrlib.tests.file_utils import (
@@ -171,7 +168,7 @@ class TestOSUtils(TestCaseInTempDir):
                          (['src'], 'src'),
                          ]:
             self.assert_(is_inside_or_parent_of_any(dirs, fn))
-            
+
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['srccontrol/foo.c'], 'src'),
                          (['src'], 'srccontrol/foo')]:
@@ -202,7 +199,7 @@ class TestOSUtils(TestCaseInTempDir):
         if osutils.has_symlinks():
             os.symlink('symlink', 'symlink')
             self.assertEquals('symlink', osutils.file_kind('symlink'))
-        
+
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
@@ -310,7 +307,7 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(bar_path, osutils.realpath('./bar'))
         os.symlink('bar', 'foo')
         self.assertEqual(bar_path, osutils.realpath('./foo'))
-        
+
         # Does not dereference terminal symlinks
         foo_path = osutils.pathjoin(cwd, 'foo')
         self.assertEqual(foo_path, osutils.dereference_path('./foo'))
@@ -692,7 +689,7 @@ class TestWin32Funcs(TestCase):
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
     """Test win32 functions that create files."""
-    
+
     def test_getcwd(self):
         if win32utils.winver == 'Windows 98':
             raise TestSkipped('Windows 98 cannot handle unicode filenames')
@@ -881,6 +878,26 @@ class TestWalkDirs(TestCaseInTempDir):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
             [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
+
+    def test_walkdirs_os_error(self):
+        # <https://bugs.edge.launchpad.net/bzr/+bug/338653>
+        # Pyrex readdir didn't raise useful messages if it had an error
+        # reading the directory
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable(
+                "readdir IOError not tested on win32")
+        os.mkdir("test-unreadable")
+        os.chmod("test-unreadable", 0000)
+        # must chmod it back so that it can be removed
+        self.addCleanup(lambda: os.chmod("test-unreadable", 0700))
+        # The error is not raised until the generator is actually evaluated.
+        # (It would be ok if it happened earlier but at the moment it
+        # doesn't.)
+        e = self.assertRaises(OSError, list,
+            osutils._walkdirs_utf8("."))
+        self.assertEquals(e.filename, './test-unreadable')
+        self.assertEquals(str(e),
+            "[Errno 13] chdir: Permission denied: './test-unreadable'")
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1330,7 +1347,7 @@ class TestWalkDirs(TestCaseInTempDir):
 
 
 class TestCopyTree(TestCaseInTempDir):
-    
+
     def test_copy_basic_tree(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         osutils.copy_tree('source', 'target')
@@ -1415,7 +1432,7 @@ class TestSetUnsetEnv(TestCase):
 
     def test_unicode(self):
         """Environment can only contain plain strings
-        
+
         So Unicode strings must be encoded.
         """
         uni_val, env_val = probe_unicode_in_user_encoding()

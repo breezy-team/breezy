@@ -55,7 +55,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
             wt.unlock()
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
-        
+
     def test_trivial_lock_tree_write_unlock(self):
         """Locking for tree write is ok when the branch is not locked."""
         wt = self.make_branch_and_tree('.')
@@ -70,7 +70,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
             wt.unlock()
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
-        
+
     def test_trivial_lock_tree_write_branch_read_locked(self):
         """It is ok to lock_tree_write when the branch is read locked."""
         wt = self.make_branch_and_tree('.')
@@ -81,7 +81,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             wt.lock_tree_write()
         except errors.ReadOnlyError:
-            # When ReadOnlyError is raised, it indicates that the 
+            # When ReadOnlyError is raised, it indicates that the
             # workingtree shares its lock with the branch, which is what
             # the git/hg/bzr0.6 formats do.
             # in this case, no lock should have been taken - but the tree
@@ -99,7 +99,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.is_locked())
         self.assertTrue(wt.branch.is_locked())
         wt.branch.unlock()
-        
+
     def _test_unlock_with_lock_method(self, methodname):
         """Create a tree and then test its unlocking behaviour.
 
@@ -109,20 +109,20 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # the tree should do a flush().
         # we test that by changing the inventory using set_root_id
         tree = self.make_branch_and_tree('tree')
-        # prepare for a series of changes that will modify the 
+        # prepare for a series of changes that will modify the
         # inventory
         getattr(tree, methodname)()
         # note that we dont have a try:finally here because of two reasons:
-        # firstly there will only be errors reported if the test fails, and 
+        # firstly there will only be errors reported if the test fails, and
         # when it fails thats ok as long as the test suite cleanup still works,
-        # which it will as the lock objects are released (thats where the 
-        # warning comes from.  Secondly, it is hard in this test to be 
+        # which it will as the lock objects are released (thats where the
+        # warning comes from.  Secondly, it is hard in this test to be
         # sure that we've got the right interactions between try:finally
         # and the lock/unlocks we are doing.
         getattr(tree, methodname)()
         # this should really do something within the public api
         # e.g. mkdir('foo') but all the mutating methods at the
-        # moment trigger inventory writes and thus will not 
+        # moment trigger inventory writes and thus will not
         # let us trigger a read-when-dirty situation.
         old_root = tree.get_root_id()
         tree.set_root_id('new-root')
@@ -142,10 +142,10 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
 
     def test_unlock_from_tree_write_lock_flushes(self):
         self._test_unlock_with_lock_method("lock_tree_write")
-        
+
     def test_unlock_from_write_lock_flushes(self):
         self._test_unlock_with_lock_method("lock_write")
-        
+
     def test_unlock_branch_failures(self):
         """If the branch unlock fails the tree must still unlock."""
         # The public interface for WorkingTree requires a branch, but
@@ -155,17 +155,17 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # in order to test that implementations which *do* unlock via the branch
         # do so correctly, we unlock the branch after locking the working tree.
         # The next unlock on working tree should trigger a LockNotHeld exception
-        # from the branch object, which must be exposed to the caller. To meet 
+        # from the branch object, which must be exposed to the caller. To meet
         # our object model - where locking a tree locks its branch, and
-        # unlocking a branch does not unlock a working tree, *even* for 
+        # unlocking a branch does not unlock a working tree, *even* for
         # all-in-one implementations like bzr 0.6, git, and hg, implementations
-        # must have some separate counter for each object, so our explicit 
-        # unlock should trigger some error on all implementations, and 
+        # must have some separate counter for each object, so our explicit
+        # unlock should trigger some error on all implementations, and
         # requiring that to be LockNotHeld seems reasonable.
         #
         # we use this approach rather than decorating the Branch, because the
         # public interface of WorkingTree does not permit altering the branch
-        # object - and we cannot tell which attribute might allow us to 
+        # object - and we cannot tell which attribute might allow us to
         # backdoor-in and change it reliably. For implementation specific tests
         # we can do such skullduggery, but not for interface specific tests.
         # And, its simpler :)
@@ -203,7 +203,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
             try:
                 wt.lock_read()
             except errors.LockError:
-                # any error here means the locks are exclusive in some 
+                # any error here means the locks are exclusive in some
                 # manner
                 self.assertFalse(wt.is_locked())
                 self.assertFalse(wt.branch.is_locked())
@@ -217,7 +217,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
 
     def test_failing_to_lock_write_branch_does_not_lock(self):
         """If the branch cannot be write locked, dont lock the tree."""
-        # all implementations of branch are required to treat write 
+        # all implementations of branch are required to treat write
         # locks as blocking (compare to repositories which are not required
         # to do so).
         # Accordingly we test this by opening the branch twice, and locking the
@@ -253,7 +253,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
             try:
                 wt.lock_tree_write()
             except errors.LockError:
-                # any error here means the locks are exclusive in some 
+                # any error here means the locks are exclusive in some
                 # manner
                 self.assertFalse(wt.is_locked())
                 self.assertFalse(wt.branch.is_locked())

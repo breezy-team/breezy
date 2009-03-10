@@ -71,9 +71,9 @@ def _pretty_needs_read_lock(unbound):
 
     This decorator can be applied to methods of any class with lock_read() and
     unlock() methods.
-    
+
     Typical usage:
-        
+
     class Branch(...):
         @needs_read_lock
         def branch_method(self, ...):
@@ -124,9 +124,9 @@ def _fast_needs_read_lock(unbound):
 
     This decorator can be applied to methods of any class with lock_read() and
     unlock() methods.
-    
+
     Typical usage:
-        
+
     class Branch(...):
         @needs_read_lock
         def branch_method(self, ...):

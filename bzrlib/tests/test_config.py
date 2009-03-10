@@ -425,7 +425,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         locations = config.locations_config_filename()
         config.ensure_config_dir_exists()
         local_url = urlutils.local_path_to_url('branch')
-        open(locations, 'wb').write('[%s]\nnickname = foobar' 
+        open(locations, 'wb').write('[%s]\nnickname = foobar'
                                     % (local_url,))
         self.assertEqual('foobar', branch.nick)
 
@@ -436,7 +436,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         locations = config.locations_config_filename()
         config.ensure_config_dir_exists()
-        open(locations, 'wb').write('[%s/branch]\nnickname = barry' 
+        open(locations, 'wb').write('[%s/branch]\nnickname = barry'
                                     % (osutils.getcwd().encode('utf8'),))
         self.assertEqual('barry', branch.nick)
 
