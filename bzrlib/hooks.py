@@ -137,7 +137,7 @@ class HookPoint(object):
 
     def __init__(self, name, doc, introduced, deprecated):
         """Create a HookPoint.
-        
+
         :param name: The name of the hook, for clients to use when registering.
         :param doc: The docs for the hook.
         :param introduced: When the hook was introduced (e.g. (0, 15)).
@@ -153,7 +153,7 @@ class HookPoint(object):
 
     def docs(self):
         """Generate the documentation for this HookPoint.
-        
+
         :return: A string terminated in \n.
         """
         strings = []
