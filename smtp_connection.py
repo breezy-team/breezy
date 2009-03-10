@@ -80,7 +80,16 @@ class SMTPConnection(object):
         # If this fails, it just returns an error, but it shouldn't raise an
         # exception unless something goes really wrong (in which case we want
         # to fail anyway).
-        self._connection.starttls()
+        try:
+            self._connection.starttls()
+        except smtplib.SMTPException, e:
+            if e.args[0] == 'STARTTLS extension not supported by server.':
+                # python2.6 changed to raising an exception here; we can't
+                # really do anything else without it so just continue
+                # <https://bugs.edge.launchpad.net/bzr-email/+bug/335332>
+                pass
+            else:
+                raise
 
     def _authenticate(self):
         """If necessary authenticate yourself to the server."""
