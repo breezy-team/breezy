@@ -58,7 +58,7 @@ from bzrlib.versionedfile import (
 from bzrlib.plugins.groupcompress import errors as gc_errors
 
 _USE_LZMA = False and (pylzma is not None)
-_NO_LABELS = False
+_NO_LABELS = True
 _FAST = False
 
 def encode_base128_int(val):
@@ -312,7 +312,11 @@ class GroupCompressBlock(object):
             z_len = 0
             info_len = 0
         z_bytes.append(compress(content))
-        chunks = [self.GCB_LZ_HEADER,
+        if _USE_LZMA:
+            header = self.GCB_LZ_HEADER
+        else:
+            header = self.GCB_HEADER
+        chunks = [header,
                   '%d\n' % (z_len,),
                   '%d\n' % (info_len,),
                   #'%d\n' % (c_len,),
