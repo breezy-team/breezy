@@ -1516,13 +1516,17 @@ class PendingAncestryResult(object):
         raise NotImplementedError(self.get_recipe)
 
     def get_keys(self):
-        """See SearchResult.get_keys."""
-        keys = [key for (key, parents) in
-                self.repo.get_graph().iter_ancestry(self.heads)]
-        if keys[-1] != 'null:':
-            raise AssertionError(
-                "Ancestry ends with %r, not null." % (keys[-1],))
-        del keys[-1]
+        """See SearchResult.get_keys.
+        
+        Returns all the keys for the ancestry of the heads, excluding
+        NULL_REVISION.
+        """
+        return self._get_keys(self.repo.get_graph())
+    
+    def _get_keys(self, graph):
+        NULL_REVISION = revision.NULL_REVISION
+        keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
+                if key != NULL_REVISION]
         return keys
 
 
