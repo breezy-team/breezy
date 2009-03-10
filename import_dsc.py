@@ -29,19 +29,16 @@ from base64 import (
         standard_b64decode,
         standard_b64encode,
         )
-import gzip
 try:
     import hashlib as md5
 except ImportError:
     import md5
 import os
 import re
-import select
 import shutil
 import stat
 from subprocess import Popen, PIPE
 from StringIO import StringIO
-import tarfile
 import tempfile
 
 from debian_bundle import deb822
@@ -52,14 +49,11 @@ from bzrlib import (
                     bzrdir,
                     generate_ids,
                     osutils,
-                    transport,
                     urlutils,
                     )
 from bzrlib.config import ConfigObj
-from bzrlib.errors import (FileExists,
-        BzrError,
+from bzrlib.errors import (
         BzrCommandError,
-        UncommittedChanges,
         NotBranchError,
         AlreadyBranchError,
         )
@@ -69,22 +63,17 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info, mutter
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import get_transport
-from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.bzrtools.upstream_import import (
                                                      names_of_files,
                                                      add_implied_parents,
                                                      )
 
-from bzrlib.plugins.builddeb.errors import (ImportError,
-                OnlyImportSingleDsc,
+from bzrlib.plugins.builddeb.errors import (
                 PristineTarError,
                 UnknownType,
                 UpstreamAlreadyImported,
                 UpstreamBranchAlreadyMerged,
-                )
-from bzrlib.plugins.builddeb.merge_upstream import (make_upstream_tag,
-                upstream_tag_to_version,
                 )
 from bzrlib.plugins.builddeb.util import strip_changelog_message
 
@@ -101,14 +90,6 @@ underscore_x = ['-x'] * len(exclude)
 ignore_arguments = []
 map(ignore_arguments.extend, zip(underscore_x, exclude))
 ignore_arguments = ignore_arguments + ['-x', '*,v']
-
-
-def import_tar(tree, tar_input, file_ids_from=None):
-    """Replace the contents of a working directory with tarfile contents.
-    The tarfile may be a gzipped stream.  File ids will be updated.
-    """
-    tar_file = tarfile.open('lala', 'r', tar_input)
-    import_archive(tree, tar_file, file_ids_from=file_ids_from)
 
 
 class DirWrapper(object):
@@ -202,7 +183,7 @@ def top_directory(path):
     """Return the top directory given in a path."""
     parts = osutils.splitpath(osutils.normpath(path))
     if len(parts) > 0:
-      return parts[0]
+        return parts[0]
     return ''
 
 
@@ -211,12 +192,12 @@ def common_directory(names):
     prefixes = set()
     prefixes.update(map(top_directory, names))
     if '' in prefixes:
-      prefixes.remove('')
+        prefixes.remove('')
     if len(prefixes) != 1:
-      return None
+        return None
     prefix = prefixes.pop()
     if prefix == '':
-      return None
+        return None
     return prefix
 
 
@@ -365,519 +346,6 @@ class DscComp(object):
     if v1 > v2:
       return 1
     return -1
-
-
-class DscImporter(object):
-
-  transport = None
-
-  def __init__(self, dsc_files):
-    self.dsc_files = dsc_files
-
-  def import_orig(self, tree, origname, version, last_upstream=None,
-                  transport=None, base_dir=None, dangling_tree=None):
-    f = open_file(origname, transport, base_dir=base_dir)[0]
-    try:
-      if self.orig_target is not None:
-        # Make the orig dir and copy the orig tarball in to it
-        if not os.path.isdir(self.orig_target):
-          os.mkdir(self.orig_target)
-        new_filename = os.path.join(self.orig_target,
-                                    os.path.basename(origname))
-        contents = f.read()
-        new_f = open(new_filename, 'wb')
-        try:
-          new_f.write(contents)
-        finally:
-          new_f.close()
-        f.close()
-        f = open(new_filename)
-      dangling_revid = None
-      if last_upstream is not None:
-        dangling_revid = tree.branch.last_revision()
-        dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
-        old_upstream_revid = tree.branch.tags.lookup_tag(
-                                 make_upstream_tag(last_upstream))
-        tree.revert(None,
-                    tree.branch.repository.revision_tree(old_upstream_revid))
-      file_ids_from = []
-      if dangling_tree is not None:
-        file_ids_from = [dangling_tree]
-      import_tar(tree, f, file_ids_from=file_ids_from)
-      if last_upstream is not None:
-        tree.set_parent_ids([old_upstream_revid])
-        revno = tree.branch.revision_id_to_revno(old_upstream_revid)
-        tree.branch.set_last_revision_info(revno, old_upstream_revid)
-      tree.commit('import upstream from %s' % (os.path.basename(origname)))
-      upstream_version = version.upstream_version
-      tree.branch.tags.set_tag(make_upstream_tag(upstream_version),
-                               tree.branch.last_revision())
-    finally:
-      f.close()
-    return dangling_revid
-
-  def import_native(self, tree, origname, version, last_upstream=None,
-                    transport=None, base_dir=None):
-    f = open_file(origname, transport, base_dir=base_dir)[0]
-    try:
-      dangling_revid = None
-      dangling_tree = None
-      old_upstream_tree = None
-      if last_upstream is not None:
-        old_upstream_revid = tree.branch.tags.lookup_tag(
-                                 make_upstream_tag(last_upstream))
-        old_upstream_tree = tree.branch.repository.revision_tree(
-                                  old_upstream_revid)
-        if old_upstream_revid != tree.branch.last_revision():
-          dangling_revid = tree.branch.last_revision()
-          dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
-        tree.revert(None,
-                    tree.branch.repository.revision_tree(old_upstream_revid))
-      file_ids_from = []
-      if dangling_tree is not None:
-        file_ids_from = [dangling_tree]
-      import_tar(tree, f, file_ids_from=file_ids_from)
-      if last_upstream is not None:
-        tree.set_parent_ids([old_upstream_revid])
-        revno = tree.branch.revision_id_to_revno(old_upstream_revid)
-        tree.branch.set_last_revision_info(revno, old_upstream_revid)
-      if dangling_revid is not None:
-        tree.add_parent_tree_id(dangling_revid)
-      config_filename = '.bzr-builddeb/default.conf'
-      to_add = False
-      to_add_dir = False
-      if not tree.has_filename(config_filename):
-        if not tree.has_filename(os.path.dirname(config_filename)):
-          os.mkdir(os.path.join(tree.basedir,
-                                os.path.dirname(config_filename)))
-          to_add_dir = True
-        conf = open(os.path.join(tree.basedir, config_filename), 'wb')
-        conf.close()
-        to_add = True
-      config_ = ConfigObj(os.path.join(tree.basedir, config_filename))
-      try:
-        config_['BUILDDEB']
-      except KeyError:
-        config_['BUILDDEB'] = {}
-      try:
-        current_value = config_['BUILDDEB']['native']
-      except KeyError:
-        current_value = False
-      if not current_value:
-        config_['BUILDDEB']['native'] = True
-        config_.write()
-      if to_add_dir:
-        file_id = None
-        parent = os.path.dirname(config_filename)
-        if old_upstream_tree is not None:
-          file_id = old_upstream_tree.path2id(parent)
-        if file_id is not None:
-          tree.add([parent], [file_id])
-        else:
-          tree.add([parent])
-      if to_add:
-        file_id = None
-        if old_upstream_tree is not None:
-          file_id = old_upstream_tree.path2id(config_filename)
-        if file_id is not None:
-          tree.add([config_filename], [file_id])
-        else:
-          tree.add([config_filename])
-      if os.path.isfile(os.path.join(tree.basedir, 'debian', 'rules')):
-        os.chmod(os.path.join(tree.basedir, 'debian', 'rules'),
-                 (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|
-                  stat.S_IXOTH))
-      tree.commit('import package from %s' % (os.path.basename(origname)))
-      upstream_version = version.upstream_version
-      tree.branch.tags.set_tag(make_upstream_tag(upstream_version),
-                               tree.branch.last_revision())
-    finally:
-      f.close()
-
-  def _make_filter_proc(self):
-    """Create a filterdiff subprocess."""
-    filter_cmd = ['filterdiff'] + ignore_arguments
-    filter_proc = Popen(filter_cmd, stdin=PIPE, stdout=PIPE)
-    return filter_proc
-
-  def _patch_tree(self, patch, basedir):
-    """Patch a tree located at basedir."""
-    filter_proc = self._make_filter_proc()
-    patch_cmd =  ['patch', '-g', '0', '--strip', '1', '--quiet', '-f',
-                  '--directory', basedir]
-    patch_proc = Popen(patch_cmd, stdin=filter_proc.stdout, close_fds=True)
-    for line in patch:
-      filter_proc.stdin.write(line)
-      filter_proc.stdin.flush()
-    filter_proc.stdin.close()
-    r = patch_proc.wait()
-    if r != 0:
-      raise BzrError('patch failed')
-
-  def _get_touched_paths(self, patch):
-    filter_proc = self._make_filter_proc()
-    cmd = ['lsdiff', '--strip', '1']
-    child_proc = Popen(cmd, stdin=filter_proc.stdout, stdout=PIPE,
-                       close_fds=True)
-    output = ''
-    for line in patch:
-      filter_proc.stdin.write(line)
-      filter_proc.stdin.flush()
-      while select.select([child_proc.stdout], [], [], 0)[0]:
-          output += child_proc.stdout.read(1)
-    filter_proc.stdin.close()
-    output += child_proc.stdout.read()
-    touched_paths = []
-    for filename in output.split('\n'):
-      if filename.endswith('\n'):
-        filename = filename[:-1]
-      if filename != "":
-        touched_paths.append(filename)
-    r = child_proc.wait()
-    if r != 0:
-      raise BzrError('lsdiff failed')
-    return touched_paths
-
-  def _add_implied_parents(self, tree, implied_parents, path,
-                           file_ids_from=None):
-    parent = os.path.dirname(path)
-    if parent == '':
-      return
-    if parent in implied_parents:
-      return
-    implied_parents.add(parent)
-    self._add_implied_parents(tree, implied_parents, parent,
-                              file_ids_from=file_ids_from)
-    if file_ids_from is None:
-      tree.add([parent])
-    else:
-      file_id = file_ids_from.path2id(parent)
-      if file_id is None:
-        tree.add([parent])
-      else:
-        tree.add([parent], [file_id])
-
-  def _update_path_info(self, tree, touched_paths, other_parent, main_parent):
-    implied_parents = set()
-    for path in touched_paths:
-      if not tree.has_filename(path):
-        tree.remove([path], verbose=False)
-      elif not other_parent.has_filename(path):
-        self._add_implied_parents(tree, implied_parents, path,
-                                  file_ids_from=other_parent)
-        tree.add([path])
-      elif not (main_parent.has_filename(path) and
-                other_parent.has_filename(path)):
-        self._add_implied_parents(tree, implied_parents, path,
-                                  file_ids_from=other_parent)
-        file_id = other_parent.path2id(path)
-        if file_id is None:
-          tree.add([path])
-        else:
-          tree.add([path], [file_id])
-
-  def _get_upstream_tree(self, version, tree):
-    upstream_version = version.upstream_version
-    up_revid = tree.branch.tags.lookup_tag(make_upstream_tag(upstream_version))
-    return tree.branch.repository.revision_tree(up_revid)
-
-
-  def import_diff(self, tree, diffname, version, dangling_revid=None,
-                  transport=None, base_dir=None, no_add_extra_parent=False):
-    up_tree = self._get_upstream_tree(version, tree)
-    if dangling_revid is None:
-      current_revid = tree.branch.last_revision()
-    else:
-      current_revid = dangling_revid
-    current_tree = tree.branch.repository.revision_tree(current_revid)
-    tree.revert(None, up_tree)
-    f = open_file(diffname, transport, base_dir=base_dir)[0]
-    f = gzip.GzipFile(fileobj=f)
-    try:
-      self._patch_tree(f, tree.basedir)
-      if os.path.isfile(os.path.join(tree.basedir, 'debian', 'rules')):
-        os.chmod(os.path.join(tree.basedir, 'debian', 'rules'),
-                 (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|
-                  stat.S_IXOTH))
-      f.seek(0)
-      touched_paths = self._get_touched_paths(f)
-      self._update_path_info(tree, touched_paths, current_tree, up_tree)
-      if (not no_add_extra_parent and dangling_revid is not None):
-        tree.add_parent_tree_id(dangling_revid)
-      message = 'merge packaging changes from %s' % \
-                  (os.path.basename(diffname))
-      author = None
-      changelog_path = os.path.join(tree.basedir, 'debian', 'changelog')
-      if os.path.exists(changelog_path):
-        changelog_contents = open(changelog_path).read()
-        changelog = Changelog(file=changelog_contents, max_blocks=1)
-        if changelog._blocks:
-          author = changelog._blocks[0].author
-          changes = strip_changelog_message(changelog._blocks[0].changes())
-          message = ''
-          sep = ''
-          for change in reversed(changes):
-            message = change + sep + message
-            sep = "\n"
-      tree.commit(message, author=author)
-    finally:
-      f.close()
-
-  def _add_to_safe(self, file, version, type, base, transport):
-    found = False
-    for safe_file in self.safe_files:
-      if file == safe_file[0]:
-        found = True
-        break
-    if not found:
-      self.safe_files.append((file, version, type, base, transport))
-
-  def _check_orig_exists(self, version):
-    found = False
-    for safe_file in self.safe_files:
-      if safe_file[0].endswith("_%s.orig.tar.gz" % version.upstream_version):
-        found = True
-        break
-    if found == False:
-      raise ImportError("There is no upstream tarball corresponding to %s" % \
-                          version)
-
-  def _check_package_name(self, name):
-    if self.package_name is not None and name != self.package_name:
-      raise ImportError("The reported package name has changed from %s to "
-                        "%s. I don't know what to do in this case. If this "
-                        "case should be handled, please contact the author "
-                        "with details of your case, and the expected outcome."
-                        % (self.package_name, name))
-    self.package_name = name
-
-  def _decode_dsc(self, dsc, dscname, incremental=False):
-    orig_file = None
-    diff_file = None
-    native_file = None
-    self._check_package_name(dsc['Source'])
-    for file_details in dsc['files']:
-      name = file_details['name']
-      if name.endswith('.orig.tar.gz'):
-        if orig_file is not None:
-          raise ImportError("%s contains more than one .orig.tar.gz" % dscname)
-        orig_file = name
-      elif name.endswith('.diff.gz'):
-        if diff_file is not None:
-          raise ImportError("%s contains more than one .diff.gz" % dscname)
-        diff_file = name
-      elif name.endswith('.tar.gz'):
-        if native_file is not None:
-          raise ImportError("%s contains more than one .tar.gz" % dscname)
-        native_file = name
-    version = Version(dsc['Version'])
-    if self.transport is not None:
-      base_dir = urlutils.split(dscname)[0]
-    else:
-      base_dir = None
-    dsc_transport = self.cache.get_transport(dscname)
-    if native_file is not None:
-      if diff_file is not None or orig_file is not None:
-        raise ImportError("%s contains both a native package and a normal "
-                          "package." % dscname)
-      self._add_to_safe(native_file, version, 'native', base_dir,
-                        dsc_transport)
-    else:
-      if diff_file is None:
-        raise ImportError("%s contains only a .orig.tar.gz, it must contain a "
-                          ".diff.gz as well" % dscname)
-      if orig_file is not None:
-        self._add_to_safe(orig_file, version, 'orig', base_dir, dsc_transport)
-      if not incremental:
-        self._check_orig_exists(version)
-      self._add_to_safe(diff_file, version, 'diff', base_dir, dsc_transport)
-
-  def import_dsc(self, target_dir, orig_target=None):
-    if os.path.exists(target_dir):
-      raise FileExists(target_dir)
-    self.orig_target = orig_target
-    self.cache = DscCache(transport=self.transport)
-    self.dsc_files.sort(cmp=DscComp(self.cache).cmp)
-    self.safe_files = []
-    self.package_name = None
-    for dscname in self.dsc_files:
-      dsc = self.cache.get_dsc(dscname)
-      self._decode_dsc(dsc, dscname)
-    os.mkdir(target_dir)
-    format = bzrdir.format_registry.make_bzrdir('default')
-    branch  = bzrdir.BzrDir.create_branch_convenience(target_dir,
-                                                      format=format)
-    tree = branch.bzrdir.open_workingtree()
-    tree.lock_write()
-    try:
-      last_upstream = None
-      dangling_revid = None
-      last_native = False
-      for (filename, version, type, base_dir, transport) in self.safe_files:
-        if type == 'orig':
-          if last_native:
-            last_upstream = None
-          dangling_revid = self.import_orig(tree, filename, version,
-                                            last_upstream=last_upstream,
-                                            transport=transport,
-                                            base_dir=base_dir)
-          info("imported %s" % filename)
-          last_upstream = version.upstream_version
-          last_native = False
-        elif type == 'diff':
-          self.import_diff(tree, filename, version,
-                           dangling_revid=dangling_revid,
-                           transport=transport, base_dir=base_dir)
-          info("imported %s" % filename)
-          dangling_revid = None
-          last_native = False
-        elif type == 'native':
-          self.import_native(tree, filename, version,
-                             last_upstream=last_upstream,
-                             transport=transport, base_dir=base_dir)
-          last_upstream = version.upstream_version
-          last_native = True
-          info("imported %s" % filename)
-    finally:
-      tree.unlock()
-
-  def _find_last_upstream(self, tree, version):
-    last_upstream = None
-    previous_upstream = None
-    tag_dict = tree.branch.tags.get_reverse_tag_dict()
-    for rev in reversed(tree.branch.revision_history()):
-      if rev in tag_dict:
-        for poss_tag in tag_dict[rev]:
-          poss_version = upstream_tag_to_version(poss_tag)
-          if poss_version is None:
-            continue
-          if poss_version < version:
-            return poss_version, previous_upstream
-          previous_upstream = poss_version
-    return None, previous_upstream
-
-  def incremental_import_dsc(self, target, orig_target=None):
-    self.orig_target = orig_target
-    tree = WorkingTree.open_containing(target)[0]
-    if tree.changes_from(tree.basis_tree()).has_changed():
-      raise UncommittedChanges(tree)
-    self.cache = DscCache(transport=self.transport)
-    if len(self.dsc_files) > 1:
-      raise OnlyImportSingleDsc
-    self.safe_files = []
-    self.package_name = None
-    dsc = self.cache.get_dsc(self.dsc_files[0])
-    self._decode_dsc(dsc, self.dsc_files[0], incremental=True)
-    tree.lock_write()
-    try:
-      current_rev_id = tree.branch.last_revision()
-      current_revno = tree.branch.revision_id_to_revno(current_rev_id)
-      dangling_revid = None
-      merge_base = None
-      for (filename, version, type, base_dir, transport) in self.safe_files:
-        if type == 'diff':
-          self.import_diff(tree, filename, version,
-                           dangling_revid=dangling_revid,
-                           transport=transport, base_dir=base_dir,
-                           no_add_extra_parent=True)
-          info("imported %s" % filename)
-          dangling_revid = tree.branch.last_revision()
-          tree.pull(tree.branch, overwrite=True, stop_revision=current_rev_id)
-          tree.merge_from_branch(tree.branch, to_revision=dangling_revid,
-                  from_revision=merge_base)
-        elif type == 'orig':
-          dangling_tree = None
-          last_upstream, previous_upstream = \
-              self._find_last_upstream(tree, version)
-          if last_upstream is None:
-            dangling_revid = tree.branch.tags.lookup_tag(
-                make_upstream_tag(previous_upstream))
-            dangling_tree = tree.branch.repository.revision_tree(dangling_revid)
-            tree.revert(None,
-                tree.branch.repository.revision_tree(NULL_REVISION),
-                backups=False)
-            tree.set_parent_ids([])
-            tree.branch.set_last_revision_info(0, NULL_REVISION)
-          dangling_revid = self.import_orig(tree, filename, version,
-                                            last_upstream=last_upstream,
-                                            transport=transport,
-                                            dangling_tree=dangling_tree,
-                                            base_dir=base_dir)
-          if last_upstream is None:
-            merge_base = NULL_REVISION
-            dangling_revid = current_rev_id
-          info("imported %s" % filename)
-        elif type == 'native':
-          assert False, "Native packages not yet supported"
-    finally:
-      tree.unlock()
-
-
-class SourcesImporter(DscImporter):
-  """For importing all the .dsc files from a Sources file."""
-
-  def __init__(self, base, sources_path, other_sources=[]):
-    """Create a SourcesImporter.
-
-    :param base: the base URI from which all paths should be interpreted.
-    :type base: string
-    :param sources_path: the path to the Sources file to import the
-                         packages from, relative to the base parameter.
-    :type base: string
-    """
-    self.base = urlutils.normalize_url(base)
-    if isinstance(sources_path, unicode):
-      sources_path = sources_path.encode('utf-8')
-    self.sources_path = sources_path
-    self.transport = get_transport(self.base)
-    sources_file = self.transport.get(self.sources_path)
-    if self.sources_path.endswith(".gz"):
-      sources_file = gzip.GzipFile(fileobj=sources_file)
-    dsc_files = []
-    for source in deb822.Sources.iter_paragraphs(sources_file):
-      base_dir = source['Directory']
-      if not self._check_basedir(base_dir):
-        continue
-      for file_info in source['files']:
-        name = file_info['name']
-        if name.endswith('.dsc'):
-          dsc_files.append(urlutils.join(base_dir, name))
-    dsc_files += other_sources
-    super(SourcesImporter, self).__init__(dsc_files)
-
-  def _check_basedir(self, base_dir):
-    return True
-
-
-class SnapshotImporter(SourcesImporter):
-  """Import all versions of a package recorded on snapshot.debian.net."""
-
-  def __init__(self, package_name, other_sources=[]):
-    base = 'http://snapshot.debian.net/archive/'
-    path = 'pool/%s/%s/source/Sources.gz' % (package_name[0], package_name)
-    super(SnapshotImporter, self).__init__(base, path, other_sources=other_sources)
-    warning("snapshot.debian.net has lost packages from before 12/03/2005, "
-            "only packages from after that date will be imported.")
-
-  def _check_basedir(self, base_dir):
-    import re
-    match = re.match(r'(?P<year>\d\d\d\d)/(?P<month>\d\d)/(?P<day>\d\d)',
-                     base_dir)
-    if match is not None:
-      year = int(match.group('year'))
-      if year < 2005:
-        return False
-      if year == 2005:
-        month = int(match.group('month'))
-        if month < 3:
-          return False
-        if month == 3:
-          day = int(match.group('day'))
-          if day < 13:
-            return False
-    return True
-
-# vim: ts=2 sts=2 sw=2
 
 
 class DistributionBranchSet(object):
@@ -2084,7 +1552,7 @@ class DistributionBranch(object):
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
-        to_transport = transport.get_transport(to_location)
+        to_transport = get_transport(to_location)
         to_transport.ensure_base()
         format = bzrdir.format_registry.make_bzrdir('default')
         try:
