@@ -221,6 +221,7 @@ class TestCHKInventory(TestCaseWithTransport):
             'chkinventory:\n',
             'revision_id: foo\n',
             'root_id: TREE_ROOT\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
             'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
@@ -231,8 +232,7 @@ class TestCHKInventory(TestCaseWithTransport):
         inv.revision_id = "foo"
         inv.root.revision = "bar"
         chk_bytes = self.get_chk_bytes()
-        chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
-                    parent_id_basename_index=True)
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         lines = chk_inv.to_lines()
         self.assertEqual([
             'chkinventory:\n',
@@ -250,15 +250,14 @@ class TestCHKInventory(TestCaseWithTransport):
         inv.root.revision = "bar"
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
-                                              parent_id_basename_index=True,
                                               search_key_name='hash-16-way')
         lines = chk_inv.to_lines()
         self.assertEqual([
             'chkinventory:\n',
-            'revision_id: foo\n',
-            'root_id: TREE_ROOT\n',
             'search_key_name: hash-16-way\n',
+            'root_id: TREE_ROOT\n',
             'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'revision_id: foo\n',
             'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
             ], lines)
         chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
@@ -463,8 +462,7 @@ class TestCHKInventory(TestCaseWithTransport):
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
         chk_bytes = self.get_chk_bytes()
-        base_inv = CHKInventory.from_inventory(chk_bytes, inv,
-            parent_id_basename_index=True)
+        base_inv = CHKInventory.from_inventory(chk_bytes, inv)
         a_entry = InventoryFile("A-id", "A", inv.root.file_id)
         a_entry.revision = "filerev"
         a_entry.executable = True
@@ -472,8 +470,7 @@ class TestCHKInventory(TestCaseWithTransport):
         a_entry.text_size = 1
         inv.add(a_entry)
         inv.revision_id = "expectedid"
-        reference_inv = CHKInventory.from_inventory(chk_bytes, inv,
-            parent_id_basename_index=True)
+        reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
         delta = [(None, "A",  "A-id", a_entry)]
         new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
         # new_inv should be the same as reference_inv.
@@ -516,14 +513,6 @@ class TestCHKInventory(TestCaseWithTransport):
             (False, True))],
             list(inv_1.iter_changes(inv_2)))
 
-    def test_parent_id_basename_to_file_id_index_off_by_default(self):
-        inv = Inventory()
-        inv.revision_id = "revid"
-        inv.root.revision = "rootrev"
-        chk_bytes = self.get_chk_bytes()
-        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        self.assertEqual(None, chk_inv.parent_id_basename_to_file_id)
-
     def test_parent_id_basename_to_file_id_index_enabled(self):
         inv = Inventory()
         inv.revision_id = "revid"
@@ -535,8 +524,7 @@ class TestCHKInventory(TestCaseWithTransport):
         inv["fileid"].text_size = 1
         # get fresh objects.
         chk_bytes = self.get_chk_bytes()
-        tmp_inv = CHKInventory.from_inventory(chk_bytes, inv,
-            parent_id_basename_index=True)
+        tmp_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(tmp_inv.to_lines())
         chk_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
         self.assertIsInstance(chk_inv.parent_id_basename_to_file_id, chk_map.CHKMap)

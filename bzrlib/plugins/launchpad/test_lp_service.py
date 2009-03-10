@@ -126,7 +126,7 @@ class TestURLInference(TestCase):
             NotLaunchpadBranch, service.get_web_url_from_branch_url,
             'bzr+ssh://example.com/~foo/bar/baz')
         self.assertEqual(
-            'bzr+ssh://example.com/~foo/bar/baz is not hosted on Launchpad.',
+            'bzr+ssh://example.com/~foo/bar/baz is not registered on Launchpad.',
             str(error))
 
     def test_dodgy_launchpad_url(self):

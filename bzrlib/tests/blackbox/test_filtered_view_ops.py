@@ -55,13 +55,13 @@ class TestViewFileOperations(TestCaseWithTransport):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('add')
         self.assertEquals('ignoring files outside view: a, b\n', err)
-        self.assertEquals('adding a\nadding b\nadd completed\n', out)
+        self.assertEquals('adding a\nadding b\n', out)
 
     def test_view_on_add_selected(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('add a')
         self.assertEquals('', err)
-        self.assertEquals('adding a\nadd completed\n', out)
+        self.assertEquals('adding a\n', out)
         out, err = self.run_bzr('add c', retcode=3)
         self.assertEquals('bzr: ERROR: Specified file "c" is outside the '
                           'current view: a, b\n', err)

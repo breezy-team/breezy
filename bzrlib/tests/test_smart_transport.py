@@ -1528,8 +1528,8 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
+            "please check connectivity and permissions ",
+            str(ex))
 
     def test_server_offset_serialisation(self):
         """The Smart protocol serialises offsets as a comma and \n string.
@@ -2385,21 +2385,12 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
         return response_handler
 
     def test_interrupted_by_error(self):
-        interrupted_body_stream = (
-            'oS' # successful response
-            's\0\0\0\x02le' # empty args
-            'b\0\0\0\x09chunk one' # first chunk
-            'b\0\0\0\x09chunk two' # second chunk
-            'oE' # error flag
-            's\0\0\0\x0el5:error3:abce' # bencoded error
-            'e' # message end
-            )
         response_handler = self.make_response_handler(interrupted_body_stream)
         stream = response_handler.read_streamed_body()
-        self.assertEqual('chunk one', stream.next())
-        self.assertEqual('chunk two', stream.next())
+        self.assertEqual('aaa', stream.next())
+        self.assertEqual('bbb', stream.next())
         exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
-        self.assertEqual(('error', 'abc'), exc.error_tuple)
+        self.assertEqual(('error', 'Boom!'), exc.error_tuple)
 
     def test_interrupted_by_connection_lost(self):
         interrupted_body_stream = (
@@ -2796,6 +2787,17 @@ class StubMediumRequest(object):
         self.calls.append('finished_writing')
 
 
+interrupted_body_stream = (
+    'oS' # status flag (success)
+    's\x00\x00\x00\x08l4:argse' # args struct ('args,')
+    'b\x00\x00\x00\x03aaa' # body part ('aaa')
+    'b\x00\x00\x00\x03bbb' # body part ('bbb')
+    'oE' # status flag (error)
+    's\x00\x00\x00\x10l5:error5:Boom!e' # err struct ('error', 'Boom!')
+    'e' # EOM
+    )
+
+
 class TestResponseEncodingProtocolThree(tests.TestCase):
 
     def make_response_encoder(self):
@@ -2816,6 +2818,22 @@ class TestResponseEncodingProtocolThree(tests.TestCase):
             's\x00\x00\x00\x20l13:UnknownMethod11:method namee'
             # end of message
             'e')
+
+    def test_send_broken_body_stream(self):
+        encoder, out_stream = self.make_response_encoder()
+        encoder._headers = {}
+        def stream_that_fails():
+            yield 'aaa'
+            yield 'bbb'
+            raise Exception('Boom!')
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('args',), body_stream=stream_that_fails())
+        encoder.send_response(response)
+        expected_response = (
+            'bzr message 3 (bzr 1.6)\n'  # protocol marker
+            '\x00\x00\x00\x02de' # headers dict (empty)
+            + interrupted_body_stream)
+        self.assertEqual(expected_response, out_stream.getvalue())
 
 
 class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
@@ -2855,17 +2873,30 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.responder.send_response(response)
         self.assertWriteCount(1)
 
-    def test_send_response_with_body_stream_writes_once_per_chunk(self):
-        """A normal response with a stream body is written to the medium
-        writes to the medium once per chunk.
-        """
+    def test_send_response_with_body_stream_buffers_writes(self):
+        """A normal response with a stream body writes to the medium once."""
         # Construct a response with stream with 2 chunks in it.
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
         self.responder.send_response(response)
-        # We will write 3 times: exactly once for each chunk, plus a final
-        # write to end the response.
-        self.assertWriteCount(3)
+        # We will write just once, despite the multiple chunks, due to
+        # buffering.
+        self.assertWriteCount(1)
+
+    def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
+        """When there are many chunks (>100), multiple writes will occur rather
+        than buffering indefinitely.
+        """
+        # Construct a response with stream with 40 chunks in it.  Every chunk
+        # triggers 3 buffered writes, so we expect > 100 buffered writes, but <
+        # 200.
+        body_stream = ['chunk %d' % count for count in range(40)]
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('arg', 'arg'), body_stream=body_stream)
+        self.responder.send_response(response)
+        # The write buffer is flushed every 100 buffered writes, so we expect 2
+        # actual writes.
+        self.assertWriteCount(2)
 
 
 class TestSmartClientUnicode(tests.TestCase):

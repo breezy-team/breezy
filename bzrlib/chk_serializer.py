@@ -46,10 +46,8 @@ class CHKSerializerSubtree(xml6.Serializer_v6):
         else:
             return xml6.Serializer_v6._unpack_entry(self, elt)
 
-    def __init__(self, node_size, parent_id_basename_index,
-                 search_key_name):
+    def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
-        self.parent_id_basename_index = parent_id_basename_index
         self.search_key_name = search_key_name
 
 
@@ -60,16 +58,12 @@ class CHKSerializer(xml5.Serializer_v5):
     revision_format_num = None
     support_altered_by_hack = False
 
-    def __init__(self, node_size, parent_id_basename_index,
-                 search_key_name):
+    def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
-        self.parent_id_basename_index = parent_id_basename_index
         self.search_key_name = search_key_name
 
 
-chk_serializer_subtree = CHKSerializerSubtree(4096, False, 'plain')
-chk_serializer = CHKSerializer(4096, False, 'plain')
-chk_serializer_subtree_parent_id = CHKSerializerSubtree(4096, True, 'plain')
-chk_serializer_parent_id = CHKSerializer(4096, True, 'plain')
-chk_serializer_16_parent_id = CHKSerializer(4096, True, 'hash-16-way')
-chk_serializer_255_parent_id = CHKSerializer(4096, True, 'hash-255-way')
+chk_serializer_subtree_parent_id = CHKSerializerSubtree(4096, 'plain')
+chk_serializer_parent_id = CHKSerializer(4096, 'plain')
+chk_serializer_16_parent_id = CHKSerializer(4096, 'hash-16-way')
+chk_serializer_255_parent_id = CHKSerializer(4096, 'hash-255-way')

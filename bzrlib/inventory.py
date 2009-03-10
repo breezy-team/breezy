@@ -929,6 +929,38 @@ class CommonInventory(object):
         descend(self.root, u'')
         return accum
 
+    def path2id(self, name):
+        """Walk down through directories to return entry of last component.
+
+        names may be either a list of path components, or a single
+        string, in which case it is automatically split.
+
+        This returns the entry of the last component in the path,
+        which may be either a file or a directory.
+
+        Returns None IFF the path is not found.
+        """
+        if isinstance(name, basestring):
+            name = osutils.splitpath(name)
+
+        # mutter("lookup path %r" % name)
+
+        parent = self.root
+        if parent is None:
+            return None
+        for f in name:
+            try:
+                children = getattr(parent, 'children', None)
+                if children is None:
+                    return None
+                cie = children[f]
+                parent = cie
+            except KeyError:
+                # or raise an error?
+                return None
+
+        return parent.file_id
+
 
 class Inventory(CommonInventory):
     """Inventory of versioned files in a tree.
@@ -1087,6 +1119,7 @@ class Inventory(CommonInventory):
         return deepcopy(self)
 
     def __iter__(self):
+        """Iterate over all file-ids."""
         return iter(self._byid)
 
     def __len__(self):
@@ -1242,38 +1275,6 @@ class Inventory(CommonInventory):
             p.insert(0, parent.file_id)
         return p
 
-    def path2id(self, name):
-        """Walk down through directories to return entry of last component.
-
-        names may be either a list of path components, or a single
-        string, in which case it is automatically split.
-
-        This returns the entry of the last component in the path,
-        which may be either a file or a directory.
-
-        Returns None IFF the path is not found.
-        """
-        if isinstance(name, basestring):
-            name = osutils.splitpath(name)
-
-        # mutter("lookup path %r" % name)
-
-        parent = self.root
-        if parent is None:
-            return None
-        for f in name:
-            try:
-                children = getattr(parent, 'children', None)
-                if children is None:
-                    return None
-                cie = children[f]
-                parent = cie
-            except KeyError:
-                # or raise an error?
-                return None
-
-        return parent.file_id
-
     def has_filename(self, names):
         return bool(self.path2id(names))
 
@@ -1367,16 +1368,30 @@ class Inventory(CommonInventory):
 
 
 class CHKInventory(CommonInventory):
-    """A inventory persisted in a CHK store.
+    """An inventory persisted in a CHK store.
+
+    By design, a CHKInventory is immutable so many of the methods
+    supported by Inventory - add, rename, apply_delta, etc - are *not*
+    supported. To create a new CHKInventory, use create_by_apply_delta()
+    or from_inventory(), say.
+
+    Internally, a CHKInventory has one or two CHKMaps:
+
+    * id_to_entry - a map from (file_id,) => InventoryEntry as bytes
+    * parent_id_basename_to_file_id - a map from (parent_id, basename_utf8)
+        => file_id as bytes
+
+    The second map is optional and not present in early CHkRepository's.
 
     No caching is performed: every method call or item access will perform
-    requests to the storage layer. As such, keep references to objects you want
-    to reuse.
+    requests to the storage layer. As such, keep references to objects you
+    want to reuse.
     """
 
     def __init__(self, search_key_name):
         CommonInventory.__init__(self)
-        self._entry_cache = {}
+        self._fileid_to_entry_cache = {}
+        self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
 
     def _entry_to_bytes(self, entry):
@@ -1387,11 +1402,12 @@ class CHKInventory(CommonInventory):
 
         The BNF:
         ENTRY ::= FILE | DIR | SYMLINK | TREE
-        FILE ::= "file: " COMMON NULL SHA NULL SIZE NULL EXECUTABLE
+        FILE ::= "file: " COMMON SEP SHA SEP SIZE SEP EXECUTABLE
         DIR ::= "dir: " COMMON
-        SYMLINK ::= "symlink: " COMMON NULL TARGET_UTF8
+        SYMLINK ::= "symlink: " COMMON SEP TARGET_UTF8
         TREE ::= "tree: " COMMON REFERENCE_REVISION
-        COMMON ::= FILE_ID NULL PARENT_ID NULL NAME_UTF8 NULL REVISION
+        COMMON ::= FILE_ID SEP PARENT_ID SEP NAME_UTF8 SEP REVISION
+        SEP ::= "\n"
         """
         if entry.parent_id is not None:
             parent_str = entry.parent_id
@@ -1449,7 +1465,7 @@ class CHKInventory(CommonInventory):
         result.revision = sections[3]
         if result.parent_id == '':
             result.parent_id = None
-        self._entry_cache[result.file_id] = result
+        self._fileid_to_entry_cache[result.file_id] = result
         return result
 
     def _get_mutable_inventory(self):
@@ -1458,31 +1474,47 @@ class CHKInventory(CommonInventory):
         if self.root_id is not None:
             entries.next()
         inv = Inventory(self.root_id, self.revision_id)
-        for inv_entry in entries:
+        for path, inv_entry in entries:
             inv.add(inv_entry)
         return inv
 
-    def create_by_apply_delta(self, inventory_delta, new_revision_id):
+    def create_by_apply_delta(self, inventory_delta, new_revision_id,
+        propagate_caches=False):
         """Create a new CHKInventory by applying inventory_delta to this one.
 
         :param inventory_delta: The inventory delta to apply. See
             Inventory.apply_delta for details.
         :param new_revision_id: The revision id of the resulting CHKInventory.
+        :param propagate_caches: If True, the caches for this inventory are
+          copied to and updated for the result.
         :return: The new CHKInventory.
         """
         result = CHKInventory(self._search_key_name)
+        if propagate_caches:
+            # Just propagate the path-to-fileid cache for now
+            result._path_to_fileid_cache = dict(self._path_to_fileid_cache.iteritems())
         search_key_func = chk_map.search_key_registry.get(self._search_key_name)
+        self.id_to_entry._ensure_root()
+        maximum_size = self.id_to_entry._root_node.maximum_size
         result.revision_id = new_revision_id
         result.id_to_entry = chk_map.CHKMap(
             self.id_to_entry._store,
-            self.id_to_entry._root_node,
+            self.id_to_entry.key(),
             search_key_func=search_key_func)
+        result.id_to_entry._ensure_root()
+        result.id_to_entry._root_node.set_maximum_size(maximum_size)
+        parent_id_basename_delta = []
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
-                self.parent_id_basename_to_file_id._root_node,
+                self.parent_id_basename_to_file_id.key(),
                 search_key_func=search_key_func)
-            parent_id_basename_delta = []
+            result.parent_id_basename_to_file_id._ensure_root()
+            self.parent_id_basename_to_file_id._ensure_root()
+            result_p_id_root = result.parent_id_basename_to_file_id._root_node
+            p_id_root = self.parent_id_basename_to_file_id._root_node
+            result_p_id_root.set_maximum_size(p_id_root.maximum_size)
+            result_p_id_root._key_width = p_id_root._key_width
         else:
             result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
@@ -1495,9 +1527,18 @@ class CHKInventory(CommonInventory):
                 # Make a delete:
                 new_key = None
                 new_value = None
+                # Update caches
+                if propagate_caches:
+                    try:
+                        del result._path_to_fileid_cache[old_path]
+                    except KeyError:
+                        pass
             else:
                 new_key = (file_id,)
                 new_value = result._entry_to_bytes(entry)
+                # Update caches. It's worth doing this whether
+                # we're propagating the old caches or not.
+                result._path_to_fileid_cache[new_path] = file_id
             if old_path is None:
                 old_key = None
             else:
@@ -1521,7 +1562,7 @@ class CHKInventory(CommonInventory):
                     # as its always the file id.
                     parent_id_basename_delta.append((old_key, new_key, new_value))
         result.id_to_entry.apply_delta(id_to_entry_delta)
-        if result.parent_id_basename_to_file_id is not None:
+        if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
         return result
 
@@ -1535,31 +1576,44 @@ class CHKInventory(CommonInventory):
             for.
         :return: A CHKInventory
         """
-        lines = bytes.splitlines()
+        lines = bytes.split('\n')
+        assert lines[-1] == ''
+        lines.pop()
         if lines[0] != 'chkinventory:':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)
-        revision_id = lines[1][13:]
-        root_id = lines[2][9:]
-        if lines[3].startswith('search_key_name:'):
-            search_key_name = lines[3][17:]
-            next = 4
-        else:
-            search_key_name = 'plain'
-            next = 3
+        info = {}
+        allowed_keys = frozenset(['root_id', 'revision_id', 'search_key_name',
+                                  'parent_id_basename_to_file_id',
+                                  'id_to_entry'])
+        for line in lines[1:]:
+            key, value = line.split(': ', 1)
+            if key not in allowed_keys:
+                raise errors.BzrError('Unknown key in inventory: %r\n%r'
+                                      % (key, bytes))
+            if key in info:
+                raise errors.BzrError('Duplicate key in inventory: %r\n%r'
+                                      % (key, bytes))
+            info[key] = value
+        revision_id = info['revision_id']
+        root_id = info['root_id']
+        search_key_name = info.get('search_key_name', 'plain')
+        parent_id_basename_to_file_id = info.get(
+            'parent_id_basename_to_file_id', None)
+        id_to_entry = info['id_to_entry']
+
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id
         result.root_id = root_id
         search_key_func = chk_map.search_key_registry.get(
                             result._search_key_name)
-        if lines[next].startswith('parent_id_basename_to_file_id:'):
+        if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
-                chk_store, (lines[next][31:],),
+                chk_store, (parent_id_basename_to_file_id,),
                 search_key_func=search_key_func)
-            next += 1
         else:
             result.parent_id_basename_to_file_id = None
 
-        result.id_to_entry = chk_map.CHKMap(chk_store, (lines[next][13:],),
+        result.id_to_entry = chk_map.CHKMap(chk_store, (id_to_entry,),
                                             search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
@@ -1567,8 +1621,7 @@ class CHKInventory(CommonInventory):
         return result
 
     @classmethod
-    def from_inventory(klass, chk_store, inventory, maximum_size=0,
-        parent_id_basename_index=False, search_key_name='plain'):
+    def from_inventory(klass, chk_store, inventory, maximum_size=0, search_key_name='plain'):
         """Create a CHKInventory from an existing inventory.
 
         The content of inventory is copied into the chk_store, and a
@@ -1577,8 +1630,6 @@ class CHKInventory(CommonInventory):
         :param chk_store: A CHK capable VersionedFiles instance.
         :param inventory: The inventory to copy.
         :param maximum_size: The CHKMap node size limit.
-        :param parent_id_basename_index: If True create and use a
-            parent_id,basename->file_id index.
         :param search_key_name: The identifier for the search key function
         """
         result = CHKInventory(search_key_name)
@@ -1588,25 +1639,20 @@ class CHKInventory(CommonInventory):
         result.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
         file_id_delta = []
-        if parent_id_basename_index:
-            result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-                None, search_key_func)
-            result.parent_id_basename_to_file_id._root_node.set_maximum_size(
-                maximum_size)
-            result.parent_id_basename_to_file_id._root_node._key_width = 2
-            parent_id_delta = []
-        else:
-            result.parent_id_basename_to_file_id = None
+        result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+            None, search_key_func)
+        result.parent_id_basename_to_file_id._root_node.set_maximum_size(
+            maximum_size)
+        result.parent_id_basename_to_file_id._root_node._key_width = 2
+        parent_id_delta = []
         for path, entry in inventory.iter_entries():
             file_id_delta.append((None, (entry.file_id,),
                 result._entry_to_bytes(entry)))
-            if parent_id_basename_index:
-                parent_id_delta.append(
-                    (None, result._parent_id_basename_key(entry),
-                     entry.file_id))
+            parent_id_delta.append(
+                (None, result._parent_id_basename_key(entry),
+                 entry.file_id))
         result.id_to_entry.apply_delta(file_id_delta)
-        if parent_id_basename_index:
-            result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+        result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
         return result
 
     def _parent_id_basename_key(self, entry):
@@ -1619,7 +1665,9 @@ class CHKInventory(CommonInventory):
 
     def __getitem__(self, file_id):
         """map a single file_id -> InventoryEntry."""
-        result = self._entry_cache.get(file_id, None)
+        if file_id is None:
+            raise errors.NoSuchId(self, file_id)
+        result = self._fileid_to_entry_cache.get(file_id, None)
         if result is not None:
             return result
         try:
@@ -1631,6 +1679,8 @@ class CHKInventory(CommonInventory):
 
     def has_id(self, file_id):
         # Perhaps have an explicit 'contains' method on CHKMap ?
+        if self._fileid_to_entry_cache.get(file_id, None) is not None:
+            return True
         return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
 
     def is_root(self, file_id):
@@ -1647,7 +1697,7 @@ class CHKInventory(CommonInventory):
             file_id = ie.parent_id
 
     def __iter__(self):
-        """Iterate over the entire inventory contents; size-of-tree - beware!."""
+        """Iterate over all file-ids."""
         for key, _ in self.id_to_entry.iteritems():
             yield key[-1]
 
@@ -1742,7 +1792,7 @@ class CHKInventory(CommonInventory):
                 old_path = None
             if self_value is not None:
                 entry = self._bytes_to_entry(self_value)
-                self._entry_cache[file_id] = entry
+                self._fileid_to_entry_cache[file_id] = entry
                 new_path = self.id2path(file_id)
             else:
                 entry = None
@@ -1751,47 +1801,31 @@ class CHKInventory(CommonInventory):
         return delta
 
     def path2id(self, name):
-        """Walk down through directories to return entry of last component.
-
-        names may be either a list of path components, or a single
-        string, in which case it is automatically split.
-
-        This returns the entry of the last component in the path,
-        which may be either a file or a directory.
-
-        Returns None IFF the path is not found.
-        """
-        if isinstance(name, basestring):
-            name = osutils.splitpath(name)
-
-        # mutter("lookup path %r" % name)
-
-        parent = self.root
-        if parent is None:
-            return None
-        for f in name:
-            try:
-                children = getattr(parent, 'children', None)
-                if children is None:
-                    return None
-                cie = children[f]
-                parent = cie
-            except KeyError:
-                # or raise an error?
-                return None
-        return parent.file_id
+        """See CommonInventory.path2id()."""
+        result = self._path_to_fileid_cache.get(name, None)
+        if result is None:
+            result = CommonInventory.path2id(self, name)
+            self._path_to_fileid_cache[name] = result
+        return result
 
     def to_lines(self):
         """Serialise the inventory to lines."""
         lines = ["chkinventory:\n"]
-        lines.append("revision_id: %s\n" % self.revision_id)
-        lines.append("root_id: %s\n" % self.root_id)
         if self._search_key_name != 'plain':
+            # custom ordering grouping things that don't change together
             lines.append('search_key_name: %s\n' % (self._search_key_name,))
-        if self.parent_id_basename_to_file_id is not None:
+            lines.append("root_id: %s\n" % self.root_id)
             lines.append('parent_id_basename_to_file_id: %s\n' %
                 self.parent_id_basename_to_file_id.key())
-        lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+            lines.append("revision_id: %s\n" % self.revision_id)
+            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+        else:
+            lines.append("revision_id: %s\n" % self.revision_id)
+            lines.append("root_id: %s\n" % self.root_id)
+            if self.parent_id_basename_to_file_id is not None:
+                lines.append('parent_id_basename_to_file_id: %s\n' %
+                    self.parent_id_basename_to_file_id.key())
+            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
         return lines
 
     @property
@@ -1818,7 +1852,7 @@ class CHKInventoryDirectory(InventoryDirectory):
 
     @property
     def children(self):
-        """Access the list of children of this inventory.
+        """Access the list of children of this directory.
 
         With a parent_id_basename_to_file_id index, loads all the children,
         without loads the entire index. Without is bad. A more sophisticated
@@ -1828,36 +1862,32 @@ class CHKInventoryDirectory(InventoryDirectory):
         """
         if self._children is not None:
             return self._children
+        # No longer supported
         if self._chk_inventory.parent_id_basename_to_file_id is None:
-            # Slow path - read the entire inventory looking for kids.
-            result = {}
-            for file_id, bytes in self._chk_inventory.id_to_entry.iteritems():
-                entry = self._chk_inventory._bytes_to_entry(bytes)
-                if entry.parent_id == self.file_id:
-                    result[entry.name] = entry
-            self._children = result
-            return result
+            raise AssertionError("Inventories without"
+                " parent_id_basename_to_file_id are no longer supported")
         result = {}
         # XXX: Todo - use proxy objects for the children rather than loading
         # all when the attribute is referenced.
         parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
-        child_ids = set()
+        child_keys = set()
         for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
             key_filter=[(self.file_id,)]):
-            child_ids.add((file_id,))
+            child_keys.add((file_id,))
         cached = set()
-        for file_id in child_ids:
-            entry = self._chk_inventory._entry_cache.get(file_id, None)
+        for file_id_key in child_keys:
+            entry = self._chk_inventory._fileid_to_entry_cache.get(
+                file_id_key[0], None)
             if entry is not None:
                 result[entry.name] = entry
-                cached.add(file_id)
-        child_ids.difference_update(cached)
+                cached.add(file_id_key)
+        child_keys.difference_update(cached)
         # populate; todo: do by name
         id_to_entry = self._chk_inventory.id_to_entry
-        for file_id, bytes in id_to_entry.iteritems(child_ids):
+        for file_id_key, bytes in id_to_entry.iteritems(child_keys):
             entry = self._chk_inventory._bytes_to_entry(bytes)
             result[entry.name] = entry
-            self._chk_inventory._entry_cache[file_id] = entry
+            self._chk_inventory._fileid_to_entry_cache[file_id_key[0]] = entry
         self._children = result
         return result
 

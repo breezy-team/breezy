@@ -1302,9 +1302,6 @@ class KnitVersionedFiles(VersionedFiles):
         if cur_keys:
             result.append((cur_keys, cur_non_local))
             sizes.append(cur_size)
-        trace.mutter('Collapsed %d keys into %d requests w/ %d file_ids'
-                     ' w/ sizes: %s', total_keys, len(result),
-                     len(prefix_split_keys), sizes)
         return result
 
     def get_record_stream(self, keys, ordering, include_delta_closure):

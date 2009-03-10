@@ -46,7 +46,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
                    revision_id=None)
                    ## pb=bzrlib.progress.DummyProgress())
 
-    def test_fetch_knit3(self):
+    def test_fetch_to_knit3(self):
         # create a repository of the sort we are testing.
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -80,7 +80,10 @@ class TestFetchSameRepository(TestCaseWithRepository):
         try:
             tree_b = b_bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            raise TestSkipped("cannot make working tree with transport %r"
+            try:
+                tree_b = b_branch.create_checkout('b', lightweight=True)
+            except errors.NotLocalUrl:
+                raise TestSkipped("cannot make working tree with transport %r"
                               % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = knit3_repo.revision_tree('rev2')
