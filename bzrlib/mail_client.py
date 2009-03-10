@@ -467,14 +467,15 @@ class MAPIClient(ExternalMailClient):
     """Default Windows mail client launched using MAPI."""
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
-                 extension):
+                 extension, body):
         """See ExternalMailClient._compose.
 
         This implementation uses MAPI via the simplemapi ctypes wrapper
         """
         from bzrlib.util import simplemapi
         try:
-            simplemapi.SendMail(to or '', subject or '', '', attach_path)
+            simplemapi.SendMail(to or '', subject or '', body or '',
+                                attach_path)
         except simplemapi.MAPIError, e:
             if e.code != simplemapi.MAPI_USER_ABORT:
                 raise errors.MailClientNotFound(['MAPI supported mail client'
