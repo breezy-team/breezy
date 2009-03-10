@@ -91,6 +91,9 @@ IN DEVELOPMENT
       unable to read a file in the working directory, for example because
       of a permission error.  (Martin Pool, #338653)
 
+    * ``bzr send`` help is more specific about how to apply merge
+      directives.  (Neil Martinsen-Burrell, #253470)
+
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
