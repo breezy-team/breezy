@@ -37,8 +37,8 @@ Before getting a copy of a branch, have a quick think about
 where to put it on your filesystem. For maximum storage
 efficiency down the track, it is recommended that branches
 be created somewhere under a directory that has been set up
-as a shared repository. (See `Choosing a shared repository
-layout`_ in the appendices for guidelines and examples.)
+as a shared repository. (See `Feature branches`_ in
+n `Organizing your workspace`_ for a commonly used layout.)
 For example::
 
   bzr init-repo my-repo

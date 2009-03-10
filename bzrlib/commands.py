@@ -736,7 +736,7 @@ def exception_to_return_code(the_callable, *args, **kwargs):
                 p.setup(tb.tb_frame, tb)
                 # Point the debugger at the deepest frame of the stack
                 p.curindex = len(p.stack) - 1
-                p.curframe = p.stack[p.curindex]
+                p.curframe = p.stack[p.curindex][0]
                 # Start the pdb prompt.
                 p.print_stack_entry(p.stack[p.curindex])
                 p.execRcLines()
@@ -851,6 +851,8 @@ def run_bzr(argv):
         else:
             argv_copy.append(a)
         i += 1
+
+    debug.set_debug_flags_from_config()
 
     argv = argv_copy
     if (not argv):

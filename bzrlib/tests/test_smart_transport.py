@@ -1528,8 +1528,8 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
+            "please check connectivity and permissions ",
+            str(ex))
 
     def test_server_offset_serialisation(self):
         """The Smart protocol serialises offsets as a comma and \n string.

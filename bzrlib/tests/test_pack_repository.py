@@ -848,7 +848,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
             self.assertEqual(2, streaming_calls)
 
 
-def load_tests(basic_tests, module, test_loader):
+def load_tests(basic_tests, module, loader):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
@@ -890,9 +890,6 @@ def load_tests(basic_tests, module, test_loader):
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]
-    adapter = tests.TestScenarioApplier()
     # name of the scenario is the format name
-    adapter.scenarios = [(s['format_name'], s) for s in scenarios_params]
-    suite = tests.TestSuite()
-    tests.adapt_tests(basic_tests, adapter, suite)
-    return suite
+    scenarios = [(s['format_name'], s) for s in scenarios_params]
+    return tests.multiply_tests(basic_tests, scenarios, loader.suiteClass())

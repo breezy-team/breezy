@@ -27,6 +27,7 @@ import threading
 
 from bzrlib import (
     errors,
+    graph,
     osutils,
     pack,
     )
@@ -70,8 +71,18 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         # is expected)
         return None
 
-    def recreate_search(self, repository, recipe_bytes):
-        lines = recipe_bytes.split('\n')
+    def recreate_search(self, repository, search_bytes):
+        lines = search_bytes.split('\n')
+        if lines[0] == 'ancestry-of':
+            heads = lines[1:]
+            search_result = graph.PendingAncestryResult(heads, repository)
+            return search_result, None
+        elif lines[0] == 'search':
+            return self.recreate_search_from_recipe(repository, lines[1:])
+        else:
+            return (None, FailedSmartServerResponse(('BadSearch',)))
+
+    def recreate_search_from_recipe(self, repository, lines):
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
@@ -93,7 +104,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
-            return (search, None)
+            return (search_result, None)
         finally:
             repository.unlock()
 
@@ -147,12 +158,14 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        search, error = self.recreate_search(repository, body_bytes)
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but thats not
         # written or tested yet.
-        client_seen_revs = set(search.get_result().get_keys())
+        client_seen_revs = set(search_result.get_keys())
         # Always include the requested ids.
         client_seen_revs.difference_update(revision_ids)
         lines = []
@@ -349,13 +362,12 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         repository = self._repository
         repository.lock_read()
         try:
-            search, error = self.recreate_search(repository, body_bytes)
+            search_result, error = self.recreate_search(repository, body_bytes)
             if error is not None:
                 repository.unlock()
                 return error
-            search = search.get_result()
             source = repository._get_source(self._to_format)
-            stream = source.get_stream(search)
+            stream = source.get_stream(search_result)
         except Exception:
             exc_info = sys.exc_info()
             try:
