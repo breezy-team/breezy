@@ -1517,7 +1517,7 @@ class PendingAncestryResult(object):
 
     def get_keys(self):
         """See SearchResult.get_keys.
-        
+
         Returns all the keys for the ancestry of the heads, excluding
         NULL_REVISION.
         """
