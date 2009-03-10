@@ -861,6 +861,7 @@ class Packer(object):
             if missing_text_keys:
                 # TODO: raise a specific error that can handle many missing
                 # keys.
+                mutter("missing keys during fetch: %r", missing_text_keys)
                 a_missing_key = missing_text_keys.pop()
                 raise errors.RevisionNotPresent(a_missing_key[1],
                     a_missing_key[0])
@@ -2336,14 +2337,13 @@ class CHKInventoryRepository(KnitPackRepository):
         serializer = self._format._serializer
         result = CHKInventory.from_inventory(self.chk_bytes, inv,
             maximum_size=serializer.maximum_size,
-            parent_id_basename_index=serializer.parent_id_basename_index,
             search_key_name=serializer.search_key_name)
         inv_lines = result.to_lines()
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
-                               parents):
+                               parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
 
         :param basis_revision_id: The inventory id the delta was created
@@ -2357,6 +2357,10 @@ class CHKInventoryRepository(KnitPackRepository):
             for repositories that depend on the inventory graph for revision
             graph access, as well as for those that pun ancestry with delta
             compression.
+        :param basis_inv: The basis inventory if it is already known,
+            otherwise None.
+        :param propagate_caches: If True, the caches for this inventory are
+          copied to and updated for the result if possible.
 
         :returns: (validator, new_inv)
             The validator(which is a sha1 digest, though what is sha'd is
@@ -2372,8 +2376,10 @@ class CHKInventoryRepository(KnitPackRepository):
         basis_tree = self.revision_tree(basis_revision_id)
         basis_tree.lock_read()
         try:
-            basis_inv = basis_tree.inventory
-            result = basis_inv.create_by_apply_delta(delta, new_revision_id)
+            if basis_inv is None:
+                basis_inv = basis_tree.inventory
+            result = basis_inv.create_by_apply_delta(delta, new_revision_id,
+                propagate_caches=propagate_caches)
             inv_lines = result.to_lines()
             return self._inventory_add_lines(new_revision_id, parents,
                 inv_lines, check_content=False), result

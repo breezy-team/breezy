@@ -66,12 +66,14 @@ class TestCaseWithStore(tests.TestCaseWithTransport):
         self.addCleanup(repo.abort_write_group)
         return repo.chk_bytes
 
-    def _get_map(self, a_dict, maximum_size=0, chk_bytes=None, key_width=1):
+    def _get_map(self, a_dict, maximum_size=0, chk_bytes=None, key_width=1,
+                 search_key_func=None):
         if chk_bytes is None:
             chk_bytes = self.get_chk_bytes()
         root_key = CHKMap.from_dict(chk_bytes, a_dict,
-            maximum_size=maximum_size, key_width=key_width)
-        chkmap = CHKMap(chk_bytes, root_key)
+            maximum_size=maximum_size, key_width=key_width,
+            search_key_func=search_key_func)
+        chkmap = CHKMap(chk_bytes, root_key, search_key_func=search_key_func)
         return chkmap
 
     def read_bytes(self, chk_bytes, key):
@@ -878,6 +880,19 @@ class TestMap(TestCaseWithStore):
             {("a", "a"): "content here", ("a", "b"): 'more content'},
             self.to_dict(chkmap, [("a",)]))
 
+    def test_iteritems_keys_prefixed_by_2_width_nodes_hashed(self):
+        search_key_func = chk_map.search_key_registry.get('hash-16-way')
+        self.assertEqual('E8B7BE43\x00E8B7BE43', search_key_func(('a', 'a')))
+        self.assertEqual('E8B7BE43\x0071BEEFF9', search_key_func(('a', 'b')))
+        self.assertEqual('71BEEFF9\x0000000000', search_key_func(('b', '')))
+        chkmap = self._get_map(
+            {("a","a"):"content here", ("a", "b",):"more content",
+             ("b", ""): 'boring content'},
+            maximum_size=10, key_width=2, search_key_func=search_key_func)
+        self.assertEqual(
+            {("a", "a"): "content here", ("a", "b"): 'more content'},
+            self.to_dict(chkmap, [("a",)]))
+
     def test_iteritems_keys_prefixed_by_2_width_one_leaf(self):
         chkmap = self._get_map(
             {("a","a"):"content here", ("a", "b",):"more content",
@@ -1277,7 +1292,7 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual(2, len(node))
         self.assertEqual([(("foo", "1"), "bar\x00baz"), (("foo", "2"), "blarh")],
             sorted(node.iteritems(None)))
-        self.assertEqual('foo\x00', node._search_prefix)
+        self.assertIs(chk_map._unknown, node._search_prefix)
         self.assertEqual('foo\x00', node._common_serialised_prefix)
 
     def test_deserialise_multi_line(self):
@@ -1288,7 +1303,7 @@ class TestLeafNode(TestCaseWithStore):
         self.assertEqual([(("foo", "1"), "bar\nbaz"),
                           (("foo", "2"), "blarh\n"),
                          ], sorted(node.iteritems(None)))
-        self.assertEqual('foo\x00', node._search_prefix)
+        self.assertIs(chk_map._unknown, node._search_prefix)
         self.assertEqual('foo\x00', node._common_serialised_prefix)
 
     def test_key_new(self):
@@ -1520,6 +1535,23 @@ class TestInternalNode(TestCaseWithStore):
         self.assertEqual([(('strange',), 'beast')],
             sorted(node.iteritems(None, [('strange',), ('weird',)])))
 
+    def test_iteritems_two_children_with_hash(self):
+        search_key_func = chk_map.search_key_registry.get('hash-255-way')
+        node = InternalNode(search_key_func=search_key_func)
+        leaf1 = LeafNode(search_key_func=search_key_func)
+        leaf1.map(None, ('foo bar',), 'quux')
+        leaf2 = LeafNode(search_key_func=search_key_func)
+        leaf2.map(None, ('strange',), 'beast')
+        self.assertEqual('\xbeF\x014', search_key_func(('foo bar',)))
+        self.assertEqual('\x85\xfa\xf7K', search_key_func(('strange',)))
+        node.add_node("\xbe", leaf1)
+        # This sets up a path that should not be followed - it will error if
+        # the code tries to.
+        node._items['\xbe'] = None
+        node.add_node("\x85", leaf2)
+        self.assertEqual([(('strange',), 'beast')],
+            sorted(node.iteritems(None, [('strange',), ('weird',)])))
+
     def test_iteritems_partial_empty(self):
         node = InternalNode()
         self.assertEqual([], sorted(node.iteritems([('missing',)])))
@@ -1609,6 +1641,15 @@ class TestInternalNode(TestCaseWithStore):
                              "    'k23' LeafNode\n"
                              "      ('k23',) 'quux'\n"
                              , chkmap._dump_tree())
+
+    def test__search_prefix_filter_with_hash(self):
+        search_key_func = chk_map.search_key_registry.get('hash-16-way')
+        node = InternalNode(search_key_func=search_key_func)
+        node._key_width = 2
+        node._node_width = 4
+        self.assertEqual('E8B7BE43\x0071BEEFF9', search_key_func(('a', 'b')))
+        self.assertEqual('E8B7', node._search_prefix_filter(('a', 'b')))
+        self.assertEqual('E8B7', node._search_prefix_filter(('a',)))
 
     def test_unmap_k23_from_k1_k22_k23_gives_k1_k22_tree_new(self):
         chkmap = self._get_map(

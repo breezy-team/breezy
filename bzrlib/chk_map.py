@@ -51,6 +51,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     registry,
+    trace,
     )
 
 # approx 4MB
@@ -59,6 +60,13 @@ from bzrlib import (
 _PAGE_CACHE_SIZE = 4*1024*1024
 # We are caching bytes so len(value) is perfectly accurate
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+
+# If a ChildNode falls below this many bytes, we check for a remap
+_INTERESTING_NEW_SIZE = 50
+# If a ChildNode shrinks by more than this amount, we check for a remap
+_INTERESTING_SHRINKAGE_LIMIT = 20
+# If we delete more than this many nodes applying a delta, we check for a remap
+_INTERESTING_DELETES_LIMIT = 5
 
 
 def _search_key_plain(key):
@@ -132,12 +140,17 @@ class CHKMap(object):
             into the map; if old_key is not None, then the old mapping
             of old_key is removed.
         """
+        delete_count = 0
         for old, new, value in delta:
             if old is not None and old != new:
-                self.unmap(old)
+                self.unmap(old, check_remap=False)
+                delete_count += 1
         for old, new, value in delta:
             if new is not None:
                 self.map(new, value)
+        if delete_count > _INTERESTING_DELETES_LIMIT:
+            trace.mutter("checking remap as %d deletions", delete_count)
+            self._check_remap()
         return self._save()
 
     def _ensure_root(self):
@@ -164,8 +177,13 @@ class CHKMap(object):
             return node
 
     def _read_bytes(self, key):
-        stream = self._store.get_record_stream([key], 'unordered', True)
-        return stream.next().get_bytes_as('fulltext')
+        try:
+            return _page_cache[key]
+        except KeyError:
+            stream = self._store.get_record_stream([key], 'unordered', True)
+            bytes = stream.next().get_bytes_as('fulltext')
+            _page_cache[key] = bytes
+            return bytes
 
     def _dump_tree(self, include_keys=False):
         """Return the tree in a string representation."""
@@ -434,11 +452,21 @@ class CHKMap(object):
         else:
             return node._key
 
-    def unmap(self, key):
+    def unmap(self, key, check_remap=True):
         """remove key from the map."""
         self._ensure_root()
-        unmapped = self._root_node.unmap(self._store, key)
+        if isinstance(self._root_node, InternalNode):
+            unmapped = self._root_node.unmap(self._store, key,
+                check_remap=check_remap)
+        else:
+            unmapped = self._root_node.unmap(self._store, key)
         self._root_node = unmapped
+
+    def _check_remap(self):
+        """Check if nodes can be collapsed."""
+        self._ensure_root()
+        if isinstance(self._root_node, InternalNode):
+            self._root_node._check_remap(self._store)
 
     def _save(self):
         """Save the map completely.
@@ -477,7 +505,7 @@ class Node(object):
         self._search_prefix = None
 
     def __repr__(self):
-        items_str = sorted(self._items)
+        items_str = str(sorted(self._items))
         if len(items_str) > 20:
             items_str = items_str[16] + '...]'
         return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
@@ -541,6 +569,9 @@ class Node(object):
         return common_prefix
 
 
+# Singleton indicating we have not computed _search_prefix yet
+_unknown = object()
+
 class LeafNode(Node):
     """A node containing actual key:value pairs.
 
@@ -558,6 +589,15 @@ class LeafNode(Node):
             self._search_key_func = _search_key_plain
         else:
             self._search_key_func = search_key_func
+
+    def __repr__(self):
+        items_str = sorted(self._items)
+        if len(items_str) > 20:
+            items_str = items_str[16] + '...]'
+        return \
+            '%s(key:%s len:%s size:%s max:%s prefix:%s keywidth:%s items:%s)' \
+            % (self.__class__.__name__, self._key, self._len, self._raw_size,
+            self._maximum_size, self._search_prefix, self._key_width, items_str)
 
     def _current_size(self):
         """Answer the current serialised size of this node.
@@ -609,8 +649,9 @@ class LeafNode(Node):
             elements = line.split('\x00')
             pos += 1
             if len(elements) != width + 1:
-                raise AssertionError('Incorrect number of elements for: %s'
-                                     % (line,))
+                raise AssertionError(
+                    'Incorrect number of elements (%d vs %d) for: %r'
+                    % (len(elements), width + 1, line))
             num_value_lines = int(elements[-1])
             value_lines = lines[pos:pos+num_value_lines]
             pos += num_value_lines
@@ -627,8 +668,12 @@ class LeafNode(Node):
         result._raw_size = (sum(map(len, lines[5:])) # the length of the suffix
             + (length)*(len(prefix))
             + (len(lines)-5))
-        result._compute_search_prefix()
-        result._compute_serialised_prefix()
+        if not items:
+            result._search_prefix = None
+            result._common_serialised_prefix = None
+        else:
+            result._search_prefix = _unknown
+            result._common_serialised_prefix = prefix
         if len(bytes) != result._current_size():
             raise AssertionError('_current_size computed incorrectly')
         return result
@@ -685,6 +730,8 @@ class LeafNode(Node):
             self._common_serialised_prefix = self.common_prefix(
                 self._common_serialised_prefix, serialised_key)
         search_key = self._search_key(key)
+        if self._search_prefix is _unknown:
+            self._compute_search_prefix()
         if self._search_prefix is None:
             self._search_prefix = search_key
         else:
@@ -709,6 +756,7 @@ class LeafNode(Node):
 
         :return: (common_serialised_prefix, [(node_serialised_prefix, node)])
         """
+        assert self._search_prefix is not _unknown
         common_prefix = self._search_prefix
         split_at = len(common_prefix) + 1
         result = {}
@@ -744,10 +792,11 @@ class LeafNode(Node):
         if self._map_no_split(key, value):
             return self._split(store)
         else:
+            assert self._search_prefix is not _unknown
             return self._search_prefix, [("", self)]
 
     def serialise(self, store):
-        """Serialise the tree to store.
+        """Serialise the LeafNode to store.
 
         :param store: A VersionedFiles honouring the CHK extensions.
         :return: An iterable of the keys inserted by this operation.
@@ -765,7 +814,7 @@ class LeafNode(Node):
             lines.append('%s\n' % (self._common_serialised_prefix,))
             prefix_len = len(self._common_serialised_prefix)
         for key, value in sorted(self._items.items()):
-            # Add always add a final newline
+            # Always add a final newline
             value_lines = osutils.chunks_to_lines([value + '\n'])
             serialized = "%s\x00%s\n" % (self._serialise_key(key),
                                          len(value_lines))
@@ -793,7 +842,7 @@ class LeafNode(Node):
         :return: A bytestring of the longest search key prefix that is
             unique within this node.
         """
-        search_keys = [self._search_key(key) for key in self._items]
+        search_keys = [self._search_key_func(key) for key in self._items]
         self._search_prefix = self.common_prefix_for_keys(search_keys)
         return self._search_prefix
 
@@ -826,7 +875,11 @@ class LeafNode(Node):
 
     def unmap(self, store, key):
         """Unmap key from the node."""
-        self._raw_size -= self._key_value_len(key, self._items[key])
+        try:
+            self._raw_size -= self._key_value_len(key, self._items[key])
+        except KeyError:
+            trace.mutter("key %s not found in %r", key, self._items)
+            raise
         self._len -= 1
         del self._items[key]
         self._key = None
@@ -863,13 +916,20 @@ class InternalNode(Node):
         :param prefix: The search key prefix for node.
         :param node: The node being added.
         """
-        assert self._search_prefix is not None
-        assert prefix.startswith(self._search_prefix)
-        assert len(prefix) == len(self._search_prefix) + 1
+        if self._search_prefix is None:
+            raise AssertionError("_search_prefix should not be None")
+        if not prefix.startswith(self._search_prefix):
+            raise AssertionError("prefixes mismatch: %s must start with %s"
+                % (prefix,self._search_prefix))
+        if len(prefix) != len(self._search_prefix) + 1:
+            raise AssertionError("prefix wrong length: len(%s) is not %d" %
+                (prefix, len(self._search_prefix) + 1))
         self._len += len(node)
         if not len(self._items):
             self._node_width = len(prefix)
-        assert self._node_width == len(self._search_prefix) + 1
+        if self._node_width != len(self._search_prefix) + 1:
+            raise AssertionError("node width mismatch: %d is not %d" %
+                (self._node_width, len(self._search_prefix) + 1))
         self._items[prefix] = node
         self._key = None
 
@@ -891,7 +951,8 @@ class InternalNode(Node):
         # from the result of split('\n') because we should have a trailing
         # newline
         lines = bytes.split('\n')
-        assert lines[-1] == ''
+        if lines[-1] != '':
+            raise AssertionError("last line must be ''")
         lines.pop(-1)
         items = {}
         if lines[0] != 'chknode:':
@@ -913,7 +974,8 @@ class InternalNode(Node):
         #      change if we add prefix compression
         result._raw_size = None # len(bytes)
         result._node_width = len(prefix)
-        result._compute_search_prefix()
+        assert len(items) > 0
+        result._search_prefix = common_prefix
         return result
 
     def iteritems(self, store, key_filter=None):
@@ -998,9 +1060,11 @@ class InternalNode(Node):
     def map(self, store, key, value):
         """Map key to value."""
         if not len(self._items):
-            raise AssertionError("cant map in an empty InternalNode.")
+            raise AssertionError("can't map in an empty InternalNode.")
         search_key = self._search_key(key)
-        assert self._node_width == len(self._search_prefix) + 1
+        if self._node_width != len(self._search_prefix) + 1:
+            raise AssertionError("node width mismatch: %d is not %d" %
+                (self._node_width, len(self._search_prefix) + 1))
         if not search_key.startswith(self._search_prefix):
             # This key doesn't fit in this index, so we need to split at the
             # point where it would fit, insert self into that internal node,
@@ -1033,14 +1097,30 @@ class InternalNode(Node):
             self._items[search_key] = child
             self._key = None
             new_node = self
-            if (isinstance(child, LeafNode)
-                and (old_size is None or child._current_size() < old_size)):
-                # The old node was an InternalNode which means it has now
-                # collapsed, so we need to check if it will chain to a collapse
-                # at this level. Or the LeafNode has shrunk in size, so we need
-                # to check that as well.
-                new_node = self._check_remap(store)
-            assert new_node._search_prefix is not None
+            if isinstance(child, LeafNode):
+                if old_size is None:
+                    # The old node was an InternalNode which means it has now
+                    # collapsed, so we need to check if it will chain to a
+                    # collapse at this level.
+                    trace.mutter("checking remap as InternalNode -> LeafNode")
+                    new_node = self._check_remap(store)
+                else:
+                    # If the LeafNode has shrunk in size, we may want to run
+                    # a remap check. Checking for a remap is expensive though
+                    # and the frequency of a successful remap is very low.
+                    # Shrinkage by small amounts is common, so we only do the
+                    # remap check if the new_size is low or the shrinkage
+                    # amount is over a configurable limit.
+                    new_size = child._current_size()
+                    shrinkage = old_size - new_size
+                    if (shrinkage > 0 and new_size < _INTERESTING_NEW_SIZE
+                        or shrinkage > _INTERESTING_SHRINKAGE_LIMIT):
+                        trace.mutter(
+                            "checking remap as size shrunk by %d to be %d",
+                            shrinkage, new_size)
+                        new_node = self._check_remap(store)
+            if new_node._search_prefix is None:
+                raise AssertionError("_search_prefix should not be None")
             return new_node._search_prefix, [('', new_node)]
         # child has overflown - create a new intermediate node.
         # XXX: This is where we might want to try and expand our depth
@@ -1082,7 +1162,8 @@ class InternalNode(Node):
         lines.append("%d\n" % self._maximum_size)
         lines.append("%d\n" % self._key_width)
         lines.append("%d\n" % self._len)
-        assert self._search_prefix is not None
+        if self._search_prefix is None:
+            raise AssertionError("_search_prefix should not be None")
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
@@ -1091,7 +1172,9 @@ class InternalNode(Node):
             else:
                 key = node._key[0]
             serialised = "%s\x00%s\n" % (prefix, key)
-            assert serialised.startswith(self._search_prefix)
+            if not serialised.startswith(self._search_prefix):
+                raise AssertionError("prefixes mismatch: %s must start with %s"
+                    % (serialised, self._search_prefix))
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = ("sha1:" + sha1,)
@@ -1106,9 +1189,7 @@ class InternalNode(Node):
 
     def _search_prefix_filter(self, key):
         """Serialise key for use as a prefix filter in iteritems."""
-        if len(key) == self._key_width:
-            return self._search_key(key)
-        return '\x00'.join(key)[:self._node_width]
+        return self._search_key_func(key)[:self._node_width]
 
     def _split(self, offset):
         """Split this node into smaller nodes starting at offset.
@@ -1146,10 +1227,10 @@ class InternalNode(Node):
         self._search_prefix = self.common_prefix_for_keys(self._items)
         return self._search_prefix
 
-    def unmap(self, store, key):
+    def unmap(self, store, key, check_remap=True):
         """Remove key from this node and it's children."""
         if not len(self._items):
-            raise AssertionError("cant unmap in an empty InternalNode.")
+            raise AssertionError("can't unmap in an empty InternalNode.")
         children = list(self._iter_nodes(store, key_filter=[key]))
         if children:
             child = children[0]
@@ -1171,7 +1252,10 @@ class InternalNode(Node):
             return self._items.values()[0]
         if isinstance(unmapped, InternalNode):
             return self
-        return self._check_remap(store)
+        if check_remap:
+            return self._check_remap(store)
+        else:
+            return self
 
     def _check_remap(self, store):
         """Check if all keys contained by children fit in a single LeafNode.
@@ -1218,6 +1302,7 @@ class InternalNode(Node):
             for key, value in node._items.iteritems():
                 if new_leaf._map_no_split(key, value):
                     return self
+        trace.mutter("remap generated a new LeafNode")
         return new_leaf
 
 

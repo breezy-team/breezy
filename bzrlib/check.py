@@ -173,6 +173,7 @@ class Check(object):
 
         for parent in rev.parent_ids:
             if not parent in self.planned_revisions:
+                # rev has a parent we didn't know about.
                 missing_links = self.missing_parent_links.get(parent, [])
                 missing_links.append(rev_id)
                 self.missing_parent_links[parent] = missing_links
@@ -188,6 +189,11 @@ class Check(object):
                     self.ghosts.append(rev_id)
 
         if rev.inventory_sha1:
+            # Loopback - this is currently circular logic as the
+            # knit get_inventory_sha1 call returns rev.inventory_sha1.
+            # Repository.py's get_inventory_sha1 should instead return
+            # inventories.get_record_stream([(revid,)]).next().sha1 or
+            # similar.
             inv_sha1 = self.repository.get_inventory_sha1(rev_id)
             if inv_sha1 != rev.inventory_sha1:
                 raise BzrCheckError('Inventory sha1 hash doesn\'t match'
