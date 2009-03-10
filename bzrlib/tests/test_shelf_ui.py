@@ -68,20 +68,20 @@ class TestShelver(tests.TestCaseWithTransport):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
         e = self.assertRaises(AssertionError, shelver.run)
-        self.assertEqual('Unexpected prompt: Shelve? [yNfq]', str(e))
+        self.assertEqual('Unexpected prompt: Shelve? [yNfq?]', str(e))
 
     def test_wrong_prompt_failure(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('foo', 'y')
         e = self.assertRaises(AssertionError, shelver.run)
-        self.assertEqual('Wrong prompt: Shelve? [yNfq]', str(e))
+        self.assertEqual('Wrong prompt: Shelve? [yNfq?]', str(e))
 
     def test_shelve_not_diff(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve? [yNfq]', 'n')
-        shelver.expect('Shelve? [yNfq]', 'n')
+        shelver.expect('Shelve? [yNfq?]', 'n')
+        shelver.expect('Shelve? [yNfq?]', 'n')
         # No final shelving prompt because no changes were selected
         shelver.run()
         self.assertFileEqual(LINES_ZY, 'tree/foo')
@@ -89,27 +89,27 @@ class TestShelver(tests.TestCaseWithTransport):
     def test_shelve_diff_no(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve? [yNfq]', 'y')
-        shelver.expect('Shelve? [yNfq]', 'y')
-        shelver.expect('Shelve 2 change(s)? [yNfq]', 'n')
+        shelver.expect('Shelve? [yNfq?]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'y')
+        shelver.expect('Shelve 2 change(s)? [yNfq?]', 'n')
         shelver.run()
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_diff(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve? [yNfq]', 'y')
-        shelver.expect('Shelve? [yNfq]', 'y')
-        shelver.expect('Shelve 2 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'y')
+        shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_one_diff(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve? [yNfq]', 'y')
-        shelver.expect('Shelve? [yNfq]', 'n')
-        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'n')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AY, 'tree/foo')
 
@@ -117,8 +117,8 @@ class TestShelver(tests.TestCaseWithTransport):
         tree = self.create_shelvable_tree()
         self.build_tree_contents([('tree/foo', '\x00')])
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve binary changes? [yNfq]', 'y')
-        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve binary changes? [yNfq?]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
@@ -126,10 +126,10 @@ class TestShelver(tests.TestCaseWithTransport):
         tree = self.create_shelvable_tree()
         tree.rename_one('foo', 'bar')
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve renaming "foo" => "bar"? [yNfq]', 'y')
-        shelver.expect('Shelve? [yNfq]', 'y')
-        shelver.expect('Shelve? [yNfq]', 'y')
-        shelver.expect('Shelve 3 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve renaming "foo" => "bar"? [yNfq?]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'y')
+        shelver.expect('Shelve 3 change(s)? [yNfq?]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
@@ -137,8 +137,8 @@ class TestShelver(tests.TestCaseWithTransport):
         tree = self.create_shelvable_tree()
         os.unlink('tree/foo')
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve removing file "foo"? [yNfq]', 'y')
-        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve removing file "foo"? [yNfq?]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
@@ -148,8 +148,8 @@ class TestShelver(tests.TestCaseWithTransport):
         self.build_tree(['tree/foo'])
         tree.add('foo')
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve adding file "foo"? [yNfq]', 'y')
-        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve adding file "foo"? [yNfq?]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
         self.failIfExists('tree/foo')
 
@@ -158,22 +158,22 @@ class TestShelver(tests.TestCaseWithTransport):
         os.unlink('tree/foo')
         os.mkdir('tree/foo')
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve changing "foo" from file to directory? [yNfq]',
+        shelver.expect('Shelve changing "foo" from file to directory? [yNfq?]',
                        'y')
-        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
 
     def test_shelve_finish(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve? [yNfq]', 'f')
-        shelver.expect('Shelve 2 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve? [yNfq?]', 'f')
+        shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
         shelver.run()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_quit(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
-        shelver.expect('Shelve? [yNfq]', 'q')
+        shelver.expect('Shelve? [yNfq?]', 'q')
         self.assertRaises(errors.UserAbort, shelver.run)
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
@@ -187,8 +187,16 @@ class TestShelver(tests.TestCaseWithTransport):
         self.build_tree(['tree/bar'])
         tree.add('bar')
         shelver = ExpectShelver(tree, tree.basis_tree(), file_list=['bar'])
-        shelver.expect('Shelve adding file "bar"? [yNfq]', 'y')
-        shelver.expect('Shelve 1 change(s)? [yNfq]', 'y')
+        shelver.expect('Shelve adding file "bar"? [yNfq?]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
+        shelver.run()
+
+    def test_shelve_help(self):
+        tree = self.create_shelvable_tree()
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve? [yNfq?]', '?')
+        shelver.expect('Shelve? [(y)es, (N)o, (f)inish, or (q)uit]', 'f')
+        shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
         shelver.run()
 
 
@@ -236,3 +244,15 @@ class TestUnshelver(tests.TestCaseWithTransport):
                                                  action='delete-only')
         unshelver.run()
         self.assertIs(None, manager.last_shelf())
+
+    def test_unshelve_args_invalid_shelf_id(self):
+        tree = self.make_branch_and_tree('tree')
+        manager = tree.get_shelf_manager()
+        shelf_file = manager.new_shelf()[1]
+        try:
+            shelf_file.write('garbage')
+        finally:
+            shelf_file.close()
+        self.assertRaises(errors.InvalidShelfId,
+            shelf_ui.Unshelver.from_args, directory='tree',
+            action='delete-only', shelf_id='foo')

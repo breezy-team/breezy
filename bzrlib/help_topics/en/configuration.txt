@@ -1,10 +1,6 @@
 Configuration Settings
 =======================
 
-.. TODO: Should have some explanation of why you'd want things in
-.. branch.conf.
-
-
 Environment settings
 ---------------------
 
@@ -178,8 +174,8 @@ would be ``sftp://example.com/location/branch1``.
 The main configuration file, bazaar.conf
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``bazaar.conf`` only allows one
-section called ``[DEFAULT]``. This default section contains the default
+``bazaar.conf`` allows two sections: ``[DEFAULT]`` and ``[ALIASES]``.
+The default section contains the default
 configuration options for all branches. The default section can be
 overriden by providing a branch-specific section in ``locations.conf``.
 
@@ -228,6 +224,15 @@ file see `Authentication Settings`_.
 Common variable options
 -----------------------
 
+debug_flags
+~~~~~~~~~~~
+
+A comma-separated list of debugging options to turn on.  The same values
+can be used as with the -D command-line option (see `help global-options`).
+For example::
+
+    debug_flags = hpss
+
 email
 ~~~~~
 
@@ -243,6 +248,13 @@ The path of the editor that you wish to use if *bzr commit* is run without
 a commit message. This setting is trumped by the environment variable
 ``BZR_EDITOR``, and overrides the ``VISUAL`` and ``EDITOR`` environment
 variables.
+
+log_format
+~~~~~~~~~~
+
+The default log format to use. Standard log formats are ``long``, ``short``
+and ``line``. Additional formats may be provided by plugins. The default
+value is ``long``.
 
 check_signatures
 ~~~~~~~~~~~~~~~~

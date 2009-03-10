@@ -39,6 +39,7 @@ import warnings
 
 from bzrlib import (
     config,
+    debug,
     errors,
     urlutils,
     )
@@ -95,12 +96,12 @@ _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 class SFTPLock(object):
     """This fakes a lock in a remote location.
-    
+
     A present lock is indicated just by the existence of a file.  This
-    doesn't work well on all transports and they are only used in 
+    doesn't work well on all transports and they are only used in
     deprecated storage formats.
     """
-    
+
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
 
     def __init__(self, path, transport):
@@ -182,9 +183,10 @@ class _SFTPReadvHelper(object):
                 requests.append((start, next_size))
                 size -= next_size
                 start += next_size
-        mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
-               self.relpath, len(sorted_offsets), len(coalesced),
-               len(requests))
+        if 'sftp' in debug.debug_flags:
+            mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
+                self.relpath, len(sorted_offsets), len(coalesced),
+                len(requests))
         return requests
 
     def request_and_yield_offsets(self, fp):
@@ -286,8 +288,9 @@ class _SFTPReadvHelper(object):
             del buffered_data[:]
             data_chunks.append((input_start, buffered))
         if data_chunks:
-            mutter('SFTP readv left with %d out-of-order bytes',
-                   sum(map(lambda x: len(x[1]), data_chunks)))
+            if 'sftp' in debug.debug_flags:
+                mutter('SFTP readv left with %d out-of-order bytes',
+                    sum(map(lambda x: len(x[1]), data_chunks)))
             # We've processed all the readv data, at this point, anything we
             # couldn't process is in data_chunks. This doesn't happen often, so
             # this code path isn't optimized
@@ -346,7 +349,7 @@ class SFTPTransport(ConnectedTransport):
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
-        
+
         :param relpath: is a urlencoded string.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
@@ -446,7 +449,8 @@ class SFTPTransport(ConnectedTransport):
             readv = getattr(fp, 'readv', None)
             if readv:
                 return self._sftp_readv(fp, offsets, relpath)
-            mutter('seek and read %s offsets', len(offsets))
+            if 'sftp' in debug.debug_flags:
+                mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
@@ -498,12 +502,12 @@ class SFTPTransport(ConnectedTransport):
             #      sticky bit. So it is probably best to stop chmodding, and
             #      just tell users that they need to set the umask correctly.
             #      The attr.st_mode = mode, in _sftp_open_exclusive
-            #      will handle when the user wants the final mode to be more 
-            #      restrictive. And then we avoid a round trip. Unless 
+            #      will handle when the user wants the final mode to be more
+            #      restrictive. And then we avoid a round trip. Unless
             #      paramiko decides to expose an async chmod()
 
             # This is designed to chmod() right before we close.
-            # Because we set_pipelined() earlier, theoretically we might 
+            # Because we set_pipelined() earlier, theoretically we might
             # avoid the round trip for fout.close()
             if mode is not None:
                 self._get_sftp().chmod(tmp_abspath, mode)
@@ -551,7 +555,7 @@ class SFTPTransport(ConnectedTransport):
                                                  ': unable to open')
 
                 # This is designed to chmod() right before we close.
-                # Because we set_pipelined() earlier, theoretically we might 
+                # Because we set_pipelined() earlier, theoretically we might
                 # avoid the round trip for fout.close()
                 if mode is not None:
                     self._get_sftp().chmod(abspath, mode)
@@ -652,8 +656,8 @@ class SFTPTransport(ConnectedTransport):
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
         # initialise the file to zero-length
-        # this is three round trips, but we don't use this 
-        # api more than once per write_group at the moment so 
+        # this is three round trips, but we don't use this
+        # api more than once per write_group at the moment so
         # it is a tolerable overhead. Better would be to truncate
         # the file after opening. RBC 20070805
         self.put_bytes_non_atomic(relpath, "", mode)
@@ -682,7 +686,7 @@ class SFTPTransport(ConnectedTransport):
         :param failure_exc: Paramiko has the super fun ability to raise completely
                            opaque errors that just set "e.args = ('Failure',)" with
                            no more information.
-                           If this parameter is set, it defines the exception 
+                           If this parameter is set, it defines the exception
                            to raise in these cases.
         """
         # paramiko seems to generate detailless errors.
@@ -729,7 +733,7 @@ class SFTPTransport(ConnectedTransport):
 
     def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
-        
+
         Using the implementation provided by osutils.
         """
         try:
@@ -754,7 +758,7 @@ class SFTPTransport(ConnectedTransport):
             self._get_sftp().remove(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to delete')
-            
+
     def external_url(self):
         """See bzrlib.transport.Transport.external_url."""
         # the external path for SFTP is the base
@@ -837,14 +841,14 @@ class SFTPTransport(ConnectedTransport):
         """
         # TODO: jam 20060816 Paramiko >= 1.6.2 (probably earlier) supports
         #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
-        #       However, there is no way to set the permission mode at open 
+        #       However, there is no way to set the permission mode at open
         #       time using the sftp_client.file() functionality.
         path = self._get_sftp()._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
             attr.st_mode = mode
-        omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
+        omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
         try:
             t, msg = self._get_sftp()._request(CMD_OPEN, path, omode, attr)
@@ -928,7 +932,7 @@ class SocketListener(threading.Thread):
                 # probably a failed test; unit test thread will log the
                 # failure/error
                 sys.excepthook(*sys.exc_info())
-                warning('Exception from within unit test server thread: %r' % 
+                warning('Exception from within unit test server thread: %r' %
                         x)
 
 
@@ -945,7 +949,7 @@ class SocketDelay(object):
 
     Not all methods are implemented, this is deliberate as this class is not a
     replacement for the builtin sockets layer. fileno is not implemented to
-    prevent the proxy being bypassed. 
+    prevent the proxy being bypassed.
     """
 
     simulated_time = 0
@@ -953,9 +957,9 @@ class SocketDelay(object):
         "close", "getpeername", "getsockname", "getsockopt", "gettimeout",
         "setblocking", "setsockopt", "settimeout", "shutdown"])
 
-    def __init__(self, sock, latency, bandwidth=1.0, 
+    def __init__(self, sock, latency, bandwidth=1.0,
                  really_sleep=True):
-        """ 
+        """
         :param bandwith: simulated bandwith (MegaBit)
         :param really_sleep: If set to false, the SocketDelay will just
         increase a counter, instead of calling time.sleep. This is useful for
@@ -964,7 +968,7 @@ class SocketDelay(object):
         self.sock = sock
         self.latency = latency
         self.really_sleep = really_sleep
-        self.time_per_byte = 1 / (bandwidth / 8.0 * 1024 * 1024) 
+        self.time_per_byte = 1 / (bandwidth / 8.0 * 1024 * 1024)
         self.new_roundtrip = False
 
     def sleep(self, s):
@@ -1032,7 +1036,7 @@ class SFTPServer(Server):
 
     def _run_server_entry(self, sock):
         """Entry point for all implementations of _run_server.
-        
+
         If self.add_latency is > 0.000001 then sock is given a latency adding
         decorator.
         """
@@ -1055,7 +1059,7 @@ class SFTPServer(Server):
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
-    
+
     def setUp(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.

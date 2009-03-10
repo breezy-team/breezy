@@ -45,20 +45,20 @@ def show_tree_status(wt, show_unchanged=None,
                      versioned=False):
     """Display summary of changes.
 
-    By default this compares the working tree to a previous revision. 
-    If the revision argument is given, summarizes changes between the 
+    By default this compares the working tree to a previous revision.
+    If the revision argument is given, summarizes changes between the
     working tree and another, or between two revisions.
 
-    The result is written out as Unicode and to_file should be able 
+    The result is written out as Unicode and to_file should be able
     to encode that.
 
     If showing the status of a working tree, extra information is included
     about unknown files, conflicts, and pending merges.
 
-    :param show_unchanged: Deprecated parameter. If set, includes unchanged 
+    :param show_unchanged: Deprecated parameter. If set, includes unchanged
         files.
     :param specific_files: If set, a list of filenames whose status should be
-        shown.  It is an error to give a filename that is not in the working 
+        shown.  It is an error to give a filename that is not in the working
         tree, or in the working inventory or in the basis inventory.
     :param show_ids: If set, includes each file's id.
     :param to_file: If set, write to this file (default stdout.)
@@ -78,7 +78,7 @@ def show_tree_status(wt, show_unchanged=None,
 
     if to_file is None:
         to_file = sys.stdout
-    
+
     wt.lock_read()
     try:
         new_is_working_tree = True
@@ -103,7 +103,8 @@ def show_tree_status(wt, show_unchanged=None,
         old.lock_read()
         new.lock_read()
         try:
-            _raise_if_nonexistent(specific_files, old, new)
+            specific_files, nonexistents \
+                = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
             if short:
                 changes = new.iter_changes(old, show_unchanged, specific_files,
@@ -137,11 +138,29 @@ def show_tree_status(wt, show_unchanged=None,
                 else:
                     prefix = ' '
                 to_file.write("%s %s\n" % (prefix, conflict))
+            # Show files that were requested but don't exist (and are
+            # not versioned).  We don't involve delta in this; these
+            # paths are really the province of just the status
+            # command, since they have more to do with how it was
+            # invoked than with the tree it's operating on.
+            if nonexistents and not short:
+                to_file.write("nonexistent:\n")
+            for nonexistent in nonexistents:
+                # We could calculate prefix outside the loop but, given
+                # how rarely this ought to happen, it's OK and arguably
+                # slightly faster to do it here (ala conflicts above)
+                if short:
+                    prefix = 'X  '
+                else:
+                    prefix = ' '
+                to_file.write("%s %s\n" % (prefix, nonexistent))
             if (new_is_working_tree and show_pending):
                 show_pending_merges(new, to_file, short, verbose=verbose)
         finally:
             old.unlock()
             new.unlock()
+            if nonexistents:
+              raise errors.PathsDoNotExist(nonexistents)
     finally:
         wt.unlock()
 
@@ -254,22 +273,28 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
             to_file.write(sub_prefix + log_message + '\n')
 
 
-def _raise_if_nonexistent(paths, old_tree, new_tree):
-    """Complain if paths are not in either inventory or tree.
+def _filter_nonexistent(orig_paths, old_tree, new_tree):
+    """Convert orig_paths to two sorted lists and return them.
 
-    It's OK with the files exist in either tree's inventory, or 
-    if they exist in the tree but are not versioned.
-    
+    The first is orig_paths paths minus the items in the second list,
+    and the second list is paths that are not in either inventory or
+    tree (they don't qualify if they exist in the tree's inventory, or
+    if they exist in the tree but are not versioned.)
+
+    If either of the two lists is empty, return it as an empty list.
+
     This can be used by operations such as bzr status that can accept
     unknown or ignored files.
     """
-    mutter("check paths: %r", paths)
-    if not paths:
-        return
-    s = old_tree.filter_unversioned_files(paths)
+    mutter("check paths: %r", orig_paths)
+    if not orig_paths:
+        return orig_paths, []
+    s = old_tree.filter_unversioned_files(orig_paths)
     s = new_tree.filter_unversioned_files(s)
-    s = [path for path in s if not new_tree.has_filename(path)]
-    if s:
-        raise errors.PathsDoNotExist(sorted(s))
-
-
+    nonexistent = [path for path in s if not new_tree.has_filename(path)]
+    remaining   = [path for path in orig_paths if not path in nonexistent]
+    # Sorting the 'remaining' list doesn't have much effect in
+    # practice, since the various status output sections will sort
+    # their groups individually.  But for consistency of this
+    # function's API, it's better to sort both than just 'nonexistent'.
+    return sorted(remaining), sorted(nonexistent)

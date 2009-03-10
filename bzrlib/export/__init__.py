@@ -32,7 +32,7 @@ def register_exporter(format, extensions, func, override=False):
     """Register an exporter.
 
     :param format: This is the name of the format, such as 'tgz' or 'zip'
-    :param extensions: Extensions which should be used in the case that a 
+    :param extensions: Extensions which should be used in the case that a
                        format was not explicitly specified.
     :type extensions: List
     :param func: The function. It will be called with (tree, dest, root)
@@ -70,7 +70,7 @@ def export(tree, dest, format=None, root=None, subdir=None):
     :param format: The format (dir, zip, etc), if None, it will check the
                    extension on dest, looking for a match
     :param root: The root location inside the format.
-                 It is common practise to have zipfiles and tarballs 
+                 It is common practise to have zipfiles and tarballs
                  extract into a subdirectory, rather than into the
                  current working directory.
                  If root is None, the default root will be
@@ -151,6 +151,12 @@ def _export_iter_entries(tree, subdir):
         # .bzrignore and .bzrrules - do not export these
         if entry[0].startswith(".bzr"):
             continue
+        if subdir is None:
+            if not tree.has_filename(entry[0]):
+                continue
+        else:
+            if not tree.has_filename(os.path.join(subdir, entry[0])):
+                continue
         yield entry
 
 

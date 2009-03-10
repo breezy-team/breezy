@@ -157,7 +157,7 @@ class Shelver(object):
         sys.stdout.flush()
         return char
 
-    def prompt_bool(self, question):
+    def prompt_bool(self, question, long=False):
         """Prompt the user with a yes/no question.
 
         This may be overridden by self.auto.  It may also *set* self.auto.  It
@@ -167,12 +167,18 @@ class Shelver(object):
         """
         if self.auto:
             return True
-        char = self.prompt(question + ' [yNfq]')
+        if long:
+            prompt = ' [(y)es, (N)o, (f)inish, or (q)uit]'
+        else:
+            prompt = ' [yNfq?]'
+        char = self.prompt(question + prompt)
         if char == 'y':
             return True
         elif char == 'f':
             self.auto = True
             return True
+        elif char == '?':
+            return self.prompt_bool(question, long=True)
         if char == 'q':
             raise errors.UserAbort()
         else:
@@ -223,7 +229,10 @@ class Unshelver(object):
         tree, path = workingtree.WorkingTree.open_containing(directory)
         manager = tree.get_shelf_manager()
         if shelf_id is not None:
-            shelf_id = int(shelf_id)
+            try:
+                shelf_id = int(shelf_id)
+            except ValueError:
+                raise errors.InvalidShelfId(shelf_id)
         else:
             shelf_id = manager.last_shelf()
             if shelf_id is None:
@@ -272,16 +281,16 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note('Message: %s' % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                merger = unshelver.make_merger()
-                merger.change_reporter = change_reporter
-                if self.apply_changes:
-                    pb = ui.ui_factory.nested_progress_bar()
-                    try:
+                task = ui.ui_factory.nested_progress_bar()
+                try:
+                    merger = unshelver.make_merger(task)
+                    merger.change_reporter = change_reporter
+                    if self.apply_changes:
                         merger.do_merge()
-                    finally:
-                        pb.finished()
-                else:
-                    self.show_changes(merger)
+                    else:
+                        self.show_changes(merger)
+                finally:
+                    task.finished()
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
         finally:

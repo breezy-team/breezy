@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -106,6 +106,12 @@ class TestBranch(ExternalBase):
         expected_repo_path = os.path.abspath('repo/target/.bzr/repository')
         self.assertEqual(strip_trailing_slash(b.repository.base),
             strip_trailing_slash(local_path_to_url(expected_repo_path)))
+
+    def test_branch_no_tree(self):
+        self.example_branch('source')
+        self.run_bzr('branch --no-tree source target')
+        self.failIfExists('target/hello')
+        self.failIfExists('target/goodbye')
 
 
 class TestBranchStacked(ExternalBase):
@@ -250,6 +256,40 @@ class TestBranchStacked(ExternalBase):
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
+
+class TestSmartServerBranching(ExternalBase):
+
+    def test_branch_from_trivial_branch_to_same_server_branch_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            self.get_url('target')])
+        rpc_count = len(self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertEqual(53, rpc_count)
+
+    def test_branch_from_trivial_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            'local-target'])
+        rpc_count = len(self.hpss_calls)
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertEqual(10, rpc_count)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

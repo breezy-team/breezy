@@ -106,7 +106,7 @@ PrivilegesRequired=admin
 ;     cog.outl('Source: "tbzrshellext_x64.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise; Check: IsWin64;')
 ;     cog.outl(r'Source: "plugins\qbzr\*"; DestDir: "{app}\plugins\qbzr"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete; Components: tortoise')
 ;
-;     cog.outl('Source: "%s\\doc\\index.html"; DestDir: "{app}\\doc\\tbzr"; Flags: ignoreversion; Components: tortoise' % os.environ['TBZR'])
+;     cog.outl('Source: "%s\\doc\\*.html"; DestDir: "{app}\\doc\\tbzr"; Flags: ignoreversion; Components: tortoise' % os.environ['TBZR'])
 ; ]]]
 ; [[[end]]]
 

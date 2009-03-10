@@ -475,7 +475,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1.add(['b'], ['b-id'])
         tree1.commit('b', rev_id='rev-2',
                      committer='Committer <committer@example.com>',
-                     author='Author <author@example.com>',
+                     authors=['Author <author@example.com>'],
                      timestamp=1166046000.00, timezone=0)
 
         tree1.lock_read()
@@ -502,7 +502,7 @@ class TestReannotate(tests.TestCase):
     def test_reannotate(self):
         self.annotateEqual(parent_1, [parent_1], new_1, 'blahblah')
         self.annotateEqual(expected_2_1, [parent_2], new_1, 'blahblah')
-        self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2, 
+        self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2,
                            'blahblah')
 
     def test_reannotate_no_parents(self):

@@ -17,13 +17,13 @@
 """File annotate based on weave storage"""
 
 # TODO: Choice of more or less verbose formats:
-# 
+#
 # interposed: show more details between blocks of modified lines
 
 # TODO: Show which revision caused a line to merge into the parent
 
 # TODO: perhaps abbreviate timescales depending on how recent they are
-# e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.  
+# e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.
 
 import sys
 import time
@@ -168,7 +168,7 @@ def _show_id_annotations(annotations, to_file, full):
 def _annotations(repo, file_id, rev_id):
     """Return the list of (origin_revision_id, line_text) for a revision of a file in a repository."""
     annotations = repo.texts.annotate((file_id, rev_id))
-    # 
+    #
     return [(key[-1], line) for (key, line) in annotations]
 
 
@@ -210,9 +210,9 @@ def _expand_annotations(annotations, branch, current_rev=None):
         revision_id_to_revno[CURRENT_REVISION] = (
             "%d?" % (branch.revno() + 1),)
         revisions[CURRENT_REVISION] = current_rev
-    revision_ids = [o for o in revision_ids if 
+    revision_ids = [o for o in revision_ids if
                     repository.has_revision(o)]
-    revisions.update((r.revision_id, r) for r in 
+    revisions.update((r.revision_id, r) for r in
                      repository.get_revisions(revision_ids))
     for origin, text in annotations:
         text = text.rstrip('\r\n')
@@ -231,7 +231,7 @@ def _expand_annotations(annotations, branch, current_rev=None):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = rev.get_apparent_author()
+            author = rev.get_apparent_authors()[0]
             try:
                 author = extract_email_address(author)
             except errors.NoEmailInUsername:
@@ -243,7 +243,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
                _left_matching_blocks=None,
                heads_provider=None):
     """Create a new annotated version from new lines and parent annotations.
-    
+
     :param parents_lines: List of annotated lines for all parents
     :param new_lines: The un-annotated new lines
     :param new_revision_id: The revision-id to associate with new lines

@@ -123,7 +123,7 @@ class TestIsAncestor(TestCaseWithTransport):
                        rev_id, branch.repository.get_ancestry(rev_id))
                 result = sorted(branch.repository.get_ancestry(rev_id))
                 self.assertEquals(result, [None] + sorted(anc))
-    
+
 
 class TestIntermediateRevisions(TestCaseWithTransport):
 
@@ -208,6 +208,26 @@ class TestRevisionMethods(TestCase):
     def test_get_apparent_author(self):
         r = revision.Revision('1')
         r.committer = 'A'
-        self.assertEqual('A', r.get_apparent_author())
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual('A', author)
         r.properties['author'] = 'B'
-        self.assertEqual('B', r.get_apparent_author())
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual('B', author)
+        r.properties['authors'] = 'C\nD'
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual('C', author)
+
+    def test_get_apparent_authors(self):
+        r = revision.Revision('1')
+        r.committer = 'A'
+        self.assertEqual(['A'], r.get_apparent_authors())
+        r.properties['author'] = 'B'
+        self.assertEqual(['B'], r.get_apparent_authors())
+        r.properties['authors'] = 'C\nD'
+        self.assertEqual(['C', 'D'], r.get_apparent_authors())

@@ -48,7 +48,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         """Add a revision with a given inventory and parents to a repository.
-        
+
         :param repo: a repository.
         :param revision_id: the revision ID for the new revision.
         :param inv: an inventory (such as created by
@@ -142,7 +142,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
     def shas_for_versions_of_file(self, repo, versions):
         """Get the SHA-1 hashes of the versions of 'a-file' in the repository.
-        
+
         :param repo: the repository to get the hashes from.
         :param versions: a list of versions to get hashes for.
 

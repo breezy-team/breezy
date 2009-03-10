@@ -50,7 +50,7 @@ class TestModified(ExternalBase):
         # with unknown file, still nothing modified
         self.build_tree_contents([(name, 'contents of %s\n' % (name))])
         check_modified('')
-        
+
         # after add, not modified
         tree.add(name)
         check_modified('')
@@ -60,9 +60,9 @@ class TestModified(ExternalBase):
         check_modified('')
 
         # modify the file
-        self.build_tree_contents([(name, 'changed\n')]) 
+        self.build_tree_contents([(name, 'changed\n')])
         check_modified(output + '\n')
-        
+
         # check null seps - use the unquoted raw name here
         check_modified(name + '\0', null=True)
 

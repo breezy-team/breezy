@@ -28,7 +28,7 @@ class TransformBenchmark(Benchmark):
     """Benchmarks for `bzrlib.transform`"""
 
     def test_canonicalize_path(self):
-        """Canonicalizing paths should be fast.""" 
+        """Canonicalizing paths should be fast."""
         wt = self.make_kernel_like_tree(link_working=True)
         paths = []
         for dirpath, dirnames, filenames in os.walk('.'):
