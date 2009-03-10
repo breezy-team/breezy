@@ -18,6 +18,7 @@
 cdef extern from *:
     ctypedef unsigned int size_t
     int memcmp(void *, void*, size_t)
+    void memcpy(void *, void*, size_t)
     void *memchr(void *s, int c, size_t len)
     long strtol(char *, char **, int)
     void sprintf(char *, char *, ...)
@@ -174,10 +175,11 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     cdef char *c_bytes, *cur, *next, *end
     cdef char *next_line
     cdef Py_ssize_t c_bytes_len, prefix_length
-    cdef int maximum_size, width, length, i
-    cdef int num_prefix_null, num_value_lines
-    cdef char *prefix, *value_start
-    cdef char *prefix_null, *last_null, *line_start
+    cdef int maximum_size, width, length, i, prefix_tail_len
+    cdef int num_value_lines
+    cdef char *prefix, *value_start, *prefix_tail
+    cdef char *next_null, *last_null, *line_start
+    cdef char *c_entry, *entry_start
 
     from bzrlib.chk_map import LeafNode, _unknown
 
@@ -209,11 +211,15 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     prefix_length = next_line - cur
     cur = next_line + 1
 
-    num_prefix_null = 0
-    prefix_null = <char *>memchr(prefix, c'\0', prefix_length)
-    while prefix_null != NULL:
-        num_prefix_null = num_prefix_null + 1
-        prefix_null = <char *>memchr(prefix_null+1, c'\0', next_line - prefix)
+    prefix_bits = []
+    prefix_tail = prefix
+    next_null = <char *>memchr(prefix, c'\0', prefix_length)
+    while next_null != NULL:
+        prefix_bits.append(
+            PyString_FromStringAndSize(prefix_tail, next_null - prefix_tail))
+        prefix_tail = next_null + 1
+        next_null = <char *>memchr(prefix_tail, c'\0', next_line - prefix_tail)
+    prefix_tail_len = next_line - prefix_tail
     py_prefix = PyString_FromStringAndSize(prefix, prefix_length)
 
     items = {}
@@ -225,8 +231,8 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
         if last_null == NULL:
             raise ValueError('fail to find the num value lines null')
-        last_null = last_null + 1 # move past NULL
-        num_value_lines = _get_int_from_line(&last_null, next_line + 1,
+        next_null = last_null + 1 # move past NULL
+        num_value_lines = _get_int_from_line(&next_null, next_line + 1,
                                              "num value lines")
         cur = next_line + 1
         value_start = cur
@@ -237,18 +243,37 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
                 raise ValueError('null line\n')
             cur = next_line + 1
         value = PyString_FromStringAndSize(value_start, next_line - value_start)
-        line = PyString_FromStringAndSize(line_start,
-                                          (last_null - line_start) - 3)
-        line = py_prefix + line
-        key = tuple(line.split('\x00'))
-        if len(key) != width:
+        entry_bits = list(prefix_bits)
+        # The next entry bit needs the 'tail' from the prefix, and first part
+        # of the line
+        entry_start = line_start
+        next_null = <char *>memchr(entry_start, c'\0',
+                                   last_null - entry_start + 1)
+        if next_null == NULL:
+            raise ValueError('bad no null, bad')
+        entry = PyString_FromStringAndSize(NULL,
+                    prefix_tail_len + next_null - line_start)
+        c_entry = PyString_AS_STRING(entry)
+        if prefix_tail_len > 0:
+            memcpy(c_entry, prefix_tail, prefix_tail_len)
+        memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)
+        entry_bits.append(entry)
+        while next_null != last_null: # We have remaining bits
+            entry_start = next_null + 1
+            next_null = <char *>memchr(entry_start, c'\0',
+                                       last_null - entry_start + 1)
+            if next_null == NULL:
+                raise ValueError('bad no null')
+            entry_bits.append(PyString_FromStringAndSize(entry_start,
+                next_null - entry_start))
+        if len(entry_bits) != width:
             raise AssertionError(
-                'Incorrect number of elements (%d vs %d) for: %r'
-                % (len(elements)+1, width + 1, line))
-        items[key] = value
+                'Incorrect number of elements (%d vs %d)'
+                % (len(entry_bits)+1, width + 1))
+        items[tuple(entry_bits)] = value
     if len(items) != length:
         raise ValueError("item count (%d) mismatch for key %s,"
-                         " bytes %r" % (length, key, bytes))
+                         " bytes %r" % (length, entry_bits, bytes))
     result._items = items
     result._len = length
     result._maximum_size = maximum_size
