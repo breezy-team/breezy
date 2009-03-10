@@ -24,8 +24,7 @@ from bzrlib.osutils import sha_string
 from bzrlib.plugins.groupcompress import errors, groupcompress
 from bzrlib.tests import (
     TestCaseWithTransport,
-    TestScenarioApplier,
-    adapt_tests,
+    multiply_tests,
     )
 from bzrlib.transport import get_transport
 
@@ -43,10 +42,8 @@ def load_tests(standard_tests, module, loader):
             'support_partial_insertion':False,
             }
         )
-    applier = TestScenarioApplier()
-    applier.scenarios = [group_scenario]
-    adapt_tests(vf_interface_tests, applier, standard_tests)
-    return standard_tests
+    scenarios = [group_scenario]
+    return multiply_tests(vf_interface_tests, scenarios, standard_tests)
 
 
 class TestGroupCompressor(tests.TestCase):

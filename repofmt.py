@@ -508,15 +508,6 @@ class GCPackRepository(KnitPackRepository):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
-        # Note: We cannot unpack a delta that references a text we haven't seen yet.
-        #       There are 2 options, work in fulltexts, or require topological
-        #       sorting. Using fulltexts is more optimal for local operations,
-        #       because the source can be smart about extracting multiple
-        #       in-a-row (and sharing strings). Topological is better for
-        #       remote, because we access less data.
-        self._fetch_order = 'unordered'
-        self._fetch_gc_optimal = True
-        self._fetch_uses_deltas = False
 
 
 if chk_support:
@@ -578,15 +569,6 @@ if chk_support:
             self._reconcile_does_inventory_gc = True
             self._reconcile_fixes_text_parents = True
             self._reconcile_backsup_inventory = False
-            # Note: We cannot unpack a delta that references a text we haven't
-            # seen yet. There are 2 options, work in fulltexts, or require
-            # topological sorting. Using fulltexts is more optimal for local
-            # operations, because the source can be smart about extracting
-            # multiple in-a-row (and sharing strings). Topological is better
-            # for remote, because we access less data.
-            self._fetch_order = 'unordered'
-            self._fetch_gc_optimal = True
-            self._fetch_uses_deltas = False
 
 
 class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
@@ -594,6 +576,15 @@ class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
 
     repository_class = GCPackRepository
     rich_root_data = False
+    # Note: We cannot unpack a delta that references a text we haven't
+    # seen yet. There are 2 options, work in fulltexts, or require
+    # topological sorting. Using fulltexts is more optimal for local
+    # operations, because the source can be smart about extracting
+    # multiple in-a-row (and sharing strings). Topological is better
+    # for remote, because we access less data.
+    _fetch_order = 'unordered'
+    _fetch_gc_optimal = True
+    _fetch_uses_deltas = False
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -613,6 +604,15 @@ if chk_support:
 
         repository_class = GCCHKPackRepository
         rich_root_data = True
+        # Note: We cannot unpack a delta that references a text we haven't
+        # seen yet. There are 2 options, work in fulltexts, or require
+        # topological sorting. Using fulltexts is more optimal for local
+        # operations, because the source can be smart about extracting
+        # multiple in-a-row (and sharing strings). Topological is better
+        # for remote, because we access less data.
+        _fetch_order = 'unordered'
+        _fetch_gc_optimal = True
+        _fetch_uses_deltas = False
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
@@ -652,6 +652,15 @@ if chk_support:
         # than InterDifferingSerializer
         rich_root_data = True
         _serializer = chk_serializer_255_bigpage
+        # Note: We cannot unpack a delta that references a text we haven't
+        # seen yet. There are 2 options, work in fulltexts, or require
+        # topological sorting. Using fulltexts is more optimal for local
+        # operations, because the source can be smart about extracting
+        # multiple in-a-row (and sharing strings). Topological is better
+        # for remote, because we access less data.
+        _fetch_order = 'unordered'
+        _fetch_gc_optimal = True
+        _fetch_uses_deltas = False
 
         def get_format_string(self):
             """See RepositoryFormat.get_format_string()."""
