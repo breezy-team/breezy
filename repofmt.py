@@ -234,17 +234,20 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         self.repo.signatures._index._add_callback = self.signature_index.add_callback
         self.repo.texts._index._add_callback = self.text_index.add_callback
 
-    def _get_filtered_inv_stream(self, source_vf, keys):
+    def _get_filtered_inv_stream(self, source_vf, keys, pb=None):
         """Filter the texts of inventories, to find the chk pages."""
         id_roots = []
         p_id_roots = []
         id_roots_set = set()
         p_id_roots_set = set()
+        total_keys = len(keys)
         def _filter_inv_stream(stream):
             for idx, record in enumerate(stream):
                 ### child_pb.update('fetch inv', idx, len(inv_keys_to_fetch))
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(None, bytes, record.key)
+                if pb is not None:
+                    pb.update('inv', idx, total_keys)
                 key = chk_inv.id_to_entry.key()
                 if key not in id_roots_set:
                     id_roots.append(key)
@@ -275,6 +278,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         #       Test the difference between using one Group per level, and
         #       using 1 Group per prefix. (so '' (root) would get a group, then
         #       all the references to search-key 'a' would get a group, etc.)
+        total_keys = len(keys)
         remaining_keys = set(keys)
         counter = [0]
         def _get_referenced_stream(root_keys):
@@ -304,7 +308,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                                     next_keys.add(value)
                         counter[0] += 1
                         if pb is not None:
-                            pb.update('chk node', counter[0])
+                            pb.update('chk node', counter[0], total_keys)
                         yield record
                 yield next_stream()
                 # Double check that we won't be emitting any keys twice
@@ -392,7 +396,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                         if has_chk:
                             if vf_name == 'inventories':
                                 stream, id_roots, p_id_roots = self._get_filtered_inv_stream(
-                                    source_vf, keys)
+                                    source_vf, keys, pb=child_pb)
                             elif vf_name == 'chk_bytes':
                                 for stream in self._get_chk_stream(source_vf, keys,
                                                     id_roots, p_id_roots,
