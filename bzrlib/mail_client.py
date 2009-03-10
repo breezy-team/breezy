@@ -217,13 +217,15 @@ class Evolution(ExternalMailClient):
 
     _client_commands = ['evolution']
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = {}
         if subject is not None:
             message_options['subject'] = subject
         if attach_path is not None:
             message_options['attach'] = attach_path
+        if body is not None:
+            message_options['body'] = body
         options_list = ['%s=%s' % (k, urlutils.escape(v)) for (k, v) in
                         sorted(message_options.iteritems())]
         return ['mailto:%s?%s' % (self._encode_safe(to or ''),
@@ -266,7 +268,7 @@ class Thunderbird(ExternalMailClient):
         '/Applications/Mozilla/Thunderbird.app/Contents/MacOS/thunderbird-bin',
         '/Applications/Thunderbird.app/Contents/MacOS/thunderbird-bin']
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = {}
         if to is not None:
@@ -276,8 +278,12 @@ class Thunderbird(ExternalMailClient):
         if attach_path is not None:
             message_options['attachment'] = urlutils.local_path_to_url(
                 attach_path)
-        options_list = ["%s='%s'" % (k, v) for k, v in
-                        sorted(message_options.iteritems())]
+        if body is not None:
+            options_list = ['body=%s' % urllib.quote(self._encode_safe(body))]
+        else:
+            options_list = []
+        options_list.extend(["%s='%s'" % (k, v) for k, v in
+                        sorted(message_options.iteritems())])
         return ['-compose', ','.join(options_list)]
 mail_client_registry.register('thunderbird', Thunderbird,
                               help=Thunderbird.__doc__)
@@ -334,7 +340,7 @@ class XDGEmail(ExternalMailClient):
 
     _client_commands = ['xdg-email']
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
         if not to:
             raise errors.NoMailAddressSpecified()
@@ -344,6 +350,8 @@ class XDGEmail(ExternalMailClient):
         if attach_path is not None:
             commandline.extend(['--attach',
                 self._encode_path(attach_path, 'attachment')])
+        if body is not None:
+            commandline.extend(['--body', self._encode_safe(body)])
         return commandline
 mail_client_registry.register('xdg-email', XDGEmail,
                               help=XDGEmail.__doc__)

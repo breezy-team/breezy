@@ -56,9 +56,12 @@ class TestThunderbird(tests.TestCase):
         self.assertEqual(['-compose', "attachment='%s'" %
                           urlutils.local_path_to_url('file%')], commandline)
         commandline = tbird._get_compose_commandline('jrandom@example.org',
-                                                     'Hi there!', None)
-        self.assertEqual(['-compose', "subject='Hi there!',"
-                                      "to='jrandom@example.org'"], commandline)
+                                                     'Hi there!', None,
+                                                     "bo'dy")
+        self.assertEqual(['-compose', "body=bo%27dy,"
+                                      "subject='Hi there!',"
+                                      "to='jrandom@example.org'"],
+                                      commandline)
 
     def test_commandline_is_8bit(self):
         # test for bug #139318
@@ -119,9 +122,9 @@ class TestXDGEmail(tests.TestCase):
         self.assertEqual(['jrandom@example.org', '--attach', 'file%'],
                          commandline)
         commandline = xdg_email._get_compose_commandline(
-            'jrandom@example.org', 'Hi there!', None)
-        self.assertEqual(['jrandom@example.org', '--subject', 'Hi there!'],
-                         commandline)
+            'jrandom@example.org', 'Hi there!', None, "bo'dy")
+        self.assertEqual(['jrandom@example.org', '--subject', 'Hi there!',
+                          '--body', "bo'dy"], commandline)
 
     def test_commandline_is_8bit(self):
         xdg_email = mail_client.XDGEmail(None)
@@ -143,9 +146,9 @@ class TestEvolution(tests.TestCase):
         commandline = evo._get_compose_commandline(None, None, 'file%')
         self.assertEqual(['mailto:?attach=file%25'], commandline)
         commandline = evo._get_compose_commandline('jrandom@example.org',
-                                                   'Hi there!', None)
-        self.assertEqual(['mailto:jrandom@example.org?subject=Hi%20there%21'],
-                         commandline)
+                                                   'Hi there!', None, 'bo&dy')
+        self.assertEqual(['mailto:jrandom@example.org?body=bo%26dy&'
+                          'subject=Hi%20there%21'], commandline)
 
     def test_commandline_is_8bit(self):
         evo = mail_client.Evolution(None)
