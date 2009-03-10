@@ -1513,7 +1513,7 @@ class Repository(object):
         for record in stream:
             if record.storage_kind != 'absent':
                 chunks = record.get_bytes_as('chunked')
-                revid = key[-1]
+                revid = record.key[-1]
                 lines = osutils.chunks_to_lines(chunks)
                 for line in lines:
                     yield line, revid
