@@ -839,7 +839,7 @@ class cmd_pull(Command):
     with bzr send.
     """
 
-    _see_also = ['push', 'update', 'status-flags']
+    _see_also = ['push', 'update', 'status-flags', 'send']
     takes_options = ['remember', 'overwrite', 'revision',
         custom_help('verbose',
             help='Show logs of pulled revisions.'),
@@ -3325,7 +3325,7 @@ class cmd_merge(Command):
     """
 
     encoding_type = 'exact'
-    _see_also = ['update', 'remerge', 'status-flags']
+    _see_also = ['update', 'remerge', 'status-flags', 'send']
     takes_args = ['location?']
     takes_options = [
         'change',
@@ -4712,7 +4712,8 @@ class cmd_send(Command):
     default.  "0.9" uses revision bundle format 0.9 and merge directive
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
 
-    Merge directives are applied using the merge command or the pull command.
+    The merge directives created by bzr send may be applied using bzr merge or
+    bzr pull by specifying a file containing a merge directive as the location.
     """
 
     encoding_type = 'exact'
@@ -5453,6 +5454,40 @@ class cmd_unshelve(Command):
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.shelf_ui import Unshelver
         Unshelver.from_args(shelf_id, action).run()
+
+
+class cmd_clean_tree(Command):
+    """Remove unwanted files from working tree.
+
+    By default, only unknown files, not ignored files, are deleted.  Versioned
+    files are never deleted.
+
+    Another class is 'detritus', which includes files emitted by bzr during
+    normal operations and selftests.  (The value of these files decreases with
+    time.)
+
+    If no options are specified, unknown files are deleted.  Otherwise, option
+    flags are respected, and may be combined.
+
+    To check what clean-tree will do, use --dry-run.
+    """
+    takes_options = [Option('ignored', help='Delete all ignored files.'),
+                     Option('detritus', help='Delete conflict files, merge'
+                            ' backups, and failed selftest dirs.'),
+                     Option('unknown',
+                            help='Delete files unknown to bzr (default).'),
+                     Option('dry-run', help='Show files to delete instead of'
+                            ' deleting them.'),
+                     Option('force', help='Do not prompt before deleting.')]
+    def run(self, unknown=False, ignored=False, detritus=False, dry_run=False,
+            force=False):
+        from bzrlib.clean_tree import clean_tree
+        if not (unknown or ignored or detritus):
+            unknown = True
+        if dry_run:
+            force = True
+        clean_tree('.', unknown=unknown, ignored=ignored, detritus=detritus,
+                   dry_run=dry_run, no_prompt=force)
 
 
 def _create_prefix(cur_transport):

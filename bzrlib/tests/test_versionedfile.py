@@ -48,11 +48,10 @@ from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestNotApplicable,
-    TestScenarioApplier,
     TestSkipped,
     condition_isinstance,
     split_suite_by_condition,
-    iter_suite_tests,
+    multiply_tests,
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -76,8 +75,6 @@ def load_tests(standard_tests, module, loader):
     """Parameterize VersionedFiles tests for different implementations."""
     to_adapt, result = split_suite_by_condition(
         standard_tests, condition_isinstance(TestVersionedFiles))
-    len_one_adapter = TestScenarioApplier()
-    len_two_adapter = TestScenarioApplier()
     # We want to be sure of behaviour for:
     # weaves prefix layout (weave texts)
     # individually named weaves (weave inventories)
@@ -88,7 +85,7 @@ def load_tests(standard_tests, module, loader):
     # individual graph knits in packs (inventories)
     # individual graph nocompression knits in packs (revisions)
     # plain text knits in packs (texts)
-    len_one_adapter.scenarios = [
+    len_one_scenarios = [
         ('weave-named', {
             'cleanup':None,
             'factory':make_versioned_files_factory(WeaveFile,
@@ -126,7 +123,7 @@ def load_tests(standard_tests, module, loader):
             'support_partial_insertion': False,
             }),
         ]
-    len_two_adapter.scenarios = [
+    len_two_scenarios = [
         ('weave-prefix', {
             'cleanup':None,
             'factory':make_versioned_files_factory(WeaveFile,
@@ -150,10 +147,8 @@ def load_tests(standard_tests, module, loader):
             'support_partial_insertion': True,
             }),
         ]
-    for test in iter_suite_tests(to_adapt):
-        result.addTests(len_one_adapter.adapt(test))
-        result.addTests(len_two_adapter.adapt(test))
-    return result
+    scenarios = len_one_scenarios + len_two_scenarios
+    return multiply_tests(to_adapt, scenarios, result)
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):

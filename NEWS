@@ -38,6 +38,8 @@ IN DEVELOPMENT
     * Multiple authors for a commit can now be recorded by using the "--author"
       option multiple times. (James Westby, #185772)
 
+    * New clean-tree command, from bzrtools.  (Aaron Bentley, Jelmer Vernoij)
+
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
@@ -68,6 +70,9 @@ IN DEVELOPMENT
       batches up requests into approx 5MB requests, rather than a separate
       request for each file. (John Arbash Meinel)
 
+    * Progress bars now show the rate of network activity for
+      ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
 
@@ -84,6 +89,13 @@ IN DEVELOPMENT
     * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
   BUG FIXES:
+
+    * Bazaar now gives a better message including the filename if it's
+      unable to read a file in the working directory, for example because
+      of a permission error.  (Martin Pool, #338653)
+
+    * ``bzr send`` help is more specific about how to apply merge
+      directives.  (Neil Martinsen-Burrell, #253470)
 
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
@@ -106,6 +118,9 @@ IN DEVELOPMENT
       error branching from old repositories.
       (Martin Pool, #321695)
 
+    * Make ``bzr push --quiet <non-local location>`` less chatty.
+      (Kent Gibson, #221461)
+
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
       for branches. This is now fixed and a test added to prevent it
@@ -122,8 +137,8 @@ IN DEVELOPMENT
       when needed.
       (Vincent Ladeuil)
 
-    * Make ``bzr push --quiet <non-local location>`` less chatty.
-      (Kent Gibson, #221461)
+    * Unshelve does not generate warnings about progress bars.
+      (Aaron Bentley, #328148)
 
   DOCUMENTATION:
 
@@ -131,6 +146,9 @@ IN DEVELOPMENT
       summarizing some common ways of organizing trees, branches and
       repositories and the processes/workflows implied/enabled by each.
       (Ian Clatworthy)
+
+    * Hooks can now be self documenting. ``bzrlib.hooks.Hooks.create_hook``
+      is the entry point for this feature. (Robert Collins)
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
@@ -242,6 +260,12 @@ IN DEVELOPMENT
     * Some methods have been pulled up from ``BzrBranch`` to ``Branch``
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)
+
+    * Test adaptation has been made consistent throughout the built in
+      tests. ``TestScenarioApplier``, ``multiply_tests_from_modules``,
+      ``adapt_tests``, ``adapt_modules`` have all been deleted. Please
+      use ``multiply_tests``, or for lower level needs ``apply_scenarios``
+      and ``apply_scenario``. (Robert Collins)
 
     * ``TestSkipped`` is now detected by TestCase and passed to the
       ``TestResult`` by calling ``addSkip``. For older TestResult objects,
