@@ -158,9 +158,9 @@ class AbstractRevisionStore(object):
             pass
 
         # Load the texts, signature and revision
-        fileids_needing_texts = [id for _, n, id, ie in inv_delta
-            if n is not None and ie.kind == 'file']
-        self._load_texts_for_file_ids(rev_id, fileids_needing_texts,
+        file_rev_ids_needing_texts = [(id, ie.revision)
+            for _, n, id, ie in inv_delta if n is not None]
+        self._load_texts_for_file_rev_ids(file_rev_ids_needing_texts,
             parent_invs, text_provider)
         if signature is not None:
             self.repo.add_signature_text(rev_id, signature)
@@ -330,19 +330,19 @@ class RevisionStore2(AbstractRevisionStore):
                     continue
                 text_parents.append((ie.file_id, parent_id))
             lines = text_provider(ie.file_id)
+            #print "adding text for %s" % (text_key,)
             self.repo.texts.add_lines(text_key, text_parents, lines)
 
-    def _load_texts_for_file_ids(self, revision_id, file_ids, parent_invs,
+    def _load_texts_for_file_rev_ids(self, file_rev_ids, parent_invs,
         text_provider):
-        """Load texts to a repository for file_ids.
+        """Load texts to a repository for file-ids, revision-id tuples.
         
-        :param revision_id: the revision identifier
-        :param file_ids: iterator over the file_ids
+        :param file_rev_ids: iterator over the (file_id, revision_id) tuples
         :param parent_invs: the parent inventories
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
         """
-        for file_id in file_ids:
+        for file_id, revision_id in file_rev_ids:
             text_parents = []
             for parent_inv in parent_invs:
                 if file_id not in parent_inv:
@@ -353,6 +353,7 @@ class RevisionStore2(AbstractRevisionStore):
                 text_parents.append((file_id, parent_id))
             lines = text_provider(file_id)
             text_key = (file_id, revision_id)
+            #print "adding text for %s" % (text_key,)
             self.repo.texts.add_lines(text_key, text_parents, lines)
 
     def get_file_lines(self, revision_id, file_id):
