@@ -140,11 +140,10 @@ IN DEVELOPMENT
     * Unshelve does not generate warnings about progress bars.
       (Aaron Bentley, #328148)
 
-    * Corrected a disconnect between ``AuthenticationConfig`` and credential 
-      provider plug-ins where the credentials dictionary passed to 
-      providers would not contain expected keys, as tested by the netrc 
-      provider plug-in tests.
-      (Jean-Francois Roy)
+    * Authentication plugins now receive all the parameters from the request
+      itself (aka host, port, realm, path, etc). Previously, only the 
+      authentication section name, username and encoded password were 
+      provided. (Jean-Francois Roy)
 
   DOCUMENTATION:
 
