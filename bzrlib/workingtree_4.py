@@ -214,8 +214,7 @@ class DirStateWorkingTree(WorkingTree3):
         # it looks like a plain directory, but it's really a reference -- see
         # also kind()
         if (self._repo_supports_tree_reference and
-            kind == 'directory' and
-            self._directory_is_tree_reference(path)):
+            kind == 'directory' and entry.kind == 'tree-reference'):
             kind = 'tree-reference'
         return kind, executable, stat_value
 
