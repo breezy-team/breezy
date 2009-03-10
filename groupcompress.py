@@ -166,8 +166,10 @@ class GroupCompressBlock(object):
                 'bytes did not start with %r' % (cls.GCB_HEADER,))
         if bytes[4] == 'z':
             decomp = zlib.decompress
-        else:
+        elif bytes[4] == 'l':
             decomp = pylzma.decompress
+        else:
+            assert False, 'unknown compressor: %r' % (bytes,)
         pos = bytes.index('\n', 6)
         z_header_length = int(bytes[6:pos])
         pos += 1
