@@ -1522,7 +1522,7 @@ class PendingAncestryResult(object):
         NULL_REVISION.
         """
         return self._get_keys(self.repo.get_graph())
-    
+
     def _get_keys(self, graph):
         NULL_REVISION = revision.NULL_REVISION
         keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
