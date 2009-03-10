@@ -213,14 +213,20 @@ class InterGitNonGitRepository(InterRepository):
                 create_pb.finished()
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              mapping=None):
+              mapping=None, fetch_spec=None):
         if mapping is None:
             mapping = self.source.get_mapping()
+        if revision_id is not None:
+            interesting_heads = [revision_id]
+        elif fetch_spec is not None:
+            interesting_heads = fetch_spec.heads
+        else:
+            interesting_heads = None
         def determine_wants(heads):
-            if revision_id is None:
+            if interesting_heads is None:
                 ret = heads.values()
             else:
-                ret = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
+                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         return self.fetch_objects(determine_wants, mapping, pb)
 
@@ -246,17 +252,19 @@ class InterGitRepository(InterRepository):
         self.fetch(revision_id, pb, find_ghosts=False)
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              mapping=None):
+              mapping=None, fetch_spec=None):
         if mapping is None:
             mapping = self.source.get_mapping()
         def progress(text):
             info("git: %s", text)
         r = self.target._git
-        if revision_id is None:
-            determine_wants = lambda x: [y for y in x.values() if not y in r.object_store]
-        else:
+        if revision_id is not None:
             args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
-            determine_wants = lambda x: [y for y in args if not y in r.object_store]
+        elif fetch_spec is not None:
+            args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in fetch_spec.heads]
+        else:
+            args = x.values()
+        determine_wants = lambda x: [y for y in args if not y in r.object_store]
 
         graphwalker = SimpleFetchGraphWalker(r.heads().values(), r.get_parents)
         f, commit = r.object_store.add_pack()

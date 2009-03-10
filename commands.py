@@ -76,7 +76,7 @@ class cmd_git_import(Command):
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
             raise BzrCommandError("%r is not a git repository" % src_location)
-        format = format_registry.make_bzrdir('rich-root-pack')
+        format = format_registry.make_bzrdir("1.9-rich-root")
         try:
             target_bzrdir = BzrDir.open(dest_location)
         except NotBranchError:
