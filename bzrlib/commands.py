@@ -708,7 +708,7 @@ def apply_profiled(the_callable, *args, **kwargs):
 def exception_to_return_code(the_callable, *args, **kwargs):
     """UI level helper for profiling and coverage.
 
-    This transforms exceptions into a return value of 3. As such its only 
+    This transforms exceptions into a return value of 3. As such its only
     relevant to the UI layer, and should never be called where catching
     exceptions may be desirable.
     """
@@ -961,7 +961,7 @@ def main(argv):
 
 def run_bzr_catch_errors(argv):
     """Run a bzr command with parameters as described by argv.
-    
+
     This function assumed that that UI layer is setup, that symbol deprecations
     are already applied, and that unicode decoding has already been performed on argv.
     """
