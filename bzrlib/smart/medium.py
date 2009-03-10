@@ -722,10 +722,12 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._bzr_remote_path = bzr_remote_path
 
     def __repr__(self):
-        return "%s(connected=%r, host=%r)" % (
+        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
             self.__class__.__name__,
             self._connected,
-            self._host)
+            self._username,
+            self._host,
+            self._port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
