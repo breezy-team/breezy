@@ -213,8 +213,8 @@ class DirStateWorkingTree(WorkingTree3):
             WorkingTree3._comparison_data(self, entry, path)
         # it looks like a plain directory, but it's really a reference -- see
         # also kind()
-        if (self._repo_supports_tree_reference and
-            kind == 'directory' and entry.kind == 'tree-reference'):
+        if (self._repo_supports_tree_reference and kind == 'directory'
+            and entry is not None and entry.kind == 'tree-reference'):
             kind = 'tree-reference'
         return kind, executable, stat_value
 
@@ -566,7 +566,7 @@ class DirStateWorkingTree(WorkingTree3):
         if (self._repo_supports_tree_reference and kind == 'directory'):
             entry = self._get_entry(path=relpath)
             if entry[1] is not None:
-                if entry[1][0] == 't':
+                if entry[1][0][0] == 't':
                     kind = 'tree-reference'
         return kind
 
