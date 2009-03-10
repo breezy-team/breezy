@@ -85,6 +85,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr send`` help is more specific about how to apply merge
+      directives.  (Neil Martinsen-Burrell, #253470)
+
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
       Vernooij, #315048)
