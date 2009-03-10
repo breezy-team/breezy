@@ -71,8 +71,7 @@ IN DEVELOPMENT
       request for each file. (John Arbash Meinel)
 
     * Progress bars now show the rate of network activity for
-      ``bzr+ssh://``, ``bzr://`` and ``bzr+http://`` connections.
-      (Andrew Bennetts)
+      ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
