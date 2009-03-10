@@ -42,12 +42,12 @@ class TestCleanTree(TestCaseInTempDir):
         BzrDir.create_standalone_workingtree('branch')
         os.symlink(os.path.realpath('no-die-please'), 'branch/die-please')
         os.mkdir('no-die-please')
-        assert os.path.exists('branch/die-please')
+        self.failUnlessExists('branch/die-please')
         os.mkdir('no-die-please/child')
 
         clean_tree('branch', unknown=True, no_prompt=True)
-        assert os.path.exists('no-die-please')
-        assert os.path.exists('no-die-please/child')
+        self.failUnlessExists('no-die-please')
+        self.failUnlessExists('no-die-please/child')
 
     def test_iter_deletable(self):
         """Files are selected for deletion appropriately"""
@@ -63,15 +63,16 @@ class TestCleanTree(TestCaseInTempDir):
             transport.put_bytes('file~', 'contents')
             transport.put_bytes('file.pyc', 'contents')
             dels = sorted([r for a,r in iter_deletables(tree, unknown=True)])
-            assert sorted(['file', 'file.BASE']) == dels
+            self.assertEqual(['file', 'file.BASE'], dels)
 
             dels = [r for a,r in iter_deletables(tree, detritus=True)]
-            assert sorted(['file~', 'file.BASE']) == dels
+            self.assertEqual(sorted(['file~', 'file.BASE']), dels)
 
             dels = [r for a,r in iter_deletables(tree, ignored=True)]
-            assert sorted(['file~', 'file.pyc', '.bzrignore']) == dels
+            self.assertEqual(sorted(['file~', 'file.pyc', '.bzrignore']),
+                             dels)
 
             dels = [r for a,r in iter_deletables(tree, unknown=False)]
-            assert [] == dels
+            self.assertEqual([], dels)
         finally:
             tree.unlock()
