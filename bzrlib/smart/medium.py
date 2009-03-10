@@ -720,11 +720,12 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
-        if self._bzr_remote_path is None:
-            symbol_versioning.warn(
-                'bzr_remote_path is required as of bzr 0.92',
-                DeprecationWarning, stacklevel=2)
-            self._bzr_remote_path = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+
+    def __repr__(self):
+        return "%s(connected=%r, host=%r)" % (
+            self.__class__.__name__,
+            self._connected,
+            self._host)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
