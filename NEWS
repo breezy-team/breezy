@@ -140,6 +140,12 @@ IN DEVELOPMENT
     * Unshelve does not generate warnings about progress bars.
       (Aaron Bentley, #328148)
 
+    * Corrected a disconnect between ``AuthenticationConfig`` and credential 
+      provider plug-ins where the credentials dictionary passed to 
+      providers would not contain expected keys, as tested by the netrc 
+      provider plug-in tests.
+      (Jean-Francois Roy)
+
   DOCUMENTATION:
 
     * Added ``Organizing your workspace`` to the User Guide appendices,
@@ -196,6 +202,10 @@ IN DEVELOPMENT
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular
       repository of that format). (Robert Collins)
+
+    * The ``get_credentials`` and ``set_credentials`` methods of 
+      ``AuthenticationConfig`` now accept an optional realm argument.
+      (Jean-Francois Roy)
 
   INTERNALS:
 
