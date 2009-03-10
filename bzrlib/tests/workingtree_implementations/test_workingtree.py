@@ -805,6 +805,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # they had when they were first added
         # create one file of every interesting type
         tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         self.build_tree(['file', 'directory/'])
         names = ['file', 'directory']
         if has_symlinks():

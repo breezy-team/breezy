@@ -547,7 +547,6 @@ class DirStateWorkingTree(WorkingTree3):
         entry = self._get_entry(file_id=file_id, path=path)
         state._observed_sha1(entry, sha1, statvalue)
 
-    @needs_read_lock
     def kind(self, file_id):
         """Return the kind of a file.
 
