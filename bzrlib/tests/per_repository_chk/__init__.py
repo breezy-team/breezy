@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,11 +33,9 @@ from bzrlib.repofmt.pack_repo import (
     RepositoryFormatPackDevelopment5,
     )
 from bzrlib.tests import (
-                          adapt_modules,
-                          adapt_tests,
-                          TestScenarioApplier,
-                          TestSuite,
-                          )
+    multiply_tests,
+    TestSuite,
+    )
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
     TestCaseWithRepository,
@@ -52,8 +50,8 @@ class TestCaseWithRepositoryCHK(TestCaseWithRepository):
 
 
 def load_tests(standard_tests, module, loader):
-    supported = []
-    notsupported = []
+    supported_scenarios = []
+    unsupported_scenarios = []
     for test_name, scenario_info in all_repository_format_scenarios():
         format = scenario_info['repository_format']
         # For remote repositories, we test both with, and without a backing chk
@@ -65,29 +63,19 @@ def load_tests(standard_tests, module, loader):
             with_support = dict(scenario_info)
             with_support['repository_format'] = \
                 RepositoryFormatPackDevelopment5()
-            supported.append((test_name + "(Supported)", with_support))
+            supported_scenarios.append((test_name + "(Supported)", with_support))
             no_support = dict(scenario_info)
             no_support['repository_format'] = RepositoryFormatKnitPack5()
-            notsupported.append((test_name + "(Not Supported)", no_support))
+            unsupported_scenarios.append((test_name + "(Not Supported)", no_support))
         elif format.supports_chks:
-            supported.append((test_name, scenario_info))
+            supported_scenarios.append((test_name, scenario_info))
         else:
-            notsupported.append((test_name, scenario_info))
-    adapter = TestScenarioApplier()
-
-    module_list = [
-        'bzrlib.tests.per_repository_chk.test_supported',
-        ]
-    unsupported_list = [
-        'bzrlib.tests.per_repository_chk.test_unsupported',
-        ]
-    result = TestSuite()
-    # Any tests in this module are unparameterised.
-    result.addTest(standard_tests)
-    # Supported formats get the supported tests
-    adapter.scenarios = supported
-    adapt_modules(module_list, adapter, loader, result)
-    # Unsupported formats get the unsupported tetss
-    adapter.scenarios = notsupported
-    adapt_modules(unsupported_list, adapter, loader, result)
+            unsupported_scenarios.append((test_name, scenario_info))
+    result = loader.suiteClass()
+    supported_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.per_repository_chk.test_supported'])
+    unsupported_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.per_repository_chk.test_unsupported'])
+    multiply_tests(supported_tests, supported_scenarios, result)
+    multiply_tests(unsupported_tests, unsupported_scenarios, result)
     return result
