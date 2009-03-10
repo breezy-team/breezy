@@ -61,7 +61,7 @@ These are the bugtrackers that are built in:
      URL                          | Tracker id | Example
    ------------------------------------------------------------
      https://bugs.launchpad.net/  | lp         | lp:12345
-     http://bugs.debian.org/      | debian     | debian:12345
+     http://bugs.debian.org/      | deb        | deb:12345
      http://bugzilla.gnome.org/   | gnome      | gnome:12345
 
 For the bug trackers not listed above configuration is required.
