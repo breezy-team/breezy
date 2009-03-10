@@ -202,7 +202,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(23, rpc_count)
+        self.assertEqual(20, rpc_count)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()

@@ -154,7 +154,7 @@ class BzrError(StandardError):
                )
 
     def __eq__(self, other):
-        if self.__class__ != other.__class__:
+        if self.__class__ is not other.__class__:
             return NotImplemented
         return self.__dict__ == other.__dict__
 
@@ -1634,6 +1634,8 @@ class SocketConnectionError(ConnectionError):
             self.port = ':%s' % port
 
 
+# XXX: This is also used for unexpected end of file, which is different at the
+# TCP level from "connection reset".
 class ConnectionReset(TransportError):
 
     _fmt = "Connection closed: %(msg)s %(orig_error)s"

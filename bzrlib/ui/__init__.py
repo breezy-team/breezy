@@ -240,7 +240,7 @@ def make_ui_for_terminal(stdin, stdout, stderr):
         cls = CLIUIFactory
     elif not isatty():
         cls = CLIUIFactory
-    elif os.environ.get('TERM') in (None, 'dumb', ''):
+    elif os.environ.get('TERM') in ('dumb', ''):
         # e.g. emacs compile window
         cls = CLIUIFactory
     # User may know better, otherwise default to TextUIFactory

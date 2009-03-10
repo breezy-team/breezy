@@ -1525,3 +1525,33 @@ class TestCollapseLinearRegions(tests.TestCase):
         # 2 and 3 cannot be removed because 1 has 2 parents
         d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
         self.assertCollapsed(d, d)
+
+
+class TestPendingAncestryResult(TestCaseWithMemoryTransport):
+    """Tests for bzrlib.graph.PendingAncestryResult."""
+
+    def test_get_keys(self):
+        builder = self.make_branch_builder('b')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.finish_series()
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        par = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        self.assertEqual(set(['rev-1', 'rev-2']), set(par.get_keys()))
+
+    def test_get_keys_excludes_null(self):
+        # Make a 'graph' with an iter_ancestry that returns NULL_REVISION
+        # somewhere other than the last element, which can happen in real
+        # ancestries.
+        class StubGraph(object):
+            def iter_ancestry(self, keys):
+                return [(NULL_REVISION, ()), ('foo', (NULL_REVISION,))]
+        par = _mod_graph.PendingAncestryResult(['rev-3'], None)
+        par_keys = par._get_keys(StubGraph())
+        # Only the non-null keys from the ancestry appear.
+        self.assertEqual(set(['foo']), set(par_keys))
+

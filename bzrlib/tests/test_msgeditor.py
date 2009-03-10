@@ -35,14 +35,14 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
-    iter_suite_tests,
-    probe_bad_non_ascii,
-    split_suite_by_re,
     TestCaseWithTransport,
     TestNotApplicable,
     TestSkipped,
+    multiply_tests,
+    probe_bad_non_ascii,
+    split_suite_by_re,
     )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
+from bzrlib.tests.EncodingAdapter import encoding_scenarios
 from bzrlib.trace import mutter
 
 
@@ -50,9 +50,7 @@ def load_tests(standard_tests, module, loader):
     """Parameterize the test for tempfile creation with different encodings."""
     to_adapt, result = split_suite_by_re(standard_tests,
         "test__create_temp_file_with_commit_template_in_unicode_dir")
-    for test in iter_suite_tests(to_adapt):
-        result.addTests(EncodingTestAdapter().adapt(test))
-    return result
+    return multiply_tests(to_adapt, encoding_scenarios, result)
 
 
 class MsgEditorTest(TestCaseWithTransport):

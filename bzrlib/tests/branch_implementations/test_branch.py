@@ -109,7 +109,7 @@ class TestBranch(TestCaseWithBranch):
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         b2 = self.make_branch('b2')
-        self.assertEqual((1, []), b2.fetch(b1))
+        b2.fetch(b1)
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')

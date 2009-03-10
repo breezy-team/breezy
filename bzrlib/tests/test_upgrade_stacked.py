@@ -65,7 +65,7 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
         stacked.open_branch().check()
 
 
-def load_tests(basic_tests, module, test_loader):
+def load_tests(basic_tests, module, loader):
     """Generate dynamic scenario tests.
 
     Called by the bzrlib test framework.
@@ -83,8 +83,5 @@ def load_tests(basic_tests, module, test_loader):
             dict(scenario_old_format=old_name,
                 scenario_new_format=new_name,
                 scenario_model_change=model_change)))
-    adapter = tests.TestScenarioApplier()
-    adapter.scenarios = scenarios
-    suite = tests.TestSuite()
-    tests.adapt_tests(basic_tests, adapter, suite)
-    return suite
+    suite = loader.suiteClass()
+    return tests.multiply_tests(basic_tests, scenarios, suite)

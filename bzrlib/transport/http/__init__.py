@@ -622,6 +622,14 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
             raise errors.SmartProtocolError(str(e))
         return body_filelike
 
+    def _report_activity(self, bytes, direction):
+        """See SmartMedium._report_activity.
+
+        Does nothing; the underlying plain HTTP transport will report the
+        activity that this medium would report.
+        """
+        pass
+
 
 # TODO: May be better located in smart/medium.py with the other
 # SmartMediumRequest classes

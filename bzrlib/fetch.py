@@ -40,7 +40,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
 import bzrlib.ui
-from bzrlib.versionedfile import filter_absent, FulltextContentFactory
+from bzrlib.versionedfile import FulltextContentFactory
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
@@ -66,15 +66,12 @@ class RepoFetcher(object):
     last_revision
         if set, try to limit to the data this revision references.
 
-    after running:
-    count_copied -- number of revisions copied
-
     This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
 
-    def __init__(self, to_repository, from_repository, last_revision=None, pb=None,
-        find_ghosts=True):
+    def __init__(self, to_repository, from_repository, last_revision=None,
+        pb=None, find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
         :param find_ghosts: If True search the entire history for ghosts.
@@ -82,9 +79,6 @@ class RepoFetcher(object):
             exists to facilitate a hack done in InterPackRepo.fetch.  We would
             like to remove this parameter.
         """
-        # result variables.
-        self.failed_revisions = []
-        self.count_copied = 0
         if to_repository.has_same_location(from_repository):
             # repository.fetch should be taking care of this case.
             raise errors.BzrError('RepoFetcher run '
@@ -95,6 +89,7 @@ class RepoFetcher(object):
         self.sink = to_repository._get_sink()
         # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
+        self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -146,14 +141,21 @@ class RepoFetcher(object):
         # item_keys_introduced_by should have a richer API than it does at the
         # moment, so that it can feed the progress information back to this
         # function?
+        if (self.from_repository._format.rich_root_data and
+            not self.to_repository._format.rich_root_data):
+            raise errors.IncompatibleRepositories(
+                self.from_repository, self.to_repository,
+                "different rich-root support")
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            source = self.from_repository._get_source(
+                self.to_repository._format)
+            stream = source.get_stream(search)
             from_format = self.from_repository._format
-            stream = self.get_stream(search, pp)
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if missing_keys:
-                stream = self.get_stream_for_missing_keys(missing_keys)
+                stream = source.get_stream_for_missing_keys(missing_keys)
                 resume_tokens, missing_keys = self.sink.insert_stream(
                     stream, from_format, resume_tokens)
             if missing_keys:
@@ -169,94 +171,14 @@ class RepoFetcher(object):
             if self.pb is not None:
                 self.pb.finished()
 
-    def get_stream(self, search, pp):
-        phase = 'file'
-        revs = search.get_keys()
-        graph = self.from_repository.get_graph()
-        revs = list(graph.iter_topo_order(revs))
-        data_to_fetch = self.from_repository.item_keys_introduced_by(
-            revs, self.pb)
-        text_keys = []
-        for knit_kind, file_id, revisions in data_to_fetch:
-            if knit_kind != phase:
-                phase = knit_kind
-                # Make a new progress bar for this phase
-                self.pb.finished()
-                pp.next_phase()
-                self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
-            if knit_kind == "file":
-                # Accumulate file texts
-                text_keys.extend([(file_id, revision) for revision in
-                    revisions])
-            elif knit_kind == "inventory":
-                # Now copy the file texts.
-                from_texts = self.from_repository.texts
-                yield ('texts', from_texts.get_record_stream(
-                    text_keys, self.to_repository._format._fetch_order,
-                    not self.to_repository._format._fetch_uses_deltas))
-                # Cause an error if a text occurs after we have done the
-                # copy.
-                text_keys = None
-                # Before we process the inventory we generate the root
-                # texts (if necessary) so that the inventories references
-                # will be valid.
-                for _ in self._generate_root_texts(revs):
-                    yield _
-                # NB: This currently reopens the inventory weave in source;
-                # using a single stream interface instead would avoid this.
-                self.pb.update("fetch inventory", 0, 1)
-                from_weave = self.from_repository.inventories
-                # we fetch only the referenced inventories because we do not
-                # know for unselected inventories whether all their required
-                # texts are present in the other repository - it could be
-                # corrupt.
-                yield ('inventories', from_weave.get_record_stream(
-                    [(rev_id,) for rev_id in revs],
-                    self.inventory_fetch_order(),
-                    not self.delta_on_metadata()))
-            elif knit_kind == "signatures":
-                # Nothing to do here; this will be taken care of when
-                # _fetch_revision_texts happens.
-                pass
-            elif knit_kind == "revisions":
-                for _ in self._fetch_revision_texts(revs, self.pb):
-                    yield _
-            else:
-                raise AssertionError("Unknown knit kind %r" % knit_kind)
-        self.count_copied += len(revs)
-
-    def get_stream_for_missing_keys(self, missing_keys):
-        # missing keys can only occur when we are byte copying and not
-        # translating (because translation means we don't send
-        # unreconstructable deltas ever).
-        keys = {}
-        keys['texts'] = set()
-        keys['revisions'] = set()
-        keys['inventories'] = set()
-        keys['signatures'] = set()
-        for key in missing_keys:
-            keys[key[0]].add(key[1:])
-        if len(keys['revisions']):
-            # If we allowed copying revisions at this point, we could end up
-            # copying a revision without copying its required texts: a
-            # violation of the requirements for repository integrity.
-            raise AssertionError(
-                'cannot copy revisions to fill in missing deltas %s' % (
-                    keys['revisions'],))
-        for substream_kind, keys in keys.iteritems():
-            vf = getattr(self.from_repository, substream_kind)
-            # Ask for full texts always so that we don't need more round trips
-            # after this stream.
-            stream = vf.get_record_stream(keys,
-                self.to_repository._format._fetch_order, True)
-            yield substream_kind, stream
-
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
 
         If no revisions need to be fetched, then this just returns None.
         """
+        if self._fetch_spec is not None:
+            return self._fetch_spec
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
@@ -270,44 +192,6 @@ class RepoFetcher(object):
                 find_ghosts=self.find_ghosts)
         except errors.NoSuchRevision, e:
             raise InstallFailed([self._last_revision])
-
-    def _fetch_revision_texts(self, revs, pb):
-        # fetch signatures first and then the revision texts
-        # may need to be a InterRevisionStore call here.
-        from_sf = self.from_repository.signatures
-        # A missing signature is just skipped.
-        keys = [(rev_id,) for rev_id in revs]
-        signatures = filter_absent(from_sf.get_record_stream(
-            keys,
-            self.to_repository._format._fetch_order,
-            not self.to_repository._format._fetch_uses_deltas))
-        # If a revision has a delta, this is actually expanded inside the
-        # insert_record_stream code now, which is an alternate fix for
-        # bug #261339
-        from_rf = self.from_repository.revisions
-        revisions = from_rf.get_record_stream(
-            keys,
-            self.to_repository._format._fetch_order,
-            not self.delta_on_metadata())
-        return [('signatures', signatures), ('revisions', revisions)]
-
-    def _generate_root_texts(self, revs):
-        """This will be called by __fetch between fetching weave texts and
-        fetching the inventory weave.
-
-        Subclasses should override this if they need to generate root texts
-        after fetching weave texts.
-        """
-        return []
-
-    def inventory_fetch_order(self):
-        return self.to_repository._format._fetch_order
-
-    def delta_on_metadata(self):
-        src_serializer = self.from_repository._format._serializer
-        target_serializer = self.to_repository._format._serializer
-        return (self.to_repository._format._fetch_uses_deltas and
-            src_serializer == target_serializer)
 
 
 class Inter1and2Helper(object):
@@ -397,21 +281,3 @@ class Inter1and2Helper(object):
                         rev_id_to_root_id.get(parent, root_id) == root_id)
                 yield FulltextContentFactory(key, parent_keys, None, '')
         return [('texts', yield_roots())]
-
-
-class Model1toKnit2Fetcher(RepoFetcher):
-    """Fetch from a Model1 repository into a Knit2 repository
-    """
-    def __init__(self, to_repository, from_repository, last_revision=None,
-                 pb=None, find_ghosts=True):
-        self.helper = Inter1and2Helper(from_repository)
-        RepoFetcher.__init__(self, to_repository, from_repository,
-            last_revision, pb, find_ghosts)
-
-    def _generate_root_texts(self, revs):
-        return self.helper.generate_root_texts(revs)
-
-    def inventory_fetch_order(self):
-        return 'topological'
-
-Knit1to2Fetcher = Model1toKnit2Fetcher

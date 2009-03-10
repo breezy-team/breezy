@@ -842,6 +842,7 @@ class Packer(object):
             if missing_text_keys:
                 # TODO: raise a specific error that can handle many missing
                 # keys.
+                mutter("missing keys during fetch: %r", missing_text_keys)
                 a_missing_key = missing_text_keys.pop()
                 raise errors.RevisionNotPresent(a_missing_key[1],
                     a_missing_key[0])
@@ -2244,6 +2245,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
+    # Packs are not confused by ghosts.
+    supports_ghosts = True
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
     # What index classes to use

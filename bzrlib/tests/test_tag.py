@@ -161,9 +161,6 @@ class DisabledTagsTests(TestCaseWithTransport):
         branch = self.make_branch('.')
         self.tags = DisabledTags(branch)
 
-    def test_supports_tags(self):
-        self.assertEqual(self.tags.supports_tags(), False)
-
     def test_set_tag(self):
         self.assertRaises(errors.TagsNotSupported, self.tags.set_tag)
 
