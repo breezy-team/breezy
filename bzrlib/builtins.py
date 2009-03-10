@@ -5456,6 +5456,40 @@ class cmd_unshelve(Command):
         Unshelver.from_args(shelf_id, action).run()
 
 
+class cmd_clean_tree(Command):
+    """Remove unwanted files from working tree.
+
+    By default, only unknown files, not ignored files, are deleted.  Versioned
+    files are never deleted.
+
+    Another class is 'detritus', which includes files emitted by bzr during
+    normal operations and selftests.  (The value of these files decreases with
+    time.)
+
+    If no options are specified, unknown files are deleted.  Otherwise, option
+    flags are respected, and may be combined.
+
+    To check what clean-tree will do, use --dry-run.
+    """
+    takes_options = [Option('ignored', help='Delete all ignored files.'),
+                     Option('detritus', help='Delete conflict files, merge'
+                            ' backups, and failed selftest dirs.'),
+                     Option('unknown',
+                            help='Delete files unknown to bzr (default).'),
+                     Option('dry-run', help='Show files to delete instead of'
+                            ' deleting them.'),
+                     Option('force', help='Do not prompt before deleting.')]
+    def run(self, unknown=False, ignored=False, detritus=False, dry_run=False,
+            force=False):
+        from bzrlib.clean_tree import clean_tree
+        if not (unknown or ignored or detritus):
+            unknown = True
+        if dry_run:
+            force = True
+        clean_tree('.', unknown=unknown, ignored=ignored, detritus=detritus,
+                   dry_run=dry_run, no_prompt=force)
+
+
 def _create_prefix(cur_transport):
     needed = [cur_transport]
     # Recurse upwards until we can create a directory successfully
