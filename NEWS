@@ -118,7 +118,7 @@ IN DEVELOPMENT
       fails to build. (John Arbash Meinel)
 
     * Symlinks to non ascii file names are now supported.
-      (Robert Collins, Vincent Ladeuil, #339055, #277444)    
+      (Robert Collins, Vincent Ladeuil, #339055, #272444)    
 
     * Under rare circumstances (aka nobody reported a bug about it), the ftp
       transport could revert to ascii mode. It now stays in binary mode except

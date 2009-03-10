@@ -1588,6 +1588,12 @@ class DirState(object):
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
+        if isinstance(abspath, unicode):
+            # abspath is defined as the path to pass to lstat. readlink is
+            # buggy in python < 2.6 (it doesn't encode unicode path into FS
+            # encoding), so we need to encode ourselves knowing that unicode
+            # paths are produced by UnicodeDirReader on purpose.
+            abspath = abspath.encode(osutils._fs_enc)
         return os.readlink(abspath)
 
     def get_ghosts(self):
@@ -3404,7 +3410,7 @@ class ProcessEntryPython(object):
                 while (current_entry is not None or
                     current_path_info is not None):
                     if current_entry is None:
-                        # the check for path_handled when the path is adnvaced
+                        # the check for path_handled when the path is advanced
                         # will yield this path if needed.
                         pass
                     elif current_path_info is None:
