@@ -19,7 +19,10 @@
 from bzrlib.lazy_import import lazy_import
 from bzrlib.symbol_versioning import deprecated_method, one_five
 lazy_import(globals(), """
+import textwrap
+
 from bzrlib import (
+        _format_version_tuple,
         errors,
         )
 """)
@@ -35,6 +38,39 @@ class Hooks(dict):
     def __init__(self):
         dict.__init__(self)
         self._callable_names = {}
+
+    def create_hook(self, hook):
+        """Create a hook which can have callbacks registered for it.
+
+        :param hook: The hook to create. An object meeting the protocol of
+            bzrlib.hooks.Hook. It's name is used as the key for future
+            lookups.
+        """
+        if hook.name in self:
+            raise errors.DuplicateKey(hook.name)
+        self[hook.name] = hook
+
+    def docs(self):
+        """Generate the documentation for this Hooks instance.
+
+        This introspects all the individual hooks and returns their docs as well.
+        """
+        hook_names = sorted(self.keys())
+        hook_docs = []
+        for hook_name in hook_names:
+            hook = self[hook_name]
+            try:
+                hook_docs.append(hook.docs())
+            except AttributeError:
+                # legacy hook
+                strings = []
+                strings.append(hook_name)
+                strings.append("-" * len(hook_name))
+                strings.append("")
+                strings.append("An old-style hook. For documentation see the __init__ "
+                    "method of '%s'\n" % (self.__class__.__name__,))
+                hook_docs.extend(strings)
+        return "\n".join(hook_docs)
 
     def get_hook_name(self, a_callable):
         """Get the name for a_callable for UI display.
@@ -70,12 +106,99 @@ class Hooks(dict):
             running.
         """
         try:
-            self[hook_name].append(a_callable)
+            hook = self[hook_name]
         except KeyError:
             raise errors.UnknownHook(self.__class__.__name__, hook_name)
+        try:
+            # list hooks, old-style, not yet deprecated but less useful.
+            hook.append(a_callable)
+        except AttributeError:
+            hook.hook(a_callable, name)
         if name is not None:
             self.name_hook(a_callable, name)
 
     def name_hook(self, a_callable, name):
         """Associate name with a_callable to show users what is running."""
         self._callable_names[a_callable] = name
+
+
+class Hook(object):
+    """A single hook that clients can register to be called back when it fires.
+
+    :ivar name: The name of the hook.
+    :ivar introduced: A version tuple specifying what version the hook was
+        introduced in. None indicates an unknown version.
+    :ivar deprecated: A version tuple specifying what version the hook was
+        deprecated or superceded in. None indicates that the hook is not
+        superceded or deprecated. If the hook is superceded then the doc
+        should describe the recommended replacement hook to register for.
+    :ivar doc: The docs for using the hook.
+    """
+
+    def __init__(self, name, doc, introduced, deprecated):
+        """Create a Hook.
+        
+        :param name: The name of the hook, for clients to use when registering.
+        :param doc: The docs for the hook.
+        :param introduced: When the hook was introduced (e.g. (0, 15)).
+        :param deprecated: When the hook was deprecated, None for
+            not-deprecated.
+        """
+        self.name = name
+        self.__doc__ = doc
+        self.introduced = introduced
+        self.deprecated = deprecated
+        self._callbacks = []
+        self._callback_names = {}
+
+    def docs(self):
+        """Generate the documentation for this Hook.
+        
+        :return: A string terminated in \n.
+        """
+        strings = []
+        strings.append(self.name)
+        strings.append('-'*len(self.name))
+        strings.append('')
+        if self.introduced:
+            introduced_string = _format_version_tuple(self.introduced)
+        else:
+            introduced_string = 'unknown'
+        strings.append('Introduced in: %s' % introduced_string)
+        if self.deprecated:
+            deprecated_string = _format_version_tuple(self.deprecated)
+        else:
+            deprecated_string = 'Not deprecated'
+        strings.append('Deprecated in: %s' % deprecated_string)
+        strings.append('')
+        strings.extend(textwrap.wrap(self.__doc__))
+        strings.append('')
+        return '\n'.join(strings)
+
+    def hook(self, callback, callback_label):
+        """Call this hook with callback, using callback_label to describe it.
+
+        :param callback: The callable to use when this Hook fires.
+        :param callback_label: A label to show in the UI while this callback is
+            processing.
+        """
+        self._callbacks.append(callback)
+        self._callback_names[callback] = callback_label
+
+    def __iter__(self):
+        return iter(self._callbacks)
+
+    def __repr__(self):
+        strings = []
+        strings.append("<bzrlib.hooks.Hook(")
+        strings.append(self.name)
+        strings.append("), callbacks=[")
+        for callback in self._callbacks:
+            strings.append(repr(callback))
+            strings.append("(")
+            strings.append(self._callback_names[callback])
+            strings.append("),")
+        if len(self._callbacks) == 1:
+            strings[-1] = ")"
+        strings.append("]>")
+        return ''.join(strings)
