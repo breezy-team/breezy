@@ -1623,7 +1623,7 @@ def recv_all(socket, bytes):
     return b
 
 
-def send_all(socket, bytes, report_activity=None, direction='write'):
+def send_all(socket, bytes, report_activity=None):
     """Send all bytes on a socket.
 
     Regular socket.sendall() can give socket error 10053 on Windows.  This
@@ -1631,13 +1631,12 @@ def send_all(socket, bytes, report_activity=None, direction='write'):
 
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
-    :param direction: Will be passed to report_activity
     """
     chunk_size = 2**16
     for pos in xrange(0, len(bytes), chunk_size):
         block = bytes[pos:pos+chunk_size]
         if report_activity is not None:
-            report_activity(len(block), direction)
+            report_activity(len(block), 'write')
         until_no_eintr(socket.sendall, block)
 
 
