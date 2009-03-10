@@ -47,6 +47,21 @@ cdef extern from "zlib.h":
     uLong crc32(uLong crc, Bytef *buf, uInt len)
 
 
+# We shouldn't just copy this from _dirstate_helpers_c
+cdef void* _my_memrchr(void *s, int c, size_t n):
+    # memrchr seems to be a GNU extension, so we have to implement it ourselves
+    cdef char *pos
+    cdef char *start
+
+    start = <char*>s
+    pos = start + n - 1
+    while pos >= start:
+        if pos[0] == c:
+            return <void*>pos
+        pos = pos - 1
+    return NULL
+
+
 def _search_key_16(key):
     """See chk_map._search_key_16."""
     cdef Py_ssize_t num_bits
@@ -160,7 +175,9 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     cdef char *next_line
     cdef Py_ssize_t c_bytes_len, prefix_length
     cdef int maximum_size, width, length, i
+    cdef int num_prefix_null, num_value_lines
     cdef char *prefix, *value_start
+    cdef char *prefix_null, *last_null, *line_start
 
     from bzrlib.chk_map import LeafNode, _unknown
 
@@ -192,21 +209,25 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     prefix_length = next_line - cur
     cur = next_line + 1
 
+    num_prefix_null = 0
+    prefix_null = <char *>memchr(prefix, c'\0', prefix_length)
+    while prefix_null != NULL:
+        num_prefix_null = num_prefix_null + 1
+        prefix_null = <char *>memchr(prefix_null+1, c'\0', next_line - prefix)
     py_prefix = PyString_FromStringAndSize(prefix, prefix_length)
 
     items = {}
     while cur < end:
+        line_start = cur
         next_line = <char *>memchr(cur, c'\n', end - cur)
         if next_line == NULL:
             raise ValueError('null line\n')
-        line = PyString_FromStringAndSize(cur, next_line - cur)
-        line = py_prefix + line
-        elements = line.split('\x00')
-        if len(elements) != width + 1:
-            raise AssertionError(
-                'Incorrect number of elements (%d vs %d) for: %r'
-                % (len(elements), width + 1, line))
-        num_value_lines = int(elements[-1])
+        last_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
+        if last_null == NULL:
+            raise ValueError('fail to find the num value lines null')
+        last_null = last_null + 1 # move past NULL
+        num_value_lines = _get_int_from_line(&last_null, next_line + 1,
+                                             "num value lines")
         cur = next_line + 1
         value_start = cur
         # Walk num_value_lines forward
@@ -215,9 +236,16 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             if next_line == NULL:
                 raise ValueError('null line\n')
             cur = next_line + 1
-        # Trim off the final newline
         value = PyString_FromStringAndSize(value_start, next_line - value_start)
-        items[tuple(elements[:-1])] = value
+        line = PyString_FromStringAndSize(line_start,
+                                          (last_null - line_start) - 3)
+        line = py_prefix + line
+        key = tuple(line.split('\x00'))
+        if len(key) != width:
+            raise AssertionError(
+                'Incorrect number of elements (%d vs %d) for: %r'
+                % (len(elements)+1, width + 1, line))
+        items[key] = value
     if len(items) != length:
         raise ValueError("item count (%d) mismatch for key %s,"
                          " bytes %r" % (length, key, bytes))
