@@ -16,17 +16,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from bzrlib.tests import TestNotApplicable
 from bzrlib.transform import TreeTransform
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
 class TestNestedSupport(TestCaseWithWorkingTree):
 
+    def make_branch_and_tree(self, path):
+        tree = TestCaseWithWorkingTree.make_branch_and_tree(self, path)
+        if not tree.supports_tree_reference():
+            raise TestNotApplicable('Tree references not supported')
+        return tree
+
     def test_set_get_tree_reference(self):
         """This tests that setting a tree reference is persistent."""
         tree = self.make_branch_and_tree('.')
-        if not tree.supports_tree_reference():
-            return
         transform = TreeTransform(tree)
         trans_id = transform.new_directory('reference', transform.root,
             'subtree-id')
@@ -40,10 +45,16 @@ class TestNestedSupport(TestCaseWithWorkingTree):
 
     def test_extract_while_locked(self):
         tree = self.make_branch_and_tree('.')
-        if not tree.supports_tree_reference():
-            return
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['subtree/'])
         tree.add(['subtree'], ['subtree-id'])
         subtree = tree.extract('subtree-id')
+
+    def test_no_autodetect_subtree(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add(['subtree'], ['subtree-id'])
+        self.assertEqual('subtree', tree.id2path('subtree-id'))
+        self.assertEqual('directory', tree.kind('subtree-id'))

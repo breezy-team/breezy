@@ -547,6 +547,7 @@ class DirStateWorkingTree(WorkingTree3):
         entry = self._get_entry(file_id=file_id, path=path)
         state._observed_sha1(entry, sha1, statvalue)
 
+    @needs_read_lock
     def kind(self, file_id):
         """Return the kind of a file.
 
@@ -564,10 +565,11 @@ class DirStateWorkingTree(WorkingTree3):
     def _kind(self, relpath):
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
-        if (self._repo_supports_tree_reference and
-            kind == 'directory' and
-            self._directory_is_tree_reference(relpath)):
-            kind = 'tree-reference'
+        if (self._repo_supports_tree_reference and kind == 'directory'):
+            entry = self._get_entry(path=relpath)
+            if entry[1] is not None:
+                if entry[1][0] == 't':
+                    kind = 'tree-reference'
         return kind
 
     @needs_read_lock
