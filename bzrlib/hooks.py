@@ -43,7 +43,7 @@ class Hooks(dict):
         """Create a hook which can have callbacks registered for it.
 
         :param hook: The hook to create. An object meeting the protocol of
-            bzrlib.hooks.Hook. It's name is used as the key for future
+            bzrlib.hooks.HookPoint. It's name is used as the key for future
             lookups.
         """
         if hook.name in self:
@@ -122,7 +122,7 @@ class Hooks(dict):
         self._callable_names[a_callable] = name
 
 
-class Hook(object):
+class HookPoint(object):
     """A single hook that clients can register to be called back when it fires.
 
     :ivar name: The name of the hook.
@@ -136,7 +136,7 @@ class Hook(object):
     """
 
     def __init__(self, name, doc, introduced, deprecated):
-        """Create a Hook.
+        """Create a HookPoint.
         
         :param name: The name of the hook, for clients to use when registering.
         :param doc: The docs for the hook.
@@ -152,7 +152,7 @@ class Hook(object):
         self._callback_names = {}
 
     def docs(self):
-        """Generate the documentation for this Hook.
+        """Generate the documentation for this HookPoint.
         
         :return: A string terminated in \n.
         """
@@ -176,9 +176,9 @@ class Hook(object):
         return '\n'.join(strings)
 
     def hook(self, callback, callback_label):
-        """Call this hook with callback, using callback_label to describe it.
+        """Register a callback to be called when this HookPoint fires.
 
-        :param callback: The callable to use when this Hook fires.
+        :param callback: The callable to use when this HookPoint fires.
         :param callback_label: A label to show in the UI while this callback is
             processing.
         """
@@ -190,7 +190,7 @@ class Hook(object):
 
     def __repr__(self):
         strings = []
-        strings.append("<bzrlib.hooks.Hook(")
+        strings.append("<%s(" % type(self).__name__)
         strings.append(self.name)
         strings.append("), callbacks=[")
         for callback in self._callbacks:
