@@ -25,7 +25,7 @@ END_MARK = "# end of inventory\n"
 
 def escape(s):
     """Very simple URL-like escaping.
-    
+
     (Why not just use backslashes?  Because then we couldn't parse
     lines just by splitting on spaces.)"""
     return (s.replace('\\', r'\x5c')
@@ -36,7 +36,8 @@ def escape(s):
 
 
 def unescape(s):
-    assert s.find(' ') == -1
+    if s.find(' ') != -1:
+        raise AssertionError()
     s = (s.replace(r'\x20', ' ')
          .replace(r'\x09', '\t')
          .replace(r'\x0a', '\n')
@@ -45,8 +46,8 @@ def unescape(s):
     # TODO: What if there's anything else?
 
     return s
-    
-                     
+
+
 
 
 def write_text_inventory(inv, outf):
@@ -55,12 +56,12 @@ def write_text_inventory(inv, outf):
     for path, ie in inv.iter_entries():
         if inv.is_root(ie.file_id):
             continue
-        
+
         outf.write(ie.file_id + ' ')
         outf.write(escape(ie.name) + ' ')
         outf.write(ie.kind + ' ')
         outf.write(ie.parent_id + ' ')
-        
+
         if ie.kind == 'file':
             outf.write(ie.text_id)
             outf.write(' ' + ie.text_sha1)
@@ -73,7 +74,7 @@ def read_text_inventory(tf):
     """Return an inventory read in from tf"""
     if tf.readline() != START_MARK:
         raise BzrError("missing start mark")
-    
+
     inv = Inventory()
 
     for l in tf:
@@ -85,7 +86,7 @@ def read_text_inventory(tf):
               'kind': fields[2],
               'parent_id': fields[3]}
         ##inv.add(ie)
-        
+
     if l != END_MARK:
         raise BzrError("missing end mark")
     return inv

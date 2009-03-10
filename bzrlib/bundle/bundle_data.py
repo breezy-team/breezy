@@ -27,7 +27,7 @@ from bzrlib import (
     )
 import bzrlib.errors
 from bzrlib.bundle import apply_bundle
-from bzrlib.errors import (TestamentMismatch, BzrError, 
+from bzrlib.errors import (TestamentMismatch, BzrError,
                            MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
@@ -78,7 +78,8 @@ class RevisionInfo(object):
             for property in self.properties:
                 key_end = property.find(': ')
                 if key_end == -1:
-                    assert property.endswith(':')
+                    if not property.endswith(':'):
+                        raise ValueError(property)
                     key = str(property[:-1])
                     value = ''
                 else:
@@ -158,16 +159,13 @@ class BundleInfo(object):
     def get_base(self, revision):
         revision_info = self.get_revision_info(revision.revision_id)
         if revision_info.base_id is not None:
-            if revision_info.base_id == NULL_REVISION:
-                return None
-            else:
-                return revision_info.base_id
+            return revision_info.base_id
         if len(revision.parent_ids) == 0:
             # There is no base listed, and
             # the lowest revision doesn't have a parent
             # so this is probably against the empty tree
-            # and thus base truly is None
-            return None
+            # and thus base truly is NULL_REVISION
+            return NULL_REVISION
         else:
             return revision.parent_ids[-1]
 
@@ -196,12 +194,13 @@ class BundleInfo(object):
     def revision_tree(self, repository, revision_id, base=None):
         revision = self.get_revision(revision_id)
         base = self.get_base(revision)
-        assert base != revision_id
+        if base == revision_id:
+            raise AssertionError()
         if not self._validated_revisions_against_repo:
             self._validate_references_from_repository(repository)
         revision_info = self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
-        bundle_tree = BundleTree(repository.revision_tree(base), 
+        bundle_tree = BundleTree(repository.revision_tree(base),
                                   inventory_revision_id)
         self._update_tree(bundle_tree, revision_id)
 
@@ -240,7 +239,7 @@ class BundleInfo(object):
         for rev_info in self.revisions:
             checked[rev_info.revision_id] = True
             add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
-                
+
         for (rev, rev_info) in zip(self.real_revisions, self.revisions):
             add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
 
@@ -248,32 +247,17 @@ class BundleInfo(object):
         missing = {}
         for revision_id, sha1 in rev_to_sha.iteritems():
             if repository.has_revision(revision_id):
-                testament = StrictTestament.from_revision(repository, 
+                testament = StrictTestament.from_revision(repository,
                                                           revision_id)
                 local_sha1 = self._testament_sha1_from_revision(repository,
                                                                 revision_id)
                 if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For revision id {%s}' 
+                    raise BzrError('sha1 mismatch. For revision id {%s}'
                             'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
                 else:
                     count += 1
             elif revision_id not in checked:
                 missing[revision_id] = sha1
-
-        for inv_id, sha1 in inv_to_sha.iteritems():
-            if repository.has_revision(inv_id):
-                # Note: branch.get_inventory_sha1() just returns the value that
-                # is stored in the revision text, and that value may be out
-                # of date. This is bogus, because that means we aren't
-                # validating the actual text, just that we wrote and read the
-                # string. But for now, what the hell.
-                local_sha1 = repository.get_inventory_sha1(inv_id)
-                if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For inventory id {%s}' 
-                                   'local: %s, bundle: %s' % 
-                                   (inv_id, local_sha1, sha1))
-                else:
-                    count += 1
 
         if len(missing) > 0:
             # I don't know if this is an error yet
@@ -286,15 +270,13 @@ class BundleInfo(object):
         """At this point we should have generated the BundleTree,
         so build up an inventory, and make sure the hashes match.
         """
-
-        assert inv is not None
-
         # Now we should have a complete inventory entry.
         s = serializer_v5.write_inventory_to_string(inv)
         sha1 = sha_string(s)
         # Target revision is the last entry in the real_revisions list
         rev = self.get_revision(revision_id)
-        assert rev.revision_id == revision_id
+        if rev.revision_id != revision_id:
+            raise AssertionError()
         if sha1 != rev.inventory_sha1:
             open(',,bogus-inv', 'wb').write(s)
             warning('Inventory sha hash mismatch for revision %s. %s'
@@ -305,11 +287,13 @@ class BundleInfo(object):
 
         # This is a mapping from each revision id to it's sha hash
         rev_to_sha1 = {}
-        
+
         rev = self.get_revision(revision_id)
         rev_info = self.get_revision_info(revision_id)
-        assert rev.revision_id == rev_info.revision_id
-        assert rev.revision_id == revision_id
+        if not (rev.revision_id == rev_info.revision_id):
+            raise AssertionError()
+        if not (rev.revision_id == revision_id):
+            raise AssertionError()
         sha1 = self._testament_sha1(rev, inventory)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
@@ -347,7 +331,6 @@ class BundleInfo(object):
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
-                    assert value in ('yes', 'no'), value
                     val = (value == 'yes')
                     bundle_tree.note_executable(new_path, val)
                 elif name == 'target':
@@ -357,11 +340,12 @@ class BundleInfo(object):
             return last_changed, encoding
 
         def do_patch(path, lines, encoding):
-            if encoding is not None:
-                assert encoding == 'base64'
+            if encoding == 'base64':
                 patch = base64.decodestring(''.join(lines))
-            else:
+            elif encoding is None:
                 patch =  ''.join(lines)
+            else:
+                raise ValueError(encoding)
             bundle_tree.note_patch(path, patch)
 
         def renamed(kind, extra, lines):
@@ -427,7 +411,7 @@ class BundleInfo(object):
             revision = get_rev_id(last_modified, path, kind)
             if lines:
                 do_patch(path, lines, encoding)
-            
+
         valid_actions = {
             'renamed':renamed,
             'removed':removed,
@@ -495,8 +479,10 @@ class BundleTree(Tree):
 
     def note_rename(self, old_path, new_path):
         """A file/directory has been renamed from old_path => new_path"""
-        assert new_path not in self._renamed
-        assert old_path not in self._renamed_r
+        if new_path in self._renamed:
+            raise AssertionError(new_path)
+        if old_path in self._renamed_r:
+            raise AssertionError(old_path)
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
@@ -532,7 +518,8 @@ class BundleTree(Tree):
 
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
-        assert new_path[:1] not in ('\\', '/')
+        if new_path[:1] in ('\\', '/'):
+            raise ValueError(new_path)
         old_path = self._renamed.get(new_path)
         if old_path is not None:
             return old_path
@@ -552,13 +539,14 @@ class BundleTree(Tree):
         #renamed_r
         if old_path in self._renamed_r:
             return None
-        return old_path 
+        return old_path
 
     def new_path(self, old_path):
         """Get the new_path (path in the target_tree) for the file at old_path
         in the base tree.
         """
-        assert old_path[:1] not in ('\\', '/')
+        if old_path[:1] in ('\\', '/'):
+            raise ValueError(old_path)
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
             return new_path
@@ -577,7 +565,7 @@ class BundleTree(Tree):
         #renamed_r
         if new_path in self._renamed:
             return None
-        return new_path 
+        return new_path
 
     def path2id(self, path):
         """Return the id of the file present at path in the target tree."""
@@ -617,7 +605,7 @@ class BundleTree(Tree):
                 return None
         new_path = self.id2path(file_id)
         return self.base_tree.path2id(new_path)
-        
+
     def get_file(self, file_id):
         """Return a file-like object containing the new contents of the
         file given by file_id.
@@ -634,14 +622,16 @@ class BundleTree(Tree):
             patch_original = None
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
-            if (patch_original is None and 
+            if (patch_original is None and
                 self.get_kind(file_id) == 'directory'):
                 return StringIO()
-            assert patch_original is not None, "None: %s" % file_id
+            if patch_original is None:
+                raise AssertionError("None: %s" % file_id)
             return patch_original
 
-        assert not file_patch.startswith('\\'), \
-            'Malformed patch for %s, %r' % (file_id, file_patch)
+        if file_patch.startswith('\\'):
+            raise ValueError(
+                'Malformed patch for %s, %r' % (file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
     def get_symlink_target(self, file_id):
@@ -694,8 +684,6 @@ class BundleTree(Tree):
         This need to be called before ever accessing self.inventory
         """
         from os.path import dirname, basename
-
-        assert self.base_tree is not None
         base_inv = self.base_tree.inventory
         inv = Inventory(None, self.revision_id)
 

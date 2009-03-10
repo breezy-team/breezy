@@ -11,9 +11,6 @@ import threading
 from _lsprof import Profiler, profiler_entry
 
 
-import bzrlib.osutils
-
-
 __all__ = ['profile', 'Stats']
 
 _g_threadmap = {}
@@ -30,7 +27,10 @@ def _thread_profile(f, *args, **kwds):
 
 
 def profile(f, *args, **kwds):
-    """XXX docstring"""
+    """Run a function profile.
+
+    :return: The functions return value and a stats object.
+    """
     global _g_threadmap
     p = Profiler()
     p.enable(subcalls=True)
@@ -51,7 +51,7 @@ def profile(f, *args, **kwds):
         for pp in _g_threadmap.values():
             pp.disable()
         threading.setprofile(None)
-    
+
     threads = {}
     for tid, pp in _g_threadmap.items():
         threads[tid] = Stats(pp.getstats(), {})
@@ -131,11 +131,11 @@ class Stats(object):
             otherwise the format is given by the filename extension.
         """
         if format is None:
-            basename = bzrlib.osutils.basename(filename)
+            basename = os.path.basename(filename)
             if basename.startswith('callgrind.out'):
                 format = "callgrind"
             else:
-                ext = bzrlib.osutils.splitext(filename)[1]
+                ext = os.path.splitext(filename)[1]
                 if len(ext) > 1:
                     format = ext[1:]
         outfile = open(filename, 'wb')
@@ -156,7 +156,7 @@ class _CallTreeFilter(object):
 
     This code is taken from http://ddaa.net/blog/python/lsprof-calltree
     with the changes made by J.P. Calderone and Itamar applied. Note that
-    isinstance(code, str) needs to be used at times to determine if the code 
+    isinstance(code, str) needs to be used at times to determine if the code
     object is actually an external code object (with a filename, etc.) or
     a Python built-in.
     """
@@ -166,7 +166,7 @@ class _CallTreeFilter(object):
         self.out_file = None
 
     def output(self, out_file):
-        self.out_file = out_file        
+        self.out_file = out_file
         out_file.write('events: Ticks\n')
         self._print_summary()
         for entry in self.data:

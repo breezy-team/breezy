@@ -21,7 +21,6 @@ import os
 from bzrlib import errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import basename
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -36,7 +35,7 @@ class TestPull(TestCaseWithWorkingTree):
         tree.commit('foo', rev_id='A')
         tree_b = self.make_branch_and_tree('to')
         return tree, tree_b
- 
+
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)

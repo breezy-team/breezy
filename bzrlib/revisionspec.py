@@ -15,17 +15,21 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import bisect
 import datetime
-import re
+""")
 
 from bzrlib import (
     errors,
     osutils,
+    registry,
     revision,
     symbol_versioning,
     trace,
-    tsort,
     )
 
 
@@ -100,6 +104,8 @@ class RevisionInfo(object):
 
         Use this if you don't know or care what the revno is.
         """
+        if revision_id == revision.NULL_REVISION:
+            return RevisionInfo(branch, 0, revision_id)
         try:
             revno = revs.index(revision_id) + 1
         except ValueError:
@@ -109,7 +115,6 @@ class RevisionInfo(object):
 
 # classes in this list should have a "prefix" attribute, against which
 # string specs are matched
-SPEC_TYPES = []
 _revno_regex = None
 
 
@@ -133,17 +138,7 @@ class RevisionSpec(object):
     """
 
     prefix = None
-
-    def __new__(cls, spec, _internal=False):
-        if _internal:
-            return object.__new__(cls, spec, _internal=_internal)
-
-        symbol_versioning.warn('Creating a RevisionSpec directly has'
-                               ' been deprecated in version 0.11. Use'
-                               ' RevisionSpec.from_string()'
-                               ' instead.',
-                               DeprecationWarning, stacklevel=2)
-        return RevisionSpec.from_string(spec)
+    wants_revision_history = True
 
     @staticmethod
     def from_string(spec):
@@ -158,16 +153,18 @@ class RevisionSpec(object):
 
         if spec is None:
             return RevisionSpec(None, _internal=True)
-
-        assert isinstance(spec, basestring), \
-            "You should only supply strings not %s" % (type(spec),)
-
-        for spectype in SPEC_TYPES:
-            if spec.startswith(spectype.prefix):
+        match = revspec_registry.get_prefix(spec)
+        if match is not None:
+            spectype, specsuffix = match
+            trace.mutter('Returning RevisionSpec %s for %s',
+                         spectype.__name__, spec)
+            return spectype(spec, _internal=True)
+        else:
+            for spectype in SPEC_TYPES:
                 trace.mutter('Returning RevisionSpec %s for %s',
                              spectype.__name__, spec)
-                return spectype(spec, _internal=True)
-        else:
+                if spec.startswith(spectype.prefix):
+                    return spectype(spec, _internal=True)
             # RevisionSpec_revno is special cased, because it is the only
             # one that directly handles plain integers
             # TODO: This should not be special cased rather it should be
@@ -201,14 +198,14 @@ class RevisionSpec(object):
 
     def _match_on(self, branch, revs):
         trace.mutter('Returning RevisionSpec._match_on: None')
-        return RevisionInfo(branch, 0, None)
+        return RevisionInfo(branch, None, None)
 
     def _match_on_and_check(self, branch, revs):
         info = self._match_on(branch, revs)
         if info:
             return info
-        elif info == (0, None):
-            # special case - the empty tree
+        elif info == (None, None):
+            # special case - nothing supplied
             return info
         elif self.prefix:
             raise errors.InvalidRevisionSpec(self.user_spec, branch)
@@ -217,7 +214,10 @@ class RevisionSpec(object):
 
     def in_history(self, branch):
         if branch:
-            revs = branch.revision_history()
+            if self.wants_revision_history:
+                revs = branch.revision_history()
+            else:
+                revs = None
         else:
             # this should never trigger.
             # TODO: make it a deprecated code path. RBC 20060928
@@ -233,12 +233,47 @@ class RevisionSpec(object):
     # will do what you expect.
     in_store = in_history
     in_branch = in_store
-        
+
+    def as_revision_id(self, context_branch):
+        """Return just the revision_id for this revisions spec.
+
+        Some revision specs require a context_branch to be able to determine
+        their value. Not all specs will make use of it.
+        """
+        return self._as_revision_id(context_branch)
+
+    def _as_revision_id(self, context_branch):
+        """Implementation of as_revision_id()
+
+        Classes should override this function to provide appropriate
+        functionality. The default is to just call '.in_history().rev_id'
+        """
+        return self.in_history(context_branch).rev_id
+
+    def as_tree(self, context_branch):
+        """Return the tree object for this revisions spec.
+
+        Some revision specs require a context_branch to be able to determine
+        the revision id and access the repository. Not all specs will make
+        use of it.
+        """
+        return self._as_tree(context_branch)
+
+    def _as_tree(self, context_branch):
+        """Implementation of as_tree().
+
+        Classes should override this function to provide appropriate
+        functionality. The default is to just call '.as_revision_id()'
+        and get the revision tree from context_branch's repository.
+        """
+        revision_id = self.as_revision_id(context_branch)
+        return context_branch.repository.revision_tree(revision_id)
+
     def __repr__(self):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
                               self.user_spec)
-    
+
     def needs_branch(self):
         """Whether this revision spec needs a branch.
 
@@ -248,7 +283,7 @@ class RevisionSpec(object):
 
     def get_branch(self):
         """When the revision specifier contains a branch location, return it.
-        
+
         Otherwise, return None.
         """
         return None
@@ -268,7 +303,7 @@ class RevisionSpec_revno(RevisionSpec):
     than the branch's history, the first revision is returned.
     Examples::
 
-      revno:1                   -> return the first revision
+      revno:1                   -> return the first revision of this branch
       revno:3:/path/to/branch   -> return the 3rd revision of
                                    the branch '/path/to/branch'
       revno:-1                  -> The last revision in a branch.
@@ -278,9 +313,14 @@ class RevisionSpec_revno(RevisionSpec):
                                    your history is very long.
     """
     prefix = 'revno:'
+    wants_revision_history = False
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
+        branch, revno, revision_id = self._lookup(branch, revs)
+        return RevisionInfo(branch, revno, revision_id)
+
+    def _lookup(self, branch, revs_or_none):
         loc = self.spec.find(':')
         if loc == -1:
             revno_spec = self.spec
@@ -300,7 +340,7 @@ class RevisionSpec_revno(RevisionSpec):
                 dotted = False
             except ValueError:
                 # dotted decimal. This arguably should not be here
-                # but the from_string method is a little primitive 
+                # but the from_string method is a little primitive
                 # right now - RBC 20060928
                 try:
                     match_revno = tuple((int(number) for number in revno_spec.split('.')))
@@ -315,39 +355,38 @@ class RevisionSpec_revno(RevisionSpec):
             # the branch object.
             from bzrlib.branch import Branch
             branch = Branch.open(branch_spec)
-            # Need to use a new revision history
-            # because we are using a specific branch
-            revs = branch.revision_history()
+            revs_or_none = None
 
         if dotted:
-            branch.lock_read()
             try:
-                revision_id_to_revno = branch.get_revision_id_to_revno_map()
-                revisions = [revision_id for revision_id, revno
-                             in revision_id_to_revno.iteritems()
-                             if revno == match_revno]
-            finally:
-                branch.unlock()
-            if len(revisions) != 1:
-                return RevisionInfo(branch, None, None)
+                revision_id = branch.dotted_revno_to_revision_id(match_revno,
+                    _cache_reverse=True)
+            except errors.NoSuchRevision:
+                raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return RevisionInfo(branch, None, revisions[0])
+                return branch, None, revision_id
         else:
+            last_revno, last_revision_id = branch.last_revision_info()
             if revno < 0:
                 # if get_rev_id supported negative revnos, there would not be a
                 # need for this special case.
-                if (-revno) >= len(revs):
+                if (-revno) >= last_revno:
                     revno = 1
                 else:
-                    revno = len(revs) + revno + 1
+                    revno = last_revno + revno + 1
             try:
-                revision_id = branch.get_rev_id(revno, revs)
+                revision_id = branch.get_rev_id(revno, revs_or_none)
             except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.user_spec, branch)
-        return RevisionInfo(branch, revno, revision_id)
-        
+        return branch, revno, revision_id
+
+    def _as_revision_id(self, context_branch):
+        # We would have the revno here, but we don't really care
+        branch, revno, revision_id = self._lookup(context_branch, None)
+        return revision_id
+
     def needs_branch(self):
         return self.spec.find(':') == -1
 
@@ -357,10 +396,9 @@ class RevisionSpec_revno(RevisionSpec):
         else:
             return self.spec[self.spec.find(':')+1:]
 
-# Old compatibility 
+# Old compatibility
 RevisionSpec_int = RevisionSpec_revno
 
-SPEC_TYPES.append(RevisionSpec_revno)
 
 
 class RevisionSpec_revid(RevisionSpec):
@@ -369,12 +407,13 @@ class RevisionSpec_revid(RevisionSpec):
     help_txt = """Selects a revision using the revision id.
 
     Supply a specific revision id, that can be used to specify any
-    revision id in the ancestry of the branch. 
+    revision id in the ancestry of the branch.
     Including merges, and pending merges.
     Examples::
 
       revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'
-    """    
+    """
+
     prefix = 'revid:'
 
     def _match_on(self, branch, revs):
@@ -384,7 +423,9 @@ class RevisionSpec_revid(RevisionSpec):
         revision_id = osutils.safe_revision_id(self.spec, warn=False)
         return RevisionInfo.from_revision_id(branch, revision_id, revs)
 
-SPEC_TYPES.append(RevisionSpec_revid)
+    def _as_revision_id(self, context_branch):
+        return osutils.safe_revision_id(self.spec, warn=False)
+
 
 
 class RevisionSpec_last(RevisionSpec):
@@ -398,32 +439,44 @@ class RevisionSpec_last(RevisionSpec):
 
       last:1        -> return the last revision
       last:3        -> return the revision 2 before the end.
-    """    
+    """
 
     prefix = 'last:'
 
     def _match_on(self, branch, revs):
+        revno, revision_id = self._revno_and_revision_id(branch, revs)
+        return RevisionInfo(branch, revno, revision_id)
+
+    def _revno_and_revision_id(self, context_branch, revs_or_none):
+        last_revno, last_revision_id = context_branch.last_revision_info()
+
         if self.spec == '':
-            if not revs:
-                raise errors.NoCommits(branch)
-            return RevisionInfo(branch, len(revs), revs[-1])
+            if not last_revno:
+                raise errors.NoCommits(context_branch)
+            return last_revno, last_revision_id
 
         try:
             offset = int(self.spec)
         except ValueError, e:
-            raise errors.InvalidRevisionSpec(self.user_spec, branch, e)
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch, e)
 
         if offset <= 0:
-            raise errors.InvalidRevisionSpec(self.user_spec, branch,
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
                                              'you must supply a positive value')
-        revno = len(revs) - offset + 1
-        try:
-            revision_id = branch.get_rev_id(revno, revs)
-        except errors.NoSuchRevision:
-            raise errors.InvalidRevisionSpec(self.user_spec, branch)
-        return RevisionInfo(branch, revno, revision_id)
 
-SPEC_TYPES.append(RevisionSpec_last)
+        revno = last_revno - offset + 1
+        try:
+            revision_id = context_branch.get_rev_id(revno, revs_or_none)
+        except errors.NoSuchRevision:
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch)
+        return revno, revision_id
+
+    def _as_revision_id(self, context_branch):
+        # We compute the revno as part of the process, but we don't really care
+        # about it.
+        revno, revision_id = self._revno_and_revision_id(context_branch, None)
+        return revision_id
+
 
 
 class RevisionSpec_before(RevisionSpec):
@@ -431,23 +484,25 @@ class RevisionSpec_before(RevisionSpec):
 
     help_txt = """Selects the parent of the revision specified.
 
-    Supply any revision spec to return the parent of that revision.
+    Supply any revision spec to return the parent of that revision.  This is
+    mostly useful when inspecting revisions that are not in the revision history
+    of a branch.
+
     It is an error to request the parent of the null revision (before:0).
-    This is mostly useful when inspecting revisions that are not in the
-    revision history of a branch.
 
     Examples::
 
       before:1913    -> Return the parent of revno 1913 (revno 1912)
       before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
                                             aaaa@bbbb-1234567890
-      bzr diff -r before:revid:aaaa..revid:aaaa
-            -> Find the changes between revision 'aaaa' and its parent.
-               (what changes did 'aaaa' introduce)
+      bzr diff -r before:1913..1913
+            -> Find the changes between revision 1913 and its parent (1912).
+               (What changes did revision 1913 introduce).
+               This is equivalent to:  bzr diff -c 1913
     """
 
     prefix = 'before:'
-    
+
     def _match_on(self, branch, revs):
         r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
         if r.revno == 0:
@@ -474,7 +529,28 @@ class RevisionSpec_before(RevisionSpec):
                                                  branch)
         return RevisionInfo(branch, revno, revision_id)
 
-SPEC_TYPES.append(RevisionSpec_before)
+    def _as_revision_id(self, context_branch):
+        base_revspec = RevisionSpec.from_string(self.spec)
+        base_revision_id = base_revspec.as_revision_id(context_branch)
+        if base_revision_id == revision.NULL_REVISION:
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
+                                         'cannot go before the null: revision')
+        context_repo = context_branch.repository
+        context_repo.lock_read()
+        try:
+            parent_map = context_repo.get_parent_map([base_revision_id])
+        finally:
+            context_repo.unlock()
+        if base_revision_id not in parent_map:
+            # Ghost, or unknown revision id
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
+                'cannot find the matching revision')
+        parents = parent_map[base_revision_id]
+        if len(parents) < 1:
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
+                'No parents for revision.')
+        return parents[0]
+
 
 
 class RevisionSpec_tag(RevisionSpec):
@@ -493,7 +569,9 @@ class RevisionSpec_tag(RevisionSpec):
             branch.tags.lookup_tag(self.spec),
             revs)
 
-SPEC_TYPES.append(RevisionSpec_tag)
+    def _as_revision_id(self, context_branch):
+        return context_branch.tags.lookup_tag(self.spec)
+
 
 
 class _RevListToTimestamps(object):
@@ -527,14 +605,14 @@ class RevisionSpec_date(RevisionSpec):
 
     One way to display all the changes since yesterday would be::
 
-        bzr log -r date:yesterday..-1
+        bzr log -r date:yesterday..
 
     Examples::
 
       date:yesterday            -> select the first revision since yesterday
       date:2006-08-14,17:10:14  -> select the first revision after
                                    August 14th, 2006 at 5:10pm.
-    """    
+    """
     prefix = 'date:'
     _date_re = re.compile(
             r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
@@ -596,11 +674,10 @@ class RevisionSpec_date(RevisionSpec):
         finally:
             branch.unlock()
         if rev == len(revs):
-            return RevisionInfo(branch, None)
+            raise errors.InvalidRevisionSpec(self.user_spec, branch)
         else:
             return RevisionInfo(branch, rev + 1)
 
-SPEC_TYPES.append(RevisionSpec_date)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
@@ -629,35 +706,47 @@ class RevisionSpec_ancestor(RevisionSpec):
         trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
         return self._find_revision_info(branch, self.spec)
 
+    def _as_revision_id(self, context_branch):
+        return self._find_revision_id(context_branch, self.spec)
+
     @staticmethod
     def _find_revision_info(branch, other_location):
-        from bzrlib.branch import Branch
-
-        other_branch = Branch.open(other_location)
-        revision_a = branch.last_revision()
-        revision_b = other_branch.last_revision()
-        for r, b in ((revision_a, branch), (revision_b, other_branch)):
-            if r in (None, revision.NULL_REVISION):
-                raise errors.NoCommits(b)
-        revision_source = revision.MultipleRevisionSources(
-                branch.repository, other_branch.repository)
-        graph = branch.repository.get_graph(other_branch.repository)
-        revision_a = revision.ensure_null(revision_a)
-        revision_b = revision.ensure_null(revision_b)
-        if revision.NULL_REVISION in (revision_a, revision_b):
-            rev_id = revision.NULL_REVISION
-        else:
-            rev_id = graph.find_unique_lca(revision_a, revision_b)
-            if rev_id == revision.NULL_REVISION:
-                raise errors.NoCommonAncestor(revision_a, revision_b)
+        revision_id = RevisionSpec_ancestor._find_revision_id(branch,
+                                                              other_location)
         try:
-            revno = branch.revision_id_to_revno(rev_id)
+            revno = branch.revision_id_to_revno(revision_id)
         except errors.NoSuchRevision:
             revno = None
-        return RevisionInfo(branch, revno, rev_id)
+        return RevisionInfo(branch, revno, revision_id)
+
+    @staticmethod
+    def _find_revision_id(branch, other_location):
+        from bzrlib.branch import Branch
+
+        branch.lock_read()
+        try:
+            revision_a = revision.ensure_null(branch.last_revision())
+            if revision_a == revision.NULL_REVISION:
+                raise errors.NoCommits(branch)
+            if other_location == '':
+                other_location = branch.get_parent()
+            other_branch = Branch.open(other_location)
+            other_branch.lock_read()
+            try:
+                revision_b = revision.ensure_null(other_branch.last_revision())
+                if revision_b == revision.NULL_REVISION:
+                    raise errors.NoCommits(other_branch)
+                graph = branch.repository.get_graph(other_branch.repository)
+                rev_id = graph.find_unique_lca(revision_a, revision_b)
+            finally:
+                other_branch.unlock()
+            if rev_id == revision.NULL_REVISION:
+                raise errors.NoCommonAncestor(revision_a, revision_b)
+            return rev_id
+        finally:
+            branch.unlock()
 
 
-SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
 class RevisionSpec_branch(RevisionSpec):
@@ -686,8 +775,26 @@ class RevisionSpec_branch(RevisionSpec):
         except errors.NoSuchRevision:
             revno = None
         return RevisionInfo(branch, revno, revision_b)
-        
-SPEC_TYPES.append(RevisionSpec_branch)
+
+    def _as_revision_id(self, context_branch):
+        from bzrlib.branch import Branch
+        other_branch = Branch.open(self.spec)
+        last_revision = other_branch.last_revision()
+        last_revision = revision.ensure_null(last_revision)
+        context_branch.fetch(other_branch, last_revision)
+        if last_revision == revision.NULL_REVISION:
+            raise errors.NoCommits(other_branch)
+        return last_revision
+
+    def _as_tree(self, context_branch):
+        from bzrlib.branch import Branch
+        other_branch = Branch.open(self.spec)
+        last_revision = other_branch.last_revision()
+        last_revision = revision.ensure_null(last_revision)
+        if last_revision == revision.NULL_REVISION:
+            raise errors.NoCommits(other_branch)
+        return other_branch.repository.revision_tree(last_revision)
+
 
 
 class RevisionSpec_submit(RevisionSpec_ancestor):
@@ -697,7 +804,7 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
 
     Diffing against this shows all the changes that were made in this branch,
     and is a good predictor of what merge will do.  The submit branch is
-    used by the bundle and merge directive comands.  If no submit branch
+    used by the bundle and merge directive commands.  If no submit branch
     is specified, the parent branch is used instead.
 
     The common ancestor is the last revision that existed in both
@@ -711,8 +818,7 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
 
     prefix = 'submit:'
 
-    def _match_on(self, branch, revs):
-        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+    def _get_submit_location(self, branch):
         submit_location = branch.get_submit_branch()
         location_type = 'submit branch'
         if submit_location is None:
@@ -721,7 +827,31 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
         if submit_location is None:
             raise errors.NoSubmitBranch(branch)
         trace.note('Using %s %s', location_type, submit_location)
-        return self._find_revision_info(branch, submit_location)
+        return submit_location
+
+    def _match_on(self, branch, revs):
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
+        return self._find_revision_info(branch,
+            self._get_submit_location(branch))
+
+    def _as_revision_id(self, context_branch):
+        return self._find_revision_id(context_branch,
+            self._get_submit_location(context_branch))
 
 
-SPEC_TYPES.append(RevisionSpec_submit)
+revspec_registry = registry.Registry()
+def _register_revspec(revspec):
+    revspec_registry.register(revspec.prefix, revspec)
+
+_register_revspec(RevisionSpec_revno)
+_register_revspec(RevisionSpec_revid)
+_register_revspec(RevisionSpec_last)
+_register_revspec(RevisionSpec_before)
+_register_revspec(RevisionSpec_tag)
+_register_revspec(RevisionSpec_date)
+_register_revspec(RevisionSpec_ancestor)
+_register_revspec(RevisionSpec_branch)
+_register_revspec(RevisionSpec_submit)
+
+SPEC_TYPES = symbol_versioning.deprecated_list(
+    symbol_versioning.deprecated_in((1, 12, 0)), "SPEC_TYPES", [])

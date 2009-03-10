@@ -20,10 +20,10 @@
 import os
 import sys
 
-import bzrlib
 from bzrlib import (
     osutils,
     ignores,
+    msgeditor,
     osutils,
     )
 from bzrlib.bzrdir import BzrDir
@@ -83,7 +83,7 @@ class TestCommit(ExternalBase):
         tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello.txt\n'
                               'Committed revision 1.\n$',)
 
@@ -102,7 +102,7 @@ class TestCommit(ExternalBase):
         self.build_tree_contents([('hello.txt', 'new contents')])
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
 
@@ -112,7 +112,7 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'gutentag.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'renamed hello\.txt => gutentag\.txt\n'
                               'Committed revision 2\.$\n')
 
@@ -124,7 +124,7 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added subdir\n'
                               'renamed hello\.txt => subdir/hello\.txt\n'
                               'Committed revision 2\.\n$')
@@ -137,7 +137,7 @@ class TestCommit(ExternalBase):
         wt.add(['hello.txt'])
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 1 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello\.txt\n'
                               'Committed revision 1\.\n$')
 
@@ -150,7 +150,7 @@ class TestCommit(ExternalBase):
         tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing revision 2 to ".*"\.\n'
+        self.assertContainsRe(err, '^Committing to: .*\n'
                               'added hello\.txt\n'
                               'Committed revision 2\.$\n')
 
@@ -164,7 +164,7 @@ class TestCommit(ExternalBase):
         b_tree = a_tree.branch.create_checkout('b')
         expected = "%s/" % (osutils.abspath('a'), )
         out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
-        self.assertEqual(err, 'Committing revision 2 to "%s".\n'
+        self.assertEqual(err, 'Committing to: %s\n'
                          'Committed revision 2.\n' % expected)
 
     def test_commit_merge_reports_all_modified_files(self):
@@ -222,7 +222,7 @@ class TestCommit(ExternalBase):
         self.assertEqual('', out)
         expected = '%s/' % (osutils.getcwd(), )
         self.assertEqualDiff(
-            'Committing revision 2 to "%s".\n'
+            'Committing to: %s\n'
             'modified filetomodify\n'
             'added newdir\n'
             'added newfile\n'
@@ -248,10 +248,10 @@ class TestCommit(ExternalBase):
         # LANG env variable has no effect on Windows
         # but some characters anyway cannot be represented
         # in default user encoding
-        char = probe_bad_non_ascii(bzrlib.user_encoding)
+        char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
-                'for user_encoding (%s)' % bzrlib.user_encoding)
+                'for user_encoding (%s)' % osutils.get_user_encoding())
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -302,7 +302,7 @@ class TestCommit(ExternalBase):
     def test_commit_a_text_merge_in_a_checkout(self):
         # checkouts perform multiple actions in a transaction across bond
         # branches and their master, and have been observed to fail in the
-        # past. This is a user story reported to fail in bug #43959 where 
+        # past. This is a user story reported to fail in bug #43959 where
         # a merge done in a checkout (using the update command) failed to
         # commit correctly.
         trunk = self.make_branch_and_tree('trunk')
@@ -330,6 +330,35 @@ class TestCommit(ExternalBase):
         # version or the u2 version.
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
         self.run_bzr('commit -m checkin-merge-of-the-offline-work-from-u1 u1')
+
+    def test_commit_exclude_excludes_modified_files(self):
+        """Commit -x foo should ignore changes to foo."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added b' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertEqual('b\n', out)
+        self.assertEqual('', err)
+
+    def test_commit_exclude_twice_uses_both_rules(self):
+        """Commit -x foo -x bar should ignore changes to foo and bar."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b', '-x', 'c'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added c' in out)
+        self.assertFalse('added b' in err)
+        self.assertFalse('added c' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertTrue('b\n' in out)
+        self.assertTrue('c\n' in out)
+        self.assertEqual('', err)
 
     def test_commit_respects_spec_for_removals(self):
         """Commit with a file spec should only commit removals that match"""
@@ -397,7 +426,7 @@ class TestCommit(ExternalBase):
         output, err = self.run_bzr(
             'commit -m hello --fixes=lp:23452 tree/hello.txt')
         self.assertEqual('', output)
-        self.assertContainsRe(err, 'Committing revision 1 to ".*"\.\n'
+        self.assertContainsRe(err, 'Committing to: .*\n'
                               'added hello\.txt\n'
                               'Committed revision 1\.\n')
 
@@ -520,11 +549,12 @@ class TestCommit(ExternalBase):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        self.run_bzr("commit -m hello --author='John Doe <jdoe@example.com>' "
-                     "tree/hello.txt")
+        self.run_bzr(["commit", '-m', 'hello',
+                      '--author', u'John D\xf6 <jdoe@example.com>',
+                     "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe <jdoe@example.com>', properties['author'])
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['authors'])
 
     def test_author_no_email(self):
         """Author's name without an email address is allowed, too."""
@@ -535,7 +565,18 @@ class TestCommit(ExternalBase):
                                 "tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe', properties['author'])
+        self.assertEqual('John Doe', properties['authors'])
+
+    def test_multiple_authors(self):
+        """Multiple authors can be specyfied, and all are stored."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "--author='Jane Rey' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe\nJane Rey', properties['authors'])
 
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
@@ -566,3 +607,29 @@ class TestCommit(ExternalBase):
             retcode=3)
         self.assertContainsRe(err,
             r'^bzr: ERROR: Cannot lock.*readonly transport')
+
+    def test_commit_hook_template(self):
+        # Test that commit template hooks work
+        def restoreDefaults():
+            msgeditor.hooks['commit_message_template'] = []
+            osutils.set_or_unset_env('BZR_EDITOR', default_editor)
+        if sys.platform == "win32":
+            f = file('fed.bat', 'w')
+            f.write('@rem dummy fed')
+            f.close()
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+        else:
+            f = file('fed.sh', 'wb')
+            f.write('#!/bin/sh\n')
+            f.close()
+            os.chmod('fed.sh', 0755)
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+        self.addCleanup(restoreDefaults)
+        msgeditor.hooks.install_named_hook("commit_message_template",
+                lambda commit_obj, msg: "save me some typing\n", None)
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('save me some typing\n', last_rev.message)

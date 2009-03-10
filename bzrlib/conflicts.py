@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 # TODO: Move this into builtins
 
-# TODO: 'bzr resolve' should accept a directory name and work from that 
+# TODO: 'bzr resolve' should accept a directory name and work from that
 # point down
 
 import os
@@ -117,7 +117,19 @@ class cmd_resolve(commands.Command):
                 resolve(tree, file_list)
 
 
-def resolve(tree, paths=None, ignore_misses=False):
+def resolve(tree, paths=None, ignore_misses=False, recursive=False):
+    """Resolve some or all of the conflicts in a working tree.
+
+    :param paths: If None, resolve all conflicts.  Otherwise, select only
+        specified conflicts.
+    :param recursive: If True, then elements of paths which are directories
+        have all their children resolved, etc.  When invoked as part of
+        recursive commands like revert, this should be True.  For commands
+        or applications wishing finer-grained control, like the resolve
+        command, this should be False.
+    :ignore_misses: If False, warnings will be printed if the supplied paths
+        do not have conflicts.
+    """
     tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
@@ -126,7 +138,8 @@ def resolve(tree, paths=None, ignore_misses=False):
             selected_conflicts = tree_conflicts
         else:
             new_conflicts, selected_conflicts = \
-                tree_conflicts.select_conflicts(tree, paths, ignore_misses)
+                tree_conflicts.select_conflicts(tree, paths, ignore_misses,
+                    recursive)
         try:
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:
@@ -215,7 +228,7 @@ class ConflictList(object):
         """Generator of stanzas"""
         for conflict in self:
             yield conflict.as_stanza()
-            
+
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
@@ -236,7 +249,7 @@ class ConflictList(object):
     def select_conflicts(self, tree, paths, ignore_misses=False,
                          recurse=False):
         """Select the conflicts associated with paths in a tree.
-        
+
         File-ids are also used for this.
         :return: a pair of ConflictLists: (not_selected, selected)
         """
@@ -286,7 +299,7 @@ class ConflictList(object):
                     print "%s is not conflicted" % path
         return new_conflicts, selected_conflicts
 
- 
+
 class Conflict(object):
     """Base class for all types of conflict"""
 
@@ -390,7 +403,7 @@ class HandledConflict(Conflict):
     """
 
     rformat = "%(class)s(%(action)r, %(path)r, %(file_id)r)"
-    
+
     def __init__(self, action, path, file_id=None):
         Conflict.__init__(self, path, file_id)
         self.action = action
@@ -415,14 +428,14 @@ class HandledPathConflict(HandledConflict):
     def __init__(self, action, path, conflict_path, file_id=None,
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
-        self.conflict_path = conflict_path 
+        self.conflict_path = conflict_path
         # warn turned off, because the factory blindly transfers the Stanza
         # values to __init__.
         self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
                                                      warn=False)
-        
+
     def _cmp_list(self):
-        return HandledConflict._cmp_list(self) + [self.conflict_path, 
+        return HandledConflict._cmp_list(self) + [self.conflict_path,
                                                   self.conflict_file_id]
 
     def as_stanza(self):
@@ -430,7 +443,7 @@ class HandledPathConflict(HandledConflict):
         s.add('conflict_path', self.conflict_path)
         if self.conflict_file_id is not None:
             s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
-            
+
         return s
 
 
@@ -502,6 +515,16 @@ class DeletingParent(HandledConflict):
              "%(action)s."
 
 
+class NonDirectoryParent(HandledConflict):
+    """An attempt to add files to a directory that is not a director or
+    an attempt to change the kind of a directory with files.
+    """
+
+    typestring = 'non-directory parent'
+
+    format = "Conflict: %(path)s is not a directory, but has files in it."\
+             "  %(action)s."
+
 ctype = {}
 
 
@@ -514,4 +537,4 @@ def register_types(*conflict_types):
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
                DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,
-               DeletingParent,)
+               DeletingParent, NonDirectoryParent)

@@ -21,7 +21,8 @@ import signal
 import sys
 import time
 
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseInTempDir
+
 
 class TestDebugOption(TestCaseInTempDir):
 

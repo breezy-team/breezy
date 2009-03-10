@@ -40,7 +40,7 @@ Any implementation of this specification should respect that behaviour.
 
 This specification also proposes a way to describe credentials so that several
 remote branches can use the same definition. This is particularily important
-for users handling a lot of passwords who need to update them on a regular
+for users handling a lot of passwords and who need to update them on a regular
 basis.
 
 Rationale
@@ -63,14 +63,16 @@ storing them in a relatively safe way.
 
 Note that ssh servers can be configured to use keys instead of (``user``,
 ``password``) and, when used with appropriate agents, provide the same kind of
-comfort this specification aims to provide for all other schemes. These
-specification do not try to cover these configurations by providing
-pass-phrases, but the mechanisms presented *can* be used to provide users.
+comfort this specification aims to provide for all other schemes. Since ssh
+agents provide a safer way to secure the passwords, this specification is
+restricted to providing ``user`` but does not provide ``password`` when used
+for ssh.
 
 Authentication definitions
 --------------------------
 
-There are two kinds of authentication used by the various schemes:
+There are two kinds of authentication used by the various schemes supported by
+bzr:
 
 1. user and password
 
@@ -88,7 +90,7 @@ can be ignored [#ignored_realm]_ as long as it is still presented to the user
 when prompting for the password (unless someone found a way to declare two
 different realms for the same path). 
 
-``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitely
+``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly
 specifying the appropriate port.
 
 .. [#ignored_realm] The true purpose of realms is to allow the same credentials
@@ -101,26 +103,33 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 ``password``).
 
   * ``scheme``: can be empty (meaning the rest of the definition can be used
-    for any scheme),
+    for any scheme), ``SFTP`` and ``bzr+ssh`` should not be used here, ``ssh``
+    should be used instead since this is the real scheme regarding
+    authentication,
 
   * ``host``: can be empty (to act as a default for any host),
 
   * ``port`` can be empty (useful when an host provides several servers for the
-    same scheme), only numerical values are allowed,
+    same scheme), only numerical values are allowed, this should be used only
+    when the server uses a port different than the scheme standard port,
 
-  * ``path``: can be empty (FTP or SFTP will never user it),
+  * ``path``: can be empty (FTP or SFTP will never use it),
 
-  * ``user``: can be empty (and will use the same default as ``bzr``, python's
-    ``getpass.get_user()``),
+  * ``user``: can be empty (``bzr`` will defaults to python's
+    ``getpass.get_user()`` for FTP, SFTP and ssh),
 
   * ``password``: can be empty (for security reasons, a user may use the
-    definitions without storing the passwords but want to be prompted).
+    definitions without storing the passwords but want to be prompted ; or the
+    password will be provided by an external plugin via the
+    ``password_encoding`` mechanism decribed below). Must be left empty for
+    ``ssh``.
 
   * ``password_encoding``: can be empty (default is ``plaintext``).
 
 Also note that an optional ``verify_certificates=no`` field will allow the
 connection to ``HTTPS`` hosts that provides a self certified certificate (the
-default should be to refuse the connection and inform the user).
+default should be to refuse the connection and inform the user). (Not
+implemented yet)
 
 Multiple definitions can be provided and, for a given URL, bzr will select a
 (``user`` [, ``password``]) based on the following rules :
@@ -131,8 +140,9 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
 
  3. ``scheme`` matches even if decorators are used in the requested URL,
 
- 4. ``host`` matches if included in the requested URL. ``foo.net`` will match a
-    requested ``bzr.foo.net``.
+ 4. ``host`` matches exactly or act as a domain if it starts with '.'
+    (``project.bzr.sf.net`` will match ``.bzr.sf.net`` but ``projectbzr.sf.net``
+    will not match ``bzr.sf.net``).
 
  5. ``port`` matches if included in the requested URL (exact matches only)
 
@@ -148,19 +158,23 @@ future versions.
 
 Encoding passwords in ``base64``, while weak, provides protection against
 accidental reading (if an administrator have to look into the file, he will not
-see the passwords in clear).
+see the passwords in clear).(Not implemented yet).
 
-This specification intend to ease the authentication providing, not to secure
+This specification intends to ease the authentication providing, not to secure
 it in the best possible way.
+
+Plugins can provide additional password encodings. The provided
+``netrc_credential_store`` plugin can be used as an example implementation.
 
 Future versions of this specification may provide additional
 encodings [#password_encoding]_.
 
 .. [#password_encoding] Additional password encoding methods may be defined
    that will rely on external means to store the password which, in these
-   cases, will not appear anymore in the definition but be provided. An
-   encoding named ``netrc`` for example will provide passwords by using the
-   ``.netrc`` file.
+   cases, will not appear anymore in the definition. It is assumed that
+   additional password encodings will provide a storage outside of the file
+   described here. The ``netrc`` encoding, for example, provides passwords by
+   retrieving them from the ``.netrc`` file.
 
 File format
 -----------
@@ -178,10 +192,10 @@ reasons:
     generally servers. The same authentification definition can even be used
     for several schemes for servers providing those schemes.
 
-``~/.bazaar/authentication.conf`` will use the same file format than
+``~/.bazaar/authentication.conf`` will use the same file format as
 ``~/.bazaar/bazaar.conf``.
 
-Each section will define an authentication definition.
+Each section describes an authentication definition.
 
 The section name is an arbitrary string, only the ``DEFAULT`` value is reserved
 and should appear as the *last* section.
@@ -197,7 +211,7 @@ Each section could define:
   * ``port``: the port the server is listening,
 
   * ``verify_certificates``: to control certificate verification (useful
-    for self certified hosts). This applies to HTTP[S] only. Accepted values
+    for self certified hosts). This applies to HTTPS only. Accepted values
     are yes and no, default to yes.
 
   * ``path``: the branch location,
@@ -212,7 +226,8 @@ The default content of the file will be::
 
 This section could define:
 
-  * ``user``: default user to be used.
+  * ``user``: default user to be used (if not defined the usual
+    bzr way applies, see below).
 
   * ``password_encoding``: default password encoding.
 
@@ -236,28 +251,30 @@ The use cases described below use the file format defined above.
         bzr branch ftp://foo.net/bzr/branch
         bzr pull ftp://bzr.foo.net/bzr/product/branch/trunk
 
-  * all connections are done with the same ``user`` (the local one) and the
-    password is always prompted with some exceptions::
+  * all connections are done with the same ``user`` (the remote one for which
+    the default bzr one is not appropriate) and the password is always prompted
+    with some exceptions::
 
         # Pet projects on hobby.net
         [hobby]
-        scheme=https
         host=r.hobby.net
-        verify_certificates=no
         user=jim
         password=obvious1234
         
         # Home server
         [home]
+        scheme=https
         host=home.net
         user=joe
         password='c2VjcmV0LXBhc3M='
         password_encoding=base64
+        verify_certificates=no # Still searching a free certificate provider
         
         [DEFAULT]
+        # Our local user is barbaz, on all remote sites we're known as foobar
         user=foobar
         
-  * an HTTP server that also acts as a proxy (weird)::
+  * an HTTP server and a proxy::
 
         # development branches on dev server
         [dev]
@@ -275,15 +292,24 @@ The use cases described below use the file format defined above.
         user=user2
         password=pass2
         
-        # Pesky proxy
+        # proxy
         [proxy]
         scheme=http
-        host=dev.company.com
+        host=proxy.company.com
+        port=3128
         user=proxyuser1
         password=proxypass1
-        
-Note that the proxy should be specified last because it uses no path. An
-alternative is to specify the port used by the proxy.
+
+  * source hosting provider declaring sub-domains for each project::
+
+        [sfnet domain]
+        # we use sftp, but ssh is the scheme used for authentication
+        scheme=ssh
+        # The leading '.' ensures that 'sf.net' alone doesn't match
+        host=.sf.net
+        user=georges
+        password=ben...son
+
 
 UI Changes
 ----------
@@ -303,10 +329,10 @@ different ways:
 3. No ``user`` given in the URL (and no ``password``).
 
   Get a user from ``~/.bazaar/authentication.conf`` or prompt for one if none is
-  found. Continue as 2.
+  found. Continue as 2. (Not implemented yet)
 
-Note: A user will be queried only if the server requires it for ``HTTP``, other
-protocols always require a user.
+Note: A user will be queried only if the server requires it for ``HTTP`` or
+``HTTPS``, other protocols always require a user.
 
 In any case, if the server refuses the authentication, bzr reports to the user
 and terminates.
@@ -315,7 +341,7 @@ Implementation constraints
 --------------------------
 
 * bzr should be able to prompt for a ``user`` for a given (``scheme``, ``host``
-  [, ``realm``]). Note that ``realm`` may be available only after a first
+  [, ``realm``]). Note that ``realm`` is available only after a first
   connection attempt to the server.
 
 * No assumptions should be made about the clients of this service
@@ -335,9 +361,10 @@ Implementation constraints
   a password.
 
 * As this specification proposes a matching between some credentials
-  definitions and real urls, the implementation should provide an optional UI
-  feedback about which credential definition is used. That will allow the user
-  to validate his definitions.
+  definitions and real urls, the implementation provides an optional UI
+  feedback about which credential definition is used. Using ``-Dauth`` will
+  output some traces in the ``.bzr.log`` file metionning the sections
+  used. This allows the user to validate his definitions.
 
 Questions and Answers
 ---------------------
@@ -351,15 +378,14 @@ Questions and Answers
 
   * What if a ``.netrc`` file exists ?
 
-    * It will be honored if the definition specifies
-      ``password_encoding=netrc`` once the appropriate plugin have been
-      written.
+    * It is honored if the definition specifies
+      ``password_encoding=netrc``.
 
   * What mode should the authentication file use ?
 
     * 600 read/write for owner only by default, if another mode (more
       permissive) is used, a warning will be issued to inform the users of the
-      potential risks.
+      potential risks.(Not implemented yet)
 
   * What about using ``seahorse`` on Ubuntu or ``KeyChain Access`` on Mac OS X ?
 
@@ -370,8 +396,9 @@ Questions and Answers
     ?
 
     * yes and if the user configure a ssh-agent it will not be queried for
-      pass-phrase every time we want to query the file for a password. But that
-      seems a bit extreme for a first version.
+      pass-phrase every time we want to query the file for a password. But
+      that seems a bit extreme for a first version.(Not implemented yet and
+      may be never)
 
   * Why can't bzr update the authentication file when it queried the user for a
     password ?

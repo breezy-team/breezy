@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -18,16 +18,39 @@
 
 """Tests for the formatting and construction of errors."""
 
+import sys
 from bzrlib import (
     bzrdir,
     errors,
+    osutils,
     symbol_versioning,
+    urlutils,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
-
 class TestErrors(TestCaseWithTransport):
+
+    def test_bad_filename_encoding(self):
+        error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
+        self.assertEqualDiff(
+            "Filename 'bad/filen\\xe5me' is not valid in your current"
+            " filesystem encoding UTF-8",
+            str(error))
+
+    def test_corrupt_dirstate(self):
+        error = errors.CorruptDirstate('path/to/dirstate', 'the reason why')
+        self.assertEqualDiff(
+            "Inconsistency in dirstate file path/to/dirstate.\n"
+            "Error: the reason why",
+            str(error))
+
+    def test_dirstate_corrupt(self):
+        error = errors.DirstateCorrupt('.bzr/checkout/dirstate',
+                                       'trailing garbage: "x"')
+        self.assertEqualDiff("The dirstate file (.bzr/checkout/dirstate)"
+            " appears to be corrupt: trailing garbage: \"x\"",
+            str(error))
 
     def test_disabled_method(self):
         error = errors.DisabledMethod("class name")
@@ -44,6 +67,12 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff('The prefix foo is in the help search path twice.',
             str(error))
 
+    def test_ghost_revisions_have_no_revno(self):
+        error = errors.GhostRevisionsHaveNoRevno('target', 'ghost_rev')
+        self.assertEqualDiff("Could not determine revno for {target} because"
+                             " its ancestry shows a ghost at {ghost_rev}",
+                             str(error))
+
     def test_incompatibleAPI(self):
         error = errors.IncompatibleAPI("module", (1, 2, 3), (4, 5, 6), (7, 8, 9))
         self.assertEqualDiff(
@@ -51,11 +80,32 @@ class TestErrors(TestCaseWithTransport):
             'It supports versions "(4, 5, 6)" to "(7, 8, 9)".',
             str(error))
 
+    def test_inconsistent_delta(self):
+        error = errors.InconsistentDelta('path', 'file-id', 'reason for foo')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied involving 'path', 'file-id'\n"
+            "reason: reason for foo",
+            str(error))
+
     def test_in_process_transport(self):
         error = errors.InProcessTransport('fpp')
         self.assertEqualDiff(
             "The transport 'fpp' is only accessible within this process.",
             str(error))
+
+    def test_invalid_http_range(self):
+        error = errors.InvalidHttpRange('path',
+                                        'Content-Range: potatoes 0-00/o0oo0',
+                                        'bad range')
+        self.assertEquals("Invalid http range"
+                          " 'Content-Range: potatoes 0-00/o0oo0'"
+                          " for path: bad range",
+                          str(error))
+
+    def test_invalid_range(self):
+        error = errors.InvalidRange('path', 12, 'bad range')
+        self.assertEquals("Invalid range access in path at 12: bad range",
+                          str(error))
 
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
@@ -86,6 +136,12 @@ class TestErrors(TestCaseWithTransport):
                          '"stream format" into knit of format '
                          '"target format".', str(error))
 
+    def test_knit_data_stream_unknown(self):
+        error = errors.KnitDataStreamUnknown(
+            'stream format')
+        self.assertEqual('Cannot parse knit data stream of format '
+                         '"stream format".', str(error))
+
     def test_knit_header_error(self):
         error = errors.KnitHeaderError('line foo\n', 'path/to/file')
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
@@ -102,13 +158,20 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
             "The medium 'a medium' is not connected.", str(error))
-        
+
+    def test_no_public_branch(self):
+        b = self.make_branch('.')
+        error = errors.NoPublicBranch(b)
+        url = urlutils.unescape_for_display(b.base, 'ascii')
+        self.assertEqualDiff(
+            'There is no public branch set for "%s".' % url, str(error))
+
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
-        
+
     def test_no_smart_medium(self):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
@@ -133,17 +196,16 @@ class TestErrors(TestCaseWithTransport):
                              " tree atree.", str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
 
+    def test_not_stacked(self):
+        error = errors.NotStacked('a branch')
+        self.assertEqualDiff("The branch 'a branch' is not stacked.",
+            str(error))
+
     def test_not_write_locked(self):
         error = errors.NotWriteLocked('a thing to repr')
         self.assertEqualDiff("'a thing to repr' is not write locked but needs "
             "to be.",
             str(error))
-
-    def test_read_only_lock_error(self):
-        error = self.applyDeprecated(symbol_versioning.zero_ninetytwo,
-            errors.ReadOnlyLockError, 'filename', 'error message')
-        self.assertEqualDiff("Cannot acquire write lock on filename."
-                             " error message", str(error))
 
     def test_lock_failed(self):
         error = errors.LockFailed('http://canonical.com/', 'readonly transport')
@@ -158,6 +220,12 @@ class TestErrors(TestCaseWithTransport):
             "the currently open request.",
             str(error))
 
+    def test_unavailable_representation(self):
+        error = errors.UnavailableRepresentation(('key',), "mpdiff", "fulltext")
+        self.assertEqualDiff("The encoding 'mpdiff' is not available for key "
+            "('key',) which is encoded as 'fulltext'.",
+            str(error))
+
     def test_unknown_hook(self):
         error = errors.UnknownHook("branch", "foo")
         self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
@@ -168,10 +236,28 @@ class TestErrors(TestCaseWithTransport):
             " of bzrlib.",
             str(error))
 
+    def test_unstackable_branch_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = errors.UnstackableBranchFormat(format, url)
+        self.assertEqualDiff(
+            "The branch '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the branch to permit branch stacking.",
+            str(error))
+
+    def test_unstackable_repository_format(self):
+        format = u'foo'
+        url = "/foo"
+        error = errors.UnstackableRepositoryFormat(format, url)
+        self.assertEqualDiff(
+            "The repository '/foo'(foo) is not a stackable format. "
+            "You will need to upgrade the repository to permit branch stacking.",
+            str(error))
+
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
-        self.assertEqualDiff("The branch format Bazaar-NG branch, "
-                             "format 0.0.4 is already at the most "
+        self.assertEqualDiff("The branch format All-in-one "
+                             "format 4 is already at the most "
                              "recent format.",
                              str(error))
 
@@ -305,6 +391,15 @@ class TestErrors(TestCaseWithTransport):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+    def test_target_not_branch(self):
+        """Test the formatting of TargetNotBranch."""
+        error = errors.TargetNotBranch('foo')
+        self.assertEqual(
+            "Your branch does not have all of the revisions required in "
+            "order to merge this merge directive and the target "
+            "location specified in the merge directive is not a branch: "
+            "foo.", str(error))
+
     def test_malformed_bug_identifier(self):
         """Test the formatting of MalformedBugIdentifier."""
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
@@ -366,7 +461,7 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
-        
+
     def test_check_error(self):
         # This has a member called 'message', which is problematic in
         # python2.5 because that is a slot on the base Exception class
@@ -382,9 +477,146 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Corrupt or incompatible data stream: my reason", str(e))
 
+    def test_immortal_pending_deletion_message(self):
+        err = errors.ImmortalPendingDeletion('foo')
+        self.assertEquals(
+            "Unable to delete transform temporary directory foo.  "
+            "Please examine foo to see if it contains any files "
+            "you wish to keep, and delete it when you are done.",
+            str(err))
+
+    def test_unable_create_symlink(self):
+        err = errors.UnableCreateSymlink()
+        self.assertEquals(
+            "Unable to create symlink on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'foo')
+        self.assertEquals(
+            "Unable to create symlink 'foo' on this platform",
+            str(err))
+        err = errors.UnableCreateSymlink(path=u'\xb5')
+        self.assertEquals(
+            "Unable to create symlink u'\\xb5' on this platform",
+            str(err))
+
+    def test_invalid_url_join(self):
+        """Test the formatting of InvalidURLJoin."""
+        e = errors.InvalidURLJoin('Reason', 'base path', ('args',))
+        self.assertEqual(
+            "Invalid URL join request: Reason: 'base path' + ('args',)",
+            str(e))
+
+    def test_incorrect_url(self):
+        err = errors.InvalidBugTrackerURL('foo', 'http://bug.com/')
+        self.assertEquals(
+            ("The URL for bug tracker \"foo\" doesn't contain {id}: "
+             "http://bug.com/"),
+            str(err))
+
+    def test_unable_encode_path(self):
+        err = errors.UnableEncodePath('foo', 'executable')
+        self.assertEquals("Unable to encode executable path 'foo' in "
+            "user encoding " + osutils.get_user_encoding(),
+            str(err))
+
+    def test_unknown_format(self):
+        err = errors.UnknownFormatError('bar', kind='foo')
+        self.assertEquals("Unknown foo format: 'bar'", str(err))
+
+    def test_unknown_rules(self):
+        err = errors.UnknownRules(['foo', 'bar'])
+        self.assertEquals("Unknown rules detected: foo, bar.", str(err))
+
+    def test_hook_failed(self):
+        # Create an exc_info tuple by raising and catching an exception.
+        try:
+            1/0
+        except ZeroDivisionError:
+            exc_info = sys.exc_info()
+        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        self.assertStartsWith(
+            str(err), 'Hook \'hook name\' during hook stage failed:\n')
+        self.assertEndsWith(
+            str(err), 'integer division or modulo by zero')
+
+    def test_tip_change_rejected(self):
+        err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
+        self.assertEquals(
+            u'Tip change rejected: Unicode message\N{INTERROBANG}',
+            unicode(err))
+        self.assertEquals(
+            'Tip change rejected: Unicode message\xe2\x80\xbd',
+            str(err))
+
+    def test_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        err = errors.ErrorFromSmartServer(error_tuple)
+        self.assertEquals(
+            "Error received from smart server: ('error', 'tuple')", str(err))
+
+    def test_untranslateable_error_from_smart_server(self):
+        error_tuple = ('error', 'tuple')
+        orig_err = errors.ErrorFromSmartServer(error_tuple)
+        err = errors.UnknownErrorFromSmartServer(orig_err)
+        self.assertEquals(
+            "Server sent an unexpected error: ('error', 'tuple')", str(err))
+
+    def test_smart_message_handler_error(self):
+        # Make an exc_info tuple.
+        try:
+            raise Exception("example error")
+        except Exception:
+            exc_info = sys.exc_info()
+        err = errors.SmartMessageHandlerError(exc_info)
+        self.assertStartsWith(
+            str(err), "The message handler raised an exception:\n")
+        self.assertEndsWith(str(err), "Exception: example error\n")
+
+    def test_must_have_working_tree(self):
+        err = errors.MustHaveWorkingTree('foo', 'bar')
+        self.assertEqual(str(err), "Branching 'bar'(foo) must create a"
+                                   " working tree.")
+
+    def test_no_such_view(self):
+        err = errors.NoSuchView('foo')
+        self.assertEquals("No such view: foo.", str(err))
+
+    def test_views_not_supported(self):
+        err = errors.ViewsNotSupported('atree')
+        err_str = str(err)
+        self.assertStartsWith(err_str, "Views are not supported by ")
+        self.assertEndsWith(err_str, "; use 'bzr upgrade' to change your "
+            "tree to a later format.")
+
+    def test_file_outside_view(self):
+        err = errors.FileOutsideView('baz', ['foo', 'bar'])
+        self.assertEquals('Specified file "baz" is outside the current view: '
+            'foo, bar', str(err))
+
+    def test_invalid_shelf_id(self):
+        invalid_id = "foo"
+        err = errors.InvalidShelfId(invalid_id)
+        self.assertEqual('"foo" is not a valid shelf id, '
+            'try a number instead.', str(err))
+
+    def test_unresumable_write_group(self):
+        repo = "dummy repo"
+        wg_tokens = ['token']
+        reason = "a reason"
+        err = errors.UnresumableWriteGroup(repo, wg_tokens, reason)
+        self.assertEqual(
+            "Repository dummy repo cannot resume write group "
+            "['token']: a reason", str(err))
+
+    def test_unsuspendable_write_group(self):
+        repo = "dummy repo"
+        err = errors.UnsuspendableWriteGroup(repo)
+        self.assertEqual(
+            'Repository dummy repo cannot suspend a write group.', str(err))
+
 
 class PassThroughError(errors.BzrError):
-    
+
     _fmt = """Pass through %(foo)s and %(bar)s"""
 
     def __init__(self, foo, bar):
@@ -401,7 +633,7 @@ class ErrorWithNoFormat(errors.BzrError):
 
 
 class TestErrorFormatting(TestCase):
-    
+
     def test_always_str(self):
         e = PassThroughError(u'\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
@@ -418,7 +650,7 @@ class TestErrorFormatting(TestCase):
                 ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
                 lambda x: str(x), e)
         ## s = str(e)
-        self.assertEqual(s, 
+        self.assertEqual(s,
                 "This class has a docstring but no format string.")
 
     def test_mismatched_format_args(self):

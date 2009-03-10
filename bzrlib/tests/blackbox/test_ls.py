@@ -26,7 +26,7 @@ class TestLS(TestCaseWithTransport):
 
     def setUp(self):
         super(TestLS, self).setUp()
-        
+
         # Create a simple branch that can be used in testing
         ignores._set_user_ignores(['user-ignore'])
 
@@ -60,10 +60,15 @@ class TestLS(TestCaseWithTransport):
                        '--unknown')
         self.ls_equals('', '--ignored')
         self.ls_equals('', '--versioned')
+        self.ls_equals('', '-V')
         self.ls_equals('.bzrignore\n'
                        'a\n',
                        '--unknown --ignored --versioned')
+        self.ls_equals('.bzrignore\n'
+                       'a\n',
+                       '--unknown --ignored -V')
         self.ls_equals('', '--ignored --versioned')
+        self.ls_equals('', '--ignored -V')
         self.ls_equals('.bzrignore\0a\0', '--null')
 
     def test_ls_added(self):
@@ -72,7 +77,7 @@ class TestLS(TestCaseWithTransport):
                        'V        a\n',
                        '--verbose')
         self.wt.commit('add')
-        
+
         self.build_tree(['subdir/'])
         self.ls_equals('?        .bzrignore\n'
                        'V        a\n'
@@ -92,12 +97,12 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals(
             '.bzrignore                                         \n'
             'a                                                  a-id\n'
-            'subdir                                             subdir-id\n', 
+            'subdir/                                            subdir-id\n',
             '--show-ids')
         self.ls_equals(
             '?        .bzrignore\n'
             'V        a                                         a-id\n'
-            'V        subdir/                                   subdir-id\n', 
+            'V        subdir/                                   subdir-id\n',
             '--show-ids --verbose')
         self.ls_equals('.bzrignore\0\0'
                        'a\0a-id\0'
@@ -109,7 +114,7 @@ class TestLS(TestCaseWithTransport):
 
         self.ls_equals('.bzrignore\n'
                        'a\n'
-                       'subdir\n'
+                       'subdir/\n'
                        , '--non-recursive')
 
         self.ls_equals('V        .bzrignore\n'
@@ -124,7 +129,7 @@ class TestLS(TestCaseWithTransport):
                   , '--null')
         self.ls_equals('.bzrignore\n'
                        'a\n'
-                       'subdir\n'
+                       'subdir/\n'
                        'subdir/b\n'
                        , '--from-root')
         self.ls_equals('.bzrignore\0'
@@ -134,7 +139,7 @@ class TestLS(TestCaseWithTransport):
                        , '--from-root --null')
         self.ls_equals('.bzrignore\n'
                        'a\n'
-                       'subdir\n'
+                       'subdir/\n'
                        , '--from-root --non-recursive')
 
     def test_ls_path(self):
@@ -146,7 +151,7 @@ class TestLS(TestCaseWithTransport):
         os.chdir('subdir')
         self.ls_equals('../.bzrignore\n'
                        '../a\n'
-                       '../subdir\n'
+                       '../subdir/\n'
                        '../subdir/b\n' ,
                        '..')
         self.ls_equals('../.bzrignore\0'
@@ -183,10 +188,10 @@ class TestLS(TestCaseWithTransport):
         self.wt.commit('committing')
         branch = self.make_branch('branchdir')
         branch.pull(self.wt.branch)
-        self.ls_equals('branchdir/subdir\n'
+        self.ls_equals('branchdir/subdir/\n'
                        'branchdir/subdir/b\n',
                        'branchdir')
-        self.ls_equals('branchdir/subdir\n'
+        self.ls_equals('branchdir/subdir/\n'
                        'branchdir/subdir/b\n',
                        'branchdir --revision 1')
 
@@ -215,13 +220,16 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('.bzrignore\n'
                        'a\n'
                        , '--versioned')
+        self.ls_equals('.bzrignore\n'
+                       'a\n'
+                       , '-V')
 
     def test_kinds(self):
         self.build_tree(['subdir/'])
-        self.ls_equals('.bzrignore\n' 
-                       'a\n', 
+        self.ls_equals('.bzrignore\n'
+                       'a\n',
                        '--kind=file')
-        self.ls_equals('subdir\n',
+        self.ls_equals('subdir/\n',
                        '--kind=directory')
         self.ls_equals('',
                        '--kind=symlink')

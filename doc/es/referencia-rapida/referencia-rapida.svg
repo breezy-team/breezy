@@ -1,0 +1,1691 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1052.3622"
+   height="744.09448"
+   id="svg2766"
+   sodipodi:version="0.32"
+   inkscape:version="0.46"
+   version="1.0"
+   sodipodi:docbase="/home/ian/bzr/repo.packs/bzr.quick-start-tweaks/doc/en/quick-reference"
+   sodipodi:docname="referencia-rapida.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   inkscape:export-filename="/home/iacobs/work/pers/bzr-quickref.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300">
+  <defs
+     id="defs2768">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 372.04724 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="1052.3622 : 372.04724 : 1"
+       inkscape:persp3d-origin="526.18109 : 248.03149 : 1"
+       id="perspective2680" />
+    <linearGradient
+       id="linearGradient3382">
+      <stop
+         style="stop-color:#2753b0;stop-opacity:1;"
+         offset="0"
+         id="stop3384" />
+      <stop
+         style="stop-color:#cecece;stop-opacity:1;"
+         offset="1"
+         id="stop3386" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5465"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5473"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5603"
+       gradientUnits="userSpaceOnUse"
+       x1="150.39197"
+       y1="104.09448"
+       x2="151.10625"
+       y2="155.92776"
+       gradientTransform="translate(0,26)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient5605"
+       gradientUnits="userSpaceOnUse"
+       x1="165.19594"
+       y1="104.09448"
+       x2="165.19594"
+       y2="156.84296"
+       gradientTransform="translate(0,26)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient8696"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient8704"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       gradientTransform="matrix(1.027169,0,0,1,118.6039,77.1455)"
+       gradientUnits="userSpaceOnUse"
+       y2="0"
+       x2="372.24512"
+       y1="69.037941"
+       x1="372.24512"
+       id="linearGradient2200"
+       xlink:href="#linearGradient5444"
+       inkscape:collect="always" />
+    <linearGradient
+       id="linearGradient5444">
+      <stop
+         style="stop-color:#729fcf;stop-opacity:1;"
+         offset="0"
+         id="stop5446" />
+      <stop
+         id="stop4547"
+         offset="0.5"
+         style="stop-color:#3465a4;stop-opacity:1;" />
+      <stop
+         style="stop-color:#204ab7;stop-opacity:1;"
+         offset="1"
+         id="stop5448" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5444"
+       id="linearGradient3338"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.027169,0,0,1,417.31189,-41.4259)"
+       x1="372.24512"
+       y1="69.037941"
+       x2="372.24512"
+       y2="0" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3769"
+       gradientUnits="userSpaceOnUse"
+       x1="401.62418"
+       y1="104.09448"
+       x2="402.0069"
+       y2="152.69125"
+       gradientTransform="matrix(1.0959218,0,0,0.9988328,-30.458554,26.145213)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3771"
+       gradientUnits="userSpaceOnUse"
+       x1="401.62418"
+       y1="104.09448"
+       x2="402.0069"
+       y2="152.69125"
+       gradientTransform="matrix(1.0959218,0,0,0.9988328,-30.458554,26.145213)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3824"
+       gradientUnits="userSpaceOnUse"
+       x1="625.15149"
+       y1="104.09448"
+       x2="625.15149"
+       y2="154.2104"
+       gradientTransform="matrix(1.0902791,0,0,0.9988999,-49.120159,26.136854)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3826"
+       gradientUnits="userSpaceOnUse"
+       x1="625.15149"
+       y1="104.09448"
+       x2="625.15149"
+       y2="154.2104"
+       gradientTransform="matrix(1.0902791,0,0,0.9988999,-49.120159,26.136854)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3956"
+       gradientUnits="userSpaceOnUse"
+       x1="852.71942"
+       y1="104.09448"
+       x2="852.71942"
+       y2="153.842"
+       gradientTransform="matrix(1.0836855,0,0,0.9989026,-64.492287,26.135003)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3958"
+       gradientUnits="userSpaceOnUse"
+       x1="852.71942"
+       y1="104.09448"
+       x2="852.71942"
+       y2="153.842"
+       gradientTransform="matrix(1.0836855,0,0,0.9989026,-64.492287,26.135003)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient4035"
+       gradientUnits="userSpaceOnUse"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient4037"
+       gradientUnits="userSpaceOnUse"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient4042"
+       gradientUnits="userSpaceOnUse"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879"
+       gradientTransform="matrix(1.073884,0,0,0.9990288,-56.948006,16.382016)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient4044"
+       gradientUnits="userSpaceOnUse"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879"
+       gradientTransform="matrix(1.073884,0,0,0.9990288,-56.948006,16.382016)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2734"
+       gradientUnits="userSpaceOnUse"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2736"
+       gradientUnits="userSpaceOnUse"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2741"
+       gradientUnits="userSpaceOnUse"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2743"
+       gradientUnits="userSpaceOnUse"
+       x1="164.4165"
+       y1="380.09448"
+       x2="164.4165"
+       y2="436.59479" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2723"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.073884,0,0,0.9990288,-56.948006,16.382016)"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2725"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.073884,0,0,0.9990288,-56.948006,16.382016)"
+       x1="814.96497"
+       y1="364.08444"
+       x2="814.96497"
+       y2="412.09879" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.93888816"
+     inkscape:cx="632.57173"
+     inkscape:cy="82.468477"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     width="1052.3622px"
+     height="744.09449px"
+     inkscape:showpageshadow="false"
+     showgrid="false"
+     inkscape:window-width="1023"
+     inkscape:window-height="719"
+     inkscape:window-x="1"
+     inkscape:window-y="24" />
+  <metadata
+     id="metadata2771">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/GPL/2.0/" />
+        <dc:title>Bazaar-NG quick reference</dc:title>
+        <dc:date>2007-07-23</dc:date>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Sabin Iacob</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:language>en</dc:language>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>bzr</rdf:li>
+            <rdf:li>bazaar</rdf:li>
+            <rdf:li>reference</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/GPL/2.0/">
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Reproduction" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Distribution" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/Notice" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/DerivativeWorks" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/ShareAlike" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/SourceCode" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="opacity:1;fill:none;fill-opacity:0;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect2983"
+       width="1052.1749"
+       height="744"
+       x="0"
+       y="0.094482422"
+       ry="0" />
+    <g
+       id="g3762">
+      <g
+         id="g8706">
+        <rect
+           style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect2190"
+           width="228.60797"
+           height="216.41451"
+           x="50.891964"
+           y="144.31995"
+           ry="8.1168776" />
+        <path
+           style="fill:url(#linearGradient5603);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient5605);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           d="M 59.296663,130.59448 C 54.644771,130.59448 50.891959,134.22213 50.891959,138.71888 L 50.891959,167.43551 C 50.891959,162.93876 54.644771,159.31111 59.296663,159.31111 L 271.12755,159.31111 C 275.77946,159.31111 279.49993,162.93876 279.49993,167.43551 L 279.49993,138.71888 C 279.49993,134.22213 275.77946,130.59448 271.12755,130.59448 L 59.296663,130.59448 z "
+           id="rect3430" />
+        <text
+           xml:space="preserve"
+           style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="108.32876"
+           y="150.97269"
+           id="text3164"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3166"
+             x="108.32876"
+             y="150.97269">Inicialización</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-2.2095387)"
+         id="g3209">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="63.794312"
+           y="193.07361"
+           id="text2167"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="63.794312"
+             y="193.07361"
+             id="tspan2171">bzr init miproyecto</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="179.83536"
+           id="text3168"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3170"
+             x="58.209351"
+             y="179.83536">Proyecto nuevo</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.1449276)"
+         id="g3215">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="226.45848"
+           id="text2175"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan2177"
+             x="64.448624"
+             y="226.45848">cd miproyecto</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="237.53181"
+             id="tspan2179">bzr init</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="248.60515"
+             id="tspan2181">bzr add .</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="259.67847"
+             id="tspan2183" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.174194"
+           y="213.22023"
+           id="text3172"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3174"
+             x="58.174194"
+             y="213.22023">Proyecto existente</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,5.3457864e-2)"
+         id="g3224">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="277.48495"
+           id="text2185"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan2187"
+             x="64.448624"
+             y="277.48495">bzr branch mp miproyecto</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="266.6666"
+           id="text3176"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3178"
+             x="58.209351"
+             y="266.6666">Nuevo branch</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,1.1181147)"
+         id="g3230">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="308.44989"
+           id="text3404"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3406"
+             x="64.448624"
+             y="308.44989">bzr checkout mp miproyecto</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="297.63153"
+           id="text3408"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3410"
+             x="58.209351"
+             y="297.63153">Nuevo checkout</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,2.1828937)"
+         id="g3236">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="64.448624"
+           y="341.88864"
+           id="text3414"
+           sodipodi:linespacing="110%"><tspan
+             id="tspan3424"
+             sodipodi:role="line"
+             x="64.448624"
+             y="341.88864">bzr checkout --lightweight mp \</tspan><tspan
+             sodipodi:role="line"
+             x="64.448624"
+             y="352.96198"
+             id="tspan2780"> miproyecto</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="58.209351"
+           y="328.59634"
+           id="text3418"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan3422"
+             sodipodi:role="line"
+             x="58.209351"
+             y="328.59634">Nuevo checkout &quot;ligero&quot;</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g3774">
+      <rect
+         ry="9.6319456"
+         y="145.57634"
+         x="317.80582"
+         height="135.65298"
+         width="206.32903"
+         id="rect3658"
+         style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1.0466845;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <path
+         id="rect3648"
+         d="M 328.38206,130.61761 C 322.53211,130.61761 317.79957,134.89967 317.79957,140.23137 L 317.79957,170.19635 C 317.79957,164.86465 322.53211,160.58259 328.38206,160.58259 L 513.59284,160.58259 C 519.4428,160.58259 524.14109,164.86465 524.14109,170.19635 L 524.14109,140.23137 C 524.14109,134.89967 519.4428,130.61761 513.59284,130.61761 L 328.38206,130.61761 z"
+         style="fill:url(#linearGradient3769);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient3771);stroke-width:1.04625165;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text3563"
+         y="150.94995"
+         x="333.44049"
+         style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="150.94995"
+           x="333.44049"
+           id="tspan3565"
+           sodipodi:role="line">Manipular Archivos</tspan></text>
+      <g
+         transform="translate(1e-4,-1.9729054)"
+         id="g3243">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="332.47345"
+           y="191.36041"
+           id="text3610"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="332.47345"
+             y="191.36041"
+             id="tspan3612">bzr add foo.py</tspan><tspan
+             id="tspan3618"
+             sodipodi:role="line"
+             x="332.47345"
+             y="202.43375">bzr add bar/</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="326.88849"
+           y="179.59872"
+           id="text3614"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan3616"
+             x="326.88849"
+             y="179.59872">Añadir/&quot;versionar&quot; archivos</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-0.9323495)"
+         id="g3250">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="331.78732"
+           y="233.11641"
+           id="text3622"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="331.78732"
+             y="233.11641"
+             id="tspan3624">bzr remove --keep foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="326.20236"
+           y="221.35472"
+           id="text3626"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3628"
+             x="326.20236"
+             y="221.35472">Eliminar archivos</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,0.1322158)"
+         id="g3256">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="331.81714"
+           y="264.08142"
+           id="text3632"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="331.81714"
+             y="264.08142"
+             id="tspan3634">bzr remove --force foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="326.23218"
+           y="253.26308"
+           id="text3636"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan3638"
+             x="326.23218"
+             y="253.26308">Eliminar y borrar archivos</tspan></text>
+      </g>
+    </g>
+    <rect
+       style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1.02624357;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect3780"
+       width="229.91788"
+       height="336.27368"
+       x="49.457561"
+       y="394.44012"
+       ry="10.484502" />
+    <path
+       style="fill:url(#linearGradient2741);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient2743);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       d="M 57.795026,380.59448 C 53.111409,380.59448 49.333004,384.22215 49.333004,388.71892 L 49.333004,417.43572 C 49.333004,412.93894 53.111409,409.31127 57.795026,409.31127 L 271.07052,409.31127 C 275.75416,409.31127 279.5,412.93894 279.5,417.43572 L 279.5,388.71892 C 279.5,384.22215 275.75416,380.59448 271.07052,380.59448 L 57.795026,380.59448 z"
+       id="path3784" />
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="111.15869"
+       y="400.96985"
+       id="text3786"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3788"
+         x="111.15869"
+         y="400.96985">Información</tspan></text>
+    <g
+       id="g3281"
+       transform="translate(1e-4,0.4441055)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3234"
+         y="441.34354"
+         x="62.69976"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan3236"
+           y="441.34354"
+           x="62.69976"
+           sodipodi:role="line">bzr status</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3238"
+         y="428.10529"
+         x="57.114799"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="428.10529"
+           x="57.114799"
+           id="tspan3240"
+           sodipodi:role="line">Estado del árbol de trabajo</tspan></text>
+    </g>
+    <g
+       id="g3287"
+       transform="translate(1e-4,1.4958392)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3244"
+         y="472.84393"
+         x="62.721241"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan3250"
+           y="472.84393"
+           x="62.721241"
+           sodipodi:role="line">bzr log</tspan><tspan
+           y="483.91727"
+           x="62.721241"
+           sodipodi:role="line"
+           id="tspan3294">bzr log foo.py</tspan><tspan
+           id="tspan3252"
+           y="494.9906"
+           x="62.721241"
+           sodipodi:role="line" /></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3254"
+         y="459.55164"
+         x="56.446827"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="459.55164"
+           x="56.446827"
+           id="tspan3256"
+           sodipodi:role="line">Log de revisión</tspan></text>
+    </g>
+    <g
+       id="g3295"
+       transform="translate(1e-4,2.6343158)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3260"
+         y="517.29712"
+         x="63.354061"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="517.29712"
+           x="63.354061"
+           id="tspan3262"
+           sodipodi:role="line">bzr diff</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3264"
+         y="504.05884"
+         x="57.114803"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="504.05884"
+           x="57.114803"
+           id="tspan3266"
+           sodipodi:role="line">Cambios en el árbol de trabajo</tspan></text>
+    </g>
+    <g
+       id="g3314"
+       transform="translate(1e-4,5.8149666)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3298"
+         y="625.09357"
+         x="62.744678"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="625.09357"
+           x="62.744678"
+           id="tspan3300"
+           sodipodi:role="line">bzr missing</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3302"
+         y="611.85535"
+         x="56.505421"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="611.85535"
+           x="56.505421"
+           id="tspan3304"
+           sodipodi:role="line">Revisiones perdidas</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.7565"
+       y="707.22107"
+       id="text3308"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan3310"
+         x="62.7565"
+         y="707.22107">bzr cat -r3 foo.py</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="56.517242"
+       y="682.26678"
+       id="text3312"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         x="56.517242"
+         y="682.26678"
+         id="tspan3625">Contenidos de foo.py en la </tspan><tspan
+         sodipodi:role="line"
+         x="56.517242"
+         y="694.26678"
+         id="tspan3681">revisión 3</tspan></text>
+    <g
+       id="g3320"
+       transform="translate(1e-4,6.8799266)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3318"
+         y="656.12701"
+         x="62.686089"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="656.12701"
+           x="62.686089"
+           id="tspan3320"
+           sodipodi:role="line">bzr info</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3322"
+         y="645.30865"
+         x="56.446831"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="645.30865"
+           x="56.446831"
+           id="tspan3324"
+           sodipodi:role="line">Información del branch</tspan></text>
+    </g>
+    <g
+       id="g3301"
+       transform="translate(1e-4,3.685897)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3330"
+         y="548.74365"
+         x="62.879452"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="548.74365"
+           x="62.879452"
+           id="tspan3332"
+           sodipodi:role="line">bzr diff foo.py</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3334"
+         y="535.50537"
+         x="56.640194"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="535.50537"
+           x="56.640194"
+           id="tspan3336"
+           sodipodi:role="line">Cambios en foo.py </tspan></text>
+    </g>
+    <g
+       id="g3307"
+       transform="translate(1e-4,4.7504623)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3699"
+         y="591.70862"
+         x="62.000679"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="591.70862"
+           x="62.000679"
+           id="tspan3701"
+           sodipodi:role="line">bzr diff -r1..3 foo.py</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3703"
+         y="568.89032"
+         x="55.761421"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="568.89032"
+           x="55.761421"
+           id="tspan3705"
+           sodipodi:role="line">Cambios en foo.py entre las</tspan><tspan
+           y="580.89032"
+           x="55.761421"
+           sodipodi:role="line"
+           id="tspan3707">revisiones 1 y 3</tspan></text>
+    </g>
+    <g
+       id="g3829">
+      <rect
+         ry="9.6321363"
+         y="145.575"
+         x="544.36224"
+         height="135.65567"
+         width="205.26662"
+         id="rect4132"
+         style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1.04399669;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <path
+         id="path4130"
+         d="M 554.88401,130.61628 C 549.06418,130.61628 544.35601,134.89863 544.35601,140.23069 L 544.35601,170.19768 C 544.35601,164.86563 549.06418,160.58327 554.88401,160.58327 L 739.14116,160.58327 C 744.96101,160.58327 749.6351,164.86563 749.6351,170.19768 L 749.6351,140.23069 C 749.6351,134.89863 744.96101,130.61628 739.14116,130.61628 L 554.88401,130.61628 z"
+         style="fill:url(#linearGradient3824);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient3826);stroke-width:1.04358983;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text4134"
+         y="152.01505"
+         x="554.46985"
+         style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="152.01505"
+           x="554.46985"
+           id="tspan4136"
+           sodipodi:role="line">Control de Versiones</tspan></text>
+      <g
+         transform="translate(1e-4,-2.4445851)"
+         id="g3262">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="559.03162"
+           y="190.88873"
+           id="text4140"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="559.03162"
+             y="190.88873"
+             id="tspan4142">bzr commit foo.py -m &quot;foo&quot;</tspan><tspan
+             id="tspan4144"
+             sodipodi:role="line"
+             x="559.03162"
+             y="201.96207">bzr commit -m &quot;el resto&quot;</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="553.44666"
+           y="180.0704"
+           id="text4146"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4148"
+             x="553.44666"
+             y="180.0704">Commit</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-2.6967609)"
+         id="g3269">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="558.37482"
+           y="232.2924"
+           id="text4152"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="558.37482"
+             y="232.2924"
+             id="tspan4154">bzr uncommit</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="552.78986"
+           y="221.47408"
+           id="text4156"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4158"
+             x="552.78986"
+             y="221.47408">Deshacer último commit</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,-1.6451646)"
+         id="g3275">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="558.37488"
+           y="263.73889"
+           id="text4162"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="558.37488"
+             y="263.73889"
+             id="tspan4164">bzr revert</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="552.78992"
+           y="250.50064"
+           id="text4166"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4168"
+             x="552.78992"
+             y="250.50064">Revertir los cambios</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g3961">
+      <rect
+         ry="8.1153431"
+         y="144.34038"
+         x="770.91241"
+         height="216.37361"
+         width="247.73869"
+         id="rect4232"
+         style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1.04090285;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <path
+         id="path4234"
+         d="M 780.02026,130.6147 C 774.97907,130.6147 770.91221,134.23836 770.91221,138.73017 L 770.91221,167.41528 C 770.91221,162.92347 774.97907,159.2998 780.02026,159.2998 L 1009.5783,159.2998 C 1014.6195,159.2998 1018.6514,162.92347 1018.6514,167.41528 L 1018.6514,138.73017 C 1018.6514,134.23836 1014.6195,130.6147 1009.5783,130.6147 L 780.02026,130.6147 z"
+         style="fill:url(#linearGradient3956);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient3958);stroke-width:1.04043078;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <text
+         sodipodi:linespacing="100%"
+         id="text4236"
+         y="149.90759"
+         x="796.75134"
+         style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="149.90759"
+           x="796.75134"
+           id="tspan4238"
+           sodipodi:role="line">Merging / Integrando</tspan></text>
+      <g
+         transform="translate(1e-4,-1.0888417)"
+         id="g3392">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="783.75751"
+           y="191.95291"
+           id="text4242"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             x="783.75751"
+             y="191.95291"
+             id="tspan4244">cd miproyecto</tspan><tspan
+             sodipodi:role="line"
+             x="783.75751"
+             y="203.02625"
+             id="tspan4296">bzr merge ../miproyecto-foo</tspan><tspan
+             sodipodi:role="line"
+             x="783.75751"
+             y="214.09958"
+             id="tspan4298">bzr commit</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.17255"
+           y="178.71466"
+           id="text4246"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4248"
+             x="778.17255"
+             y="178.71466">Integrar dos branches</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,0.1095133)"
+         id="g3384">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="784.44696"
+           y="245.39931"
+           id="text4252"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4254"
+             x="784.44696"
+             y="245.39931">cd miproyecto-foo</tspan><tspan
+             sodipodi:role="line"
+             x="784.44696"
+             y="256.47263"
+             id="tspan4258">bzr pull ../miproyecto</tspan><tspan
+             sodipodi:role="line"
+             x="784.44696"
+             y="267.54596"
+             id="tspan4260" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.17255"
+           y="232.16106"
+           id="text4262"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4264"
+             x="778.17255"
+             y="232.16106">Pull de cambios desde miproyecto</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,1.2474884)"
+         id="g3378">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="784.4118"
+           y="289.69043"
+           id="text4268"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4270"
+             x="784.4118"
+             y="289.69043">bzr update</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.17255"
+           y="276.5459"
+           id="text4272"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4274"
+             x="778.17255"
+             y="276.5459">Actualizar un checkout</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,2.3122978)"
+         id="g3372">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="785.45477"
+           y="320.70923"
+           id="text4278"
+           sodipodi:linespacing="110%"><tspan
+             sodipodi:role="line"
+             id="tspan4280"
+             x="785.45477"
+             y="320.70923">bzr resolve</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="779.21552"
+           y="309.83685"
+           id="text4282"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan4284"
+             x="779.21552"
+             y="309.83685">Autodetectar conflictos resueltos</tspan></text>
+      </g>
+      <g
+         transform="translate(1e-4,3.3643062)"
+         id="g3366">
+        <text
+           xml:space="preserve"
+           style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="784.65204"
+           y="352.20935"
+           id="text4288"
+           sodipodi:linespacing="110%"><tspan
+             id="tspan4290"
+             sodipodi:role="line"
+             x="784.65204"
+             y="352.20935">bzr resolve foo.py</tspan></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="778.41278"
+           y="338.91705"
+           id="text4292"
+           sodipodi:linespacing="100%"><tspan
+             id="tspan4294"
+             sodipodi:role="line"
+             x="778.41278"
+             y="338.91705">Especificar un conflicto resuelto</tspan></text>
+      </g>
+    </g>
+    <rect
+       style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:1.06177783;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect4531"
+       width="246.92378"
+       height="335.17307"
+       x="771.16052"
+       y="394.45789"
+       ry="10.450186" />
+    <path
+       style="fill:url(#linearGradient2723);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient2725);stroke-width:1.03578043;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       d="M 780.12335,380.61237 C 775.09368,380.61237 771.03611,384.23652 771.03611,388.72892 L 771.03611,417.41783 C 771.03611,412.92542 775.09368,409.30127 780.12335,409.30127 L 1009.1565,409.30127 C 1014.1862,409.30127 1018.2087,412.92542 1018.2087,417.41783 L 1018.2087,388.72892 C 1018.2087,384.23652 1014.1862,380.61237 1009.1565,380.61237 L 780.12335,380.61237 z"
+       id="path4533" />
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="844.98444"
+       y="399.90475"
+       id="text4535"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4537"
+         x="844.98444"
+         y="399.90475">Publicando</tspan></text>
+    <g
+       id="g3354"
+       transform="translate(1e-4,-1.7634544)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4616"
+         y="475.58072"
+         x="781.75745"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan4618"
+           y="475.58072"
+           x="781.75745"
+           sodipodi:role="line">bzr push sftp://host/miproyecto-fo1</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4620"
+         y="462.34244"
+         x="776.17249"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="462.34244"
+           x="776.17249"
+           id="tspan4622"
+           sodipodi:role="line">Empujar revisiones remotamente</tspan></text>
+    </g>
+    <g
+       id="g3360"
+       transform="translate(1e-4,-1.1779953)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4457"
+         y="440.54575"
+         x="782.38519"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan4459"
+           y="440.54575"
+           x="782.38519"
+           sodipodi:role="line">bzr push ../miproyecto-fo1</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4461"
+         y="429.72739"
+         x="776.80023"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="429.72739"
+           x="776.80023"
+           id="tspan4463"
+           sodipodi:role="line">Push de revisiones</tspan></text>
+    </g>
+    <g
+       id="g3346"
+       transform="translate(1e-4,0.3362061)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4467"
+         y="505.56467"
+         x="782.40674"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="505.56467"
+           x="782.40674"
+           sodipodi:role="line"
+           id="tspan8805">bzr send</tspan><tspan
+           id="tspan4473"
+           y="516.638"
+           x="782.40674"
+           sodipodi:role="line" /></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4475"
+         y="494.69229"
+         x="776.13232"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="494.69229"
+           x="776.13232"
+           sodipodi:role="line"
+           id="tspan4608">Enviar por Email directriz merge</tspan></text>
+    </g>
+    <g
+       id="g3339"
+       transform="translate(1e-4,31.004958)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4481"
+         y="562.4187"
+         x="783.03955"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="562.4187"
+           x="783.03955"
+           id="tspan4483"
+           sodipodi:role="line">bzr export ../miproyecto-dist/</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4485"
+         y="537.18048"
+         x="776.80029"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="537.18048"
+           x="776.80029"
+           id="tspan4487"
+           sodipodi:role="line">Exportar la revisión actual como</tspan><tspan
+           y="549.18048"
+           x="776.80029"
+           sodipodi:role="line"
+           id="tspan4610">un directorio</tspan></text>
+    </g>
+    <g
+       id="g3332"
+       transform="translate(1e-4,33.600285)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4521"
+         y="605.85291"
+         x="782.565"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="605.85291"
+           x="782.565"
+           id="tspan4523"
+           sodipodi:role="line">bzr export ../miproyecto-dist.zip</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4525"
+         y="583.03461"
+         x="776.32574"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="583.03461"
+           x="776.32574"
+           id="tspan4527"
+           sodipodi:role="line">Exportar la revisión actual como</tspan><tspan
+           y="595.03461"
+           x="776.32574"
+           sodipodi:role="line"
+           id="tspan4612">un archivo</tspan></text>
+    </g>
+    <g
+       id="g2446"
+       transform="translate(-1.4135726,38.47762)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text2448"
+         y="505.56467"
+         x="782.40674"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="505.56467"
+           x="782.40674"
+           sodipodi:role="line"
+           id="tspan2450">bzr send -o ../base.patch</tspan><tspan
+           id="tspan2452"
+           y="516.638"
+           x="782.40674"
+           sodipodi:role="line" /></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text2454"
+         y="494.69229"
+         x="776.13232"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="494.69229"
+           x="776.13232"
+           sodipodi:role="line"
+           id="tspan2456">Crear una directriz merge</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="144.32812"
+       y="64.254639"
+       id="text2774"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2776"
+         x="144.32812"
+         y="64.254639">Bazaar </tspan></text>
+    <g
+       style="display:inline"
+       id="g3653"
+       transform="matrix(0.6461515,0,0,0.6526216,160.93614,144.01237)"
+       inkscape:export-filename="/home/matt/Projects/Ubuntu/Bazaar Website/bzr icon 64.png"
+       inkscape:export-xdpi="45.012665"
+       inkscape:export-ydpi="45.012665">
+      <path
+         id="path2749"
+         d="M -143.51431,-75.4275 C -158.48768,-90.57687 -171.17625,-103.66019 -171.7111,-104.50153 C -174.63909,-109.10738 -172.34363,-112.16647 -143.7155,-141.81059 C -119.96256,-166.4065 -114.08422,-171.84722 -111.26302,-171.84722 C -108.45655,-171.84722 -102.57922,-166.49332 -79.566158,-142.97326 C -59.704508,-122.67403 -51.314608,-113.24681 -51.314608,-111.22876 C -51.314608,-107.03298 -109.21126,-47.88319 -113.31814,-47.88319 C -115.49463,-47.88319 -123.57621,-55.25503 -143.51431,-75.4275 z "
+         style="opacity:1;fill:#fce94f;fill-opacity:1;stroke:#fce94f;stroke-width:4;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;display:inline" />
+      <path
+         id="path2721"
+         d="M -118.75152,-74.850683 C -119.22012,-75.319283 -119.60352,-85.958443 -119.60352,-98.493313 L -119.60352,-121.28395 L -124.85215,-121.28395 C -131.2088,-121.28395 -131.22918,-121.19503 -121.27316,-136.90004 C -116.77235,-143.99978 -113.38241,-148.09169 -112.19584,-147.85705 C -110.34853,-147.49175 -95.321883,-124.90849 -95.321883,-122.4975 C -95.321883,-121.83004 -97.640303,-121.28395 -100.47393,-121.28395 C -103.84689,-121.28395 -105.87693,-120.6299 -106.35276,-119.38989 C -107.55959,-116.24495 -103.45251,-106.32746 -97.296233,-97.520823 C -90.988133,-88.497013 -90.461803,-86.665103 -93.461883,-84.175253 C -95.128693,-82.791933 -96.185063,-83.268713 -100.25177,-87.239733 C -102.90055,-89.826193 -105.46285,-91.547323 -105.94572,-91.064423 C -106.42862,-90.581523 -106.8237,-86.544203 -106.8237,-82.092573 L -106.8237,-73.998703 L -112.36162,-73.998703 C -115.40746,-73.998703 -118.28294,-74.382103 -118.75152,-74.850683 z "
+         style="opacity:1;fill:#c4a000;fill-opacity:1;stroke:#c4a000;display:inline" />
+      <path
+         id="path2727"
+         d="M -120.75152,-76.85072 C -121.22012,-77.31932 -121.60352,-87.95848 -121.60352,-100.49335 L -121.60352,-123.28399 L -126.85215,-123.28399 C -133.2088,-123.28399 -133.22918,-123.19507 -123.27316,-138.90007 C -118.77235,-145.99981 -115.38241,-150.09172 -114.19584,-149.85708 C -112.34853,-149.49178 -97.321888,-126.90852 -97.321888,-124.49754 C -97.321888,-123.83008 -99.640308,-123.28399 -102.47393,-123.28399 C -105.84689,-123.28399 -107.87693,-122.62994 -108.35276,-121.38993 C -109.55959,-118.24499 -105.45251,-108.3275 -99.296238,-99.52086 C -92.988138,-90.49705 -92.461808,-88.66514 -95.461888,-86.17529 C -97.128698,-84.79197 -98.185068,-85.26875 -102.25177,-89.23977 C -104.90055,-91.82623 -107.46285,-93.54736 -107.94572,-93.06446 C -108.42862,-92.58156 -108.8237,-88.54424 -108.8237,-84.09261 L -108.8237,-75.99874 L -114.36162,-75.99874 C -117.40746,-75.99874 -120.28294,-76.38214 -120.75152,-76.85072 z "
+         style="opacity:1;fill:#555753;fill-opacity:1;stroke:#2e3436;stroke-opacity:1;display:inline" />
+      <path
+         d="M -143.51431,-75.4275 C -158.48768,-90.57687 -171.17625,-103.66019 -171.7111,-104.50153 C -174.63909,-109.10738 -172.34363,-112.16647 -143.7155,-141.81059 C -119.96256,-166.4065 -114.08422,-171.84722 -111.26302,-171.84722 C -108.45655,-171.84722 -102.57922,-166.49332 -79.566162,-142.97326 C -59.704512,-122.67403 -51.314612,-113.24681 -51.314612,-111.22876 C -51.314612,-107.03298 -109.21126,-47.88319 -113.31814,-47.88319 C -115.49463,-47.88319 -123.57621,-55.25503 -143.51431,-75.4275 z M -82.734602,-78.80831 C -63.284082,-98.78654 -53.870592,-109.3496 -53.870592,-111.19708 C -53.870592,-114.35673 -108.28764,-170.68595 -111.26979,-170.61328 C -113.31427,-170.56346 -167.39892,-115.6112 -169.81635,-111.12752 C -171.82156,-107.40842 -170.53236,-105.76188 -145.24612,-79.74648 C -117.66227,-51.36719 -115.36413,-49.16116 -113.38369,-49.16116 C -112.40192,-49.16116 -98.609822,-62.50237 -82.734602,-78.80831 z "
+         style="opacity:1;fill:#555753;fill-opacity:1;stroke:#2e3436;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;display:inline"
+         id="path2736" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="146.57143"
+       y="97.808769"
+       id="text3409"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3411"
+         x="146.57143"
+         y="97.808769">Tarjeta de Referencia Rápida</tspan></text>
+    <g
+       id="g12314"
+       transform="translate(17.946423,1.7472534)"
+       style="fill:#333333;fill-opacity:1">
+      <text
+         sodipodi:linespacing="100%"
+         id="text8833"
+         y="527.43823"
+         x="297.99408"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:#333333;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;font-family:Bitstream Vera Sans"
+           y="527.43823"
+           x="297.99408"
+           id="tspan8835"
+           sodipodi:role="line">Prefijos URL Soportados</tspan></text>
+      <g
+         id="g12288"
+         style="fill:#333333;fill-opacity:1">
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="299.33002"
+           y="547.94214"
+           id="text8837"
+           sodipodi:linespacing="150%"><tspan
+             sodipodi:role="line"
+             id="tspan8841"
+             x="299.33002"
+             y="547.94214">aftp://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8843"
+             x="299.33002"
+             y="565.94214">bzr://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="583.94214"
+             id="tspan10799">bzr+ssh://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="583.94214"
+             id="tspan3911" /><tspan
+             sodipodi:role="line"
+             id="tspan8847"
+             x="299.33002"
+             y="601.94214">file:// </tspan><tspan
+             sodipodi:role="line"
+             id="tspan8849"
+             x="299.33002"
+             y="619.94214">ftp:// </tspan><tspan
+             sodipodi:role="line"
+             id="tspan8851"
+             x="299.33002"
+             y="637.94214">http://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8853"
+             x="299.33002"
+             y="655.94214">https://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="673.94214"
+             id="tspan10797" /><tspan
+             sodipodi:role="line"
+             id="tspan8855"
+             x="299.33002"
+             y="691.94214">sftp://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8857"
+             x="299.33002"
+             y="709.94214" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="379.22845"
+           y="547.94214"
+           id="text12260"
+           sodipodi:linespacing="150%"><tspan
+             sodipodi:role="line"
+             id="tspan12262"
+             x="379.22845"
+             y="547.94214">Acceso usando FTP activo.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="565.94214"
+             id="tspan12264">Acceso rápido usando el servidor inteligente de Bazaar.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="583.94214"
+             id="tspan12270">Acceso rápido usando el servidor inteligente de Bazaar</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="601.94214"
+             id="tspan3909">sobre SSH.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="619.94214"
+             id="tspan12286">Accesos usando el sistema de archivos estándar (defecto).</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="637.94214"
+             id="tspan12272">Acceso usando FTP pasivo.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="655.94214"
+             id="tspan12274">Acceso de solo lectura de branches exportadas en la web.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="673.94214"
+             id="tspan12276">Acceso de solo lectura de branches exportadas en la web</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="691.94214"
+             id="tspan12278">utilizando SSL.</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="709.94214"
+             id="tspan12280">Acceso usando SFTP (la mayoría de los servidores SSH</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="727.94214"
+             id="tspan3913">proporcionan SFTP).</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="745.94214"
+             id="tspan12282" /></text>
+      </g>
+    </g>
+    <g
+       id="g3885">
+      <text
+         sodipodi:linespacing="100%"
+         id="text4624"
+         y="320.09448"
+         x="316.78033"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:#333333;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;font-family:Bitstream Vera Sans"
+           y="320.09448"
+           x="316.78033"
+           id="tspan4626"
+           sodipodi:role="line">Conceptos</tspan></text>
+      <text
+         sodipodi:linespacing="150%"
+         id="text12146"
+         y="341.21167"
+         x="477.7457"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="341.21167"
+           x="477.7457"
+           id="tspan12148"
+           sodipodi:role="line">línea de desarrollo para un proyecto</tspan><tspan
+           id="tspan12150"
+           y="359.21167"
+           x="477.7457"
+           sodipodi:role="line">directorio bajo control de versiones</tspan><tspan
+           id="tspan12152"
+           y="377.21167"
+           x="477.7457"
+           sodipodi:role="line">almacén para revisiones de Bazaar</tspan><tspan
+           id="tspan12156"
+           y="395.21167"
+           x="477.7457"
+           sodipodi:role="line">versión del código fuente añadido al</tspan><tspan
+           y="413.21167"
+           x="477.7457"
+           sodipodi:role="line"
+           id="tspan3853">repositorio</tspan><tspan
+           id="tspan12158"
+           y="431.21167"
+           x="477.7457"
+           sodipodi:role="line">revisión con nombre</tspan><tspan
+           id="tspan12160"
+           y="449.21167"
+           x="477.7457"
+           sodipodi:role="line">branches que tienen un ancestro común</tspan><tspan
+           y="467.21167"
+           x="477.7457"
+           sodipodi:role="line"
+           id="tspan3857">la operación de aplicar a un branch todos los </tspan><tspan
+           y="485.21167"
+           x="477.7457"
+           sodipodi:role="line"
+           id="tspan3861">cambios introducidos por otra persona</tspan></text>
+      <text
+         sodipodi:linespacing="150%"
+         id="text12400"
+         y="341.21167"
+         x="317.27643"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="341.21167"
+           x="317.27643"
+           id="tspan12402"
+           sodipodi:role="line">Branch:</tspan><tspan
+           id="tspan12404"
+           y="359.21167"
+           x="317.27643"
+           sodipodi:role="line">Árbol de trabajo:</tspan><tspan
+           id="tspan12406"
+           y="377.21167"
+           x="317.27643"
+           sodipodi:role="line">Repositorio:</tspan><tspan
+           id="tspan12408"
+           y="395.21167"
+           x="317.27643"
+           sodipodi:role="line">Revisión:</tspan><tspan
+           id="tspan12410"
+           y="413.21167"
+           x="317.27643"
+           sodipodi:role="line" /><tspan
+           id="tspan12412"
+           y="431.21167"
+           x="317.27643"
+           sodipodi:role="line">Tag:</tspan><tspan
+           id="tspan12414"
+           y="449.21167"
+           x="317.27643"
+           sodipodi:role="line">Branches relacionadas:</tspan><tspan
+           id="tspan12416"
+           y="467.21167"
+           x="317.27643"
+           sodipodi:role="line">Merge / Integración:</tspan><tspan
+           id="tspan12418"
+           y="485.21167"
+           x="317.27643"
+           sodipodi:role="line"> </tspan></text>
+    </g>
+    <g
+       id="g6327"
+       transform="translate(6.5601196,0)"
+       style="fill:#333333;fill-opacity:1">
+      <text
+         sodipodi:linespacing="100%"
+         id="text6294"
+         y="50.289795"
+         x="775.77582"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="50.289795"
+           x="775.77582"
+           id="tspan6296"
+           sodipodi:role="line">Más Información</tspan></text>
+      <g
+         id="g6320"
+         style="fill:#333333;fill-opacity:1">
+        <text
+           xml:space="preserve"
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="787.72699"
+           y="76.095581"
+           id="text6298"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan6300"
+             x="787.72699"
+             y="76.095581">bzr help</tspan></text>
+        <a
+           id="a6316"
+           style="fill:#333333;fill-opacity:1"
+           xlink:href="http://bazaar-vcs.org">
+          <text
+             sodipodi:linespacing="100%"
+             id="text6302"
+             y="97.901367"
+             x="787.79535"
+             style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+             xml:space="preserve"><tspan
+               y="97.901367"
+               x="787.79535"
+               id="tspan6304"
+               sodipodi:role="line">http://bazaar-vcs.org</tspan></text>
+        </a>
+      </g>
+    </g>
+  </g>
+</svg>

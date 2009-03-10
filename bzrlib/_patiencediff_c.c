@@ -27,13 +27,7 @@
 #include <string.h>
 #include <Python.h>
 
-
-/* http://www.python.org/dev/peps/pep-0353/ */
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-#endif
+#include "python-compat.h"
 
 
 #if defined(__GNUC__)
@@ -70,11 +64,10 @@ static char *opcode_names[] = {
 
 
 struct line {
-    int hash;          /* hash code of the string */
+    long hash;         /* hash code of the string/object */
     Py_ssize_t next;   /* next line from the same equivalence class */
     Py_ssize_t equiv;  /* equivalence class */
-    Py_ssize_t len;
-    const char *data;
+    PyObject *data;
 };
 
 
@@ -151,8 +144,8 @@ bisect_left(Py_ssize_t *list, Py_ssize_t item, Py_ssize_t lo, Py_ssize_t hi)
 static inline int
 compare_lines(struct line *a, struct line *b)
 {
-    return ((a->hash != b->hash) || (a->len != b->len) ||
-            memcmp(a->data, b->data, a->len));
+    return ((a->hash != b->hash)
+            || PyObject_Compare(a->data, b->data));
 }
 
 
@@ -542,12 +535,22 @@ error:
 }
 
 
+static void
+delete_lines(struct line *lines, Py_ssize_t size)
+{
+    struct line *line = lines;
+    while (size-- > 0) {
+        Py_XDECREF(line->data);
+        line++;
+    }
+    free(lines);
+}
+
+
 static Py_ssize_t
 load_lines(PyObject *orig, struct line **lines)
 {
-    Py_ssize_t size, i, j;
-    int h;
-    char *p;
+    Py_ssize_t size, i;
     struct line *line;
     PyObject *seq, *item;
 
@@ -562,7 +565,8 @@ load_lines(PyObject *orig, struct line **lines)
         return 0;
     }
 
-    line = *lines = (struct line *)malloc(sizeof(struct line) * size);
+    /* Allocate a memory block for line data, initialized to 0 */
+    line = *lines = (struct line *)calloc(size, sizeof(struct line));
     if (line == NULL) {
         PyErr_NoMemory();
         Py_DECREF(seq);
@@ -571,30 +575,25 @@ load_lines(PyObject *orig, struct line **lines)
 
     for (i = 0; i < size; i++) {
         item = PySequence_Fast_GET_ITEM(seq, i);
-        if (!PyString_Check(item)){
-            PyErr_Format(PyExc_TypeError,
-                     "sequence item %zd: expected string,"
-                     " %.80s found",
-                     i, item->ob_type->tp_name);
-            Py_DECREF(seq);
-            return -1;
+        Py_INCREF(item);
+        line->data = item;
+        line->hash = PyObject_Hash(item);
+        if (line->hash == (-1)) {
+            /* Propogate the hash exception */
+            size = -1;
+            goto cleanup;
         }
-        line->len = PyString_GET_SIZE(item);
-        line->data = p = PyString_AS_STRING(item);
-        /* 'djb2' hash. This gives us a nice compromise between fast hash
-            function and a hash with less collisions. The algorithm doesn't
-            use the hash for actual lookups, only for building the table
-            so a better hash function wouldn't bring us much benefit, but
-            would make this loading code slower. */
-        h = 5381;
-        for (j = 0; j < line->len; j++)
-            h = ((h << 5) + h) + *p++;
-        line->hash = h;
         line->next = SENTINEL;
         line++;
     }
 
+    cleanup:
     Py_DECREF(seq);
+    if (size == -1) {
+        /* Error -- cleanup unused object references */
+        delete_lines(*lines, i);
+        *lines = NULL;
+    }
     return size;
 }
 
@@ -647,16 +646,16 @@ py_unique_lcs(PyObject *self, PyObject *args)
     free(backpointers);
     free(matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     return res;
 
 error:
     free(backpointers);
     free(matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     return NULL;
 }
 
@@ -725,16 +724,16 @@ py_recurse_matches(PyObject *self, PyObject *args)
     free(backpointers);
     free(matches.matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     Py_RETURN_NONE;
 
 error:
     free(backpointers);
     free(matches.matches);
     free(hashtable.table);
-    free(b);
-    free(a);
+    delete_lines(b, bsize);
+    delete_lines(a, asize);
     return NULL;
 }
 
@@ -769,6 +768,7 @@ PatienceSequenceMatcher_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         self->backpointers = (Py_ssize_t *)malloc(sizeof(Py_ssize_t) * self->bsize * 4);
         if (self->backpointers == NULL) {
             Py_DECREF(self);
+            PyErr_NoMemory();
             return NULL;
         }
 
@@ -783,8 +783,8 @@ PatienceSequenceMatcher_dealloc(PatienceSequenceMatcher* self)
 {
     free(self->backpointers);
     free(self->hashtable.table);
-    free(self->b);
-    free(self->a);
+    delete_lines(self->b, self->bsize);
+    delete_lines(self->a, self->asize);
     self->ob_type->tp_free((PyObject *)self);
 }
 

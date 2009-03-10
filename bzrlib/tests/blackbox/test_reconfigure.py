@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import (
+    bzrdir,
     errors,
     tests,
     workingtree,
@@ -61,3 +62,68 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         self.run_bzr_error(['No target configuration specified'],
                            'reconfigure', working_dir='branch')
+
+    def test_checkout_to_lightweight_checkout(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout')
+        self.run_bzr('reconfigure --lightweight-checkout checkout')
+
+    def test_standalone_to_use_shared(self):
+        self.build_tree(['repo/'])
+        tree = self.make_branch_and_tree('repo/tree')
+        repo = self.make_repository('repo', shared=True)
+        self.run_bzr('reconfigure --use-shared', working_dir='repo/tree')
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.assertNotEqual(tree.bzrdir.root_transport.base,
+            tree.branch.repository.bzrdir.root_transport.base)
+
+    def test_use_shared_to_standalone(self):
+        repo = self.make_repository('repo', shared=True)
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        self.assertNotEqual(branch.bzrdir.root_transport.base,
+            branch.repository.bzrdir.root_transport.base)
+        self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.assertEqual(tree.bzrdir.root_transport.base,
+            tree.branch.repository.bzrdir.root_transport.base)
+
+    def test_make_with_trees(self):
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(False)
+        self.run_bzr('reconfigure --with-trees', working_dir='repo')
+        self.assertIs(True, repo.make_working_trees())
+
+    def test_make_with_trees_already_trees(self):
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(True)
+        self.run_bzr_error([" already creates working trees"],
+                            'reconfigure --with-trees repo')
+
+    def test_make_without_trees(self):
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(True)
+        self.run_bzr('reconfigure --with-no-trees', working_dir='repo')
+        self.assertIs(False, repo.make_working_trees())
+
+    def test_make_without_trees_already_no_trees(self):
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(False)
+        self.run_bzr_error([" already doesn't create working trees"],
+                            'reconfigure --with-no-trees repo')
+
+    def test_make_with_trees_nonshared_repo(self):
+        branch = self.make_branch('branch')
+        self.run_bzr_error(
+            ["Requested reconfiguration of '.*' is not supported"],
+            'reconfigure --with-trees branch')
+
+    def test_make_without_trees_leaves_tree_alone(self):
+        repo = self.make_repository('repo', shared=True)
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        tree = workingtree.WorkingTree.open('repo/branch')
+        self.build_tree(['repo/branch/foo'])
+        tree.add('foo')
+        self.run_bzr('reconfigure --with-no-trees --force',
+            working_dir='repo/branch')
+        self.failUnlessExists('repo/branch/foo')
+        tree = workingtree.WorkingTree.open('repo/branch')

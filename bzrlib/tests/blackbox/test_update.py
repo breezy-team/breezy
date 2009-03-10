@@ -21,7 +21,6 @@
 import os
 
 from bzrlib import branch, bzrdir
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 
 from bzrlib import errors
+import bzrlib.revision as _mod_revision
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
@@ -41,13 +42,13 @@ class TopoSorter(object):
 
     def __init__(self, graph):
         """Topological sorting of a graph.
-    
+
         :param graph: sequence of pairs of node_name->parent_names_list.
                       i.e. [('C', ['B']), ('B', ['A']), ('A', [])]
                       For this input the output from the sort or
                       iter_topo_order routines will be:
                       'A', 'B', 'C'
-        
+
         node identifiers can be any hashable object, and are typically strings.
 
         If you have a graph like [('a', ['b']), ('a', ['c'])] this will only use
@@ -56,7 +57,7 @@ class TopoSorter(object):
         The graph is sorted lazily: until you iterate or sort the input is
         not processed other than to create an internal representation.
 
-        iteration or sorting may raise GraphCycleError if a cycle is present 
+        iteration or sorting may raise GraphCycleError if a cycle is present
         in the graph.
         """
         # a dict of the graph.
@@ -64,11 +65,11 @@ class TopoSorter(object):
         self._visitable = set(self._graph)
         ### if debugging:
         # self._original_graph = dict(graph)
-        
+
         # this is a stack storing the depth first search into the graph.
         self._node_name_stack = []
         # at each level of 'recursion' we have to check each parent. This
-        # stack stores the parents we have not yet checked for the node at the 
+        # stack stores the parents we have not yet checked for the node at the
         # matching depth in _node_name_stack
         self._pending_parents_stack = []
         # this is a set of the completed nodes for fast checking whether a
@@ -78,7 +79,7 @@ class TopoSorter(object):
 
     def sorted(self):
         """Sort the graph and return as a list.
-        
+
         After calling this the sorter is empty and you must create a new one.
         """
         return list(self.iter_topo_order())
@@ -95,7 +96,7 @@ class TopoSorter(object):
 
     def iter_topo_order(self):
         """Yield the nodes of the graph in a topological order.
-        
+
         After finishing iteration the sorter is empty and you cannot continue
         iteration.
         """
@@ -115,7 +116,7 @@ class TopoSorter(object):
                     yield self._pop_node()
                 else:
                     while self._pending_parents_stack[-1]:
-                        # recurse depth first into a single parent 
+                        # recurse depth first into a single parent
                         next_node_name = self._pending_parents_stack[-1].pop()
                         if next_node_name in self._completed_node_names:
                             # this parent was completed by a child on the
@@ -135,13 +136,13 @@ class TopoSorter(object):
                             # this indicates a cycle.
                             raise errors.GraphCycleError(self._node_name_stack)
                         self._push_node(next_node_name, parents)
-                        # and do not continue processing parents until this 'call' 
+                        # and do not continue processing parents until this 'call'
                         # has recursed.
                         break
 
     def _push_node(self, node_name, parents):
         """Add node_name to the pending node stack.
-        
+
         Names in this stack will get emitted into the output as they are popped
         off the stack.
         """
@@ -149,7 +150,7 @@ class TopoSorter(object):
         self._pending_parents_stack.append(list(parents))
 
     def _pop_node(self):
-        """Pop the top node off the stack 
+        """Pop the top node off the stack
 
         The node is appended to the sorted output.
         """
@@ -166,7 +167,7 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
     """Topological sort a graph which groups merges.
 
     :param graph: sequence of pairs of node->parents_list.
-    :param branch_tip: the tip of the branch to graph. Revisions not 
+    :param branch_tip: the tip of the branch to graph. Revisions not
                        reachable from branch_tip are not included in the
                        output.
     :param mainline_revisions: If not None this forces a mainline to be
@@ -192,7 +193,7 @@ class MergeSorter(object):
     __slots__ = ['_node_name_stack',
                  '_node_merge_depth_stack',
                  '_pending_parents_stack',
-                 '_assigned_sequence_stack',
+                 '_first_child_stack',
                  '_left_subtree_pushed_stack',
                  '_generate_revno',
                  '_graph',
@@ -200,7 +201,7 @@ class MergeSorter(object):
                  '_stop_revision',
                  '_original_graph',
                  '_revnos',
-                 '_root_sequence',
+                 '_revno_to_branch_count',
                  '_completed_node_names',
                  '_scheduled_nodes',
                 ]
@@ -208,13 +209,13 @@ class MergeSorter(object):
     def __init__(self, graph, branch_tip, mainline_revisions=None,
         generate_revno=False):
         """Merge-aware topological sorting of a graph.
-    
+
         :param graph: sequence of pairs of node_name->parent_names_list.
                       i.e. [('C', ['B']), ('B', ['A']), ('A', [])]
                       For this input the output from the sort or
                       iter_topo_order routines will be:
                       'A', 'B', 'C'
-        :param branch_tip: the tip of the branch to graph. Revisions not 
+        :param branch_tip: the tip of the branch to graph. Revisions not
                        reachable from branch_tip are not included in the
                        output.
         :param mainline_revisions: If not None this forces a mainline to be
@@ -232,14 +233,14 @@ class MergeSorter(object):
         The result is a list sorted so that all parents come before
         their children. Each element of the list is a tuple containing:
         (sequence_number, node_name, merge_depth, end_of_merge)
-         * sequence_number: The sequence of this row in the output. Useful for 
+         * sequence_number: The sequence of this row in the output. Useful for
            GUIs.
          * node_name: The node name: opaque text to the merge routine.
          * merge_depth: How many levels of merging deep this node has been
            found.
          * revno_sequence: When requested this field provides a sequence of
              revision numbers for all revisions. The format is:
-             REVNO[[.BRANCHREVNO.REVNO] ...]. BRANCHREVNO is the number of the
+             (REVNO, BRANCHNUM, BRANCHREVNO). BRANCHNUM is the number of the
              branch that the revno is on. From left to right the REVNO numbers
              are the sequence numbers within that branch of the revision.
              For instance, the graph {A:[], B:['A'], C:['A', 'B']} will get
@@ -249,7 +250,7 @@ class MergeSorter(object):
              second commit in the trunk'.
          * end_of_merge: When True the next node is part of a different merge.
 
-        
+
         node identifiers can be any hashable object, and are typically strings.
 
         If you have a graph like [('a', ['b']), ('a', ['c'])] this will only use
@@ -258,7 +259,7 @@ class MergeSorter(object):
         The graph is sorted lazily: until you iterate or sort the input is
         not processed other than to create an internal representation.
 
-        iteration or sorting may raise GraphCycleError if a cycle is present 
+        iteration or sorting may raise GraphCycleError if a cycle is present
         in the graph.
 
         Background information on the design:
@@ -283,24 +284,24 @@ class MergeSorter(object):
               E  1   [F]
               F 0
               C is the end of a cluster due to rule 1.
-              D is not the end of a cluster from rule 1, but is from rule 2: E 
+              D is not the end of a cluster from rule 1, but is from rule 2: E
                 is not its left most ancestor
               E is the end of a cluster due to rule 1
               F might be but we need more data.
-              
+
         we show connecting lines to a parent when:
          - The parent is the start of a merge within this cluster.
-           That is, the merge was not done to the mainline before this cluster 
+           That is, the merge was not done to the mainline before this cluster
            was merged to the mainline.
            This can be detected thus:
-            * The parent has a higher merge depth and is the next revision in 
+            * The parent has a higher merge depth and is the next revision in
               the list.
-          
+
           The next revision in the list constraint is needed for this case:
-          A 0   [D, B]   
-          B  1  [C, F]   # we do not want to show a line to F which is depth 2 
+          A 0   [D, B]
+          B  1  [C, F]   # we do not want to show a line to F which is depth 2
                            but not a merge
-          C  1  [H]      # note that this is a long line to show back to the 
+          C  1  [H]      # note that this is a long line to show back to the
                            ancestor - see the end of merge rules.
           D 0   [G, E]
           E  1  [G, F]
@@ -341,7 +342,7 @@ class MergeSorter(object):
         else:
             self._mainline_revisions = list(mainline_revisions)
             self._stop_revision = self._mainline_revisions[0]
-        # skip the first revision, its what we reach and its parents are 
+        # skip the first revision, its what we reach and its parents are
         # therefore irrelevant
         for index, revision in enumerate(self._mainline_revisions[1:]):
             # NB: index 0 means self._mainline_revisions[1]
@@ -350,7 +351,13 @@ class MergeSorter(object):
             if parent is None:
                 # end of mainline_revisions history
                 continue
-            if self._graph[revision][0] == parent:
+            graph_parent_ids = self._graph[revision]
+            if not graph_parent_ids:
+                # We ran into a ghost, skip over it, this is a workaround for
+                # bug #243536, the _graph has had ghosts stripped, but the
+                # mainline_revisions have not
+                continue
+            if graph_parent_ids[0] == parent:
                 continue
             # remove it from its prior spot
             self._graph[revision].remove(parent)
@@ -362,27 +369,27 @@ class MergeSorter(object):
         self._original_graph = dict(self._graph.items())
         # we need to know the revision numbers of revisions to determine
         # the revision numbers of their descendants
-        # this is a graph from node to [revno_tuple, sequence_number]
-        # where sequence is the number of branches made from the node,
+        # this is a graph from node to [revno_tuple, first_child]
+        # where first_child is True if no other children have seen this node
         # and revno_tuple is the tuple that was assigned to the node.
         # we dont know revnos to start with, so we start it seeded with
-        # [None, 0]
-        self._revnos = dict((revision, [None, 0]) for revision in self._graph)
-        # the global implicit root node has revno 0, but we need to know
-        # the sequence number for it too:
-        self._root_sequence = 0
-        
+        # [None, True]
+        self._revnos = dict((revision, [None, True])
+                            for revision in self._graph)
+        # Each mainline revision counts how many child branches have spawned from it.
+        self._revno_to_branch_count = {}
+
         # this is a stack storing the depth first search into the graph.
         self._node_name_stack = []
         # at each level of recursion we need the merge depth this node is at:
         self._node_merge_depth_stack = []
         # at each level of 'recursion' we have to check each parent. This
-        # stack stores the parents we have not yet checked for the node at the 
+        # stack stores the parents we have not yet checked for the node at the
         # matching depth in _node_name_stack
         self._pending_parents_stack = []
         # When we first look at a node we assign it a seqence number from its
         # leftmost parent.
-        self._assigned_sequence_stack = []
+        self._first_child_stack = []
         # this is a set of the nodes who have been completely analysed for fast
         # membership checking
         self._completed_node_names = set()
@@ -395,31 +402,32 @@ class MergeSorter(object):
         # D 0  [F, E]
         # E  1 [F]
         # F 0
-        # the scheduling order is: F, E, D, C, B, A 
+        # the scheduling order is: F, E, D, C, B, A
         # that is - 'left subtree, right subtree, node'
         # which would mean that when we schedule A we can emit the entire tree.
         self._scheduled_nodes = []
-        # This records for each node when we have processed its left most 
+        # This records for each node when we have processed its left most
         # unmerged subtree. After this subtree is scheduled, all other subtrees
         # have their merge depth increased by one from this nodes merge depth.
         # it contains tuples - name, merge_depth
         self._left_subtree_pushed_stack = []
 
         # seed the search with the tip of the branch
-        if branch_tip is not None:
+        if (branch_tip is not None and
+            branch_tip != _mod_revision.NULL_REVISION):
             parents = self._graph.pop(branch_tip)
             self._push_node(branch_tip, 0, parents)
 
     def sorted(self):
         """Sort the graph and return as a list.
-        
+
         After calling this the sorter is empty and you must create a new one.
         """
         return list(self.iter_topo_order())
 
     def iter_topo_order(self):
         """Yield the nodes of the graph in a topological order.
-        
+
         After finishing iteration the sorter is empty and you cannot continue
         iteration.
         """
@@ -439,8 +447,7 @@ class MergeSorter(object):
                       node_merge_depth_stack_append=node_merge_depth_stack.append,
                       left_subtree_pushed_stack_append=left_subtree_pushed_stack.append,
                       pending_parents_stack_append=pending_parents_stack.append,
-                      assigned_sequence_stack_append=self._assigned_sequence_stack.append,
-                      original_graph=self._original_graph,
+                      first_child_stack_append=self._first_child_stack.append,
                       revnos=self._revnos,
                       ):
             """Add node_name to the pending node stack.
@@ -455,28 +462,28 @@ class MergeSorter(object):
             node_merge_depth_stack_append(merge_depth)
             left_subtree_pushed_stack_append(False)
             pending_parents_stack_append(list(parents))
-            # as we push it, assign it a sequence number against its parent:
-            parents = original_graph[node_name]
+            # as we push it, check if it is the first child
             if parents:
                 # node has parents, assign from the left most parent.
-                parent_revno = revnos[parents[0]]
-                sequence = parent_revno[1]
-                parent_revno[1] += 1
+                parent_info = revnos[parents[0]]
+                first_child = parent_info[1]
+                parent_info[1] = False
             else:
-                # no parents, use the root sequence
-                sequence = self._root_sequence
-                self._root_sequence +=1
-            assigned_sequence_stack_append(sequence)
+                # We don't use the same algorithm here, but we need to keep the
+                # stack in line
+                first_child = None
+            first_child_stack_append(first_child)
 
         def pop_node(node_name_stack_pop=node_name_stack.pop,
                      node_merge_depth_stack_pop=node_merge_depth_stack.pop,
-                     assigned_sequence_stack_pop=self._assigned_sequence_stack.pop,
+                     first_child_stack_pop=self._first_child_stack.pop,
                      left_subtree_pushed_stack_pop=left_subtree_pushed_stack.pop,
                      pending_parents_stack_pop=pending_parents_stack.pop,
                      original_graph=self._original_graph,
                      revnos=self._revnos,
                      completed_node_names_add=self._completed_node_names.add,
                      scheduled_nodes_append=scheduled_nodes.append,
+                     revno_to_branch_count=self._revno_to_branch_count,
                     ):
             """Pop the top node off the stack
 
@@ -486,7 +493,7 @@ class MergeSorter(object):
             # pop off the local variables
             node_name = node_name_stack_pop()
             merge_depth = node_merge_depth_stack_pop()
-            sequence = assigned_sequence_stack_pop()
+            first_child = first_child_stack_pop()
             # remove this node from the pending lists:
             left_subtree_pushed_stack_pop()
             pending_parents_stack_pop()
@@ -494,20 +501,28 @@ class MergeSorter(object):
             parents = original_graph[node_name]
             if parents:
                 # node has parents, assign from the left most parent.
-                parent_revno = revnos[parents[0]]
-                if sequence:
+                parent_revno = revnos[parents[0]][0]
+                if not first_child:
                     # not the first child, make a new branch
-                    revno = parent_revno[0] + (sequence, 1)
+                    base_revno = parent_revno[0]
+                    branch_count = revno_to_branch_count.get(base_revno, 0)
+                    branch_count += 1
+                    revno_to_branch_count[base_revno] = branch_count
+                    revno = (parent_revno[0], branch_count, 1)
+                    # revno = (parent_revno[0], branch_count, parent_revno[-1]+1)
                 else:
-                    # increment the sequence number within the branch
-                    revno = parent_revno[0][:-1] + (parent_revno[0][-1] + 1,)
+                    # as the first child, we just increase the final revision
+                    # number
+                    revno = parent_revno[:-1] + (parent_revno[-1] + 1,)
             else:
                 # no parents, use the root sequence
-                if sequence:
-                    # make a parallel import revision number
-                    revno = (0, sequence, 1)
+                root_count = revno_to_branch_count.get(0, -1)
+                root_count += 1
+                if root_count:
+                    revno = (0, root_count, 1)
                 else:
                     revno = (1,)
+                revno_to_branch_count[0] = root_count
 
             # store the revno for this node for future reference
             revnos[node_name][0] = revno
@@ -533,9 +548,9 @@ class MergeSorter(object):
                     else:
                         # place any merges in right-to-left order for scheduling
                         # which gives us left-to-right order after we reverse
-                        # the scheduled queue. XXX: This has the effect of 
+                        # the scheduled queue. XXX: This has the effect of
                         # allocating common-new revisions to the right-most
-                        # subtree rather than the left most, which will 
+                        # subtree rather than the left most, which will
                         # display nicely (you get smaller trees at the top
                         # of the combined merge).
                         next_node_name = pending_parents_stack[-1].pop()
@@ -567,7 +582,7 @@ class MergeSorter(object):
                         next_node_name,
                         next_merge_depth,
                         parents)
-                    # and do not continue processing parents until this 'call' 
+                    # and do not continue processing parents until this 'call'
                     # has recursed.
                     break
 
@@ -602,7 +617,7 @@ class MergeSorter(object):
 
     def _push_node(self, node_name, merge_depth, parents):
         """Add node_name to the pending node stack.
-        
+
         Names in this stack will get emitted into the output as they are popped
         off the stack.
         """
@@ -610,21 +625,21 @@ class MergeSorter(object):
         self._node_merge_depth_stack.append(merge_depth)
         self._left_subtree_pushed_stack.append(False)
         self._pending_parents_stack.append(list(parents))
-        # as we push it, assign it a sequence number against its parent:
+        # as we push it, figure out if this is the first child
         parents = self._original_graph[node_name]
         if parents:
             # node has parents, assign from the left most parent.
-            parent_revno = self._revnos[parents[0]]
-            sequence = parent_revno[1]
-            parent_revno[1] += 1
+            parent_info = self._revnos[parents[0]]
+            first_child = parent_info[1]
+            parent_info[1] = False
         else:
-            # no parents, use the root sequence
-            sequence = self._root_sequence
-            self._root_sequence +=1
-        self._assigned_sequence_stack.append(sequence)
+            # We don't use the same algorithm here, but we need to keep the
+            # stack in line
+            first_child = None
+        self._first_child_stack.append(first_child)
 
     def _pop_node(self):
-        """Pop the top node off the stack 
+        """Pop the top node off the stack
 
         The node is appended to the sorted output.
         """
@@ -632,7 +647,7 @@ class MergeSorter(object):
         # pop off the local variables
         node_name = self._node_name_stack.pop()
         merge_depth = self._node_merge_depth_stack.pop()
-        sequence = self._assigned_sequence_stack.pop()
+        first_child = self._first_child_stack.pop()
         # remove this node from the pending lists:
         self._left_subtree_pushed_stack.pop()
         self._pending_parents_stack.pop()
@@ -640,20 +655,28 @@ class MergeSorter(object):
         parents = self._original_graph[node_name]
         if parents:
             # node has parents, assign from the left most parent.
-            parent_revno = self._revnos[parents[0]]
-            if sequence:
+            parent_revno = self._revnos[parents[0]][0]
+            if not first_child:
                 # not the first child, make a new branch
-                revno = parent_revno[0] + (sequence, 1)
+                base_revno = parent_revno[0]
+                branch_count = self._revno_to_branch_count.get(base_revno, 0)
+                branch_count += 1
+                self._revno_to_branch_count[base_revno] = branch_count
+                revno = (parent_revno[0], branch_count, 1)
+                # revno = (parent_revno[0], branch_count, parent_revno[-1]+1)
             else:
-                # increment the sequence number within the branch
-                revno = parent_revno[0][:-1] + (parent_revno[0][-1] + 1,)
+                # as the first child, we just increase the final revision
+                # number
+                revno = parent_revno[:-1] + (parent_revno[-1] + 1,)
         else:
             # no parents, use the root sequence
-            if sequence:
-                # make a parallel import revision number
-                revno = (0, sequence, 1)
+            root_count = self._revno_to_branch_count.get(0, 0)
+            if root_count:
+                revno = (0, root_count, 1)
             else:
                 revno = (1,)
+            root_count += 1
+            self._revno_to_branch_count[0] = root_count
 
         # store the revno for this node for future reference
         self._revnos[node_name][0] = revno

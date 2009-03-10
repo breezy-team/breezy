@@ -1,0 +1,287 @@
+==========================
+KnitPack repository format
+==========================
+
+.. contents::
+
+Using KnitPack repositories
+===========================
+
+Motivation
+----------
+
+KnitPack is a new repository format for Bazaar, which is expected to be
+faster both locally and over the network, is usually more compact, and
+will work with more FTP servers.
+
+Our benchmarking results to date have been very promising. We fully expect
+to make a pack-based format the default in the near future.  We would
+therefore like as many people as possible using KnitPack repositories,
+benchmarking the results and telling us where improvements are still needed.
+
+Preparation
+-----------
+
+A small percentage of existing repositories may have some inconsistent
+data within them. It's is a good idea to check the integrity of your
+repositories before migrating them to knitpack format. To do this, run::
+
+  bzr check
+
+If that reports a problem, run this command::
+
+  bzr reconcile
+
+Note that this can take many hours for repositories with deep history
+so be sure to set aside some time for this if it is required.
+
+Creating a new knitpack branch
+------------------------------
+
+If you're starting a project from scratch, it's easy to make it a
+``knitpack`` one. Here's how::
+
+  cd my-stuff
+  bzr init --pack-0.92
+  bzr add
+  bzr commit -m "initial import"
+
+In other words, use the normal sequence of commands but add the
+``--pack-0.92`` option to the ``init`` command.
+
+**Note:** In bzr 0.92, this format was called ``knitpack-experimental``.
+
+Creating a new knitpack repository
+----------------------------------
+
+If you're starting a project from scratch and wish to use a shared repository
+for branches, you can make it a ``knitpack`` repository like this::
+
+  cd my-repo
+  bzr init-repo --pack-0.92 .
+  cd my-stuff
+  bzr init
+  bzr add
+  bzr commit -m "initial import"
+
+In other words, use the normal sequence of commands but add the
+``--pack-0.92`` option to the ``init-repo`` command.
+
+Upgrading an existing branch or repository to knitpack format
+-------------------------------------------------------------
+
+If you have an existing branch and wish to migrate it to
+a ``knitpack`` format, use the ``upgrade`` command like this::
+
+  bzr upgrade --pack-0.92 path-to-my-branch
+
+If you are using a shared repository, run::
+
+  bzr upgrade --pack-0.92 ROOT_OF_REPOSITORY
+
+to upgrade the history database. Note that this will not
+alter the branch format of each branch, so
+you will need to also upgrade each branch individually
+if you are upgrading from an old (e.g. < 0.17) bzr.
+More modern bzr's will already have the branch format at
+our latest branch format which adds support for tags.
+
+Starting a new knitpack branch from one in an older format
+----------------------------------------------------------
+
+This can be done in one of several ways:
+
+1. Create a new branch and pull into it
+2. Create a standalone branch and upgrade its format
+3. Create a knitpack shared repository and branch into it
+
+Here are the commands for using the ``pull`` approach::
+
+    bzr init --pack-0.92 my-new-branch
+    cd my-new-branch
+    bzr pull my-source-branch
+
+Here are the commands for using the ``upgrade`` approach::
+
+    bzr branch my-source-branch my-new-branch
+    cd my-new-branch
+    bzr upgrade --pack-0.92 .
+
+Here are the commands for the shared repository approach::
+
+  cd my-repo
+  bzr init-repo --pack-0.92 .
+  bzr branch my-source-branch my-new-branch
+  cd my-new-branch
+
+As a reminder, any of the above approaches can fail if the source branch
+has inconsistent data within it and hasn't been reconciled yet. Please
+be sure to check that before reporting problems.
+
+Testing packs for bzr-svn users
+-------------------------------
+
+If you are using ``bzr-svn`` or are testing the prototype subtree support,
+you can still use and assist in testing KnitPacks. The commands to use
+are identical to the ones given above except that the name of the format
+to use is ``knitpack-subtree-experimental``.
+
+WARNING: Note that the subtree formats, ``dirstate-subtree`` and
+``knitpack-subtree-experimental``, are **not** production strength yet and
+may cause unexpected problems. They are required for the bzr-svn
+plug-in but should otherwise only be used by people happy to live on the
+bleeding edge. If you are using bzr-svn, you're on the bleeding edge anyway.
+:-)
+
+Reporting problems
+------------------
+
+If you need any help or encounter any problems, please contact the developers
+via the usual ways, i.e. chat to us on IRC or send a message to our mailing
+list. See http://bazaar-vcs.org/BzrSupport for contact details.
+
+
+Technical notes
+===============
+
+Bazaar 0.92 adds a new format (experimental at first) implemented in
+``bzrlib.repofmt.pack_repo.py``.
+
+This format provides a knit-like interface which is quite compatible
+with knit format repositories: you can get a VersionedFile for a
+particular file-id, or for revisions, or for the inventory, even though
+these do not correspond to single files on disk.
+
+The on-disk format is that the repository directory contains these
+files and subdirectories:
+
+==================== =============================================
+packs/               completed readonly packs
+indices/             indices for completed packs
+upload/              temporary files for packs currently being
+                     written
+obsolete_packs/      packs that have been repacked and are no
+                     longer normally needed
+pack-names           index of all live packs
+lock/                lockdir
+==================== =============================================
+
+Note that for consistency we always write "indices" not "indexes".
+
+This is implemented on top of pack files, which are written once from
+start to end, then left alone.  A pack consists of a body file, plus
+several index files.  There are four index files for each pack, which
+have the same basename and an extension indicating the purpose of the
+index:
+
+======== ========== ======================== ==========================
+extn     Purpose    Key                      References
+======== ========== ======================== ==========================
+``.tix`` File texts ``file_id, revision_id`` per-file parents,
+                                             compression basis
+                                             per-file parents
+``.six`` Signatures ``revision_id,``         -
+``.rix`` Revisions  ``revision_id,``         revision parents
+``.iix`` Inventory  ``revision_id,``         revision parents,
+                                             compression base
+======== ========== ======================== ==========================
+
+Indices are accessed through the ``bzrlib.index.GraphIndex`` class.
+Indices are stored as sorted files on disk.  Each line is one record,
+and contains:
+
+ * key fields
+ * a value string - for all these indices, this is an ascii decimal pair
+   of "offset length" giving the position of the referenced data within
+   the pack body file
+ * a list of zero or more reference lists
+
+The reference lists let a graph be stored within the index.  Each
+reference list entry points to another entry in the same index.  The
+references are represented as a byte offset for the target within the
+index file.
+
+When a compression base is given, it indicates that the body of the text
+or inventory is a forward delta from the referenced revision.  The
+compression base list must have length 0 or 1.
+
+Like packs, indexes are written only once and then unmodified.  A
+GraphIndex builder is a mutable in-memory graph that can be sorted,
+cross-referenced and written out when the write group completes.
+
+There can also be index entries with a value of 'a' for absent.  These
+records exist just to be pointed to in a graph.  This is used, for
+example, to give the revision-parent pointer when the parent revision is
+in a previous pack.
+
+The data content for each record is a knit data chunk.  The knits are
+always unannotated - the annotations must be generated when needed.
+(We'd like to cache/memoize the annotations.)  The data hunks can be
+moved between packs without needing to recompress them.
+
+It is not possible to regenerate an index from the body file, because it
+contains information stored in the knit index that's not in the body.
+(In particular, the per-file graph is only stored in the index.)
+We would like to change this in a future format.
+
+The lock is a regular LockDir lock.  The lock is only held for a much
+reduced scope, while updating the pack-names file.  The bulk of the
+insertion can be done without the repository locked.  This is an
+implementation detail; the repository user should still call
+``repository.lock_write`` at the regular time but be aware this does not
+correspond to a physical mutex.
+
+Read locks control caching but do not affect writers.
+
+The newly-added repository write group concept is very important to
+KnitPack repositories.  When ``start_write_group`` is called, a new
+temporary pack is created and all modifications to the repository will
+go into it until either ``commit_write_group`` or ``abort_write_group``
+is called, at which time it is either finished and moved into place or
+discarded respectively.  Write groups cannot be nested, only one can be
+underway at a time on a Repository instance and they must occur within a
+write lock.
+
+Normally the data for each revision will be entirely within a single
+pack but this is not required.
+
+When a pack is finished, it gets a final name based on the md5 of all
+the data written into the pack body file.
+
+The ``pack-names`` file gives the list of all finished non-obsolete
+packs.  (This should always be the same as the list of files in the
+``packs/`` directory, but the file is needed for readonly http clients
+that can't easily list directories, and it includes other information.)
+The constraint on the ``pack-names`` list is that every file mentioned
+must exist in the ``packs/`` directory.
+
+In rare cases, when a writer is interrupted, about-to-be-removed packs
+may still be present in the directory but removed from the list.
+
+As well as the list of names, the pack-names file also contains the
+size, in bytes, of each of the four indices.  This is used to bootstrap
+bisection search within the indices.
+
+In normal use, one pack will be created for each commit to a repository.
+This would build up to an inefficient number of files over time, so a
+``repack`` operation is available to recombine them, by producing larger
+files containing data on multiple revisions.  This can be done manually
+by running ``bzr pack``, and it also may happen automatically when a
+write group is committed.
+
+The repacking strategy used at the moment tries to balance not doing too
+much work during commit with not having too many small files left in the
+repository.  The algorithm is roughly this: the total number of
+revisions in the repository is expressed as a decimal number, e.g.
+"532".  Then we'll repack until we have five packs containing a hundred
+revisions each, three packs containing ten revisions each, and two packs
+with single revisions.  This means that each revision will normally
+initially be created in a single-revision pack, then moved to a
+ten-revision pack, then to a 100-pack, and so on.
+
+As with other repositories, in normal use data is only inserted.
+However, in some circumstances we may want to garbage-collect or prune
+existing data, or reconcile indexes.
+
+..
+   vim: tw=72 ft=rst expandtab

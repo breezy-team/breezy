@@ -17,14 +17,14 @@
 
 """Test helper for constructing and testing directories.
 
-This module transforms filesystem directories to and from Python lists.  
+This module transforms filesystem directories to and from Python lists.
 As a Python list the descriptions can be stored in test cases, compared,
 etc.
 """
 
 # TODO: Script to write a description of a directory for testing
 # TODO: Helper that compares two structures and raises a helpful error
-# where they differ.  Option to ignore some files or directories in the 
+# where they differ.  Option to ignore some files or directories in the
 # comparison.
 
 import os
@@ -58,14 +58,15 @@ def build_tree_contents(template):
 
 def capture_tree_contents(top):
     """Make a Python datastructure description of a tree.
-    
+
     If top is an absolute path the descriptions will be absolute."""
     for dirpath, dirnames, filenames in os.walk(top):
         yield (dirpath + '/', )
         filenames.sort()
         for fn in filenames:
             fullpath = pathjoin(dirpath, fn)
-            assert not (fullpath[-1] in '@/')
+            if (fullpath[-1] in '@/'):
+                raise AssertionError(fullpath)
             info = os.lstat(fullpath)
             if stat.S_ISLNK(info.st_mode):
                 yield (fullpath + '@', os.readlink(fullpath))

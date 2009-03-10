@@ -25,16 +25,16 @@ This guide doesn't describe how to install Bazaar but it's usually very
 easy. You can find installation instructions at:
 
 - **GNU/Linux:** Bazaar is probably in your GNU/Linux distribution already.
-- **Windows:** `installation instructions`_.
-- **Mac OS X:** `install using MacPorts`_.
+- **Windows:** `installation instructions for Windows`_.
+- **Mac OS X:** `installation instructions for Mac OS X`_.
 
-For other platforms and to install from source code, see the Downloads_
+For other platforms and to install from source code, see the Download_
 and Installation_ pages.
 
-.. _installation instructions: http://bazaar-vcs.org/WindowsDownloads
-.. _install using MacPorts: http://bazaar-vcs.org/MacPorts
-.. _Downloads: http://bazaar-vcs.org/Download
-.. _Installation: http://bazaar-vcs.org/InstallationFAQ
+.. _installation instructions for Windows: http://bazaar-vcs.org/WindowsDownloads
+.. _installation instructions for Mac OS X: http://bazaar-vcs.org/MacOSXBundle
+.. _Download: http://bazaar-vcs.org/Download
+.. _Installation: http://bazaar-vcs.org/InstallationFaq
 
 
 Introducing yourself
@@ -70,7 +70,7 @@ Let's create a directory and some files to use with Bazaar::
 directories, then right-click in those directories and select 
 ``New file`` to create your files.
 
-Now get Bazaar to initalize itself in your project directory::
+Now get Bazaar to initialize itself in your project directory::
 
   $ bzr init
   
@@ -103,7 +103,7 @@ for the ``.bzr`` sub-directory.
 Making changes to your files
 ============================
 
-Let's change a file and commit those changes to your branch.
+Let's change a file and commit that change to your branch.
 
 Edit ``test1.txt`` in your favourite editor, then check what have you done::
 
@@ -116,7 +116,7 @@ Edit ``test1.txt`` in your favourite editor, then check what have you done::
 
 Commit your work to the Bazaar branch::
 
-  $ bzr commit -m 'Added first line of text'
+  $ bzr commit -m "Added first line of text"
   Committed revision 2.
 
 
@@ -162,13 +162,13 @@ Let's assume you want to publish your branch at ``www.example.com/myproject``::
 Bazaar will create a ``myproject`` directory on the remote server and
 push your branch to it.
  
-**Note:** to use sftp, you may need to install ``paramiko`` and
-``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
-
 Now anyone can create their own copy of your branch by typing::
 
  $ bzr branch http://www.example.com/myproject
  
+**Note:** to use sftp, you may need to install ``paramiko`` and
+``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
+
 
 Publishing your branch with Launchpad
 =====================================
@@ -225,7 +225,7 @@ To make sure your branch stays up to date, you should merge changes from
 the parent into your personal branch::
 
   $ bzr merge
-  Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+  Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
   All changes applied successfully.
             
 Check what has changed::
@@ -235,7 +235,7 @@ Check what has changed::
 If you're happy with the changes, you can commit them to your personal
 branch::
 
-  $ bzr commit -m 'Merge from main branch'
+  $ bzr commit -m "Merge from main branch"
   Committed revision 295.
 
 
@@ -254,7 +254,7 @@ where they can be found.
 Replacing ``mycode.patch``, create your merge directive::
 
  $ bzr send -o mycode.patch
- Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+ Using saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
  
 You can now email the merge directive to the bzr-gtk project who, if
 they choose, can use it merge your work back into the parent branch.
@@ -263,7 +263,8 @@ they choose, can use it merge your work back into the parent branch.
 Learning more
 =============
 
-You can find out more about Bazaar in the `Bazaar user guide <../../index.html>`_.
+You can find out more about Bazaar in the
+`Bazaar User Guide <../user-guide/index.html>`_.
 
 To learn about Bazaar on the command-line::
 

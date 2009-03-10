@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,45 +48,78 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_method,
-    )
+from bzrlib import registry
 # Compatibility
+from bzrlib.hooks import Hooks
 from bzrlib.option import Option
 
 
-plugin_cmds = {}
+class CommandInfo(object):
+    """Information about a command."""
+
+    def __init__(self, aliases):
+        """The list of aliases for the command."""
+        self.aliases = aliases
+
+    @classmethod
+    def from_command(klass, command):
+        """Factory to construct a CommandInfo from a command."""
+        return klass(command.aliases)
+
+
+class CommandRegistry(registry.Registry):
+
+    @staticmethod
+    def _get_name(command_name):
+        if command_name.startswith("cmd_"):
+            return _unsquish_command_name(command_name)
+        else:
+            return command_name
+
+    def register(self, cmd, decorate=False):
+        """Utility function to help register a command
+
+        :param cmd: Command subclass to register
+        :param decorate: If true, allow overriding an existing command
+            of the same name; the old command is returned by this function.
+            Otherwise it is an error to try to override an existing command.
+        """
+        k = cmd.__name__
+        k_unsquished = self._get_name(k)
+        try:
+            previous = self.get(k_unsquished)
+        except KeyError:
+            previous = _builtin_commands().get(k_unsquished)
+        info = CommandInfo.from_command(cmd)
+        try:
+            registry.Registry.register(self, k_unsquished, cmd,
+                                       override_existing=decorate, info=info)
+        except KeyError:
+            trace.log_error('Two plugins defined the same command: %r' % k)
+            trace.log_error('Not loading the one in %r' %
+                            sys.modules[cmd.__module__])
+            trace.log_error('Previously this command was registered from %r' %
+                            sys.modules[previous.__module__])
+        return previous
+
+    def register_lazy(self, command_name, aliases, module_name):
+        """Register a command without loading its module.
+
+        :param command_name: The primary name of the command.
+        :param aliases: A list of aliases for the command.
+        :module_name: The module that the command lives in.
+        """
+        key = self._get_name(command_name)
+        registry.Registry.register_lazy(self, key, module_name, command_name,
+                                        info=CommandInfo(aliases))
+
+
+plugin_cmds = CommandRegistry()
 
 
 def register_command(cmd, decorate=False):
-    """Utility function to help register a command
-
-    :param cmd: Command subclass to register
-    :param decorate: If true, allow overriding an existing command
-        of the same name; the old command is returned by this function.
-        Otherwise it is an error to try to override an existing command.
-    """
     global plugin_cmds
-    k = cmd.__name__
-    if k.startswith("cmd_"):
-        k_unsquished = _unsquish_command_name(k)
-    else:
-        k_unsquished = k
-    if k_unsquished not in plugin_cmds:
-        plugin_cmds[k_unsquished] = cmd
-        ## trace.mutter('registered plugin command %s', k_unsquished)
-        if decorate and k_unsquished in builtin_command_names():
-            return _builtin_commands()[k_unsquished]
-    elif decorate:
-        result = plugin_cmds[k_unsquished]
-        plugin_cmds[k_unsquished] = cmd
-        return result
-    else:
-        trace.log_error('Two plugins defined the same command: %r' % k)
-        trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
-        trace.log_error('Previously this command was registered from %r' %
-                        sys.modules[plugin_cmds[k_unsquished].__module__])
+    return plugin_cmds.register(cmd, decorate)
 
 
 def _squish_command_name(cmd):
@@ -94,7 +127,6 @@ def _squish_command_name(cmd):
 
 
 def _unsquish_command_name(cmd):
-    assert cmd.startswith("cmd_")
     return cmd[4:].replace('_','-')
 
 
@@ -107,12 +139,12 @@ def _builtin_commands():
             real_name = _unsquish_command_name(name)
             r[real_name] = builtins[name]
     return r
-            
+
 
 def builtin_command_names():
     """Return list of builtin command names."""
     return _builtin_commands().keys()
-    
+
 
 def plugin_command_names():
     return plugin_cmds.keys()
@@ -122,10 +154,10 @@ def _get_cmd_dict(plugins_override=True):
     """Return name->class mapping for all commands."""
     d = _builtin_commands()
     if plugins_override:
-        d.update(plugin_cmds)
+        d.update(plugin_cmds.iteritems())
     return d
 
-    
+
 def get_all_cmds(plugins_override=True):
     """Return canonical name and class for all registered commands."""
     for k, v in _get_cmd_dict(plugins_override=plugins_override).iteritems():
@@ -139,7 +171,11 @@ def get_cmd_object(cmd_name, plugins_override=True):
         If true, plugin commands can override builtins.
     """
     try:
-        return _get_cmd_object(cmd_name, plugins_override)
+        cmd = _get_cmd_object(cmd_name, plugins_override)
+        # Allow plugins to extend commands
+        for hook in Command.hooks['extend_command']:
+            hook(cmd)
+        return cmd
     except KeyError:
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
@@ -154,12 +190,21 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     # In the future, we may actually support Unicode command names.
 
     # first look up this command under the specified name
-    cmds = _get_cmd_dict(plugins_override=plugins_override)
+    if plugins_override:
+        try:
+            return plugin_cmds.get(cmd_name)()
+        except KeyError:
+            pass
+    cmds = _get_cmd_dict(plugins_override=False)
     try:
         return cmds[cmd_name]()
     except KeyError:
         pass
-
+    if plugins_override:
+        for key in plugin_cmds.keys():
+            info = plugin_cmds.get_info(key)
+            if cmd_name in info.aliases:
+                return plugin_cmds.get(key)()
     # look for any command which claims this as an alias
     for real_cmd_name, cmd_class in cmds.iteritems():
         if cmd_name in cmd_class.aliases:
@@ -168,6 +213,16 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
+
+    # look for plugins that provide this command but aren't installed
+    for provider in command_providers_registry:
+        try:
+            plugin_metadata = provider.plugin_for_command(cmd_name)
+        except errors.NoPluginAvailable:
+            pass
+        else:
+            raise errors.CommandAvailableInPlugin(cmd_name,
+                                                  plugin_metadata, provider)
     raise KeyError
 
 
@@ -228,6 +283,7 @@ class Command(object):
             sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
 
+    :cvar hooks: An instance of CommandHooks.
     """
     aliases = []
     takes_args = []
@@ -235,7 +291,7 @@ class Command(object):
     encoding_type = 'strict'
 
     hidden = False
-    
+
     def __init__(self):
         """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
@@ -245,7 +301,7 @@ class Command(object):
 
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
-        
+
         :return: A possibly empty list of unicode paths.
 
         Introduced in bzrlib 0.18.
@@ -271,15 +327,13 @@ class Command(object):
             elif aname[-1] == '*':
                 aname = '[' + aname[:-1] + '...]'
             s += aname + ' '
-                
-        assert s[-1] == ' '
-        s = s[:-1]
+        s = s[:-1]      # remove last space
         return s
 
     def get_help_text(self, additional_see_also=None, plain=True,
                       see_also_as_links=False):
         """Return a text string with help for this command.
-        
+
         :param additional_see_also: Additional help topics to be
             cross-referenced.
         :param plain: if False, raw help (reStructuredText) is
@@ -292,7 +346,7 @@ class Command(object):
             raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
 
         # Extract the summary (purpose) and sections out from the text
-        purpose,sections = self._get_help_parts(doc)
+        purpose,sections,order = self._get_help_parts(doc)
 
         # If a custom usage section was provided, use it
         if sections.has_key('Usage'):
@@ -330,9 +384,9 @@ class Command(object):
         # Add the custom sections (e.g. Examples). Note that there's no need
         # to indent these as they must be indented already in the source.
         if sections:
-            labels = sorted(sections.keys())
-            for label in labels:
-                result += ':%s:\n%s\n\n' % (label,sections[label])
+            for label in order:
+                if sections.has_key(label):
+                    result += ':%s:\n%s\n\n' % (label,sections[label])
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
@@ -357,7 +411,7 @@ class Command(object):
             result += ':See also: '
             result += ', '.join(see_also) + '\n'
 
-        # If this will be rendered as plan text, convert it
+        # If this will be rendered as plain text, convert it
         if plain:
             import bzrlib.help_topics
             result = bzrlib.help_topics.help_as_plain_text(result)
@@ -367,38 +421,41 @@ class Command(object):
     def _get_help_parts(text):
         """Split help text into a summary and named sections.
 
-        :return: (summary,sections) where summary is the top line and
+        :return: (summary,sections,order) where summary is the top line and
             sections is a dictionary of the rest indexed by section name.
+            order is the order the section appear in the text.
             A section starts with a heading line of the form ":xxx:".
             Indented text on following lines is the section value.
             All text found outside a named section is assigned to the
             default section which is given the key of None.
         """
-        def save_section(sections, label, section):
+        def save_section(sections, order, label, section):
             if len(section) > 0:
                 if sections.has_key(label):
                     sections[label] += '\n' + section
                 else:
+                    order.append(label)
                     sections[label] = section
-            
+
         lines = text.rstrip().splitlines()
         summary = lines.pop(0)
         sections = {}
+        order = []
         label,section = None,''
         for line in lines:
             if line.startswith(':') and line.endswith(':') and len(line) > 2:
-                save_section(sections, label, section)
+                save_section(sections, order, label, section)
                 label,section = line[1:-1],''
-            elif label != None and len(line) > 1 and not line[0].isspace():
-                save_section(sections, label, section)
+            elif (label is not None) and len(line) > 1 and not line[0].isspace():
+                save_section(sections, order, label, section)
                 label,section = None,line
             else:
                 if len(section) > 0:
                     section += '\n' + line
                 else:
                     section = line
-        save_section(sections, label, section)
-        return summary, sections
+        save_section(sections, order, label, section)
+        return summary, sections, order
 
     def get_help_topic(self):
         """Return the commands help topic - its name."""
@@ -406,7 +463,7 @@ class Command(object):
 
     def get_see_also(self, additional_terms=None):
         """Return a list of help topics that are related to this command.
-        
+
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
         :param additional_terms: Additional help topics to cross-reference.
@@ -433,8 +490,6 @@ class Command(object):
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        assert self.encoding_type in ['strict', 'exact', 'replace']
-
         # Originally I was using self.stdout, but that looks
         # *way* too much like sys.stdout
         if self.encoding_type == 'exact':
@@ -490,7 +545,7 @@ class Command(object):
         self._setup_outf()
 
         return self.run(**all_cmd_args)
-    
+
     def run(self):
         """Actually run the command.
 
@@ -526,9 +581,28 @@ class Command(object):
             return None
 
 
+class CommandHooks(Hooks):
+    """Hooks related to Command object creation/enumeration."""
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        Hooks.__init__(self)
+        # Introduced in 1.13:
+        # invoked after creating a command object to allow modifications such
+        # as adding or removing options, docs etc. Invoked with the command
+        # object.
+        self['extend_command'] = []
+
+Command.hooks = CommandHooks()
+
+
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
-    
+
     Arguments and options are parsed at this level before being passed
     down to specific command handlers.  This routine knows, from a
     lookup table, something about the available options, what optargs
@@ -583,13 +657,27 @@ def _match_argform(cmd, takes_args, args):
                                % (cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
-            
+
     if args:
         raise errors.BzrCommandError("extra argument to command %s: %s"
                                      % (cmd, args[0]))
 
     return argdict
 
+def apply_coveraged(dirname, the_callable, *args, **kwargs):
+    # Cannot use "import trace", as that would import bzrlib.trace instead of
+    # the standard library's trace.
+    trace = __import__('trace')
+
+    tracer = trace.Trace(count=1, trace=0)
+    sys.settrace(tracer.globaltrace)
+
+    ret = the_callable(*args, **kwargs)
+
+    sys.settrace(None)
+    results = tracer.results()
+    results.write_results(show_missing=1, summary=False,
+                          coverdir=dirname)
 
 
 def apply_profiled(the_callable, *args, **kwargs):
@@ -627,6 +715,11 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
+def shlex_split_unicode(unsplit):
+    import shlex
+    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+
+
 def get_alias(cmd, config=None):
     """Return an expanded alias, or None if no alias exists.
 
@@ -642,22 +735,18 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        import shlex
-        return [a.decode('utf-8') for a in shlex.split(alias.encode('utf-8'))]
+        return shlex_split_unicode(alias)
     return None
 
 
 def run_bzr(argv):
     """Execute a command.
 
-    This is similar to main(), but without all the trappings for
-    logging and error handling.  
-    
     argv
        The command-line arguments, without the program name from argv[0]
        These should already be decoded. All library/test code calling
        run_bzr should be passing valid strings (don't need decoding).
-    
+
     Returns a command status or raises an exception.
 
     Special master options: these must come before the command because
@@ -678,13 +767,16 @@ def run_bzr(argv):
 
     --lsprof
         Run under the Python lsprof profiler.
+
+    --coverage
+        Generate line coverage report in the specified directory.
     """
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False
-    opt_lsprof_file = None
+    opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -708,11 +800,16 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--coverage':
+            opt_coverage_dir = argv[i + 1]
+            i += 1
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         else:
             argv_copy.append(a)
         i += 1
+
+    debug.set_debug_flags_from_config()
 
     argv = argv_copy
     if (not argv):
@@ -724,7 +821,7 @@ def run_bzr(argv):
         from bzrlib.builtins import cmd_version
         cmd_version().run_argv_aliases([])
         return 0
-        
+
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
@@ -737,7 +834,8 @@ def run_bzr(argv):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            alias_argv = [a.decode(bzrlib.user_encoding) for a in alias_argv]
+            user_encoding = osutils.get_user_encoding()
+            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
@@ -750,16 +848,33 @@ def run_bzr(argv):
     run_argv = [argv, alias_argv]
 
     try:
+        # We can be called recursively (tests for example), but we don't want
+        # the verbosity level to propagate.
+        saved_verbosity_level = option._verbosity_level
+        option._verbosity_level = 0
         if opt_lsprof:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --lsprof is in use.')
             ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
+            if opt_coverage_dir:
+                trace.warning(
+                    '--coverage ignored, because --profile is in use.')
             ret = apply_profiled(run, *run_argv)
+        elif opt_coverage_dir:
+            ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
+        if 'memory' in debug.debug_flags:
+            trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
-        # reset, in case we may do other commands later within the same process
-        option._verbosity_level = 0
+        # reset, in case we may do other commands later within the same
+        # process. Commands that want to execute sub-commands must propagate
+        # --verbose in their own way.
+        option._verbosity_level = saved_verbosity_level
+
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -783,10 +898,16 @@ def display_command(func):
 
 def main(argv):
     import bzrlib.ui
-    from bzrlib.ui.text import TextUIFactory
-    bzrlib.ui.ui_factory = TextUIFactory()
+    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
+        sys.stdin, sys.stdout, sys.stderr)
+
+    # Is this a final release version? If so, we should suppress warnings
+    if bzrlib.version_info[3] == 'final':
+        from bzrlib import symbol_versioning
+        symbol_versioning.suppress_deprecation_warnings(override=False)
     try:
-        argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+        user_encoding = osutils.get_user_encoding()
+        argv = [a.decode(user_encoding) for a in argv[1:]]
     except UnicodeDecodeError:
         raise errors.BzrError(("Parameter '%r' is unsupported by the current "
                                                             "encoding." % a))
@@ -803,11 +924,32 @@ def run_bzr_catch_errors(argv):
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        exitcode = trace.report_exception(sys.exc_info(), sys.stderr)
+        exc_info = sys.exc_info()
+        exitcode = trace.report_exception(exc_info, sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
+            tb = exc_info[2]
             import pdb
-            pdb.post_mortem(sys.exc_traceback)
+            if sys.version_info[:2] < (2, 6):
+                # XXX: we want to do
+                #    pdb.post_mortem(tb)
+                # but because pdb.post_mortem gives bad results for tracebacks
+                # from inside generators, we do it manually.
+                # (http://bugs.python.org/issue4150, fixed in Python 2.6)
+
+                # Setup pdb on the traceback
+                p = pdb.Pdb()
+                p.reset()
+                p.setup(tb.tb_frame, tb)
+                # Point the debugger at the deepest frame of the stack
+                p.curindex = len(p.stack) - 1
+                p.curframe = p.stack[p.curindex][0]
+                # Start the pdb prompt.
+                p.print_stack_entry(p.stack[p.curindex])
+                p.execRcLines()
+                p.cmdloop()
+            else:
+                pdb.post_mortem(tb)
         return exitcode
 
 
@@ -849,6 +991,28 @@ class HelpCommandIndex(object):
             return []
         else:
             return [cmd]
+
+
+class Provider(object):
+    '''Generic class to be overriden by plugins'''
+
+    def plugin_for_command(self, cmd_name):
+        '''Takes a command and returns the information for that plugin
+
+        :return: A dictionary with all the available information
+        for the requested plugin
+        '''
+        raise NotImplementedError
+
+
+class ProvidersRegistry(registry.Registry):
+    '''This registry exists to allow other providers to exist'''
+
+    def __iter__(self):
+        for key, provider in self.iteritems():
+            yield provider
+
+command_providers_registry = ProvidersRegistry()
 
 
 if __name__ == '__main__':

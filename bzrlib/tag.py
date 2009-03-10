@@ -16,8 +16,8 @@
 
 """Tag strategies.
 
-These are contained within a branch and normally constructed 
-when the branch is opened.  Clients should typically do 
+These are contained within a branch and normally constructed
+when the branch is opened.  Clients should typically do
 
   Branch.tags.add('name', 'value')
 """
@@ -28,11 +28,15 @@ when the branch is opened.  Clients should typically do
 
 from warnings import warn
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.util import bencode
+""")
+
 from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.util import bencode
 
 
 class _Tags(object):
@@ -53,9 +57,6 @@ class DisabledTags(_Tags):
     def _not_supported(self, *a, **k):
         raise errors.TagsNotSupported(self.branch)
 
-    def supports_tags(self):
-        return False
-
     set_tag = _not_supported
     get_tag_dict = _not_supported
     _set_tag_dict = _not_supported
@@ -74,9 +75,6 @@ class DisabledTags(_Tags):
 class BasicTags(_Tags):
     """Tag storage in an unversioned branch control file.
     """
-
-    def supports_tags(self):
-        return True
 
     def set_tag(self, tag_name, tag_target):
         """Add a tag definition to the branch.
@@ -107,7 +105,7 @@ class BasicTags(_Tags):
         self.branch.lock_read()
         try:
             try:
-                tag_content = self.branch._transport.get_bytes('tags')
+                tag_content = self.branch._get_tags_bytes()
             except errors.NoSuchFile, e:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
@@ -154,14 +152,12 @@ class BasicTags(_Tags):
     def _set_tag_dict(self, new_dict):
         """Replace all tag definitions
 
+        WARNING: Calling this on an unlocked branch will lock it, and will
+        replace the tags without warning on conflicts.
+
         :param new_dict: Dictionary from tag name to target.
         """
-        self.branch.lock_write()
-        try:
-            self.branch._transport.put_bytes('tags',
-                self._serialize_tag_dict(new_dict))
-        finally:
-            self.branch.unlock()
+        return self.branch._set_tags_bytes(self._serialize_tag_dict(new_dict))
 
     def _serialize_tag_dict(self, tag_dict):
         td = dict((k.encode('utf-8'), v)
@@ -185,8 +181,8 @@ class BasicTags(_Tags):
 
     def merge_to(self, to_tags, overwrite=False):
         """Copy tags between repositories if necessary and possible.
-        
-        This method has common command-line behaviour about handling 
+
+        This method has common command-line behaviour about handling
         error cases.
 
         All new definitions are copied across, except that tags that already
@@ -195,12 +191,13 @@ class BasicTags(_Tags):
         :param to_tags: Branch to receive these tags
         :param overwrite: Overwrite conflicting tags in the target branch
 
-        :returns: A list of tags that conflicted, each of which is 
-            (tagname, source_target, dest_target).
+        :returns: A list of tags that conflicted, each of which is
+            (tagname, source_target, dest_target), or None if no copying was
+            done.
         """
         if self.branch == to_tags.branch:
             return
-        if not self.supports_tags():
+        if not self.branch.supports_tags():
             # obviously nothing to copy
             return
         source_dict = self.get_tag_dict()

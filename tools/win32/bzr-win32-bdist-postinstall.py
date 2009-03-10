@@ -132,3 +132,14 @@ Congratulation! Bzr successfully installed.
                     args,
                     os.path.join(sys.exec_prefix, 'Scripts'))
     file_created(dst)
+
+    # uninstall shortcut
+    uninst = os.path.join(sys.exec_prefix, 'Removebzr.exe')
+    dst = os.path.join(fldr, 'Uninstall Bazaar.lnk')
+    create_shortcut(uninst,
+                    'Uninstall Bazaar',
+                    dst,
+                    '-u bzr-wininst.log',
+                    sys.exec_prefix,
+                    )
+    file_created(dst)

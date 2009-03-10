@@ -23,11 +23,62 @@ import bzrlib.bundle
 from bzrlib.bundle.serializer import write_bundle
 import bzrlib.bzrdir
 import bzrlib.errors as errors
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.symbol_versioning import deprecated_in
+from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
+from bzrlib.tests.test_transport_implementations import transport_test_permutations
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
+
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for tranport implementations."""
+    transport_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance(TestReadBundleFromURL))
+    return tests.multiply_tests(transport_tests, transport_test_permutations(),
+        remaining_tests)
+
+
+def create_bundle_file(test_case):
+    test_case.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
+
+    format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+
+    bzrdir = format.initialize('tree')
+    repo = bzrdir.create_repository()
+    branch = repo.bzrdir.create_branch()
+    wt = branch.bzrdir.create_workingtree()
+
+    wt.add(['a', 'subdir/'])
+    wt.commit('new project', rev_id='commit-1')
+
+    out = cStringIO.StringIO()
+    rev_ids = write_bundle(wt.branch.repository,
+                           wt.get_parent_ids()[0], 'null:', out)
+    out.seek(0)
+    return out, wt
+
+
+class TestDeprecations(tests.TestCaseInTempDir):
+
+    def create_test_bundle(self):
+        out, wt = create_bundle_file(self)
+        f = open('test_bundle', 'wb')
+        try:
+            f.write(out.getvalue())
+        finally:
+            f.close()
+        return wt
+
+    def test_read_bundle_from_url_deprecated(self):
+        wt = self.create_test_bundle()
+        t = bzrlib.transport.get_transport(self.test_dir)
+        url = t.abspath('test_bundle')
+        self.callDeprecated([deprecated_in((1, 12, 0))
+                             % 'bzrlib.bundle.read_bundle_from_url'],
+                            bzrlib.bundle.read_bundle_from_url,
+                            url)
 
 
 class TestReadBundleFromURL(TestTransportImplementation):
@@ -37,38 +88,32 @@ class TestReadBundleFromURL(TestTransportImplementation):
         return bzrlib.urlutils.join(self._server.get_url(), relpath)
 
     def create_test_bundle(self):
-        self.build_tree(['tree/', 'tree/a', 'tree/subdir/'])
-
-        format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-
-        bzrdir = format.initialize('tree')
-        repo = bzrdir.create_repository()
-        branch = repo.bzrdir.create_branch()
-        wt = branch.bzrdir.create_workingtree()
-
-        wt.add(['a', 'subdir/'])
-        wt.commit('new project', rev_id='commit-1')
-
-        out = cStringIO.StringIO()
-        rev_ids = write_bundle(wt.branch.repository,
-                               wt.get_parent_ids()[0], 'null:', out)
-        out.seek(0)
+        out, wt = create_bundle_file(self)
         if self.get_transport().is_readonly():
             f = open('test_bundle', 'wb')
-            f.write(out.getvalue())
-            f.close()
+            try:
+                f.write(out.getvalue())
+            finally:
+                f.close()
         else:
             self.get_transport().put_file('test_bundle', out)
             self.log('Put to: %s', self.get_url('test_bundle'))
         return wt
 
-    def test_read_bundle_from_url(self):
+    def test_read_mergeable_from_url(self):
         self._captureVar('BZR_NO_SMART_VFS', None)
         wt = self.create_test_bundle()
         if wt is None:
             return
-        info = bzrlib.bundle.read_bundle_from_url(
-                    unicode(self.get_url('test_bundle')))
+        # read_mergeable_from_url will invoke get_transport which may *not*
+        # respect self._transport (i.e. returns a transport that is different
+        # from the one we want to test, so we must inject a correct transport
+        # into possible_transports first.
+        t = self.get_transport('test_bundle')
+        possible_transports = [t]
+        info = bzrlib.bundle.read_mergeable_from_url(
+                    unicode(self.get_url('test_bundle')),
+                    possible_transports=possible_transports)
         revision = info.real_revisions[-1]
         self.assertEqual('commit-1', revision.revision_id)
 
@@ -80,9 +125,29 @@ class TestReadBundleFromURL(TestTransportImplementation):
         if wt is None:
             return
 
-        self.assertRaises(errors.NotABundle, 
-            bzrlib.bundle.read_bundle_from_url, 
+        self.assertRaises(errors.NotABundle,
+            bzrlib.bundle.read_mergeable_from_url,
             self.get_url('tree'))
-        self.assertRaises(errors.NotABundle, 
-            bzrlib.bundle.read_bundle_from_url, 
+        self.assertRaises(errors.NotABundle,
+            bzrlib.bundle.read_mergeable_from_url,
             self.get_url('tree/a'))
+
+    def test_read_mergeable_respects_possible_transports(self):
+        t = self.get_transport('test_bundle')
+        if not isinstance(t, bzrlib.transport.ConnectedTransport):
+            # There is no point testing transport reuse for not connected
+            # transports (the test will fail even).
+            return
+        self._captureVar('BZR_NO_SMART_VFS', None)
+        wt = self.create_test_bundle()
+        if wt is None:
+            return
+        # read_mergeable_from_url will invoke get_transport which may *not*
+        # respect self._transport (i.e. returns a transport that is different
+        # from the one we want to test, so we must inject a correct transport
+        # into possible_transports first.
+        possible_transports = [t]
+        url = unicode(self.get_url('test_bundle'))
+        info = bzrlib.bundle.read_mergeable_from_url(url,
+            possible_transports=possible_transports)
+        self.assertEqual(1, len(possible_transports))

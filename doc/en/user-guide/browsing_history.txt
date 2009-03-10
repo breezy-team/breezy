@@ -1,0 +1,93 @@
+Browsing history
+================
+
+bzr log
+-------
+
+The ``bzr log`` command shows a list of previous revisions.
+
+As with ``bzr diff``, ``bzr log`` supports the ``-r`` argument::
+
+    % bzr log -r 1000..          # Revision 1000 and everything after it
+    % bzr log -r ..1000          # Everything up to and including r1000
+    % bzr log -r 1000..1100      # changes from 1000 to 1100
+    % bzr log -r 1000            # The changes in only revision 1000
+
+Viewing the mainline
+--------------------
+
+As distributed VCS tools like Bazaar make merging much easier than
+it is in central VCS tools, the history of a branch may often show
+lines of development splitting off the mainline and merging back
+in at a later time. Technically, the relationship between the
+numerous revision nodes is known as a Directed Acyclic Graph or
+DAG for short.
+
+In many cases though, you may only be interested in seeing the *mainline*
+for a branch, namely the primary line of development within the DAG.
+To do this, use the following command::
+
+  bzr log --short
+
+If you do this commonly, you may even wish to create an alias for it
+as explained in `Using aliases`_.
+
+Tuning the output
+-----------------
+
+The ``log`` command has several options that are useful for tuning
+the output. These include:
+
+ * ``--forward`` presents the log in chronological order, i.e. the
+   most recent revisions are displayed last.
+
+ * the ``--limit`` option controls the maximum number of revisions displayed.
+
+See the online help for the log command or the User Reference for more
+information on tuning the output.
+
+Viewing the history for a file
+------------------------------
+
+It is often useful to filter the history so that it only
+applies to a given file. To do this, provide the filename
+to the ``log`` command like this::
+
+  bzr log foo.py
+
+Viewing an old version of a file
+--------------------------------
+
+To get the contents of a file at a given version, use the
+``cat`` command like this::
+
+  bzr cat -r X file
+
+where ``X`` is the revision identifier and ``file`` is
+the filename. This will send output to the standard output
+stream so you'll typically want to pipe the output through
+a viewing tool (like ``less`` or ``more``) or redirect it
+like this::
+
+  bzr cat -r -2 foo.py | less
+  bzr cat -r 1 foo.py > /tmp/foo-1st-version.py
+
+Graphical history viewers
+-------------------------
+
+History browsing is one area where GUI tools really make life easier.
+Bazaar has numerous plug-ins that provide this capability including
+QBzr and bzr-gtk. See `Using plugins`_ for details on how to install
+these if they are not already installed.
+
+To use the graphical viewer from QBzr::
+
+  bzr qlog
+
+To use the graphical viewer from bzr-gtk::
+
+  bzr viz
+
+``viz`` is actually a built-in alias for ``visualize`` so use the longer
+command name if you prefer.
+

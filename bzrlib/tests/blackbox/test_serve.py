@@ -48,7 +48,7 @@ class TestBzrServe(TestCaseWithTransport):
         result = self.finish_bzr_subprocess(process)
         self.assertEqual('', result[0])
         self.assertEqual('', result[1])
-    
+
     def assertServerFinishesCleanly(self, process):
         """Shutdown the bzr serve instance process looking for errors."""
         # Shutdown the server
@@ -56,6 +56,16 @@ class TestBzrServe(TestCaseWithTransport):
                                             send_signal=signal.SIGINT)
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
+
+    def make_read_requests(self, branch):
+        """Do some read only requests."""
+        branch.lock_read()
+        try:
+            branch.repository.all_revision_ids()
+            self.assertEqual(_mod_revision.NULL_REVISION,
+                             _mod_revision.ensure_null(branch.last_revision()))
+        finally:
+            branch.unlock()
 
     def start_server_inet(self, extra_options=()):
         """Start a bzr server subprocess using the --inet option.
@@ -70,10 +80,10 @@ class TestBzrServe(TestCaseWithTransport):
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
+        url = 'bzr://localhost/'
         client_medium = medium.SmartSimplePipesClientMedium(
-            process.stdout, process.stdin)
-        transport = remote.RemoteTransport(
-            'bzr://localhost/', medium=client_medium)
+            process.stdout, process.stdin, url)
+        transport = remote.RemoteTransport(url, medium=client_medium)
         return process, transport
 
     def start_server_port(self, extra_options=()):
@@ -87,7 +97,7 @@ class TestBzrServe(TestCaseWithTransport):
         args = ['serve', '--port', 'localhost:0']
         args.extend(extra_options)
         process = self.start_bzr_subprocess(args, skip_if_plan_to_signal=True)
-        port_line = process.stdout.readline()
+        port_line = process.stderr.readline()
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
@@ -107,9 +117,7 @@ class TestBzrServe(TestCaseWithTransport):
 
         # We get a working branch
         branch = BzrDir.open_from_transport(transport).open_branch()
-        branch.repository.get_revision_graph()
-        self.assertEqual(_mod_revision.NULL_REVISION,
-                         _mod_revision.ensure_null(branch.last_revision()))
+        self.make_read_requests(branch)
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
@@ -127,12 +135,7 @@ class TestBzrServe(TestCaseWithTransport):
 
         # Connect to the server
         branch = Branch.open(url)
-
-        # We get a working branch
-        branch.repository.get_revision_graph()
-        self.assertEqual(_mod_revision.NULL_REVISION,
-                         _mod_revision.ensure_null(branch.last_revision()))
-
+        self.make_read_requests(branch)
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_connect_to_bzr_ssh(self):
@@ -145,7 +148,7 @@ class TestBzrServe(TestCaseWithTransport):
         except ParamikoNotPresent:
             raise TestSkipped('Paramiko not installed')
         from bzrlib.tests.stub_sftp import StubServer
-        
+
         # Make a branch
         self.make_branch('a_branch')
 
@@ -164,7 +167,7 @@ class TestBzrServe(TestCaseWithTransport):
                 proc = subprocess.Popen(
                     command, shell=True, stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                
+
                 # XXX: horribly inefficient, not to mention ugly.
                 # Start a thread for each of stdin/out/err, and relay bytes from
                 # the subprocess to channel and vice versa.
@@ -197,7 +200,7 @@ class TestBzrServe(TestCaseWithTransport):
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
         path_to_branch = osutils.abspath('a_branch')
-        
+
         orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
         bzr_remote_path = self.get_bzr_path()
         if sys.platform == 'win32':
@@ -208,10 +211,7 @@ class TestBzrServe(TestCaseWithTransport):
                 path_to_branch = os.path.splitdrive(path_to_branch)[1]
             branch = Branch.open(
                 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
-            
-            branch.repository.get_revision_graph()
-            self.assertEqual(_mod_revision.NULL_REVISION,
-                             _mod_revision.ensure_null(branch.last_revision()))
+            self.make_read_requests(branch)
             # Check we can perform write operations
             branch.bzrdir.root_transport.mkdir('foo')
         finally:
@@ -226,4 +226,4 @@ class TestBzrServe(TestCaseWithTransport):
             ['%s serve --inet --directory=/ --allow-writes'
              % bzr_remote_path],
             self.command_executed)
-        
+

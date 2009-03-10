@@ -28,11 +28,13 @@ class TestRevisionIdToDottedRevno(TestCaseWithBranch):
 
     def test_simple_revno(self):
         tree = self.create_tree_with_merge()
-        the_branch = tree.branch
+        # Re-open the branch so we make sure we start fresh.
+        # see bug #162486
+        the_branch = tree.bzrdir.open_branch()
 
         self.assertEqual({'rev-1':(1,), 'rev-2':(2,), 'rev-3':(3,),
                           'rev-1.1.1':(1,1,1)
-                         }, tree.branch.get_revision_id_to_revno_map())
+                         }, the_branch.get_revision_id_to_revno_map())
 
 
 class TestCaching(TestCaseWithBranch):

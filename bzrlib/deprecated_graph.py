@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,11 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.tsort import topo_sort
-
-
 def max_distance(node, ancestors, distances, root_descendants):
-    """Calculate the max distance to an ancestor.  
+    """Calculate the max distance to an ancestor.
     Return None if not all possible ancestors have known distances"""
     best = None
     if node in distances:
@@ -38,7 +35,7 @@ def max_distance(node, ancestors, distances, root_descendants):
             best = distances[ancestor] + 1
     return best
 
-    
+
 def node_distances(graph, ancestors, start, root_descendants=None):
     """Produce a list of nodes, sorted by distance from a start node.
     This is an algorithm devised by Aaron Bentley, because applying Dijkstra
@@ -60,7 +57,6 @@ def node_distances(graph, ancestors, start, root_descendants=None):
         new_lines = set()
         for line in lines:
             line_descendants = graph[line]
-            assert line not in line_descendants, "%s refers to itself" % line
             for descendant in line_descendants:
                 distance = max_distance(descendant, ancestors, distances,
                                         root_descendants)
@@ -132,7 +128,7 @@ class Graph(object):
         for parent in parent_ids:
             self._ensure_descendant(parent)
             self._graph_descendants[parent][node_id] = 1
-        
+
     def _ensure_descendant(self, node_id):
         """Ensure that a descendant lookup for node_id will work."""
         if not node_id in self._graph_descendants:
@@ -145,6 +141,7 @@ class Graph(object):
     def get_ancestry(self, node_id, topo_sorted=True):
         """Return the inclusive ancestors of node_id in topological order."""
         # maybe optimise this ?
+        from bzrlib.tsort import topo_sort
         result = {}
         pending = set([node_id])
         while len(pending):

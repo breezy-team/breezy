@@ -25,12 +25,12 @@ class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
     You should use the serializer_v4 singleton.
-    
+
     v4 serialisation is no longer supported, only deserialisation.
     """
-    
+
     __slots__ = []
-    
+
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
@@ -50,7 +50,6 @@ class _Serializer_v4(Serializer):
         # for now, leaving them as null in the xml form.  in a future
         # version it will be implied by nested elements.
         if ie.parent_id != ROOT_ID:
-            assert isinstance(ie.parent_id, basestring)
             e.set('parent_id', ie.parent_id)
 
         e.tail = '\n'
@@ -58,25 +57,22 @@ class _Serializer_v4(Serializer):
         return e
 
 
-    def _unpack_inventory(self, elt, revision_id=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None):
         """Construct from XML Element
 
         :param revision_id: Ignored parameter used by xml5.
         """
-        assert elt.tag == 'inventory'
         root_id = elt.get('file_id') or ROOT_ID
         inv = Inventory(root_id)
         for e in elt:
-            ie = self._unpack_entry(e)
+            ie = self._unpack_entry(e, entry_cache=entry_cache)
             if ie.parent_id == ROOT_ID:
                 ie.parent_id = root_id
             inv.add(ie)
         return inv
 
 
-    def _unpack_entry(self, elt):
-        assert elt.tag == 'entry'
-
+    def _unpack_entry(self, elt, entry_cache=None):
         ## original format inventories don't have a parent_id for
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.
@@ -133,16 +129,15 @@ class _Serializer_v4(Serializer):
             for i, parent_id in enumerate(rev.parents):
                 p = SubElement(pelts, 'revision_ref')
                 p.tail = '\n'
-                assert parent_id
                 p.set('revision_id', parent_id)
                 if i < len(rev.parent_sha1s):
                     p.set('revision_sha1', rev.parent_sha1s[i])
         return root
 
-    
+
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-        
+
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
             raise BzrError("unexpected tag in revision file: %r" % elt)
@@ -161,14 +156,11 @@ class _Serializer_v4(Serializer):
 
         if pelts:
             for p in pelts:
-                assert p.tag == 'revision_ref', \
-                       "bad parent node tag %r" % p.tag
                 rev.parent_ids.append(p.get('revision_id'))
                 rev.parent_sha1s.append(p.get('revision_sha1'))
             if precursor:
                 # must be consistent
                 prec_parent = rev.parent_ids[0]
-                assert prec_parent == precursor
         elif precursor:
             # revisions written prior to 0.0.5 have a single precursor
             # give as an attribute

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com> and others
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,11 +21,14 @@ The methods here allow for api symbol versioning.
 """
 
 __all__ = ['deprecated_function',
+           'deprecated_in',
            'deprecated_list',
            'deprecated_method',
            'DEPRECATED_PARAMETER',
            'deprecated_passed',
-           'warn', 'set_warning_method', 'zero_seven',
+           'set_warning_method',
+           'warn',
+           'zero_seven',
            'zero_eight',
            'zero_nine',
            'zero_ten',
@@ -40,9 +43,19 @@ __all__ = ['deprecated_function',
            'zero_ninety',
            'zero_ninetyone',
            'zero_ninetytwo',
+           'zero_ninetythree',
+           'one_zero',
+           'one_one',
+           'one_two',
+           'one_three',
+           'one_four',
+           'one_five',
+           'one_six',
            ]
 
 from warnings import warn
+
+import bzrlib
 
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
@@ -61,6 +74,24 @@ zero_eighteen = "%s was deprecated in version 0.18."
 zero_ninety = "%s was deprecated in version 0.90."
 zero_ninetyone = "%s was deprecated in version 0.91."
 zero_ninetytwo = "%s was deprecated in version 0.92."
+one_zero = "%s was deprecated in version 1.0."
+zero_ninetythree = one_zero # Maintained for backwards compatibility
+one_one = "%s was deprecated in version 1.1."
+one_two = "%s was deprecated in version 1.2."
+one_three = "%s was deprecated in version 1.3."
+one_four = "%s was deprecated in version 1.4."
+one_five = "%s was deprecated in version 1.5."
+one_six = "%s was deprecated in version 1.6."
+
+
+def deprecated_in(version_tuple):
+    """Generate a message that something was deprecated in a release.
+
+    >>> deprecated_in((1, 4, 0))
+    '%s was deprecated in version 1.4.'
+    """
+    return ("%%s was deprecated in version %s."
+            % bzrlib._format_version_tuple(version_tuple))
 
 
 def set_warning_method(method):
@@ -104,9 +135,11 @@ def deprecated_function(deprecation_version):
 
     def function_decorator(callable):
         """This is the function python calls to perform the decoration."""
-        
+
         def decorated_function(*args, **kwargs):
             """This is the decorated function."""
+            from bzrlib import trace
+            trace.mutter_callsite(4, "Deprecated function called")
             warn(deprecation_string(callable, deprecation_version),
                 DeprecationWarning, stacklevel=2)
             return callable(*args, **kwargs)
@@ -119,20 +152,21 @@ def deprecated_function(deprecation_version):
 def deprecated_method(deprecation_version):
     """Decorate a method so that use of it will trigger a warning.
 
-    To deprecate a static or class method, use 
+    To deprecate a static or class method, use
 
         @staticmethod
         @deprecated_function
         def ...
-    
+
     To deprecate an entire class, decorate __init__.
     """
 
     def method_decorator(callable):
         """This is the function python calls to perform the decoration."""
-        
+
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
+            from bzrlib import trace
             if callable.__name__ == '__init__':
                 symbol = "%s.%s" % (self.__class__.__module__,
                                     self.__class__.__name__,
@@ -142,6 +176,7 @@ def deprecated_method(deprecation_version):
                                        self.__class__.__name__,
                                        callable.__name__
                                        )
+            trace.mutter_callsite(4, "Deprecated method called")
             warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",
@@ -152,7 +187,7 @@ def deprecated_method(deprecation_version):
 
 def deprecated_passed(parameter_value):
     """Return True if parameter_value was used."""
-    # FIXME: it might be nice to have a parameter deprecation decorator. 
+    # FIXME: it might be nice to have a parameter deprecation decorator.
     # it would need to handle positional and *args and **kwargs parameters,
     # which means some mechanism to describe how the parameter was being
     # passed before deprecation, and some way to deprecate parameters that
@@ -160,7 +195,7 @@ def deprecated_passed(parameter_value):
     # we cannot just forward to a new method name.I.e. in the following
     # examples we would want to have callers that pass any value to 'bad' be
     # given a warning - because we have applied:
-    # @deprecated_parameter('bad', zero_seven)
+    # @deprecated_parameter('bad', deprecated_in((1, 5, 0))
     #
     # def __init__(self, bad=None)
     # def __init__(self, bad, other)
@@ -178,7 +213,7 @@ def _decorate_docstring(callable, deprecation_version, label,
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
-        decorated_callable.__doc__ = (callable.__doc__ 
+        decorated_callable.__doc__ = (callable.__doc__
                                     + "\n"
                                     + "\n"
                                     + deprecation_version % ("This " + label)
@@ -228,10 +263,11 @@ class DeprecatedDict(dict):
         ):
         """Create a dict that warns when read or modified.
 
-        :param deprecation_version: something like zero_nine
+        :param deprecation_version: string for the warning format to raise,
+            typically from deprecated_in()
         :param initial_value: The contents of the dict
         :param variable_name: This allows better warnings to be printed
-        :param advice: String of advice on what callers should do instead 
+        :param advice: String of advice on what callers should do instead
             of using this variable.
         """
         self._deprecation_version = deprecation_version
@@ -253,7 +289,8 @@ def deprecated_list(deprecation_version, variable_name,
                     initial_value, extra=None):
     """Create a list that warns when modified
 
-    :param deprecation_version: something like zero_nine
+    :param deprecation_version: string for the warning format to raise,
+        typically from deprecated_in()
     :param initial_value: The contents of the list
     :param variable_name: This allows better warnings to be printed
     :param extra: Extra info to print when printing a warning
@@ -272,7 +309,7 @@ def deprecated_list(deprecation_version, variable_name,
         def _warn_deprecated(self, func, *args, **kwargs):
             warn(msg, DeprecationWarning, stacklevel=3)
             return func(self, *args, **kwargs)
-            
+
         def append(self, obj):
             """appending to %s is deprecated""" % (variable_name,)
             return self._warn_deprecated(list.append, obj)
@@ -298,3 +335,59 @@ def deprecated_list(deprecation_version, variable_name,
                 return self._warn_deprecated(list.pop)
 
     return _DeprecatedList(initial_value)
+
+
+def _check_for_filter(error_only):
+    """Check if there is already a filter for deprecation warnings.
+
+    :param error_only: Only match an 'error' filter
+    :return: True if a filter is found, False otherwise
+    """
+    import warnings
+    for filter in warnings.filters:
+        if issubclass(DeprecationWarning, filter[2]):
+            # This filter will effect DeprecationWarning
+            if not error_only or filter[0] == 'error':
+                return True
+    return False
+
+
+def suppress_deprecation_warnings(override=True):
+    """Call this function to suppress all deprecation warnings.
+
+    When this is a final release version, we don't want to annoy users with
+    lots of deprecation warnings. We only want the deprecation warnings when
+    running a dev or release candidate.
+
+    :param override: If True, always set the ignore, if False, only set the
+        ignore if there isn't already a filter.
+    """
+    import warnings
+    if not override and _check_for_filter(error_only=False):
+        # If there is already a filter effecting suppress_deprecation_warnings,
+        # then skip it.
+        return
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+
+def activate_deprecation_warnings(override=True):
+    """Call this function to activate deprecation warnings.
+
+    When running in a 'final' release we suppress deprecation warnings.
+    However, the test suite wants to see them. So when running selftest, we
+    re-enable the deprecation warnings.
+
+    Note: warnings that have already been issued under 'ignore' will not be
+    reported after this point. The 'warnings' module has already marked them as
+    handled, so they don't get issued again.
+
+    :param override: If False, only add a filter if there isn't an error filter
+        already. (This slightly differs from suppress_deprecation_warnings, in
+        because it always overrides everything but -Werror).
+    """
+    import warnings
+    if not override and _check_for_filter(error_only=True):
+        # DeprecationWarnings are already turned into errors, don't downgrade
+        # them to 'default'.
+        return
+    warnings.filterwarnings('default', category=DeprecationWarning)

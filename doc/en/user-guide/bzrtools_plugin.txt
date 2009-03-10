@@ -1,0 +1,151 @@
+BzrTools
+========
+
+Overview
+--------
+
+BzrTools is a collection of useful enhancements to Bazaar.
+For installation instructions, see the BzrTools home page:
+http://bazaar-vcs.org/BzrTools.
+Here is a sample of the frequently used commands it provides.
+
+
+shelve, shelf, unshelve
+-----------------------
+
+These commands provide a fine-grained (patch-hunk level) undo facility.
+This allows you to put aside some of your changes, commit,
+and get back to where you were before.
+
+For example, consider a working tree with one or more changes made ... ::
+
+  $ bzr diff
+  === modified file 'description.txt'
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+   
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+  @@ -11,6 +11,6 @@
+   This allows you to 
+   undo some of
+   your changes,
+  -commit, and get
+  +perform a commit, and get
+   back to where you
+   were before.
+
+The ``shelve`` command interactively asks which changes
+you want to retain in the working tree::
+
+  $ bzr shelve
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+   
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+
+  Keep this change? (1 of 2) [nydisq?] (n): y
+  --- description.txt
+  +++ description.txt
+  @@ -11,6 +11,6 @@
+   This allows you to 
+   undo some of
+   your changes,
+  -commit, and get
+  +perform a commit, and get
+   back to where you
+   were before.
+
+  Keep this change? (2 of 2) [nydisq?] (n): n
+
+  Status:
+    description.txt
+      1 hunks to be shelved
+      1 hunks to be kept
+
+  Shelve these changes, or restart? [yrsiq?] (y): y
+  Saving shelved patches to /tmp/proj/.bzr-shelf
+  Reverting shelved patches
+  Diff status is now:
+   description.txt | 2 +-
+   1 files changes, 1 insertions(+), 1 deletions(-)
+
+If there are lots of changes in the working tree, you
+can provide the ``shelve`` command with a list of files
+and you will only be asked about changes in those files.
+After shelving changes, it's a good idea to use ``diff``
+to confirm the tree has just the changes you expect::
+
+  $ bzr diff
+  === modified file 'description.txt'
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+   
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+
+Great - you're ready to commit::
+
+  $ bzr commit -m "improve first sentence"
+
+At some later time, you can bring the shelved changes back into the
+working tree using ``unshelve``::
+
+  $ bzr unshelve
+  Reapplying shelved patches 
+  Diff status is now:
+   description.txt | 4 ++--
+   1 files changes, 2 insertions(+), 2 deletions(-)
+
+If you want to, you can put multiple items on the shelf.
+Normally each time you run ``unshelve`` the most recently
+shelved changes will be reinstated. However, you can also
+unshelve changes in a different order by explicitly
+specifying which changes to unshelve. (This works best
+when the changes don't depend on each other.)
+  
+While you have patches on the shelf you can view and manipulate them
+with the ``shelf`` command. Run ``bzr shelf -h`` for more information
+about how to do this.
+
+
+shell
+-----
+
+``bzr shell`` starts up a command interpreter than understands
+Bazaar commands natively. This has several advantages:
+
+ * There's no need to type ``bzr`` at the front of every command.
+
+ * Intelligent auto-completion is provided.
+
+ * Commands run slightly faster as there's no need to load Bazaar's
+   libraries each time.
+
+
+cdiff
+-----
+
+``bzr cdiff`` provides a colored version of ``bzr diff`` output.
+On GNU/Linux, UNIX and OS X, this is often used like this::
+
+  bzr cdiff | less -R

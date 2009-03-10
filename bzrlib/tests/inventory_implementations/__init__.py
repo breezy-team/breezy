@@ -16,44 +16,15 @@
 
 """Tests for different inventory implementations"""
 
-# NOTE: Don't import Inventory here, to make sure that we don't accidentally
-# hardcode that when we should be using self.make_inventory
+from bzrlib.tests import multiply_tests
 
-from bzrlib import (
-        errors,
-        )
-
-from bzrlib.inventory import (
-        InventoryDirectory,
-        InventoryEntry,
-        InventoryFile,
-        InventoryLink,
-        ROOT_ID,
-        TreeReference,
-        )
-
-from bzrlib.tests import (
-        TestCase,
-        multiply_tests_from_modules,
-        )
-
-
-def _inventory_test_scenarios():
-    """Return a sequence of test scenarios.
-
-    Each scenario is (scenario_name_suffix, params).  The params are each 
-    set as attributes on the test case.
-    """
-    from bzrlib.inventory import (
-        Inventory,
-        )
-    yield ('Inventory', dict(inventory_class=Inventory))
-
-
-def test_suite():
+def load_tests(basic_tests, module, loader):
     """Generate suite containing all parameterized tests"""
     modules_to_test = [
-            'bzrlib.tests.inventory_implementations.basics',
-            ]
-    return multiply_tests_from_modules(modules_to_test,
-            _inventory_test_scenarios())
+        'bzrlib.tests.inventory_implementations.basics',
+        ]
+    from bzrlib.inventory import Inventory
+    scenarios = [('Inventory', {'inventory_class':Inventory})]
+    # add the tests for the sub modules
+    return multiply_tests(loader.loadTestsFromModuleNames(modules_to_test),
+        scenarios, basic_tests)

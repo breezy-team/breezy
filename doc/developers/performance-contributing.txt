@@ -11,7 +11,7 @@ changes. In general, pick a BLUE node from performance.png which has nothing
 pointing at it that is also BLUE, and start working on that.
 
 Adhoc performance work can also be done. One useful tool is the 'evil' debug
-flag. For instance running ``bzr -Devil commit -m 'test'`` will log a backtrace
+flag. For instance running ``bzr -Devil commit -m "test"`` will log a backtrace
 to the bzr log file for every method call which triggers a slow or non-scalable
 part of the bzr library. So checking that a given command with ``-Devil`` has
 no backtraces logged to the log file is a good way to find problem function

@@ -19,15 +19,16 @@ from email.Message import Message
 import errno
 import smtplib
 import socket
+import sys
 
 from bzrlib import (
     config,
+    email_message,
     errors,
+    smtp_connection,
+    tests,
+    ui,
     )
-from bzrlib.email_message import EmailMessage
-from bzrlib.errors import NoDestinationAddress
-from bzrlib.tests import TestCase
-from bzrlib.smtp_connection import SMTPConnection
 
 
 def connection_refuser():
@@ -81,13 +82,21 @@ class StubSMTPFactory(object):
             return 200, 'starttls success'
 
 
-class TestSMTPConnection(TestCase):
+class WideOpenSMTPFactory(StubSMTPFactory):
+    """A fake smtp server that implements login by accepting anybody."""
+
+    def login(self, user, password):
+        pass
+
+
+class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def get_connection(self, text, smtp_factory=None):
         my_config = config.GlobalConfig()
         config_file = StringIO(text)
         my_config._get_parser(config_file)
-        return SMTPConnection(my_config, _smtp_factory=smtp_factory)
+        return smtp_connection.SMTPConnection(my_config,
+                                              _smtp_factory=smtp_factory)
 
     def test_defaults(self):
         conn = self.get_connection('')
@@ -113,12 +122,45 @@ class TestSMTPConnection(TestCase):
         conn = self.get_connection('[DEFAULT]\nsmtp_username=joebody\n')
         self.assertEqual(u'joebody', conn._smtp_username)
 
-    def test_smtp_password(self):
+    def test_smtp_password_from_config(self):
         conn = self.get_connection('')
         self.assertIs(None, conn._smtp_password)
 
         conn = self.get_connection('[DEFAULT]\nsmtp_password=mypass\n')
         self.assertEqual(u'mypass', conn._smtp_password)
+
+    def test_smtp_password_from_user(self):
+        user = 'joe'
+        password = 'hispass'
+        factory = WideOpenSMTPFactory()
+        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
+                                   smtp_factory=factory)
+        self.assertIs(None, conn._smtp_password)
+
+        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
+                                            stdout=tests.StringIOWrapper())
+        conn._connect()
+        self.assertEqual(password, conn._smtp_password)
+        # stdin should be empty (the provided password have been consumed)
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+
+    def test_smtp_password_from_auth_config(self):
+        user = 'joe'
+        password = 'hispass'
+        factory = WideOpenSMTPFactory()
+        conn = self.get_connection('[DEFAULT]\nsmtp_username=%s\n' % user,
+                                   smtp_factory=factory)
+        self.assertEqual(user, conn._smtp_username)
+        self.assertIs(None, conn._smtp_password)
+        # Create a config file with the right password
+        conf = config.AuthenticationConfig()
+        conf._get_config().update({'smtptest':
+                                       {'scheme': 'smtp', 'user':user,
+                                        'password': password}})
+        conf._save()
+
+        conn._connect()
+        self.assertEqual(password, conn._smtp_password)
 
     def test_create_connection(self):
         factory = StubSMTPFactory()
@@ -174,7 +216,7 @@ class TestSMTPConnection(TestCase):
     def test_get_message_addresses(self):
         msg = Message()
 
-        from_, to = SMTPConnection.get_message_addresses(msg)
+        from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
         self.assertEqual('', from_)
         self.assertEqual([], to)
 
@@ -183,18 +225,19 @@ class TestSMTPConnection(TestCase):
         msg['CC'] = u'Pepe P\xe9rez <pperez@ejemplo.com>'
         msg['Bcc'] = 'user@localhost'
 
-        from_, to = SMTPConnection.get_message_addresses(msg)
+        from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
         self.assertEqual('jrandom@example.com', from_)
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
             'pperez@ejemplo.com', 'user@localhost']), sorted(to))
 
         # now with bzrlib's EmailMessage
-        msg = EmailMessage('"J. Random Developer" <jrandom@example.com>', [
-            'John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
-            u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost' ],
+        msg = email_message.EmailMessage(
+            '"J. Random Developer" <jrandom@example.com>',
+            ['John Doe <john@doe.com>', 'Jane Doe <jane@doe.com>',
+             u'Pepe P\xe9rez <pperez@ejemplo.com>', 'user@localhost' ],
             'subject')
 
-        from_, to = SMTPConnection.get_message_addresses(msg)
+        from_, to = smtp_connection.SMTPConnection.get_message_addresses(msg)
         self.assertEqual('jrandom@example.com', from_)
         self.assertEqual(sorted(['john@doe.com', 'jane@doe.com',
             'pperez@ejemplo.com', 'user@localhost']), sorted(to))
@@ -206,13 +249,16 @@ class TestSMTPConnection(TestCase):
 
         msg = Message()
         msg['From'] = '"J. Random Developer" <jrandom@example.com>'
-        self.assertRaises(NoDestinationAddress,
-                SMTPConnection(FakeConfig()).send_email, msg)
+        self.assertRaises(
+            errors.NoDestinationAddress,
+            smtp_connection.SMTPConnection(FakeConfig()).send_email, msg)
 
-        msg = EmailMessage('from@from.com', '', 'subject')
-        self.assertRaises(NoDestinationAddress,
-                SMTPConnection(FakeConfig()).send_email, msg)
+        msg = email_message.EmailMessage('from@from.com', '', 'subject')
+        self.assertRaises(
+            errors.NoDestinationAddress,
+            smtp_connection.SMTPConnection(FakeConfig()).send_email, msg)
 
-        msg = EmailMessage('from@from.com', [], 'subject')
-        self.assertRaises(NoDestinationAddress,
-                SMTPConnection(FakeConfig()).send_email, msg)
+        msg = email_message.EmailMessage('from@from.com', [], 'subject')
+        self.assertRaises(
+            errors.NoDestinationAddress,
+            smtp_connection.SMTPConnection(FakeConfig()).send_email, msg)

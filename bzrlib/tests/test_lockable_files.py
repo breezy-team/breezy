@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,20 @@
 from StringIO import StringIO
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    lockdir,
+    osutils,
+    )
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib import lockdir
-from bzrlib.lockdir import LockDir
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestNotApplicable,
+    )
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
 from bzrlib.transactions import (PassThroughTransaction,
@@ -33,44 +41,84 @@ from bzrlib.transport import get_transport
 
 
 # these tests are applied in each parameterized suite for LockableFiles
+#
+# they use an old style of parameterization, but we want to remove this class
+# so won't modernize them now. - mbp 20080430
 class _TestLockableFiles_mixin(object):
 
     def test_read_write(self):
-        self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
-        self.assertRaises(NoSuchFile, self.lockable.get_utf8, 'foo')
+        self.assertRaises(NoSuchFile,
+            self.applyDeprecated,
+            deprecated_in((1, 5, 0)),
+            self.lockable.get, 'foo')
+        self.assertRaises(NoSuchFile,
+            self.applyDeprecated,
+            deprecated_in((1, 5, 0)),
+            self.lockable.get_utf8, 'foo')
         self.lockable.lock_write()
         try:
             unicode_string = u'bar\u1234'
             self.assertEqual(4, len(unicode_string))
             byte_string = unicode_string.encode('utf-8')
             self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError, self.lockable.put, 'foo',
-                              StringIO(unicode_string))
-            self.lockable.put('foo', StringIO(byte_string))
-            self.assertEqual(byte_string,
-                             self.lockable.get('foo').read())
+            self.assertRaises(UnicodeEncodeError,
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put, 'foo',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put,
+                'foo', StringIO(byte_string))
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'foo')
+            self.assertEqual(byte_string, byte_stream.read())
+            unicode_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get_utf8,
+                'foo')
             self.assertEqual(unicode_string,
-                             self.lockable.get_utf8('foo').read())
+                unicode_stream.read())
             self.assertRaises(BzrBadParameterNotString,
-                              self.lockable.put_utf8,
-                              'bar',
-                              StringIO(unicode_string)
-                              )
-            self.lockable.put_utf8('bar', unicode_string)
+                self.applyDeprecated,
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                StringIO(unicode_string))
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_utf8,
+                'bar',
+                unicode_string)
+            unicode_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get_utf8,
+                'bar')
             self.assertEqual(unicode_string,
-                             self.lockable.get_utf8('bar').read())
-            self.assertEqual(byte_string,
-                             self.lockable.get('bar').read())
-            self.lockable.put_bytes('raw', 'raw\xffbytes')
-            self.assertEqual('raw\xffbytes',
-                             self.lockable.get('raw').read())
+                unicode_stream.read())
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'bar')
+            self.assertEqual(byte_string, byte_stream.read())
+            self.applyDeprecated(
+                deprecated_in((1, 6, 0)),
+                self.lockable.put_bytes,
+                'raw', 'raw\xffbytes')
+            byte_stream = self.applyDeprecated(
+                deprecated_in((1, 5, 0)),
+                self.lockable.get,
+                'raw')
+            self.assertEqual('raw\xffbytes', byte_stream.read())
         finally:
             self.lockable.unlock()
 
     def test_locks(self):
         self.lockable.lock_read()
         try:
-            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo', 
+            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo',
                               StringIO('bar\u1234'))
         finally:
             self.lockable.unlock()
@@ -97,7 +145,7 @@ class _TestLockableFiles_mixin(object):
 
     def test__escape(self):
         self.assertEqual('%25', self.lockable._escape('%'))
-        
+
     def test__escape_empty(self):
         self.assertEqual('', self.lockable._escape(''))
 
@@ -109,7 +157,7 @@ class _TestLockableFiles_mixin(object):
         except NotImplementedError:
             # this lock cannot be broken
             self.lockable.unlock()
-            return
+            raise TestNotApplicable("%r is not breakable" % (self.lockable,))
         l2 = self.get_lockable()
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
@@ -132,7 +180,7 @@ class _TestLockableFiles_mixin(object):
             if token is not None:
                 # This test does not apply, because this lockable supports
                 # tokens.
-                return
+                raise TestNotApplicable("%r uses tokens" % (self.lockable,))
             self.assertRaises(errors.TokenLockingNotSupported,
                               self.lockable.lock_write, token='token')
         finally:
@@ -308,9 +356,9 @@ class _TestLockableFiles_mixin(object):
         third_lockable.unlock()
 
 
-# This method of adapting tests to parameters is different to 
-# the TestProviderAdapters used elsewhere, but seems simpler for this 
-# case.  
+# This method of adapting tests to parameters is different to
+# the TestProviderAdapters used elsewhere, but seems simpler for this
+# case.
 class TestLockableFiles_TransportLock(TestCaseInTempDir,
                                       _TestLockableFiles_mixin):
 
@@ -326,11 +374,14 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         super(TestLockableFiles_TransportLock, self).tearDown()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
-        del self.sub_transport
+        try:
+            del self.sub_transport
+        except AttributeError:
+            pass
 
     def get_lockable(self):
         return LockableFiles(self.sub_transport, 'my-lock', TransportLock)
-        
+
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
                               _TestLockableFiles_mixin):
@@ -340,14 +391,14 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         TestCaseInTempDir.setUp(self)
         self.transport = get_transport('.')
         self.lockable = self.get_lockable()
-        # the lock creation here sets mode - test_permissions on branch 
-        # tests that implicitly, but it might be a good idea to factor 
+        # the lock creation here sets mode - test_permissions on branch
+        # tests that implicitly, but it might be a good idea to factor
         # out the mode checking logic and have it applied to loackable files
         # directly. RBC 20060418
         self.lockable.create_lock()
 
     def get_lockable(self):
-        return LockableFiles(self.transport, 'my-lock', LockDir)
+        return LockableFiles(self.transport, 'my-lock', lockdir.LockDir)
 
     def test_lock_created(self):
         self.assertTrue(self.transport.has('my-lock'))
@@ -357,10 +408,16 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         self.assertFalse(self.transport.has('my-lock/held/info'))
         self.assertTrue(self.transport.has('my-lock'))
 
+    def test__file_modes(self):
+        self.transport.mkdir('readonly')
+        osutils.make_readonly('readonly')
+        lockable = LockableFiles(self.transport.clone('readonly'), 'test-lock',
+                                 lockdir.LockDir)
+        # The directory mode should be read-write-execute for the current user
+        self.assertEqual(00700, lockable._dir_mode & 00700)
+        # Files should be read-write for the current user
+        self.assertEqual(00600, lockable._file_mode & 00700)
 
-    # TODO: Test the lockdir inherits the right file and directory permissions
-    # from the LockableFiles.
-        
 
 class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
                               _TestLockableFiles_mixin):
