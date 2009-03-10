@@ -100,8 +100,8 @@ def getcommand_help(params):
         formatted[cmd_name] = format_command(params, cmd_object)
         for alias in cmd_object.aliases:
             formatted[alias] = format_alias(params, alias, cmd_name)
-    for cmd_name in sorted(formatted.keys()):
-        output = output + formatted[cmd_name]
+    for cmd_name in sorted(formatted):
+        output += formatted[cmd_name]
     return output
 
 
