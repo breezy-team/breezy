@@ -388,7 +388,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
         self.assertEqual(
             'Did not understand bug identifier bogus: reason for bogosity. '
-            'See "bzr help bugs" for more information on this feature',
+            'See "bzr help bugs" for more information on this feature.',
             str(error))
 
     def test_unknown_bug_tracker_abbreviation(self):
