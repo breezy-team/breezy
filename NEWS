@@ -114,6 +114,9 @@ IN DEVELOPMENT
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
 
+    * Fix problem of "directory not empty" when contending for a lock over
+      sftp.  (Martin Pool, #340352)
+
     * Fixed "sprout() got an unexpected keyword argument 'source_branch'"
       error branching from old repositories.
       (Martin Pool, #321695)
