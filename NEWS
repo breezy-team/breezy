@@ -1,8 +1,10 @@
-0.4.4	UNRELEASED
+0.4.4	2009-03-10
 
  BUG FIXES
 
   * Mark as compatible with bzr 1.13.
+
+  Change license back to GPL2-+
 
 0.4.3	2009-02-15
 
