@@ -285,20 +285,58 @@ class CHKMap(object):
         # key_path (a list of tuples, tail-sharing down the tree.)
         self_pending = []
         basis_pending = []
-        def process_node(prefix, node, path, a_map, pending):
+        def process_node(node, path, a_map, pending):
             # take a node and expand it
             node = a_map._get_node(node)
             if type(node) == LeafNode:
                 path = (node._key, path)
                 for key, value in node._items.items():
-                    heapq.heappush(pending, ('\x00'.join(key), value, path))
+                    # For a LeafNode, the key is a serialized_key, rather than
+                    # a search_key, but the heap is using search_keys
+                    search_key = node._search_key_func(key)
+                    heapq.heappush(pending, (search_key, key, value, path))
             else:
                 # type(node) == InternalNode
                 path = (node._key, path)
                 for prefix, child in node._items.items():
-                    heapq.heappush(pending, (prefix, child, path))
-        process_node(None, self_node, None, self, self_pending)
-        process_node(None, basis_node, None, basis, basis_pending)
+                    heapq.heappush(pending, (prefix, None, child, path))
+        def process_common_internal_nodes(self_node, basis_node):
+            self_items = set(self_node._items.items())
+            basis_items = set(basis_node._items.items())
+            path = (self_node._key, None)
+            for prefix, child in self_items - basis_items:
+                heapq.heappush(self_pending, (prefix, None, child, path))
+            path = (basis_node._key, None)
+            for prefix, child in basis_items - self_items:
+                heapq.heappush(basis_pending, (prefix, None, child, path))
+        def process_common_leaf_nodes(self_node, basis_node):
+            self_items = set(self_node._items.items())
+            basis_items = set(basis_node._items.items())
+            path = (self_node._key, None)
+            for key, value in self_items - basis_items:
+                prefix = self._search_key_func(key)
+                heapq.heappush(self_pending, (prefix, key, value, path))
+            path = (basis_node._key, None)
+            for key, value in basis_items - self_items:
+                prefix = basis._search_key_func(key)
+                heapq.heappush(basis_pending, (prefix, key, value, path))
+        def process_common_prefix_nodes(self_node, self_path,
+                                        basis_node, basis_path):
+            # Would it be more efficient if we could request both at the same
+            # time?
+            self_node = self._get_node(self_node)
+            basis_node = basis._get_node(basis_node)
+            if (type(self_node) == InternalNode
+                and type(basis_node) == InternalNode):
+                # Matching internal nodes
+                process_common_internal_nodes(self_node, basis_node)
+            elif (type(self_node) == LeafNode
+                  and type(basis_node) == LeafNode):
+                process_common_leaf_nodes(self_node, basis_node)
+            else:
+                process_node(self_node, self_path, self, self_pending)
+                process_node(basis_node, basis_path, basis, basis_pending)
+        process_common_prefix_nodes(self_node, None, basis_node, None)
         self_seen = set()
         basis_seen = set()
         excluded_keys = set()
@@ -321,13 +359,13 @@ class CHKMap(object):
             loop_counter += 1
             if not self_pending:
                 # self is exhausted: output remainder of basis
-                for prefix, node, path in basis_pending:
+                for prefix, key, node, path in basis_pending:
                     if check_excluded(path):
                         continue
                     node = basis._get_node(node)
-                    if type(node) == str:
+                    if key is not None:
                         # a value
-                        yield (tuple(prefix.split('\x00')), node, None)
+                        yield (key, node, None)
                     else:
                         # subtree - fastpath the entire thing.
                         for key, value in node.iteritems(basis._store):
@@ -335,13 +373,13 @@ class CHKMap(object):
                 return
             elif not basis_pending:
                 # basis is exhausted: output remainder of self.
-                for prefix, node, path in self_pending:
+                for prefix, key, node, path in self_pending:
                     if check_excluded(path):
                         continue
                     node = self._get_node(node)
-                    if type(node) == str:
+                    if key is not None:
                         # a value
-                        yield (tuple(prefix.split('\x00')), None, node)
+                        yield (key, None, node)
                     else:
                         # subtree - fastpath the entire thing.
                         for key, value in node.iteritems(self._store):
@@ -353,34 +391,34 @@ class CHKMap(object):
                 # heaps. Applies to both internal nodes and leafnodes.
                 if self_pending[0][0] < basis_pending[0][0]:
                     # expand self
-                    prefix, node, path = heapq.heappop(self_pending)
+                    prefix, key, node, path = heapq.heappop(self_pending)
                     if check_excluded(path):
                         continue
-                    if type(node) == str:
+                    if key is not None:
                         # a value
-                        yield (tuple(prefix.split('\x00')), None, node)
+                        yield (key, None, node)
                     else:
-                        process_node(prefix, node, path, self, self_pending)
+                        process_node(node, path, self, self_pending)
                         continue
                 elif self_pending[0][0] > basis_pending[0][0]:
                     # expand basis
-                    prefix, node, path = heapq.heappop(basis_pending)
+                    prefix, key, node, path = heapq.heappop(basis_pending)
                     if check_excluded(path):
                         continue
-                    if type(node) == str:
+                    if key is not None:
                         # a value
-                        yield (tuple(prefix.split('\x00')), node, None)
+                        yield (key, node, None)
                     else:
-                        process_node(prefix, node, path, basis, basis_pending)
+                        process_node(node, path, basis, basis_pending)
                         continue
                 else:
                     # common prefix: possibly expand both
-                    if type(self_pending[0][1]) != str:
+                    if self_pending[0][1] is None:
                         # process next self
                         read_self = True
                     else:
                         read_self = False
-                    if type(basis_pending[0][1]) != str:
+                    if basis_pending[0][1] is None:
                         # process next basis
                         read_basis = True
                     else:
@@ -389,29 +427,41 @@ class CHKMap(object):
                         # compare a common value
                         self_details = heapq.heappop(self_pending)
                         basis_details = heapq.heappop(basis_pending)
-                        if self_details[1] != basis_details[1]:
-                            yield (tuple(self_details[0].split('\x00')),
-                                basis_details[1], self_details[1])
+                        if self_details[2] != basis_details[2]:
+                            yield (self_details[1],
+                                basis_details[2], self_details[2])
                         continue
-                    # At least one side wasn't a string.
-                    if (self._node_key(self_pending[0][1]) ==
-                        self._node_key(basis_pending[0][1])):
+                    # At least one side wasn't a simple value
+                    if (self._node_key(self_pending[0][2]) ==
+                        self._node_key(basis_pending[0][2])):
                         # Identical pointers, skip (and don't bother adding to
                         # excluded, it won't turn up again.
                         heapq.heappop(self_pending)
                         heapq.heappop(basis_pending)
                         continue
                     # Now we need to expand this node before we can continue
+                    if read_self and read_basis:
+                        # Both sides start with the same prefix, so process
+                        # them in parallel
+                        self_prefix, _, self_node, self_path = heapq.heappop(
+                            self_pending)
+                        basis_prefix, _, basis_node, basis_path = heapq.heappop(
+                            basis_pending)
+                        assert self_prefix == basis_prefix
+                        process_common_prefix_nodes(
+                            self_node, self_path,
+                            basis_node, basis_path)
+                        continue
                     if read_self:
-                        prefix, node, path = heapq.heappop(self_pending)
+                        prefix, key, node, path = heapq.heappop(self_pending)
                         if check_excluded(path):
                             continue
-                        process_node(prefix, node, path, self, self_pending)
+                        process_node(node, path, self, self_pending)
                     if read_basis:
-                        prefix, node, path = heapq.heappop(basis_pending)
+                        prefix, key, node, path = heapq.heappop(basis_pending)
                         if check_excluded(path):
                             continue
-                        process_node(prefix, node, path, basis, basis_pending)
+                        process_node(node, path, basis, basis_pending)
         # print loop_counter
 
     def iteritems(self, key_filter=None):
