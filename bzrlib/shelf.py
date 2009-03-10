@@ -51,7 +51,7 @@ class ShelfCreator(object):
         try:
             self.iter_changes = work_tree.iter_changes(self.target_tree,
                                                        specific_files=file_list)
-        except:
+        except errors.PathsNotVersionedError:
             self.finalize()
             raise
 
