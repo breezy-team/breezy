@@ -21,6 +21,10 @@ from itertools import izip
 from cStringIO import StringIO
 import struct
 import zlib
+try:
+    import pylzma
+except ImportError:
+    pylzma = None
 
 from bzrlib import (
     annotate,
@@ -53,6 +57,7 @@ from bzrlib.versionedfile import (
     )
 from bzrlib.plugins.groupcompress import errors as gc_errors
 
+_USE_LZMA = False and (pylzma is not None)
 _NO_LABELS = False
 _FAST = False
 
@@ -139,6 +144,7 @@ class GroupCompressBlock(object):
 
     # Group Compress Block v1 Zlib
     GCB_HEADER = 'gcb1z\n'
+    GCB_LZ_HEADER = 'gcb1l\n'
 
     def __init__(self):
         # map by key? or just order in file?
@@ -155,9 +161,13 @@ class GroupCompressBlock(object):
     @classmethod
     def from_bytes(cls, bytes):
         out = cls()
-        if bytes[:6] != cls.GCB_HEADER:
+        if bytes[:6] not in (cls.GCB_HEADER, cls.GCB_LZ_HEADER):
             raise gc_errors.InvalidGroupCompressBlock(
                 'bytes did not start with %r' % (cls.GCB_HEADER,))
+        if bytes[4] == 'z':
+            decomp = zlib.decompress
+        else:
+            decomp = pylzma.decompress
         pos = bytes.index('\n', 6)
         z_header_length = int(bytes[6:pos])
         pos += 1
@@ -167,15 +177,14 @@ class GroupCompressBlock(object):
             assert header_length == 0
             zcontent = bytes[pos2+1:]
             if zcontent:
-                out._content = zlib.decompress(zcontent)
+                out._content = decomp(zcontent)
                 out._size = len(out._content)
             return out
         pos = pos2 + 1
         pos2 = pos + z_header_length
         z_header_bytes = bytes[pos:pos2]
         assert len(z_header_bytes) == z_header_length
-        d = zlib.decompressobj()
-        header_bytes = d.decompress(z_header_bytes)
+        header_bytes = decomp(z_header_bytes)
         assert len(header_bytes) == header_length
         del z_header_bytes
         lines = header_bytes.split('\n')
@@ -199,8 +208,7 @@ class GroupCompressBlock(object):
             info_dict[key] = value
         zcontent = bytes[pos2:]
         if zcontent:
-            out._content = d.decompress(zcontent)
-            assert d.flush() == ''
+            out._content = decomp(zcontent)
             out._size = header_len + len(out._content)
         return out
 
@@ -234,9 +242,9 @@ class GroupCompressBlock(object):
                 assert c == 'd'
             start = entry.start
         content_len, len_len = decode_base128_int(
-                                self._content[start + 1:start + 11])
+                            self._content[entry.start + 1:entry.start + 11])
         assert entry.length == content_len + 1 + len_len
-        content_start = start + 1 + len_len
+        content_start = entry.start + 1 + len_len
         end = entry.start + entry.length
         content = self._content[content_start:end]
         if c == 'f':
@@ -264,6 +272,9 @@ class GroupCompressBlock(object):
 
     def to_bytes(self, content=''):
         """Encode the information into a byte stream."""
+        compress = zlib.compress
+        if _USE_LZMA:
+            compress = pylzma.compress
         chunks = []
         for key in sorted(self._entries):
             entry = self._entries[key]
@@ -282,9 +293,8 @@ class GroupCompressBlock(object):
             chunks.append(chunk)
         bytes = ''.join(chunks)
         info_len = len(bytes)
-        c = zlib.compressobj()
         z_bytes = []
-        z_bytes.append(c.compress(bytes))
+        z_bytes.append(compress(bytes))
         del bytes
         # TODO: we may want to have the header compressed in the same chain
         #       as the data, or we may not, evaulate it
@@ -293,17 +303,14 @@ class GroupCompressBlock(object):
         #       label in the header is duplicated in the text.
         #       For chk pages and real bytes, I would guess this is not
         #       true.
-        z_bytes.append(c.flush(zlib.Z_SYNC_FLUSH))
         z_len = sum(map(len, z_bytes))
         c_len = len(content)
         if _NO_LABELS:
             z_bytes = []
             z_len = 0
             info_len = 0
-            c = zlib.compressobj()
-        z_bytes.append(c.compress(content))
-        z_bytes.append(c.flush())
-        chunks = [self.GCB_HEADER,
+        z_bytes.append(compress(content))
+        chunks = [self.GCB_LZ_HEADER,
                   '%d\n' % (z_len,),
                   '%d\n' % (info_len,),
                   #'%d\n' % (c_len,),
