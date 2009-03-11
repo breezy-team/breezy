@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,13 +21,6 @@ The basic plan is that every branch knows the history of everything
 that has merged into it.  As the first step of a merge, pull, or
 branch operation we copy history from the source into the destination
 branch.
-
-The copying is done in a slightly complicated order.  We don't want to
-add a revision to the store until everything it refers to is also
-stored, so that if a revision is present we can totally recreate it.
-However, we can't know what files are included in a revision until we
-read its inventory.  So we query the inventory store of the source for
-the ids we need, and then pull those ids and then return to the inventories.
 """
 
 import operator
@@ -42,29 +35,9 @@ from bzrlib.trace import mutter
 import bzrlib.ui
 from bzrlib.versionedfile import FulltextContentFactory
 
-# TODO: Avoid repeatedly opening weaves so many times.
-
-# XXX: This doesn't handle ghost (not present in branch) revisions at
-# all yet.  I'm not sure they really should be supported.
-
-# NOTE: This doesn't copy revisions which may be present but not
-# merged into the last revision.  I'm not sure we want to do that.
-
-# - get a list of revisions that need to be pulled in
-# - for each one, pull in that revision file
-#   and get the inventory, and store the inventory with right
-#   parents.
-# - and get the ancestry, and store that with right parents too
-# - and keep a note of all file ids and version seen
-# - then go through all files; for each one get the weave,
-#   and add in all file versions
-
 
 class RepoFetcher(object):
     """Pull revisions and texts from one repository to another.
-
-    last_revision
-        if set, try to limit to the data this revision references.
 
     This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
@@ -73,6 +46,9 @@ class RepoFetcher(object):
     def __init__(self, to_repository, from_repository, last_revision=None,
         pb=None, find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
+
+        :param last_revision: If set, try to limit to the data this revision
+            references.
 
         :param find_ghosts: If True search the entire history for ghosts.
         :param _write_group_acquired_callable: Don't use; this parameter only
