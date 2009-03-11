@@ -384,5 +384,5 @@ def get_commit_info_from_changelog(changelog, branch):
         authors += find_extra_authors(changes)
         bugs = find_bugs_fixed(changes, branch)
         thanks = find_thanks(changes)
-        message = "\n".join(reversed(changes))
+        message = "\n".join(changes)
     return (message, authors, thanks, bugs)

@@ -38,6 +38,7 @@ from bzrlib.plugins.builddeb.util import (
                   find_changelog,
                   find_extra_authors,
                   find_thanks,
+                  get_commit_info_from_changelog,
                   get_snapshot_revision,
                   lookup_distribution,
                   move_file_if_different,
@@ -447,7 +448,7 @@ class ParentDirTests(TestCase):
         self.assertEqual(get_parent_dir("a/b/c"), 'a/b')
 
 
-class ChangelogInfoTests(TestCase):
+class ChangelogInfoTests(TestCaseWithTransport):
 
     def test_find_extra_authors_none(self):
         changes = ["  * Do foo", "  * Do bar"]
@@ -497,9 +498,6 @@ class ChangelogInfoTests(TestCase):
         changes = ["  * Thanks to Adeodato Sim\xc3\x83\xc2\xb3"]
         self.assert_thanks_is(changes, ["Adeodato Sim\xc3\x83\xc2\xb3"])
 
-
-class FindBugsTests(TestCaseWithTransport):
-
     def test_find_bugs_fixed_no_changes(self):
         self.assertEqual([], find_bugs_fixed([], None))
 
@@ -523,3 +521,27 @@ class FindBugsTests(TestCaseWithTransport):
         self.assertEqual(["https://launchpad.net/bugs/12345 fixed",
                 "https://launchpad.net/bugs/56789 fixed",
                 "https://launchpad.net/bugs/45678 fixed"], bugs)
+
+    def test_get_commit_info_none(self):
+        wt = self.make_branch_and_tree(".")
+        changelog = Changelog()
+        message, authors, thanks, bugs = \
+                get_commit_info_from_changelog(changelog, wt.branch)
+        self.assertEqual(None, message)
+        self.assertEqual([], authors)
+        self.assertEqual([], thanks)
+        self.assertEqual([], bugs)
+
+    def test_get_commit_message_info(self):
+        wt = self.make_branch_and_tree(".")
+        changelog = Changelog()
+        changes = ["  [ A. Hacker ]", "  * First change, LP: #12345",
+                   "  * Second change, thanks to B. Hacker"]
+        author = "J. Maintainer <maint@example.com"
+        changelog.new_block(changes=changes, author=author)
+        message, authors, thanks, bugs = \
+                get_commit_info_from_changelog(changelog, wt.branch)
+        self.assertEqual("\n".join(strip_changelog_message(changes)), message)
+        self.assertEqual([author]+find_extra_authors(changes), authors)
+        self.assertEqual(find_thanks(changes), thanks)
+        self.assertEqual(find_bugs_fixed(changes, wt.branch), bugs)
