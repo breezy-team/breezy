@@ -84,6 +84,7 @@ class AbstractRevisionStore(object):
 
     def get_file_lines(self, revision_id, file_id):
         """Get the lines stored for a file in a given revision."""
+        revtree = self.repo.revision_tree(revision_id)
         return osutils.split_lines(revtree.get_file_text(file_id))
 
     def load(self, rev, inv, signature, text_provider,
@@ -102,8 +103,6 @@ class AbstractRevisionStore(object):
                 including an empty inventory for the missing revisions
             If None, a default implementation is provided.
         """
-        # HACK for testing performance
-        #return
         # NOTE: This is bzrlib.repository._install_revision refactored to
         # to provide more flexibility in how previous revisions are cached,
         # data is feed in, etc.
@@ -203,16 +202,7 @@ class AbstractRevisionStore(object):
         :returns: The validator(which is a sha1 digest, though what is sha'd is
             repository format specific) of the serialized inventory.
         """
-        if self._supports_chks and len(parents):
-            # Do we need to search for the first non-empty inventory?
-            # parent_invs can be a longer list than parents if there
-            # are ghosts????
-            basis_inv = parent_invs[0]
-            delta = inv._make_delta(basis_inv)
-            return self.repo.add_inventory_by_delta(parents[0], delta,
-                revision_id, parents)
-        else:
-            return self.repo.add_inventory(revision_id, inv, parents)
+        return self.repo.add_inventory(revision_id, inv, parents)
 
     def _add_inventory_by_delta(self, revision_id, basis_inv, inv_delta,
         parents, parent_invs):
@@ -224,7 +214,7 @@ class AbstractRevisionStore(object):
                         is known to have and are in the repository already.
         :param parent_invs: the parent inventories
 
-        :returns: (validator, inv) where validator is the the validator
+        :returns: (validator, inv) where validator is the validator
           (which is a sha1 digest, though what is sha'd is repository format
           specific) of the serialized inventory;
           inv is the generated inventory
