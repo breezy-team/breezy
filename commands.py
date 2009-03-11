@@ -60,14 +60,22 @@ class cmd_git_import(Command):
     takes_args = ["src_location", "dest_location?"]
 
     def run(self, src_location, dest_location=None):
-        from bzrlib.bzrdir import BzrDir, format_registry
+        import os
+        from bzrlib import (
+            ui,
+            urlutils,
+            )
+        from bzrlib.bzrdir import (
+            BzrDir,
+            format_registry,
+            )
         from bzrlib.errors import (
             BzrCommandError,
             NoRepositoryPresent,
             NotBranchError,
             )
         from bzrlib.repository import Repository
-        import os
+        from bzrlib.plugins.git.fetch import InterGitNonGitRepository
         from bzrlib.plugins.git.repository import GitRepository
 
         if dest_location is None:
@@ -86,16 +94,32 @@ class cmd_git_import(Command):
         except NoRepositoryPresent:
             target_repo = target_bzrdir.create_repository(shared=True)
 
-        target_repo.fetch(source_repo)
-        for name, ref in source_repo._git.heads().iteritems():
-            head_loc = os.path.join(dest_location, name)
-            try:
-                head_bzrdir = BzrDir.open(head_loc)
-            except NotBranchError:
-                head_bzrdir = BzrDir.create(head_loc, format=format)
-            try:
-                head_branch = head_bzrdir.open_branch()
-            except NotBranchError:
-                head_branch = head_bzrdir.create_branch()
-            head_branch.generate_revision_history(source_repo.get_mapping().revision_id_foreign_to_bzr(ref))
+        interrepo = InterGitNonGitRepository(source_repo, target_repo)
+        mapping = source_repo.get_mapping()
+        refs = interrepo.fetch_refs()
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for i, (name, ref) in enumerate(refs.iteritems()):
+                pb.update("creating branches", i, len(refs))
+                if name.endswith("^{}"):
+                    continue
+                head_loc = os.path.join(dest_location, name)
+                try:
+                    head_bzrdir = BzrDir.open(head_loc)
+                except NotBranchError:
+                    parent_path = urlutils.dirname(head_loc)
+                    if not os.path.isdir(parent_path):
+                        os.makedirs(parent_path)
+                    head_bzrdir = BzrDir.create(head_loc, format=format)
+                try:
+                    head_branch = head_bzrdir.open_branch()
+                except NotBranchError:
+                    head_branch = head_bzrdir.create_branch()
+                if ("%s^{}" % name) in refs:
+                    revid = mapping.revision_id_foreign_to_bzr(refs["%s^{}" % name])
+                else:
+                    revid = mapping.revision_id_foreign_to_bzr(ref)
+                head_branch.generate_revision_history(revid)
+        finally:
+            pb.finished()
 
