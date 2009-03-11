@@ -24,9 +24,10 @@
 from itertools import chain, izip
 from StringIO import StringIO
 
-import bzrlib
 from bzrlib import (
     errors,
+    groupcompress,
+    knit as _mod_knit,
     osutils,
     progress,
     )
@@ -35,7 +36,6 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
-from bzrlib import knit as _mod_knit
 from bzrlib.knit import (
     cleanup_pack_knit,
     make_file_factory,
@@ -122,6 +122,20 @@ def load_tests(standard_tests, module, loader):
             'key_length':1,
             'support_partial_insertion': False,
             }),
+        # ('groupcompress', {
+        #     'cleanup':groupcompress.cleanup_pack_group,
+        #     'factory':groupcompress.make_pack_factory(True, True, 1),
+        #     'graph': True,
+        #     'key_length':1,
+        #     'support_partial_insertion':False,
+        #     }),
+        ('groupcompress-nograph', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(False, False, 1),
+            'graph': False,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
         ]
     len_two_scenarios = [
         ('weave-prefix', {
@@ -146,6 +160,13 @@ def load_tests(standard_tests, module, loader):
             'key_length':2,
             'support_partial_insertion': True,
             }),
+        # ('groupcompress', {
+        #     'cleanup':groupcompress.cleanup_pack_group,
+        #     'factory':groupcompress.make_pack_factory(True, False, 1),
+        #     'graph': True,
+        #     'key_length':1,
+        #     'support_partial_insertion':False,
+        #     }),
         ]
     scenarios = len_one_scenarios + len_two_scenarios
     return multiply_tests(to_adapt, scenarios, result)

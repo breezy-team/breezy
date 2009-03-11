@@ -2677,6 +2677,26 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment5Hash255',
     )
+format_registry.register_lazy(
+    'Bazaar development format - btree+gc (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.gc_repo',
+    'RepositoryFormatPackGCPlain',
+    )
+format_registry.register_lazy(
+    'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.gc_repo',
+    'RepositoryFormatPackGCCHK16',
+    )
+format_registry.register_lazy(
+    'Bazaar development format - hash255chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.gc_repo',
+    'RepositoryFormatPackGCCHK255',
+    )
+format_registry.register_lazy(
+    'Bazaar development format - hash255chk+gc rich-root bigpage (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.gc_repo',
+    'RepositoryFormatPackGCCHK255Big',
+    )
 
 
 class InterRepository(InterObject):

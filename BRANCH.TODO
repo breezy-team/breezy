@@ -7,3 +7,15 @@ Make sure that dev3 handles the rich root correctly. That is that upgrades set
 the new value correctly and that commits to a non-rich-root followed by
 deserialisation show the root as having changed, diffs between non rich root
 revisions should not? show the root as changing?
+
+Group compress todo
+ * Network stream form. Possibly just the gc group. Possibly a cluster of gc
+   groups with bzip2 over them. Possibly a gc group but with fulltexts that the
+   target has stripped out and replaced with an 'external' record.
+
+ * Consider a more 'binary' layout for things like sha1 sums, or length
+   indicators.
+
+ * Investigate sha1 overhead. Currently when doing 'bzr pack' we sha once on
+   extraction, and then one more time on insertion. Removing both calls saves
+   6s out of 32s for 'bzr pack' (and 8s=>5.5s for 'repository-details')
