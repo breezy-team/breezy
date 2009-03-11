@@ -2168,8 +2168,6 @@ class cmd_log(Command):
                      show_diff=show_diff)
         finally:
             b.unlock()
-            from bzrlib import chk_map
-            note('Counters: %s', chk_map._counter)
 
 
 def _get_revision_range(revisionspec_list, branch, command_name):

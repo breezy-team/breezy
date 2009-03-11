@@ -66,7 +66,6 @@ _INTERESTING_SHRINKAGE_LIMIT = 20
 # If we delete more than this many nodes applying a delta, we check for a remap
 _INTERESTING_DELETES_LIMIT = 5
 
-_counter = [0.0, 0, 0.0, 0, 0.0, 0]
 
 def _search_key_plain(key):
     """Map the key tuple into a search string that just uses the key bytes."""
@@ -1247,7 +1246,6 @@ class InternalNode(Node):
 
 def _deserialise(bytes, key, search_key_func):
     """Helper for repositorydetails - convert bytes to a node."""
-    tstart = time.clock()
     if bytes.startswith("chkleaf:\n"):
         node = LeafNode.deserialise(bytes, key, search_key_func=search_key_func)
     elif bytes.startswith("chknode:\n"):
@@ -1255,15 +1253,6 @@ def _deserialise(bytes, key, search_key_func):
             search_key_func=search_key_func)
     else:
         raise AssertionError("Unknown node type.")
-    tdelta = time.clock() - tstart
-    _counter[0] += tdelta
-    _counter[1] += 1
-    if isinstance(node, LeafNode):
-        _counter[2] += tdelta
-        _counter[3] += 1
-    else:
-        _counter[4] += tdelta
-        _counter[5] += 1
     return node
 
 
