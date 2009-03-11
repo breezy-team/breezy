@@ -155,32 +155,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
 
-    def _start_write_group(self):
-        # Overridden to add 'self.pack_factory()'
-        # Do not permit preparation for writing if we're not in a 'write lock'.
-        if not self.repo.is_write_locked():
-            raise errors.NotWriteLocked(self)
-        self._new_pack = self.pack_factory(self, upload_suffix='.pack',
-            file_mode=self.repo.bzrdir._get_file_mode())
-        # allow writing: queue writes to a new index
-        self.revision_index.add_writable_index(self._new_pack.revision_index,
-            self._new_pack)
-        self.inventory_index.add_writable_index(self._new_pack.inventory_index,
-            self._new_pack)
-        self.text_index.add_writable_index(self._new_pack.text_index,
-            self._new_pack)
-        self.signature_index.add_writable_index(self._new_pack.signature_index,
-            self._new_pack)
-        if self.chk_index is not None:
-            self.chk_index.add_writable_index(self._new_pack.chk_index,
-                self._new_pack)
-            self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
-
-        self.repo.inventories._index._add_callback = self.inventory_index.add_callback
-        self.repo.revisions._index._add_callback = self.revision_index.add_callback
-        self.repo.signatures._index._add_callback = self.signature_index.add_callback
-        self.repo.texts._index._add_callback = self.text_index.add_callback
-
     def _get_filtered_inv_stream(self, source_vf, keys, pb=None):
         """Filter the texts of inventories, to find the chk pages."""
         id_roots = []
