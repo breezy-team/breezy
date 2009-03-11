@@ -51,10 +51,9 @@ class TestInterRepository(TestCaseWithInterRepository):
         def check_push_rev1(repo):
             # ensure the revision is missing.
             self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
-            # fetch with a limit of NULL_REVISION and an explicit progress bar.
+            # fetch with a limit of NULL_REVISION
             repo.fetch(tree_a.branch.repository,
-                       revision_id=NULL_REVISION,
-                       pb=bzrlib.progress.DummyProgress())
+                       revision_id=NULL_REVISION)
             # nothing should have been pushed
             self.assertFalse(repo.has_revision('rev1'))
             # fetch with a default limit (grab everything)

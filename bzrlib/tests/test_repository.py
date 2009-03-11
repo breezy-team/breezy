@@ -1132,6 +1132,8 @@ class TestInterDifferingSerializer(TestCaseWithTransport):
         repo = self.make_repository('repo')
         inter_repo = repository.InterDifferingSerializer(
             tree.branch.repository, repo)
+        # TODO: Should check this by replacing the UIFactory with an
+        # instrumented one that provides this progress bar?
         pb = progress.InstrumentedProgress(to_file=StringIO())
         pb.never_throttle = True
         inter_repo.fetch('rev-1', pb)
