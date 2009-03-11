@@ -534,6 +534,14 @@ class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format - hash16chk+groupcompress")
 
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+
 
 class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
     """A hashed CHK+group compress pack repository."""
@@ -553,6 +561,14 @@ class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format - hash255chk+groupcompress")
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
 
 
 class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
@@ -581,3 +597,11 @@ class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format - hash255chk+groupcompress + bigpage")
+
+    def check_conversion_target(self, target_format):
+        if not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+        if not getattr(target_format, 'supports_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
