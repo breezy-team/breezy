@@ -49,14 +49,6 @@ from bzrlib.repofmt.pack_repo import (
     )
 
 
-def open_pack(self):
-    return self._pack_collection.pack_factory(self._pack_collection,
-        upload_suffix=self.suffix,
-        file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
-
-
-Packer.open_pack = open_pack
-
 
 class GCPack(NewPack):
 
@@ -69,10 +61,10 @@ class GCPack(NewPack):
             files created during the pack creation. e.g '.autopack'
         :param file_mode: An optional file mode to create the new files with.
         """
-        # replaced from bzr.dev to:
+        # replaced from NewPack to:
         # - change inventory reference list length to 1
         # - change texts reference lists to 1
-        # TODO: patch this to be parameterised upstream
+        # TODO: patch this to be parameterised
 
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
@@ -158,8 +150,6 @@ class GCPack(NewPack):
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
 
-
-RepositoryPackCollection.pack_factory = NewPack
 
 class GCRepositoryPackCollection(RepositoryPackCollection):
 

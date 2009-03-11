@@ -744,7 +744,8 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+        return self._pack_collection.pack_factory(self._pack_collection,
+                upload_suffix=self.suffix,
                 file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _update_pack_order(self, entries, index_to_pack_map):
@@ -1343,6 +1344,8 @@ class RepositoryPackCollection(object):
 
     :ivar _names: map of {pack_name: (index_size,)}
     """
+
+    pack_factory = NewPack
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport, index_builder_class, index_class,
@@ -1952,7 +1955,7 @@ class RepositoryPackCollection(object):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = NewPack(self, upload_suffix='.pack',
+        self._new_pack = self.pack_factory(self, upload_suffix='.pack',
             file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
