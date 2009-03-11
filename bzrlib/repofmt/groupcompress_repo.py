@@ -40,6 +40,7 @@ from bzrlib.repofmt.pack_repo import (
     Pack,
     NewPack,
     KnitPackRepository,
+    PackRootCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatKnitPack6,
     Packer,
@@ -512,6 +513,7 @@ class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
     """A hashed CHK+group compress pack repository."""
 
     repository_class = GCCHKPackRepository
+    _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     supports_external_lookups = True
     supports_tree_reference = True
@@ -551,6 +553,7 @@ class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
     # Setting this to True causes us to use InterModel1And2, so for now set
     # it to False which uses InterDifferingSerializer. When IM1&2 is
     # removed (as it is in bzr.dev) we can set this back to True.
+    _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
 
     def get_format_string(self):
@@ -578,6 +581,7 @@ class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
     supports_chks = True
     # For right now, setting this to True gives us InterModel1And2 rather
     # than InterDifferingSerializer
+    _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     _serializer = chk_serializer.chk_serializer_255_bigpage
     # Note: We cannot unpack a delta that references a text we haven't
