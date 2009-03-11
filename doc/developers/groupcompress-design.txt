@@ -62,9 +62,9 @@ plain old zlib or lzma. We could also use bzip2. One advantage of using
 a generic compression engine is less python code. One advantage of
 preprocessing line based deltas is that we reduce the window size for the
 text repeated within lines, and that will help compression by a simple
-entropy compressor as a post processor. 
+entropy compressor as a post processor.
 lzma appears fantastic at compression - 420MB of NEWS files down to 200KB.
-so window size appears to be a key determiner for efficiency. 
+so window size appears to be a key determiner for efficiency.
 
 Delta strategy
 ++++++++++++++
@@ -100,7 +100,7 @@ In this approach, a single entropy compressed region is read as a unit, giving
 the lower bound for IO (and how much to read is an open question - what byte
 offset of compressed data is sufficient to ensue that the delta-stream contents
 we need are reconstructable. Flushing, while possible, degrades compression(and
-adds overhead - we'd be paying 4 bytes per record guaranteed). Again - tests 
+adds overhead - we'd be paying 4 bytes per record guaranteed). Again - tests
 will be needed.
 
 A nice possibility is to output mpdiff compatible records, which might enable

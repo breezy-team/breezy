@@ -485,7 +485,7 @@ create_delta_index_from_delta(const struct source_info *src,
        This computes the maximum number of entries that could be held. The
        actual number will be recomputed during processing.
        */
-     
+
     num_entries = (src->size - 1)  / RABIN_WINDOW;
     if (old != NULL)
         total_num_entries = num_entries + old->num_entries;

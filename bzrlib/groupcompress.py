@@ -1,19 +1,18 @@
-# groupcompress, a bzr plugin providing new compression logic.
-# Copyright (C) 2008 Canonical Limited.
-# 
+# Copyright (C) 2008, 2009 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published
-# by the Free Software Foundation.
-# 
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-# 
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Core compression logic for compressing streams of related files."""
 
@@ -165,14 +164,15 @@ class GroupCompressBlock(object):
         elif bytes[4] == 'l':
             decomp = pylzma.decompress
         else:
-            assert False, 'unknown compressor: %r' % (bytes,)
+            raise ValueError('unknown compressor: %r' % (bytes,))
         pos = bytes.index('\n', 6)
         z_header_length = int(bytes[6:pos])
         pos += 1
         pos2 = bytes.index('\n', pos)
         header_length = int(bytes[pos:pos2])
         if z_header_length == 0:
-            assert header_length == 0
+            if header_length != 0:
+                raise ValueError('z_header_length 0, but header length != 0')
             zcontent = bytes[pos2+1:]
             if zcontent:
                 out._content = decomp(zcontent)
@@ -181,9 +181,13 @@ class GroupCompressBlock(object):
         pos = pos2 + 1
         pos2 = pos + z_header_length
         z_header_bytes = bytes[pos:pos2]
-        assert len(z_header_bytes) == z_header_length
+        if len(z_header_bytes) != z_header_length:
+            raise ValueError('Wrong length of compressed header. %s != %s'
+                             % (len(z_header_bytes), z_header_length))
         header_bytes = decomp(z_header_bytes)
-        assert len(header_bytes) == header_length
+        if len(header_bytes) != header_length:
+            raise ValueError('Wrong length of header. %s != %s'
+                             % (len(header_bytes), header_length))
         del z_header_bytes
         lines = header_bytes.split('\n')
         header_len = len(header_bytes)
@@ -227,7 +231,9 @@ class GroupCompressBlock(object):
             if c == 'f':
                 type = 'fulltext'
             else:
-                assert c == 'd'
+                if c != 'd':
+                    raise ValueError('Unknown content control code: %s'
+                                     % (c,))
                 type = 'delta'
             entry = GroupCompressBlockEntry(key, type, sha1=None,
                                             start=start, length=end-start)
@@ -235,13 +241,16 @@ class GroupCompressBlock(object):
             entry = self._entries[key]
             c = self._content[entry.start]
             if entry.type == 'fulltext':
-                assert c == 'f'
+                if c != 'f':
+                    raise ValueError('Label claimed fulltext, byte claims: %s'
+                                     % (c,))
             elif entry.type == 'delta':
-                assert c == 'd'
+                if c != 'd':
+                    raise ValueError('Label claimed delta, byte claims: %s'
+                                     % (c,))
             start = entry.start
         content_len, len_len = decode_base128_int(
                             self._content[entry.start + 1:entry.start + 11])
-        assert entry.length == content_len + 1 + len_len
         content_start = entry.start + 1 + len_len
         end = entry.start + entry.length
         content = self._content[content_start:end]
@@ -264,7 +273,8 @@ class GroupCompressBlock(object):
         :return: The entry?
         """
         entry = GroupCompressBlockEntry(key, type, sha1, start, length)
-        assert key not in self._entries
+        if key in self._entries:
+            raise ValueError('Duplicate key found: %s' % (key,))
         self._entries[key] = entry
         return entry
 
@@ -435,20 +445,36 @@ class GroupCompressor(object):
         # TODO: Fix this, we shouldn't really be peeking here
         entry = self._block._entries[key]
         if entry.type == 'fulltext':
-            assert stored_bytes[0] == 'f'
+            if stored_bytes[0] != 'f':
+                raise ValueError('Index claimed fulltext, but stored bytes'
+                                 ' indicate %s' % (stored_bytes[0],))
             fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
-            assert fulltext_len + 1 + offset == len(stored_bytes)
+            if fulltext_len + 1 + offset != len(stored_bytes):
+                raise ValueError('Index claimed fulltext len, but stored bytes'
+                                 ' claim %s != %s'
+                                 % (len(stored_bytes),
+                                    fulltext_len + 1 + offset))
             bytes = stored_bytes[offset + 1:]
         else:
-            assert entry.type == 'delta'
+            if entry.type != 'delta':
+                raise ValueError('Unknown entry type: %s' % (entry.type,))
             # XXX: This is inefficient at best
             source = ''.join(self.lines)
-            assert stored_bytes[0] == 'd'
+            if stored_bytes[0] != 'd':
+                raise ValueError('Entry type claims delta, bytes claim %s'
+                                 % (stored_bytes[0],))
             delta_len, offset = decode_base128_int(stored_bytes[1:10])
-            assert delta_len + 1 + offset == len(stored_bytes)
+            if delta_len + 1 + offset != len(stored_bytes):
+                raise ValueError('Index claimed delta len, but stored bytes'
+                                 ' claim %s != %s'
+                                 % (len(stored_bytes),
+                                    delta_len + 1 + offset))
             bytes = _groupcompress_pyx.apply_delta(source,
                                                    stored_bytes[offset + 1:])
-            assert entry.sha1 == sha_string(bytes)
+        bytes_sha1 = sha_string(bytes)
+        if entry.sha1 != bytes_sha1:
+            raise ValueError('Recorded sha1 != measured %s != %s'
+                             % (entry.sha1, bytes_sha1))
         return bytes, entry.sha1
 
     def output_chunks(self, new_chunks):
@@ -483,7 +509,7 @@ def make_pack_factory(graph, delta, keylength):
 
     This is only functional enough to run interface tests, it doesn't try to
     provide a full pack environment.
-    
+
     :param graph: Store a graph.
     :param delta: Delta compress contents.
     :param keylength: How long should keys be.
@@ -545,7 +571,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             the data back accurately. (Checking the lines have been split
             correctly is expensive and extremely unlikely to catch bugs so it
             is not done at runtime unless check_content is True.)
-        :param parent_texts: An optional dictionary containing the opaque 
+        :param parent_texts: An optional dictionary containing the opaque
             representations of some or all of the parents of version_id to
             allow delta optimisations.  VERY IMPORTANT: the texts must be those
             returned by add_lines or data corruption can be caused.
@@ -776,7 +802,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
     def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
-        :param stream: A stream of records to insert. 
+        :param stream: A stream of records to insert.
         :return: None
         :seealso VersionedFiles.get_record_stream:
         """
@@ -789,7 +815,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         This helper function has a different interface than insert_record_stream
         to allow add_lines to be minimal, but still return the needed data.
 
-        :param stream: A stream of records to insert. 
+        :param stream: A stream of records to insert.
         :return: An iterator over the sha1 of the inserted records.
         :seealso insert_record_stream:
         :seealso add_lines:
@@ -897,7 +923,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 (found_sha1, end_point, type,
                  length) = self._compressor.compress(record.key,
                     bytes, record.sha1)
-                assert type == 'fulltext'
                 last_fulltext_len = length
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
@@ -911,7 +936,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if len(keys_to_add):
             flush()
         self._compressor = None
-        assert self._unadded_refs == {}
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
@@ -974,7 +998,7 @@ class _GCGraphIndex(object):
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
         :param is_locked: A callback, returns True if the index is locked and
             thus usable.
-        :param parents: If True, record knits parents, if not do not record 
+        :param parents: If True, record knits parents, if not do not record
             parents.
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
@@ -988,7 +1012,7 @@ class _GCGraphIndex(object):
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
-        
+
         This function does not insert data into the Immutable GraphIndex
         backing the KnitGraphIndex, instead it prepares data for insertion by
         the caller and checks that it is safe to insert then calls
@@ -1036,7 +1060,7 @@ class _GCGraphIndex(object):
                     result.append((key, value))
             records = result
         self._add_callback(records)
-        
+
     def _check_read(self):
         """Raise an exception if reads are not permitted."""
         if not self._is_locked():
@@ -1121,15 +1145,15 @@ class _GCGraphIndex(object):
             result[key] = (self._node_to_position(entry),
                                   None, parents, (method, None))
         return result
-    
+
     def keys(self):
         """Get all the keys in the collection.
-        
+
         The keys are not ordered.
         """
         self._check_read()
         return [node[1] for node in self._graph_index.iter_all_entries()]
-    
+
     def _node_to_position(self, node):
         """Convert an index value to position details."""
         bits = node[2].split(' ')

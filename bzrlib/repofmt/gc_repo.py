@@ -1,30 +1,29 @@
-# groupcompress, a bzr plugin providing improved disk utilisation
-# Copyright (C) 2008 Canonical Limited.
-# 
+# Copyright (C) 2008, 2009 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published
-# by the Free Software Foundation.
-# 
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-# 
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Repostory formats using B+Tree indices and groupcompress compression."""
 
-import md5
 import time
 
 from bzrlib import (
     debug,
     errors,
-    knit,
     inventory,
+    knit,
+    osutils,
     pack,
     repository,
     trace,
@@ -40,7 +39,6 @@ from bzrlib.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
     )
-from bzrlib.osutils import rand_chars
 from bzrlib.repofmt.pack_repo import (
     Pack,
     NewPack,
@@ -93,7 +91,7 @@ class GCPack(NewPack):
         # - change inventory reference list length to 1
         # - change texts reference lists to 1
         # TODO: patch this to be parameterised upstream
-        
+
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
         index_builder_class = pack_collection._index_builder_class
@@ -146,7 +144,7 @@ class GCPack(NewPack):
         # What file mode to upload the pack and indices with.
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
-        self._hash = md5.new()
+        self._hash = osutils.md5()
         # a four-tuple with the length in bytes of the indices, once the pack
         # is finalised. (rev, inv, text, sigs)
         self.index_sizes = None
@@ -156,7 +154,7 @@ class GCPack(NewPack):
         # under creation.
         self._cache_limit = 0
         # the temporary pack file name.
-        self.random_name = rand_chars(20) + upload_suffix
+        self.random_name = osutils.rand_chars(20) + upload_suffix
         # when was this pack started ?
         self.start_time = time.time()
         # open an output stream for the data added to the pack.
@@ -166,11 +164,11 @@ class GCPack(NewPack):
             trace.mutter('%s: create_pack: pack stream open: %s%s t+%6.3fs',
                 time.ctime(), self.upload_transport.base, self.random_name,
                 time.time() - self.start_time)
-        # A list of byte sequences to be written to the new pack, and the 
-        # aggregate size of them.  Stored as a list rather than separate 
+        # A list of byte sequences to be written to the new pack, and the
+        # aggregate size of them.  Stored as a list rather than separate
         # variables so that the _write_data closure below can update them.
         self._buffer = [[], 0]
-        # create a callable for adding data 
+        # create a callable for adding data
         #
         # robertc says- this is a closure rather than a method on the object
         # so that the variables are locals, and faster than accessing object
@@ -502,7 +500,7 @@ class GCPackRepository(KnitPackRepository):
         else:
             self.chk_bytes = None
         # True when the repository object is 'write locked' (as opposed to the
-        # physical lock only taken out around changes to the pack-names list.) 
+        # physical lock only taken out around changes to the pack-names list.)
         # Another way to represent this would be a decorator around the control
         # files object that presents logical locks as physical ones - if this
         # gets ugly consider that alternative design. RBC 20071011
@@ -555,7 +553,6 @@ if chk_support:
                     add_callback=self._pack_collection.text_index.add_callback,
                     parents=True, is_locked=self.is_locked),
                 access=self._pack_collection.text_index.data_access)
-            assert _format.supports_chks
             # No parents, individual CHK pages don't have specific ancestry
             self.chk_bytes = GroupCompressVersionedFiles(
                 _GCGraphIndex(self._pack_collection.chk_index.combined_index,
