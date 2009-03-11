@@ -709,12 +709,15 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._password = password
         self._port = port
         self._username = username
+        # SmartClientStreamMedium stores the repr of this object in its
+        # _DebugCounter so we have to store all the values used in our repr
+        # method before calling the super init.
+        SmartClientStreamMedium.__init__(self, base)
         self._read_from = None
         self._ssh_connection = None
         self._vendor = vendor
