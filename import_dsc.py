@@ -75,7 +75,7 @@ from bzrlib.plugins.builddeb.errors import (
                 UpstreamAlreadyImported,
                 UpstreamBranchAlreadyMerged,
                 )
-from bzrlib.plugins.builddeb.util import strip_changelog_message
+from bzrlib.plugins.builddeb.util import get_commit_info_from_changelog
 
 
 files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
@@ -1111,81 +1111,6 @@ class DistributionBranch(object):
         self.tag_upstream_version(version)
         return revid
 
-    def _get_commit_message_from_changelog(self):
-        """Retrieves the messages from the last section of debian/changelog.
-
-        Reads the last section of debian/changelog and returns the
-        text of the changes in that section, it also returns the 
-        uploader of that change.
-
-        :return: a tuple (message, authors, thanks, bugs). message is the
-            commit message that should be used. authors is a list of strings,
-            with those that contributed to the change, thanks is a list
-            of string, with those who were thanked in the changelog entry.
-            bugs is a list of bug URLs like for --fixes.
-            If the information is not available then any can be None.
-        """
-        changelog_path = os.path.join(self.tree.basedir, 'debian',
-            'changelog')
-        extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*", re.UNICODE)
-        thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
-                "((?:\s+(?:(?:[A-Z]\.)|(?:[A-Z]\w+(?:-[A-Z]\w+)*)))+"
-                "(?:\s+<[^@>]+@[^@>]+>)?)",
-                re.UNICODE)
-        authors = None
-        message = None
-        thanks = None
-        debian_bugs_closed = []
-        ubuntu_bugs_closed = []
-        if os.path.exists(changelog_path):
-            changelog_contents = open(changelog_path).read()
-            changelog = Changelog(file=changelog_contents, max_blocks=1)
-            if changelog._blocks:
-                authors = [changelog._blocks[0].author]
-                changes = strip_changelog_message(
-                        changelog._blocks[0].changes())
-                for change in changes:
-                    # Parse out any extra authors.
-                    match = extra_author_re.match(change.decode("utf-8"))
-                    if match is not None:
-                        new_author = match.group(1).strip()
-                        already_included = False
-                        for author in authors:
-                            if author.startswith(new_author):
-                                already_included = True
-                                break
-                        if not already_included:
-                            authors.append(new_author.encode("utf-8"))
-                    for match in re.finditer("closes:\s*(?:bug)?\#?\s?\d+"
-                            "(?:,\s*(?:bug)?\#?\s?\d+)*", change,
-                            re.IGNORECASE):
-                        closes_list = match.group(0)
-                        for match in re.finditer("\d+", closes_list):
-                            bug_url = bugtracker.get_bug_url("deb", self.branch,
-                                    match.group(0))
-                            debian_bugs_closed.append(bug_url + " fixed")
-                    for match in re.finditer("lp:\s+\#\d+(?:,\s*\#\d+)*",
-                            change, re.IGNORECASE):
-                        closes_list = match.group(0)
-                        for match in re.finditer("\d+", closes_list):
-                            bug_url = bugtracker.get_bug_url("lp", self.branch,
-                                    match.group(0))
-                            ubuntu_bugs_closed.append(bug_url + " fixed")
-                changes_str = " ".join(changes).decode("utf-8")
-                for match in thanks_re.finditer(changes_str):
-                    if thanks is None:
-                        thanks = []
-                    thanks_str = match.group(1).strip()
-                    thanks_str = re.sub(r"\s+", " ", thanks_str)
-                    thanks.append(thanks_str.encode("utf-8"))
-                message = ''
-                sep = ''
-                for change in reversed(changes):
-                    message = change + sep + message
-                    sep = "\n"
-        bugs = debian_bugs_closed + ubuntu_bugs_closed
-        return (message, authors, thanks, bugs)
-
     def _mark_native_config(self, native):
         poss_native_tree = self.branch.repository.revision_tree(
                 self.branch.last_revision())
@@ -1281,17 +1206,26 @@ class DistributionBranch(object):
                      (stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|
                       stat.S_IROTH|stat.S_IXOTH))
         self.tree.set_parent_ids(parents)
+        changelog_path = os.path.join(self.tree.basedir, 'debian',
+                'changelog')
+        if os.path.exists(changelog_path):
+            f = open(changelog_path)
+            try:
+                changelog_contents = f.read()
+            finally:
+                f.close()
+            changelog = Changelog(file=changelog_contents, max_blocks=1)
         message, authors, thanks, bugs = \
-                self._get_commit_message_from_changelog()
+                get_commit_info_from_changelog(changelog, self.branch)
         if message is None:
             message = 'Import packaging changes for version %s' % \
                         (str(version),)
         revprops={"deb-md5":md5}
         if native:
             revprops['deb-native'] = "True"
-        if authors is not None:
+        if authors:
             revprops['authors'] = "\n".join(authors)
-        if thanks is not None:
+        if thanks:
             revprops['deb-thanks'] = "\n".join(thanks)
         if bugs:
             revprops['bugs'] = "\n".join(bugs)

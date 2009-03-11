@@ -33,6 +33,7 @@ from debian_bundle import deb822
 from debian_bundle.changelog import Changelog, ChangelogParseError
 
 from bzrlib import (
+        bugtracker,
         errors,
         urlutils,
         )
@@ -300,3 +301,88 @@ def get_parent_dir(target):
     if os.path.basename(target) == '':
         parent = os.path.dirname(parent)
     return parent
+
+
+def find_bugs_fixed(changes, branch):
+    bugs = []
+    for change in changes:
+        for match in re.finditer("closes:\s*(?:bug)?\#?\s?\d+"
+                "(?:,\s*(?:bug)?\#?\s?\d+)*", change,
+                re.IGNORECASE):
+            closes_list = match.group(0)
+            for match in re.finditer("\d+", closes_list):
+                bug_url = bugtracker.get_bug_url("deb", branch,
+                        match.group(0))
+                bugs.append(bug_url + " fixed")
+        for match in re.finditer("lp:\s+\#\d+(?:,\s*\#\d+)*",
+                change, re.IGNORECASE):
+            closes_list = match.group(0)
+            for match in re.finditer("\d+", closes_list):
+                bug_url = bugtracker.get_bug_url("lp", branch,
+                        match.group(0))
+                bugs.append(bug_url + " fixed")
+    return bugs
+
+
+def find_extra_authors(changes):
+    extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*", re.UNICODE)
+    authors = []
+    for change in changes:
+        # Parse out any extra authors.
+        match = extra_author_re.match(change.decode("utf-8"))
+        if match is not None:
+            new_author = match.group(1).strip()
+            already_included = False
+            for author in authors:
+                if author.startswith(new_author):
+                    already_included = True
+                    break
+            if not already_included:
+                authors.append(new_author.encode("utf-8"))
+    return authors
+
+
+def find_thanks(changes):
+    thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
+            "((?:\s+(?:(?:[A-Z]\.)|(?:[A-Z]\w+(?:-[A-Z]\w+)*)))+"
+            "(?:\s+<[^@>]+@[^@>]+>)?)",
+            re.UNICODE)
+    thanks = []
+    changes_str = " ".join(changes).decode("utf-8")
+    for match in thanks_re.finditer(changes_str):
+        if thanks is None:
+            thanks = []
+        thanks_str = match.group(1).strip()
+        thanks_str = re.sub(r"\s+", " ", thanks_str)
+        thanks.append(thanks_str.encode("utf-8"))
+    return thanks
+
+
+def get_commit_info_from_changelog(changelog, branch):
+    """Retrieves the messages from the last section of debian/changelog.
+
+    Reads the latest stanza of debian/changelog and returns the
+    text of the changes in that section. It also returns other
+    information about the change, including the authors of the change,
+    anyone that is thanked, and the bugs that are declared fixed by it.
+
+    :return: a tuple (message, authors, thanks, bugs). message is the
+        commit message that should be used. authors is a list of strings,
+        with those that contributed to the change, thanks is a list
+        of string, with those who were thanked in the changelog entry.
+        bugs is a list of bug URLs like for --fixes.
+        If the information is not available then any can be None.
+    """
+    message = None
+    authors = []
+    thanks = []
+    bugs = []
+    if changelog._blocks:
+        block = changelog._blocks[0]
+        authors = [block.author]
+        changes = strip_changelog_message(block.changes())
+        authors += find_extra_authors(changes)
+        bugs = find_bugs_fixed(changes, branch)
+        thanks = find_thanks(changes)
+        message = "\n".join(reversed(changes))
+    return (message, authors, thanks, bugs)

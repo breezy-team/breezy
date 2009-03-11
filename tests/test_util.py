@@ -25,7 +25,7 @@ except ImportError:
 import os
 import shutil
 
-from debian_bundle.changelog import Version
+from debian_bundle.changelog import Changelog, Version
 
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
@@ -34,7 +34,10 @@ from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
 from bzrlib.plugins.builddeb.util import (
                   dget,
                   dget_changes,
+                  find_bugs_fixed,
                   find_changelog,
+                  find_extra_authors,
+                  find_thanks,
                   get_snapshot_revision,
                   lookup_distribution,
                   move_file_if_different,
@@ -442,3 +445,81 @@ class ParentDirTests(TestCase):
         self.assertEqual(get_parent_dir("a/b"), 'a')
         self.assertEqual(get_parent_dir("a/b/"), 'a')
         self.assertEqual(get_parent_dir("a/b/c"), 'a/b')
+
+
+class ChangelogInfoTests(TestCase):
+
+    def test_find_extra_authors_none(self):
+        changes = ["  * Do foo", "  * Do bar"]
+        authors = find_extra_authors(changes)
+        self.assertEqual([], authors)
+
+    def test_find_extra_authors(self):
+        changes = ["  * Do foo", "", "  [ A. Hacker ]", "  * Do bar", "",
+                   "  [ B. Hacker ]", "  [ A. Hacker}"]
+        authors = find_extra_authors(changes)
+        self.assertEqual(["A. Hacker", "B. Hacker"], authors)
+
+    def test_find_extra_authors_no_changes(self):
+        authors = find_extra_authors([])
+        self.assertEqual([], authors)
+
+    def assert_thanks_is(self, changes, expected_thanks):
+        thanks = find_thanks(changes)
+        self.assertEqual(expected_thanks, thanks)
+
+    def test_find_thanks_no_changes(self):
+        self.assert_thanks_is([], [])
+
+    def test_find_thanks_none(self):
+        changes = ["  * Do foo", "  * Do bar"]
+        self.assert_thanks_is(changes, [])
+
+    def test_find_thanks(self):
+        changes = ["  * Thanks to A. Hacker"]
+        self.assert_thanks_is(changes, ["A. Hacker"])
+        changes = ["  * Thanks to James A. Hacker"]
+        self.assert_thanks_is(changes, ["James A. Hacker"])
+        changes = ["  * Thankyou to B. Hacker"]
+        self.assert_thanks_is(changes, ["B. Hacker"])
+        changes = ["  * thanks to A. Hacker"]
+        self.assert_thanks_is(changes, ["A. Hacker"])
+        changes = ["  * thankyou to B. Hacker"]
+        self.assert_thanks_is(changes, ["B. Hacker"])
+        changes = ["  * Thanks A. Hacker"]
+        self.assert_thanks_is(changes, ["A. Hacker"])
+        changes = ["  * Thankyou B.  Hacker"]
+        self.assert_thanks_is(changes, ["B. Hacker"])
+        changes = ["  * Thanks to Mark A. Super-Hacker"]
+        self.assert_thanks_is(changes, ["Mark A. Super-Hacker"])
+        changes = ["  * Thanks to A. Hacker <ahacker@example.com>"]
+        self.assert_thanks_is(changes, ["A. Hacker <ahacker@example.com>"])
+        changes = ["  * Thanks to Adeodato Sim\xc3\x83\xc2\xb3"]
+        self.assert_thanks_is(changes, ["Adeodato Sim\xc3\x83\xc2\xb3"])
+
+
+class FindBugsTests(TestCaseWithTransport):
+
+    def test_find_bugs_fixed_no_changes(self):
+        self.assertEqual([], find_bugs_fixed([], None))
+
+    def test_find_bugs_fixed_none(self):
+        changes = ["  * Do foo", "  * Do bar"]
+        bugs = find_bugs_fixed(changes, None)
+        self.assertEqual([], bugs)
+
+    def test_find_bugs_fixed_debian(self):
+        wt = self.make_branch_and_tree(".")
+        changes = ["  * Closes: #12345, 56789", "  * closes:bug45678"]
+        bugs = find_bugs_fixed(changes, wt.branch)
+        self.assertEqual(["http://bugs.debian.org/12345 fixed",
+                "http://bugs.debian.org/56789 fixed",
+                "http://bugs.debian.org/45678 fixed"], bugs)
+
+    def test_find_bugs_fixed_lp(self):
+        wt = self.make_branch_and_tree(".")
+        changes = ["  * LP: #12345,#56789", "  * lp:  #45678"]
+        bugs = find_bugs_fixed(changes, wt.branch)
+        self.assertEqual(["https://launchpad.net/bugs/12345 fixed",
+                "https://launchpad.net/bugs/56789 fixed",
+                "https://launchpad.net/bugs/45678 fixed"], bugs)
