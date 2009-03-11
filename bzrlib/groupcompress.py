@@ -555,6 +555,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._delta = delta
         self._unadded_refs = {}
         self._group_cache = LRUSizeCache(max_size=50*1024*1024)
+        self._fallback_vfs = []
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -604,6 +605,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
         record = ChunkedContentFactory(key, parents, None, lines)
         sha1 = list(self._insert_record_stream([record], random_id=random_id))[0]
         return sha1, length, None
+
+    def add_fallback_versioned_files(self, a_versioned_files):
+        """Add a source of texts for texts not present in this knit.
+
+        :param a_versioned_files: A VersionedFiles object.
+        """
+        self._fallback_vfs.append(a_versioned_files)
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
@@ -657,14 +665,26 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._check_lines_are_lines(lines)
 
     def get_parent_map(self, keys):
-        """Get a map of the parents of keys.
+        """Get a map of the graph parents of keys.
 
         :param keys: The keys to look up parents for.
         :return: A mapping from keys to parents. Absent keys are absent from
             the mapping.
         """
+        return self._get_parent_map_with_sources(keys)[0]
+
+    def _get_parent_map_with_sources(self, keys):
+        """Get a map of the parents of keys.
+
+        :param keys: The keys to look up parents for.
+        :return: A tuple. The first element is a mapping from keys to parents.
+            Absent keys are absent from the mapping. The second element is a
+            list with the locations each key was found in. The first element
+            is the in-this-knit parents, the second the first fallback source,
+            and so on.
+        """
         result = {}
-        sources = [self._index]
+        sources = [self._index] + self._fallback_vfs
         source_results = []
         missing = set(keys)
         for source in sources:
@@ -674,11 +694,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             source_results.append(new_result)
             result.update(new_result)
             missing.difference_update(set(new_result))
-        if self._unadded_refs:
-            for key in missing:
-                if key in self._unadded_refs:
-                    result[key] = self._unadded_refs[key]
-        return result
+        return result, source_results
 
     def _get_block(self, index_memo):
         read_memo = index_memo[0:3]
@@ -981,7 +997,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         """See VersionedFiles.keys."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "keys scales with size of history")
-        sources = [self._index]
+        sources = [self._index] + self._fallback_vfs
         result = set()
         for source in sources:
             result.update(source.keys())
