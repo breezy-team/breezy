@@ -57,6 +57,10 @@ class Hooks(dict):
         """
         hook_names = sorted(self.keys())
         hook_docs = []
+        name = self.__class__.__name__
+        hook_docs.append(name)
+        hook_docs.append("="*len(name))
+        hook_docs.append("")
         for hook_name in hook_names:
             hook = self[hook_name]
             try:
@@ -68,7 +72,7 @@ class Hooks(dict):
                 strings.append("-" * len(hook_name))
                 strings.append("")
                 strings.append("An old-style hook. For documentation see the __init__ "
-                    "method of '%s'\n" % (self.__class__.__name__,))
+                    "method of '%s'\n" % (name,))
                 hook_docs.extend(strings)
         return "\n".join(hook_docs)
 
