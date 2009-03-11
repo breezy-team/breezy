@@ -30,63 +30,55 @@ from unittest import TestSuite
 
 from debian_bundle.changelog import Version, Changelog
 
-from bzrlib.tests import TestUtil, adapt_modules, TestCaseWithTransport
+from bzrlib.tests import TestUtil, multiply_tests, TestCaseWithTransport
 
 from bzrlib.plugins.builddeb.tests import blackbox
 
 
-def make_new_upstream_dir(dir):
-    def _make_upstream_dir():
-        os.rename('package-0.2', dir)
-    return _make_upstream_dir
+def make_new_upstream_dir(source, dest):
+    os.rename(source, dest)
 
 
-def make_new_upstream_tarball(tarball):
-    def _make_upstream_tarball():
-        tar = tarfile.open(tarball, 'w:gz')
-        try:
-            tar.add('package-0.2')
-        finally:
-            tar.close()
-        shutil.rmtree('package-0.2')
-    return _make_upstream_tarball
+def make_new_upstream_tarball(source, dest):
+    tar = tarfile.open(dest, 'w:gz')
+    try:
+        tar.add(source)
+    finally:
+        tar.close()
+    shutil.rmtree(source)
 
 
-def make_new_upstream_tarball_bz2(tarball):
-    def _make_upstream_tarball():
-        tar = tarfile.open(tarball, 'w:bz2')
-        try:
-            tar.add('package-0.2')
-        finally:
-            tar.close()
-        shutil.rmtree('package-0.2')
-    return _make_upstream_tarball
+def make_new_upstream_tarball_bz2(source, dest):
+    tar = tarfile.open(dest, 'w:bz2')
+    try:
+        tar.add(source)
+    finally:
+        tar.close()
+    shutil.rmtree(source)
 
 
-def make_new_upstream_tarball_zip(tarball):
-    def _make_upstream_tarball():
-        zip = zipfile.ZipFile(tarball, 'w')
-        try:
-            zip.writestr('package-0.2/', '')
-            for (dirpath, dirnames, names) in os.walk('package-0.2'):
-                for dir in dirnames:
-                    zip.writestr(os.path.join(dirpath, dir, ''), '')
-                for name in names:
-                    zip.write(os.path.join(dirpath, name))
-        finally:
-            zip.close()
-        shutil.rmtree('package-0.2')
-    return _make_upstream_tarball
+def make_new_upstream_tarball_zip(source, dest):
+    zip = zipfile.ZipFile(dest, 'w')
+    try:
+        zip.writestr(source, '')
+        for (dirpath, dirnames, names) in os.walk(source):
+            for dir in dirnames:
+                zip.writestr(os.path.join(dirpath, dir, ''), '')
+            for name in names:
+                zip.write(os.path.join(dirpath, name))
+    finally:
+        zip.close()
+    shutil.rmtree(source)
 
-def make_new_upstream_tarball_bare(tarball):
-    def _make_upstream_tarball():
-        tar = tarfile.open(tarball, 'w')
-        try:
-            tar.add('package-0.2')
-        finally:
-            tar.close()
-        shutil.rmtree('package-0.2')
-    return _make_upstream_tarball
+
+def make_new_upstream_tarball_bare(source, dest):
+    tar = tarfile.open(dest, 'w')
+    try:
+        tar.add(source)
+    finally:
+        tar.close()
+    shutil.rmtree(source)
+
 
 tarball_functions = [('dir', make_new_upstream_dir, '../package-0.2'),
                      ('.tar.gz', make_new_upstream_tarball,
@@ -142,10 +134,20 @@ def test_suite():
              ]
     for mod in doctest_mod_names:
         suite.addTest(doctest.DocTestSuite("bzrlib.plugins.builddeb." + mod))
-
-    adapt_modules(['%s.test_repack_tarball' % __name__],
-                  RepackTarballAdaptor(), loader, suite)
-
+    repack_tarball_tests = loader.loadTestsFromModuleNames(
+            ['%s.test_repack_tarball' % __name__])
+    scenarios = [('dir', dict(build_tarball=make_new_upstream_dir,
+                              old_tarball='../package-0.2')),
+                 ('.tar.gz', dict(build_tarball=make_new_upstream_tarball,
+                              old_tarball='../package-0.2.tar.gz')),
+                 ('.tar.bz2', dict(build_tarball=make_new_upstream_tarball_bz2,
+                              old_tarball='../package-0.2.tar.bz2')),
+                 ('.zip', dict(build_tarball=make_new_upstream_tarball_zip,
+                              old_tarball='../package-0.2.zip')),
+                 ('.tar', dict(build_tarball=make_new_upstream_tarball_bare,
+                              old_tarball='../package-0.2.tar')),
+                 ]
+    suite = multiply_tests(repack_tarball_tests, scenarios, suite)
     packages_to_test = [
              blackbox,
              ]

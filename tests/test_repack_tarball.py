@@ -62,7 +62,7 @@ class TestRepackTarball(TestCaseInTempDir):
 
     def create_old_tarball(self):
         self.create_basedir()
-        self.build_tarball()
+        self.build_tarball(self.basedir, self.old_tarball)
 
     def test_create_old_tarball(self):
         self.create_old_tarball()
@@ -108,6 +108,7 @@ class TestRepackTarball(TestCaseInTempDir):
         self.failUnlessExists(target_dir)
         self.failUnlessExists(os.path.join(target_dir, self.new_tarball))
         self.failUnlessExists(self.old_tarball)
+        self.failIfExists(self.new_tarball)
 
     def test_repack_tarball_with_target_dir_exists(self):
         self.create_old_tarball()
