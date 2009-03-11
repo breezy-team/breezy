@@ -20,6 +20,7 @@ import time
 
 from bzrlib import (
     chk_map,
+    chk_serializer,
     debug,
     errors,
     inventory,
@@ -31,7 +32,6 @@ from bzrlib import (
     ui,
     )
 from bzrlib.index import GraphIndex, GraphIndexBuilder
-from bzrlib.repository import InterPackRepo
 from bzrlib.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
@@ -43,22 +43,10 @@ from bzrlib.repofmt.pack_repo import (
     RepositoryPackCollection,
     RepositoryFormatKnitPack6,
     Packer,
-    )
-try:
-    from bzrlib.repofmt.pack_repo import (
     CHKInventoryRepository,
-    RepositoryFormatPackDevelopment5,
     RepositoryFormatPackDevelopment5Hash16,
-##    RepositoryFormatPackDevelopment5Hash16b,
-##    RepositoryFormatPackDevelopment5Hash63,
-##    RepositoryFormatPackDevelopment5Hash127a,
-##    RepositoryFormatPackDevelopment5Hash127b,
     RepositoryFormatPackDevelopment5Hash255,
     )
-    from bzrlib import 
-    chk_support = True
-except ImportError:
-    chk_support = False
 
 
 def open_pack(self):
@@ -89,43 +77,28 @@ class GCPack(NewPack):
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
         index_builder_class = pack_collection._index_builder_class
-        if chk_support:
-            # from brisbane-core
-            if pack_collection.chk_index is not None:
-                chk_index = index_builder_class(reference_lists=0)
-            else:
-                chk_index = None
-            Pack.__init__(self,
-                # Revisions: parents list, no text compression.
-                index_builder_class(reference_lists=1),
-                # Inventory: We want to map compression only, but currently the
-                # knit code hasn't been updated enough to understand that, so we
-                # have a regular 2-list index giving parents and compression
-                # source.
-                index_builder_class(reference_lists=1),
-                # Texts: compression and per file graph, for all fileids - so two
-                # reference lists and two elements in the key tuple.
-                index_builder_class(reference_lists=1, key_elements=2),
-                # Signatures: Just blobs to store, no compression, no parents
-                # listing.
-                index_builder_class(reference_lists=0),
-                # CHK based storage - just blobs, no compression or parents.
-                chk_index=chk_index
-                )
+        # from brisbane-core
+        if pack_collection.chk_index is not None:
+            chk_index = index_builder_class(reference_lists=0)
         else:
-            # from bzr.dev
-            Pack.__init__(self,
-                # Revisions: parents list, no text compression.
-                index_builder_class(reference_lists=1),
-                # Inventory: compressed, with graph for compatibility with other
-                # existing bzrlib code.
-                index_builder_class(reference_lists=1),
-                # Texts: per file graph:
-                index_builder_class(reference_lists=1, key_elements=2),
-                # Signatures: Just blobs to store, no compression, no parents
-                # listing.
-                index_builder_class(reference_lists=0),
-                )
+            chk_index = None
+        Pack.__init__(self,
+            # Revisions: parents list, no text compression.
+            index_builder_class(reference_lists=1),
+            # Inventory: We want to map compression only, but currently the
+            # knit code hasn't been updated enough to understand that, so we
+            # have a regular 2-list index giving parents and compression
+            # source.
+            index_builder_class(reference_lists=1),
+            # Texts: compression and per file graph, for all fileids - so two
+            # reference lists and two elements in the key tuple.
+            index_builder_class(reference_lists=1, key_elements=2),
+            # Signatures: Just blobs to store, no compression, no parents
+            # listing.
+            index_builder_class(reference_lists=0),
+            # CHK based storage - just blobs, no compression or parents.
+            chk_index=chk_index
+            )
         self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
         self.index_class = pack_collection._index_class
@@ -208,7 +181,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             self._new_pack)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
-        if chk_support and self.chk_index is not None:
+        if self.chk_index is not None:
             self.chk_index.add_writable_index(self._new_pack.chk_index,
                 self._new_pack)
             self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
@@ -426,9 +399,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 class GCPackRepository(KnitPackRepository):
     """GC customisation of KnitPackRepository."""
 
-    # Note: I think the CHK support can be dropped from this class as it's
-    # implemented via the GCCHKPackRepository class defined next. IGC 20090301
-
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
@@ -436,22 +406,14 @@ class GCPackRepository(KnitPackRepository):
             _commit_builder_class, _serializer)
         # and now replace everything it did :)
         index_transport = self._transport.clone('indices')
-        if chk_support:
-            self._pack_collection = GCRepositoryPackCollection(self,
-                self._transport, index_transport,
-                self._transport.clone('upload'),
-                self._transport.clone('packs'),
-                _format.index_builder_class,
-                _format.index_class,
-                use_chk_index=self._format.supports_chks,
-                )
-        else:
-            self._pack_collection = GCRepositoryPackCollection(self,
-                self._transport, index_transport,
-                self._transport.clone('upload'),
-                self._transport.clone('packs'),
-                _format.index_builder_class,
-                _format.index_class)
+        self._pack_collection = GCRepositoryPackCollection(self,
+            self._transport, index_transport,
+            self._transport.clone('upload'),
+            self._transport.clone('packs'),
+            _format.index_builder_class,
+            _format.index_class,
+            use_chk_index=self._format.supports_chks,
+            )
         self.inventories = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
@@ -474,7 +436,7 @@ class GCPackRepository(KnitPackRepository):
                 add_callback=self._pack_collection.text_index.add_callback,
                 parents=True, is_locked=self.is_locked),
             access=self._pack_collection.text_index.data_access)
-        if chk_support and _format.supports_chks:
+        if _format.supports_chks:
             # No graph, no compression:- references from chks are between
             # different objects not temporal versions of the same; and without
             # some sort of temporal structure knit compression will just fail.
@@ -498,64 +460,63 @@ class GCPackRepository(KnitPackRepository):
         self._reconcile_backsup_inventory = False
 
 
-if chk_support:
-    class GCCHKPackRepository(CHKInventoryRepository):
-        """GC customisation of CHKInventoryRepository."""
+class GCCHKPackRepository(CHKInventoryRepository):
+    """GC customisation of CHKInventoryRepository."""
 
-        def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
-            _serializer):
-            """Overridden to change pack collection class."""
-            KnitPackRepository.__init__(self, _format, a_bzrdir, control_files,
-                _commit_builder_class, _serializer)
-            # and now replace everything it did :)
-            index_transport = self._transport.clone('indices')
-            self._pack_collection = GCRepositoryPackCollection(self,
-                self._transport, index_transport,
-                self._transport.clone('upload'),
-                self._transport.clone('packs'),
-                _format.index_builder_class,
-                _format.index_class,
-                use_chk_index=self._format.supports_chks,
-                )
-            self.inventories = GroupCompressVersionedFiles(
-                _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
-                    add_callback=self._pack_collection.inventory_index.add_callback,
-                    parents=True, is_locked=self.is_locked),
-                access=self._pack_collection.inventory_index.data_access)
-            self.revisions = GroupCompressVersionedFiles(
-                _GCGraphIndex(self._pack_collection.revision_index.combined_index,
-                    add_callback=self._pack_collection.revision_index.add_callback,
-                    parents=True, is_locked=self.is_locked),
-                access=self._pack_collection.revision_index.data_access,
-                delta=False)
-            self.signatures = GroupCompressVersionedFiles(
-                _GCGraphIndex(self._pack_collection.signature_index.combined_index,
-                    add_callback=self._pack_collection.signature_index.add_callback,
-                    parents=False, is_locked=self.is_locked),
-                access=self._pack_collection.signature_index.data_access,
-                delta=False)
-            self.texts = GroupCompressVersionedFiles(
-                _GCGraphIndex(self._pack_collection.text_index.combined_index,
-                    add_callback=self._pack_collection.text_index.add_callback,
-                    parents=True, is_locked=self.is_locked),
-                access=self._pack_collection.text_index.data_access)
-            # No parents, individual CHK pages don't have specific ancestry
-            self.chk_bytes = GroupCompressVersionedFiles(
-                _GCGraphIndex(self._pack_collection.chk_index.combined_index,
-                    add_callback=self._pack_collection.chk_index.add_callback,
-                    parents=False, is_locked=self.is_locked),
-                access=self._pack_collection.chk_index.data_access)
-            # True when the repository object is 'write locked' (as opposed to the
-            # physical lock only taken out around changes to the pack-names list.)
-            # Another way to represent this would be a decorator around the control
-            # files object that presents logical locks as physical ones - if this
-            # gets ugly consider that alternative design. RBC 20071011
-            self._write_lock_count = 0
-            self._transaction = None
-            # for tests
-            self._reconcile_does_inventory_gc = True
-            self._reconcile_fixes_text_parents = True
-            self._reconcile_backsup_inventory = False
+    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+        _serializer):
+        """Overridden to change pack collection class."""
+        KnitPackRepository.__init__(self, _format, a_bzrdir, control_files,
+            _commit_builder_class, _serializer)
+        # and now replace everything it did :)
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = GCRepositoryPackCollection(self,
+            self._transport, index_transport,
+            self._transport.clone('upload'),
+            self._transport.clone('packs'),
+            _format.index_builder_class,
+            _format.index_class,
+            use_chk_index=self._format.supports_chks,
+            )
+        self.inventories = GroupCompressVersionedFiles(
+            _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
+                add_callback=self._pack_collection.inventory_index.add_callback,
+                parents=True, is_locked=self.is_locked),
+            access=self._pack_collection.inventory_index.data_access)
+        self.revisions = GroupCompressVersionedFiles(
+            _GCGraphIndex(self._pack_collection.revision_index.combined_index,
+                add_callback=self._pack_collection.revision_index.add_callback,
+                parents=True, is_locked=self.is_locked),
+            access=self._pack_collection.revision_index.data_access,
+            delta=False)
+        self.signatures = GroupCompressVersionedFiles(
+            _GCGraphIndex(self._pack_collection.signature_index.combined_index,
+                add_callback=self._pack_collection.signature_index.add_callback,
+                parents=False, is_locked=self.is_locked),
+            access=self._pack_collection.signature_index.data_access,
+            delta=False)
+        self.texts = GroupCompressVersionedFiles(
+            _GCGraphIndex(self._pack_collection.text_index.combined_index,
+                add_callback=self._pack_collection.text_index.add_callback,
+                parents=True, is_locked=self.is_locked),
+            access=self._pack_collection.text_index.data_access)
+        # No parents, individual CHK pages don't have specific ancestry
+        self.chk_bytes = GroupCompressVersionedFiles(
+            _GCGraphIndex(self._pack_collection.chk_index.combined_index,
+                add_callback=self._pack_collection.chk_index.add_callback,
+                parents=False, is_locked=self.is_locked),
+            access=self._pack_collection.chk_index.data_access)
+        # True when the repository object is 'write locked' (as opposed to the
+        # physical lock only taken out around changes to the pack-names list.)
+        # Another way to represent this would be a decorator around the control
+        # files object that presents logical locks as physical ones - if this
+        # gets ugly consider that alternative design. RBC 20071011
+        self._write_lock_count = 0
+        self._transaction = None
+        # for tests
+        self._reconcile_does_inventory_gc = True
+        self._reconcile_fixes_text_parents = True
+        self._reconcile_backsup_inventory = False
 
 
 class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
@@ -570,7 +531,6 @@ class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
     # multiple in-a-row (and sharing strings). Topological is better
     # for remote, because we access less data.
     _fetch_order = 'unordered'
-    _fetch_gc_optimal = True
     _fetch_uses_deltas = False
 
     def get_format_string(self):
@@ -584,92 +544,76 @@ class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
             ", interoperates with pack-0.92\n")
 
 
-if chk_support:
-    from bzrlib import chk_serializer
-    class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
-        """A hashed CHK+group compress pack repository."""
+class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
+    """A hashed CHK+group compress pack repository."""
 
-        repository_class = GCCHKPackRepository
-        rich_root_data = True
-        # Note: We cannot unpack a delta that references a text we haven't
-        # seen yet. There are 2 options, work in fulltexts, or require
-        # topological sorting. Using fulltexts is more optimal for local
-        # operations, because the source can be smart about extracting
-        # multiple in-a-row (and sharing strings). Topological is better
-        # for remote, because we access less data.
-        _fetch_order = 'unordered'
-        _fetch_gc_optimal = True
-        _fetch_uses_deltas = False
+    repository_class = GCCHKPackRepository
+    rich_root_data = True
+    supports_external_lookups = True
+    supports_tree_reference = True
+    supports_chks = True
+    # Note: We cannot unpack a delta that references a text we haven't
+    # seen yet. There are 2 options, work in fulltexts, or require
+    # topological sorting. Using fulltexts is more optimal for local
+    # operations, because the source can be smart about extracting
+    # multiple in-a-row (and sharing strings). Topological is better
+    # for remote, because we access less data.
+    _fetch_order = 'unordered'
+    _fetch_uses_deltas = False
 
-        def get_format_string(self):
-            """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - hash16chk+gc rich-root'
-                    ' (needs bzr.dev from 1.13)\n')
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ('Bazaar development format - hash16chk+gc rich-root'
+                ' (needs bzr.dev from 1.13)\n')
 
-        def get_format_description(self):
-            """See RepositoryFormat.get_format_description()."""
-            return ("Development repository format - hash16chk+groupcompress")
-
-
-    class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
-        """A hashed CHK+group compress pack repository."""
-
-        repository_class = GCCHKPackRepository
-        # Setting this to True causes us to use InterModel1And2, so for now set
-        # it to False which uses InterDifferingSerializer. When IM1&2 is
-        # removed (as it is in bzr.dev) we can set this back to True.
-        rich_root_data = True
-
-        def get_format_string(self):
-            """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - hash255chk+gc rich-root'
-                    ' (needs bzr.dev from 1.13)\n')
-
-        def get_format_description(self):
-            """See RepositoryFormat.get_format_description()."""
-            return ("Development repository format - hash255chk+groupcompress")
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format - hash16chk+groupcompress")
 
 
-    chk_serializer_255_bigpage = chk_serializer.CHKSerializer(65536, 'hash-255-way')
-    class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
-        """A hashed CHK+group compress pack repository."""
+class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
+    """A hashed CHK+group compress pack repository."""
 
-        repository_class = GCCHKPackRepository
-        # For right now, setting this to True gives us InterModel1And2 rather
-        # than InterDifferingSerializer
-        rich_root_data = True
-        _serializer = chk_serializer_255_bigpage
-        # Note: We cannot unpack a delta that references a text we haven't
-        # seen yet. There are 2 options, work in fulltexts, or require
-        # topological sorting. Using fulltexts is more optimal for local
-        # operations, because the source can be smart about extracting
-        # multiple in-a-row (and sharing strings). Topological is better
-        # for remote, because we access less data.
-        _fetch_order = 'unordered'
-        _fetch_gc_optimal = True
-        _fetch_uses_deltas = False
+    repository_class = GCCHKPackRepository
+    supports_chks = True
+    # Setting this to True causes us to use InterModel1And2, so for now set
+    # it to False which uses InterDifferingSerializer. When IM1&2 is
+    # removed (as it is in bzr.dev) we can set this back to True.
+    rich_root_data = True
 
-        def get_format_string(self):
-            """See RepositoryFormat.get_format_string()."""
-            return ('Bazaar development format - hash255chk+gc rich-root bigpage'
-                    ' (needs bzr.dev from 1.13)\n')
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ('Bazaar development format - hash255chk+gc rich-root'
+                ' (needs bzr.dev from 1.13)\n')
 
-        def get_format_description(self):
-            """See RepositoryFormat.get_format_description()."""
-            return ("Development repository format - hash255chk+groupcompress + bigpage")
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format - hash255chk+groupcompress")
 
 
-def pack_incompatible(source, target, orig_method=InterPackRepo.is_compatible):
-    """Be incompatible with the regular fetch code."""
-    formats = (RepositoryFormatPackGCPlain,)
-    if chk_support:
-        formats = formats + (RepositoryFormatPackGCCHK16,
-                             RepositoryFormatPackGCCHK255,
-                             RepositoryFormatPackGCCHK255Big)
-    if isinstance(source._format, formats) or isinstance(target._format, formats):
-        return False
-    else:
-        return orig_method(source, target)
+class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
+    """A hashed CHK+group compress pack repository."""
 
+    repository_class = GCCHKPackRepository
+    supports_chks = True
+    # For right now, setting this to True gives us InterModel1And2 rather
+    # than InterDifferingSerializer
+    rich_root_data = True
+    _serializer = chk_serializer.chk_serializer_255_bigpage
+    # Note: We cannot unpack a delta that references a text we haven't
+    # seen yet. There are 2 options, work in fulltexts, or require
+    # topological sorting. Using fulltexts is more optimal for local
+    # operations, because the source can be smart about extracting
+    # multiple in-a-row (and sharing strings). Topological is better
+    # for remote, because we access less data.
+    _fetch_order = 'unordered'
+    _fetch_uses_deltas = False
 
-InterPackRepo.is_compatible = staticmethod(pack_incompatible)
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ('Bazaar development format - hash255chk+gc rich-root bigpage'
+                ' (needs bzr.dev from 1.13)\n')
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format - hash255chk+groupcompress + bigpage")
