@@ -15,6 +15,10 @@ IN DEVELOPMENT
       command may need to be adjusted.
       (Neil Martinsen-Burrell)
 
+    * bzr no longer autodetects nested trees as 'tree-references'.  They
+      must now be explicitly added tree references.  At the commandline, use
+      join --reference instead of add.  (Aaron Bentley)
+
   NEW FEATURES:
 
     * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
