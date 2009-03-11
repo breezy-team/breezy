@@ -35,17 +35,22 @@ See DESIGN in the groupcompress source.
 
 from bzrlib.bzrdir import format_registry
 from bzrlib.repository import format_registry as repo_registry
-format_registry.register_metadir('gc-no-rich-root',
-    'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlain',
-    help='pack-1.9 with xml inv, group compress '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
-    hidden=False,
-    experimental=True,
-    )
+try:
+    format_registry.register_metadir('gc-no-rich-root',
+        'bzrlib.plugins.groupcompress.repofmt.RepositoryFormatPackGCPlain',
+        help='pack-1.9 with xml inv, group compress '
+            'Please read '
+            'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+            'before use.',
+        branch_format='bzrlib.branch.BzrBranchFormat7',
+        tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+        hidden=False,
+        experimental=True,
+        )
+except KeyError:
+    # This must be a brisbane-core branch that already has groupcompress
+    # integrated
+    raise ImportError('you already have groupcompress in your bzr')
 
 from bzrlib.repository import format_registry as repo_registry
 

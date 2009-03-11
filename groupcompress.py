@@ -58,7 +58,7 @@ from bzrlib.versionedfile import (
 from bzrlib.plugins.groupcompress import errors as gc_errors
 
 _USE_LZMA = False and (pylzma is not None)
-_NO_LABELS = True
+_NO_LABELS = False
 _FAST = False
 
 def encode_base128_int(val):
