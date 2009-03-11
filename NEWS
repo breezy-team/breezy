@@ -83,6 +83,9 @@ IN DEVELOPMENT
 
     * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
+    * Tildes are no longer escaped. No more %7Euser/project/branch!
+      (Jonathan Lange)
+
   BUG FIXES:
 
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
