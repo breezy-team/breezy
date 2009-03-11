@@ -78,19 +78,22 @@ class GitBranchFormat(branch.BranchFormat):
     def supports_tags(self):
         return True
 
+    def make_tags(self, branch):
+        return GitTagDict(branch)
+
 
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, bzrdir, repository, name, head, lockfiles):
         self.repository = repository
+        self._format = GitBranchFormat()
         super(GitBranch, self).__init__(repository.get_mapping())
         self.control_files = lockfiles
         self.bzrdir = bzrdir
         self.name = name
         self.head = head
         self.base = bzrdir.transport.base
-        self._format = GitBranchFormat()
 
     def dpull(self, source, stop_revision=None):
         if stop_revision is None:
@@ -157,9 +160,6 @@ class LocalGitBranch(GitBranch):
         checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id, hardlink=hardlink)
 
-    def _make_tags(self):
-        return GitTagDict(self)
-
     def _gen_revision_history(self):
         if self.head is None:
             return []
@@ -182,13 +182,6 @@ class LocalGitBranch(GitBranch):
 
     def supports_tags(self):
         return True
-
-    def sprout(self, to_bzrdir, revision_id=None):
-        """See Branch.sprout()."""
-        result = to_bzrdir.create_branch()
-        self.copy_content_into(result, revision_id=revision_id)
-        result.set_parent(self.bzrdir.root_transport.base)
-        return result
 
 
 class InterGitGenericBranch(branch.InterBranch):
