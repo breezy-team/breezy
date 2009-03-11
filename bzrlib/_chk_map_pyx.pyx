@@ -33,6 +33,13 @@ cdef extern from "Python.h":
     char *PyString_AS_STRING(object s)
     Py_ssize_t PyString_GET_SIZE(object)
 
+    int PyDict_SetItem(object d, object k, object v) except -1
+
+    object PyTuple_New(Py_ssize_t count)
+    void PyTuple_SET_ITEM(object t, Py_ssize_t offset, object)
+
+    void Py_INCREF(object)
+
     PyObject * PyTuple_GET_ITEM_ptr "PyTuple_GET_ITEM" (object t,
                                                         Py_ssize_t offset)
     int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *p)
@@ -179,7 +186,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     cdef char *next_line
     cdef Py_ssize_t c_bytes_len, prefix_length, items_length
     cdef int maximum_size, width, length, i, prefix_tail_len
-    cdef int num_value_lines
+    cdef int num_value_lines, num_prefix_bits
     cdef char *prefix, *value_start, *prefix_tail
     cdef char *next_null, *last_null, *line_start
     cdef char *c_entry, *entry_start
@@ -219,13 +226,18 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
 
     prefix_bits = []
     prefix_tail = prefix
+    num_prefix_bits = 0
     next_null = <char *>memchr(prefix, c'\0', prefix_length)
     while next_null != NULL:
+        num_prefix_bits += 1
         prefix_bits.append(
             PyString_FromStringAndSize(prefix_tail, next_null - prefix_tail))
         prefix_tail = next_null + 1
         next_null = <char *>memchr(prefix_tail, c'\0', next_line - prefix_tail)
     prefix_tail_len = next_line - prefix_tail
+
+    if num_prefix_bits >= width:
+        raise ValueError('Prefix has too many nulls versus width')
 
     items_length = end - cur
     items = {}
@@ -248,8 +260,13 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             if next_line == NULL:
                 raise ValueError('missing trailing newline')
             cur = next_line + 1
+        entry_bits = PyTuple_New(width)
+        for i from 0 <= i < num_prefix_bits:
+            entry = prefix_bits[i]
+            # SET_ITEM 'steals' a reference
+            Py_INCREF(entry)
+            PyTuple_SET_ITEM(entry_bits, i, entry)
         value = PyString_FromStringAndSize(value_start, next_line - value_start)
-        entry_bits = list(prefix_bits)
         # The next entry bit needs the 'tail' from the prefix, and first part
         # of the line
         entry_start = line_start
@@ -262,21 +279,29 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         c_entry = PyString_AS_STRING(entry)
         if prefix_tail_len > 0:
             memcpy(c_entry, prefix_tail, prefix_tail_len)
-        memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)
-        entry_bits.append(entry)
+        if next_null - line_start > 0:
+            memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)
+        Py_INCREF(entry)
+        i = num_prefix_bits
+        PyTuple_SET_ITEM(entry_bits, i, entry)
         while next_null != last_null: # We have remaining bits
+            i += 1
+            if i > width:
+                raise ValueError("Too many bits for entry")
             entry_start = next_null + 1
             next_null = <char *>memchr(entry_start, c'\0',
                                        last_null - entry_start + 1)
             if next_null == NULL:
                 raise ValueError('bad no null')
-            entry_bits.append(PyString_FromStringAndSize(entry_start,
-                next_null - entry_start))
+            entry = PyString_FromStringAndSize(entry_start,
+                                               next_null - entry_start)
+            Py_INCREF(entry)
+            PyTuple_SET_ITEM(entry_bits, i, entry)
         if len(entry_bits) != width:
             raise AssertionError(
                 'Incorrect number of elements (%d vs %d)'
                 % (len(entry_bits)+1, width + 1))
-        items[tuple(entry_bits)] = value
+        PyDict_SetItem(items, entry_bits, value)
     if len(items) != length:
         raise ValueError("item count (%d) mismatch for key %s,"
                          " bytes %r" % (length, entry_bits, bytes))
@@ -354,7 +379,7 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
         memcpy(c_item_prefix + prefix_length, cur, next_null - cur)
         flat_key = PyString_FromStringAndSize(next_null + 1,
                                               next_line - next_null - 1)
-        items[item_prefix] = (flat_key,)
+        PyDict_SetItem(items, item_prefix, (flat_key,))
         cur = next_line + 1
     assert len(items) > 0
     result._items = items
