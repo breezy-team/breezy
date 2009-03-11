@@ -260,6 +260,7 @@ def add_pyrex_extension(module_name, libraries=None):
 add_pyrex_extension('bzrlib._btree_serializer_c')
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+add_pyrex_extension('bzrlib._chk_map_pyx', libraries=['z'])
 if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_c',
                         libraries=['Ws2_32'])
