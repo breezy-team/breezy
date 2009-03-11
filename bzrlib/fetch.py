@@ -69,17 +69,11 @@ class RepoFetcher(object):
         self.find_ghosts = find_ghosts
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
-            self.nested_pb = self.pb
         else:
             self.pb = pb
-            self.nested_pb = None
         self.from_repository.lock_read()
         try:
-            try:
-                self.__fetch()
-            finally:
-                if self.nested_pb is not None:
-                    self.nested_pb.finished()
+            self.__fetch()
         finally:
             self.from_repository.unlock()
 
