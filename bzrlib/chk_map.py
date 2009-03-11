@@ -914,37 +914,8 @@ class InternalNode(Node):
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
-        result = InternalNode(search_key_func=search_key_func)
-        # Splitlines can split on '\r' so don't use it, remove the extra ''
-        # from the result of split('\n') because we should have a trailing
-        # newline
-        lines = bytes.split('\n')
-        if lines[-1] != '':
-            raise AssertionError("last line must be ''")
-        lines.pop(-1)
-        items = {}
-        if lines[0] != 'chknode:':
-            raise ValueError("not a serialised internal node: %r" % bytes)
-        maximum_size = int(lines[1])
-        width = int(lines[2])
-        length = int(lines[3])
-        common_prefix = lines[4]
-        for line in lines[5:]:
-            line = common_prefix + line
-            prefix, flat_key = line.rsplit('\x00', 1)
-            items[prefix] = (flat_key,)
-        result._items = items
-        result._len = length
-        result._maximum_size = maximum_size
-        result._key = key
-        result._key_width = width
-        # XXX: InternalNodes don't really care about their size, and this will
-        #      change if we add prefix compression
-        result._raw_size = None # len(bytes)
-        result._node_width = len(prefix)
-        assert len(items) > 0
-        result._search_prefix = common_prefix
-        return result
+        return _deserialise_internal_node(bytes, key,
+                                          search_key_func=search_key_func)
 
     def iteritems(self, store, key_filter=None):
         for node in self._iter_nodes(store, key_filter=key_filter):
@@ -1476,13 +1447,15 @@ try:
     from bzrlib._chk_map_pyx import (
         _search_key_16,
         _search_key_255,
-        _deserialise_leaf_node
+        _deserialise_leaf_node,
+        _deserialise_internal_node,
         )
 except ImportError:
     from bzrlib._chk_map_py import (
         _search_key_16,
         _search_key_255,
-        _deserialise_leaf_node
+        _deserialise_leaf_node,
+        _deserialise_internal_node,
         )
 search_key_registry.register('hash-16-way', _search_key_16)
 search_key_registry.register('hash-255-way', _search_key_255)

@@ -48,6 +48,10 @@ cdef extern from "zlib.h":
     uLong crc32(uLong crc, Bytef *buf, uInt len)
 
 
+_LeafNode = None
+_InternalNode = None
+_unknown = None
+
 # We shouldn't just copy this from _dirstate_helpers_c
 cdef void* _my_memrchr(void *s, int c, size_t n):
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
@@ -171,7 +175,6 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     :param bytes: The bytes of the node.
     :param key: The key that the serialised node has.
     """
-    cdef Py_ssize_t offset, next_offset
     cdef char *c_bytes, *cur, *next, *end
     cdef char *next_line
     cdef Py_ssize_t c_bytes_len, prefix_length
@@ -181,9 +184,13 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     cdef char *next_null, *last_null, *line_start
     cdef char *c_entry, *entry_start
 
-    from bzrlib.chk_map import LeafNode, _unknown
+    if _LeafNode is None:
+        from bzrlib import chk_map
+        _LeafNode = chk_map.LeafNode
+        _InternalNode = chk_map.InternalNode
+        _unknown = chk_map._unknown
 
-    result = LeafNode(search_key_func=search_key_func)
+    result = _LeafNode(search_key_func=search_key_func)
     # Splitlines can split on '\r' so don't use it, split('\n') adds an
     # extra '' if the bytes ends in a final newline.
     if not PyString_CheckExact(bytes):
@@ -192,11 +199,10 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     c_bytes = PyString_AS_STRING(bytes)
     c_bytes_len = PyString_GET_SIZE(bytes)
 
-    if c_bytes[c_bytes_len - 1] != c'\n':
-        raise ValueError("bytes does not end in a newline")
-
     if c_bytes_len < 9 or memcmp(c_bytes, "chkleaf:\n", 9) != 0:
         raise ValueError("not a serialised leaf node: %r" % bytes)
+    if c_bytes[c_bytes_len - 1] != c'\n':
+        raise ValueError("bytes does not end in a newline")
 
     end = c_bytes + c_bytes_len
     cur = c_bytes + 9
@@ -240,7 +246,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         for i from 0 <= i < num_value_lines:
             next_line = <char *>memchr(cur, c'\n', end - cur)
             if next_line == NULL:
-                raise ValueError('null line\n')
+                raise ValueError('missing trailing newline')
             cur = next_line + 1
         value = PyString_FromStringAndSize(value_start, next_line - value_start)
         entry_bits = list(prefix_bits)
@@ -289,3 +295,75 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     # if c_bytes_len !+ result._current_size():
     #     raise AssertionError('_current_size computed incorrectly')
     return result
+
+
+def _deserialise_internal_node(bytes, key, search_key_func=None):
+    cdef char *c_bytes, *cur, *next, *end
+    cdef char *next_line
+    cdef Py_ssize_t c_bytes_len, prefix_length
+    cdef int maximum_size, width, length, i, prefix_tail_len
+    cdef char *prefix, *line_prefix, *next_null, *c_item_prefix
+
+    if _InternalNode is None:
+        from bzrlib import chk_map
+        _LeafNode = chk_map.LeafNode
+        _InternalNode = chk_map.InternalNode
+        _unknown = chk_map._unknown
+    result = _InternalNode(search_key_func=search_key_func)
+
+    if not PyString_CheckExact(bytes):
+        raise TypeError('bytes must be a plain string not %s' % (type(bytes),))
+
+    c_bytes = PyString_AS_STRING(bytes)
+    c_bytes_len = PyString_GET_SIZE(bytes)
+
+    if c_bytes_len < 9 or memcmp(c_bytes, "chknode:\n", 9) != 0:
+        raise ValueError("not a serialised internal node: %r" % bytes)
+    if c_bytes[c_bytes_len - 1] != c'\n':
+        raise ValueError("bytes does not end in a newline")
+
+    items = {}
+    cur = c_bytes + 9
+    end = c_bytes + c_bytes_len
+    maximum_size = _get_int_from_line(&cur, end, "maximum_size")
+    width = _get_int_from_line(&cur, end, "width")
+    length = _get_int_from_line(&cur, end, "length")
+
+    next_line = <char *>memchr(cur, c'\n', end - cur)
+    if next_line == NULL:
+        raise ValueError('Missing the prefix line\n')
+    prefix = cur
+    prefix_length = next_line - cur
+    cur = next_line + 1
+
+    while cur < end:
+        # Find the null separator
+        next_line = <char *>memchr(cur, c'\n', end - cur)
+        if next_line == NULL:
+            raise ValueError('missing trailing newline')
+        next_null = <char *>memchr(cur, c'\0', next_line - cur)
+        if next_null == NULL:
+            raise ValueError('bad no null')
+        item_prefix = PyString_FromStringAndSize(NULL,
+            prefix_length + next_null - cur)
+        c_item_prefix = PyString_AS_STRING(item_prefix)
+        if prefix_length:
+            memcpy(c_item_prefix, prefix, prefix_length)
+        memcpy(c_item_prefix + prefix_length, cur, next_null - cur)
+        flat_key = PyString_FromStringAndSize(next_null + 1,
+                                              next_line - next_null - 1)
+        items[item_prefix] = (flat_key,)
+        cur = next_line + 1
+    assert len(items) > 0
+    result._items = items
+    result._len = length
+    result._maximum_size = maximum_size
+    result._key = key
+    result._key_width = width
+    # XXX: InternalNodes don't really care about their size, and this will
+    #      change if we add prefix compression
+    result._raw_size = None # len(bytes)
+    result._node_width = len(item_prefix)
+    result._search_prefix = PyString_FromStringAndSize(prefix, prefix_length)
+    return result
+

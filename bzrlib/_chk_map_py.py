@@ -19,6 +19,9 @@
 import zlib
 import struct
 
+_LeafNode = None
+_InternalNode = None
+_unknown = None
 
 def _crc32(bit):
     # Depending on python version and platform, zlib.crc32 will return either a
@@ -49,14 +52,20 @@ def _search_key_255(key):
     bytes = '\x00'.join([struct.pack('>L', _crc32(bit)) for bit in key])
     return bytes.replace('\n', '_')
 
+
 def _deserialise_leaf_node(bytes, key, search_key_func=None):
     """Deserialise bytes, with key key, into a LeafNode.
 
     :param bytes: The bytes of the node.
     :param key: The key that the serialised node has.
     """
-    from bzrlib.chk_map import LeafNode, _unknown
-    result = LeafNode(search_key_func=search_key_func)
+    global _unknown, _LeafNode, _InternalNode
+    if _LeafNode is None:
+        from bzrlib import chk_map
+        _unknown = chk_map._unknown
+        _LeafNode = chk_map.LeafNode
+        _InternalNode = chk_map.InternalNode
+    result = _LeafNode(search_key_func=search_key_func)
     # Splitlines can split on '\r' so don't use it, split('\n') adds an
     # extra '' if the bytes ends in a final newline.
     lines = bytes.split('\n')
@@ -106,4 +115,43 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         raise AssertionError('_current_size computed incorrectly')
     return result
 
+
+def _deserialise_internal_node(bytes, key, search_key_func=None):
+    global _unknown, _LeafNode, _InternalNode
+    if _InternalNode is None:
+        from bzrlib import chk_map
+        _unknown = chk_map._unknown
+        _LeafNode = chk_map.LeafNode
+        _InternalNode = chk_map.InternalNode
+    result = _InternalNode(search_key_func=search_key_func)
+    # Splitlines can split on '\r' so don't use it, remove the extra ''
+    # from the result of split('\n') because we should have a trailing
+    # newline
+    lines = bytes.split('\n')
+    if lines[-1] != '':
+        raise ValueError("last line must be ''")
+    lines.pop(-1)
+    items = {}
+    if lines[0] != 'chknode:':
+        raise ValueError("not a serialised internal node: %r" % bytes)
+    maximum_size = int(lines[1])
+    width = int(lines[2])
+    length = int(lines[3])
+    common_prefix = lines[4]
+    for line in lines[5:]:
+        line = common_prefix + line
+        prefix, flat_key = line.rsplit('\x00', 1)
+        items[prefix] = (flat_key,)
+    result._items = items
+    result._len = length
+    result._maximum_size = maximum_size
+    result._key = key
+    result._key_width = width
+    # XXX: InternalNodes don't really care about their size, and this will
+    #      change if we add prefix compression
+    result._raw_size = None # len(bytes)
+    result._node_width = len(prefix)
+    assert len(items) > 0
+    result._search_prefix = common_prefix
+    return result
 

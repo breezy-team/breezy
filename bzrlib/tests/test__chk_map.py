@@ -102,6 +102,7 @@ class TestDeserialiseLeafNode(tests.TestCase):
             self.module._deserialise_leaf_node, text, 'not-a-real-sha')
 
     def test_raises_on_non_leaf(self):
+        self.assertDeserialiseErrors('')
         self.assertDeserialiseErrors('short\n')
         self.assertDeserialiseErrors('chknotleaf:\n')
         self.assertDeserialiseErrors('chkleaf:x\n')
@@ -186,3 +187,65 @@ class TestDeserialiseLeafNode(tests.TestCase):
             ("sha1:1234",))
         node.unmap(None, ("foo bar",))
         self.assertEqual(None, node.key())
+
+
+class TestDeserialiseInternalNode(tests.TestCase):
+
+    module = None
+
+    def assertDeserialiseErrors(self, text):
+        self.assertRaises((ValueError, IndexError),
+            self.module._deserialise_internal_node, text, 'not-a-real-sha')
+
+    def test_raises_on_non_internal(self):
+        self.assertDeserialiseErrors('')
+        self.assertDeserialiseErrors('short\n')
+        self.assertDeserialiseErrors('chknotnode:\n')
+        self.assertDeserialiseErrors('chknode:x\n')
+        self.assertDeserialiseErrors('chknode:\n')
+        self.assertDeserialiseErrors('chknode:\nnotint\n')
+        self.assertDeserialiseErrors('chknode:\n10\n')
+        self.assertDeserialiseErrors('chknode:\n10\n256\n')
+        self.assertDeserialiseErrors('chknode:\n10\n256\n10\n')
+        # no trailing newline
+        self.assertDeserialiseErrors('chknode:\n10\n256\n0\n1\nfo')
+
+    def test_deserialise_one(self):
+        node = self.module._deserialise_internal_node(
+            "chknode:\n10\n1\n1\n\na\x00sha1:abcd\n", ('sha1:1234',))
+        self.assertIsInstance(node, chk_map.InternalNode)
+        self.assertEqual(1, len(node))
+        self.assertEqual(10, node.maximum_size)
+        self.assertEqual(("sha1:1234",), node.key())
+        self.assertEqual('', node._search_prefix)
+        self.assertEqual({'a': ('sha1:abcd',)}, node._items)
+
+    def test_deserialise_with_prefix(self):
+        node = self.module._deserialise_internal_node(
+            "chknode:\n10\n1\n1\npref\na\x00sha1:abcd\n", ('sha1:1234',))
+        self.assertIsInstance(node, chk_map.InternalNode)
+        self.assertEqual(1, len(node))
+        self.assertEqual(10, node.maximum_size)
+        self.assertEqual(("sha1:1234",), node.key())
+        self.assertEqual('pref', node._search_prefix)
+        self.assertEqual({'prefa': ('sha1:abcd',)}, node._items)
+
+        node = self.module._deserialise_internal_node(
+            "chknode:\n10\n1\n1\npref\n\x00sha1:abcd\n", ('sha1:1234',))
+        self.assertIsInstance(node, chk_map.InternalNode)
+        self.assertEqual(1, len(node))
+        self.assertEqual(10, node.maximum_size)
+        self.assertEqual(("sha1:1234",), node.key())
+        self.assertEqual('pref', node._search_prefix)
+        self.assertEqual({'pref': ('sha1:abcd',)}, node._items)
+
+    def test_deserialise_pref_with_null(self):
+        node = self.module._deserialise_internal_node(
+            "chknode:\n10\n1\n1\npref\x00fo\n\x00sha1:abcd\n", ('sha1:1234',))
+        self.assertIsInstance(node, chk_map.InternalNode)
+        self.assertEqual(1, len(node))
+        self.assertEqual(10, node.maximum_size)
+        self.assertEqual(("sha1:1234",), node.key())
+        self.assertEqual('pref\x00fo', node._search_prefix)
+        self.assertEqual({'pref\x00fo': ('sha1:abcd',)}, node._items)
+
