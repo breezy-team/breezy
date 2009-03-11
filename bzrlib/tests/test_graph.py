@@ -1543,3 +1543,15 @@ class TestPendingAncestryResult(TestCaseWithMemoryTransport):
         par = _mod_graph.PendingAncestryResult(['rev-2'], repo)
         self.assertEqual(set(['rev-1', 'rev-2']), set(par.get_keys()))
 
+    def test_get_keys_excludes_null(self):
+        # Make a 'graph' with an iter_ancestry that returns NULL_REVISION
+        # somewhere other than the last element, which can happen in real
+        # ancestries.
+        class StubGraph(object):
+            def iter_ancestry(self, keys):
+                return [(NULL_REVISION, ()), ('foo', (NULL_REVISION,))]
+        par = _mod_graph.PendingAncestryResult(['rev-3'], None)
+        par_keys = par._get_keys(StubGraph())
+        # Only the non-null keys from the ancestry appear.
+        self.assertEqual(set(['foo']), set(par_keys))
+

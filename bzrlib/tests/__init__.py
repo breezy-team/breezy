@@ -2918,6 +2918,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test__chunks_to_lines',
                    'bzrlib.tests.test_commands',

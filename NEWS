@@ -38,6 +38,8 @@ IN DEVELOPMENT
     * Multiple authors for a commit can now be recorded by using the "--author"
       option multiple times. (James Westby, #185772)
 
+    * New clean-tree command, from bzrtools.  (Aaron Bentley, Jelmer Vernoij)
+
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
@@ -68,6 +70,9 @@ IN DEVELOPMENT
       batches up requests into approx 5MB requests, rather than a separate
       request for each file. (John Arbash Meinel)
 
+    * Progress bars now show the rate of network activity for
+      ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
 
@@ -84,6 +89,13 @@ IN DEVELOPMENT
     * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
   BUG FIXES:
+
+    * Bazaar now gives a better message including the filename if it's
+      unable to read a file in the working directory, for example because
+      of a permission error.  (Martin Pool, #338653)
+
+    * ``bzr send`` help is more specific about how to apply merge
+      directives.  (Neil Martinsen-Burrell, #253470)
 
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
@@ -135,8 +147,14 @@ IN DEVELOPMENT
       repositories and the processes/workflows implied/enabled by each.
       (Ian Clatworthy)
 
+    * Hooks can now be self documenting. ``bzrlib.hooks.Hooks.create_hook``
+      is the entry point for this feature. (Robert Collins)
+
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
+
+    * The generated manpage now explicitly lists aliases as commands.
+      (James Westby, #336998)
 
   API CHANGES:
 
