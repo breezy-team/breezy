@@ -341,7 +341,7 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
         next_line = <char *>memchr(cur, c'\n', end - cur)
         if next_line == NULL:
             raise ValueError('missing trailing newline')
-        next_null = <char *>memchr(cur, c'\0', next_line - cur)
+        next_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
         if next_null == NULL:
             raise ValueError('bad no null')
         item_prefix = PyString_FromStringAndSize(NULL,
