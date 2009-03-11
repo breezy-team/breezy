@@ -4774,6 +4774,11 @@ class cmd_send(Command):
                 if mail_to is None:
                     mail_to = config.get_user_option('submit_to')
                 mail_client = config.get_mail_client()
+                if (not getattr(mail_client, 'supports_body', False)
+                    and body is not None):
+                    raise errors.BzrCommandError(
+                        'Mail client "%s" does not support specifying body' %
+                        mail_client.__class__.__name__)
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
                     '--remember requires a branch to be specified.')

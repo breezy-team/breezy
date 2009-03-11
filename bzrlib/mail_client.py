@@ -91,6 +91,8 @@ class MailClient(object):
 class Editor(MailClient):
     """DIY mail client that uses commit message editor"""
 
+    supports_body = True
+
     def _get_merge_prompt(self, prompt, to, subject, attachment):
         """See MailClient._get_merge_prompt"""
         return (u"%s\n\n"
@@ -118,8 +120,9 @@ mail_client_registry.register('editor', Editor,
                               help=Editor.__doc__)
 
 
-class ExternalMailClient(MailClient):
-    """An external mail client."""
+class BodyExternalMailClient(MailClient):
+
+    supports_body = True
 
     def _get_client_commands(self):
         """Provide a list of commands that may invoke the mail client"""
@@ -144,8 +147,12 @@ class ExternalMailClient(MailClient):
             outfile.write(attachment)
         finally:
             outfile.close()
+        if body is not None:
+            kwargs = {'body': body}
+        else:
+            kwargs = {}
         self._compose(prompt, to, subject, attach_path, mime_subtype,
-                      extension, body)
+                      extension, **kwargs)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                 extension, body):
@@ -162,8 +169,13 @@ class ExternalMailClient(MailClient):
         """
         for name in self._get_client_commands():
             cmdline = [self._encode_path(name, 'executable')]
+            if body is not None:
+                kwargs = {'body': body}
+            else:
+                kwargs = {}
             cmdline.extend(self._get_compose_commandline(to, subject,
-                                                         attach_path, body))
+                                                         attach_path,
+                                                         **kwargs))
             try:
                 subprocess.call(cmdline)
             except OSError, e:
@@ -213,7 +225,13 @@ class ExternalMailClient(MailClient):
         return path
 
 
-class Evolution(ExternalMailClient):
+class ExternalMailClient(BodyExternalMailClient):
+    """An external mail client."""
+
+    supports_body = False
+
+
+class Evolution(BodyExternalMailClient):
     """Evolution mail client."""
 
     _client_commands = ['evolution']
@@ -255,7 +273,7 @@ mail_client_registry.register('mutt', Mutt,
                               help=Mutt.__doc__)
 
 
-class Thunderbird(ExternalMailClient):
+class Thunderbird(BodyExternalMailClient):
     """Mozilla Thunderbird (or Icedove)
 
     Note that Thunderbird 1.5 is buggy and does not support setting
@@ -336,7 +354,7 @@ mail_client_registry.register('claws', Claws,
                               help=Claws.__doc__)
 
 
-class XDGEmail(ExternalMailClient):
+class XDGEmail(BodyExternalMailClient):
     """xdg-email attempts to invoke the user's preferred mail client"""
 
     _client_commands = ['xdg-email']
@@ -463,7 +481,7 @@ mail_client_registry.register('emacsclient', EmacsMail,
                               help=EmacsMail.__doc__)
 
 
-class MAPIClient(ExternalMailClient):
+class MAPIClient(BodyExternalMailClient):
     """Default Windows mail client launched using MAPI."""
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
