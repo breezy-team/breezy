@@ -805,18 +805,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # they had when they were first added
         # create one file of every interesting type
         tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         self.build_tree(['file', 'directory/'])
         names = ['file', 'directory']
         if has_symlinks():
             os.symlink('target', 'symlink')
             names.append('symlink')
         tree.add(names, [n + '-id' for n in names])
-        if tree.supports_tree_reference():
-            sub_tree = self.make_branch_and_tree('tree-reference')
-            sub_tree.set_root_id('tree-reference-id')
-            sub_tree.commit('message')
-            names.append('tree-reference')
-            tree.add_reference(sub_tree)
         # now when we first look, we should see everything with the same kind
         # with which they were initially added
         for n in names:

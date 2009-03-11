@@ -15,6 +15,10 @@ IN DEVELOPMENT
       command may need to be adjusted.
       (Neil Martinsen-Burrell)
 
+    * bzr no longer autodetects nested trees as 'tree-references'.  They
+      must now be explicitly added tree references.  At the commandline, use
+      join --reference instead of add.  (Aaron Bentley)
+
   NEW FEATURES:
 
     * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
@@ -88,6 +92,9 @@ IN DEVELOPMENT
 
     * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
+    * Tildes are no longer escaped. No more %7Euser/project/branch!
+      (Jonathan Lange)
+
   BUG FIXES:
 
     * Bazaar now gives a better message including the filename if it's
@@ -114,6 +121,9 @@ IN DEVELOPMENT
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
 
+    * Fixed incorrect "Source format does not support stacking" warning
+      when pushing to a smart server.  (Andrew Bennetts, #334114)
+      
     * Fixed "sprout() got an unexpected keyword argument 'source_branch'"
       error branching from old repositories.
       (Martin Pool, #321695)

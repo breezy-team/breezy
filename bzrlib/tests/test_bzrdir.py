@@ -740,15 +740,20 @@ class ChrootedTests(TestCaseWithTransport):
                           transport)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1', format='dirstate-with-subtree')
+        tree = self.make_branch_and_tree('tree1',
+                                         format='dirstate-with-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
             format='dirstate-with-subtree')
+        sub_tree.set_root_id('subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
-        tree.bzrdir.sprout('tree2')
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.failUnlessExists('tree2/subtree/file')
+        self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""
