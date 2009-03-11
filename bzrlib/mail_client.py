@@ -155,7 +155,7 @@ class BodyExternalMailClient(MailClient):
                       extension, **kwargs)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
-                extension, body):
+                extension, body=None):
         """Invoke a mail client as a commandline process.
 
         Overridden by MAPIClient.
