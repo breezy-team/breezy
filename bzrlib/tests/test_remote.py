@@ -114,6 +114,15 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         b = BzrDir.open_from_transport(self.transport).open_branch()
         self.assertStartsWith(str(b), 'RemoteBranch(')
 
+    def test_remote_branch_format_supports_stacking(self):
+        t = self.transport
+        self.make_branch('unstackable', format='pack-0.92')
+        b = BzrDir.open_from_transport(t.clone('unstackable')).open_branch()
+        self.assertFalse(b._format.supports_stacking())
+        self.make_branch('stackable', format='1.9')
+        b = BzrDir.open_from_transport(t.clone('stackable')).open_branch()
+        self.assertTrue(b._format.supports_stacking())
+
 
 class FakeProtocol(object):
     """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
