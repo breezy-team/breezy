@@ -34,7 +34,6 @@ try:
 except ImportError:
     import md5
 import os
-import re
 import shutil
 import stat
 from subprocess import Popen, PIPE
@@ -45,7 +44,6 @@ from debian_bundle import deb822
 from debian_bundle.changelog import Version, Changelog, VersionError
 
 from bzrlib import (
-                    bugtracker,
                     bzrdir,
                     generate_ids,
                     osutils,

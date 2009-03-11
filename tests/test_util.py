@@ -499,34 +499,60 @@ class ChangelogInfoTests(TestCaseWithTransport):
         self.assert_thanks_is(changes, ["Adeodato Sim\xc3\x83\xc2\xb3"])
 
     def test_find_bugs_fixed_no_changes(self):
-        self.assertEqual([], find_bugs_fixed([], None))
+        self.assertEqual([], find_bugs_fixed([], None, _lplib=MockLaunchpad()))
 
     def test_find_bugs_fixed_none(self):
         changes = ["  * Do foo", "  * Do bar"]
-        bugs = find_bugs_fixed(changes, None)
+        bugs = find_bugs_fixed(changes, None, _lplib=MockLaunchpad())
         self.assertEqual([], bugs)
 
     def test_find_bugs_fixed_debian(self):
         wt = self.make_branch_and_tree(".")
         changes = ["  * Closes: #12345, 56789", "  * closes:bug45678"]
-        bugs = find_bugs_fixed(changes, wt.branch)
+        bugs = find_bugs_fixed(changes, wt.branch, _lplib=MockLaunchpad())
         self.assertEqual(["http://bugs.debian.org/12345 fixed",
                 "http://bugs.debian.org/56789 fixed",
                 "http://bugs.debian.org/45678 fixed"], bugs)
 
+    def test_find_bugs_fixed_debian_with_ubuntu_links(self):
+        wt = self.make_branch_and_tree(".")
+        changes = ["  * Closes: #12345", "  * closes:bug45678"]
+        lplib = MockLaunchpad(debian_bug_to_ubuntu_bugs=
+                {"12345": ("998877", "987654"),
+                "45678": ("87654",)})
+        bugs = find_bugs_fixed(changes, wt.branch, _lplib=lplib)
+        self.assertEqual([], lplib.ubuntu_bug_lookups)
+        self.assertEqual(["12345", "45678"], lplib.debian_bug_lookups)
+        self.assertEqual(["http://bugs.debian.org/12345 fixed",
+                "http://bugs.debian.org/45678 fixed",
+                "https://launchpad.net/bugs/87654 fixed"], bugs)
+
     def test_find_bugs_fixed_lp(self):
         wt = self.make_branch_and_tree(".")
         changes = ["  * LP: #12345,#56789", "  * lp:  #45678"]
-        bugs = find_bugs_fixed(changes, wt.branch)
+        bugs = find_bugs_fixed(changes, wt.branch, _lplib=MockLaunchpad())
         self.assertEqual(["https://launchpad.net/bugs/12345 fixed",
                 "https://launchpad.net/bugs/56789 fixed",
                 "https://launchpad.net/bugs/45678 fixed"], bugs)
+
+    def test_find_bugs_fixed_lp_with_debian_links(self):
+        wt = self.make_branch_and_tree(".")
+        changes = ["  * LP: #12345", "  * lp:  #45678"]
+        lplib = MockLaunchpad(ubuntu_bug_to_debian_bugs=
+                {"12345": ("998877", "987654"), "45678": ("87654",)})
+        bugs = find_bugs_fixed(changes, wt.branch, _lplib=lplib)
+        self.assertEqual([], lplib.debian_bug_lookups)
+        self.assertEqual(["12345", "45678"], lplib.ubuntu_bug_lookups)
+        self.assertEqual(["https://launchpad.net/bugs/12345 fixed",
+                "https://launchpad.net/bugs/45678 fixed",
+                "http://bugs.debian.org/87654 fixed"], bugs)
 
     def test_get_commit_info_none(self):
         wt = self.make_branch_and_tree(".")
         changelog = Changelog()
         message, authors, thanks, bugs = \
-                get_commit_info_from_changelog(changelog, wt.branch)
+                get_commit_info_from_changelog(changelog, wt.branch,
+                        _lplib=MockLaunchpad())
         self.assertEqual(None, message)
         self.assertEqual([], authors)
         self.assertEqual([], thanks)
@@ -540,8 +566,34 @@ class ChangelogInfoTests(TestCaseWithTransport):
         author = "J. Maintainer <maint@example.com"
         changelog.new_block(changes=changes, author=author)
         message, authors, thanks, bugs = \
-                get_commit_info_from_changelog(changelog, wt.branch)
+                get_commit_info_from_changelog(changelog, wt.branch,
+                        _lplib=MockLaunchpad())
         self.assertEqual("\n".join(strip_changelog_message(changes)), message)
         self.assertEqual([author]+find_extra_authors(changes), authors)
         self.assertEqual(find_thanks(changes), thanks)
-        self.assertEqual(find_bugs_fixed(changes, wt.branch), bugs)
+        self.assertEqual(find_bugs_fixed(changes, wt.branch,
+                    _lplib=MockLaunchpad()), bugs)
+
+
+class MockLaunchpad(object):
+
+    def __init__(self, debian_bug_to_ubuntu_bugs={},
+            ubuntu_bug_to_debian_bugs={}):
+        self.debian_bug_to_ubuntu_bugs = debian_bug_to_ubuntu_bugs
+        self.ubuntu_bug_to_debian_bugs = ubuntu_bug_to_debian_bugs
+        self.debian_bug_lookups = []
+        self.ubuntu_bug_lookups = []
+
+    def ubuntu_bugs_for_debian_bug(self, debian_bug):
+        self.debian_bug_lookups.append(debian_bug)
+        try:
+            return self.debian_bug_to_ubuntu_bugs[debian_bug]
+        except KeyError:
+            return []
+
+    def debian_bugs_for_ubuntu_bug(self, ubuntu_bug):
+        self.ubuntu_bug_lookups.append(ubuntu_bug)
+        try:
+            return self.ubuntu_bug_to_debian_bugs[ubuntu_bug]
+        except KeyError:
+            return []

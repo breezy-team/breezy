@@ -303,7 +303,9 @@ def get_parent_dir(target):
     return parent
 
 
-def find_bugs_fixed(changes, branch):
+def find_bugs_fixed(changes, branch, _lplib=None):
+    if _lplib is None:
+        from bzrlib.plugins.builddeb import launchpad as _lplib
     bugs = []
     for change in changes:
         for match in re.finditer("closes:\s*(?:bug)?\#?\s?\d+"
@@ -314,6 +316,11 @@ def find_bugs_fixed(changes, branch):
                 bug_url = bugtracker.get_bug_url("deb", branch,
                         match.group(0))
                 bugs.append(bug_url + " fixed")
+                lp_bugs = _lplib.ubuntu_bugs_for_debian_bug(match.group(0))
+                if len(lp_bugs) == 1:
+                    bug_url = bugtracker.get_bug_url("lp", branch,
+                            lp_bugs[0])
+                    bugs.append(bug_url + " fixed")
         for match in re.finditer("lp:\s+\#\d+(?:,\s*\#\d+)*",
                 change, re.IGNORECASE):
             closes_list = match.group(0)
@@ -321,6 +328,11 @@ def find_bugs_fixed(changes, branch):
                 bug_url = bugtracker.get_bug_url("lp", branch,
                         match.group(0))
                 bugs.append(bug_url + " fixed")
+                deb_bugs = _lplib.debian_bugs_for_ubuntu_bug(match.group(0))
+                if len(deb_bugs) == 1:
+                    bug_url = bugtracker.get_bug_url("deb", branch,
+                            deb_bugs[0])
+                    bugs.append(bug_url + " fixed")
     return bugs
 
 
@@ -358,7 +370,7 @@ def find_thanks(changes):
     return thanks
 
 
-def get_commit_info_from_changelog(changelog, branch):
+def get_commit_info_from_changelog(changelog, branch, _lplib=None):
     """Retrieves the messages from the last section of debian/changelog.
 
     Reads the latest stanza of debian/changelog and returns the
@@ -382,7 +394,7 @@ def get_commit_info_from_changelog(changelog, branch):
         authors = [block.author]
         changes = strip_changelog_message(block.changes())
         authors += find_extra_authors(changes)
-        bugs = find_bugs_fixed(changes, branch)
+        bugs = find_bugs_fixed(changes, branch, _lplib=_lplib)
         thanks = find_thanks(changes)
         message = "\n".join(changes)
     return (message, authors, thanks, bugs)
