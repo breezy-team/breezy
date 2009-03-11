@@ -99,6 +99,7 @@ from bzrlib.versionedfile import (
     AbsentContentFactory,
     adapter_registry,
     ContentFactory,
+    sort_groupcompress,
     VersionedFile,
     )
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
@@ -319,6 +320,11 @@ class Weave(VersionedFile):
         if ordering == 'topological':
             parents = self.get_parent_map(versions)
             new_versions = tsort.topo_sort(parents)
+            new_versions.extend(set(versions).difference(set(parents)))
+            versions = new_versions
+        elif ordering == 'groupcompress':
+            parents = self.get_parent_map(versions)
+            new_versions = sort_groupcompress(parents)
             new_versions.extend(set(versions).difference(set(parents)))
             versions = new_versions
         for version in versions:
