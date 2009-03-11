@@ -92,6 +92,9 @@ IN DEVELOPMENT
 
     * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
 
+    * Tildes are no longer escaped. No more %7Euser/project/branch!
+      (Jonathan Lange)
+
   BUG FIXES:
 
     * Bazaar now gives a better message including the filename if it's
