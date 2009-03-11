@@ -19,6 +19,7 @@
 import time
 
 from bzrlib import (
+    chk_map,
     debug,
     errors,
     inventory,
@@ -28,10 +29,6 @@ from bzrlib import (
     repository,
     trace,
     ui,
-    )
-from bzrlib.btree_index import (
-    BTreeBuilder,
-    BTreeGraphIndex,
     )
 from bzrlib.index import GraphIndex, GraphIndexBuilder
 from bzrlib.repository import InterPackRepo
@@ -45,10 +42,7 @@ from bzrlib.repofmt.pack_repo import (
     KnitPackRepository,
     RepositoryPackCollection,
     RepositoryFormatKnitPack6,
-    RepositoryFormatKnitPack6RichRoot,
     Packer,
-    ReconcilePacker,
-    OptimisingPacker,
     )
 try:
     from bzrlib.repofmt.pack_repo import (
@@ -61,7 +55,7 @@ try:
 ##    RepositoryFormatPackDevelopment5Hash127b,
     RepositoryFormatPackDevelopment5Hash255,
     )
-    from bzrlib import chk_map
+    from bzrlib import 
     chk_support = True
 except ImportError:
     chk_support = False
@@ -197,14 +191,6 @@ RepositoryPackCollection.pack_factory = NewPack
 class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
-
-    def _make_index(self, name, suffix):
-        """Overridden to use BTreeGraphIndex objects."""
-        size_offset = self._suffix_offsets[suffix]
-        index_name = name + suffix
-        index_size = self._names[name][size_offset]
-        return BTreeGraphIndex(
-            self._index_transport, index_name, index_size)
 
     def _start_write_group(self):
         # Overridden to add 'self.pack_factory()'

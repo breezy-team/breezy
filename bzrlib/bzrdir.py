@@ -3391,7 +3391,7 @@ format_registry.register_metadir('development5-hash255',
     experimental=True,
     )
 format_registry.register_metadir('gc-no-rich-root',
-    'bzrlib.repofmt.gc_repo.RepositoryFormatPackGCPlain',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCPlain',
     help='pack-1.9 with xml inv, group compress '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
@@ -3402,7 +3402,7 @@ format_registry.register_metadir('gc-no-rich-root',
     experimental=True,
     )
 format_registry.register_metadir('gc-chk16',
-    'bzrlib.repofmt.gc_repo.RepositoryFormatPackGCCHK16',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK16',
     help='pack-1.9 with 16-way hashed CHK inv, group compress, rich roots. '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
@@ -3413,7 +3413,7 @@ format_registry.register_metadir('gc-chk16',
     experimental=True,
     )
 format_registry.register_metadir('gc-chk255',
-    'bzrlib.repofmt.gc_repo.RepositoryFormatPackGCCHK255',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK255',
     help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
@@ -3424,7 +3424,7 @@ format_registry.register_metadir('gc-chk255',
     experimental=True,
     )
 format_registry.register_metadir('gc-chk255-big',
-    'bzrlib.repofmt.gc_repo.RepositoryFormatPackGCCHK255Big',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK255Big',
     help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '

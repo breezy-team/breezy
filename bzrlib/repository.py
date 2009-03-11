@@ -2679,22 +2679,22 @@ format_registry.register_lazy(
     )
 format_registry.register_lazy(
     'Bazaar development format - btree+gc (needs bzr.dev from 1.13)\n',
-    'bzrlib.repofmt.gc_repo',
+    'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatPackGCPlain',
     )
 format_registry.register_lazy(
     'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.13)\n',
-    'bzrlib.repofmt.gc_repo',
+    'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatPackGCCHK16',
     )
 format_registry.register_lazy(
     'Bazaar development format - hash255chk+gc rich-root (needs bzr.dev from 1.13)\n',
-    'bzrlib.repofmt.gc_repo',
+    'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatPackGCCHK255',
     )
 format_registry.register_lazy(
     'Bazaar development format - hash255chk+gc rich-root bigpage (needs bzr.dev from 1.13)\n',
-    'bzrlib.repofmt.gc_repo',
+    'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatPackGCCHK255Big',
     )
 
