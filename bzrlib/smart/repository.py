@@ -18,15 +18,16 @@
 
 import bz2
 import os
+import Queue
 import struct
 import sys
 import tarfile
 import tempfile
 import threading
-import Queue
 
 from bzrlib import (
     errors,
+    graph,
     osutils,
     pack,
     )
@@ -39,7 +40,7 @@ from bzrlib.smart.request import (
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
 from bzrlib.util import bencode
-from bzrlib.versionedfile import NetworkRecordStream
+from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -70,8 +71,18 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         # is expected)
         return None
 
-    def recreate_search(self, repository, recipe_bytes):
-        lines = recipe_bytes.split('\n')
+    def recreate_search(self, repository, search_bytes):
+        lines = search_bytes.split('\n')
+        if lines[0] == 'ancestry-of':
+            heads = lines[1:]
+            search_result = graph.PendingAncestryResult(heads, repository)
+            return search_result, None
+        elif lines[0] == 'search':
+            return self.recreate_search_from_recipe(repository, lines[1:])
+        else:
+            return (None, FailedSmartServerResponse(('BadSearch',)))
+
+    def recreate_search_from_recipe(self, repository, lines):
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
@@ -93,7 +104,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
-            return (search, None)
+            return (search_result, None)
         finally:
             repository.unlock()
 
@@ -112,6 +123,8 @@ class SmartServerRepositoryReadLocked(SmartServerRepositoryRequest):
 
 class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     """Bzr 1.2+ - get parent data for revisions during a graph search."""
+
+    no_extra_results = False
 
     def do_repository_request(self, repository, *revision_ids):
         """Get parent details for some revisions.
@@ -145,12 +158,14 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        search, error = self.recreate_search(repository, body_bytes)
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but thats not
         # written or tested yet.
-        client_seen_revs = set(search.get_result().get_keys())
+        client_seen_revs = set(search_result.get_keys())
         # Always include the requested ids.
         client_seen_revs.difference_update(revision_ids)
         lines = []
@@ -180,7 +195,8 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
             # estimated compression ratio taken from bzr.dev itself.
-            if first_loop_done and size_so_far > 250000:
+            if self.no_extra_results or (
+                first_loop_done and size_so_far > 250000):
                 next_revs = set()
                 break
             # don't query things we've already queried
@@ -330,6 +346,103 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         return SuccessfulSmartServerResponse(('ok', token))
 
 
+class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository, to_network_name):
+        """Get a stream for inserting into a to_format repository.
+
+        :param repository: The repository to stream from.
+        :param to_network_name: The network name of the format of the target
+            repository.
+        """
+        self._to_format = network_format_registry.get(to_network_name)
+        return None # Signal that we want a body.
+
+    def do_body(self, body_bytes):
+        repository = self._repository
+        repository.lock_read()
+        try:
+            search_result, error = self.recreate_search(repository, body_bytes)
+            if error is not None:
+                repository.unlock()
+                return error
+            source = repository._get_source(self._to_format)
+            stream = source.get_stream(search_result)
+        except Exception:
+            exc_info = sys.exc_info()
+            try:
+                # On non-error, unlocking is done by the body stream handler.
+                repository.unlock()
+            finally:
+                raise exc_info[0], exc_info[1], exc_info[2]
+        return SuccessfulSmartServerResponse(('ok',),
+            body_stream=self.body_stream(stream, repository))
+
+    def body_stream(self, stream, repository):
+        byte_stream = _stream_to_byte_stream(stream, repository._format)
+        try:
+            for bytes in byte_stream:
+                yield bytes
+        except errors.RevisionNotPresent, e:
+            # This shouldn't be able to happen, but as we don't buffer
+            # everything it can in theory happen.
+            repository.unlock()
+            yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
+        else:
+            repository.unlock()
+
+
+def _stream_to_byte_stream(stream, src_format):
+    """Convert a record stream to a self delimited byte stream."""
+    pack_writer = pack.ContainerSerialiser()
+    yield pack_writer.begin()
+    yield pack_writer.bytes_record(src_format.network_name(), '')
+    for substream_type, substream in stream:
+        for record in substream:
+            if record.storage_kind in ('chunked', 'fulltext'):
+                serialised = record_to_fulltext_bytes(record)
+            else:
+                serialised = record.get_bytes_as(record.storage_kind)
+            if serialised:
+                # Some streams embed the whole stream into the wire
+                # representation of the first record, which means that
+                # later records have no wire representation: we skip them.
+                yield pack_writer.bytes_record(serialised, [(substream_type,)])
+    yield pack_writer.end()
+
+
+def _byte_stream_to_stream(byte_stream):
+    """Convert a byte stream into a format and a stream.
+
+    :param byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
+    :return: (RepositoryFormat, stream_generator)
+    """
+    stream_decoder = pack.ContainerPushParser()
+    def record_stream():
+        """Closure to return the substreams."""
+        # May have fully parsed records already.
+        for record in stream_decoder.read_pending_records():
+            record_names, record_bytes = record
+            record_name, = record_names
+            substream_type = record_name[0]
+            substream = NetworkRecordStream([record_bytes])
+            yield substream_type, substream.read()
+        for bytes in byte_stream:
+            stream_decoder.accept_bytes(bytes)
+            for record in stream_decoder.read_pending_records():
+                record_names, record_bytes = record
+                record_name, = record_names
+                substream_type = record_name[0]
+                substream = NetworkRecordStream([record_bytes])
+                yield substream_type, substream.read()
+    for bytes in byte_stream:
+        stream_decoder.accept_bytes(bytes)
+        for record in stream_decoder.read_pending_records(max=1):
+            record_names, src_format_name = record
+            src_format = network_format_registry.get(src_format_name)
+            return src_format, record_stream()
+
+
 class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, token):
@@ -412,80 +525,60 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
+    """Insert a record stream from a RemoteSink into a repository.
+
+    This gets bytes pushed to it by the network infrastructure and turns that
+    into a bytes iterator using a thread. That is then processed by
+    _byte_stream_to_stream.
+    """
 
     def do_repository_request(self, repository, resume_tokens):
         """StreamSink.insert_stream for a remote repository."""
         repository.lock_write()
         tokens = [token for token in resume_tokens.split(' ') if token]
-        if tokens:
-            repository.resume_write_group(tokens)
-        else:
-            repository.start_write_group()
+        self.tokens = tokens
         self.repository = repository
-        self.stream_decoder = pack.ContainerPushParser()
-        self.src_format = None
         self.queue = Queue.Queue()
-        self.insert_thread = None
+        self.insert_thread = threading.Thread(target=self._inserter_thread)
+        self.insert_thread.start()
 
     def do_chunk(self, body_stream_chunk):
-        self.stream_decoder.accept_bytes(body_stream_chunk)
-        for record in self.stream_decoder.read_pending_records():
-            record_names, record_bytes = record
-            if self.src_format is None:
-                src_format_name = record_bytes
-                src_format = network_format_registry.get(src_format_name)
-                self.src_format = src_format
-                self.insert_thread = threading.Thread(target=self._inserter_thread)
-                self.insert_thread.start()
-            else:
-                record_name, = record_names
-                substream_type = record_name[0]
-                stream = NetworkRecordStream([record_bytes])
-                for record in stream.read():
-                    self.queue.put((substream_type, [record]))
+        self.queue.put(body_stream_chunk)
 
     def _inserter_thread(self):
-        self.repository._get_sink().insert_stream(self.blocking_read_stream(),
-                self.src_format)
+        try:
+            src_format, stream = _byte_stream_to_stream(
+                self.blocking_byte_stream())
+            self.insert_result = self.repository._get_sink().insert_stream(
+                stream, src_format, self.tokens)
+            self.insert_ok = True
+        except:
+            self.insert_exception = sys.exc_info()
+            self.insert_ok = False
 
-    def blocking_read_stream(self):
+    def blocking_byte_stream(self):
         while True:
-            item = self.queue.get()
-            if item is StopIteration:
+            bytes = self.queue.get()
+            if bytes is StopIteration:
                 return
             else:
-                yield item
+                yield bytes
 
     def do_end(self):
         self.queue.put(StopIteration)
         if self.insert_thread is not None:
             self.insert_thread.join()
-        try:
-            missing_keys = set()
-            for prefix, versioned_file in (
-                ('texts', self.repository.texts),
-                ('inventories', self.repository.inventories),
-                ('revisions', self.repository.revisions),
-                ('signatures', self.repository.signatures),
-                ):
-                missing_keys.update((prefix,) + key for key in
-                    versioned_file.get_missing_compression_parent_keys())
-        except NotImplementedError:
-            # cannot even attempt suspending.
-            pass
+        if not self.insert_ok:
+            exc_info = self.insert_exception
+            raise exc_info[0], exc_info[1], exc_info[2]
+        write_group_tokens, missing_keys = self.insert_result
+        if write_group_tokens or missing_keys:
+            # bzip needed? missing keys should typically be a small set.
+            # Should this be a streaming body response ?
+            missing_keys = sorted(missing_keys)
+            bytes = bencode.bencode((write_group_tokens, missing_keys))
+            self.repository.unlock()
+            return SuccessfulSmartServerResponse(('missing-basis', bytes))
         else:
-            if missing_keys:
-                # suspend the write group and tell the caller what we is
-                # missing. We know we can suspend or else we would not have
-                # entered this code path. (All repositories that can handle
-                # missing keys can handle suspending a write group).
-                write_group_tokens = self.repository.suspend_write_group()
-                # bzip needed? missing keys should typically be a small set.
-                # Should this be a streaming body response ?
-                missing_keys = sorted(missing_keys)
-                bytes = bencode.bencode((write_group_tokens, missing_keys))
-                return SuccessfulSmartServerResponse(('missing-basis', bytes))
-        # All finished.
-        self.repository.commit_write_group()
-        self.repository.unlock()
-        return SuccessfulSmartServerResponse(('ok', ))
+            self.repository.unlock()
+            return SuccessfulSmartServerResponse(('ok', ))

@@ -91,7 +91,10 @@ class TextUIFactory(CLIUIFactory):
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
-        if task != self._task_stack[-1]:
+        if not self._task_stack:
+            warnings.warn("%r updated but no tasks are active" %
+                (task,))
+        elif task != self._task_stack[-1]:
             warnings.warn("%r is not the top progress task %r" %
                 (task, self._task_stack[-1]))
         self._progress_view.show_progress(task)
@@ -219,7 +222,7 @@ class TextProgressView(object):
         now = time.time()
         if self._transport_update_time is None:
             self._transport_update_time = now
-        elif now >= (self._transport_update_time + 0.2):
+        elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)

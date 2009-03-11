@@ -1415,7 +1415,7 @@ class _BreadthFirstSearcher(object):
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
         self._stopped_keys.update(stopped)
-        self._stopped_keys.update(revisions - set([revision.NULL_REVISION]))
+        self._stopped_keys.update(revisions)
         return stopped
 
     def start_searching(self, revisions):
@@ -1493,6 +1493,37 @@ class SearchResult(object):
         :return: A set of keys.
         """
         return self._keys
+
+
+class PendingAncestryResult(object):
+    """A search result that will reconstruct the ancestry for some graph heads.
+
+    Unlike SearchResult, this doesn't hold the complete search result in
+    memory, it just holds a description of how to generate it.
+    """
+
+    def __init__(self, heads, repo):
+        """Constructor.
+
+        :param heads: an iterable of graph heads.
+        :param repo: a repository to use to generate the ancestry for the given
+            heads.
+        """
+        self.heads = heads
+        self.repo = repo
+
+    def get_recipe(self):
+        raise NotImplementedError(self.get_recipe)
+
+    def get_keys(self):
+        """See SearchResult.get_keys."""
+        keys = [key for (key, parents) in
+                self.repo.get_graph().iter_ancestry(self.heads)]
+        if keys[-1] != 'null:':
+            raise AssertionError(
+                "Ancestry ends with %r, not null." % (keys[-1],))
+        del keys[-1]
+        return keys
 
 
 def collapse_linear_regions(parent_map):

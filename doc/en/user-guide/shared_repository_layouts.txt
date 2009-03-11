@@ -1,5 +1,5 @@
-Choosing a shared repository layout
-===================================
+Advanced shared repository layouts
+==================================
 
 Bazaar is designed to give you flexibility in how you layout branches inside a shared repository. 
 This flexibility allows users to tailor Bazaar to their workflow,

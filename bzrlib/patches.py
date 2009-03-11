@@ -164,8 +164,6 @@ def parse_line(line):
         return InsertLine(line[1:])
     elif line.startswith("-"):
         return RemoveLine(line[1:])
-    elif line == NO_NL:
-        return NO_NL
     else:
         raise MalformedLine("Unknown line type", line)
 __pychecker__=""
@@ -318,6 +316,7 @@ class Patch:
 
 
 def parse_patch(iter_lines):
+    iter_lines = iter_lines_handle_nl(iter_lines)
     (orig_name, mod_name) = get_patch_names(iter_lines)
     patch = Patch(orig_name, mod_name)
     for hunk in iter_hunks(iter_lines):
@@ -370,7 +369,6 @@ def iter_lines_handle_nl(iter_lines):
 
 
 def parse_patches(iter_lines):
-    iter_lines = iter_lines_handle_nl(iter_lines)
     return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
 
 

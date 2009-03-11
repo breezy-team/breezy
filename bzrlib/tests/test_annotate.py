@@ -475,7 +475,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1.add(['b'], ['b-id'])
         tree1.commit('b', rev_id='rev-2',
                      committer='Committer <committer@example.com>',
-                     author='Author <author@example.com>',
+                     authors=['Author <author@example.com>'],
                      timestamp=1166046000.00, timezone=0)
 
         tree1.lock_read()

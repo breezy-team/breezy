@@ -40,16 +40,13 @@ from bzrlib.osutils import (
         canonical_relpath,
         )
 from bzrlib.tests import (
-        adapt_tests,
         Feature,
         probe_unicode_in_user_encoding,
-        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
         CaseInsCasePresFilenameFeature,
         TestCase,
         TestCaseInTempDir,
-        TestScenarioApplier,
         TestSkipped,
         )
 from bzrlib.tests.file_utils import (

@@ -48,9 +48,9 @@ from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.tests import (
     TestCaseInTempDir,
-    TestScenarioApplier,
     TestSkipped,
     TestNotApplicable,
+    multiply_tests,
     )
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
@@ -61,52 +61,40 @@ from bzrlib.transport import (
 from bzrlib.transport.memory import MemoryTransport
 
 
-class TransportTestProviderAdapter(TestScenarioApplier):
-    """A tool to generate a suite testing all transports for a single test.
+def get_transport_test_permutations(module):
+    """Get the permutations module wants to have tested."""
+    if getattr(module, 'get_test_permutations', None) is None:
+        raise AssertionError(
+            "transport module %s doesn't provide get_test_permutations()"
+            % module.__name__)
+        return []
+    return module.get_test_permutations()
 
-    This is done by copying the test once for each transport and injecting
-    the transport_class and transport_server classes into each copy. Each copy
-    is also given a new id() to make it easy to identify.
-    """
 
-    def __init__(self):
-        self.scenarios = self._test_permutations()
-
-    def get_transport_test_permutations(self, module):
-        """Get the permutations module wants to have tested."""
-        if getattr(module, 'get_test_permutations', None) is None:
-            raise AssertionError(
-                "transport module %s doesn't provide get_test_permutations()"
-                % module.__name__)
-            return []
-        return module.get_test_permutations()
-
-    def _test_permutations(self):
-        """Return a list of the klass, server_factory pairs to test."""
-        result = []
-        for module in _get_transport_modules():
-            try:
-                permutations = self.get_transport_test_permutations(
-                    reduce(getattr, (module).split('.')[1:], __import__(module)))
-                for (klass, server_factory) in permutations:
-                    scenario = (server_factory.__name__,
-                        {"transport_class":klass,
-                         "transport_server":server_factory})
-                    result.append(scenario)
-            except errors.DependencyNotPresent, e:
-                # Continue even if a dependency prevents us
-                # from adding this test
-                pass
-        return result
+def transport_test_permutations():
+    """Return a list of the klass, server_factory pairs to test."""
+    result = []
+    for module in _get_transport_modules():
+        try:
+            permutations = get_transport_test_permutations(
+                reduce(getattr, (module).split('.')[1:], __import__(module)))
+            for (klass, server_factory) in permutations:
+                scenario = (server_factory.__name__,
+                    {"transport_class":klass,
+                     "transport_server":server_factory})
+                result.append(scenario)
+        except errors.DependencyNotPresent, e:
+            # Continue even if a dependency prevents us
+            # from adding this test
+            pass
+    return result
 
 
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
-    adapter = TransportTestProviderAdapter()
-    for test in tests.iter_suite_tests(standard_tests):
-        result.addTests(adapter.adapt(test))
-    return result
+    scenarios = transport_test_permutations()
+    return multiply_tests(standard_tests, scenarios, result)
 
 
 class TransportTests(TestTransportImplementation):
@@ -1115,6 +1103,7 @@ class TransportTests(TestTransportImplementation):
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
+        # 'a' is a file, list_dir should raise an error
         self.assertListRaises(PathError, t.list_dir, 'a')
 
     def test_list_dir_result_is_url_escaped(self):
@@ -1506,7 +1495,10 @@ class TransportTests(TestTransportImplementation):
         transport.put_bytes('foo', 'bar')
         transport3 = self.get_transport()
         self.check_transport_contents('bar', transport3, 'foo')
-        # its base should be usable.
+        # its base should be usable. XXX: This is true only if we don't use
+        # auhentication, otherwise 'base' doesn't mention the password and we
+        # can't access it anymore since the password is lost (it *could* be
+        # mentioned in the url given by the test server) --vila 090226
         transport4 = get_transport(transport.base)
         self.check_transport_contents('bar', transport4, 'foo')
 

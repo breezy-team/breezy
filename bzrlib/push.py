@@ -101,11 +101,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Now the target directory exists, but doesn't have a .bzr
         # directory. So we need to create it, along with any work to create
         # all of the dependent branches, etc.
-        dir_to = br_from.bzrdir.clone_on_transport(to_transport,
+        br_to = br_from.create_clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on)
-        # XXX: Fix this API to allow getting the branch back from the clone
-        # call. Or something. 20090224 RBC/spiv.
-        br_to = dir_to.open_branch()
         # TODO: Some more useful message about what was copied
         try:
             finally_stacked_on = br_to.get_stacked_on_url()
@@ -152,9 +149,9 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             try:
                 tree_to = dir_to.open_workingtree()
             except errors.NotLocalUrl:
-                warning("This transport does not update the working "
-                        "tree of: %s. See 'bzr help working-trees' for "
-                        "more information." % br_to.base)
+                note("This transport does not update the working "
+                     "tree of: %s. See 'bzr help working-trees' for "
+                     "more information." % br_to.base)
                 push_result = br_from.push(br_to, overwrite,
                                            stop_revision=revision_id)
             except errors.NoWorkingTree:
