@@ -136,6 +136,9 @@ and Stacked Branches should both be much faster over remote connections.
     * ``setup.py build_ext`` now gives a proper error when an extension
       fails to build. (John Arbash Meinel)
 
+    * Symlinks to non ascii file names are now supported.
+      (Robert Collins, Vincent Ladeuil, #339055, #272444)    
+
     * Under rare circumstances (aka nobody reported a bug about it), the ftp
       transport could revert to ascii mode. It now stays in binary mode except
       when needed.

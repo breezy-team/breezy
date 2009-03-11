@@ -143,14 +143,10 @@ class TestSprout(TestCaseWithBranch):
         os.symlink(u'\u03a9','tree1/link_name')
         tree.add(['link_name'],['link-id'])
 
-        try:
-            # python 2.7a0 failed on commit:
-            revision = tree.commit('added a link to a Unicode target')
-            # python 2.5 failed on sprout:
-            tree.bzrdir.sprout('target')
-        except UnicodeEncodeError, e:
-            raise KnownFailure('there is no support for'
-                               ' symlinks to non-ASCII targets (bug #272444)')
+        # python 2.7a0 failed on commit:
+        revision = tree.commit('added a link to a Unicode target')
+        # python 2.5 failed on sprout:
+        tree.bzrdir.sprout('target')
 
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.
