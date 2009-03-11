@@ -177,7 +177,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     """
     cdef char *c_bytes, *cur, *next, *end
     cdef char *next_line
-    cdef Py_ssize_t c_bytes_len, prefix_length
+    cdef Py_ssize_t c_bytes_len, prefix_length, items_length
     cdef int maximum_size, width, length, i, prefix_tail_len
     cdef int num_value_lines
     cdef char *prefix, *value_start, *prefix_tail
@@ -226,8 +226,8 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         prefix_tail = next_null + 1
         next_null = <char *>memchr(prefix_tail, c'\0', next_line - prefix_tail)
     prefix_tail_len = next_line - prefix_tail
-    py_prefix = PyString_FromStringAndSize(prefix, prefix_length)
 
+    items_length = end - cur
     items = {}
     while cur < end:
         line_start = cur
@@ -285,15 +285,17 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     result._maximum_size = maximum_size
     result._key = key
     result._key_width = width
-    result._raw_size = 0
+    result._raw_size = items_length + length * prefix_length
     if length == 0:
         result._search_prefix = None
         result._common_serialised_prefix = None
     else:
         result._search_prefix = _unknown
-        result._common_serialised_prefix = py_prefix
-    # if c_bytes_len !+ result._current_size():
-    #     raise AssertionError('_current_size computed incorrectly')
+        result._common_serialised_prefix = PyString_FromStringAndSize(prefix,
+                                                prefix_length)
+    if c_bytes_len != result._current_size():
+        raise AssertionError('_current_size computed incorrectly %d != %d',
+            c_bytes_len, result._current_size())
     return result
 
 
