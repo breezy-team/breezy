@@ -59,7 +59,6 @@ use this feature, you just need to know the tracker identifier to use.
 These are the bugtrackers that are built in:
 
      URL                          | Abbreviation | Example
-   ------------------------------------------------------------
      https://bugs.launchpad.net/  | lp           | lp:12345
      http://bugs.debian.org/      | deb          | deb:12345
      http://bugzilla.gnome.org/   | gnome        | gnome:12345
