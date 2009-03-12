@@ -44,7 +44,7 @@ from bzrlib.tag import (
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
@@ -83,12 +83,8 @@ class Branch(object):
     # - RBC 20060112
     base = None
 
-    # override this to set the strategy for storing tags
-    def _make_tags(self):
-        return DisabledTags(self)
-
     def __init__(self, *ignored, **ignored_too):
-        self.tags = self._make_tags()
+        self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
@@ -155,10 +151,24 @@ class Branch(object):
         The default implementation returns False if this branch has no tags,
         and True the rest of the time.  Subclasses may override this.
         """
-        return self.tags.supports_tags() and self.tags.get_tag_dict()
+        return self.supports_tags() and self.tags.get_tag_dict()
 
     def get_config(self):
         return BranchConfig(self)
+
+    def _get_tags_bytes(self):
+        """Get the bytes of a serialised tags dict.
+
+        Note that not all branches support tags, nor do all use the same tags
+        logic: this method is specific to BasicTags. Other tag implementations
+        may use the same method name and behave differently, safely, because
+        of the double-dispatch via
+        format.make_tags->tags_instance->get_tags_dict.
+
+        :return: The bytes of the tags file.
+        :seealso: Branch._set_tags_bytes.
+        """
+        return self._transport.get_bytes('tags')
 
     def _get_nick(self, local=False, possible_transports=None):
         config = self.get_config()
@@ -464,9 +474,7 @@ class Branch(object):
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
         :param pb: An optional progress bar to use.
-
-        Returns the copied revision count and the failed revisions in a tuple:
-        (copied, failures).
+        :return: None
         """
         if self.base == from_branch.base:
             return (0, [])
@@ -566,6 +574,14 @@ class Branch(object):
             stacking.
         """
         raise NotImplementedError(self.set_stacked_on_url)
+
+    def _set_tags_bytes(self, bytes):
+        """Mirror method for _get_tags_bytes.
+
+        :seealso: Branch._get_tags_bytes.
+        """
+        return _run_with_write_locked_target(self, self._transport.put_bytes,
+            'tags', bytes)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -708,6 +724,20 @@ class Branch(object):
         return InterBranch.get(other, self).update_revisions(stop_revision,
             overwrite, graph)
 
+    def import_last_revision_info(self, source_repo, revno, revid):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to
+        the master branch first before updating the tip of the local branch.
+
+        :param source_repo: Source repository to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        """
+        if not self.repository.has_same_location(source_repo):
+            self.repository.fetch(source_repo, revision_id=revid)
+        self.set_last_revision_info(revno, revid)
+
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
@@ -756,7 +786,20 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        raise NotImplementedError(self.get_parent)
+        parent = self._get_parent_location()
+        if parent is None:
+            return parent
+        # This is an old-format absolute path to a local branch
+        # turn it into a url
+        if parent.startswith('/'):
+            parent = urlutils.local_path_to_url(parent.decode('utf8'))
+        try:
+            return urlutils.join(self.base[:-1], parent)
+        except errors.InvalidURLJoin, e:
+            raise errors.InaccessibleParent(parent, self.base)
+
+    def _get_parent_location(self):
+        raise NotImplementedError(self._get_parent_location)
 
     def _set_config_location(self, name, url, config=None,
                              make_relative=False):
@@ -878,7 +921,7 @@ class Branch(object):
             raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None):
+    def clone(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -888,11 +931,13 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 
     @needs_read_lock
-    def sprout(self, to_bzrdir, revision_id=None):
+    def sprout(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Create a new line of development from the branch, into to_bzrdir.
 
         to_bzrdir controls the branch format.
@@ -901,6 +946,8 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -1251,6 +1298,20 @@ class BranchFormat(object):
         """
         return True
 
+    def make_tags(self, branch):
+        """Create a tags object for branch.
+
+        This method is on BranchFormat, because BranchFormats are reflected
+        over the wire via network_name(), whereas full Branch instances require
+        multiple VFS method calls to operate at all.
+
+        The default implementation returns a disabled-tags instance.
+
+        Note that it is normal for branch to be a RemoteBranch when using tags
+        on a RemoteBranch.
+        """
+        return DisabledTags(branch)
+
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
 
@@ -1273,8 +1334,9 @@ class BranchFormat(object):
     def register_format(klass, format):
         """Register a metadir format."""
         klass._formats[format.get_format_string()] = format
-        # Metadir formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format)
+        # Metadir formats have a network name of their format string, and get
+        # registered as class factories.
+        network_format_registry.register(format.get_format_string(), format.__class__)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1310,75 +1372,66 @@ class BranchHooks(Hooks):
         notified.
         """
         Hooks.__init__(self)
-        # Introduced in 0.15:
-        # invoked whenever the revision history has been set
-        # with set_revision_history. The api signature is
-        # (branch, revision_history), and the branch will
-        # be write-locked.
-        self['set_rh'] = []
-        # Invoked after a branch is opened. The api signature is (branch).
-        self['open'] = []
-        # invoked after a push operation completes.
-        # the api signature is
-        # (push_result)
-        # containing the members
-        # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local target branch or None, master is the target
-        # master branch, and the rest should be self explanatory. The source
-        # is read locked and the target branches write locked. Source will
-        # be the local low-latency branch.
-        self['post_push'] = []
-        # invoked after a pull operation completes.
-        # the api signature is
-        # (pull_result)
-        # containing the members
-        # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local branch or None, master is the target
-        # master branch, and the rest should be self explanatory. The source
-        # is read locked and the target branches write locked. The local
-        # branch is the low-latency branch.
-        self['post_pull'] = []
-        # invoked before a commit operation takes place.
-        # the api signature is
-        # (local, master, old_revno, old_revid, future_revno, future_revid,
-        #  tree_delta, future_tree).
-        # old_revid is NULL_REVISION for the first commit to a branch
-        # tree_delta is a TreeDelta object describing changes from the basis
-        # revision, hooks MUST NOT modify this delta
-        # future_tree is an in-memory tree obtained from
-        # CommitBuilder.revision_tree() and hooks MUST NOT modify this tree
-        self['pre_commit'] = []
-        # invoked after a commit operation completes.
-        # the api signature is
-        # (local, master, old_revno, old_revid, new_revno, new_revid)
-        # old_revid is NULL_REVISION for the first commit to a branch.
-        self['post_commit'] = []
-        # invoked after a uncommit operation completes.
-        # the api signature is
-        # (local, master, old_revno, old_revid, new_revno, new_revid) where
-        # local is the local branch or None, master is the target branch,
-        # and an empty branch recieves new_revno of 0, new_revid of None.
-        self['post_uncommit'] = []
-        # Introduced in 1.6
-        # Invoked before the tip of a branch changes.
-        # the api signature is
-        # (params) where params is a ChangeBranchTipParams with the members
-        # (branch, old_revno, new_revno, old_revid, new_revid)
-        self['pre_change_branch_tip'] = []
-        # Introduced in 1.4
-        # Invoked after the tip of a branch changes.
-        # the api signature is
-        # (params) where params is a ChangeBranchTipParams with the members
-        # (branch, old_revno, new_revno, old_revid, new_revid)
-        self['post_change_branch_tip'] = []
-        # Introduced in 1.9
-        # Invoked when a stacked branch activates its fallback locations and
-        # allows the transformation of the url of said location.
-        # the api signature is
-        # (branch, url) where branch is the branch having its fallback
-        # location activated and url is the url for the fallback location.
-        # The hook should return a url.
-        self['transform_fallback_location'] = []
+        self.create_hook(HookPoint('set_rh',
+            "Invoked whenever the revision history has been set via "
+            "set_revision_history. The api signature is (branch, "
+            "revision_history), and the branch will be write-locked. "
+            "The set_rh hook can be expensive for bzr to trigger, a better "
+            "hook to use is Branch.post_change_branch_tip.", (0, 15), None))
+        self.create_hook(HookPoint('open',
+            "Called with the Branch object that has been opened after a "
+            "branch is opened.", (1, 8), None))
+        self.create_hook(HookPoint('post_push',
+            "Called after a push operation completes. post_push is called "
+            "with a bzrlib.branch.PushResult object and only runs in the "
+            "bzr client.", (0, 15), None))
+        self.create_hook(HookPoint('post_pull',
+            "Called after a pull operation completes. post_pull is called "
+            "with a bzrlib.branch.PullResult object and only runs in the "
+            "bzr client.", (0, 15), None))
+        self.create_hook(HookPoint('pre_commit',
+            "Called after a commit is calculated but before it is is "
+            "completed. pre_commit is called with (local, master, old_revno, "
+            "old_revid, future_revno, future_revid, tree_delta, future_tree"
+            "). old_revid is NULL_REVISION for the first commit to a branch, "
+            "tree_delta is a TreeDelta object describing changes from the "
+            "basis revision. hooks MUST NOT modify this delta. "
+            " future_tree is an in-memory tree obtained from "
+            "CommitBuilder.revision_tree() and hooks MUST NOT modify this "
+            "tree.", (0,91), None))
+        self.create_hook(HookPoint('post_commit',
+            "Called in the bzr client after a commit has completed. "
+            "post_commit is called with (local, master, old_revno, old_revid, "
+            "new_revno, new_revid). old_revid is NULL_REVISION for the first "
+            "commit to a branch.", (0, 15), None))
+        self.create_hook(HookPoint('post_uncommit',
+            "Called in the bzr client after an uncommit completes. "
+            "post_uncommit is called with (local, master, old_revno, "
+            "old_revid, new_revno, new_revid) where local is the local branch "
+            "or None, master is the target branch, and an empty branch "
+            "recieves new_revno of 0, new_revid of None.", (0, 15), None))
+        self.create_hook(HookPoint('pre_change_branch_tip',
+            "Called in bzr client and server before a change to the tip of a "
+            "branch is made. pre_change_branch_tip is called with a "
+            "bzrlib.branch.ChangeBranchTipParams. Note that push, pull, "
+            "commit, uncommit will all trigger this hook.", (1, 6), None))
+        self.create_hook(HookPoint('post_change_branch_tip',
+            "Called in bzr client and server after a change to the tip of a "
+            "branch is made. post_change_branch_tip is called with a "
+            "bzrlib.branch.ChangeBranchTipParams. Note that push, pull, "
+            "commit, uncommit will all trigger this hook.", (1, 4), None))
+        self.create_hook(HookPoint('transform_fallback_location',
+            "Called when a stacked branch is activating its fallback "
+            "locations. transform_fallback_location is called with (branch, "
+            "url), and should return a new url. Returning the same url "
+            "allows it to be used as-is, returning a different one can be "
+            "used to cause the branch to stack on a closer copy of that "
+            "fallback_location. Note that the branch cannot have history "
+            "accessing methods called on it during this hook because the "
+            "fallback locations have not been activated. When there are "
+            "multiple hooks installed for transform_fallback_location, "
+            "all are called with the url returned from the previous hook."
+            "The order is however undefined.", (1, 9), None))
 
 
 # install the default hooks into the Branch class.
@@ -1579,6 +1632,11 @@ class BzrBranchFormat6(BranchFormatMetadir):
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
 
+    def make_tags(self, branch):
+        """See bzrlib.branch.BranchFormat.make_tags()."""
+        return BasicTags(branch)
+
+
 
 class BzrBranchFormat7(BranchFormatMetadir):
     """Branch format with last-revision, tags, and a stacked location pointer.
@@ -1612,6 +1670,10 @@ class BzrBranchFormat7(BranchFormatMetadir):
         super(BzrBranchFormat7, self).__init__()
         self._matchingbzrdir.repository_format = \
             RepositoryFormatKnitPack5RichRoot()
+
+    def make_tags(self, branch):
+        """See bzrlib.branch.BranchFormat.make_tags()."""
+        return BasicTags(branch)
 
     def supports_stacking(self):
         return True
@@ -1668,7 +1730,8 @@ class BranchReferenceFormat(BranchFormat):
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
-        def clone(to_bzrdir, revision_id=None):
+        def clone(to_bzrdir, revision_id=None,
+            repository_policy=None):
             """See Branch.clone()."""
             return format.initialize(to_bzrdir, a_branch)
             # cannot obey revision_id limits when cloning a reference ...
@@ -1708,7 +1771,7 @@ class BranchReferenceFormat(BranchFormat):
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
-The network name for a repository format is an identifier that can be used when
+The network name for a branch format is an identifier that can be used when
 referring to formats with smart server operations. See
 BranchFormat.network_name() for more detail.
 """
@@ -1727,7 +1790,7 @@ BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
-    _legacy_formats[0].network_name(), _legacy_formats[0])
+    _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
 class BzrBranch(Branch):
@@ -2063,20 +2126,6 @@ class BzrBranch(Branch):
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
-
-    def get_parent(self):
-        """See Branch.get_parent."""
-        parent = self._get_parent_location()
-        if parent is None:
-            return parent
-        # This is an old-format absolute path to a local branch
-        # turn it into a url
-        if parent.startswith('/'):
-            parent = urlutils.local_path_to_url(parent.decode('utf8'))
-        try:
-            return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin, e:
-            raise errors.InaccessibleParent(parent, self.base)
 
     def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.base)
@@ -2488,9 +2537,6 @@ class BzrBranch7(BzrBranch5):
         value = self.get_config().get_user_option('append_revisions_only')
         return value == 'True'
 
-    def _make_tags(self):
-        return BasicTags(self)
-
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
@@ -2570,11 +2616,11 @@ class PullResult(_Result):
     :ivar new_revno: Revision number after pull.
     :ivar old_revid: Tip revision id before pull.
     :ivar new_revid: Tip revision id after pull.
-    :ivar source_branch: Source (local) branch object.
+    :ivar source_branch: Source (local) branch object. (read locked)
     :ivar master_branch: Master branch of the target, or the target if no
         Master
     :ivar local_branch: target branch if there is a Master, else None
-    :ivar target_branch: Target/destination branch object.
+    :ivar target_branch: Target/destination branch object. (write locked)
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
@@ -2594,13 +2640,20 @@ class PullResult(_Result):
 class BranchPushResult(_Result):
     """Result of a Branch.push operation.
 
-    :ivar old_revno: Revision number before push.
-    :ivar new_revno: Revision number after push.
-    :ivar old_revid: Tip revision id before push.
-    :ivar new_revid: Tip revision id after push.
-    :ivar source_branch: Source branch object.
-    :ivar master_branch: Master branch of the target, or None.
-    :ivar target_branch: Target/destination branch object.
+    :ivar old_revno: Revision number (eg 10) of the target before push.
+    :ivar new_revno: Revision number (eg 12) of the target after push.
+    :ivar old_revid: Tip revision id (eg joe@foo.com-1234234-aoeua34) of target
+        before the push.
+    :ivar new_revid: Tip revision id (eg joe@foo.com-5676566-boa234a) of target
+        after the push.
+    :ivar source_branch: Source branch object that the push was from. This is
+        read locked, and generally is a local (and thus low latency) branch.
+    :ivar master_branch: If target is a bound branch, the master branch of
+        target, or target itself. Always write locked.
+    :ivar target_branch: The direct Branch where data is being sent (write
+        locked).
+    :ivar local_branch: If the target is a bound branch this will be the
+        target, otherwise it will be None.
     """
 
     def __int__(self):

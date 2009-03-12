@@ -59,7 +59,7 @@ from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
-from bzrlib.repofmt import knitrepo, weaverepo
+from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -432,11 +432,10 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         """The default acquisition policy should create a standalone branch."""
         my_bzrdir = self.make_bzrdir('.')
         repo_policy = my_bzrdir.determine_repository_policy()
-        repo = repo_policy.acquire_repository()
+        repo, is_new = repo_policy.acquire_repository()
         self.assertEqual(repo.bzrdir.root_transport.base,
                          my_bzrdir.root_transport.base)
         self.assertFalse(repo.is_shared())
-
 
     def test_determine_stacking_policy(self):
         parent_bzrdir = self.make_bzrdir('.')
@@ -466,6 +465,18 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         new_child = child_branch.bzrdir.clone_on_transport(new_child_transport)
         self.assertEqual(child_branch.base,
                          new_child.open_branch().get_stacked_on_url())
+
+    def test_default_stacking_with_stackable_branch_unstackable_repo(self):
+        # Make stackable source branch with an unstackable repo format.
+        source_bzrdir = self.make_bzrdir('source')
+        pack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
+        source_branch = bzrlib.branch.BzrBranchFormat7().initialize(source_bzrdir)
+        # Make a directory with a default stacking policy
+        parent_bzrdir = self.make_bzrdir('parent')
+        stacked_on = self.make_branch('parent/stacked-on', format='pack-0.92')
+        parent_bzrdir.get_config().set_default_stack_on(stacked_on.base)
+        # Clone source into directory
+        target = source_bzrdir.clone(self.get_url('parent/target'))
 
     def test_sprout_obeys_stacking_policy(self):
         child_branch, new_child_transport = self.prepare_default_stacking()
@@ -741,15 +752,20 @@ class ChrootedTests(TestCaseWithTransport):
                           transport)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1', format='dirstate-with-subtree')
+        tree = self.make_branch_and_tree('tree1',
+                                         format='dirstate-with-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
             format='dirstate-with-subtree')
+        sub_tree.set_root_id('subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
-        tree.bzrdir.sprout('tree2')
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.failUnlessExists('tree2/subtree/file')
+        self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""
@@ -1228,10 +1244,15 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
         return _TestBzrDirFormat()
 
 
+class _TestBranchFormat(bzrlib.branch.BranchFormat):
+    """Test Branch format for TestBzrDirSprout."""
+
+
 class _TestBranch(bzrlib.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
     def __init__(self, *args, **kwargs):
+        self._format = _TestBranchFormat()
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
         self._parent = None

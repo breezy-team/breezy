@@ -1534,19 +1534,19 @@ class NetworkRecordStream(object):
 def fulltext_network_to_record(kind, bytes, line_end):
     """Convert a network fulltext record to record."""
     meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
-    record_meta = record_bytes[line_end+4:line_end+4+meta_len]
+    record_meta = bytes[line_end+4:line_end+4+meta_len]
     key, parents = bencode.bdecode_as_tuple(record_meta)
     if parents == 'nil':
         parents = None
-    fulltext = record_bytes[line_end+4+meta_len:]
-    return FulltextContentFactory(key, parents, None, fulltext)
+    fulltext = bytes[line_end+4+meta_len:]
+    return [FulltextContentFactory(key, parents, None, fulltext)]
 
 
 def _length_prefix(bytes):
     return struct.pack('!L', len(bytes))
 
 
-def record_to_fulltext_bytes(self, record):
+def record_to_fulltext_bytes(record):
     if record.parents is None:
         parents = 'nil'
     else:
@@ -1555,3 +1555,31 @@ def record_to_fulltext_bytes(self, record):
     record_content = record.get_bytes_as('fulltext')
     return "fulltext\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
+
+
+def sort_groupcompress(parent_map):
+    """Sort and group the keys in parent_map into groupcompress order.
+
+    groupcompress is defined (currently) as reverse-topological order, grouped
+    by the key prefix.
+
+    :return: A sorted-list of keys
+    """
+    # gc-optimal ordering is approximately reverse topological,
+    # properly grouped by file-id.
+    per_prefix_map = {}
+    for item in parent_map.iteritems():
+        key = item[0]
+        if isinstance(key, str) or len(key) == 1:
+            prefix = ''
+        else:
+            prefix = key[0]
+        try:
+            per_prefix_map[prefix].append(item)
+        except KeyError:
+            per_prefix_map[prefix] = [item]
+
+    present_keys = []
+    for prefix in sorted(per_prefix_map):
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
+    return present_keys

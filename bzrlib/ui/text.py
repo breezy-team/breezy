@@ -91,7 +91,10 @@ class TextUIFactory(CLIUIFactory):
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
-        if task != self._task_stack[-1]:
+        if not self._task_stack:
+            warnings.warn("%r updated but no tasks are active" %
+                (task,))
+        elif task != self._task_stack[-1]:
             warnings.warn("%r is not the top progress task %r" %
                 (task, self._task_stack[-1]))
         self._progress_view.show_progress(task)
@@ -143,7 +146,12 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if (self._last_task is not None) and self._last_task.show_bar:
+        if (self._last_task is None) or self._last_task.show_bar:
+            # If there's no task object, we show space for the bar anyhow.
+            # That's because most invocations of bzr will end showing progress
+            # at some point, though perhaps only after doing some initial IO.
+            # It looks better to draw the progress bar initially rather than
+            # to have what looks like an incomplete progress bar.
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
             f = self._task_fraction or 0
@@ -152,7 +160,8 @@ class TextProgressView(object):
             markers = int(round(float(cols) * f)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
-        elif (self._last_task is None) or self._last_task.show_spinner:
+        elif self._last_task.show_spinner:
+            # The last task wanted just a spinner, no bar
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
             return spin_str + ' '

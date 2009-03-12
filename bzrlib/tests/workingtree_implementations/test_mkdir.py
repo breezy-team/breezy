@@ -24,11 +24,15 @@ class TestMkdir(TestCaseWithWorkingTree):
 
     def test_mkdir_no_id(self):
         t = self.make_branch_and_tree('t1')
+        t.lock_write()
+        self.addCleanup(t.unlock)
         file_id = t.mkdir('path')
         self.assertEqual('directory', t.kind(file_id))
 
     def test_mkdir_with_id(self):
         t = self.make_branch_and_tree('t1')
+        t.lock_write()
+        self.addCleanup(t.unlock)
         file_id = t.mkdir('path', 'my-id')
         self.assertEqual('my-id', file_id)
         self.assertEqual('directory', t.kind(file_id))

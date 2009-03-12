@@ -20,8 +20,18 @@ import sys
 import os
 
 from bzrlib import osutils, urlutils
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    multiply_tests,
+    )
+from bzrlib.tests.EncodingAdapter import encoding_scenarios
 from bzrlib.trace import mutter, note
+
+
+def load_tests(standard_tests, module, loader):
+    return multiply_tests(standard_tests, encoding_scenarios,
+        loader.suiteClass())
 
 
 class TestNonAscii(TestCaseWithTransport):

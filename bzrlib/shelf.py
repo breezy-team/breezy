@@ -43,13 +43,21 @@ class ShelfCreator(object):
         """
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
-        self.target_tree = target_tree
-        self.shelf_transform = transform.TransformPreview(self.target_tree)
-        self.renames = {}
-        self.creation = {}
-        self.deletion = {}
-        self.iter_changes = work_tree.iter_changes(self.target_tree,
-                                                   specific_files=file_list)
+        try:
+            self.target_tree = target_tree
+            self.shelf_transform = transform.TransformPreview(self.target_tree)
+            try:
+                self.renames = {}
+                self.creation = {}
+                self.deletion = {}
+                self.iter_changes = work_tree.iter_changes(
+                    self.target_tree, specific_files=file_list)
+            except:
+                self.shelf_transform.finalize()
+                raise
+        except:
+            self.work_transform.finalize()
+            raise
 
     def iter_shelvable(self):
         """Iterable of tuples describing shelvable changes.
@@ -264,17 +272,13 @@ class Unshelver(object):
         tt.deserialize(records)
         return klass(tree, base_tree, tt, metadata.get('message'))
 
-    def make_merger(self):
+    def make_merger(self, task=None):
         """Return a merger that can unshelve the changes."""
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            target_tree = self.transform.get_preview_tree()
-            merger = merge.Merger.from_uncommitted(self.tree, target_tree, pb,
-                                                   self.base_tree)
-            merger.merge_type = merge.Merge3Merger
-            return merger
-        finally:
-            pb.finished()
+        target_tree = self.transform.get_preview_tree()
+        merger = merge.Merger.from_uncommitted(self.tree, target_tree,
+            task, self.base_tree)
+        merger.merge_type = merge.Merge3Merger
+        return merger
 
     def finalize(self):
         """Release all resources held by this Unshelver."""

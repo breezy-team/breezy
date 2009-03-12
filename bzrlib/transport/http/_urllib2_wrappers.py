@@ -105,12 +105,8 @@ class _ReportingSocket(object):
         self.sock = sock
         self._report_activity = report_activity
 
-    def send(self, s, *args):
-        self.sock.send(s, *args)
-        self._report_activity(len(s), 'write')
-
     def sendall(self, s, *args):
-        self.sock.send(s, *args)
+        self.sock.sendall(s, *args)
         self._report_activity(len(s), 'write')
 
     def recv(self, *args):
@@ -983,6 +979,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     _max_retry = 3
     """We don't want to retry authenticating endlessly"""
 
+    requires_username = True
+    """Whether the auth mechanism requires a username."""
+
     # The following attributes should be defined by daughter
     # classes:
     # - auth_required_header:  the header received from the server
@@ -993,6 +992,22 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # authentications so we initialize to None to indicate that we aren't
         # in such a cycle by default.
         self._retry_count = None
+
+    def _parse_auth_header(self, server_header):
+        """Parse the authentication header.
+
+        :param server_header: The value of the header sent by the server
+            describing the authenticaion request.
+
+        :return: A tuple (scheme, remainder) scheme being the first word in the
+            given header (lower cased), remainder may be None.
+        """
+        try:
+            scheme, remainder = server_header.split(None, 1)
+        except ValueError:
+            scheme = server_header
+            remainder = None
+        return (scheme.lower(), remainder)
 
     def update_auth(self, auth, key, value):
         """Update a value in auth marking the auth as modified if needed"""
@@ -1034,7 +1049,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # We already tried that, give up
                 return None
 
-            if auth.get('user', None) is None:
+            if self.requires_username and auth.get('user', None) is None:
                 # Without a known user, we can't authenticate
                 return None
 
@@ -1158,8 +1173,10 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 
     handler_order = 480
 
+    requires_username = False
+
     def auth_match(self, header, auth):
-        scheme = header.lower()
+        scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'negotiate':
             return False
         self.update_auth(auth, 'scheme', scheme)
@@ -1209,8 +1226,7 @@ class BasicAuthHandler(AbstractAuthHandler):
         return auth_header
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
-        scheme = scheme.lower()
+        scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'basic':
             return False
 
@@ -1257,7 +1273,7 @@ def get_new_cnonce(nonce, nonce_count):
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
 
-    # Before basic as digest is a bit more secure
+    # Before basic as digest is a bit more secure and should be preferred
     handler_order = 490
 
     def auth_params_reusable(self, auth):
@@ -1267,8 +1283,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         return auth.get('scheme', None) == 'digest'
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
-        scheme = scheme.lower()
+        scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'digest':
             return False
 

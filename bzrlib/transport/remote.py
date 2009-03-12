@@ -90,14 +90,17 @@ class RemoteTransport(transport.ConnectedTransport):
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
-        super(RemoteTransport, self).__init__(url,
-                                              _from_transport=_from_transport)
+        super(RemoteTransport, self).__init__(
+            url, _from_transport=_from_transport)
 
         # The medium is the connection, except when we need to share it with
         # other objects (RemoteBzrDir, RemoteRepository etc). In these cases
         # what we want to share is really the shared connection.
 
-        if _from_transport is None:
+        if (_from_transport is not None
+            and isinstance(_from_transport, RemoteTransport)):
+            _client = _from_transport._client
+        elif _from_transport is None:
             # If no _from_transport is specified, we need to intialize the
             # shared medium.
             credentials = None
@@ -132,6 +135,14 @@ class RemoteTransport(transport.ConnectedTransport):
         """
         # No credentials
         return None, None
+
+    def _report_activity(self, bytes, direction):
+        """See Transport._report_activity.
+
+        Does nothing; the smart medium will report activity triggered by a
+        RemoteTransport.
+        """
+        pass
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""

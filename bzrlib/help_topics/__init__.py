@@ -318,6 +318,8 @@ development.
 -Dmerge           Emit information for debugging merges.
 -Dpack            Emit information about pack operations.
 -Dsftp            Trace SFTP internals.
+
+These can also be set in the debug_flags configuration variable.
 """
 
 _standard_options = \
@@ -734,16 +736,18 @@ topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+topic_registry.register_lazy('hooks', 'bzrlib.hooks', 'hooks_help_text',
+                        'Points at which custom processing can be added')
 
-# Load some of the help topics from files
+# Load some of the help topics from files. Note that topics which reproduce API
+# details will tend to skew (quickly usually!) so please seek other solutions
+# for such things.
 topic_registry.register('authentication', _load_from_file,
                         'Information on configuring authentication')
 topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
 topic_registry.register('conflicts', _load_from_file,
                         'Types of conflicts and what to do about them')
-topic_registry.register('hooks', _load_from_file,
-                        'Points at which custom processing can be added')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
 

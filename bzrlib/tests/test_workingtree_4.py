@@ -592,6 +592,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         revid = tree.commit('a commit')
         # tree's dirstate should now have a valid stat entry for foo.
         tree.lock_read()
+        self.addCleanup(tree.unlock)
         entry = tree._get_entry(path='foo')
         expected_sha1 = osutils.sha_file_by_name('foo')
         self.assertEqual(expected_sha1, entry[1][0][1])
