@@ -28,6 +28,7 @@ from bzrlib import (
     add,
     bzrdir,
     hooks,
+    rename_map,
     symbol_versioning,
     )
 from bzrlib.osutils import dirname
@@ -240,13 +241,7 @@ class MutableTree(tree.Tree):
         basis = self.basis_tree()
         basis.lock_read()
         try:
-            def update_line_pairs(line_pairs, key, input):
-                lines = input.readlines()
-                line_pair_set = set()
-                for n in range(len(lines) - 1):
-                    line_pair_set.add(lines[n:n+1])
-                line_pairs[key] = line_pair_set
-            iterator = self._iter_changes(basis, want_unversioned=True)
+            iterator = self.iter_changes(basis, want_unversioned=True)
             for (file_id, paths, changed_content, versioned, parent, name,
                  kind, executable) in iterator:
                 if kind[1] is None and versioned[1]:
@@ -257,26 +252,12 @@ class MutableTree(tree.Tree):
                         pass
                 if versioned == (False, False) and kind[1] == 'file':
                     candidate_files.add(paths[1])
-            old_line_pairs = {}
-            for file_id, bytes in basis.iter_files_bytes([f, f] for f in
-                                                         missing_files):
-                contents = StringIO()
-                contents.writelines(bytes)
-                contents.seek(0)
-                update_line_pairs(old_line_pairs, file_id, contents)
-            new_line_pairs = {}
-            for path in candidate_files:
-                contents = self.get_file(None, path)
-                update_line_pairs(new_line_pairs, path, contents)
-            close_list = []
-            for file_id, id_pairs in old_line_pairs.iteritems():
-                for path, path_pairs in new_line_pairs.iteritems():
-                    common = id_pairs.intersection(path_pairs)
-                    combined_len = (len(id_pairs) + len(path_pairs))
-                    import pdb; pdb.set_trace()
-                    closeness = 2.0 * len(common) / combined_len
-                    close_list.append((closeness, path, path))
-            close_list.sort(reverse=True)
+            rn = rename_map.RenameMap()
+            rn.add_file_edge_hashes(basis, missing_files)
+            matches = rn.file_match(self, candidate_files)
+            self.unversion(matches.values())
+            for path, file_id in sorted(matches.items()):
+                self.add(path, file_id)
         finally:
             basis.unlock()
 
