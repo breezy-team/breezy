@@ -1003,15 +1003,15 @@ class UnlockableTransport(LockError):
 
 class LockContention(LockError):
 
-    _fmt = 'Could not acquire lock "%(lock)s": %(message)s'
+    _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
     # TODO: show full url for lock, combining the transport and relative
     # bits?
 
     internal_error = False
 
-    def __init__(self, lock, message=''):
+    def __init__(self, lock, msg=''):
         self.lock = lock
-        self.message = message
+        self.msg = msg
 
 
 class LockBroken(LockError):
