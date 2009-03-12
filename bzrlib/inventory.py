@@ -771,7 +771,13 @@ class Inventory(object):
         self.revision_id = revision_id
 
     def __repr__(self):
-        return "<Inventory object at %x, contents=%r>" % (id(self), self._byid)
+        # More than one page of ouput is not useful anymore to debug
+        max_len = 2048
+        closing = '...}'
+        contents = repr(self._byid)
+        if len(contents) > max_len:
+            contents = contents[:(max_len-len(closing))] + closing
+        return "<Inventory object at %x, contents=%r>" % (id(self), contents)
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
