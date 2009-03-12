@@ -1605,7 +1605,7 @@ class Repository(object):
         batch_size = 10 # should be ~150MB on a 55K path tree
         batch_count = len(revision_order) / batch_size + 1
         processed_texts = 0
-        pb.update("Calculating text parents.", processed_texts, text_count)
+        pb.update("Calculating text parents", processed_texts, text_count)
         for offset in xrange(batch_count):
             to_query = revision_order[offset * batch_size:(offset + 1) *
                 batch_size]
@@ -1615,7 +1615,7 @@ class Repository(object):
                 revision_id = rev_tree.get_revision_id()
                 parent_ids = ancestors[revision_id]
                 for text_key in revision_keys[revision_id]:
-                    pb.update("Calculating text parents.", processed_texts)
+                    pb.update("Calculating text parents", processed_texts)
                     processed_texts += 1
                     candidate_parents = []
                     for parent_id in parent_ids:

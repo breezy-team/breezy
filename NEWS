@@ -14,6 +14,8 @@ IN DEVELOPMENT
       must now be explicitly added tree references.  At the commandline, use
       join --reference instead of add.  (Aaron Bentley)
 
+  NEW FEATURES:
+
   IMPROVEMENTS:
 
     * ``bzr ignore`` gives a more informative message when existing
@@ -41,6 +43,9 @@ IN DEVELOPMENT
     * New sort order for ``get_record_stream`` ``groupcompress`` which
       sorts optimally for use with groupcompress compressors. (John Arbash
       Meinel, Robert Collins)
+
+  INTERNALS:
+
 
 bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
 ------------------------------------------------
@@ -152,6 +157,9 @@ and Stacked Branches should both be much faster over remote connections.
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
 
+    * Fixed incorrect "Source format does not support stacking" warning
+      when pushing to a smart server.  (Andrew Bennetts, #334114)
+      
     * Fixed "sprout() got an unexpected keyword argument 'source_branch'"
       error branching from old repositories.
       (Martin Pool, #321695)
