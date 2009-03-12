@@ -207,11 +207,10 @@ class TextProgressView(object):
         :param task: The top task object; its parents are also included 
             by following links.
         """
+        must_update = task is not self._last_task
         self._last_task = task
-        # XXX: Possibly should force update if something important has changed
-        # (like a new task) even if the last update was recent?
         now = time.time()
-        if now < self._last_repaint + 0.1:
+        if (not must_update) and (now < self._last_repaint + 0.1):
             return
         if now > self._transport_update_time + 10:
             # no recent activity; expire it

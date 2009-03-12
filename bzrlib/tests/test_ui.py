@@ -288,13 +288,13 @@ class TestTextProgressView(TestCase):
         # so we're in the first half of the main task, and half way through
         # that
         self.assertEqual(
-'[####-               ] reticulating splines:stage2 1/2'
+r'[####\               ] reticulating splines:stage2 1/2'
             , uif._progress_view._render_line())
         # if the nested task is complete, then we're all the way through the
         # first half of the overall work
         task2.update('stage2', 2, 2)
         self.assertEqual(
-r'[#########\          ] reticulating splines:stage2 2/2'
+r'[#########|          ] reticulating splines:stage2 2/2'
             , uif._progress_view._render_line())
 
     def test_render_progress_sub_nested(self):
@@ -310,6 +310,6 @@ r'[#########\          ] reticulating splines:stage2 2/2'
         # progress indication, just a label; and the bottom one is half done,
         # so the overall fraction is 1/4
         self.assertEqual(
-            r'[####-               ] a:b:c 1/2'
+            r'[####|               ] a:b:c 1/2'
             , uif._progress_view._render_line())
 
