@@ -2245,6 +2245,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
+    # Packs are not confused by ghosts.
+    supports_ghosts = True
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
     # What index classes to use
