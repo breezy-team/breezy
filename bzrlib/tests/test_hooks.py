@@ -16,10 +16,13 @@
 
 """Tests for the core Hooks logic."""
 
-from bzrlib import errors
+from bzrlib import branch, errors
 from bzrlib.hooks import (
     HookPoint,
     Hooks,
+    known_hooks,
+    known_hooks_key_to_object,
+    known_hooks_key_to_parent_and_attribute,
     )
 from bzrlib.errors import (
     UnknownHook,
@@ -180,3 +183,33 @@ class TestHook(TestCase):
         self.assertEqual(
             '<HookPoint(foo), callbacks=[%s(my callback)]>' %
             callback_repr, repr(hook))
+
+
+class TestHookRegistry(TestCase):
+
+    def test_items_are_reasonable_keys(self):
+        # All the items in the known_hooks registry need to map from
+        # (module_name, member_name) tuples to the callable used to get an
+        # empty Hooks of for that attribute. This is used to support the test
+        # suite which needs to generate empty hooks (and HookPoints) to ensure
+        # isolation and prevent tests failing spuriously.
+        for key, factory in known_hooks.items():
+            self.assertTrue(callable(factory),
+                "The factory(%r) for %r is not callable" % (factory, key))
+            obj = known_hooks_key_to_object(key)
+            self.assertIsInstance(obj, Hooks)
+            new_hooks = factory()
+            self.assertIsInstance(obj, Hooks)
+            self.assertEqual(type(obj), type(new_hooks))
+
+    def test_known_hooks_key_to_object(self):
+        self.assertIs(branch.Branch.hooks,
+            known_hooks_key_to_object(('bzrlib.branch', 'Branch.hooks')))
+
+    def test_known_hooks_key_to_parent_and_attribute(self):
+        self.assertEqual((branch.Branch, 'hooks'),
+            known_hooks_key_to_parent_and_attribute(
+            ('bzrlib.branch', 'Branch.hooks')))
+        self.assertEqual((branch, 'Branch'),
+            known_hooks_key_to_parent_and_attribute(
+            ('bzrlib.branch', 'Branch')))

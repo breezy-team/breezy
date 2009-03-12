@@ -50,6 +50,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * All bzr ``Hooks`` classes are now registered in
+      ``bzrlib.hooks.known_hooks``. This removes the separate list from
+      ``bzrlib.tests`` and ensures that all hooks registered there are
+      correctly isolated by the test suite (previously
+      ``MutableTreeHooks`` were not being isolated correctly).
+      (Robert Collins)
+
     * ``bzr add`` no longer prints ``add completed`` on success. Failure
       still prints an error message. (Robert Collins)
 

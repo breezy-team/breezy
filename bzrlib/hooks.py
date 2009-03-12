@@ -17,6 +17,7 @@
 
 """Support for plugin hooking logic."""
 from bzrlib.lazy_import import lazy_import
+from bzrlib import registry
 from bzrlib.symbol_versioning import deprecated_method, one_five
 lazy_import(globals(), """
 import textwrap
@@ -26,6 +27,46 @@ from bzrlib import (
         errors,
         )
 """)
+
+
+known_hooks = registry.Registry()
+known_hooks.register_lazy(('bzrlib.branch', 'Branch.hooks'), 'bzrlib.branch',
+    'BranchHooks')
+known_hooks.register_lazy(('bzrlib.commands', 'Command.hooks'),
+    'bzrlib.commands', 'CommandHooks')
+known_hooks.register_lazy(('bzrlib.mutabletree', 'MutableTree.hooks'),
+    'bzrlib.mutabletree', 'MutableTreeHooks')
+known_hooks.register_lazy(('bzrlib.smart.client', '_SmartClient.hooks'),
+    'bzrlib.smart.client', 'SmartClientHooks')
+known_hooks.register_lazy(('bzrlib.smart.server', 'SmartTCPServer.hooks'),
+    'bzrlib.smart.server', 'SmartServerHooks')
+
+
+def known_hooks_key_to_object((module_name, member_name)):
+    """Convert a known_hooks key to a object.
+
+    :param key: A tuple (module_name, member_name) as found in the keys of
+        the known_hooks registry.
+    :return: The object this specifies.
+    """
+    return registry._LazyObjectGetter(module_name, member_name).get_obj()
+
+
+def known_hooks_key_to_parent_and_attribute((module_name, member_name)):
+    """Convert a known_hooks key to a object.
+
+    :param key: A tuple (module_name, member_name) as found in the keys of
+        the known_hooks registry.
+    :return: The object this specifies.
+    """
+    member_list = member_name.rsplit('.', 1)
+    if len(member_list) == 2:
+        parent_name, attribute = member_list
+    else:
+        parent_name = None
+        attribute = member_name
+    parent = known_hooks_key_to_object((module_name, parent_name))
+    return parent, attribute
 
 
 class Hooks(dict):
