@@ -43,16 +43,21 @@ class ShelfCreator(object):
         """
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
-        self.target_tree = target_tree
-        self.shelf_transform = transform.TransformPreview(self.target_tree)
-        self.renames = {}
-        self.creation = {}
-        self.deletion = {}
         try:
-            self.iter_changes = work_tree.iter_changes(
-                self.target_tree, specific_files=file_list)
-        finally:
-            self.finalize()
+            self.target_tree = target_tree
+            self.shelf_transform = transform.TransformPreview(self.target_tree)
+            try:
+                self.renames = {}
+                self.creation = {}
+                self.deletion = {}
+                self.iter_changes = work_tree.iter_changes(
+                    self.target_tree, specific_files=file_list)
+            except:
+                self.shelf_transform.finalize()
+                raise
+        except:
+            self.work_transform.finalize()
+            raise
 
     def iter_shelvable(self):
         """Iterable of tuples describing shelvable changes.
