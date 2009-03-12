@@ -278,8 +278,8 @@ class TestTextProgressView(TestCase):
 '\r[####/               ] reticulating splines 5/20                               \r'
             , out.getvalue())
 
-    def test_render_progress_easy(self):
-        """Just one task and one quarter done"""
+    def test_render_progress_nested(self):
+        """Tasks proportionally contribute to overall progress"""
         out, uif = self._make_factory()
         task = uif.nested_progress_bar()
         task.update('reticulating splines', 0, 2)
@@ -290,3 +290,26 @@ class TestTextProgressView(TestCase):
         self.assertEqual(
 '[####-               ] reticulating splines:stage2 1/2'
             , uif._progress_view._render_line())
+        # if the nested task is complete, then we're all the way through the
+        # first half of the overall work
+        task2.update('stage2', 2, 2)
+        self.assertEqual(
+r'[#########\          ] reticulating splines:stage2 2/2'
+            , uif._progress_view._render_line())
+
+    def test_render_progress_sub_nested(self):
+        """Intermediate tasks don't mess up calculation."""
+        out, uif = self._make_factory()
+        task_a = uif.nested_progress_bar()
+        task_a.update('a', 0, 2)
+        task_b = uif.nested_progress_bar()
+        task_b.update('b')
+        task_c = uif.nested_progress_bar()
+        task_c.update('c', 1, 2)
+        # the top-level task is in its first half; the middle one has no
+        # progress indication, just a label; and the bottom one is half done,
+        # so the overall fraction is 1/4
+        self.assertEqual(
+            r'[####-               ] a:b:c 1/2'
+            , uif._progress_view._render_line())
+

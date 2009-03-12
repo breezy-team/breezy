@@ -117,7 +117,9 @@ class ProgressTask(object):
         if self.current_cnt is not None and self.total_cnt:
             own_fraction = (float(self.current_cnt) + child_fraction) / self.total_cnt
         else:
-            own_fraction = None
+            # if this task has no estimation, it just passes on directly
+            # whatever the child has measured...
+            own_fraction = child_fraction
         if self._parent_task is None:
             return own_fraction
         else:
