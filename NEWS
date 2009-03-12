@@ -153,6 +153,10 @@ and Stacked Branches should both be much faster over remote connections.
       unable to read a file in the working directory, for example because
       of a permission error.  (Martin Pool, #338653)
 
+    * ``bzr cat -r<old> <path>`` doesn't traceback anymore when <path> has a
+      file id in the working tree different from the one in revision <old>.
+      (Vincent Ladeuil, #341517, #253806)
+
     * ``bzr send`` help is more specific about how to apply merge
       directives.  (Neil Martinsen-Burrell, #253470)
 
