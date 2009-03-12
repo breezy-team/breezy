@@ -1,6 +1,12 @@
 from bzrlib.rename_map import RenameMap
 from bzrlib.tests import TestCaseWithTransport
 
+
+def myhash(val):
+    """This the hash used by RenameMap."""
+    return hash(val) % 4096
+
+
 class TestRenameMap(TestCaseWithTransport):
 
     a_lines = 'a\nb\nc\n'.splitlines(True)
@@ -10,9 +16,9 @@ class TestRenameMap(TestCaseWithTransport):
     def test_add_edge_hashes(self):
         rn = RenameMap()
         rn.add_edge_hashes(self.a_lines, 'a')
-        self.assertEqual(set(['a']), rn.edge_hashes[hash(('a\n', 'b\n'))])
-        self.assertEqual(set(['a']), rn.edge_hashes[hash(('b\n', 'c\n'))])
-        self.assertIs(None, rn.edge_hashes.get(hash(('c\n', 'd\n'))))
+        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('a\n', 'b\n'))])
+        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('b\n', 'c\n'))])
+        self.assertIs(None, rn.edge_hashes.get(myhash(('c\n', 'd\n'))))
 
     def test_add_file_edge_hashes(self):
         tree = self.make_branch_and_tree('tree')
@@ -20,9 +26,9 @@ class TestRenameMap(TestCaseWithTransport):
         tree.add('a', 'a')
         rn = RenameMap()
         rn.add_file_edge_hashes(tree, ['a'])
-        self.assertEqual(set(['a']), rn.edge_hashes[hash(('a\n', 'b\n'))])
-        self.assertEqual(set(['a']), rn.edge_hashes[hash(('b\n', 'c\n'))])
-        self.assertIs(None, rn.edge_hashes.get(hash(('c\n', 'd\n'))))
+        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('a\n', 'b\n'))])
+        self.assertEqual(set(['a']), rn.edge_hashes[myhash(('b\n', 'c\n'))])
+        self.assertIs(None, rn.edge_hashes.get(myhash(('c\n', 'd\n'))))
 
     def test_hitcounts(self):
         rn = RenameMap()
