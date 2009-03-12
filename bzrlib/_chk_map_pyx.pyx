@@ -229,7 +229,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     num_prefix_bits = 0
     next_null = <char *>memchr(prefix, c'\0', prefix_length)
     while next_null != NULL:
-        num_prefix_bits += 1
+        num_prefix_bits = num_prefix_bits + 1
         prefix_bits.append(
             PyString_FromStringAndSize(prefix_tail, next_null - prefix_tail))
         prefix_tail = next_null + 1
@@ -285,7 +285,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         i = num_prefix_bits
         PyTuple_SET_ITEM(entry_bits, i, entry)
         while next_null != last_null: # We have remaining bits
-            i += 1
+            i = i + 1
             if i > width:
                 raise ValueError("Too many bits for entry")
             entry_start = next_null + 1
