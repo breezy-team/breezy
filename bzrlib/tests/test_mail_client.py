@@ -260,4 +260,5 @@ class TestDefaultMail(tests.TestCase):
                                      basename=basename)
         dummy_client = client.client
         self.assertEqual(dummy_client.args, (to, subject, directive))
-        self.assertEqual(dummy_client.kwargs, {"basename":basename})
+        self.assertEqual(dummy_client.kwargs,
+                         {"basename": basename, 'body': None})
