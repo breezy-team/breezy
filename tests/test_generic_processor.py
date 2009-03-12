@@ -33,13 +33,11 @@ from bzrlib.plugins.fastimport.processors import (
 
 class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
+    branch_format = "pack-0.92"
+
     def get_handler(self):
-        branch = self.make_branch('.')
+        branch = self.make_branch('.', format=self.branch_format)
         handler = generic_processor.GenericProcessor(branch.bzrdir)
-        # Hack in the DeltaCommitHandler using experimental
-        # This really need to be a parameterised test instead
-        #handler = generic_processor.GenericProcessor(branch.bzrdir,
-        #    params = {'experimental': True})
         return handler, branch
 
     # FIXME: [] as a default is bad, as it is mutable, but I want
@@ -174,7 +172,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                          revtree.inventory.root.children[path].revision)
 
 
-class TestModify(TestCaseForGenericProcessor):
+class TestImportToPackModify(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
         executable=False, to_kind=None, to_content='bbb', to_executable=None):
@@ -294,7 +292,7 @@ class TestModify(TestCaseForGenericProcessor):
         self.assertExecutable(branch, revtree2, path, False)
 
 
-class TestModifyTricky(TestCaseForGenericProcessor):
+class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, path2, kind='file'):
         # Revno 1: create a file or symlink in a directory
@@ -371,7 +369,7 @@ class TestModifyTricky(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree2, path2, "bbb")
 
 
-class TestDelete(TestCaseForGenericProcessor):
+class TestImportToPackDelete(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file'):
         # Revno 1: create a file or symlink
@@ -431,7 +429,7 @@ class TestDelete(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree1, path, "aaa")
 
 
-class TestDeleteDirectory(TestCaseForGenericProcessor):
+class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
 
     def file_command_iter(self, paths, dir):
         # Revno 1: create multiple files
@@ -471,7 +469,7 @@ class TestDeleteDirectory(TestCaseForGenericProcessor):
                 ])
 
 
-class TestRename(TestCaseForGenericProcessor):
+class TestImportToPackRename(TestCaseForGenericProcessor):
 
     def get_command_iter(self, old_path, new_path):
         # Revno 1: create a file or symlink
@@ -516,7 +514,7 @@ class TestRename(TestCaseForGenericProcessor):
             expected_added=[('b',)])
 
 
-class TestRenameTricky(TestCaseForGenericProcessor):
+class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, old_path2, new_path2, kind='file'):
         # Revno 1: create two files or symlinks in a directory
@@ -600,7 +598,7 @@ class TestRenameTricky(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree2, new_path2, "bbb")
 
 
-class TestCopy(TestCaseForGenericProcessor):
+class TestImportToPackCopy(TestCaseForGenericProcessor):
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
         # Revno 1: create a file or symlink
@@ -690,7 +688,7 @@ class TestCopy(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree2, dest_path, "aaa")
 
 
-class TestFileKinds(TestCaseForGenericProcessor):
+class TestImportToPackFileKinds(TestCaseForGenericProcessor):
 
     def get_command_iter(self, path, kind, content):
         def command_list():
@@ -709,3 +707,36 @@ class TestFileKinds(TestCaseForGenericProcessor):
     def test_import_symlink(self):
         handler, branch = self.get_handler()
         handler.process(self.get_command_iter('foo', 'symlink', 'bar'))
+
+
+### TODO: Parameterise tests rather than below hack
+
+try:
+    from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment5Hash255
+
+    class TestImportToChkModify(TestImportToPackModify):
+        branch_format = "gc-chk255-big"
+
+    class TestImportToChkModifyTricky(TestImportToPackModifyTricky):
+        branch_format = "gc-chk255-big"
+
+    class TestImportToChkDelete(TestImportToPackDelete):
+        branch_format = "gc-chk255-big"
+
+    class TestImportToChkDeleteDirectory(TestImportToPackDeleteDirectory):
+        branch_format = "gc-chk255-big"
+
+    class TestImportToChkRename(TestImportToPackRename):
+        branch_format = "gc-chk255-big"
+
+    class TestImportToChkRenameTricky(TestImportToPackRenameTricky):
+        branch_format = "gc-chk255-big"
+
+    class TestImportToChkCopy(TestImportToPackCopy):
+        branch_format = "gc-chk255-big"
+
+    class TestImportToChkFileKinds(TestImportToPackFileKinds):
+        branch_format = "gc-chk255-big"
+
+except ImportError:
+    pass
