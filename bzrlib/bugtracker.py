@@ -286,6 +286,8 @@ tracker_registry.register('generic', GenericBugTracker())
 
 FIXED = 'fixed'
 
+ALLOWED_BUG_STATUSES = set([FIXED])
+
 
 def encode_fixes_bug_urls(bug_urls):
     """Return the 'bugs' property value for a revision that fixes 'bug_urls'.
