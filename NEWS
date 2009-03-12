@@ -182,6 +182,9 @@ and Stacked Branches should both be much faster over remote connections.
     * Unshelve does not generate warnings about progress bars.
       (Aaron Bentley, #328148)
 
+    * shelve cleans up properly when unversioned files are specified.
+      (Benoît Pierre, Aaron Bentley)
+
   DOCUMENTATION:
 
     * Added ``Organizing your workspace`` to the User Guide appendices,
