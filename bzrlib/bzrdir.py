@@ -3353,7 +3353,6 @@ format_registry.register_metadir('default-rich-root',
     help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
     alias=True,
     )
 # The current format that is made on 'bzr init'.
