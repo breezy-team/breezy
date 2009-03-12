@@ -659,6 +659,26 @@ diff:
 
 """)
 
+    def test_log_show_diff_non_ascii(self):
+        # Smoke test for bug #328007 UnicodeDecodeError on 'log -p'
+        message = u'Message with \xb5'
+        body = 'Body with \xb5\n'
+        wt = self.make_branch_and_tree('.')
+        self.build_tree_contents([('foo', body)])
+        wt.add('foo')
+        wt.commit(message=message)
+        # check that command won't fail with unicode error
+        # don't care about exact output because we have other tests for this
+        out,err = self.run_bzr('log -p --long')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
+        out,err = self.run_bzr('log -p --short')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
+        out,err = self.run_bzr('log -p --line')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
+
 
 class TestLogEncodings(TestCaseInTempDir):
 
@@ -671,7 +691,7 @@ class TestLogEncodings(TestCaseInTempDir):
         'latin-1',
         'iso-8859-1',
         'cp437', # Common windows encoding
-        'cp1251', # Alexander Belchenko's windows encoding
+        'cp1251', # Russian windows encoding
         'cp1258', # Common windows encoding
     ]
     # Encodings which cannot encode mu

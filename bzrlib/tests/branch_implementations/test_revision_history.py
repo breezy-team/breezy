@@ -124,8 +124,6 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         cause the revision history to be cached.
         """
         branch, calls = self.get_instrumented_branch()
-        # Lock the branch, set the revision history, then repeatedly call
-        # revision_history.
         branch.set_revision_history([])
         branch.revision_history()
         self.assertEqual(['_gen_revision_history'], calls)
