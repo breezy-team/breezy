@@ -10,14 +10,49 @@ IN DEVELOPMENT
 
   COMPATIBILITY BREAKS:
 
+    * bzr no longer autodetects nested trees as 'tree-references'.  They
+      must now be explicitly added tree references.  At the commandline, use
+      join --reference instead of add.  (Aaron Bentley)
+
+  NEW FEATURES:
+
+  IMPROVEMENTS:
+
+    * Progress bars now show the rate of network activity for
+      ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
+    * Tildes are no longer escaped. No more %7Euser/project/branch!
+      (Jonathan Lange)
+
+  BUG FIXES:
+
+  DOCUMENTATION:
+
+    * The generated manpage now explicitly lists aliases as commands.
+      (James Westby, #336998)
+
+  API CHANGES:
+
+    * New sort order for ``get_record_stream`` ``groupcompress`` which
+      sorts optimally for use with groupcompress compressors. (John Arbash
+      Meinel, Robert Collins)
+
+  INTERNALS:
+
+
+bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
+------------------------------------------------
+This release includes bug fixes and a few performance and feature improvements.
+GNU Changelog output can now be produced by ``bzr log --format gnu-changelog``.
+Debug flags can now be set in ``~/.bazaar/bazaar.conf``. Lightweight Checkouts
+and Stacked Branches should both be much faster over remote connections.
+
+  COMPATIBILITY BREAKS:
+
     * ``bzr log --line`` now indicates which revisions are merges with
       `[merge]` after the date.  Scripts which parse the output of this
       command may need to be adjusted.
       (Neil Martinsen-Burrell)
-
-    * bzr no longer autodetects nested trees as 'tree-references'.  They
-      must now be explicitly added tree references.  At the commandline, use
-      join --reference instead of add.  (Aaron Bentley)
 
   NEW FEATURES:
 
@@ -74,9 +109,6 @@ IN DEVELOPMENT
       batches up requests into approx 5MB requests, rather than a separate
       request for each file. (John Arbash Meinel)
 
-    * Progress bars now show the rate of network activity for
-      ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
-
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
 
@@ -91,9 +123,6 @@ IN DEVELOPMENT
       expected. (Jonathan Lange, #332705)
 
     * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
-
-    * Tildes are no longer escaped. No more %7Euser/project/branch!
-      (Jonathan Lange)
 
   BUG FIXES:
 
@@ -142,6 +171,9 @@ IN DEVELOPMENT
     * ``setup.py build_ext`` now gives a proper error when an extension
       fails to build. (John Arbash Meinel)
 
+    * Symlinks to non ascii file names are now supported.
+      (Robert Collins, Vincent Ladeuil, #339055, #272444)    
+
     * Under rare circumstances (aka nobody reported a bug about it), the ftp
       transport could revert to ascii mode. It now stays in binary mode except
       when needed.
@@ -163,9 +195,6 @@ IN DEVELOPMENT
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
 
-    * The generated manpage now explicitly lists aliases as commands.
-      (James Westby, #336998)
-
   API CHANGES:
 
     * ``bzr selftest`` now fails if the bazaar sources contain trailing
@@ -183,10 +212,6 @@ IN DEVELOPMENT
 
     * MutableTree.commit now favours the "authors" argument, with the old
       "author" argument being deprecated.
-
-    * New sort order for ``get_record_stream`` ``groupcompress`` which
-      sorts optimally for use with groupcompress compressors. (John Arbash
-      Meinel, Robert Collins)
 
     * Remove deprecated EmptyTree.  (Martin Pool)
 
