@@ -130,6 +130,7 @@ class Shelver(object):
                     'Shelve %d change(s)?' % changes_shelved)):
                     if self.destroy:
                         creator.transform()
+                        trace.note('Selected changes destroyed.')
                     else:
                         shelf_id = self.manager.shelve_changes(creator,
                                                                self.message)
