@@ -82,8 +82,9 @@ Kinds:
 'a' is an absent entry: In that tree the id is not present at this path.
 'd' is a directory entry: This path in this tree is a directory with the
     current file id. There is no fingerprint for directories.
-'f' is a file entry: As for directory, but its a file. The fingerprint is a
-    sha1 value.
+'f' is a file entry: As for directory, but it's a file. The fingerprint is the
+    sha1 value of the file's canonical form, i.e. after any read filters have
+    been applied to the convenience form stored in the working tree.
 'l' is a symlink entry: As for directory, but a symlink. The fingerprint is the
     link target.
 't' is a reference to a nested subtree; the fingerprint is the referenced
@@ -262,6 +263,36 @@ else:
         # return '%X.%X' % (int(st.st_mtime), st.st_mode)
 
 
+class Sha1Provider(object):
+    """An interface for getting sha1s of a file."""
+
+    def sha1(self, abspath):
+        """Return the sha1 of a file given its absolute path."""
+        raise NotImplementedError(self.sha1)
+
+    def stat_and_sha1(self, abspath):
+        """Return the stat and sha1 of a file given its absolute path."""
+        raise NotImplementedError(self.stat_and_sha1)
+
+
+class DefaultSha1Provider(Sha1Provider):
+    """A Sha1Provider that reads directly from the filesystem."""
+
+    def sha1(self, abspath):
+        """Return the sha1 of a file given it's absolute path."""
+        return osutils.sha_file_by_name(abspath)
+
+    def stat_and_sha1(self, abspath):
+        """Return the stat and sha1 of a file given it's absolute path."""
+        file_obj = file(abspath, 'rb')
+        try:
+            statvalue = os.fstat(file_obj.fileno())
+            link_or_sha1 = osutils.sha_file(file_obj)
+        finally:
+            file_obj.close()
+        return statvalue, link_or_sha1
+
+
 class DirState(object):
     """Record directory and metadata state for fast access.
 
@@ -320,10 +351,12 @@ class DirState(object):
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path):
+    def __init__(self, path, sha1_provider=None):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
+        :param sha1_provider: an object meeting the Sha1Provider interface.
+            If None, a DefaultSha1Provider is used.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -355,10 +388,14 @@ class DirState(object):
         self._cutoff_time = None
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
+        if sha1_provider is None:
+            self._sha1_provider = DefaultSha1Provider()
+        else:
+            self._sha1_provider = sha1_provider
         if 'hashcache' in debug.debug_flags:
             self._sha1_file = self._sha1_file_and_mutter
         else:
-            self._sha1_file = osutils.sha_file_by_name
+            self._sha1_file = self._sha1_provider.sha1
         # These two attributes provide a simple cache for lookups into the
         # dirstate in-memory vectors. By probing respectively for the last
         # block, and for the next entry, we save nearly 2 bisections per path
@@ -380,7 +417,8 @@ class DirState(object):
         :param kind: The kind of the path, as a string like 'file',
             'directory', etc.
         :param stat: The output of os.lstat for the path.
-        :param fingerprint: The sha value of the file,
+        :param fingerprint: The sha value of the file's canonical form (i.e.
+            after any read filters have been applied),
             or the target of a symlink,
             or the referenced revision id for tree-references,
             or '' for directories.
@@ -1569,7 +1607,7 @@ class DirState(object):
         # when -Dhashcache is turned on, this is monkey-patched in to log
         # file reads
         trace.mutter("dirstate sha1 " + abspath)
-        return osutils.sha_file_by_name(abspath)
+        return self._sha1_provider.sha1(abspath)
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
@@ -1982,12 +2020,15 @@ class DirState(object):
         return len(self._parents) - len(self._ghosts)
 
     @staticmethod
-    def on_file(path):
+    def on_file(path, sha1_provider=None):
         """Construct a DirState on the file at path path.
 
+        :param path: The path at which the dirstate file on disk should live.
+        :param sha1_provider: an object meeting the Sha1Provider interface.
+            If None, a DefaultSha1Provider is used.
         :return: An unlocked DirState object, associated with the given path.
         """
-        result = DirState(path)
+        result = DirState(path, sha1_provider=sha1_provider)
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -2482,8 +2523,8 @@ class DirState(object):
         :param minikind: The type for the entry ('f' == 'file', 'd' ==
                 'directory'), etc.
         :param executable: Should the executable bit be set?
-        :param fingerprint: Simple fingerprint for new entry: sha1 for files,
-            referenced revision id for subtrees, etc.
+        :param fingerprint: Simple fingerprint for new entry: canonical-form
+            sha1 for files, referenced revision id for subtrees, etc.
         :param packed_stat: Packed stat value for new entry.
         :param size: Size information for new entry
         :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
@@ -2845,9 +2886,12 @@ def py_update_entry(state, entry, abspath, stat_value,
             and stat_value.st_ctime < state._cutoff_time
             and len(entry[1]) > 1
             and entry[1][1][0] != 'a'):
-                # Could check for size changes for further optimised
-                # avoidance of sha1's. However the most prominent case of
-                # over-shaing is during initial add, which this catches.
+            # Could check for size changes for further optimised
+            # avoidance of sha1's. However the most prominent case of
+            # over-shaing is during initial add, which this catches.
+            # Besides, if content filtering happens, size and sha
+            # are calculated at the same time, so checking just the size
+            # gains nothing w.r.t. performance.
             link_or_sha1 = state._sha1_file(abspath)
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
@@ -3006,12 +3050,9 @@ class ProcessEntryPython(object):
                         if target_details[2] == source_details[2]:
                             if link_or_sha1 is None:
                                 # Stat cache miss:
-                                file_obj = file(path_info[4], 'rb')
-                                try:
-                                    statvalue = os.fstat(file_obj.fileno())
-                                    link_or_sha1 = osutils.sha_file(file_obj)
-                                finally:
-                                    file_obj.close()
+                                statvalue, link_or_sha1 = \
+                                    self.sha1_provider.stat_and_sha1(
+                                    path_info[4])
                                 self.state._observed_sha1(entry, link_or_sha1,
                                     statvalue)
                             content_change = (link_or_sha1 != source_details[1])

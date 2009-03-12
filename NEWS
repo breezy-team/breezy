@@ -49,6 +49,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``DirState`` can now be passed a custom ``Sha1Provider`` object
+      enabling it to store the sha1 and stat of the canonical (post
+      content filtered) form. (Ian Clatworthy)
+
 
 bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
 ------------------------------------------------
