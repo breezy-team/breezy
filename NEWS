@@ -100,7 +100,7 @@ IN DEVELOPMENT
 
     * ``bzr cat -r<old> <path>`` doesn't traceback anymore when <path> has a
       file id in the working tree different from the one in revision <old>.
-      (Vincent Ladeuil)
+      (Vincent Ladeuil, #341517)
 
     * ``bzr send`` help is more specific about how to apply merge
       directives.  (Neil Martinsen-Burrell, #253470)
