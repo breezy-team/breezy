@@ -70,15 +70,15 @@ class TestHooks(TestCase):
         hooks.create_hook(hook2)
         self.assertEqualDiff(
             "MyHooks\n"
-            "=======\n"
+            "-------\n"
             "\n"
             "legacy\n"
-            "------\n"
+            "~~~~~~\n"
             "\n"
             "An old-style hook. For documentation see the __init__ method of 'MyHooks'\n"
             "\n"
             "post_tip_change\n"
-            "---------------\n"
+            "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.4\n"
             "Deprecated in: Not deprecated\n"
@@ -87,7 +87,7 @@ class TestHooks(TestCase):
             "ChangeBranchTipParams object.\n"
             "\n"
             "pre_tip_change\n"
-            "--------------\n"
+            "~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.6\n"
             "Deprecated in: Not deprecated\n"
@@ -158,7 +158,7 @@ class TestHook(TestCase):
             " a bzrlib.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
         self.assertEqual("post_tip_change\n"
-            "---------------\n"
+            "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 0.15\n"
             "Deprecated in: Not deprecated\n"

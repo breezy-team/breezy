@@ -35,6 +35,7 @@ from bzrlib import (
     config,
     errors,
     globbing,
+    hooks,
     log,
     merge as _mod_merge,
     merge_directive,
@@ -5340,25 +5341,23 @@ class cmd_view(Command):
 
 
 class cmd_hooks(Command):
-    """Show a branch's currently registered hooks.
-    """
+    """Show hooks."""
 
     hidden = True
-    takes_args = ['path?']
 
-    def run(self, path=None):
-        if path is None:
-            path = '.'
-        branch_hooks = Branch.open(path).hooks
-        for hook_type in branch_hooks:
-            hooks = branch_hooks[hook_type]
-            self.outf.write("%s:\n" % (hook_type,))
-            if hooks:
-                for hook in hooks:
-                    self.outf.write("  %s\n" %
-                                    (branch_hooks.get_hook_name(hook),))
-            else:
-                self.outf.write("  <no hooks installed>\n")
+    def run(self):
+        for hook_key in sorted(hooks.known_hooks.keys()):
+            some_hooks = hooks.known_hooks_key_to_object(hook_key)
+            self.outf.write("%s:\n" % type(some_hooks).__name__)
+            for hook_name, hook_point in sorted(some_hooks.items()):
+                self.outf.write("  %s:\n" % (hook_name,))
+                found_hooks = list(hook_point)
+                if found_hooks:
+                    for hook in found_hooks:
+                        self.outf.write("    %s\n" %
+                                        (some_hooks.get_hook_name(hook),))
+                else:
+                    self.outf.write("    <no hooks installed>\n")
 
 
 class cmd_shelve(Command):
