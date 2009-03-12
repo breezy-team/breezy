@@ -97,12 +97,13 @@ class RepoFetcher(object):
         self.count_total = 0
         self.file_ids_names = {}
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb.show_pct = pb.show_cnt = False
         try:
-            pb.update("Finding revisions")
+            pb.update("Finding revisions", 1, 2)
             search = self._revids_to_fetch()
             if search is None:
                 return
-            pb.update("Fetching revisions")
+            pb.update("Fetching revisions", 2, 2)
             self._fetch_everything_for_search(search)
         finally:
             pb.finished()
@@ -124,14 +125,18 @@ class RepoFetcher(object):
                 "different rich-root support")
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            pb.update("Get stream source")
             source = self.from_repository._get_source(
                 self.to_repository._format)
             stream = source.get_stream(search)
             from_format = self.from_repository._format
+            pb.update("Inserting stream")
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if missing_keys:
+                pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
+                pb.update("Inserting missing keys")
                 resume_tokens, missing_keys = self.sink.insert_stream(
                     stream, from_format, resume_tokens)
             if missing_keys:
@@ -142,6 +147,7 @@ class RepoFetcher(object):
                 raise AssertionError(
                     "second push failed to commit the fetch %r." % (
                         resume_tokens,))
+            pb.update("Finishing stream")
             self.sink.finished()
         finally:
             pb.finished()
