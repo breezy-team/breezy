@@ -172,6 +172,11 @@ class TestUpgrade(TestCaseWithTransport):
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
+    def test_upgrade_rich_root(self):
+        tree = self.make_branch_and_tree('tree', format='rich-root')
+        rev_id = tree.commit('first post')
+        upgrade('tree')
+
     def test_convert_branch5_branch6(self):
         branch = self.make_branch('branch', format='knit')
         branch.set_revision_history(['AB', 'CD'])

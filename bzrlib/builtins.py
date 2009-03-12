@@ -2902,8 +2902,6 @@ class cmd_upgrade(Command):
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        if format is None:
-            format = bzrdir.format_registry.make_bzrdir('default')
         upgrade(url, format)
 
 
