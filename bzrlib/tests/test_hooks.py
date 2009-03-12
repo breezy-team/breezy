@@ -51,7 +51,9 @@ class TestHooks(TestCase):
 
     def test_docs(self):
         """docs() should return something reasonable about the Hooks."""
-        hooks = Hooks()
+        class MyHooks(Hooks):
+            pass
+        hooks = MyHooks()
         hooks['legacy'] = []
         hook1 = HookPoint('post_tip_change',
             "Invoked after the tip of a branch changes. Called with "
@@ -63,11 +65,14 @@ class TestHooks(TestCase):
             (1, 6), None)
         hooks.create_hook(hook1)
         hooks.create_hook(hook2)
-        self.assertEqual(
+        self.assertEqualDiff(
+            "MyHooks\n"
+            "=======\n"
+            "\n"
             "legacy\n"
             "------\n"
             "\n"
-            "An old-style hook. For documentation see the __init__ method of 'Hooks'\n"
+            "An old-style hook. For documentation see the __init__ method of 'MyHooks'\n"
             "\n"
             "post_tip_change\n"
             "---------------\n"
