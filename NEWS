@@ -25,6 +25,9 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * ``bzr send`` now accepts --body to specify an initial message body.
+      (Aaron bentley)
+
     * Debug flags can now be set in ``~/.bazaar/bazaar.conf``.
       (Martin Pool)
 
