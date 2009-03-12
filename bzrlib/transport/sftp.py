@@ -406,6 +406,8 @@ class SFTPTransport(ConnectedTransport):
         """
         try:
             self._get_sftp().stat(self._remote_path(relpath))
+            # stat result is about 20 bytes, let's say
+            self._report_activity(20, 'read')
             return True
         except IOError:
             return False
@@ -416,6 +418,11 @@ class SFTPTransport(ConnectedTransport):
         :param relpath: The relative path to the file
         """
         try:
+            # FIXME: by returning the file directly, we don't pass this
+            # through to report_activity.  We could try wrapping the object
+            # before it's returned.  For readv and get_bytes it's handled in
+            # the higher-level function.
+            # -- mbp 20090126
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
@@ -612,6 +619,7 @@ class SFTPTransport(ConnectedTransport):
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
+        # progress is handled by list_dir
         queue = list(self.list_dir('.'))
         while queue:
             relpath = queue.pop(0)
@@ -628,7 +636,9 @@ class SFTPTransport(ConnectedTransport):
         else:
             local_mode = mode
         try:
+            self._report_activity(len(abspath), 'write')
             self._get_sftp().mkdir(abspath, local_mode)
+            self._report_activity(1, 'read')
             if mode is not None:
                 # chmod a dir through sftp will erase any sgid bit set
                 # on the server side.  So, if the bit mode are already
@@ -779,6 +789,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             entries = self._get_sftp().listdir(path)
+            self._report_activity(sum(map(len, entries)), 'read')
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
