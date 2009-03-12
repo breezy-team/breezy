@@ -1374,7 +1374,7 @@ class LineLogFormatter(LogFormatter):
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
 
-class ChangeLogLogFormatter(LogFormatter):
+class GnuChangelogLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
     supports_delta = True
@@ -1440,9 +1440,8 @@ log_formatter_registry.register('long', LongLogFormatter,
                                 'Detailed log format')
 log_formatter_registry.register('line', LineLogFormatter,
                                 'Log format with one line per revision')
-log_formatter_registry.register(
-    'gnu-changelog', ChangeLogLogFormatter,
-    'Format used by GNU ChangeLog files')
+log_formatter_registry.register('gnu-changelog', GnuChangelogLogFormatter,
+                                'Format used by GNU ChangeLog files')
 
 
 def register_formatter(name, formatter):
