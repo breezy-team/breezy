@@ -158,6 +158,31 @@ class GroupCompressBlock(object):
     def __len__(self):
         return self._size
 
+    def _parse_header_bytes(self, header_bytes):
+        """Parse the header part of the block."""
+        if _NO_LABELS:
+            # Don't parse the label structure if we aren't going to use it
+            return
+        lines = header_bytes.split('\n')
+        header_len = len(header_bytes)
+        del header_bytes
+        info_dict = {}
+        for line in lines:
+            if not line: #End of record
+                if not info_dict:
+                    break
+                self.add_entry(**info_dict)
+                info_dict = {}
+                continue
+            key, value = line.split(':', 1)
+            if key == 'key':
+                value = tuple(map(intern, value.split('\x00')))
+            elif key in ('start', 'length'):
+                value = int(value)
+            elif key == 'type':
+                value = intern(value)
+            info_dict[key] = value
+
     @classmethod
     def from_bytes(cls, bytes):
         out = cls()
@@ -189,25 +214,7 @@ class GroupCompressBlock(object):
         header_bytes = decomp(z_header_bytes)
         assert len(header_bytes) == header_length
         del z_header_bytes
-        lines = header_bytes.split('\n')
-        header_len = len(header_bytes)
-        del header_bytes
-        info_dict = {}
-        for line in lines:
-            if not line: #End of record
-                if not info_dict:
-                    break
-                out.add_entry(**info_dict)
-                info_dict = {}
-                continue
-            key, value = line.split(':', 1)
-            if key == 'key':
-                value = tuple(map(intern, value.split('\x00')))
-            elif key in ('start', 'length'):
-                value = int(value)
-            elif key == 'type':
-                value = intern(value)
-            info_dict[key] = value
+        out._parse_header_bytes(header_bytes)
         zcontent = bytes[pos2:]
         if zcontent:
             out._content = decomp(zcontent)
