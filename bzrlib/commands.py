@@ -141,12 +141,31 @@ def _builtin_commands():
     return r
 
 
+def all_command_names():
+    """Return a list of all command names."""
+    # to eliminate duplicates
+    names = set(builtin_command_names())
+    names.update(plugin_command_names())
+    for hook in Command.hooks['list_commands']:
+        new_names = hook(names)
+        if new_names is None:
+            raise AssertionError(
+                'hook %s returned None' % Command.hooks.get_hook_name(hook))
+        names = new_names
+    return names
+
+
 def builtin_command_names():
-    """Return list of builtin command names."""
+    """Return list of builtin command names.
+    
+    Use of all_command_names() is encouraged rather than builtin_command_names
+    and/or plugin_command_names.
+    """
     return _builtin_commands().keys()
 
 
 def plugin_command_names():
+    """Returns command names from commands registered by plugins."""
     return plugin_cmds.keys()
 
 
@@ -165,22 +184,62 @@ def get_all_cmds(plugins_override=True):
 
 
 def get_cmd_object(cmd_name, plugins_override=True):
-    """Return the canonical name and command class for a command.
+    """Return the command object for a command.
 
     plugins_override
         If true, plugin commands can override builtins.
     """
     try:
-        cmd = _get_cmd_object(cmd_name, plugins_override)
-        # Allow plugins to extend commands
-        for hook in Command.hooks['extend_command']:
-            hook(cmd)
-        return cmd
+        return _get_cmd_object(cmd_name, plugins_override)
     except KeyError:
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True):
+    """Get a command object.
+
+    :param cmd_name: The name of the command.
+    :param plugins_override: Allow plugins to override builtins.
+    :return: A Command object instance
+    :raises: KeyError if no command is found.
+    """
+    # Pre-hook command lookup logic.
+    cmd = __get_cmd_object(cmd_name, plugins_override)
+    # Allow hooks to supply/replace commands:
+    for hook in Command.hooks['get_command']:
+        cmd = hook(cmd, cmd_name)
+    if cmd is None:
+        try:
+            plugin_metadata, provider = probe_for_provider(cmd_name)
+            raise errors.CommandAvailableInPlugin(cmd_name,
+                plugin_metadata, provider)
+        except errors.NoPluginAvailable:
+            pass
+        # No command found.
+        raise KeyError
+    # Allow plugins to extend commands
+    for hook in Command.hooks['extend_command']:
+        hook(cmd)
+    return cmd
+
+
+def probe_for_provider(cmd_name):
+    """Look for a provider for cmd_name.
+
+    :param cmd_name: The command name.
+    :return: plugin_metadata, provider for getting cmd_name.
+    :raises NoPluginAvailable: When no provider can supply the plugin.
+    """
+    # look for providers that provide this command but aren't installed
+    for provider in command_providers_registry:
+        try:
+            return provider.plugin_for_command(cmd_name), provider
+        except errors.NoPluginAvailable:
+            pass
+    raise errors.NoPluginAvailable(cmd_name)
+
+
+def __get_cmd_object(cmd_name, plugins_override):
     """Worker for get_cmd_object which raises KeyError rather than BzrCommandError."""
     from bzrlib.externalcommand import ExternalCommand
 
@@ -213,17 +272,7 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
-
-    # look for plugins that provide this command but aren't installed
-    for provider in command_providers_registry:
-        try:
-            plugin_metadata = provider.plugin_for_command(cmd_name)
-        except errors.NoPluginAvailable:
-            pass
-        else:
-            raise errors.CommandAvailableInPlugin(cmd_name,
-                                                  plugin_metadata, provider)
-    raise KeyError
+    return None
 
 
 class Command(object):
@@ -595,6 +644,18 @@ class CommandHooks(Hooks):
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
             "new bzrlib.commands.Command object.", (1, 13), None))
+        self.create_hook(HookPoint('get_command',
+            "Called when creating a single command. Called with "
+            "(cmd_or_None, command_name). get_command should either return "
+            "the cmd_or_None parameter, or a replacement Command object that "
+            "should be used for the command.", (1, 14), None))
+        self.create_hook(HookPoint('list_commands',
+            "Called when enumerating commands. Called with a dict of "
+            "cmd_name: cmd_class tuples for all the commands found "
+            "so far. This dict is safe to mutate - to remove a command or "
+            "to replace it with another (eg plugin supplied) version. "
+            "list_commands should return the updated dict of commands.",
+            (1, 14), None))
 
 Command.hooks = CommandHooks()
 

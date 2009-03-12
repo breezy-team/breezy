@@ -258,6 +258,11 @@ IN DEVELOPMENT
       string, and never emptied the cache. This should slightly reduce
       memory consumption. (John Arbash Meinel)
 
+    * Command lookup has had hooks added. ``bzrlib.Command.hooks`` has
+      two new hook points: ``get_command`` and ``list_commands``, which
+      allow just-in-time command name provision rather than requiring that
+      all command names be known a-priori. (Robert Collins)
+
     * New branch method ``create_clone_on_transport`` that returns a
       branch object. (Robert Collins)
 
