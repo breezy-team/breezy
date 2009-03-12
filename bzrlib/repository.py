@@ -3358,6 +3358,7 @@ class InterDifferingSerializer(InterKnitRepo):
                     for parent_id in parent_map[rev_id]
                     if parent_id != NULL_REVISION and
                         rev_id_to_root.get(parent_id, root_id) == root_id])
+                return parent_keys
             def new_root_data_stream():
                 rev_id_to_root = self._revision_id_to_root_id
                 for root_key in root_keys_to_create:
