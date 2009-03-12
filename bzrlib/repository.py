@@ -3334,7 +3334,10 @@ class InterDifferingSerializer(InterKnitRepo):
                             # copy
                             continue
                         if self._converting_to_rich_root:
+                            # This can't be copied normally, we have to insert
+                            # it specially
                             root_keys_to_create.add((file_id, entry.revision))
+                            continue
                     text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
@@ -3346,6 +3349,7 @@ class InterDifferingSerializer(InterKnitRepo):
         from_texts = self.source.texts
         to_texts = self.target.texts
         if root_keys_to_create:
+            NULL_REVISION = _mod_revision.NULL_REVISION
             def _get_parent_keys(root_key):
                 root_id, rev_id = root_key
                 # Include direct parents of the revision, but only if they used
@@ -3358,7 +3362,8 @@ class InterDifferingSerializer(InterKnitRepo):
                 rev_id_to_root = self._revision_id_to_root_id
                 for root_key in root_keys_to_create:
                     parent_keys = _get_parent_keys(root_key)
-                    yield FulltextContentFactory(key, parent_keys, None, '')
+                    yield versionedfile.FulltextContentFactory(root_key,
+                        parent_keys, None, '')
             to_texts.insert_record_stream(new_root_data_stream())
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
