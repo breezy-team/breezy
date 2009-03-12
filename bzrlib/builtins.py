@@ -4402,6 +4402,23 @@ class cmd_switch(Command):
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
+class cmd_guess_renames(Command):
+    """Guess which files have been have been renamed, based on their content.
+
+    Only versioned files which have been deleted are candidates for rename
+    detection, and renames to ignored files will not be detected.
+    """
+
+    takes_args = ['file*']
+    def run(self, file_list=None):
+        work_tree, file_list = tree_files(file_list, default_branch='.')
+        work_tree.lock_write()
+        try:
+            work_tree.guess_renames(specific_files=file_list)
+        finally:
+            work_tree.unlock()
+
+
 def _create_prefix(cur_transport):
     needed = [cur_transport]
     # Recurse upwards until we can create a directory successfully

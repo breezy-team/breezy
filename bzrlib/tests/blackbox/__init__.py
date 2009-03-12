@@ -63,6 +63,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_find_merge_base',
+                     'bzrlib.tests.blackbox.test_guess_renames',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_ignore',
                      'bzrlib.tests.blackbox.test_ignored',
