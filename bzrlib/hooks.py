@@ -241,6 +241,9 @@ class HookPoint(object):
     def __iter__(self):
         return iter(self._callbacks)
 
+    def __len__(self):
+        return len(self._callbacks)
+
     def __repr__(self):
         strings = []
         strings.append("<%s(" % type(self).__name__)
