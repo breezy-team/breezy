@@ -2532,6 +2532,22 @@ class UnknownBugTrackerAbbreviation(BzrError):
         self.branch = branch
 
 
+class InvalidLineInBugsProperty(BzrError):
+
+    _fmt = ("Invalid line in bugs property: '%(line)s'")
+
+    def __init__(self, line):
+        self.line = line
+
+
+class InvalidBugStatus(BzrError):
+
+    _fmt = ("Invalid bug status: '%(status)s'")
+
+    def __init__(self, status):
+        self.status = status
+
+
 class UnexpectedSmartServerResponse(BzrError):
 
     _fmt = "Could not understand response from smart server: %(response_tuple)r"

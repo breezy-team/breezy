@@ -93,6 +93,9 @@ and Stacked Branches should both be much faster over remote connections.
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
 
+    * New API for getting bugs fixed by a revision: Revision.iter_bugs().
+      (Jonathan Lange)
+
   IMPROVEMENTS:
 
     * All bzr ``Hooks`` classes are now registered in
