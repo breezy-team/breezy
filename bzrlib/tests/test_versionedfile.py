@@ -1493,6 +1493,27 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             trailing_eol=trailing_eol, nograph=not self.graph,
             left_only=left_only)
 
+    def test_add_lines_nostoresha(self):
+        """When nostore_sha is supplied using old content raises."""
+        vf = self.get_versionedfiles()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        shas = []
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            sha, _, _ = vf.add_lines(self.get_simple_key(version), [], lines)
+            shas.append(sha)
+        # we now have a copy of all the lines in the vf.
+        for sha, (version, lines) in zip(
+            shas, (empty_text, sample_text_nl, sample_text_no_nl)):
+            new_key = self.get_simple_key(version + "2")
+            self.assertRaises(errors.ExistingContent,
+                vf.add_lines, new_key, [], lines,
+                nostore_sha=sha)
+            # and no new version should have been added.
+            record = vf.get_record_stream([new_key], 'unordered', True).next()
+            self.assertEqual('absent', record.storage_kind)
+
     def test_add_lines_return(self):
         files = self.get_versionedfiles()
         # save code by using the stock data insertion helper.
