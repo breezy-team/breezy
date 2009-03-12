@@ -1391,7 +1391,7 @@ class GnuChangelogLogFormatter(LogFormatter):
         committer_str = revision.rev.committer.replace (' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
-        if revision.delta is not None:
+        if revision.delta is not None and revision.delta.has_changed ():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
                 path, = c[:1]
                 to_file.write('\t* %s:\n' % (path,))
