@@ -330,21 +330,19 @@ class TestHttpFetch(TestCaseWithWebserver):
 
 class TestKnitToPackFetch(TestCaseWithTransport):
 
-    def find_get_record_stream(self, calls):
-        """In a list of calls, find 'get_record_stream' calls.
+    def find_get_record_stream(self, calls, expected_count=1):
+        """In a list of calls, find the last 'get_record_stream'.
 
-        This also ensures that there is only one get_record_stream call.
+        :param expected_count: The number of calls we should exepect to find.
+            If a different number is found, an assertion is raised.
         """
         get_record_call = None
+        call_count = 0
         for call in calls:
             if call[0] == 'get_record_stream':
-                self.assertIs(None, get_record_call,
-                              "there should only be one call to"
-                              " get_record_stream")
+                call_count += 1
                 get_record_call = call
-        self.assertIsNot(None, get_record_call,
-                         "there should be exactly one call to "
-                         " get_record_stream")
+        self.assertEqual(expected_count, call_count)
         return get_record_call
 
     def test_fetch_with_deltas_no_delta_closure(self):
@@ -370,8 +368,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._format._fetch_order, False),
-                         self.find_get_record_stream(source.inventories.calls))
+          target._format._fetch_order, False),
+          self.find_get_record_stream(source.inventories.calls, 2))
         self.assertEqual(('get_record_stream', [('rev-one',)],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.revisions.calls))
@@ -414,8 +412,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._format._fetch_order, True),
-                         self.find_get_record_stream(source.inventories.calls))
+            target._format._fetch_order, True),
+            self.find_get_record_stream(source.inventories.calls, 2))
         self.assertEqual(('get_record_stream', [('rev-one',)],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.revisions.calls))

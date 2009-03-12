@@ -1700,6 +1700,10 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_tags()
 
+    def supports_stacking(self):
+        self._ensure_real()
+        return self._custom_format.supports_stacking()
+
 
 class RemoteBranch(branch.Branch, _RpcHelper):
     """Branch stored on a server accessed by HPSS RPC.
