@@ -39,7 +39,8 @@ class Shelver(object):
     """Interactively shelve the changes in a working tree."""
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
-                 auto_apply=False, file_list=None, message=None):
+                 auto_apply=False, file_list=None, message=None,
+                 destroy=False):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -49,6 +50,8 @@ class Shelver(object):
         :param auto_apply: If True, shelve changes with no final prompt.
         :param file_list: If supplied, only files in this list may be shelved.
         :param message: The message to associate with the shelved changes.
+        :param destroy: Change the working tree without storing the shelved
+            changes.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
@@ -60,10 +63,11 @@ class Shelver(object):
         self.auto_apply = auto_apply
         self.file_list = file_list
         self.message = message
+        self.destroy = destroy
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
-                  message=None, directory='.'):
+                  message=None, directory='.', destroy=False):
         """Create a shelver from commandline arguments.
 
         :param revision: RevisionSpec of the revision to compare to.
@@ -71,12 +75,15 @@ class Shelver(object):
         :param file_list: If supplied, only files in this list may be  shelved.
         :param message: The message to associate with the shelved changes.
         :param directory: The directory containing the working tree.
+        :param destroy: Change the working tree without storing the shelved
+            changes.
         """
         tree, path = workingtree.WorkingTree.open_containing(directory)
         target_tree = builtins._get_one_revision_tree('shelf2', revision,
             tree.branch, tree)
         files = builtins.safe_relpath_files(tree, file_list)
-        return klass(tree, target_tree, diff_writer, all, all, files, message)
+        return klass(tree, target_tree, diff_writer, all, all, files, message,
+                     destroy)
 
     def run(self):
         """Interactively shelve the changes."""
@@ -121,9 +128,13 @@ class Shelver(object):
                 delta.report_changes(changes, reporter)
                 if (self.auto_apply or self.prompt_bool(
                     'Shelve %d change(s)?' % changes_shelved)):
-                    shelf_id = self.manager.shelve_changes(creator,
-                                                           self.message)
-                    trace.note('Changes shelved with id "%d".' % shelf_id)
+                    if self.destroy:
+                        creator.transform()
+                        trace.note('Selected changes destroyed.')
+                    else:
+                        shelf_id = self.manager.shelve_changes(creator,
+                                                               self.message)
+                        trace.note('Changes shelved with id "%d".' % shelf_id)
             else:
                 trace.warning('No changes to shelve.')
         finally:

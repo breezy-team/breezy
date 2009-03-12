@@ -16,6 +16,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * shelve can now apply changes without storing anything on the shelf, via
+      the new --destroy option.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Progress bars now show the rate of network activity for
