@@ -4743,6 +4743,7 @@ class cmd_send(Command):
                type=unicode),
         'revision',
         'message',
+        Option('body', help='Body for the email.', type=unicode),
         RegistryOption.from_kwargs('format',
         'Use the specified output format.',
         **{'4': 'Bundle format 4, Merge Directive 2 (default)',
@@ -4751,13 +4752,13 @@ class cmd_send(Command):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', mail_to=None, message=None, **kwargs):
+            format='4', mail_to=None, message=None, body=None, **kwargs):
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), mail_to, message)
+                         kwargs.get('from', '.'), mail_to, message, body)
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
-             no_bundle, no_patch, output, from_, mail_to, message):
+             no_bundle, no_patch, output, from_, mail_to, message, body):
         from bzrlib.revision import NULL_REVISION
         branch = Branch.open_containing(from_)[0]
         if output is None:
@@ -4775,6 +4776,11 @@ class cmd_send(Command):
                 if mail_to is None:
                     mail_to = config.get_user_option('submit_to')
                 mail_client = config.get_mail_client()
+                if (not getattr(mail_client, 'supports_body', False)
+                    and body is not None):
+                    raise errors.BzrCommandError(
+                        'Mail client "%s" does not support specifying body' %
+                        mail_client.__class__.__name__)
             if remember and submit_branch is None:
                 raise errors.BzrCommandError(
                     '--remember requires a branch to be specified.')
@@ -4857,7 +4863,8 @@ class cmd_send(Command):
                     subject += revision.get_summary()
                 basename = directive.get_disk_name(branch)
                 mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue(), basename)
+                                                  outfile.getvalue(),
+                                                  basename, body)
         finally:
             if output != '-':
                 outfile.close()
@@ -4931,7 +4938,7 @@ class cmd_bundle_revisions(cmd_send):
             output = '-'
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), None, None)
+                         kwargs.get('from', '.'), None, None, None)
 
 
 class cmd_tag(Command):

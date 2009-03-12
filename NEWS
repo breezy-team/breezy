@@ -19,6 +19,9 @@ IN DEVELOPMENT
     * shelve can now apply changes without storing anything on the shelf, via
       the new --destroy option.  (Aaron Bentley)
 
+    * ``bzr send`` now accepts --body to specify an initial message body.
+      (Aaron bentley)
+
   IMPROVEMENTS:
 
     * Progress bars now show the rate of network activity for
