@@ -16,6 +16,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * shelve can now apply changes without storing anything on the shelf, via
+      the new --destroy option.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * Progress bars now show the rate of network activity for
@@ -82,9 +85,6 @@ and Stacked Branches should both be much faster over remote connections.
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
-
-    * shelve can now apply changes without storing anything on the shelf, via
-      the new --destroy option.  (Aaron Bentley)
 
   IMPROVEMENTS:
 
