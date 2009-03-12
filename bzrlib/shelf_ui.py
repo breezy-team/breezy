@@ -114,6 +114,11 @@ class Shelver(object):
                                    change[2:]):
                         creator.shelve_rename(change[1])
                         changes_shelved += 1
+                if change[0] == 'modify target':
+                    if self.prompt_bool('Shelve changing target of "%s" '
+                            'from "%s" to "%s"?' % change[2:]):
+                        creator.shelve_modify_target(change[1])
+                        changes_shelved += 1
             if changes_shelved > 0:
                 trace.note("Selected changes:")
                 changes = creator.work_transform.iter_changes()

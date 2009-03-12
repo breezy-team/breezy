@@ -26,6 +26,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Shelve can now shelve changes to a symlink target.
+      (James Westby, #341558)
+
   DOCUMENTATION:
 
     * The generated manpage now explicitly lists aliases as commands.
