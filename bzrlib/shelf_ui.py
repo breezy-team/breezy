@@ -50,6 +50,8 @@ class Shelver(object):
         :param auto_apply: If True, shelve changes with no final prompt.
         :param file_list: If supplied, only files in this list may be shelved.
         :param message: The message to associate with the shelved changes.
+        :param destroy: Change the working tree without storing the shelved
+            changes.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree

@@ -44,6 +44,9 @@ IN DEVELOPMENT
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
 
+    * shelve can now apply changes without storing anything on the shelf, via
+      the new --destroy option.  (Aaron Bentley)
+
   IMPROVEMENTS:
 
     * ``bzr add`` no longer prints ``add completed`` on success. Failure
