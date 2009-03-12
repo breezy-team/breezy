@@ -87,7 +87,80 @@ class AbstractRevisionStore(object):
         revtree = self.repo.revision_tree(revision_id)
         return osutils.split_lines(revtree.get_file_text(file_id))
 
-    def load(self, rev, inv, signature, text_provider,
+    def start_new_revision(self, revision, parents, parent_invs):
+        """Init the metadata needed for get_parents_and_revision_for_entry().
+
+        :param revision: a Revision object
+        """
+        self._current_rev_id = revision.revision_id
+        self._rev_parents = parents
+        self._rev_parent_invs = parent_invs
+        # We don't know what the branch will be so there's no real BranchConfig.
+        # That means we won't be triggering any hooks and that's a good thing.
+        # Without a config though, we must pass in the committer below so that
+        # the commit builder doesn't try to look up the config.
+        config = None
+        # We can't use self.repo.get_commit_builder() here because it starts a
+        # new write group. We want one write group around a batch of imports
+        # where the default batch size is currently 10000. IGC 20090312
+        self._commit_builder = self.repo._commit_builder_class(self.repo,
+            parents, config, timestamp=revision.timestamp,
+            timezone=revision.timezone, committer=revision.committer,
+            revprops=revision.properties, revision_id=revision.revision_id)
+
+    def get_parents_and_revision_for_entry(self, ie):
+        """Get the parents and revision for an inventory entry.
+        
+        :param ie: the inventory entry
+        :return parents, revision_id where
+            parents is the list of parent revision_ids for the per-file graph
+            revision_id is the revision_id to use for this entry
+        """
+        # Check for correct API usage
+        if self._current_rev_id is None:
+            raise AssertionError("start_new_revision() must be called"
+                " before get_parents_and_revision_for_entry()")
+        if ie.revision != self._current_rev_id:
+            raise AssertionError("start_new_revision() registered a different"
+                " revision (%s) to that in the inventory entry (%s)" %
+                (self._current_rev_id, ie.revision))
+
+        # Find the heads. This code is lifted from
+        # repository.CommitBuilder.record_entry_contents().
+        parent_candidate_entries = ie.parent_candidates(self._rev_parent_invs)
+        head_set = self._commit_builder._heads(ie.file_id,
+            parent_candidate_entries.keys())
+        heads = []
+        for inv in self._rev_parent_invs:
+            if ie.file_id in inv:
+                old_rev = inv[ie.file_id].revision
+                if old_rev in head_set:
+                    heads.append(inv[ie.file_id].revision)
+                    head_set.remove(inv[ie.file_id].revision)
+
+        # Find the revision to use. If the content has not changed
+        # since the parent, record the parent's revision.
+        parent_entry = parent_candidate_entries[heads[0]]
+        changed = False
+        if len(heads) > 1:
+            changed = True
+        elif (parent_entry.kind != ie.kind or
+            parent_entry.parent_id != ie.parent_id): 
+            changed = True
+        elif ie.kind == 'file':
+            if (parent_entry.text_sha1 != ie.text_sha1 or
+                parent_entry.executable != ie.executable):
+                changed = True
+        elif ie.kind == 'symlink':
+            if parent_entry.symlink_target != ie.symlink_target:
+                changed = True
+        if changed:
+            rev_id = ie.revision
+        else:
+            rev_id = parent_entry.revision
+        return heads, rev_id
+
+    def load(self, rev, inv, signature, text_provider, parents_provider,
         inventories_provider=None):
         """Load a revision.
 
@@ -96,6 +169,8 @@ class AbstractRevisionStore(object):
         :param signature: signing information
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
+        :param parents_provider: a callable expecting a file_id parameter
+            that return the list of parent-ids for that file-id
         :param inventories_provider: a callable expecting a repository and
             a list of revision-ids, that returns:
               * the list of revision-ids present in the repository
@@ -121,13 +196,14 @@ class AbstractRevisionStore(object):
 
         # Load the texts, signature and revision
         entries = self._non_root_entries_iter(inv, rev.revision_id)
-        self._load_texts(rev.revision_id, entries, parent_invs, text_provider)
+        self._load_texts(rev.revision_id, entries, text_provider,
+            parents_provider)
         if signature is not None:
             self.repo.add_signature_text(rev.revision_id, signature)
         self._add_revision(rev, inv)
 
     def chk_load(self, rev, basis_inv, inv_delta, signature,
-        text_provider, inventories_provider=None):
+        text_provider, parents_provider, inventories_provider=None):
         """Load a revision for a CHKInventory.
 
         :param rev: the Revision
@@ -136,6 +212,8 @@ class AbstractRevisionStore(object):
         :param signature: signing information
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
+        :param parents_provider: a callable expecting a file_id parameter
+            that return the list of parent-ids for that file-id
         :param inventories_provider: a callable expecting a repository and
             a list of revision-ids, that returns:
               * the list of revision-ids present in the repository
@@ -160,7 +238,7 @@ class AbstractRevisionStore(object):
         file_rev_ids_needing_texts = [(id, ie.revision)
             for _, n, id, ie in inv_delta if n is not None]
         self._load_texts_for_file_rev_ids(file_rev_ids_needing_texts,
-            parent_invs, text_provider)
+            text_provider, parents_provider)
         if signature is not None:
             self.repo.add_signature_text(rev_id, signature)
         self._add_revision(rev, inv)
@@ -179,16 +257,18 @@ class AbstractRevisionStore(object):
             entries = iter([ie for path, ie in path_entries])
         return entries
 
-    def _load_texts(self, revision_id, entries, parent_invs, text_provider):
+    def _load_texts(self, revision_id, entries, text_provider,
+        parents_provider):
         """Load texts to a repository for inventory entries.
         
         This method is provided for subclasses to use or override.
 
         :param revision_id: the revision identifier
         :param entries: iterator over the inventory entries
-        :param parent_invs: the parent inventories
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
+        :param parents_provider: a callable expecting a file_id parameter
+            that return the list of parent-ids for that file-id
         """
         raise NotImplementedError(self._load_texts)
 
@@ -256,7 +336,7 @@ class RevisionStore1(AbstractRevisionStore):
     The old API was present until bzr.dev rev 3510.
     """
 
-    def _load_texts(self, revision_id, entries, parent_invs, text_provider):
+    def _load_texts(self, revision_id, entries, text_provider, parents_provider):
         """See RevisionStore._load_texts()."""
         # Add the texts that are not already present
         tx = self.repo.get_transaction()
@@ -272,16 +352,10 @@ class RevisionStore1(AbstractRevisionStore):
             # a foreign system.
             if ie.revision != revision_id:
                 continue
-            text_parents = []
-            for parent_inv in parent_invs:
-                if ie.file_id not in parent_inv:
-                    continue
-                parent_id = parent_inv[ie.file_id].revision
-                if parent_id in text_parents:
-                    continue
-                text_parents.append(parent_id)
-            lines = text_provider(ie.file_id)
-            vfile = self.repo.weave_store.get_weave_or_empty(ie.file_id,  tx)
+            file_id = ie.file_id
+            text_parents = [(file_id, p) for p in parents_provider(file_id)]
+            lines = text_provider(file_id)
+            vfile = self.repo.weave_store.get_weave_or_empty(file_id,  tx)
             vfile.add_lines(revision_id, text_parents, lines)
 
     def get_file_lines(self, revision_id, file_id):
@@ -300,50 +374,31 @@ class RevisionStore1(AbstractRevisionStore):
 class RevisionStore2(AbstractRevisionStore):
     """A RevisionStore that uses the new bzrlib Repository API."""
 
-    def _load_texts(self, revision_id, entries, parent_invs, text_provider):
+    def _load_texts(self, revision_id, entries, text_provider, parents_provider):
         """See RevisionStore._load_texts()."""
         text_keys = {}
         for ie in entries:
             text_keys[(ie.file_id, ie.revision)] = ie
         text_parent_map = self.repo.texts.get_parent_map(text_keys)
         missing_texts = set(text_keys) - set(text_parent_map)
-        # TODO: reuse _load_texts_from_file_ids() for the rest of this routine
-        # Add the texts that are not already present
-        for text_key in missing_texts:
-            ie = text_keys[text_key]
-            text_parents = []
-            for parent_inv in parent_invs:
-                if ie.file_id not in parent_inv:
-                    continue
-                parent_id = parent_inv[ie.file_id].revision
-                if parent_id in text_parents:
-                    continue
-                text_parents.append((ie.file_id, parent_id))
-            lines = text_provider(ie.file_id)
-            #print "adding text for %s" % (text_key,)
-            self.repo.texts.add_lines(text_key, text_parents, lines)
+        self._load_texts_for_file_rev_ids(missing_texts, text_provider,
+            parents_provider)
 
-    def _load_texts_for_file_rev_ids(self, file_rev_ids, parent_invs,
-        text_provider):
+    def _load_texts_for_file_rev_ids(self, file_rev_ids, text_provider,
+        parents_provider):
         """Load texts to a repository for file-ids, revision-id tuples.
         
         :param file_rev_ids: iterator over the (file_id, revision_id) tuples
-        :param parent_invs: the parent inventories
         :param text_provider: a callable expecting a file_id parameter
             that returns the text for that file-id
+        :param parents_provider: a callable expecting a file_id parameter
+            that return the list of parent-ids for that file-id
         """
         for file_id, revision_id in file_rev_ids:
-            text_parents = []
-            for parent_inv in parent_invs:
-                if file_id not in parent_inv:
-                    continue
-                parent_id = parent_inv[file_id].revision
-                if parent_id in text_parents:
-                    continue
-                text_parents.append((file_id, parent_id))
-            lines = text_provider(file_id)
             text_key = (file_id, revision_id)
-            #print "adding text for %s" % (text_key,)
+            text_parents = [(file_id, p) for p in parents_provider(file_id)]
+            lines = text_provider(file_id)
+            #print "adding text for %s\n\tparents:%s" % (text_key,text_parents)
             self.repo.texts.add_lines(text_key, text_parents, lines)
 
     def get_file_lines(self, revision_id, file_id):
