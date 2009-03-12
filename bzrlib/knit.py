@@ -1658,6 +1658,7 @@ class KnitVersionedFiles(VersionedFiles):
          * If a requested key did not change any lines (or didn't have any
            lines), it may not be mentioned at all in the result.
 
+        :param pb: Progress bar supplied by caller.
         :return: An iterator over (line, key).
         """
         if pb is None:
@@ -1677,7 +1678,7 @@ class KnitVersionedFiles(VersionedFiles):
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
                 for (key_idx, (key, data, sha_value)) in records_iter:
-                    pb.update('Walking content.', key_idx, total)
+                    pb.update('Iterating content', key_idx, total)
                     compression_parent = build_details[key][1]
                     if compression_parent is None:
                         # fulltext
@@ -1713,7 +1714,7 @@ class KnitVersionedFiles(VersionedFiles):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        pb.update('Walking content.', total, total)
+        pb.update('Iterating content', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
         """Generate a line delta from delta_seq and new_content."""
