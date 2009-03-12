@@ -148,7 +148,6 @@ class RepoFetcher(object):
         """
         if self._fetch_spec is not None:
             return self._fetch_spec
-        mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
