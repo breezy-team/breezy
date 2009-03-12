@@ -122,13 +122,6 @@ def load_tests(standard_tests, module, loader):
             'key_length':1,
             'support_partial_insertion': False,
             }),
-        # ('groupcompress', {
-        #     'cleanup':groupcompress.cleanup_pack_group,
-        #     'factory':groupcompress.make_pack_factory(True, True, 1),
-        #     'graph': True,
-        #     'key_length':1,
-        #     'support_partial_insertion':False,
-        #     }),
         ('groupcompress-nograph', {
             'cleanup':groupcompress.cleanup_pack_group,
             'factory':groupcompress.make_pack_factory(False, False, 1),
@@ -160,13 +153,13 @@ def load_tests(standard_tests, module, loader):
             'key_length':2,
             'support_partial_insertion': True,
             }),
-        # ('groupcompress', {
-        #     'cleanup':groupcompress.cleanup_pack_group,
-        #     'factory':groupcompress.make_pack_factory(True, False, 1),
-        #     'graph': True,
-        #     'key_length':1,
-        #     'support_partial_insertion':False,
-        #     }),
+        ('groupcompress', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(True, False, 1),
+            'graph': True,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
         ]
     scenarios = len_one_scenarios + len_two_scenarios
     return multiply_tests(to_adapt, scenarios, result)
