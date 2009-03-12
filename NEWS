@@ -16,6 +16,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * shelve can now apply changes without storing anything on the shelf, via
+      the new --destroy option.  (Aaron Bentley)
+
     * ``bzr send`` now accepts --body to specify an initial message body.
       (Aaron bentley)
 
