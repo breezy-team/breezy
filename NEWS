@@ -233,6 +233,9 @@ and Stacked Branches should both be much faster over remote connections.
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
 
+    ``bzrlib.branch.PushResult`` was renamed to 
+    ``bzrlib.branch.BranchPushResult``. (Jelmer Vernooij)
+
     * ``Branch.fetch`` and ``Repository.fetch`` now return None rather
       than a count of copied revisions and failed revisions. A while back
       we stopped ever reporting failed revisions because we started
