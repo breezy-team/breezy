@@ -130,7 +130,6 @@ class TextProgressView(object):
         self._last_repaint = 0
         # time we last got information about transport activity
         self._transport_update_time = 0
-        self._task_fraction = None
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
@@ -154,10 +153,10 @@ class TextProgressView(object):
             # to have what looks like an incomplete progress bar.
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
-            f = self._task_fraction or 0
             cols = 20
             # number of markers highlighted in bar
-            markers = int(round(float(cols) * f)) - 1
+            completion_fraction = self._last_task._overall_completion_fraction()
+            markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
         elif self._last_task.show_spinner:
@@ -177,7 +176,6 @@ class TextProgressView(object):
             s = ' %d' % (task.current_cnt)
         else:
             s = ''
-        self._task_fraction = task._overall_completion_fraction()
         # compose all the parent messages
         t = task
         m = task.msg
@@ -204,11 +202,18 @@ class TextProgressView(object):
         self._have_output = True
 
     def show_progress(self, task):
+        """Called by the task object when it has changed.
+        
+        :param task: The top task object; its parents are also included 
+            by following links.
+        """
         self._last_task = task
+        # XXX: Possibly should force update if something important has changed
+        # (like a new task) even if the last update was recent?
         now = time.time()
         if now < self._last_repaint + 0.1:
             return
-        if now > self._transport_update_time + 5:
+        if now > self._transport_update_time + 10:
             # no recent activity; expire it
             self._last_transport_msg = ''
         self._last_repaint = now

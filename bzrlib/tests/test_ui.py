@@ -28,6 +28,7 @@ import bzrlib.errors as errors
 from bzrlib.progress import (
     DotsProgressBar,
     ProgressBarStack,
+    ProgressTask,
     TTYProgressBar,
     )
 from bzrlib.symbol_versioning import (
@@ -43,7 +44,10 @@ from bzrlib.ui import (
     CLIUIFactory,
     SilentUIFactory,
     )
-from bzrlib.ui.text import TextUIFactory
+from bzrlib.ui.text import (
+    TextProgressView,
+    TextUIFactory,
+    )
 
 
 class UITests(TestCase):
@@ -249,3 +253,23 @@ class UITests(TestCase):
             pb.tick()
         finally:
             pb.finished()
+
+
+class TestTextProgressView(TestCase):
+    """Tests for text display of progress bars.
+    """
+    # XXX: These might be a bit easier to write if the rendering and
+    # state-maintaining parts of TextProgressView were more separate, and if
+    # the progress task called back directly to its own view not to the ui
+    # factory. -- mbp 20090312
+
+    def test_render_progress_easy(self):
+        """Just one task and one quarter done"""
+        out = StringIO()
+        uif = TextUIFactory(stderr=out)
+        uif._progress_view._width = 80
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 5, 20)
+        self.assertEqual(
+'\r[####/               ] reticulating splines 5/20                               \r'
+            , out.getvalue())
