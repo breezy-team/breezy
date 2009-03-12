@@ -23,6 +23,7 @@ from bzrlib import (
     chk_serializer,
     debug,
     errors,
+    index as _mod_index,
     inventory,
     knit,
     osutils,
@@ -156,6 +157,15 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
 
+    def _get_progress_stream(self, source_vf, keys, index_name, pb):
+        def pb_stream():
+            substream = source_vf.get_record_stream(keys, 'groupcompress', True)
+            for idx, record in enumerate(substream):
+                if pb is not None:
+                    pb.update(index_name, idx + 1, len(keys))
+                yield record
+        return pb_stream()
+
     def _get_filtered_inv_stream(self, source_vf, keys, pb=None):
         """Filter the texts of inventories, to find the chk pages."""
         id_roots = []
@@ -181,10 +191,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                         p_id_roots_set.add(key)
                         p_id_roots.append(key)
                 yield record
-        stream = source_vf.get_record_stream(keys, 'gc-optimal', True)
+        stream = source_vf.get_record_stream(keys, 'groupcompress', True)
         return _filter_inv_stream(stream), id_roots, p_id_roots
 
-    def _get_chk_stream(self, source_vf, keys, id_roots, p_id_roots, pb=None):
+    def _get_chk_streams(self, source_vf, keys, id_roots, p_id_roots, pb=None):
         # We want to stream the keys from 'id_roots', and things they
         # reference, and then stream things from p_id_roots and things they
         # reference, and then any remaining keys that we didn't get to.
@@ -249,6 +259,64 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                                                  True)
             yield stream
 
+    def _build_vf(self, packs, index_name, parents, delta, for_write=False):
+        """Build a VersionedFiles instance on top of this group of packs."""
+        index_name = index_name + '_index'
+        index_to_pack = {}
+        access = knit._DirectPackAccess(index_to_pack)
+        if for_write:
+            assert len(packs) == 1
+            pack = packs[0]
+            index = getattr(pack, index_name)
+            index_to_pack[index] = pack.access_tuple()
+            index.set_optimize(for_size=True)
+            access.set_writer(pack._writer, index, pack.access_tuple())
+            add_callback = index.add_nodes
+        else:
+            indices = []
+            for pack in packs:
+                sub_index = getattr(pack, index_name)
+                index_to_pack[sub_index] = pack.access_tuple()
+                indices.append(sub_index)
+            index = _mod_index.CombinedGraphIndex(indices)
+            add_callback = None
+        vf = GroupCompressVersionedFiles(
+            _GCGraphIndex(index,
+                          add_callback=add_callback,
+                          parents=parents,
+                          is_locked=self.repo.is_locked),
+            access=access,
+            delta=delta)
+        return vf
+
+    def _fetch_across_packs(self, packs, new_pack, to_copy, has_chk, pb):
+        for idx, (index_name, parents, delta) in enumerate(to_copy):
+            pb.update('repacking %s' % (index_name,), idx + 1, len(to_copy))
+            source_vf = self._build_vf(packs, index_name, parents,
+                                       delta, for_write=False)
+            target_vf = self._build_vf([new_pack], index_name, parents,
+                                       delta, for_write=True)
+            keys = source_vf.keys()
+            trace.mutter('repacking %s with %d keys',
+                         index_name, len(keys))
+            stream = None
+            child_pb = ui.ui_factory.nested_progress_bar()
+            try:
+                if has_chk and index_name == 'inventory':
+                    stream, id_roots, p_id_roots = self._get_filtered_inv_stream(
+                        source_vf, keys, pb=child_pb)
+                    target_vf.insert_record_stream(stream)
+                elif has_chk and index_name == 'chk':
+                    for stream in self._get_chk_streams(source_vf, keys,
+                                        id_roots, p_id_roots,
+                                        pb=child_pb):
+                        target_vf.insert_record_stream(stream)
+                else:
+                    target_vf.insert_record_stream(self._get_progress_stream(
+                        source_vf, keys, index_name, child_pb))
+            finally:
+                child_pb.finished()
+
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
                                  reload_func=None):
         """Execute a series of pack operations.
@@ -264,19 +332,20 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             # Create a new temp VersionedFile instance based on these packs,
             # and then just fetch everything into the target
 
-            to_copy = [('revision_index', 'revisions'),
-                       ('inventory_index', 'inventories'),
-                       ('text_index', 'texts'),
-                       ('signature_index', 'signatures'),
+            # index name, parents, delta
+            to_copy = [('revision', True, False),
+                       ('inventory', True, True),
+                       ('text', True, True),
+                       ('signature', False, False),
                       ]
             # TODO: This is a very non-optimal ordering for chk_bytes. The
             #       issue is that pages that are similar are not transmitted
-            #       together. Perhaps get_record_stream('gc-optimal') should be
+            #       together. Perhaps get_record_stream('groupcompress') should be
             #       taught about how to group chk pages?
             has_chk = False
-            if getattr(self, 'chk_index', None) is not None:
+            if self.chk_index is not None:
                 has_chk = True
-                to_copy.insert(2, ('chk_index', 'chk_bytes'))
+                to_copy.insert(2, ('chk', False, True))
 
             # Shouldn't we start_write_group around this?
             if self._new_pack is not None:
@@ -291,51 +360,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             #       target pack to insert into.
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                for idx, (index_name, vf_name) in enumerate(to_copy):
-                    pb.update('repacking %s' % (vf_name,), idx + 1, len(to_copy))
-                    keys = set()
-                    new_index = getattr(new_pack, index_name)
-                    new_index.set_optimize(for_size=True)
-                    for pack in packs:
-                        source_index = getattr(pack, index_name)
-                        keys.update(e[1] for e in source_index.iter_all_entries())
-                    trace.mutter('repacking %s with %d keys',
-                                 vf_name, len(keys))
-                    source_vf = getattr(self.repo, vf_name)
-                    target_access = knit._DirectPackAccess({})
-                    target_access.set_writer(new_pack._writer, new_index,
-                                             new_pack.access_tuple())
-                    target_vf = GroupCompressVersionedFiles(
-                        _GCGraphIndex(new_index,
-                                      add_callback=new_index.add_nodes,
-                                      parents=source_vf._index._parents,
-                                      is_locked=self.repo.is_locked),
-                        access=target_access,
-                        delta=source_vf._delta)
-                    stream = None
-                    child_pb = ui.ui_factory.nested_progress_bar()
-                    try:
-                        if has_chk:
-                            if vf_name == 'inventories':
-                                stream, id_roots, p_id_roots = self._get_filtered_inv_stream(
-                                    source_vf, keys, pb=child_pb)
-                            elif vf_name == 'chk_bytes':
-                                for stream in self._get_chk_stream(source_vf, keys,
-                                                    id_roots, p_id_roots,
-                                                    pb=child_pb):
-                                    target_vf.insert_record_stream(stream)
-                                # No more to copy
-                                stream = []
-                        if stream is None:
-                            def pb_stream():
-                                substream = source_vf.get_record_stream(keys, 'gc-optimal', True)
-                                for idx, record in enumerate(substream):
-                                    child_pb.update(vf_name, idx + 1, len(keys))
-                                    yield record
-                            stream = pb_stream()
-                        target_vf.insert_record_stream(stream)
-                    finally:
-                        child_pb.finished()
+                self._fetch_across_packs(packs, new_pack, to_copy, has_chk, pb)
                 new_pack._check_references() # shouldn't be needed
             except:
                 pb.finished()
